@@ -30,10 +30,10 @@ docker pull sameersbn/bind:latest
 echo.
 echo [5/6] Mailcow Email Server...
 docker pull mailcow/postfix:latest
-docker pull mailcow/dovecot:latest
+docker pull mailcow/dovecot:2.31
 docker pull mailcow/sogo:latest
 docker pull mailcow/rspamd:latest
-docker pull mailcow/nginx:latest
+docker pull mailcow/nginx:1.03
 docker pull mailcow/phpfpm:latest
 
 echo.

@@ -939,7 +939,7 @@ services:
 
   # Dovecot - IMAP/POP3 Server
   dovecot-mailcow:
-    image: mailcow/dovecot:latest
+    image: mailcow/dovecot:2.31
     container_name: dovecot-mailcow
     restart: unless-stopped
     ports:
@@ -1005,7 +1005,7 @@ services:
 
   # Nginx for Mailcow
   nginx-mailcow:
-    image: mailcow/nginx:latest
+    image: mailcow/nginx:1.03
     container_name: nginx-mailcow
     restart: unless-stopped
     ports:
