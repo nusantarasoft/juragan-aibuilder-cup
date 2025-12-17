@@ -20,14 +20,8 @@ docker compose up -d ^
     nginxproxymanager ^
     traefik ^
     bind9 ^
-    mysql-mailcow ^
-    redis-mailcow ^
-    postfix-mailcow ^
-    dovecot-mailcow ^
-    sogo-mailcow ^
-    rspamd-mailcow ^
-    nginx-mailcow ^
-    php-fpm-mailcow ^
+    mailserver ^
+    roundcube ^
     portainer
 
 echo.
@@ -40,10 +34,10 @@ echo   - Portainer:        http://localhost:9090
 echo   - BIND9 Webmin:     http://localhost:10000  (root / Nusantarasoft123!)
 echo   - phpLDAPadmin:     http://localhost:8089
 echo   - Nginx Proxy Mgr:  http://localhost:8081   (admin@example.com / changeme)
-echo   - Mailcow Admin:    http://localhost:8082
-echo   - SOGo Webmail:     https://localhost:8444/SOGo
+echo   - Roundcube:        http://localhost:8082
 echo.
-echo Note: Pi-hole removed (use BIND9 for DNS instead)
+echo NOTE: To add mail users, use docker-mailserver CLI:
+echo   docker exec -it mailserver setup email add user@domain.com
 echo.
 echo To stop: docker compose stop
 echo To view: docker compose ps

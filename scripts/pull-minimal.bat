@@ -8,8 +8,6 @@ echo =======================================
 
 echo.
 echo [1/5] Core Databases...
-docker pull mariadb:10.11
-docker pull redis:7-alpine
 docker pull postgres:15
 
 echo.
@@ -27,13 +25,9 @@ echo [4/5] DNS (BIND9 with Webmin)...
 docker pull sameersbn/bind:latest
 
 echo.
-echo [5/5] Mailcow Email Server...
-docker pull mailcow/postfix:latest
-docker pull mailcow/dovecot:2.31
-docker pull mailcow/sogo:latest
-docker pull mailcow/rspamd:latest
-docker pull mailcow/nginx:1.03
-docker pull mailcow/phpfpm:latest
+echo [5/5] Email Server + Webmail...
+docker pull ghcr.io/docker-mailserver/docker-mailserver:latest
+docker pull roundcube/roundcubemail:latest
 
 echo.
 echo [6/6] Web Admin (Portainer)...
@@ -44,15 +38,14 @@ echo =======================================
 echo MINIMAL INFRASTRUCTURE COMPLETE!
 echo =======================================
 echo.
-echo Images pulled: 14
+echo Images pulled: 10
 echo.
 echo Web Admin URLs after startup:
 echo   - Portainer:        http://localhost:9090
 echo   - BIND9 Webmin:     http://localhost:10000
 echo   - phpLDAPadmin:     http://localhost:8089
 echo   - Nginx Proxy Mgr:  http://localhost:8081
-echo   - Mailcow Admin:    http://localhost:8082
-echo   - SOGo Webmail:     https://localhost:8444/SOGo
+echo   - Roundcube:        http://localhost:8082
 echo.
 echo Run start-minimal.bat to start these services.
 echo.

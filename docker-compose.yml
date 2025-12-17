@@ -879,168 +879,55 @@ services:
         ipv4_address: ${IP_BIND9}
 
   # ╔═══════════════════════════════════════════════════════════════════════════╗
-  # ║  5. MAILCOW EMAIL SERVER                                                  ║
-  # ║     Complete email solution with SOGo webmail                             ║
+  # ║  5. EMAIL SERVER (Docker-Mailserver)                                      ║
+  # ║     Simple, full-featured mail server in a single container               ║
   # ╚═══════════════════════════════════════════════════════════════════════════╝
 
-  # MySQL Database for Mailcow
-  mysql-mailcow:
-    image: mariadb:10.11
-    container_name: mysql-mailcow
-    restart: unless-stopped
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-    volumes:
-      - mysql-mailcow-data:/var/lib/mysql
-    command: >
-      --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --innodb-file-per-table=1 --wait_timeout=28800 --max_allowed_packet=256M
-    networks:
-      - mailnet
-
-  # Redis for Mailcow
-  redis-mailcow:
-    image: redis:7-alpine
-    container_name: redis-mailcow
-    restart: unless-stopped
-    volumes:
-      - redis-mailcow-data:/data
-    networks:
-      - mailnet
-
-  # Postfix - SMTP Server
-  postfix-mailcow:
-    image: mailcow/postfix:latest
-    container_name: postfix-mailcow
+  # Docker-Mailserver - All-in-one mail server (SMTP, IMAP, antispam)
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    container_name: mailserver
+    hostname: mail
+    domainname: ${MAIL_DOMAIN:-nusantarasoft.local}
     restart: unless-stopped
     ports:
       - "25:25" # SMTP
-      - "465:465" # SMTPS
-      - "587:587" # Submission
-    environment:
-      - DBHOST=mysql-mailcow
-      - DBNAME=${MYSQL_DATABASE}
-      - DBUSER=${MYSQL_USER}
-      - DBPASS=${MYSQL_PASSWORD}
-      - MAILCOW_HOSTNAME=${MAILCOW_HOSTNAME}
-      - TZ=${TZ}
-    volumes:
-      - postfix-data:/var/spool/postfix
-      - crypt-data:/var/lib/zeyple
-      - rspamd-sock:/rspamd-sock
-    depends_on:
-      - mysql-mailcow
-      - redis-mailcow
-    networks:
-      mailnet:
-        ipv4_address: ${IP_POSTFIX}
-
-  # Dovecot - IMAP/POP3 Server
-  dovecot-mailcow:
-    image: mailcow/dovecot:2.31
-    container_name: dovecot-mailcow
-    restart: unless-stopped
-    ports:
-      - "110:110" # POP3
-      - "995:995" # POP3S
-      - "143:143" # IMAP
+      - "465:465" # SMTPS (implicit TLS)
+      - "587:587" # Submission (explicit TLS)
       - "993:993" # IMAPS
-      - "4190:4190" # ManageSieve
     environment:
-      - DBHOST=mysql-mailcow
-      - DBNAME=${MYSQL_DATABASE}
-      - DBUSER=${MYSQL_USER}
-      - DBPASS=${MYSQL_PASSWORD}
-      - MAILCOW_HOSTNAME=${MAILCOW_HOSTNAME}
+      - ENABLE_SPAMASSASSIN=1
+      - ENABLE_CLAMAV=0
+      - ENABLE_FAIL2BAN=0
+      - ENABLE_POSTGREY=0
+      - ONE_DIR=1
       - TZ=${TZ}
     volumes:
-      - vmail-data:/var/vmail
-      - vmail-index:/var/vmail_index
-      - dovecot-data:/var/dovecot
-      - crypt-data:/mail_crypt
-    depends_on:
-      - mysql-mailcow
-    networks:
-      mailnet:
-        ipv4_address: ${IP_DOVECOT}
-
-  # SOGo - Webmail & Groupware
-  sogo-mailcow:
-    image: mailcow/sogo:latest
-    container_name: sogo-mailcow
-    restart: unless-stopped
-    environment:
-      - DBHOST=mysql-mailcow
-      - DBNAME=${MYSQL_DATABASE}
-      - DBUSER=${MYSQL_USER}
-      - DBPASS=${MYSQL_PASSWORD}
-      - MAILCOW_HOSTNAME=${MAILCOW_HOSTNAME}
-      - TZ=${TZ}
-    volumes:
-      - sogo-data:/var/spool/sogo
-      - sogo-web:/usr/lib/GNUstep/SOGo
-    depends_on:
-      - mysql-mailcow
-      - dovecot-mailcow
+      - mailserver-data:/var/mail
+      - mailserver-state:/var/mail-state
+      - mailserver-logs:/var/log/mail
+      - mailserver-config:/tmp/docker-mailserver
+    cap_add:
+      - NET_ADMIN
     networks:
       - mailnet
 
-  # Rspamd - Spam Filtering
-  rspamd-mailcow:
-    image: mailcow/rspamd:latest
-    container_name: rspamd-mailcow
-    restart: unless-stopped
-    environment:
-      - TZ=${TZ}
-      - REDIS_SLAVEOF_IP=redis-mailcow
-    volumes:
-      - rspamd-data:/var/lib/rspamd
-      - rspamd-sock:/rspamd-sock
-    depends_on:
-      - redis-mailcow
-    networks:
-      - mailnet
-
-  # Nginx for Mailcow
-  nginx-mailcow:
-    image: mailcow/nginx:1.03
-    container_name: nginx-mailcow
+  # Roundcube - Webmail Client
+  roundcube:
+    image: roundcube/roundcubemail:latest
+    container_name: roundcube
     restart: unless-stopped
     ports:
-      - "8082:80" # HTTP
-      - "8444:443" # HTTPS
+      - "8082:80" # Webmail
     environment:
-      - MAILCOW_HOSTNAME=${MAILCOW_HOSTNAME}
-      - TZ=${TZ}
+      - ROUNDCUBEMAIL_DEFAULT_HOST=mailserver
+      - ROUNDCUBEMAIL_SMTP_SERVER=mailserver
+      - ROUNDCUBEMAIL_DEFAULT_PORT=993
+      - ROUNDCUBEMAIL_SMTP_PORT=587
     volumes:
-      - ssl-data:/etc/ssl/mail
-      - nginx-conf:/etc/nginx/conf.d
-      - sogo-web:/usr/lib/GNUstep/SOGo:ro
+      - roundcube-data:/var/www/html
     depends_on:
-      - sogo-mailcow
-      - php-fpm-mailcow
-    networks:
-      - mailnet
-
-  # PHP-FPM for Mailcow Admin
-  php-fpm-mailcow:
-    image: mailcow/phpfpm:latest
-    container_name: php-fpm-mailcow
-    restart: unless-stopped
-    environment:
-      - DBHOST=mysql-mailcow
-      - DBNAME=${MYSQL_DATABASE}
-      - DBUSER=${MYSQL_USER}
-      - DBPASS=${MYSQL_PASSWORD}
-      - MAILCOW_HOSTNAME=${MAILCOW_HOSTNAME}
-      - TZ=${TZ}
-    volumes:
-      - mailcow-web:/web:rw
-    depends_on:
-      - mysql-mailcow
-      - redis-mailcow
+      - mailserver
     networks:
       - mailnet
 
@@ -1573,21 +1460,12 @@ volumes:
   pihole-dnsmasq:
   bind9-data:
 
-  # 5. Mailcow Email Stack
-  mysql-mailcow-data:
-  redis-mailcow-data:
-  postfix-data:
-  dovecot-data:
-  vmail-data:
-  vmail-index:
-  crypt-data:
-  rspamd-data:
-  rspamd-sock:
-  sogo-data:
-  sogo-web:
-  ssl-data:
-  nginx-conf:
-  mailcow-web:
+  # 5. Email Server (docker-mailserver)
+  mailserver-data:
+  mailserver-state:
+  mailserver-logs:
+  mailserver-config:
+  roundcube-data:
 
   # 6. Management & Monitoring
   portainer-data:
