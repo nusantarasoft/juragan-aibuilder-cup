@@ -1,0 +1,17 @@
+# Environment files - uncomment for production\n# .env\n
+# Docker volumes backup
+*.tar.gz
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
