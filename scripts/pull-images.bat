@@ -9,37 +9,37 @@ docker pull postgres:15
 docker pull postgres:latest
 docker pull redis:7-alpine
 docker pull mariadb:10.11
-docker pull traefik
+docker pull traefik:latest
 docker pull portainer/portainer-ce:latest
 
 echo =======================================
 echo Pulling Stack 2: Data Analytics
 echo =======================================
-docker pull minio/minio
-docker pull minio/mc
+docker pull minio/minio:latest
+docker pull minio/mc:latest
 docker pull dremio/dremio-oss:latest
-docker pull alexmerced/dremio-superset
+docker pull alexmerced/dremio-superset:latest
 docker pull projectnessie/nessie:latest
 docker pull dpage/pgadmin4:latest
 docker pull mindsdb/mindsdb:latest
 docker pull mintplexlabs/anythingllm:latest
 
 echo =======================================
-echo Pulling Stack 3: Supabase
+echo Pulling Stack 3: Supabase (Updated Dec 2025)
 echo =======================================
-docker pull supabase/postgres:15.8.1.085
-docker pull supabase/studio:2025.11.26-sha-8f096b5
+docker pull supabase/postgres:latest
+docker pull supabase/studio:2025.12.09-sha-434634f
 docker pull kong:2.8.1
-docker pull supabase/gotrue:v2.183.0
-docker pull postgrest/postgrest:v13.0.7
-docker pull supabase/realtime:v2.65.3
-docker pull supabase/storage-api:v1.11.13
-docker pull darthsim/imgproxy:v3.8.0
-docker pull supabase/postgres-meta:v0.93.1
-docker pull supabase/edge-runtime:v1.69.25
-docker pull supabase/logflare:1.26.13
-docker pull timberio/vector:0.28.1-alpine
-docker pull supabase/supavisor:2.7.4
+docker pull supabase/gotrue:latest
+docker pull postgrest/postgrest:v14.1
+docker pull supabase/realtime:v2.68.0
+docker pull supabase/storage-api:v1.33.0
+docker pull darthsim/imgproxy:latest
+docker pull supabase/postgres-meta:latest
+docker pull supabase/edge-runtime:latest
+docker pull supabase/logflare:latest
+docker pull timberio/vector:latest
+docker pull supabase/supavisor:latest
 
 echo =======================================
 echo Pulling Stack 4: Workflow Automation

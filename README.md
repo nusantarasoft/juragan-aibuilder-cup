@@ -166,11 +166,35 @@ docker compose up -d
 
 ---
 
-## 📁 Directory Structure
+## � Scripts
+
+Helper scripts for common operations:
+
+| Script | Description |
+|--------|-------------|
+| `scripts/pull-images.bat` | Pull all 65+ images in groups |
+| `scripts/pull-minimal.bat` | Pull minimal infrastructure (17 images) |
+| `scripts/start-minimal.bat` | Start minimal infrastructure |
+
+### Minimal Infrastructure
+```bash
+.\scripts\pull-minimal.bat   # Pull images
+.\scripts\start-minimal.bat  # Start services
+```
+
+**Includes**: LDAP, Reverse Proxy, DNS (Pi-hole + BIND9), Mailcow, Portainer
+
+---
+
+## �📁 Directory Structure
 
 ```
 ├── docker-compose.yml
 ├── .env
+├── scripts/
+│   ├── pull-images.bat
+│   ├── pull-minimal.bat
+│   └── start-minimal.bat
 └── volumes/
     ├── api/, db/, functions/
     ├── logs/, n8n/, pooler/

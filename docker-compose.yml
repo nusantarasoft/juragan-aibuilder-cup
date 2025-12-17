@@ -22,7 +22,7 @@ services:
 
   # Minio Storage Server (S3-compatible)
   minio:
-    image: minio/minio
+    image: minio/minio:latest
     container_name: minio
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
@@ -46,7 +46,7 @@ services:
 
   # Minio bucket creation (runs once to create the bucket)
   minio-createbucket:
-    image: minio/mc
+    image: minio/mc:latest
     container_name: minio-createbucket
     depends_on:
       minio:
@@ -99,7 +99,7 @@ services:
 
   # Superset
   superset:
-    image: alexmerced/dremio-superset
+    image: alexmerced/dremio-superset:latest
     container_name: superset
     networks:
       data-lakehouse:
@@ -142,7 +142,7 @@ services:
         # ╚═══════════════════════════════════════════════════════════════════════════╝
   studio:
     container_name: supabase-studio
-    image: supabase/studio:2025.11.26-sha-8f096b5
+    image: supabase/studio:2025.12.09-sha-434634f
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "node", "-e", "fetch('http://studio:3000/api/platform/profile').then((r) => {if (r.status !== 200) throw new Error(r.status)})" ]
@@ -215,7 +215,7 @@ services:
 
   auth:
     container_name: supabase-auth
-    image: supabase/gotrue:v2.183.0
+    image: supabase/gotrue:latest
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health" ]
@@ -290,7 +290,7 @@ services:
 
   rest:
     container_name: supabase-rest
-    image: postgrest/postgrest:v13.0.7
+    image: postgrest/postgrest:v14.1
     restart: unless-stopped
     depends_on:
       db:
@@ -311,7 +311,7 @@ services:
   realtime:
     # This container name looks inconsistent but is correct because realtime constructs tenant id by parsing the subdomain
     container_name: realtime-dev.supabase-realtime
-    image: supabase/realtime:v2.65.3
+    image: supabase/realtime:v2.68.0
     restart: unless-stopped
     depends_on:
       db:
@@ -345,7 +345,7 @@ services:
   # Supabase Storage with S3 backend (Minio)
   storage:
     container_name: supabase-storage
-    image: supabase/storage-api:v1.11.13
+    image: supabase/storage-api:v1.33.0
     restart: unless-stopped
     volumes:
       - supabase-storage:/var/lib/storage
@@ -388,7 +388,7 @@ services:
 
   imgproxy:
     container_name: supabase-imgproxy
-    image: darthsim/imgproxy:v3.8.0
+    image: darthsim/imgproxy:latest
     restart: unless-stopped
     volumes:
       - supabase-storage:/var/lib/storage
@@ -405,7 +405,7 @@ services:
 
   meta:
     container_name: supabase-meta
-    image: supabase/postgres-meta:v0.93.1
+    image: supabase/postgres-meta:latest
     restart: unless-stopped
     depends_on:
       db:
@@ -424,7 +424,7 @@ services:
 
   functions:
     container_name: supabase-edge-functions
-    image: supabase/edge-runtime:v1.69.25
+    image: supabase/edge-runtime:latest
     restart: unless-stopped
     volumes:
       - ./volumes/functions:/home/deno/functions:Z
@@ -443,7 +443,7 @@ services:
 
   analytics:
     container_name: supabase-analytics
-    image: supabase/logflare:1.26.13
+    image: supabase/logflare:latest
     restart: unless-stopped
     ports:
       - 4000:4000
@@ -487,7 +487,7 @@ services:
       # Comment out this service if you are using an external Postgres database
   db:
     container_name: supabase-db
-    image: supabase/postgres:15.8.1.085
+    image: supabase/postgres:latest
     restart: unless-stopped
     volumes:
       - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
@@ -537,7 +537,7 @@ services:
   # Vector - Log Aggregation
   vector:
     container_name: supabase-vector
-    image: timberio/vector:0.28.1-alpine
+    image: timberio/vector:latest
     restart: unless-stopped
     volumes:
       - ./volumes/logs/vector.yml:/etc/vector/vector.yml:ro,z
@@ -557,7 +557,7 @@ services:
   # Update the DATABASE_URL if you are using an external Postgres database
   supavisor:
     container_name: supabase-pooler
-    image: supabase/supavisor:2.7.4
+    image: supabase/supavisor:latest
     restart: unless-stopped
     ports:
       - ${POSTGRES_PORT}:5432
@@ -601,7 +601,7 @@ services:
 
   # Traefik Reverse Proxy (for n8n SSL)
   traefik:
-    image: "traefik"
+    image: traefik:latest
     container_name: traefik
     restart: always
     command:
