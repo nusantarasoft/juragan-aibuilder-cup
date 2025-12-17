@@ -47,8 +47,8 @@ docker compose up -d n8n jenkins awx awx-db awx-redis socketio
 # 4. Infrastructure & DNS
 docker compose up -d openldap phpldapadmin nginx-proxy-manager pihole bind9
 
-# 5. Mailcow Email
-docker compose up -d mysql-mailcow redis-mailcow postfix-mailcow dovecot-mailcow sogo-mailcow rspamd-mailcow nginx-mailcow php-fpm-mailcow
+# 5. Email Server
+docker compose up -d mailserver roundcube
 
 # 6. Management & Monitoring
 docker compose up -d portainer zabbix-db zabbix-server zabbix-web k3s
