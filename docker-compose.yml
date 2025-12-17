@@ -842,14 +842,14 @@ services:
     container_name: pihole
     restart: unless-stopped
     ports:
-      - "53:53/tcp" # DNS TCP
-      - "53:53/udp" # DNS UDP
+      - "5380:53/tcp" # DNS TCP (alternate port, 53 used by Windows, 5354 by BIND9)
+      - "5380:53/udp" # DNS UDP
       - "8053:80/tcp" # Web Admin
     environment:
       - TZ=${TZ}
       - FTLCONF_webserver_api_password=${PIHOLE_PASSWORD}
       - FTLCONF_dns_listeningMode=ALL
-      - FTLCONF_dns_upstreams=${IP_BIND9}#5353;8.8.8.8;8.8.4.4
+      - FTLCONF_dns_upstreams=${IP_BIND9}#5354;8.8.8.8;8.8.4.4
     volumes:
       - pihole-data:/etc/pihole
       - pihole-dnsmasq:/etc/dnsmasq.d
