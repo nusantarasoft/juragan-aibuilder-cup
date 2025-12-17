@@ -864,8 +864,8 @@ services:
     container_name: bind9
     restart: unless-stopped
     ports:
-      - "5353:53/tcp" # DNS TCP (alternate port)
-      - "5353:53/udp" # DNS UDP (alternate port)
+      - "5354:53/tcp" # DNS TCP (alternate port, 5353 used by mDNS)
+      - "5354:53/udp" # DNS UDP (alternate port)
       - "10000:10000/tcp" # Webmin Admin
     environment:
       - WEBMIN_ENABLED=true
