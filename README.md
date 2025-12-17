@@ -1,13 +1,84 @@
 # Nusantarasoft Docker Infrastructure
 
-Complete enterprise infrastructure with 11 integrated stacks.
+Complete enterprise infrastructure with 11 integrated stacks and 65+ services.
+
+## 💻 System Requirements
+
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| **CPU** | 8 cores | 16+ cores |
+| **RAM** | 32 GB | 64+ GB |
+| **Storage** | 100 GB SSD | 500+ GB NVMe |
+| **Docker** | 24.0+ | Latest |
+| **Docker Compose** | 2.20+ | Latest |
+| **OS** | Windows 10/11, Ubuntu 22.04, macOS 13+ | - |
+
+> ⚠️ **Note**: Running all 65+ services simultaneously requires significant resources. For limited hardware, start only the stacks you need.
 
 ## 🚀 Quick Start
 
 ```bash
-docker compose up -d      # Start
-docker compose down       # Stop
-docker compose down -v    # Destroy
+docker compose up -d      # Start all services
+docker compose down       # Stop all services
+docker compose down -v    # Destroy all (including data)
+```
+
+## 🎯 Selective Startup (Recommended)
+
+Run only the stacks you need to save resources:
+
+### Core Services (Always Required)
+```bash
+# Start essential infrastructure first
+docker compose up -d openldap phpldapadmin nginx-proxy-manager traefik portainer
+```
+
+### Start by Stack
+```bash
+# 1. Data & Analytics
+docker compose up -d minio postgres pgadmin dremio superset nessie mindsdb anythingllm
+
+# 2. Supabase (Backend)
+docker compose up -d supabase-db supabase-studio kong supabase-auth supabase-rest supabase-realtime supabase-storage
+
+# 3. Workflow & Automation
+docker compose up -d n8n jenkins awx awx-db awx-redis socketio
+
+# 4. Infrastructure & DNS
+docker compose up -d openldap phpldapadmin nginx-proxy-manager pihole bind9
+
+# 5. Mailcow Email
+docker compose up -d mysql-mailcow redis-mailcow postfix-mailcow dovecot-mailcow sogo-mailcow rspamd-mailcow nginx-mailcow php-fpm-mailcow
+
+# 6. Management & Monitoring
+docker compose up -d portainer zabbix-db zabbix-server zabbix-web k3s
+
+# 7. Observability
+docker compose up -d prometheus grafana loki promtail
+
+# 8. Security & Identity
+docker compose up -d keycloak keycloak-db vault crowdsec
+
+# 9. Collaboration
+docker compose up -d mattermost mattermost-db nextcloud nextcloud-db jitsi-web
+
+# 10. DevOps
+docker compose up -d gitlab harbor-core sonarqube sonarqube-db
+
+# 11. Messaging & API
+docker compose up -d zookeeper kafka kafka-ui rabbitmq hasura
+```
+
+### Quick Profiles
+```bash
+# Minimal (Core only)
+docker compose up -d openldap nginx-proxy-manager portainer traefik
+
+# Development Stack
+docker compose up -d postgres pgadmin minio n8n gitlab sonarqube
+
+# Full Stack (All services)
+docker compose up -d
 ```
 
 ---
@@ -35,7 +106,7 @@ docker compose down -v    # Destroy
 |---------|-----|------|----------|
 | n8n | http://localhost:5678 | *(setup)* | - |
 | Jenkins | http://localhost:8084 | `admin` | *(from logs)* |
-| Ansible AWX | http://localhost:8085 | `admin` | `Nusantarasoft123!` |
+| AWX | http://localhost:8085 | `admin` | `Nusantarasoft123!` |
 
 ### 4. Infrastructure & DNS
 | Service | URL | User | Password |
@@ -45,11 +116,11 @@ docker compose down -v    # Destroy
 | phpLDAPadmin | http://localhost:8089 | `cn=admin,dc=nusantarasoft,dc=local` | `Nusantarasoft123!` |
 | Nginx PM | http://localhost:8081 | `admin@example.com` | `changeme` |
 
-### 5. Mailcow
+### 5. Mailcow Email
 | Service | URL | User | Password |
 |---------|-----|------|----------|
-| Mailcow | http://localhost:8082 | `admin` | *(setup)* |
-| SOGo | https://localhost:8444/SOGo | *(email)* | - |
+| Mailcow Admin | http://localhost:8082 | `admin` | *(setup)* |
+| SOGo Webmail | https://localhost:8444/SOGo | *(email)* | - |
 
 ### 6. Management & Monitoring
 | Service | URL | User | Password |

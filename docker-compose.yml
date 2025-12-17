@@ -624,7 +624,7 @@ services:
 
   # n8n Workflow Automation
   n8n:
-    image: docker.n8n.io/n8nio/n8n
+    image: n8nio/n8n:latest
     container_name: n8n
     restart: always
     ports:
@@ -674,18 +674,51 @@ services:
     networks:
       data-lakehouse:
 
-        # Ansible AWX - Automation Platform (Web UI for Ansible)
-  ansible-awx:
+        # AWX - Ansible Automation Platform
+  awx-db:
+    image: postgres:15
+    container_name: awx-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=awx
+      - POSTGRES_PASSWORD=${AWX_DB_PASSWORD:-awx}
+      - POSTGRES_DB=awx
+    volumes:
+      - awx-db-data:/var/lib/postgresql/data
+    networks:
+      data-lakehouse:
+
+
+  awx-redis:
+    image: redis:7-alpine
+    container_name: awx-redis
+    restart: unless-stopped
+    volumes:
+      - awx-redis-data:/data
+    networks:
+      data-lakehouse:
+
+
+  awx:
     image: quay.io/ansible/awx:latest
-    container_name: ansible-awx
+    container_name: awx
     restart: unless-stopped
     ports:
       - "8085:8052"
     environment:
-      - AWX_ADMIN_USER=${ADMIN_USER}
-      - AWX_ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - DATABASE_HOST=awx-db
+      - DATABASE_NAME=awx
+      - DATABASE_USER=awx
+      - DATABASE_PASSWORD=${AWX_DB_PASSWORD:-awx}
+      - DATABASE_PORT=5432
+      - AWX_ADMIN_USER=${ADMIN_USER:-admin}
+      - AWX_ADMIN_PASSWORD=${ADMIN_PASSWORD:-Nusantarasoft123!}
+      - REDIS_HOST=awx-redis
     volumes:
       - awx-data:/var/lib/awx
+    depends_on:
+      - awx-db
+      - awx-redis
     networks:
       data-lakehouse:
 
@@ -800,31 +833,6 @@ services:
     networks:
       - mailnet
 
-  mysql-mailcow:
-    image: mariadb:10.11
-    container_name: mysql-mailcow
-    restart: unless-stopped
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-    volumes:
-      - mysql-mailcow-data:/var/lib/mysql
-    command: >
-      --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --innodb-file-per-table=1 --wait_timeout=28800 --max_allowed_packet=256M
-    networks:
-      - mailnet
-
-  redis-mailcow:
-    image: redis:7-alpine
-    container_name: redis-mailcow
-    restart: unless-stopped
-    volumes:
-      - redis-mailcow-data:/data
-    networks:
-      - mailnet
-
   # ---------------------------------------------------------------------------
   # DNS Servers - Pi-hole & BIND9
   # ---------------------------------------------------------------------------
@@ -871,9 +879,36 @@ services:
         ipv4_address: ${IP_BIND9}
 
   # ╔═══════════════════════════════════════════════════════════════════════════╗
-  # ║  5. EMAIL & COLLABORATION - MAILCOW                                       ║
-  # ║     Full-featured email server with LDAP, Webmail, Anti-spam              ║
+  # ║  5. MAILCOW EMAIL SERVER                                                  ║
+  # ║     Complete email solution with SOGo webmail                             ║
   # ╚═══════════════════════════════════════════════════════════════════════════╝
+
+  # MySQL Database for Mailcow
+  mysql-mailcow:
+    image: mariadb:10.11
+    container_name: mysql-mailcow
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    volumes:
+      - mysql-mailcow-data:/var/lib/mysql
+    command: >
+      --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --innodb-file-per-table=1 --wait_timeout=28800 --max_allowed_packet=256M
+    networks:
+      - mailnet
+
+  # Redis for Mailcow
+  redis-mailcow:
+    image: redis:7-alpine
+    container_name: redis-mailcow
+    restart: unless-stopped
+    volumes:
+      - redis-mailcow-data:/data
+    networks:
+      - mailnet
 
   # Postfix - SMTP Server
   postfix-mailcow:
@@ -891,12 +926,6 @@ services:
       - DBPASS=${MYSQL_PASSWORD}
       - MAILCOW_HOSTNAME=${MAILCOW_HOSTNAME}
       - TZ=${TZ}
-      # LDAP Configuration
-      - LDAP_HOST=openldap
-      - LDAP_PORT=389
-      - LDAP_BASE_DN=${LDAP_BASE_DN}
-      - LDAP_BIND_DN=cn=readonly,${LDAP_BASE_DN}
-      - LDAP_BIND_PASSWORD=${LDAP_READONLY_USER_PASSWORD}
     volumes:
       - postfix-data:/var/spool/postfix
       - crypt-data:/var/lib/zeyple
@@ -904,7 +933,6 @@ services:
     depends_on:
       - mysql-mailcow
       - redis-mailcow
-      - openldap
     networks:
       mailnet:
         ipv4_address: ${IP_POSTFIX}
@@ -916,9 +944,9 @@ services:
     restart: unless-stopped
     ports:
       - "110:110" # POP3
+      - "995:995" # POP3S
       - "143:143" # IMAP
       - "993:993" # IMAPS
-      - "995:995" # POP3S
       - "4190:4190" # ManageSieve
     environment:
       - DBHOST=mysql-mailcow
@@ -927,30 +955,39 @@ services:
       - DBPASS=${MYSQL_PASSWORD}
       - MAILCOW_HOSTNAME=${MAILCOW_HOSTNAME}
       - TZ=${TZ}
-      - SKIP_SOLR=y
-      # LDAP Configuration
-      - LDAP_HOST=openldap
-      - LDAP_PORT=389
-      - LDAP_BASE_DN=${LDAP_BASE_DN}
-      - LDAP_BIND_DN=cn=readonly,${LDAP_BASE_DN}
-      - LDAP_BIND_PASSWORD=${LDAP_READONLY_USER_PASSWORD}
-      - LDAP_USER_FILTER=(&(objectClass=inetOrgPerson)(mail=%u))
-      - LDAP_PASS_ATTRS=userPassword
     volumes:
       - vmail-data:/var/vmail
       - vmail-index:/var/vmail_index
-      - crypt-data:/var/lib/zeyple
-      - rspamd-sock:/rspamd-sock
-      - dovecot-data:/etc/dovecot
+      - dovecot-data:/var/dovecot
+      - crypt-data:/mail_crypt
     depends_on:
       - mysql-mailcow
-      - redis-mailcow
-      - openldap
     networks:
       mailnet:
         ipv4_address: ${IP_DOVECOT}
 
-  # Rspamd - Spam Filter
+  # SOGo - Webmail & Groupware
+  sogo-mailcow:
+    image: mailcow/sogo:latest
+    container_name: sogo-mailcow
+    restart: unless-stopped
+    environment:
+      - DBHOST=mysql-mailcow
+      - DBNAME=${MYSQL_DATABASE}
+      - DBUSER=${MYSQL_USER}
+      - DBPASS=${MYSQL_PASSWORD}
+      - MAILCOW_HOSTNAME=${MAILCOW_HOSTNAME}
+      - TZ=${TZ}
+    volumes:
+      - sogo-data:/var/spool/sogo
+      - sogo-web:/usr/lib/GNUstep/SOGo
+    depends_on:
+      - mysql-mailcow
+      - dovecot-mailcow
+    networks:
+      - mailnet
+
+  # Rspamd - Spam Filtering
   rspamd-mailcow:
     image: mailcow/rspamd:latest
     container_name: rspamd-mailcow
@@ -966,68 +1003,24 @@ services:
     networks:
       - mailnet
 
-  # ClamAV - Antivirus (optional - uses ~1GB RAM)
-  clamd-mailcow:
-    image: mailcow/clamd:latest
-    container_name: clamd-mailcow
-    restart: unless-stopped
-    environment:
-      - TZ=${TZ}
-      - SKIP_CLAMD=n
-    volumes:
-      - clamd-data:/var/lib/clamav
-    networks:
-      - mailnet
-
-  # SOGo - Webmail & Groupware (with LDAP)
-  sogo-mailcow:
-    image: mailcow/sogo:latest
-    container_name: sogo-mailcow
-    restart: unless-stopped
-    environment:
-      - DBHOST=mysql-mailcow
-      - DBNAME=${MYSQL_DATABASE}
-      - DBUSER=${MYSQL_USER}
-      - DBPASS=${MYSQL_PASSWORD}
-      - MAILCOW_HOSTNAME=${MAILCOW_HOSTNAME}
-      - TZ=${TZ}
-      - MASTER=y
-      # LDAP Configuration for SOGo
-      - LDAP_HOST=ldap://openldap:389
-      - LDAP_BASE_DN=${LDAP_BASE_DN}
-      - LDAP_BIND_DN=cn=readonly,${LDAP_BASE_DN}
-      - LDAP_BIND_PASSWORD=${LDAP_READONLY_USER_PASSWORD}
-    volumes:
-      - sogo-data:/var/lib/sogo
-      - sogo-web:/usr/lib/GNUstep/SOGo/WebServerResources
-    depends_on:
-      - mysql-mailcow
-      - redis-mailcow
-      - dovecot-mailcow
-      - openldap
-    networks:
-      - mailnet
-
-  # Nginx for Mailcow Web Interface
+  # Nginx for Mailcow
   nginx-mailcow:
-    image: nginx:alpine
+    image: mailcow/nginx:latest
     container_name: nginx-mailcow
     restart: unless-stopped
     ports:
-      - "8082:80" # HTTP (changed from 8080 to avoid superset conflict)
-      - "8444:443" # HTTPS (changed from 8443)
+      - "8082:80" # HTTP
+      - "8444:443" # HTTPS
     environment:
-      - TZ=${TZ}
       - MAILCOW_HOSTNAME=${MAILCOW_HOSTNAME}
+      - TZ=${TZ}
     volumes:
-      - nginx-conf:/etc/nginx/conf.d:ro
-      - mailcow-web:/web:ro
       - ssl-data:/etc/ssl/mail
-      - sogo-web:/usr/lib/GNUstep/SOGo/WebServerResources:ro
+      - nginx-conf:/etc/nginx/conf.d
+      - sogo-web:/usr/lib/GNUstep/SOGo:ro
     depends_on:
       - sogo-mailcow
-      - dovecot-mailcow
-      - postfix-mailcow
+      - php-fpm-mailcow
     networks:
       - mailnet
 
@@ -1043,52 +1036,11 @@ services:
       - DBPASS=${MYSQL_PASSWORD}
       - MAILCOW_HOSTNAME=${MAILCOW_HOSTNAME}
       - TZ=${TZ}
-      - REDIS_SLAVEOF_IP=redis-mailcow
     volumes:
       - mailcow-web:/web:rw
-      - rspamd-dynmaps:/dynmaps:ro
-      - rspamd-sock:/rspamd-sock
-      - ssl-data:/etc/ssl/mail
     depends_on:
       - mysql-mailcow
       - redis-mailcow
-    networks:
-      - mailnet
-
-  # Acme - SSL Certificate Management
-  acme-mailcow:
-    image: mailcow/acme:latest
-    container_name: acme-mailcow
-    restart: unless-stopped
-    environment:
-      - MAILCOW_HOSTNAME=${MAILCOW_HOSTNAME}
-      - TZ=${TZ}
-      - SKIP_LETS_ENCRYPT=y
-      - ENABLE_SSL_SNI=n
-    volumes:
-      - ssl-data:/etc/ssl/mail
-      - acme-ssl:/var/www/acme:rw
-    networks:
-      - mailnet
-
-  # Watchdog - Health Monitoring
-  watchdog-mailcow:
-    image: mailcow/watchdog:latest
-    container_name: watchdog-mailcow
-    restart: unless-stopped
-    environment:
-      - DBHOST=mysql-mailcow
-      - DBNAME=${MYSQL_DATABASE}
-      - DBUSER=${MYSQL_USER}
-      - DBPASS=${MYSQL_PASSWORD}
-      - TZ=${TZ}
-      - WATCHDOG_NOTIFY_EMAIL=${WATCHDOG_NOTIFY_EMAIL}
-    volumes:
-      - rspamd-sock:/rspamd-sock
-    depends_on:
-      - mysql-mailcow
-      - postfix-mailcow
-      - dovecot-mailcow
     networks:
       - mailnet
 
@@ -1110,37 +1062,32 @@ services:
     networks:
       - mailnet
 
-  # Zabbix Database
+  # Zabbix Database (PostgreSQL)
   zabbix-db:
-    image: mysql:8.0
+    image: postgres:15
     container_name: zabbix-db
     restart: unless-stopped
     environment:
-      - MYSQL_DATABASE=zabbix
-      - MYSQL_USER=zabbix
-      - MYSQL_PASSWORD=${ZABBIX_DB_PASSWORD:-zabbix}
-      - MYSQL_ROOT_PASSWORD=${ZABBIX_DB_ROOT_PASSWORD:-zabbix_root}
-    command:
-      - mysqld
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_bin
+      - POSTGRES_DB=zabbix
+      - POSTGRES_USER=zabbix
+      - POSTGRES_PASSWORD=${ZABBIX_DB_PASSWORD:-zabbix}
     volumes:
-      - zabbix-db-data:/var/lib/mysql
+      - zabbix-db-data:/var/lib/postgresql/data
     networks:
       - mailnet
 
   # Zabbix Server
   zabbix-server:
-    image: zabbix/zabbix-server-mysql:latest
+    image: zabbix/zabbix-server-pgsql:latest
     container_name: zabbix-server
     restart: unless-stopped
     ports:
       - "10051:10051"
     environment:
       - DB_SERVER_HOST=zabbix-db
-      - MYSQL_DATABASE=zabbix
-      - MYSQL_USER=zabbix
-      - MYSQL_PASSWORD=${ZABBIX_DB_PASSWORD:-zabbix}
+      - POSTGRES_DB=zabbix
+      - POSTGRES_USER=zabbix
+      - POSTGRES_PASSWORD=${ZABBIX_DB_PASSWORD:-zabbix}
     volumes:
       - zabbix-server-data:/var/lib/zabbix
     depends_on:
@@ -1150,7 +1097,7 @@ services:
 
   # Zabbix Web Interface
   zabbix-web:
-    image: zabbix/zabbix-web-nginx-mysql:latest
+    image: zabbix/zabbix-web-nginx-pgsql:latest
     container_name: zabbix-web
     restart: unless-stopped
     ports:
@@ -1158,9 +1105,9 @@ services:
     environment:
       - ZBX_SERVER_HOST=zabbix-server
       - DB_SERVER_HOST=zabbix-db
-      - MYSQL_DATABASE=zabbix
-      - MYSQL_USER=zabbix
-      - MYSQL_PASSWORD=${ZABBIX_DB_PASSWORD:-zabbix}
+      - POSTGRES_DB=zabbix
+      - POSTGRES_USER=zabbix
+      - POSTGRES_PASSWORD=${ZABBIX_DB_PASSWORD:-zabbix}
       - PHP_TZ=${TZ}
     depends_on:
       - zabbix-server
@@ -1368,18 +1315,17 @@ services:
     networks:
       - mailnet
 
-  # Nextcloud Database
+  # Nextcloud Database (PostgreSQL)
   nextcloud-db:
-    image: mariadb:10.11
+    image: postgres:15
     container_name: nextcloud-db
     restart: unless-stopped
     environment:
-      - MYSQL_ROOT_PASSWORD=${NEXTCLOUD_DB_ROOT_PASSWORD:-nextcloud_root}
-      - MYSQL_DATABASE=nextcloud
-      - MYSQL_USER=nextcloud
-      - MYSQL_PASSWORD=${NEXTCLOUD_DB_PASSWORD:-nextcloud}
+      - POSTGRES_DB=nextcloud
+      - POSTGRES_USER=nextcloud
+      - POSTGRES_PASSWORD=${NEXTCLOUD_DB_PASSWORD:-nextcloud}
     volumes:
-      - nextcloud-db-data:/var/lib/mysql
+      - nextcloud-db-data:/var/lib/postgresql/data
     networks:
       - mailnet
 
@@ -1391,10 +1337,10 @@ services:
     ports:
       - "8090:80"
     environment:
-      - MYSQL_HOST=nextcloud-db
-      - MYSQL_DATABASE=nextcloud
-      - MYSQL_USER=nextcloud
-      - MYSQL_PASSWORD=${NEXTCLOUD_DB_PASSWORD:-nextcloud}
+      - POSTGRES_HOST=nextcloud-db
+      - POSTGRES_DB=nextcloud
+      - POSTGRES_USER=nextcloud
+      - POSTGRES_PASSWORD=${NEXTCLOUD_DB_PASSWORD:-nextcloud}
       - NEXTCLOUD_ADMIN_USER=${ADMIN_USER}
       - NEXTCLOUD_ADMIN_PASSWORD=${ADMIN_PASSWORD}
     volumes:
@@ -1448,15 +1394,17 @@ services:
     networks:
       - mailnet
 
-  # Harbor - Container Registry
+  # Harbor - Enterprise Container Registry
   harbor-core:
     image: goharbor/harbor-core:latest
-    container_name: harbor
+    container_name: harbor-core
     restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "5000:8080"
     environment:
-      - CORE_SECRET=${HARBOR_SECRET:-harbor_secret}
+      - CORE_SECRET=${HARBOR_SECRET:-Harbor12345}
+      - HARBOR_ADMIN_PASSWORD=${HARBOR_ADMIN_PASSWORD:-Harbor12345}
+      - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/storage
     volumes:
       - harbor-data:/storage
     networks:
@@ -1611,6 +1559,8 @@ volumes:
   traefik_data:
   jenkins-data:
   awx-data:
+  awx-db-data:
+  awx-redis-data:
   socketio-data:
 
   # 4. Infrastructure & DNS
@@ -1624,24 +1574,21 @@ volumes:
   pihole-dnsmasq:
   bind9-data:
 
-  # 5. Email & Collaboration - Mailcow
+  # 5. Mailcow Email Stack
   mysql-mailcow-data:
   redis-mailcow-data:
-  vmail-data:
-  vmail-index:
   postfix-data:
   dovecot-data:
+  vmail-data:
+  vmail-index:
   crypt-data:
   rspamd-data:
   rspamd-sock:
-  rspamd-dynmaps:
-  clamd-data:
   sogo-data:
   sogo-web:
   ssl-data:
   nginx-conf:
   mailcow-web:
-  acme-ssl:
 
   # 6. Management & Monitoring
   portainer-data:
