@@ -16,7 +16,7 @@ services:
     image: projectnessie/nessie:latest
     container_name: nessie
     networks:
-      data-lakehouse:
+      management-network:
     ports:
       - 19120:19120
 
@@ -31,7 +31,7 @@ services:
       - MINIO_REGION_NAME=us-east-1
       - MINIO_REGION=us-east-1
     networks:
-      data-lakehouse:
+      management-network:
     ports:
       - 9001:9001
       - 9000:9000
@@ -67,21 +67,45 @@ services:
     environment:
       - DREMIO_JAVA_SERVER_EXTRA_OPTS=-Dpaths.dist=file:///opt/dremio/data/dist
     networks:
-      data-lakehouse:
+      management-network:
 
-        # Postgres (for Data Lakehouse)
+        # Postgres - Main Database (with Supabase extensions)
   postgres:
-    image: postgres:latest
+    image: supabase/postgres:latest
     container_name: postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: ${LAKEHOUSE_POSTGRES_USER}
-      POSTGRES_PASSWORD: ${LAKEHOUSE_POSTGRES_PASSWORD}
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: ${POSTGRES_PORT}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: ${JWT_EXPIRY}
     ports:
-      - "5435:5432"
+      - "5432:5432"
     networks:
-      data-lakehouse:
+      - management-network
     volumes:
-      - postgres-data:/var/lib/postgresql
+      - postgres-data:/var/lib/postgresql/data
+      - postgres-config:/etc/postgresql-custom
+      - ./volumes/postgres/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
+      - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
+      - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
+      - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
+      - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
+      - ./volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:Z
+      - ./volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
+      - ./volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "postgres", "-h", "localhost" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    command: [ "postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal" ]
 
   # PgAdmin
   pgadmin:
@@ -93,7 +117,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     networks:
-      data-lakehouse:
+      management-network:
     volumes:
       - pgadmin-data:/var/lib/pgadmin
 
@@ -102,7 +126,7 @@ services:
     image: alexmerced/dremio-superset:latest
     container_name: superset
     networks:
-      data-lakehouse:
+      management-network:
     ports:
       - 8080:8088
 
@@ -119,7 +143,7 @@ services:
     volumes:
       - mindsdb-data:/mindsdb/var
     networks:
-      data-lakehouse:
+      management-network:
 
         # AnythingLLM - Private LLM Interface
   anythingllm:
@@ -134,7 +158,7 @@ services:
     volumes:
       - anythingllm-data:/app/server/storage
     networks:
-      data-lakehouse:
+      management-network:
 
         # ╔═══════════════════════════════════════════════════════════════════════════╗
         # ║  2. BACKEND SERVICES - SUPABASE                                           ║
@@ -223,7 +247,7 @@ services:
       interval: 5s
       retries: 3
     depends_on:
-      db:
+      postgres:
         # Disable this if you are using an external Postgres database
         condition: service_healthy
       analytics:
@@ -293,7 +317,7 @@ services:
     image: postgrest/postgrest:v14.1
     restart: unless-stopped
     depends_on:
-      db:
+      postgres:
         # Disable this if you are using an external Postgres database
         condition: service_healthy
       analytics:
@@ -314,7 +338,7 @@ services:
     image: supabase/realtime:v2.68.0
     restart: unless-stopped
     depends_on:
-      db:
+      postgres:
         # Disable this if you are using an external Postgres database
         condition: service_healthy
       analytics:
@@ -355,7 +379,7 @@ services:
       interval: 5s
       retries: 3
     depends_on:
-      db:
+      postgres:
         # Disable this if you are using an external Postgres database
         condition: service_healthy
       rest:
@@ -408,7 +432,7 @@ services:
     image: supabase/postgres-meta:latest
     restart: unless-stopped
     depends_on:
-      db:
+      postgres:
         # Disable this if you are using an external Postgres database
         condition: service_healthy
       analytics:
@@ -459,7 +483,7 @@ services:
       interval: 5s
       retries: 10
     depends_on:
-      db:
+      postgres:
         # Disable this if you are using an external Postgres database
         condition: service_healthy
     environment:
@@ -483,58 +507,7 @@ services:
       # GOOGLE_PROJECT_ID: ${GOOGLE_PROJECT_ID}
       # GOOGLE_PROJECT_NUMBER: ${GOOGLE_PROJECT_NUMBER}
 
-      # Supabase Database
-      # Comment out this service if you are using an external Postgres database
-  db:
-    container_name: supabase-db
-    image: supabase/postgres:latest
-    restart: unless-stopped
-    volumes:
-      - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
-      # Must be superuser to create event trigger
-      - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
-      # Must be superuser to alter reserved role
-      - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
-      # Initialize the database settings with JWT_SECRET and JWT_EXP
-      - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
-      # PGDATA directory is persisted between restarts
-      - supabase-db-data:/var/lib/postgresql/data
-      # Changes required for internal supabase data such as _analytics
-      - ./volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:Z
-      # Changes required for Analytics support
-      - ./volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
-      # Changes required for Pooler support
-      - ./volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
-      # Use named volume to persist pgsodium decryption key between restarts
-      - db-config:/etc/postgresql-custom
-    healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "postgres", "-h", "localhost" ]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    depends_on:
-      vector:
-        condition: service_healthy
-    environment:
-      POSTGRES_HOST: /var/run/postgresql
-      PGPORT: ${POSTGRES_PORT}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      PGDATABASE: ${POSTGRES_DB}
-      POSTGRES_DB: ${POSTGRES_DB}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXP: ${JWT_EXPIRY}
-    command:
-      [
-        "postgres",
-        "-c",
-        "config_file=/etc/postgresql/postgresql.conf",
-        "-c",
-        "log_min_messages=fatal" # prevents Realtime polling queries from appearing in logs
-      ]
-
-  # Vector - Log Aggregation
+      # Vector - Log Aggregation
   vector:
     container_name: supabase-vector
     image: timberio/vector:latest
@@ -570,7 +543,7 @@ services:
       timeout: 5s
       retries: 5
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
       analytics:
         condition: service_healthy
@@ -672,23 +645,9 @@ services:
       - jenkins-data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
-      data-lakehouse:
+      management-network:
 
         # AWX - Ansible Automation Platform
-  awx-db:
-    image: postgres:15
-    container_name: awx-db
-    restart: unless-stopped
-    environment:
-      - POSTGRES_USER=awx
-      - POSTGRES_PASSWORD=${AWX_DB_PASSWORD:-awx}
-      - POSTGRES_DB=awx
-    volumes:
-      - awx-db-data:/var/lib/postgresql/data
-    networks:
-      data-lakehouse:
-
-
   awx-redis:
     image: redis:7-alpine
     container_name: awx-redis
@@ -696,7 +655,7 @@ services:
     volumes:
       - awx-redis-data:/data
     networks:
-      data-lakehouse:
+      management-network:
 
 
   awx:
@@ -706,10 +665,10 @@ services:
     ports:
       - "8085:8052"
     environment:
-      - DATABASE_HOST=awx-db
+      - DATABASE_HOST=postgres
       - DATABASE_NAME=awx
-      - DATABASE_USER=awx
-      - DATABASE_PASSWORD=${AWX_DB_PASSWORD:-awx}
+      - DATABASE_USER=${POSTGRES_USER}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
       - DATABASE_PORT=5432
       - AWX_ADMIN_USER=${ADMIN_USER:-admin}
       - AWX_ADMIN_PASSWORD=${ADMIN_PASSWORD:-Nusantarasoft123!}
@@ -717,10 +676,10 @@ services:
     volumes:
       - awx-data:/var/lib/awx
     depends_on:
-      - awx-db
+      - postgres
       - awx-redis
     networks:
-      data-lakehouse:
+      management-network:
 
         # Socket.IO Server - Real-time Communication
   socketio:
@@ -735,7 +694,7 @@ services:
     volumes:
       - socketio-data:/app
     networks:
-      data-lakehouse:
+      management-network:
 
         # ╔═══════════════════════════════════════════════════════════════════════════╗
         # ║  4. INFRASTRUCTURE & DNS                                                  ║
@@ -770,8 +729,7 @@ services:
       - ldap-config:/etc/ldap/slapd.d
       - ldap-certs:/container/service/slapd/assets/certs
     networks:
-      mailnet:
-        ipv4_address: ${IP_LDAP}
+      - management-network
 
   phpldapadmin:
     image: osixia/phpldapadmin:latest
@@ -785,7 +743,7 @@ services:
     depends_on:
       - openldap
     networks:
-      - mailnet
+      - management-network
 
   # ---------------------------------------------------------------------------
   # Reverse Proxy - Nginx Proxy Manager
@@ -801,37 +759,18 @@ services:
       - '8081:81' # Admin Panel
     environment:
       - TZ=${TZ}
-      - DB_POSTGRES_HOST=postgres-mailserver
+      - DB_POSTGRES_HOST=postgres
       - DB_POSTGRES_PORT=5432
-      - DB_POSTGRES_USER=${MAIL_POSTGRES_USER}
-      - DB_POSTGRES_PASSWORD=${MAIL_POSTGRES_PASSWORD}
-      - DB_POSTGRES_NAME=${MAIL_POSTGRES_DB}
+      - DB_POSTGRES_USER=${POSTGRES_USER}
+      - DB_POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_POSTGRES_NAME=npm
     volumes:
       - npm-data:/data
       - npm-letsencrypt:/etc/letsencrypt
     depends_on:
-      - postgres-mailserver
+      - postgres
     networks:
-      - mailnet
-
-  # ---------------------------------------------------------------------------
-  # Databases - PostgreSQL, MariaDB, Redis
-  # ---------------------------------------------------------------------------
-
-  postgres-mailserver:
-    image: postgres:latest
-    container_name: postgres-mailserver
-    restart: unless-stopped
-    ports:
-      - "5433:5432" # Different port to avoid conflict with data lakehouse postgres
-    environment:
-      - POSTGRES_USER=${MAIL_POSTGRES_USER}
-      - POSTGRES_PASSWORD=${MAIL_POSTGRES_PASSWORD}
-      - POSTGRES_DB=${MAIL_POSTGRES_DB}
-    volumes:
-      - postgres-mailserver-data:/var/lib/postgresql/data
-    networks:
-      - mailnet
+      - management-network
 
   # ---------------------------------------------------------------------------
   # DNS Servers - Pi-hole & BIND9
@@ -856,8 +795,7 @@ services:
     cap_add:
       - NET_ADMIN
     networks:
-      mailnet:
-        ipv4_address: ${IP_PIHOLE}
+      - management-network
 
   bind9:
     image: sameersbn/bind:latest
@@ -875,8 +813,7 @@ services:
     volumes:
       - bind9-data:/data
     networks:
-      mailnet:
-        ipv4_address: ${IP_BIND9}
+      - management-network
 
   # ╔═══════════════════════════════════════════════════════════════════════════╗
   # ║  5. EMAIL SERVER (Docker-Mailserver)                                      ║
@@ -910,7 +847,7 @@ services:
     cap_add:
       - NET_ADMIN
     networks:
-      - mailnet
+      - management-network
 
   # Roundcube - Webmail Client
   roundcube:
@@ -929,7 +866,7 @@ services:
     depends_on:
       - mailserver
     networks:
-      - mailnet
+      - management-network
 
   # ╔═══════════════════════════════════════════════════════════════════════════╗
   # ║  6. MANAGEMENT & MONITORING                                               ║
@@ -947,21 +884,7 @@ services:
       - portainer-data:/data
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
-      - mailnet
-
-  # Zabbix Database (PostgreSQL)
-  zabbix-db:
-    image: postgres:15
-    container_name: zabbix-db
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=zabbix
-      - POSTGRES_USER=zabbix
-      - POSTGRES_PASSWORD=${ZABBIX_DB_PASSWORD:-zabbix}
-    volumes:
-      - zabbix-db-data:/var/lib/postgresql/data
-    networks:
-      - mailnet
+      - management-network
 
   # Zabbix Server
   zabbix-server:
@@ -971,16 +894,16 @@ services:
     ports:
       - "10051:10051"
     environment:
-      - DB_SERVER_HOST=zabbix-db
+      - DB_SERVER_HOST=postgres
       - POSTGRES_DB=zabbix
-      - POSTGRES_USER=zabbix
-      - POSTGRES_PASSWORD=${ZABBIX_DB_PASSWORD:-zabbix}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - zabbix-server-data:/var/lib/zabbix
     depends_on:
-      - zabbix-db
+      - postgres
     networks:
-      - mailnet
+      - management-network
 
   # Zabbix Web Interface
   zabbix-web:
@@ -991,16 +914,16 @@ services:
       - "8086:8080"
     environment:
       - ZBX_SERVER_HOST=zabbix-server
-      - DB_SERVER_HOST=zabbix-db
+      - DB_SERVER_HOST=postgres
       - POSTGRES_DB=zabbix
-      - POSTGRES_USER=zabbix
-      - POSTGRES_PASSWORD=${ZABBIX_DB_PASSWORD:-zabbix}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - PHP_TZ=${TZ}
     depends_on:
       - zabbix-server
-      - zabbix-db
+      - postgres
     networks:
-      - mailnet
+      - management-network
 
   # K3s - Lightweight Kubernetes
   k3s:
@@ -1024,7 +947,7 @@ services:
       - k3s-data:/var/lib/rancher/k3s
       - k3s-output:/output
     networks:
-      - mailnet
+      - management-network
 
   # ╔═══════════════════════════════════════════════════════════════════════════╗
   # ║  7. OBSERVABILITY STACK                                                   ║
@@ -1046,7 +969,7 @@ services:
       - prometheus-data:/prometheus
       - ./volumes/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     networks:
-      - mailnet
+      - management-network
 
   # Grafana - Visualization & Dashboards
   grafana:
@@ -1064,7 +987,7 @@ services:
     depends_on:
       - prometheus
     networks:
-      - mailnet
+      - management-network
 
   # Loki - Log Aggregation
   loki:
@@ -1077,7 +1000,7 @@ services:
     volumes:
       - loki-data:/loki
     networks:
-      - mailnet
+      - management-network
 
   # Promtail - Log Collector
   promtail:
@@ -1089,7 +1012,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     command: -config.file=/etc/promtail/config.yml
     networks:
-      - mailnet
+      - management-network
 
   # ╔═══════════════════════════════════════════════════════════════════════════╗
   # ║  8. SECURITY & IDENTITY                                                   ║
@@ -1097,19 +1020,6 @@ services:
   # ╚═══════════════════════════════════════════════════════════════════════════╝
 
   # Keycloak - Identity & Access Management (SSO)
-  keycloak-db:
-    image: postgres:15
-    container_name: keycloak-db
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=keycloak
-      - POSTGRES_USER=keycloak
-      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD:-keycloak}
-    volumes:
-      - keycloak-db-data:/var/lib/postgresql/data
-    networks:
-      - mailnet
-
   keycloak:
     image: quay.io/keycloak/keycloak:latest
     container_name: keycloak
@@ -1120,14 +1030,14 @@ services:
       - KEYCLOAK_ADMIN=${ADMIN_USER}
       - KEYCLOAK_ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - KC_DB=postgres
-      - KC_DB_URL=jdbc:postgresql://keycloak-db:5432/keycloak
-      - KC_DB_USERNAME=keycloak
-      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD:-keycloak}
+      - KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
+      - KC_DB_USERNAME=${POSTGRES_USER}
+      - KC_DB_PASSWORD=${POSTGRES_PASSWORD}
     command: start-dev
     depends_on:
-      - keycloak-db
+      - postgres
     networks:
-      - mailnet
+      - management-network
 
   # HashiCorp Vault - Secrets Management
   vault:
@@ -1144,7 +1054,7 @@ services:
     volumes:
       - vault-data:/vault/data
     networks:
-      - mailnet
+      - management-network
 
   # CrowdSec - Intrusion Prevention
   crowdsec:
@@ -1160,26 +1070,12 @@ services:
       - crowdsec-config:/etc/crowdsec
       - /var/log:/var/log:ro
     networks:
-      - mailnet
+      - management-network
 
   # ╔═══════════════════════════════════════════════════════════════════════════╗
   # ║  9. COLLABORATION & COMMUNICATION                                         ║
   # ║     Mattermost chat, Nextcloud files, Jitsi video                         ║
   # ╚═══════════════════════════════════════════════════════════════════════════╝
-
-  # Mattermost Database
-  mattermost-db:
-    image: postgres:15
-    container_name: mattermost-db
-    restart: unless-stopped
-    environment:
-      - POSTGRES_USER=mattermost
-      - POSTGRES_PASSWORD=${MATTERMOST_DB_PASSWORD:-mattermost}
-      - POSTGRES_DB=mattermost
-    volumes:
-      - mattermost-db-data:/var/lib/postgresql/data
-    networks:
-      - mailnet
 
   # Mattermost - Team Chat (Slack alternative)
   mattermost:
@@ -1190,7 +1086,7 @@ services:
       - "8065:8065"
     environment:
       - MM_SQLSETTINGS_DRIVERNAME=postgres
-      - MM_SQLSETTINGS_DATASOURCE=postgres://mattermost:${MATTERMOST_DB_PASSWORD:-mattermost}@mattermost-db:5432/mattermost?sslmode=disable
+      - MM_SQLSETTINGS_DATASOURCE=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mattermost?sslmode=disable
       - MM_SERVICESETTINGS_SITEURL=http://localhost:8065
     volumes:
       - mattermost-data:/mattermost/data
@@ -1198,23 +1094,9 @@ services:
       - mattermost-config:/mattermost/config
       - mattermost-plugins:/mattermost/plugins
     depends_on:
-      - mattermost-db
+      - postgres
     networks:
-      - mailnet
-
-  # Nextcloud Database (PostgreSQL)
-  nextcloud-db:
-    image: postgres:15
-    container_name: nextcloud-db
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=nextcloud
-      - POSTGRES_USER=nextcloud
-      - POSTGRES_PASSWORD=${NEXTCLOUD_DB_PASSWORD:-nextcloud}
-    volumes:
-      - nextcloud-db-data:/var/lib/postgresql/data
-    networks:
-      - mailnet
+      - management-network
 
   # Nextcloud - File Sharing & Collaboration
   nextcloud:
@@ -1224,18 +1106,18 @@ services:
     ports:
       - "8090:80"
     environment:
-      - POSTGRES_HOST=nextcloud-db
+      - POSTGRES_HOST=postgres
       - POSTGRES_DB=nextcloud
-      - POSTGRES_USER=nextcloud
-      - POSTGRES_PASSWORD=${NEXTCLOUD_DB_PASSWORD:-nextcloud}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - NEXTCLOUD_ADMIN_USER=${ADMIN_USER}
       - NEXTCLOUD_ADMIN_PASSWORD=${ADMIN_PASSWORD}
     volumes:
       - nextcloud-data:/var/www/html
     depends_on:
-      - nextcloud-db
+      - postgres
     networks:
-      - mailnet
+      - management-network
 
   # Jitsi Meet - Video Conferencing
   jitsi-web:
@@ -1251,7 +1133,7 @@ services:
       - jitsi-web-config:/config
       - jitsi-web-certs:/etc/jitsi/meet/certs
     networks:
-      - mailnet
+      - management-network
 
   # ╔═══════════════════════════════════════════════════════════════════════════╗
   # ║  10. DEVOPS & CODE MANAGEMENT                                             ║
@@ -1279,7 +1161,7 @@ services:
       - gitlab-data:/var/opt/gitlab
     shm_size: '256m'
     networks:
-      - mailnet
+      - management-network
 
   # Docker Registry - Container Image Registry
   # Note: Harbor requires full installer from https://goharbor.io/
@@ -1294,22 +1176,9 @@ services:
     volumes:
       - registry-data:/var/lib/registry
     networks:
-      - mailnet
+      - management-network
 
   # SonarQube - Code Quality & Security
-  sonarqube-db:
-    image: postgres:15
-    container_name: sonarqube-db
-    restart: unless-stopped
-    environment:
-      - POSTGRES_USER=sonarqube
-      - POSTGRES_PASSWORD=${SONARQUBE_DB_PASSWORD:-sonarqube}
-      - POSTGRES_DB=sonarqube
-    volumes:
-      - sonarqube-db-data:/var/lib/postgresql/data
-    networks:
-      - mailnet
-
   sonarqube:
     image: sonarqube:community
     container_name: sonarqube
@@ -1317,17 +1186,17 @@ services:
     ports:
       - "9092:9000"
     environment:
-      - SONAR_JDBC_URL=jdbc:postgresql://sonarqube-db:5432/sonarqube
-      - SONAR_JDBC_USERNAME=sonarqube
-      - SONAR_JDBC_PASSWORD=${SONARQUBE_DB_PASSWORD:-sonarqube}
+      - SONAR_JDBC_URL=jdbc:postgresql://postgres:5432/sonarqube
+      - SONAR_JDBC_USERNAME=${POSTGRES_USER}
+      - SONAR_JDBC_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - sonarqube-data:/opt/sonarqube/data
       - sonarqube-extensions:/opt/sonarqube/extensions
       - sonarqube-logs:/opt/sonarqube/logs
     depends_on:
-      - sonarqube-db
+      - postgres
     networks:
-      - mailnet
+      - management-network
 
   # ╔═══════════════════════════════════════════════════════════════════════════╗
   # ║  11. MESSAGING & API                                                      ║
@@ -1346,7 +1215,7 @@ services:
       - zookeeper-data:/var/lib/zookeeper/data
       - zookeeper-logs:/var/lib/zookeeper/log
     networks:
-      - mailnet
+      - management-network
 
   kafka:
     image: confluentinc/cp-kafka:latest
@@ -1367,7 +1236,7 @@ services:
     depends_on:
       - zookeeper
     networks:
-      - mailnet
+      - management-network
 
   # Kafka UI
   kafka-ui:
@@ -1382,7 +1251,7 @@ services:
     depends_on:
       - kafka
     networks:
-      - mailnet
+      - management-network
 
   # RabbitMQ - Message Queue
   rabbitmq:
@@ -1398,7 +1267,7 @@ services:
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     networks:
-      - mailnet
+      - management-network
 
   # Hasura - Instant GraphQL API
   hasura:
@@ -1413,19 +1282,13 @@ services:
       - HASURA_GRAPHQL_DEV_MODE=true
       - HASURA_GRAPHQL_ADMIN_SECRET=${HASURA_ADMIN_SECRET:-hasura_secret}
     depends_on:
-      - db
+      - postgres
     networks:
-      - mailnet
+      - management-network
 
 networks:
-  data-lakehouse:
-  mailnet:
+  management-network:
     driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: ${DOCKER_SUBNET}
-          gateway: ${DOCKER_GATEWAY}
 
 volumes:
   # 1. Data & Analytics
@@ -1439,6 +1302,7 @@ volumes:
   supabase-db-data:
   supabase-storage:
   db-config:
+  postgres-config:
 
   # 3. Workflow & Automation
   n8n_data:
@@ -1455,7 +1319,6 @@ volumes:
   ldap-certs:
   npm-data:
   npm-letsencrypt:
-  postgres-mailserver-data:
   pihole-data:
   pihole-dnsmasq:
   bind9-data:

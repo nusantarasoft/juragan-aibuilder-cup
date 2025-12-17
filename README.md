@@ -42,28 +42,28 @@ docker compose up -d minio postgres pgadmin dremio superset nessie mindsdb anyth
 docker compose up -d supabase-db supabase-studio kong supabase-auth supabase-rest supabase-realtime supabase-storage
 
 # 3. Workflow & Automation
-docker compose up -d n8n jenkins awx awx-db awx-redis socketio
+docker compose up -d n8n jenkins awx awx-redis socketio
 
 # 4. Infrastructure & DNS
-docker compose up -d openldap phpldapadmin nginx-proxy-manager pihole bind9
+docker compose up -d openldap phpldapadmin nginxproxymanager pihole bind9
 
 # 5. Email Server
 docker compose up -d mailserver roundcube
 
 # 6. Management & Monitoring
-docker compose up -d portainer zabbix-db zabbix-server zabbix-web k3s
+docker compose up -d portainer zabbix-server zabbix-web k3s
 
 # 7. Observability
 docker compose up -d prometheus grafana loki promtail
 
 # 8. Security & Identity
-docker compose up -d keycloak keycloak-db vault crowdsec
+docker compose up -d keycloak vault crowdsec
 
 # 9. Collaboration
-docker compose up -d mattermost mattermost-db nextcloud nextcloud-db jitsi-web
+docker compose up -d mattermost nextcloud jitsi-web
 
 # 10. DevOps
-docker compose up -d gitlab harbor-core sonarqube sonarqube-db
+docker compose up -d gitlab registry sonarqube
 
 # 11. Messaging & API
 docker compose up -d zookeeper kafka kafka-ui rabbitmq hasura
@@ -72,7 +72,7 @@ docker compose up -d zookeeper kafka kafka-ui rabbitmq hasura
 ### Quick Profiles
 ```bash
 # Minimal (Core only)
-docker compose up -d openldap nginx-proxy-manager portainer traefik
+docker compose up -d postgres openldap nginxproxymanager portainer traefik
 
 # Development Stack
 docker compose up -d postgres pgadmin minio n8n gitlab sonarqube
@@ -116,11 +116,14 @@ docker compose up -d
 | phpLDAPadmin | http://localhost:8089 | `cn=admin,dc=nusantarasoft,dc=local` | `Nusantarasoft123!` |
 | Nginx PM | http://localhost:8081 | `admin@example.com` | `changeme` |
 
-### 5. Mailcow Email
+### 5. Email Server
 | Service | URL | User | Password |
 |---------|-----|------|----------|
-| Mailcow Admin | http://localhost:8082 | `admin` | *(setup)* |
-| SOGo Webmail | https://localhost:8444/SOGo | *(email)* | - |
+| Roundcube Webmail | http://localhost:8082 | *(email)* | - |
+| Mailserver SMTP | localhost:25, 465, 587 | - | - |
+| Mailserver IMAP | localhost:993 | - | - |
+
+> **Add users**: `docker exec -it mailserver setup email add user@nusantarasoft.local`
 
 ### 6. Management & Monitoring
 | Service | URL | User | Password |
@@ -182,7 +185,28 @@ Helper scripts for common operations:
 .\scripts\start-minimal.bat  # Start services
 ```
 
-**Includes**: LDAP, Reverse Proxy, DNS (Pi-hole + BIND9), Mailcow, Portainer
+**Includes**: LDAP, Reverse Proxy, DNS (Pi-hole + BIND9), Email, Portainer
+
+---
+
+## 🗄️ Shared Database Architecture
+
+All services use a **single PostgreSQL instance** with separate databases:
+
+| Service | Database Name |
+|---------|---------------|
+| Main | `nusantarasoft` |
+| NPM | `npm` |
+| AWX | `awx` |
+| Zabbix | `zabbix` |
+| Keycloak | `keycloak` |
+| Mattermost | `mattermost` |
+| Nextcloud | `nextcloud` |
+| SonarQube | `sonarqube` |
+
+**Credentials**: See `.env` → `POSTGRES_USER`, `POSTGRES_PASSWORD`
+
+> **Note**: Databases are auto-created on first start via `volumes/postgres/init-databases.sql`
 
 ---
 
