@@ -154,7 +154,7 @@ docker compose up -d
 | Service | URL | User | Password |
 |---------|-----|------|----------|
 | GitLab | http://localhost:8929 | `root` | `Nusantarasoft123!` |
-| Harbor | http://localhost:5000 | `admin` | `Harbor12345` |
+| Registry | http://localhost:5000 | - | - |
 | SonarQube | http://localhost:9092 | `admin` | `admin` |
 
 ### 11. Messaging & API

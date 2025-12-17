@@ -1394,19 +1394,18 @@ services:
     networks:
       - mailnet
 
-  # Harbor - Enterprise Container Registry
-  harbor-core:
-    image: goharbor/harbor-core:latest
-    container_name: harbor-core
+  # Docker Registry - Container Image Registry
+  # Note: Harbor requires full installer from https://goharbor.io/
+  registry:
+    image: registry:2
+    container_name: registry
     restart: unless-stopped
     ports:
-      - "5000:8080"
+      - "5000:5000"
     environment:
-      - CORE_SECRET=${HARBOR_SECRET:-Harbor12345}
-      - HARBOR_ADMIN_PASSWORD=${HARBOR_ADMIN_PASSWORD:-Harbor12345}
-      - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/storage
+      - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/var/lib/registry
     volumes:
-      - harbor-data:/storage
+      - registry-data:/var/lib/registry
     networks:
       - mailnet
 
@@ -1623,7 +1622,7 @@ volumes:
   gitlab-config:
   gitlab-logs:
   gitlab-data:
-  harbor-data:
+  registry-data:
   sonarqube-db-data:
   sonarqube-data:
   sonarqube-extensions:
