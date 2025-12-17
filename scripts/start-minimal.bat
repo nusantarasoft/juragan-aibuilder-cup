@@ -13,7 +13,7 @@ echo Starting services...
 docker compose up -d ^
     openldap ^
     phpldapadmin ^
-    nginx-proxy-manager ^
+    nginxproxymanager ^
     traefik ^
     pihole ^
     bind9 ^
