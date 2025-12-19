@@ -1,0 +1,44 @@
+# Docker Compose Production Overrides for nusantarasoft.com
+# Usage: docker compose -f docker-compose.yml -f docker-compose.production.yml up -d
+
+services:
+  # Mail server with production domain
+  mailserver:
+    hostname: mail
+    domainname: nusantarasoft.com
+    environment:
+      - ENABLE_SPAMASSASSIN=1
+      - ENABLE_CLAMAV=1
+      - ENABLE_FAIL2BAN=1
+      - ENABLE_POSTGREY=1
+      - ENABLE_DKIM_SIGNING=1
+      - ENABLE_OPENDKIM=1
+      - ONE_DIR=1
+      - SSL_TYPE=letsencrypt
+      - TZ=${TZ}
+      - PERMIT_DOCKER=network
+    volumes:
+      - mailserver-data:/var/mail
+      - mailserver-state:/var/mail-state
+      - mailserver-logs:/var/log/mail
+      - mailserver-config:/tmp/docker-mailserver
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+
+  # Roundcube with SSL
+  roundcube:
+    environment:
+      - ROUNDCUBEMAIL_DEFAULT_HOST=ssl://mailserver
+      - ROUNDCUBEMAIL_SMTP_SERVER=tls://mailserver
+      - ROUNDCUBEMAIL_DEFAULT_PORT=993
+      - ROUNDCUBEMAIL_SMTP_PORT=587
+
+  # Kong with production URL
+  kong:
+    environment:
+      - KONG_SSL_CERT=/run/secrets/kong-ssl-cert
+      - KONG_SSL_CERT_KEY=/run/secrets/kong-ssl-key
+
+  # Studio with production URL
+  studio:
+    environment:
+      - SUPABASE_PUBLIC_URL=https://api.nusantarasoft.com

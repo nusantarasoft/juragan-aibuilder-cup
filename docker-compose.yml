@@ -71,7 +71,7 @@ services:
 
         # Postgres - Main Database (with Supabase extensions)
   postgres:
-    image: supabase/postgres:latest
+    image: supabase/postgres:15.8.1.085
     container_name: postgres
     restart: unless-stopped
     environment:
@@ -82,7 +82,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PGDATABASE: ${POSTGRES_DB}
       POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXP: ${JWT_EXPIRY}
     ports:
@@ -90,9 +89,6 @@ services:
     networks:
       - management-network
     volumes:
-      - postgres-data:/var/lib/postgresql/data
-      - postgres-config:/etc/postgresql-custom
-      - ./volumes/postgres/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
       - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
       - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
       - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
@@ -100,6 +96,8 @@ services:
       - ./volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:Z
       - ./volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
       - ./volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
+      - ./volumes/db/data:/var/lib/postgresql/data:Z
+      - db-config:/etc/postgresql-custom
     healthcheck:
       test: [ "CMD", "pg_isready", "-U", "postgres", "-h", "localhost" ]
       interval: 5s
@@ -176,6 +174,10 @@ services:
     depends_on:
       analytics:
         condition: service_healthy
+      meta:
+        condition: service_healthy
+    networks:
+      - management-network
     environment:
       # Binds nestjs listener to both IPv4 and IPv6 network interfaces
       HOSTNAME: "::"
@@ -222,6 +224,8 @@ services:
     depends_on:
       analytics:
         condition: service_healthy
+    networks:
+      - management-network
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
@@ -239,7 +243,7 @@ services:
 
   auth:
     container_name: supabase-auth
-    image: supabase/gotrue:latest
+    image: supabase/gotrue:v2.183.0
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health" ]
@@ -252,6 +256,8 @@ services:
         condition: service_healthy
       analytics:
         condition: service_healthy
+    networks:
+      - management-network
     environment:
       GOTRUE_API_HOST: 0.0.0.0
       GOTRUE_API_PORT: 9999
@@ -322,6 +328,8 @@ services:
         condition: service_healthy
       analytics:
         condition: service_healthy
+    networks:
+      - management-network
     environment:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS}
@@ -412,7 +420,7 @@ services:
 
   imgproxy:
     container_name: supabase-imgproxy
-    image: darthsim/imgproxy:latest
+    image: darthsim/imgproxy:v3.8.0
     restart: unless-stopped
     volumes:
       - supabase-storage:/var/lib/storage
@@ -429,7 +437,7 @@ services:
 
   meta:
     container_name: supabase-meta
-    image: supabase/postgres-meta:latest
+    image: supabase/postgres-meta:v0.93.1
     restart: unless-stopped
     depends_on:
       postgres:
@@ -437,6 +445,8 @@ services:
         condition: service_healthy
       analytics:
         condition: service_healthy
+    networks:
+      - management-network
     environment:
       PG_META_PORT: 8080
       PG_META_DB_HOST: ${POSTGRES_HOST}
@@ -448,7 +458,7 @@ services:
 
   functions:
     container_name: supabase-edge-functions
-    image: supabase/edge-runtime:latest
+    image: supabase/edge-runtime:v1.69.28
     restart: unless-stopped
     volumes:
       - ./volumes/functions:/home/deno/functions:Z
@@ -467,7 +477,7 @@ services:
 
   analytics:
     container_name: supabase-analytics
-    image: supabase/logflare:latest
+    image: supabase/logflare:1.26.25
     restart: unless-stopped
     ports:
       - 4000:4000
@@ -486,6 +496,8 @@ services:
       postgres:
         # Disable this if you are using an external Postgres database
         condition: service_healthy
+    networks:
+      - management-network
     environment:
       LOGFLARE_NODE_HOST: 127.0.0.1
       DB_USERNAME: supabase_admin
@@ -510,7 +522,7 @@ services:
       # Vector - Log Aggregation
   vector:
     container_name: supabase-vector
-    image: timberio/vector:latest
+    image: timberio/vector:0.28.1-alpine
     restart: unless-stopped
     volumes:
       - ./volumes/logs/vector.yml:/etc/vector/vector.yml:ro,z
@@ -530,7 +542,7 @@ services:
   # Update the DATABASE_URL if you are using an external Postgres database
   supavisor:
     container_name: supabase-pooler
-    image: supabase/supavisor:latest
+    image: supabase/supavisor:2.7.4
     restart: unless-stopped
     ports:
       - ${POSTGRES_PORT}:5432
@@ -839,6 +851,7 @@ services:
       - ENABLE_POSTGREY=0
       - ONE_DIR=1
       - TZ=${TZ}
+      - PERMIT_DOCKER=network
     volumes:
       - mailserver-data:/var/mail
       - mailserver-state:/var/mail-state
@@ -859,10 +872,11 @@ services:
     environment:
       - ROUNDCUBEMAIL_DEFAULT_HOST=mailserver
       - ROUNDCUBEMAIL_SMTP_SERVER=mailserver
-      - ROUNDCUBEMAIL_DEFAULT_PORT=993
-      - ROUNDCUBEMAIL_SMTP_PORT=587
+      - ROUNDCUBEMAIL_DEFAULT_PORT=143
+      - ROUNDCUBEMAIL_SMTP_PORT=25
     volumes:
       - roundcube-data:/var/www/html
+      - ./volumes/roundcube/custom.inc.php:/var/roundcube/config/custom.inc.php:ro
     depends_on:
       - mailserver
     networks:
@@ -1121,7 +1135,7 @@ services:
 
   # Jitsi Meet - Video Conferencing
   jitsi-web:
-    image: jitsi/web:latest
+    image: jitsi/web:stable
     container_name: jitsi-web
     restart: unless-stopped
     ports:

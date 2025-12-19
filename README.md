@@ -98,8 +98,9 @@ docker compose up -d
 ### 2. Supabase
 | Service | URL | User | Password |
 |---------|-----|------|----------|
-| Studio | http://localhost:3000 | `supabase` | *(see .env)* |
-| Kong API | http://localhost:8000 | *(API key)* | - |
+| Studio | http://localhost:8000 | *(JWT auth)* | - |
+| Kong API | http://localhost:8000 | *(ANON_KEY / SERVICE_ROLE_KEY)* | - |
+| Analytics | http://localhost:4000 | - | - |
 
 ### 3. Workflow & Automation
 | Service | URL | User | Password |
@@ -185,17 +186,28 @@ Helper scripts for common operations:
 .\scripts\start-minimal.bat  # Start services
 ```
 
-**Includes**: LDAP, Reverse Proxy, DNS (Pi-hole + BIND9), Email, Portainer
+**Includes**: LDAP, Reverse Proxy, DNS (BIND9), Email, Portainer, **Supabase** (postgres, studio, auth, rest, meta, kong, analytics)
 
 ---
 
-## 🗄️ Shared Database Architecture
+## 🗄️ Database Credentials
 
-All services use a **single PostgreSQL instance** with separate databases:
+All services use a **single PostgreSQL instance** with the following connection details:
 
+### PostgreSQL Connection
+| Property | Value |
+|----------|-------|
+| **Host** | `postgres` (Docker) / `localhost` (external) |
+| **Port** | `5432` |
+| **Username** | `supabase_admin` |
+| **Password** | `Nusantarasoft123!` |
+
+### Databases
 | Service | Database Name |
 |---------|---------------|
-| Main | `nusantarasoft` |
+| **Main App/Supabase** | `nusantarasoft` |
+| Supabase System | `_supabase` |
+| Default PostgreSQL | `postgres` |
 | NPM | `npm` |
 | AWX | `awx` |
 | Zabbix | `zabbix` |
@@ -204,26 +216,61 @@ All services use a **single PostgreSQL instance** with separate databases:
 | Nextcloud | `nextcloud` |
 | SonarQube | `sonarqube` |
 
-**Credentials**: See `.env` → `POSTGRES_USER`, `POSTGRES_PASSWORD`
+### Quick Connect Commands
+```bash
+# Connect via Docker (recommended)
+docker exec -it postgres psql -U supabase_admin -d nusantarasoft
 
-> **Note**: Databases are auto-created on first start via `volumes/postgres/init-databases.sql`
+# Connect via psql (external)
+psql -h localhost -p 5432 -U supabase_admin -d nusantarasoft
+```
+
+> **Note**: Supabase Studio connects to `nusantarasoft` database (set via `POSTGRES_DB` in `.env`)
 
 ---
 
-## �📁 Directory Structure
+## 📁 Directory Structure
 
 ```
-├── docker-compose.yml
-├── .env
+├── docker-compose.yml           # Main compose file
+├── docker-compose.production.yml # Production overrides
+├── .env                         # Local environment
+├── .env.production              # Production template
+├── docs/
+│   ├── email-api.md             # Email database API docs
+│   └── email-deployment.md      # VPS deployment guide
 ├── scripts/
 │   ├── pull-images.bat
 │   ├── pull-minimal.bat
 │   └── start-minimal.bat
 └── volumes/
-    ├── api/, db/, functions/
-    ├── logs/, n8n/, pooler/
-    └── prometheus/
+    ├── api/                     # Kong config
+    ├── bind9/zones/             # DNS zone files
+    ├── db/                      # Supabase init scripts
+    ├── functions/               # Edge functions
+    ├── logs/                    # Vector config
+    ├── pooler/                  # Supavisor config
+    └── roundcube/               # Roundcube config
 ```
+
+---
+
+## 🚀 Production Deployment
+
+For deploying to Ubuntu VPS with nusantarasoft.com domain:
+
+```bash
+# Use production config
+docker compose -f docker-compose.yml -f docker-compose.production.yml up -d
+```
+
+See [`docs/email-deployment.md`](docs/email-deployment.md) for complete guide including:
+- DNS configuration (MX, SPF, DKIM, DMARC)
+- SSL/TLS setup
+- DKIM key generation
+- Troubleshooting
+
+---
 
 ## 🔒 Security
 
@@ -234,3 +281,4 @@ All services use a **single PostgreSQL instance** with separate databases:
 ## 📝 License
 
 MIT
+

@@ -1,4 +1,8 @@
-# Environment files - uncomment for production\n# .env\n
+# Environment files
+# Uncomment for production to prevent accidental commits
+# .env
+# .env.production
+
 # Docker volumes backup
 *.tar.gz
 
@@ -15,3 +19,17 @@ Thumbs.db
 .idea/
 .vscode/
 *.code-workspace
+
+# Database data directories (created at runtime)
+volumes/db/data/
+
+# Runtime logs and temp files
+*.log
+
+# Backup files
+*.bak
+*.backup
+
+# Temporary files
+*.tmp
+*.temp

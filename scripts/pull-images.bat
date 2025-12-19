@@ -89,7 +89,7 @@ echo Pulling Stack 9: Collaboration
 echo =======================================
 docker pull mattermost/mattermost-team-edition:latest
 docker pull nextcloud:latest
-docker pull jitsi/web:latest
+docker pull jitsi/web:stable
 
 echo =======================================
 echo Pulling Stack 10: DevOps
