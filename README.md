@@ -105,7 +105,7 @@ docker compose up -d
 ### 3. Workflow & Automation
 | Service | URL | User | Password |
 |---------|-----|------|----------|
-| n8n | http://localhost:5678 | *(setup)* | - |
+| n8n | http://localhost:5678 | `spygunsoft@gmail.com` | `N8n@Nusantara2024!` |
 | Jenkins | http://localhost:8084 | `admin` | *(from logs)* |
 | AWX | http://localhost:8085 | `admin` | `Nusantarasoft123!` |
 
@@ -170,14 +170,14 @@ docker compose up -d
 
 ---
 
-## � Scripts
+## 🚀 Scripts
 
 Helper scripts for common operations:
 
 | Script | Description |
 |--------|-------------|
 | `scripts/pull-images.bat` | Pull all 65+ images in groups |
-| `scripts/pull-minimal.bat` | Pull minimal infrastructure (17 images) |
+| `scripts/pull-minimal.bat` | Pull minimal infrastructure (21 images) |
 | `scripts/start-minimal.bat` | Start minimal infrastructure |
 
 ### Minimal Infrastructure
@@ -186,7 +186,7 @@ Helper scripts for common operations:
 .\scripts\start-minimal.bat  # Start services
 ```
 
-**Includes**: LDAP, Reverse Proxy, DNS (BIND9), Email, Portainer, **Supabase** (postgres, studio, auth, rest, meta, kong, analytics)
+**Includes**: LDAP, Reverse Proxy, DNS (BIND9), Email, Portainer, **Supabase** (postgres, studio, auth, rest, meta, kong, analytics), **n8n**, **Dremio**
 
 ---
 
@@ -227,30 +227,116 @@ psql -h localhost -p 5432 -U supabase_admin -d nusantarasoft
 
 > **Note**: Supabase Studio connects to `nusantarasoft` database (set via `POSTGRES_DB` in `.env`)
 
+### PostgreSQL Extensions (81 enabled)
+| Category | Extensions |
+|----------|------------|
+| **AI/Vector** | `vector` |
+| **Time-Series** | `timescaledb` |
+| **Geospatial** | `postgis`, `postgis_raster`, `postgis_topology`, `postgis_sfcgal`, `postgis_tiger_geocoder`, `pgrouting`, `address_standardizer` |
+| **Full-Text Search** | `pg_trgm`, `unaccent`, `rum`, `fuzzystrmatch`, `pgroonga`, `dict_int`, `dict_xsyn` |
+| **Data Types** | `citext`, `hstore`, `ltree`, `cube`, `intarray`, `isn`, `seg`, `xml2` |
+| **API & FDW** | `pg_graphql`, `pg_net`, `http`, `wrappers`, `dblink`, `postgres_fdw`, `file_fdw` |
+| **Security** | `pgcrypto`, `pgjwt`, `supabase_vault`, `pgsodium`, `pgaudit`, `sslinfo` |
+| **JavaScript** | `plv8`, `plcoffee`, `plls`, `plpgsql_check`, `pg_tle` |
+| **Message Queue** | `pgmq` (in pgmq schema) |
+| **Monitoring** | `pg_stat_monitor`, `pg_buffercache`, `hypopg`, `index_advisor`, `pgstattuple`, `pgrowlocks`, `pageinspect`, `amcheck` |
+| **Utilities** | `tablefunc`, `earthdistance`, `pg_hashids`, `pgtap`, `btree_gin`, `btree_gist`, `bloom`, `pg_repack`, `pg_prewarm` |
+| **Scheduling** | `pg_cron` (in postgres db only) |
+
+> **Special Requirements:**
+> - `pg_cron`: Must be installed in `postgres` database, not `nusantarasoft`
+> - `pgmq`: Requires `pgmq` schema created first
+
+### File Storage (S3 + pgVector + GitLab LFS)
+A comprehensive storage solution leveraging MinIO S3 for files, PostgreSQL for metadata, and pgVector for AI-powered search. Integrated with GitLab for LFS.
+
+**Architecture Diagram:**
+```mermaid
+graph TB
+    subgraph Clients
+        WEB[Web App]
+        MOBILE[Mobile App]
+        GL[GitLab LFS]
+    end
+    
+    subgraph "Supabase Edge Functions"
+        UPLOAD[upload-file]
+        PROCESS[process-file]
+        SEARCH[search-files]
+    end
+    
+    subgraph "Storage Layer"
+        MINIO[(MinIO S3)]
+        PG[(PostgreSQL)]
+        VECTOR[(pgVector)]
+    end
+    
+    subgraph "AI Services"
+        OPENAI[OpenAI / Whisper]
+    end
+    
+    WEB & MOBILE --> UPLOAD
+    GL --> MINIO
+    
+    UPLOAD --> MINIO
+    UPLOAD --> PG
+    UPLOAD --> PROCESS
+    
+    PROCESS --> OPENAI
+    PROCESS --> VECTOR
+    
+    SEARCH --> VECTOR
+    SEARCH --> PG
+```
+
+**Tech Stack:**
+- **Storage**: MinIO (S3 Compatible)
+- **Database**: PostgreSQL 16 + pgVector (Metadata & Embeddings)
+- **GitLab**: Configured to use MinIO for LFS, Artifacts, and Uploads
+- **AI**: OpenAI (Embeddings), Whisper (Transcription)
+- **Compute**: Supabase Edge Functions (Deno)
+
+**Buckets:**
+| Bucket | Content | Access | AI Processing |
+|--------|---------|--------|---------------|
+| `documents` | PDF, Docs | Private | Text Extraction + Embedding |
+| `images` | Photos | Public | Captioning |
+| `audio/video` | Media | Private | Transcription + Embedding |
+| `gitlab-lfs` | Git Objects | Private | N/A |
+
+**Key Features:**
+- **Semantic Search**: Find files by meaning ("financial report Q1") instead of just keywords.
+- **GitLab Integration**: Seamlessly store large Git objects in MinIO.
+- **Automated Processing**: Files are automatically processed for text/embeddings on upload.
+- **Hybrid Search**: Combines vector similarity with full-text search rankings.
+
+See: [Platform Services Guide](docs/platform-services-guide.md)
+
 ---
 
 ## 📁 Directory Structure
 
 ```
-├── docker-compose.yml           # Main compose file
+├── docker-compose.yml           # Main compose file (65+ services)
 ├── docker-compose.production.yml # Production overrides
 ├── .env                         # Local environment
 ├── .env.production              # Production template
 ├── docs/
-│   ├── email-api.md             # Email database API docs
-│   └── email-deployment.md      # VPS deployment guide
+│   ├── platform-services-guide.md  # Email & File Storage guide
+│   └── management-app-plan.md      # Tech stack management plan
 ├── scripts/
-│   ├── pull-images.bat
-│   ├── pull-minimal.bat
-│   └── start-minimal.bat
+│   ├── pull-images.bat          # Pull all Docker images
+│   ├── pull-minimal.bat         # Pull minimal stack images
+│   └── start-minimal.bat        # Start minimal infrastructure
 └── volumes/
     ├── api/                     # Kong config
-    ├── bind9/zones/             # DNS zone files
-    ├── db/                      # Supabase init scripts
-    ├── functions/               # Edge functions
+    ├── db/                      # Database init scripts
+    │   ├── extensions.sql       # 81 PostgreSQL extensions
+    │   ├── emails.sql           # Email schema
+    │   └── pg_cron.sql          # Scheduled jobs
+    ├── functions/               # Supabase Edge functions
     ├── logs/                    # Vector config
-    ├── pooler/                  # Supavisor config
-    └── roundcube/               # Roundcube config
+    └── pooler/                  # Supavisor config
 ```
 
 ---

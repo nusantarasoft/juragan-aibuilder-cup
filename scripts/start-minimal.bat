@@ -1,6 +1,6 @@
 @echo off
 REM Nusantarasoft Docker - Start Minimal Infrastructure
-REM Starts: Mail, DNS, LDAP, Reverse Proxy, Portainer, Supabase
+REM Starts: Mail, DNS, LDAP, Reverse Proxy, Portainer, Supabase, n8n, Dremio
 
 echo =======================================
 echo STARTING MINIMAL INFRASTRUCTURE STACK
@@ -29,7 +29,9 @@ docker compose up -d ^
     rest ^
     studio ^
     meta ^
-    analytics
+    analytics ^
+    n8n ^
+    dremio
 
 echo.
 echo =======================================
@@ -44,6 +46,8 @@ echo   - Nginx Proxy Mgr:  http://localhost:8081   (admin@example.com / changeme
 echo   - Roundcube:        http://localhost:8082
 echo   - Supabase Studio:  http://localhost:8000   (via Kong API Gateway)
 echo   - Supabase API:     http://localhost:8000
+echo   - n8n:              http://localhost:5678
+echo   - Dremio:           http://localhost:9047
 echo.
 echo NOTE: To add mail users, use docker-mailserver CLI:
 echo   docker exec -it mailserver setup email add user@domain.com

@@ -1,6 +1,6 @@
 @echo off
 REM Nusantarasoft Docker - Minimal Infrastructure Pull
-REM Core services: Mail, DNS, LDAP, Reverse Proxy, Portainer, Supabase
+REM Core services: Mail, DNS, LDAP, Reverse Proxy, Portainer, Supabase, n8n, Dremio
 
 echo =======================================
 echo Pulling MINIMAL INFRASTRUCTURE STACK
@@ -45,15 +45,23 @@ docker pull ghcr.io/docker-mailserver/docker-mailserver:latest
 docker pull roundcube/roundcubemail:latest
 
 echo.
-echo [7/7] Web Admin (Portainer)...
+echo [7/9] Web Admin (Portainer)...
 docker pull portainer/portainer-ce:latest
+
+echo.
+echo [8/9] Workflow Automation (n8n)...
+docker pull n8nio/n8n:latest
+
+echo.
+echo [9/9] Data Lakehouse (Dremio)...
+docker pull dremio/dremio-oss:latest
 
 echo.
 echo =======================================
 echo MINIMAL INFRASTRUCTURE COMPLETE!
 echo =======================================
 echo.
-echo Images pulled: 19
+echo Images pulled: 21
 echo.
 echo Web Admin URLs after startup:
 echo   - Portainer:        http://localhost:9090
@@ -63,6 +71,8 @@ echo   - Nginx Proxy Mgr:  http://localhost:8081
 echo   - Roundcube:        http://localhost:8082
 echo   - Supabase Studio:  http://localhost:8000
 echo   - Supabase API:     http://localhost:8000
+echo   - n8n:              http://localhost:5678
+echo   - Dremio:           http://localhost:9047
 echo.
 echo Run start-minimal.bat to start these services.
 echo.

@@ -1,0 +1,55 @@
+  # ╔═══════════════════════════════════════════════════════════════════════════╗
+  # ║  12. NUSANTARASOFT CMS STACK                                              ║
+  # ║     Admin CMS and NestJS Middleware                                       ║
+  # ╚═══════════════════════════════════════════════════════════════════════════╝
+
+  # NestJS Middleware - GraphQL API Layer
+  middleware:
+    build:
+      context: ./middleware
+      dockerfile: Dockerfile
+    container_name: middleware
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    environment:
+      - NODE_ENV=production
+      - PORT=4001
+      - SUPABASE_URL=http://kong:8000
+      - SUPABASE_ANON_KEY=${ANON_KEY}
+      - SUPABASE_SERVICE_KEY=${SERVICE_ROLE_KEY}
+    networks:
+      - management-network
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4001/graphql"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Admin CMS - Next.js Frontend
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    container_name: admin
+    restart: unless-stopped
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_GRAPHQL_URL=http://middleware:4001/graphql
+      - NEXT_PUBLIC_SUPABASE_URL=http://kong:8000
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
+    networks:
+      - management-network
+    depends_on:
+      - middleware
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
