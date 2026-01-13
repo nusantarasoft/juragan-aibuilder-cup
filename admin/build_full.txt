@@ -1,0 +1,110 @@
+﻿docker : #0 building with "desktop-linux" instance using docker driver
+At line:1 char:1
++ docker build -t nusantarasoft-admin:latest --progress=plain . 2>&1 |  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (#0 building wit...g docker driver:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.98kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node:20-alpine
+#2 ...
+
+#3 [auth] library/node:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node:20-alpine
+#2 DONE 3.8s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 475B done
+#4 DONE 0.0s
+
+#5 [base 1/3] FROM 
+docker.io/library/node:20-alpine@sha256:658d0f63e501824d6c23e06d4bb95c71e7d704537c9d9272f488ac03a370d448
+#5 resolve 
+docker.io/library/node:20-alpine@sha256:658d0f63e501824d6c23e06d4bb95c71e7d704537c9d9272f488ac03a370d448 0.0s 
+done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 21.51kB 0.0s done
+#6 DONE 0.0s
+
+#7 [base 2/3] RUN apk add --no-cache libc6-compat
+#7 CACHED
+
+#8 [base 3/3] WORKDIR /app
+#8 CACHED
+
+#9 [deps 1/2] COPY package.json package-lock.json* ./
+#9 CACHED
+
+#10 [deps 2/2] RUN npm install --legacy-peer-deps
+#10 CACHED
+
+#11 [builder 1/3] COPY --from=deps /app/node_modules ./node_modules
+#11 CACHED
+
+#12 [builder 2/3] COPY . .
+#12 DONE 0.1s
+
+#13 [builder 3/3] RUN npm run build
+#13 0.509 
+#13 0.509 > admin@0.1.0 build
+#13 0.509 > next build
+#13 0.509 
+#13 1.538 Γû▓ Next.js 16.1.0 (Turbopack)
+#13 1.538 
+#13 1.572   Creating an optimized production build ...
+#13 67.18 Γ£ô Compiled successfully in 62s
+#13 67.19   Running TypeScript ...
+#13 82.38 Failed to compile.
+#13 82.38 
+#13 82.38 ./src/components/magicui/file-tree.tsx:16:28
+#13 82.38 Type error: Cannot find module '@/components/ui/scroll-area' or its corresponding type declarations.
+#13 82.38 
+#13 82.38 [0m [90m 14 |[39m [36mimport[39m { cn } [36mfrom[39m [32m"@/lib/utils"[39m
+#13 82.38  [90m 15 |[39m [36mimport[39m { [33mButton[39m } [36mfrom[39m 
+[32m"@/components/ui/button"[39m
+#13 82.38 [31m[1m>[22m[39m[90m 16 |[39m [36mimport[39m { [33mScrollArea[39m } [36mfrom[39m 
+[32m"@/components/ui/scroll-area"[39m
+#13 82.38  [90m    |[39m                            [31m[1m^[22m[39m
+#13 82.38  [90m 17 |[39m
+#13 82.38  [90m 18 |[39m type [33mTreeViewElement[39m [33m=[39m {
+#13 82.38  [90m 19 |[39m   id[33m:[39m string[0m
+#13 82.47 Next.js build worker exited with code: 1 and signal: null
+#13 82.51 npm notice
+#13 82.51 npm notice New major version of npm available! 10.8.2 -> 11.7.0
+#13 82.51 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.7.0
+#13 82.51 npm notice To update run: npm install -g npm@11.7.0
+#13 82.51 npm notice
+#13 ERROR: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
+------
+ > [builder 3/3] RUN npm run build:
+82.38  [90m    |[39m                            [31m[1m^[22m[39m
+82.38  [90m 17 |[39m
+82.38  [90m 18 |[39m type [33mTreeViewElement[39m [33m=[39m {
+82.38  [90m 19 |[39m   id[33m:[39m string[0m
+82.47 Next.js build worker exited with code: 1 and signal: null
+82.51 npm notice
+82.51 npm notice New major version of npm available! 10.8.2 -> 11.7.0
+82.51 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.7.0
+82.51 npm notice To update run: npm install -g npm@11.7.0
+82.51 npm notice
+------
+Dockerfile:28
+--------------------
+  26 |     
+  27 |     # Build the application
+  28 | >>> RUN npm run build
+  29 |     
+  30 |     # ===== Runner Stage =====
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: 
+exit code: 1
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/xn98x5nenwno0s9lpb7bk6583

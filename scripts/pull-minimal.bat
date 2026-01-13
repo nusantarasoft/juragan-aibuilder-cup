@@ -1,17 +1,20 @@
 @echo off
 REM Nusantarasoft Docker - Minimal Infrastructure Pull
-REM Core services: Mail, DNS, LDAP, Reverse Proxy, Portainer, Supabase, n8n, Dremio
+REM Updated: 2026-01-01
+REM Full Stack: Frontend (Landing + Admin), Middleware, Backend (Supabase)
 
 echo =======================================
-echo Pulling MINIMAL INFRASTRUCTURE STACK
+echo NUSANTARASOFT - MINIMAL FULL STACK
 echo =======================================
-
 echo.
-echo [1/7] Supabase PostgreSQL...
+echo Stack Components:
+echo   FRONTEND:   Landing Page (public) + Admin CMS
+echo   MIDDLEWARE: GraphQL API Layer
+echo   BACKEND:    Supabase (Database, Auth, Storage, API)
+echo.
+
+echo [1/6] Backend - Supabase Core...
 docker pull supabase/postgres:15.8.1.085
-
-echo.
-echo [2/7] Supabase Services...
 docker pull supabase/studio:2025.12.09-sha-434634f
 docker pull supabase/gotrue:v2.183.0
 docker pull supabase/postgres-meta:v0.93.1
@@ -21,59 +24,44 @@ docker pull supabase/realtime:v2.68.0
 docker pull supabase/storage-api:v1.33.0
 docker pull supabase/supavisor:2.7.4
 docker pull kong:2.8.1
-docker pull postgrest/postgrest:v14.1
-docker pull timberio/vector:0.28.1-alpine
-docker pull darthsim/imgproxy:v3.8.0
+docker compose pull postgres minio minio-createbucket kong auth rest realtime storage imgproxy meta functions analytics vector supavisor studio traefik nginxproxymanager portainer n8n mailserver bind9 pihole roundcube socketio socketio-admin
 
 echo.
-echo [3/7] LDAP Directory...
-docker pull osixia/openldap:latest
-docker pull osixia/phpldapadmin:latest
+echo [2/6] Backend - Storage (Minio)...
+REM Minio is now pulled via docker compose pull in [1/6]
 
 echo.
-echo [4/7] Reverse Proxy...
-docker pull jc21/nginx-proxy-manager:latest
-docker pull traefik:latest
+echo [3/6] Infrastructure - Proxy...
+REM Traefik and Nginx Proxy Manager are now pulled via docker compose pull in [1/6]
 
 echo.
-echo [5/7] DNS (BIND9 with Webmin)...
-docker pull sameersbn/bind:latest
+echo [4/6] Infrastructure - Management...
+REM Portainer is now pulled via docker compose pull in [1/6]
 
 echo.
-echo [6/7] Email Server + Webmail...
-docker pull ghcr.io/docker-mailserver/docker-mailserver:latest
-docker pull roundcube/roundcubemail:latest
+echo [5/6] Middleware + Frontend (Build locally)...
+echo    Middleware and Frontend are built from local Dockerfiles
+echo    Run: docker compose build middleware admin landing-page
 
 echo.
-echo [7/9] Web Admin (Portainer)...
-docker pull portainer/portainer-ce:latest
-
-echo.
-echo [8/9] Workflow Automation (n8n)...
+echo [6/6] Automation...
 docker pull n8nio/n8n:latest
 
 echo.
-echo [9/9] Data Lakehouse (Dremio)...
-docker pull dremio/dremio-oss:latest
-
-echo.
 echo =======================================
-echo MINIMAL INFRASTRUCTURE COMPLETE!
+echo MINIMAL FULL STACK IMAGES READY!
 echo =======================================
 echo.
-echo Images pulled: 21
+echo Images pulled: 22 + 3 local builds
 echo.
-echo Web Admin URLs after startup:
-echo   - Portainer:        http://localhost:9090
-echo   - BIND9 Webmin:     http://localhost:10000
-echo   - phpLDAPadmin:     http://localhost:8089
-echo   - Nginx Proxy Mgr:  http://localhost:8081
-echo   - Roundcube:        http://localhost:8082
+echo Run: docker compose build middleware admin landing-page
+echo Then: start-minimal.bat
+echo.
+echo Access URLs:
+echo   - Landing Page:     http://localhost:3000 (PUBLIC)
+echo   - Admin CMS:        http://localhost:3003 (ADMIN)
 echo   - Supabase Studio:  http://localhost:8000
-echo   - Supabase API:     http://localhost:8000
+echo   - Portainer:        http://localhost:9090
 echo   - n8n:              http://localhost:5678
-echo   - Dremio:           http://localhost:9047
-echo.
-echo Run start-minimal.bat to start these services.
 echo.
 pause

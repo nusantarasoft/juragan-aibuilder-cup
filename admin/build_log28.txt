@@ -1,0 +1,54 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 10.8s
+  Running TypeScript ...
+npm : Failed to compile.
+At line:1 char:11
++ cd admin; npm run build 2>&1 | 
+Out-File -FilePath build_log28.txt -En 
+...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecif 
+   ied: (Failed to compile.:String) []  
+  , RemoteException
+    + FullyQualifiedErrorId : NativeCom 
+   mandError
+ 
+
+./src/components/mvpblocks/creative/trai
+l.tsx:18:9
+Type error: Type 
+'RefObject<HTMLDivElement | null>' is 
+not assignable to type 
+'RefObject<HTMLDivElement>'.
+  Type 'HTMLDivElement | null' is not 
+assignable to type 'HTMLDivElement'.
+    Type 'null' is not assignable to 
+type 'HTMLDivElement'.
+
+[0m [90m 16 |[39m       [33m<[39m[
+33m/[39m[33mdiv[39m[33m>[39m
+ [90m 17 |[39m       
+[33m<[39m[33mMagicTrail[39m
+[31m[1m>[22m[39m[90m 18 |[39m     
+    
+containerRef[33m=[39m{containerRef}
+ [90m    |[39m         
+[31m[1m^[22m[39m
+ [90m 19 |[39m         colors[33m=[3
+9m{[[32m'#f59e0b'[39m[33m,[39m 
+[32m'#ec4899'[39m[33m,[39m 
+[32m'#8b5cf6'[39m[33m,[39m 
+[32m'#3b82f6'[39m[33m,[39m 
+[32m'#10b981'[39m]}
+ [90m 20 |[39m         
+trailLength[33m=[39m{[35m35[39m}
+ [90m 21 |[39m         particleCount[
+33m=[39m{[35m75[39m}[0m
+Next.js build worker exited with code: 
+1 and signal: null

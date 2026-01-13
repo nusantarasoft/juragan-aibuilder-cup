@@ -1,0 +1,533 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+npm : Turbopack build encountered 6 
+warnings:
+At line:1 char:11
++ cd admin; npm run build 2>&1 | 
+Out-File -FilePath build_log31.txt -En 
+...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecif 
+   ied: (Turbopack build encountered 6  
+   warnings::String) [], RemoteExcept   
+ ion
+    + FullyQualifiedErrorId : NativeCom 
+   mandError
+ 
+[next]/internal/font/google/4fa387ec6414
+3e14-s.woff2
+Error while requesting resource
+There was an issue requesting https://fo
+nts.gstatic.com/s/geistmono/v4/or3nQ6H-1
+_WfwkMZI_qYFrMdmhHkjkotbA.woff2
+
+
+[next]/internal/font/google/7178b3e590c6
+4307-s.woff2
+Error while requesting resource
+There was an issue establishing a 
+connection while requesting https://font
+s.gstatic.com/s/geist/v4/gyByhwUxId8gMEw
+SGFWNOITddY4.woff2
+
+
+[next]/internal/font/google/797e433ab948
+586e-s.p.woff2
+Error while requesting resource
+There was an issue requesting https://fo
+nts.gstatic.com/s/geistmono/v4/or3nQ6H-1
+_WfwkMZI_qYFrcdmhHkjko.woff2
+
+
+[next]/internal/font/google/8a480f0b521d
+4e75-s.woff2
+Error while requesting resource
+There was an issue requesting https://fo
+nts.gstatic.com/s/geist/v4/gyByhwUxId8gM
+EwYGFWNOITddY4.woff2
+
+
+[next]/internal/font/google/bbc41e54d2fc
+bd21-s.woff2
+Error while requesting resource
+There was an issue requesting https://fo
+nts.gstatic.com/s/geistmono/v4/or3nQ6H-1
+_WfwkMZI_qYFrkdmhHkjkotbA.woff2
+
+
+[next]/internal/font/google/caa3a2e1cccd
+8315-s.p.woff2
+Error while requesting resource
+There was an issue requesting https://fo
+nts.gstatic.com/s/geist/v4/gyByhwUxId8gM
+EwcGFWNOITd.woff2
+
+
+
+> Build error occurred
+Error: Turbopack build failed with 6 
+errors:
+[next]/internal/font/google/geist_a71539
+c9.module.css:8:9
+Module not found: Can't resolve '@vercel
+/turbopack-next/internal/font/google/fon
+t'
+[0m [90m  6 |[39m   
+font[33m-[39mdisplay[33m:[39m 
+swap[33m;[39m
+ [90m  7 |[39m   src[33m:[39m url([
+33m@[39mvercel[33m/[39mturbopack[33m
+-[39mnext[33m/[39minternal[33m/[39m
+font[33m/[39mgoogle[35m/font?{%22url%
+22:%22https:/[39m[33m/[39mfonts[33m.
+[39mgstatic[33m.[39mcom[33m/[39ms[
+33m/[39mgeist[33m/[39mv4[33m/[39mgy
+ByhwUxId8gMEwYGFWNOITddY4[33m.[39mwoff
+2[33m%[39m[35m22[39m[33m,[39m[33m
+%[39m[35m22[39mpreload[33m%[39m[35
+m22[39m[33m:[39m[36mfalse[39m[33m,
+[39m[33m%[39m[35m22[39mhas_size_adj
+ust[33m%[39m[35m22[39m[33m:[39m[3
+6mtrue[39m}) 
+format([32m'woff2'[39m)[33m;[39m
+[31m[1m>[22m[39m[90m  8 |[39m   
+unicode[33m-[39mrange[33m:[39m [33m
+U[39m[33m+[39m[35m0301[39m[33m,[3
+9m [33mU[39m[33m+[39m[35m0400[39m
+[33m-[39m[35m045[39m[33mF[39m[33m,
+[39m [33mU[39m[33m+[39m[35m0490[3
+9m[33m-[39m[35m0491[39m[33m,[39m 
+[33mU[39m[33m+[39m[35m04[39m[33mB0
+[39m[33m-[39m[35m04[39m[33mB1[39m
+[33m,[39m [33mU[39m[33m+[39m[35m2
+116[39m[33m;[39m
+ [90m    |[39m         
+[31m[1m^[22m[39m
+ [90m  9 |[39m }
+ [90m 10 |[39m [90m/* latin-ext 
+*/[39m
+ [90m 11 |[39m 
+[33m@[39mfont[33m-[39mface {[0m
+
+Import map: Resolved by import map
+
+
+Import trace:
+  Server Component:
+    [next]/internal/font/google/geist_a7
+1539c9.module.css
+    [next]/internal/font/google/geist_a7
+1539c9.js
+    ./src/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-
+not-found
+
+
+[next]/internal/font/google/geist_a71539
+c9.module.css:17:9
+Module not found: Can't resolve '@vercel
+/turbopack-next/internal/font/google/fon
+t'
+[0m [90m 15 |[39m   
+font[33m-[39mdisplay[33m:[39m 
+swap[33m;[39m
+ [90m 16 |[39m   src[33m:[39m url([
+33m@[39mvercel[33m/[39mturbopack[33m
+-[39mnext[33m/[39minternal[33m/[39m
+font[33m/[39mgoogle[35m/font?{%22url%
+22:%22https:/[39m[33m/[39mfonts[33m.
+[39mgstatic[33m.[39mcom[33m/[39ms[
+33m/[39mgeist[33m/[39mv4[33m/[39mgy
+ByhwUxId8gMEwSGFWNOITddY4[33m.[39mwoff
+2[33m%[39m[35m22[39m[33m,[39m[33m
+%[39m[35m22[39mpreload[33m%[39m[35
+m22[39m[33m:[39m[36mfalse[39m[33m,
+[39m[33m%[39m[35m22[39mhas_size_adj
+ust[33m%[39m[35m22[39m[33m:[39m[3
+6mtrue[39m}) 
+format([32m'woff2'[39m)[33m;[39m
+[31m[1m>[22m[39m[90m 17 |[39m   
+unicode[33m-[39mrange[33m:[39m [33m
+U[39m[33m+[39m[35m0100[39m[33m-[3
+9m[35m02[39m[33mBA[39m[33m,[39m [
+33mU[39m[33m+[39m[35m02[39m[33mBD
+[39m[33m-[39m[35m02[39m[33mC5[39m
+[33m,[39m [33mU[39m[33m+[39m[35m02
+[39m[33mC7[39m[33m-[39m[35m02[39m
+[33mCC[39m[33m,[39m [33mU[39m[33m
++[39m[35m02[39m[33mCE[39m[33m-[39
+m[35m02[39m[33mD7[39m[33m,[39m [3
+3mU[39m[33m+[39m[35m02[39m[33mDD[
+39m[33m-[39m[35m02[39m[33mFF[39m[
+33m,[39m [33mU[39m[33m+[39m[35m030
+4[39m[33m,[39m [33mU[39m[33m+[39m
+[35m0308[39m[33m,[39m [33mU[39m[3
+3m+[39m[35m0329[39m[33m,[39m [33mU
+[39m[33m+[39m[35m1[39m[33mD00[39m
+[33m-[39m[35m1[39m[33mDBF[39m[33m
+,[39m [33mU[39m[33m+[39m[35m1E00[
+39m[33m-[39m[35m1E9[39m[33mF[39m[
+33m,[39m [33mU[39m[33m+[39m[35m1[
+39m[33mEF2[39m[33m-[39m[35m1[39m[
+33mEFF[39m[33m,[39m [33mU[39m[33m+
+[39m[35m2020[39m[33m,[39m [33mU[3
+9m[33m+[39m[35m20[39m[33mA0[39m[3
+3m-[39m[35m20[39m[33mAB[39m[33m,[
+39m [33mU[39m[33m+[39m[35m20[39m[
+33mAD[39m[33m-[39m[35m20[39m[33mC0
+[39m[33m,[39m [33mU[39m[33m+[39m
+[35m2113[39m[33m,[39m [33mU[39m[33
+m+[39m[35m2[39m[33mC60[39m[33m-[3
+9m[35m2[39m[33mC7F[39m[33m,[39m [
+33mU[39m[33m+[39m[33mA720[39m[33m-
+[39m[33mA7FF[39m[33m;[39m
+ [90m    |[39m         
+[31m[1m^[22m[39m
+ [90m 18 |[39m }
+ [90m 19 |[39m [90m/* latin */[39m
+ [90m 20 |[39m 
+[33m@[39mfont[33m-[39mface {[0m
+
+Import map: Resolved by import map
+
+
+Import trace:
+  Server Component:
+    [next]/internal/font/google/geist_a7
+1539c9.module.css
+    [next]/internal/font/google/geist_a7
+1539c9.js
+    ./src/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-
+not-found
+
+
+[next]/internal/font/google/geist_a71539
+c9.module.css:26:9
+Module not found: Can't resolve '@vercel
+/turbopack-next/internal/font/google/fon
+t'
+[0m [90m 24 |[39m   
+font[33m-[39mdisplay[33m:[39m 
+swap[33m;[39m
+ [90m 25 |[39m   src[33m:[39m url([
+33m@[39mvercel[33m/[39mturbopack[33m
+-[39mnext[33m/[39minternal[33m/[39m
+font[33m/[39mgoogle[35m/font?{%22url%
+22:%22https:/[39m[33m/[39mfonts[33m.
+[39mgstatic[33m.[39mcom[33m/[39ms[
+33m/[39mgeist[33m/[39mv4[33m/[39mgy
+ByhwUxId8gMEwcGFWNOITd[33m.[39mwoff2[
+33m%[39m[35m22[39m[33m,[39m[33m%[
+39m[35m22[39mpreload[33m%[39m[35m22
+[39m[33m:[39m[36mtrue[39m[33m,[39
+m[33m%[39m[35m22[39mhas_size_adjust
+[33m%[39m[35m22[39m[33m:[39m[36mtr
+ue[39m}) 
+format([32m'woff2'[39m)[33m;[39m
+[31m[1m>[22m[39m[90m 26 |[39m   
+unicode[33m-[39mrange[33m:[39m [33m
+U[39m[33m+[39m[35m0000[39m[33m-[3
+9m[35m00[39m[33mFF[39m[33m,[39m [
+33mU[39m[33m+[39m[35m0131[39m[33m,
+[39m [33mU[39m[33m+[39m[35m0152[3
+9m[33m-[39m[35m0153[39m[33m,[39m 
+[33mU[39m[33m+[39m[35m02[39m[33mBB
+[39m[33m-[39m[35m02[39m[33mBC[39m
+[33m,[39m [33mU[39m[33m+[39m[35m0
+2[39m[33mC6[39m[33m,[39m [33mU[39
+m[33m+[39m[35m02[39m[33mDA[39m[33
+m,[39m [33mU[39m[33m+[39m[35m02[3
+9m[33mDC[39m[33m,[39m [33mU[39m[3
+3m+[39m[35m0304[39m[33m,[39m [33mU
+[39m[33m+[39m[35m0308[39m[33m,[39
+m [33mU[39m[33m+[39m[35m0329[39m[
+33m,[39m [33mU[39m[33m+[39m[35m200
+0[39m[33m-[39m[35m206[39m[33mF[39
+m[33m,[39m [33mU[39m[33m+[39m[35m
+20[39m[33mAC[39m[33m,[39m [33mU[3
+9m[33m+[39m[35m2122[39m[33m,[39m 
+[33mU[39m[33m+[39m[35m2191[39m[33m
+,[39m [33mU[39m[33m+[39m[35m2193[
+39m[33m,[39m [33mU[39m[33m+[39m[3
+5m2212[39m[33m,[39m [33mU[39m[33m+
+[39m[35m2215[39m[33m,[39m [33mU[3
+9m[33m+[39m[33mFEFF[39m[33m,[39m 
+[33mU[39m[33m+[39m[33mFFFD[39m[33m
+;[39m
+ [90m    |[39m         
+[31m[1m^[22m[39m
+ [90m 27 |[39m }
+ [90m 28 |[39m 
+[33m@[39mfont[33m-[39mface {
+ [90m 29 |[39m     
+font[33m-[39mfamily[33m:[39m 
+[32m'Geist 
+Fallback'[39m[33m;[39m[0m
+
+Import map: Resolved by import map
+
+
+Import trace:
+  Server Component:
+    [next]/internal/font/google/geist_a7
+1539c9.module.css
+    [next]/internal/font/google/geist_a7
+1539c9.js
+    ./src/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-
+not-found
+
+
+[next]/internal/font/google/geist_mono_8
+d43a2aa.module.css:8:9
+Module not found: Can't resolve '@vercel
+/turbopack-next/internal/font/google/fon
+t'
+[0m [90m  6 |[39m   
+font[33m-[39mdisplay[33m:[39m 
+swap[33m;[39m
+ [90m  7 |[39m   src[33m:[39m url([
+33m@[39mvercel[33m/[39mturbopack[33m
+-[39mnext[33m/[39minternal[33m/[39m
+font[33m/[39mgoogle[35m/font?{%22url%
+22:%22https:/[39m[33m/[39mfonts[33m.
+[39mgstatic[33m.[39mcom[33m/[39ms[
+33m/[39mgeistmono[33m/[39mv4[33m/[3
+9mor3nQ6H[33m-[39m[35m1[39m_WfwkMZI_
+qYFrMdmhHkjkotbA[33m.[39mwoff2[33m%[
+39m[35m22[39m[33m,[39m[33m%[39m[3
+5m22[39mpreload[33m%[39m[35m22[39m
+[33m:[39m[36mfalse[39m[33m,[39m[33
+m%[39m[35m22[39mhas_size_adjust[33m%
+[39m[35m22[39m[33m:[39m[36mtrue[3
+9m}) 
+format([32m'woff2'[39m)[33m;[39m
+[31m[1m>[22m[39m[90m  8 |[39m   
+unicode[33m-[39mrange[33m:[39m [33m
+U[39m[33m+[39m[35m0301[39m[33m,[3
+9m [33mU[39m[33m+[39m[35m0400[39m
+[33m-[39m[35m045[39m[33mF[39m[33m,
+[39m [33mU[39m[33m+[39m[35m0490[3
+9m[33m-[39m[35m0491[39m[33m,[39m 
+[33mU[39m[33m+[39m[35m04[39m[33mB0
+[39m[33m-[39m[35m04[39m[33mB1[39m
+[33m,[39m [33mU[39m[33m+[39m[35m2
+116[39m[33m;[39m
+ [90m    |[39m         
+[31m[1m^[22m[39m
+ [90m  9 |[39m }
+ [90m 10 |[39m [90m/* latin-ext 
+*/[39m
+ [90m 11 |[39m 
+[33m@[39mfont[33m-[39mface {[0m
+
+Import map: Resolved by import map
+
+
+Import trace:
+  Server Component:
+    [next]/internal/font/google/geist_mo
+no_8d43a2aa.module.css
+    [next]/internal/font/google/geist_mo
+no_8d43a2aa.js
+    ./src/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-
+not-found
+
+
+[next]/internal/font/google/geist_mono_8
+d43a2aa.module.css:17:9
+Module not found: Can't resolve '@vercel
+/turbopack-next/internal/font/google/fon
+t'
+[0m [90m 15 |[39m   
+font[33m-[39mdisplay[33m:[39m 
+swap[33m;[39m
+ [90m 16 |[39m   src[33m:[39m url([
+33m@[39mvercel[33m/[39mturbopack[33m
+-[39mnext[33m/[39minternal[33m/[39m
+font[33m/[39mgoogle[35m/font?{%22url%
+22:%22https:/[39m[33m/[39mfonts[33m.
+[39mgstatic[33m.[39mcom[33m/[39ms[
+33m/[39mgeistmono[33m/[39mv4[33m/[3
+9mor3nQ6H[33m-[39m[35m1[39m_WfwkMZI_
+qYFrkdmhHkjkotbA[33m.[39mwoff2[33m%[
+39m[35m22[39m[33m,[39m[33m%[39m[3
+5m22[39mpreload[33m%[39m[35m22[39m
+[33m:[39m[36mfalse[39m[33m,[39m[33
+m%[39m[35m22[39mhas_size_adjust[33m%
+[39m[35m22[39m[33m:[39m[36mtrue[3
+9m}) 
+format([32m'woff2'[39m)[33m;[39m
+[31m[1m>[22m[39m[90m 17 |[39m   
+unicode[33m-[39mrange[33m:[39m [33m
+U[39m[33m+[39m[35m0100[39m[33m-[3
+9m[35m02[39m[33mBA[39m[33m,[39m [
+33mU[39m[33m+[39m[35m02[39m[33mBD
+[39m[33m-[39m[35m02[39m[33mC5[39m
+[33m,[39m [33mU[39m[33m+[39m[35m02
+[39m[33mC7[39m[33m-[39m[35m02[39m
+[33mCC[39m[33m,[39m [33mU[39m[33m
++[39m[35m02[39m[33mCE[39m[33m-[39
+m[35m02[39m[33mD7[39m[33m,[39m [3
+3mU[39m[33m+[39m[35m02[39m[33mDD[
+39m[33m-[39m[35m02[39m[33mFF[39m[
+33m,[39m [33mU[39m[33m+[39m[35m030
+4[39m[33m,[39m [33mU[39m[33m+[39m
+[35m0308[39m[33m,[39m [33mU[39m[3
+3m+[39m[35m0329[39m[33m,[39m [33mU
+[39m[33m+[39m[35m1[39m[33mD00[39m
+[33m-[39m[35m1[39m[33mDBF[39m[33m
+,[39m [33mU[39m[33m+[39m[35m1E00[
+39m[33m-[39m[35m1E9[39m[33mF[39m[
+33m,[39m [33mU[39m[33m+[39m[35m1[
+39m[33mEF2[39m[33m-[39m[35m1[39m[
+33mEFF[39m[33m,[39m [33mU[39m[33m+
+[39m[35m2020[39m[33m,[39m [33mU[3
+9m[33m+[39m[35m20[39m[33mA0[39m[3
+3m-[39m[35m20[39m[33mAB[39m[33m,[
+39m [33mU[39m[33m+[39m[35m20[39m[
+33mAD[39m[33m-[39m[35m20[39m[33mC0
+[39m[33m,[39m [33mU[39m[33m+[39m
+[35m2113[39m[33m,[39m [33mU[39m[33
+m+[39m[35m2[39m[33mC60[39m[33m-[3
+9m[35m2[39m[33mC7F[39m[33m,[39m [
+33mU[39m[33m+[39m[33mA720[39m[33m-
+[39m[33mA7FF[39m[33m;[39m
+ [90m    |[39m         
+[31m[1m^[22m[39m
+ [90m 18 |[39m }
+ [90m 19 |[39m [90m/* latin */[39m
+ [90m 20 |[39m 
+[33m@[39mfont[33m-[39mface {[0m
+
+Import map: Resolved by import map
+
+
+Import trace:
+  Server Component:
+    [next]/internal/font/google/geist_mo
+no_8d43a2aa.module.css
+    [next]/internal/font/google/geist_mo
+no_8d43a2aa.js
+    ./src/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-
+not-found
+
+
+[next]/internal/font/google/geist_mono_8
+d43a2aa.module.css:26:9
+Module not found: Can't resolve '@vercel
+/turbopack-next/internal/font/google/fon
+t'
+[0m [90m 24 |[39m   
+font[33m-[39mdisplay[33m:[39m 
+swap[33m;[39m
+ [90m 25 |[39m   src[33m:[39m url([
+33m@[39mvercel[33m/[39mturbopack[33m
+-[39mnext[33m/[39minternal[33m/[39m
+font[33m/[39mgoogle[35m/font?{%22url%
+22:%22https:/[39m[33m/[39mfonts[33m.
+[39mgstatic[33m.[39mcom[33m/[39ms[
+33m/[39mgeistmono[33m/[39mv4[33m/[3
+9mor3nQ6H[33m-[39m[35m1[39m_WfwkMZI_
+qYFrcdmhHkjko[33m.[39mwoff2[33m%[39m
+[35m22[39m[33m,[39m[33m%[39m[35m2
+2[39mpreload[33m%[39m[35m22[39m[33
+m:[39m[36mtrue[39m[33m,[39m[33m%[
+39m[35m22[39mhas_size_adjust[33m%[39
+m[35m22[39m[33m:[39m[36mtrue[39m})
+ format([32m'woff2'[39m)[33m;[39m
+[31m[1m>[22m[39m[90m 26 |[39m   
+unicode[33m-[39mrange[33m:[39m [33m
+U[39m[33m+[39m[35m0000[39m[33m-[3
+9m[35m00[39m[33mFF[39m[33m,[39m [
+33mU[39m[33m+[39m[35m0131[39m[33m,
+[39m [33mU[39m[33m+[39m[35m0152[3
+9m[33m-[39m[35m0153[39m[33m,[39m 
+[33mU[39m[33m+[39m[35m02[39m[33mBB
+[39m[33m-[39m[35m02[39m[33mBC[39m
+[33m,[39m [33mU[39m[33m+[39m[35m0
+2[39m[33mC6[39m[33m,[39m [33mU[39
+m[33m+[39m[35m02[39m[33mDA[39m[33
+m,[39m [33mU[39m[33m+[39m[35m02[3
+9m[33mDC[39m[33m,[39m [33mU[39m[3
+3m+[39m[35m0304[39m[33m,[39m [33mU
+[39m[33m+[39m[35m0308[39m[33m,[39
+m [33mU[39m[33m+[39m[35m0329[39m[
+33m,[39m [33mU[39m[33m+[39m[35m200
+0[39m[33m-[39m[35m206[39m[33mF[39
+m[33m,[39m [33mU[39m[33m+[39m[35m
+20[39m[33mAC[39m[33m,[39m [33mU[3
+9m[33m+[39m[35m2122[39m[33m,[39m 
+[33mU[39m[33m+[39m[35m2191[39m[33m
+,[39m [33mU[39m[33m+[39m[35m2193[
+39m[33m,[39m [33mU[39m[33m+[39m[3
+5m2212[39m[33m,[39m [33mU[39m[33m+
+[39m[35m2215[39m[33m,[39m [33mU[3
+9m[33m+[39m[33mFEFF[39m[33m,[39m 
+[33mU[39m[33m+[39m[33mFFFD[39m[33m
+;[39m
+ [90m    |[39m         
+[31m[1m^[22m[39m
+ [90m 27 |[39m }
+ [90m 28 |[39m 
+[33m@[39mfont[33m-[39mface {
+ [90m 29 |[39m     
+font[33m-[39mfamily[33m:[39m 
+[32m'Geist Mono 
+Fallback'[39m[33m;[39m[0m
+
+Import map: Resolved by import map
+
+
+Import trace:
+  Server Component:
+    [next]/internal/font/google/geist_mo
+no_8d43a2aa.module.css
+    [next]/internal/font/google/geist_mo
+no_8d43a2aa.js
+    ./src/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-
+not-found
+
+
+    at <unknown> ([next]/internal/font/g
+oogle/geist_a71539c9.module.css:8:9)
+    at <unknown> (https://nextjs.org/doc
+s/messages/module-not-found)
+    at <unknown> ([next]/internal/font/g
+oogle/geist_a71539c9.module.css:17:9)
+    at <unknown> (https://nextjs.org/doc
+s/messages/module-not-found)
+    at <unknown> ([next]/internal/font/g
+oogle/geist_a71539c9.module.css:26:9)
+    at <unknown> (https://nextjs.org/doc
+s/messages/module-not-found)
+    at <unknown> ([next]/internal/font/g
+oogle/geist_mono_8d43a2aa.module.css:8:9
+)
+    at <unknown> (https://nextjs.org/doc
+s/messages/module-not-found)
+    at <unknown> ([next]/internal/font/g
+oogle/geist_mono_8d43a2aa.module.css:17:
+9)
+    at <unknown> (https://nextjs.org/doc
+s/messages/module-not-found)
+    at <unknown> ([next]/internal/font/g
+oogle/geist_mono_8d43a2aa.module.css:26:
+9)
+    at <unknown> (https://nextjs.org/doc
+s/messages/module-not-found)

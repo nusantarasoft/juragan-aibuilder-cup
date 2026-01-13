@@ -1,0 +1,55 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 11.0s
+  Running TypeScript ...
+npm : Failed to compile.
+At line:1 char:11
++ cd admin; npm run build 2>&1 | Out-File 
+-FilePath build_log41.txt -En ...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified:  
+   (Failed to compile.:String) [], RemoteEx  
+  ception
+    + FullyQualifiedErrorId : NativeCommandE 
+   rror
+ 
+
+./src/components/mvpblocks/mainsections/prici
+ng/pricing-with-modals.tsx:64:14
+Type error: Type '{ name: string; price: 
+number; period: string; features: string[]; 
+featured?: undefined; key: string; } | { 
+name: string; price: number; period: string; 
+featured: boolean; features: string[]; key: 
+string; }' is not assignable to type 
+'IntrinsicAttributes & PricingCardProps'.
+  Property 'title' is missing in type '{ 
+name: string; price: number; period: string; 
+features: string[]; featured?: undefined; 
+key: string; }' but required in type 
+'PricingCardProps'.
+
+[0m [90m 62 |[39m         
+[33m<[39m[33mdiv[39m 
+className[33m=[39m[32m"grid gap-8 
+md:grid-cols-3"[39m[33m>[39m
+ [90m 63 |[39m           
+{plans[33m.[39mmap((plan) [33m=>[39m (
+[31m[1m>[22m[39m[90m 64 |[39m          
+   [33m<[39m[33mPricingCard[39m 
+key[33m=[39m{plan[33m.[39mname} 
+{[33m...[39mplan} [33m/[39m[33m>[39m
+ [90m    |[39m              
+[31m[1m^[22m[39m
+ [90m 65 |[39m           ))}
+ [90m 66 |[39m         [33m<[39m[33m/[3
+9m[33mdiv[39m[33m>[39m
+ [90m 67 |[39m       [33m<[39m[33m/[39m
+[33mdiv[39m[33m>[39m[0m
+Next.js build worker exited with code: 1 and 
+signal: null

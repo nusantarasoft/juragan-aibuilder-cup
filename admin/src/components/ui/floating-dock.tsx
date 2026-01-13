@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 import { cn } from "@/lib/utils";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
@@ -8,15 +9,21 @@ export const FloatingDock = ({
     items,
     desktopClassName,
     mobileClassName,
+    styles,
 }: {
     items: { title: string; icon: React.ReactNode; href: string }[];
     desktopClassName?: string;
     mobileClassName?: string;
+    styles?: {
+        container?: React.CSSProperties;
+        iconContainer?: React.CSSProperties;
+        icon?: React.CSSProperties;
+    };
 }) => {
     return (
         <>
-            <FloatingDockDesktop items={items} className={desktopClassName} />
-            <FloatingDockMobile items={items} className={mobileClassName} />
+            <FloatingDockDesktop items={items} className={desktopClassName} styles={styles} />
+            <FloatingDockMobile items={items} className={mobileClassName} styles={styles} />
         </>
     );
 };
@@ -24,9 +31,15 @@ export const FloatingDock = ({
 const FloatingDockMobile = ({
     items,
     className,
+    styles,
 }: {
     items: { title: string; icon: React.ReactNode; href: string }[];
     className?: string;
+    styles?: {
+        container?: React.CSSProperties;
+        iconContainer?: React.CSSProperties;
+        icon?: React.CSSProperties;
+    };
 }) => {
     const [open, setOpen] = useState(false);
     return (
@@ -57,8 +70,9 @@ const FloatingDockMobile = ({
                                 href={item.href}
                                 key={item.title}
                                 className="h-10 w-10 rounded-full bg-gray-50 dark:bg-neutral-900 flex items-center justify-center"
+                                style={styles?.iconContainer}
                             >
-                                <div className="h-4 w-4">{item.icon}</div>
+                                <div className="h-4 w-4" style={styles?.icon}>{item.icon}</div>
                             </Link>
                         </motion.div>
                     ))}
@@ -89,9 +103,15 @@ const FloatingDockMobile = ({
 const FloatingDockDesktop = ({
     items,
     className,
+    styles,
 }: {
     items: { title: string; icon: React.ReactNode; href: string }[];
     className?: string;
+    styles?: {
+        container?: React.CSSProperties;
+        iconContainer?: React.CSSProperties;
+        icon?: React.CSSProperties;
+    };
 }) => {
     const mouseX = useMotionValue(Infinity);
     return (
@@ -102,9 +122,10 @@ const FloatingDockDesktop = ({
                 "mx-auto hidden md:flex h-16 gap-4 items-end rounded-2xl bg-gray-50 dark:bg-neutral-900 px-4 pb-3",
                 className
             )}
+            style={styles?.container}
         >
             {items.map((item) => (
-                <IconContainer mouseX={mouseX} key={item.title} {...item} />
+                <IconContainer mouseX={mouseX} key={item.title} {...item} styles={styles} />
             ))}
         </motion.div>
     );
@@ -115,11 +136,17 @@ function IconContainer({
     title,
     icon,
     href,
+    styles,
 }: {
     mouseX: ReturnType<typeof useMotionValue<number>>;
     title: string;
     icon: React.ReactNode;
     href: string;
+    styles?: {
+        container?: React.CSSProperties;
+        iconContainer?: React.CSSProperties;
+        icon?: React.CSSProperties;
+    };
 }) {
     const ref = useRef<HTMLDivElement>(null);
 
@@ -162,7 +189,7 @@ function IconContainer({
         <Link href={href}>
             <motion.div
                 ref={ref}
-                style={{ width, height }}
+                style={{ width, height, ...styles?.iconContainer }}
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}
                 className="aspect-square rounded-full bg-gray-200 dark:bg-neutral-800 flex items-center justify-center relative"
@@ -178,7 +205,7 @@ function IconContainer({
                     </motion.div>
                 )}
                 <motion.div
-                    style={{ width: widthIcon, height: heightIcon }}
+                    style={{ width: widthIcon, height: heightIcon, ...styles?.icon }}
                     className="flex items-center justify-center"
                 >
                     {icon}

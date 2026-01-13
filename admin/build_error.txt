@@ -1,0 +1,33 @@
+﻿docker : #0 building with "desktop-linux" instance using docker driver
+At line:1 char:1
++ docker build -t nusantarasoft-admin:latest . 2>&1 | Out-File -FilePat ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (#0 building wit...g docker driver:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.98kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node:20-alpine
+#2 ERROR: failed to do request: Head "https://registry-1.docker.io/v2/library/node/manifests/20-alpine": dialing 
+registry-1.docker.io:443 container via direct connection because Docker Desktop has no HTTPS proxy: connecting to 
+registry-1.docker.io:443: dial tcp: lookup registry-1.docker.io: no such host
+------
+ > [internal] load metadata for docker.io/library/node:20-alpine:
+------
+Dockerfile:2
+--------------------
+   1 |     # ===== Base Stage =====
+   2 | >>> FROM node:20-alpine AS base
+   3 |     RUN apk add --no-cache libc6-compat
+   4 |     WORKDIR /app
+--------------------
+ERROR: failed to build: failed to solve: node:20-alpine: failed to resolve source metadata for 
+docker.io/library/node:20-alpine: failed to do request: Head 
+"https://registry-1.docker.io/v2/library/node/manifests/20-alpine": dialing registry-1.docker.io:443 container via 
+direct connection because Docker Desktop has no HTTPS proxy: connecting to registry-1.docker.io:443: dial tcp: 
+lookup registry-1.docker.io: no such host
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/qpq9a5ahglxzwxp0j79eayy3h

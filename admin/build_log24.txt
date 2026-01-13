@@ -1,0 +1,41 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 9.7s
+  Running TypeScript ...
+npm : Failed to compile.
+At line:1 char:11
++ cd admin; npm run build 2>&1 | 
+Out-File -FilePath build_log24.txt -En 
+...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecif 
+   ied: (Failed to compile.:String) []  
+  , RemoteException
+    + FullyQualifiedErrorId : NativeCom 
+   mandError
+ 
+
+./src/components/mvpblocks/chatbot-ui/v0
+-chat.tsx:31:22
+Type error: Expected 0 arguments, but 
+got 1.
+
+[0m [90m 29 |[39m       [36mif[39m 
+(value[33m.[39mtrim()) {
+ [90m 30 |[39m         
+setValue([32m''[39m)[33m;[39m
+[31m[1m>[22m[39m[90m 31 |[39m     
+    
+adjustHeight([36mtrue[39m)[33m;[39m
+ [90m    |[39m                      
+[31m[1m^[22m[39m
+ [90m 32 |[39m       }
+ [90m 33 |[39m     }
+ [90m 34 |[39m   }[33m;[39m[0m
+Next.js build worker exited with code: 
+1 and signal: null

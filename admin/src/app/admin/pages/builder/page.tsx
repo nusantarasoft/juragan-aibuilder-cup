@@ -9,19 +9,17 @@ import {
     Card,
     Button,
     Space,
-    Empty,
     Input,
-    Form,
     Divider,
-    Switch,
     message,
     Drawer,
     Tabs,
-    Modal,
     Spin,
+    Tooltip,
+    Collapse,
+    Modal,
 } from "antd";
 import {
-    PlusOutlined,
     DragOutlined,
     EyeOutlined,
     SaveOutlined,
@@ -29,456 +27,220 @@ import {
     SettingOutlined,
     ArrowUpOutlined,
     ArrowDownOutlined,
+    AppstoreOutlined,
+    EditOutlined,
+    ToolOutlined,
+    LayoutOutlined,
+    StarOutlined,
+    DownloadOutlined,
+    UploadOutlined,
     CloudUploadOutlined,
+    LeftOutlined,
+    MenuFoldOutlined,
+    MenuUnfoldOutlined,
 } from "@ant-design/icons";
+import { motion, AnimatePresence } from "framer-motion";
 import { DnDProvider, DraggableLibraryBlock, SortableBlock, CanvasDropZone } from "@/components/dnd/DragDropComponents";
 import pageService from "@/lib/pageService";
+import { FloatingPanel, DockPosition } from "@/components/builder/FloatingPanel";
 
-// Block type definitions
-interface BlockProps {
-    [key: string]: string | number | boolean | string[] | object;
-}
+// Import types and upgraded components
+import { PageBlock, BlockProps, blockDefaults } from "./types";
+import { BlockRenderer } from "./BlockRenderer";
+import { PropertyEditor } from "./PropertyEditor";
+import { ElementTree, PageStructure } from "./ElementTree";
+import { BlockThumbnail } from "./BlockThumbnail";
 
-interface PageBlock {
-    id: string;
-    type: string;
-    name: string;
-    icon: string;
-    props: BlockProps;
-}
-
-// Default props for each block type
-const blockDefaults: Record<string, BlockProps> = {
-    navigation: {
-        logo: "Nusantarasoft",
-        links: ["Home", "About", "Services", "Contact"],
-        sticky: true,
-        transparent: false,
-    },
-    hero: {
-        title: "Welcome to Our Website",
-        subtitle: "Build amazing experiences with our platform",
-        ctaText: "Get Started",
-        ctaLink: "#",
-        backgroundUrl: "",
-        overlay: true,
-    },
-    footer: {
-        copyright: "© 2024 Nusantarasoft. All rights reserved.",
-        showSocials: true,
-        facebook: "",
-        twitter: "",
-        instagram: "",
-    },
-    text: {
-        content: "Enter your text here...",
-        align: "left",
-    },
-    features: {
-        title: "Our Features",
-        columns: 3,
-        items: [
-            { title: "Feature 1", description: "Description here", icon: "🚀" },
-            { title: "Feature 2", description: "Description here", icon: "⚡" },
-            { title: "Feature 3", description: "Description here", icon: "🎯" },
-        ],
-    },
-    testimonials: {
-        title: "What Our Clients Say",
-        autoPlay: true,
-        items: [
-            { name: "John Doe", role: "CEO", text: "Amazing service!", avatar: "" },
-        ],
-    },
-    pricing: {
-        title: "Pricing Plans",
-        plans: [
-            { name: "Basic", price: "$9", features: ["Feature 1", "Feature 2"] },
-            { name: "Pro", price: "$29", features: ["All Basic", "Feature 3", "Feature 4"] },
-        ],
-    },
-    gallery: {
-        title: "Gallery",
-        layout: "grid",
-        columns: 3,
-        images: [],
-    },
-    contact: {
-        title: "Contact Us",
-        email: "contact@example.com",
-        showMap: false,
-    },
-    dock: {
-        items: ["🏠", "📧", "🔍", "⚙️"],
-        position: "bottom",
-        size: "medium",
-    },
-    games: {
-        game: "snake",
-        enabled: true,
-    },
-    chat: {
-        enabled: true,
-        title: "Chat with us",
-        position: "bottom-right",
-    },
-    counter: {
-        items: [
-            { label: "Users", value: 1000, suffix: "+" },
-            { label: "Projects", value: 500, suffix: "+" },
-        ],
-    },
-};
-
-// Available block types
+// Block categories with nested subcategories
 const blockCategories = [
     {
-        key: "template",
-        label: "Template",
-        blocks: [
-            { type: "navigation", name: "Navigation", icon: "🧭" },
-            { type: "hero", name: "Hero Banner", icon: "🎨" },
-            { type: "footer", name: "Footer", icon: "📋" },
+        key: "favorites",
+        label: "Favorites",
+        icon: <StarOutlined />,
+        subcategories: [
+            { name: "My Favorites", blocks: [] }
+        ],
+    },
+    {
+        key: "layout",
+        label: "Layout",
+        icon: <LayoutOutlined />,
+        subcategories: [
+            {
+                name: "Grid Layouts",
+                blocks: [
+                    { type: "gridContainer", name: "2 Columns", icon: "⬜", layoutPreset: { rows: [{ columns: [{ span: 12, block: null }, { span: 12, block: null }] }] } },
+                    { type: "gridContainer", name: "3 Columns", icon: "⬜", layoutPreset: { rows: [{ columns: [{ span: 8, block: null }, { span: 8, block: null }, { span: 8, block: null }] }] } },
+                    { type: "gridContainer", name: "4 Columns", icon: "⬜", layoutPreset: { rows: [{ columns: [{ span: 6, block: null }, { span: 6, block: null }, { span: 6, block: null }, { span: 6, block: null }] }] } },
+                ],
+            },
+            {
+                name: "Sidebar Layouts",
+                blocks: [
+                    { type: "gridContainer", name: "Sidebar Left", icon: "◧", layoutPreset: { rows: [{ columns: [{ span: 6, block: null }, { span: 18, block: null }] }] } },
+                    { type: "gridContainer", name: "Sidebar Right", icon: "◨", layoutPreset: { rows: [{ columns: [{ span: 18, block: null }, { span: 6, block: null }] }] } },
+                ],
+            },
+            {
+                name: "Complex Layouts",
+                blocks: [
+                    { type: "gridContainer", name: "Hero + Cards", icon: "🃏", layoutPreset: { rows: [{ columns: [{ span: 24, block: null }] }, { columns: [{ span: 8, block: null }, { span: 8, block: null }, { span: 8, block: null }] }] } },
+                    { type: "gridContainer", name: "2x2 Grid", icon: "⊞", layoutPreset: { rows: [{ columns: [{ span: 12, block: null }, { span: 12, block: null }] }, { columns: [{ span: 12, block: null }, { span: 12, block: null }] }] } },
+                ],
+            },
         ],
     },
     {
         key: "content",
         label: "Content",
-        blocks: [
-            { type: "text", name: "Text Block", icon: "📝" },
-            { type: "features", name: "Features", icon: "📦" },
-            { type: "testimonials", name: "Testimonials", icon: "💬" },
-            { type: "pricing", name: "Pricing", icon: "💰" },
-            { type: "gallery", name: "Gallery", icon: "🖼️" },
-            { type: "contact", name: "Contact", icon: "📧" },
+        icon: <EditOutlined />,
+        subcategories: [
+            {
+                name: "Text & Media",
+                blocks: [
+                    { type: "text", name: "Text Block", icon: "📝" },
+                    { type: "gallery", name: "Gallery", icon: "🖼️" },
+                ],
+            },
+            {
+                name: "Sections",
+                blocks: [
+                    { type: "hero", name: "Hero Banner", icon: "🎨" },
+                    { type: "features", name: "Features", icon: "📦" },
+                    { type: "testimonials", name: "Testimonials", icon: "💬" },
+                    { type: "pricing", name: "Pricing", icon: "💰" },
+                    { type: "contact", name: "Contact", icon: "📧" },
+                ],
+            },
         ],
     },
     {
         key: "widget",
         label: "Widgets",
-        blocks: [
-            { type: "dock", name: "Floating Dock", icon: "🚀" },
-            { type: "games", name: "Mini Games", icon: "🎮" },
-            { type: "chat", name: "Chat", icon: "💬" },
-            { type: "counter", name: "Counter", icon: "📊" },
+        icon: <ToolOutlined />,
+        subcategories: [
+            {
+                name: "Interactive",
+                blocks: [
+                    { type: "dock", name: "Floating Dock", icon: "🚀" },
+                    { type: "chat", name: "Chat Widget", icon: "💬" },
+                    { type: "counter", name: "Counter", icon: "📊" },
+                ],
+            },
+            {
+                name: "Navigation",
+                blocks: [
+                    { type: "navigation", name: "Navbar", icon: "🧭" },
+                    { type: "footer", name: "Footer", icon: "📋" },
+                ],
+            },
         ],
     },
 ];
 
-// Block Preview Component
-const BlockPreview = ({ block }: { block: PageBlock }) => {
-    const previewStyles: Record<string, React.CSSProperties> = {
-        navigation: {
-            background: "#001529",
-            color: "white",
-            padding: "12px 24px",
-            display: "flex",
-            justifyContent: "space-between",
-        },
-        hero: {
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            color: "white",
-            padding: "48px 24px",
-            textAlign: "center",
-        },
-        footer: {
-            background: "#f5f5f5",
-            padding: "24px",
-            textAlign: "center",
-        },
-        text: {
-            padding: "16px",
-            background: "white",
-        },
-        features: {
-            padding: "24px",
-            background: "#fafafa",
-        },
-        testimonials: {
-            padding: "24px",
-            background: "#f0f2f5",
-            fontStyle: "italic",
-        },
-        pricing: {
-            padding: "24px",
-            background: "white",
-        },
-        gallery: {
-            padding: "16px",
-            background: "#fafafa",
-        },
-        contact: {
-            padding: "24px",
-            background: "#e6f7ff",
-        },
-        dock: {
-            padding: "12px",
-            background: "rgba(0,0,0,0.1)",
-            borderRadius: "16px",
-            display: "flex",
-            gap: "8px",
-            justifyContent: "center",
-        },
-        games: {
-            padding: "24px",
-            background: "#f6ffed",
-            textAlign: "center",
-        },
-        chat: {
-            padding: "12px",
-            background: "#1890ff",
-            color: "white",
-            borderRadius: "8px",
-        },
-        counter: {
-            padding: "24px",
-            background: "#fff7e6",
-            display: "flex",
-            justifyContent: "space-around",
-        },
-    };
+// Pre-built templates with preview
+const pageTemplates = [
+    {
+        id: "hero-cta",
+        name: "Hero + CTA",
+        preview: "🎯",
+        description: "Hero banner with call-to-action button",
+        blocks: [
+            { type: "hero", name: "Hero", icon: "🎨", props: {} },
+        ],
+    },
+    {
+        id: "features-grid",
+        name: "Features Grid",
+        preview: "📦",
+        description: "3-column feature cards layout",
+        blocks: [
+            { type: "gridContainer", name: "3 Columns", icon: "⬜", layoutPreset: { rows: [{ columns: [{ span: 8, block: null }, { span: 8, block: null }, { span: 8, block: null }] }] } },
+        ],
+    },
+    {
+        id: "testimonials",
+        name: "Testimonials",
+        preview: "💬",
+        description: "Customer testimonial section",
+        blocks: [
+            { type: "testimonials", name: "Testimonials", icon: "💬", props: {} },
+        ],
+    },
+    {
+        id: "pricing",
+        name: "Pricing Cards",
+        preview: "💰",
+        description: "Pricing comparison cards",
+        blocks: [
+            { type: "pricing", name: "Pricing", icon: "💰", props: {} },
+        ],
+    },
+    {
+        id: "contact",
+        name: "Contact Form",
+        preview: "📧",
+        description: "Contact form with info",
+        blocks: [
+            { type: "contact", name: "Contact", icon: "📧", props: {} },
+        ],
+    },
+    {
+        id: "landing-full",
+        name: "Full Landing Page",
+        preview: "🌐",
+        description: "Complete landing page template",
+        blocks: [
+            { type: "navigation", name: "Navbar", icon: "🧭", props: {} },
+            { type: "hero", name: "Hero", icon: "🎨", props: {} },
+            { type: "features", name: "Features", icon: "📦", props: {} },
+            { type: "testimonials", name: "Testimonials", icon: "💬", props: {} },
+            { type: "pricing", name: "Pricing", icon: "💰", props: {} },
+            { type: "contact", name: "Contact", icon: "📧", props: {} },
+            { type: "footer", name: "Footer", icon: "📋", props: {} },
+        ],
+    },
+];
 
-    const renderPreview = () => {
-        switch (block.type) {
-            case "navigation":
-                return (
-                    <div style={previewStyles.navigation}>
-                        <strong>{String(block.props.logo || "Logo")}</strong>
-                        <span>Menu Links</span>
-                    </div>
-                );
-            case "hero":
-                return (
-                    <div style={previewStyles.hero}>
-                        <h2 style={{ margin: 0 }}>{String(block.props.title)}</h2>
-                        <p>{String(block.props.subtitle)}</p>
-                        <Button type="primary">{String(block.props.ctaText)}</Button>
-                    </div>
-                );
-            case "footer":
-                return (
-                    <div style={previewStyles.footer}>
-                        <p>{String(block.props.copyright)}</p>
-                    </div>
-                );
-            case "text":
-                return (
-                    <div style={previewStyles.text}>
-                        <p>{String(block.props.content)}</p>
-                    </div>
-                );
-            case "features":
-                return (
-                    <div style={previewStyles.features}>
-                        <h3>{String(block.props.title)}</h3>
-                        <div style={{ display: "flex", gap: 16 }}>
-                            {(block.props.items as Array<{ title: string; icon: string }>)?.slice(0, 3).map((item, i) => (
-                                <div key={i} style={{ flex: 1 }}>
-                                    <span style={{ fontSize: 24 }}>{item.icon}</span>
-                                    <div>{item.title}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                );
-            case "dock":
-                return (
-                    <div style={previewStyles.dock}>
-                        {(block.props.items as string[])?.map((icon, i) => (
-                            <span key={i} style={{ fontSize: 24, padding: "8px" }}>{icon}</span>
-                        ))}
-                    </div>
-                );
-            default:
-                return (
-                    <div style={{ padding: 16, background: "#f5f5f5" }}>
-                        <span style={{ fontSize: 24, marginRight: 8 }}>{block.icon}</span>
-                        {block.name}
-                    </div>
-                );
-        }
-    };
 
-    return <div>{renderPreview()}</div>;
-};
 
-// Property Editor Component
-const PropertyEditor = ({
-    block,
-    onUpdate
-}: {
-    block: PageBlock | null;
-    onUpdate: (props: BlockProps) => void;
-}) => {
-    if (!block) {
-        return <Empty description="Select a block to edit" />;
-    }
-
-    const renderEditor = () => {
-        switch (block.type) {
-            case "navigation":
-                return (
-                    <Form layout="vertical" initialValues={block.props}>
-                        <Form.Item label="Logo Text">
-                            <Input
-                                value={String(block.props.logo)}
-                                onChange={(e) => onUpdate({ ...block.props, logo: e.target.value })}
-                            />
-                        </Form.Item>
-                        <Form.Item label="Sticky Header">
-                            <Switch
-                                checked={Boolean(block.props.sticky)}
-                                onChange={(val) => onUpdate({ ...block.props, sticky: val })}
-                            />
-                        </Form.Item>
-                        <Form.Item label="Transparent">
-                            <Switch
-                                checked={Boolean(block.props.transparent)}
-                                onChange={(val) => onUpdate({ ...block.props, transparent: val })}
-                            />
-                        </Form.Item>
-                    </Form>
-                );
-            case "hero":
-                return (
-                    <Form layout="vertical">
-                        <Form.Item label="Title">
-                            <Input
-                                value={String(block.props.title)}
-                                onChange={(e) => onUpdate({ ...block.props, title: e.target.value })}
-                            />
-                        </Form.Item>
-                        <Form.Item label="Subtitle">
-                            <Input.TextArea
-                                value={String(block.props.subtitle)}
-                                onChange={(e) => onUpdate({ ...block.props, subtitle: e.target.value })}
-                                rows={2}
-                            />
-                        </Form.Item>
-                        <Form.Item label="CTA Button Text">
-                            <Input
-                                value={String(block.props.ctaText)}
-                                onChange={(e) => onUpdate({ ...block.props, ctaText: e.target.value })}
-                            />
-                        </Form.Item>
-                        <Form.Item label="CTA Link">
-                            <Input
-                                value={String(block.props.ctaLink)}
-                                onChange={(e) => onUpdate({ ...block.props, ctaLink: e.target.value })}
-                            />
-                        </Form.Item>
-                        <Form.Item label="Show Overlay">
-                            <Switch
-                                checked={Boolean(block.props.overlay)}
-                                onChange={(val) => onUpdate({ ...block.props, overlay: val })}
-                            />
-                        </Form.Item>
-                    </Form>
-                );
-            case "footer":
-                return (
-                    <Form layout="vertical">
-                        <Form.Item label="Copyright Text">
-                            <Input
-                                value={String(block.props.copyright)}
-                                onChange={(e) => onUpdate({ ...block.props, copyright: e.target.value })}
-                            />
-                        </Form.Item>
-                        <Form.Item label="Show Social Links">
-                            <Switch
-                                checked={Boolean(block.props.showSocials)}
-                                onChange={(val) => onUpdate({ ...block.props, showSocials: val })}
-                            />
-                        </Form.Item>
-                    </Form>
-                );
-            case "text":
-                return (
-                    <Form layout="vertical">
-                        <Form.Item label="Content">
-                            <Input.TextArea
-                                value={String(block.props.content)}
-                                onChange={(e) => onUpdate({ ...block.props, content: e.target.value })}
-                                rows={6}
-                            />
-                        </Form.Item>
-                    </Form>
-                );
-            case "features":
-                return (
-                    <Form layout="vertical">
-                        <Form.Item label="Section Title">
-                            <Input
-                                value={String(block.props.title)}
-                                onChange={(e) => onUpdate({ ...block.props, title: e.target.value })}
-                            />
-                        </Form.Item>
-                        <Form.Item label="Columns">
-                            <Input
-                                type="number"
-                                min={2}
-                                max={4}
-                                value={Number(block.props.columns)}
-                                onChange={(e) => onUpdate({ ...block.props, columns: parseInt(e.target.value) })}
-                            />
-                        </Form.Item>
-                    </Form>
-                );
-            case "dock":
-                return (
-                    <Form layout="vertical">
-                        <Form.Item label="Position">
-                            <Input
-                                value={String(block.props.position)}
-                                onChange={(e) => onUpdate({ ...block.props, position: e.target.value })}
-                            />
-                        </Form.Item>
-                        <Form.Item label="Size">
-                            <Input
-                                value={String(block.props.size)}
-                                onChange={(e) => onUpdate({ ...block.props, size: e.target.value })}
-                            />
-                        </Form.Item>
-                    </Form>
-                );
-            default:
-                return (
-                    <div>
-                        <p>Properties for {block.name}</p>
-                        <pre style={{ fontSize: 11, overflow: "auto" }}>
-                            {JSON.stringify(block.props, null, 2)}
-                        </pre>
-                    </div>
-                );
-        }
-    };
-
-    return (
-        <div>
-            <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 24 }}>{block.icon}</span>
-                <strong>{block.name}</strong>
-            </div>
-            <Divider />
-            {renderEditor()}
-        </div>
-    );
-};
-
-// Main Page Builder Component
 function PageBuilderContent() {
     const searchParams = useSearchParams();
     const pageId = searchParams.get("id");
 
     const [blocks, setBlocks] = useState<PageBlock[]>([]);
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+    const [selectedElement, setSelectedElement] = useState<string | null>(null);
     const [previewMode, setPreviewMode] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const [pageTitle, setPageTitle] = useState("Untitled Page");
     const [hasChanges, setHasChanges] = useState(false);
+    const [sidebarView, setSidebarView] = useState<'library' | 'properties'>('library');
+
+    // Panel states
+    const [libraryDock, setLibraryDock] = useState<DockPosition>('left');
+    const [structureDock, setStructureDock] = useState<DockPosition>('float');
+    const [libraryMinimized, setLibraryMinimized] = useState(false);
+    const [structureMinimized, setStructureMinimized] = useState(false);
+    const [templatePreview, setTemplatePreview] = useState<typeof pageTemplates[0] | null>(null);
 
     const selectedBlock = blocks.find(b => b.id === selectedBlockId) || null;
+
+    // Auto-switch sidebar when block selected
+    useEffect(() => {
+        if (selectedBlockId) {
+            setSidebarView('properties');
+        }
+    }, [selectedBlockId]);
+
+    // Reset selected element when block changes
+    const handleBlockSelect = (blockId: string) => {
+        if (blockId !== selectedBlockId) {
+            setSelectedElement(null);
+        }
+        setSelectedBlockId(blockId);
+    };
 
     // Load page if editing existing
     useEffect(() => {
@@ -504,22 +266,25 @@ function PageBuilderContent() {
     };
 
     const getBlockIcon = (type: string): string => {
-        const allBlocks = blockCategories.flatMap(c => c.blocks);
+        const allBlocks = blockCategories.flatMap(c => c.subcategories.flatMap(s => s.blocks));
         return allBlocks.find(b => b.type === type)?.icon || "📦";
     };
 
-    const addBlock = (type: string, name: string, icon: string) => {
+    const addBlock = (type: string, name: string, icon: string, layoutPreset?: any) => {
+        const baseProps = blockDefaults[type] ? { ...blockDefaults[type] } : {};
+        // If layoutPreset provided (for grid layouts), merge it with baseProps
+        const props = layoutPreset ? { ...baseProps, ...layoutPreset } : baseProps;
         const newBlock: PageBlock = {
             id: `block-${Date.now()}`,
             type,
             name,
             icon,
-            props: blockDefaults[type] || {},
+            props,
         };
         setBlocks([...blocks, newBlock]);
         setSelectedBlockId(newBlock.id);
         setHasChanges(true);
-        message.success(`Added ${name} block`);
+        message.success(`Added ${name}`);
     };
 
     const removeBlock = (id: string) => {
@@ -547,6 +312,38 @@ function PageBuilderContent() {
         ));
         setHasChanges(true);
     };
+
+    // Add a block to a specific grid cell (row/column)
+    const addBlockToGridCell = useCallback((
+        parentBlockId: string,
+        rowIndex: number,
+        colIndex: number,
+        blockType: string,
+        blockName: string,
+        blockIcon: string
+    ) => {
+        setBlocks(prevBlocks => prevBlocks.map(block => {
+            if (block.id === parentBlockId && block.type === "gridContainer") {
+                const rows = [...((block.props.rows as any[]) || [])];
+                if (rows[rowIndex]) {
+                    const columns = [...rows[rowIndex].columns];
+                    const newBlock: PageBlock = {
+                        id: `block-${Date.now()}-${rowIndex}-${colIndex}`,
+                        type: blockType,
+                        name: blockName,
+                        icon: blockIcon,
+                        props: blockDefaults[blockType] ? { ...blockDefaults[blockType] } : {},
+                    };
+                    columns[colIndex] = { ...columns[colIndex], block: newBlock };
+                    rows[rowIndex] = { ...rows[rowIndex], columns };
+                    return { ...block, props: { ...block.props, rows } };
+                }
+            }
+            return block;
+        }));
+        setHasChanges(true);
+        message.success(`Added ${blockName} to row ${rowIndex + 1}, column ${colIndex + 1}`);
+    }, []);
 
     const handleDropFromLibrary = (item: { type: string; name: string; icon: string }) => {
         addBlock(item.type, item.name, item.icon);
@@ -584,27 +381,194 @@ function PageBuilderContent() {
         setSaving(false);
     };
 
-    const blockLibraryItems = blockCategories.map(cat => ({
-        key: cat.key,
-        label: cat.label,
-        children: (
-            <Space wrap size="small">
-                {cat.blocks.map((block) => (
-                    <DraggableLibraryBlock
-                        key={block.type}
-                        item={block}
-                    >
-                        <Button
-                            size="small"
-                            onClick={() => addBlock(block.type, block.name, block.icon)}
-                        >
-                            {block.icon} {block.name}
-                        </Button>
-                    </DraggableLibraryBlock>
-                ))}
-            </Space>
-        ),
-    }));
+    // Export page as JSON file
+    const exportPage = () => {
+        const pageData = {
+            title: pageTitle,
+            version: "1.0",
+            exportedAt: new Date().toISOString(),
+            blocks: blocks.map(b => ({
+                id: b.id,
+                type: b.type,
+                name: b.name,
+                icon: b.icon,
+                props: b.props,
+            })),
+        };
+        const blob = new Blob([JSON.stringify(pageData, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${pageTitle.replace(/\s+/g, "_").toLowerCase()}_page.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        message.success("Page exported successfully!");
+    };
+
+    // Import page from JSON file
+    const importPage = () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".json";
+        input.onchange = (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = JSON.parse(event.target?.result as string);
+                    if (data.blocks && Array.isArray(data.blocks)) {
+                        setBlocks(data.blocks);
+                        if (data.title) setPageTitle(data.title);
+                        setHasChanges(true);
+                        message.success("Page imported successfully!");
+                    } else {
+                        message.error("Invalid page file format");
+                    }
+                } catch {
+                    message.error("Failed to parse page file");
+                }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    };
+
+    // Publish page (save as published)
+    const publishPage = async () => {
+        setSaving(true);
+        try {
+            const content = blocks.map(b => ({
+                id: b.id,
+                type: b.type,
+                props: b.props,
+            }));
+
+            if (pageId) {
+                await pageService.savePageContent(pageId, content as any);
+                // Mark as published (update status if pageService supports it)
+                message.success("Page published successfully!");
+            } else {
+                // Create and publish
+                const newPage = await pageService.createPage({
+                    title: pageTitle,
+                    content: content as any,
+                });
+                if (newPage) {
+                    window.history.replaceState({}, "", `/admin/pages/builder?id=${newPage.id}`);
+                    message.success("Page created and published!");
+                }
+            }
+            setHasChanges(false);
+        } catch (error) {
+            message.error("Failed to publish page");
+        }
+        setSaving(false);
+    };
+
+    // Add template to canvas with preview first
+    const handleTemplateClick = (template: typeof pageTemplates[0]) => {
+        setTemplatePreview(template);
+    };
+
+    const applyTemplate = () => {
+        if (!templatePreview) return;
+        const newBlocks: PageBlock[] = templatePreview.blocks.map((b, idx) => ({
+            id: `block-${Date.now()}-${idx}`,
+            type: b.type,
+            name: b.name,
+            icon: b.icon,
+            props: (b as any).props || blockDefaults[b.type] || {},
+        }));
+        setBlocks([...blocks, ...newBlocks]);
+        setHasChanges(true);
+        setTemplatePreview(null);
+        message.success(`Added ${templatePreview.name} template`);
+    };
+
+    // Build library items with nested Collapse
+    const blockLibraryItems = [
+        ...blockCategories.map(cat => ({
+            key: cat.key,
+            label: <Tooltip title={cat.label} placement="right">{cat.icon}</Tooltip>,
+            children: (
+                <Collapse
+                    ghost
+                    size="small"
+                    defaultActiveKey={cat.subcategories.map((_, i) => i.toString())}
+                    items={cat.subcategories.map((subcat, i) => ({
+                        key: i.toString(),
+                        label: <span style={{ fontSize: 12, fontWeight: 500 }}>{subcat.name}</span>,
+                        children: subcat.blocks.length > 0 ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                {subcat.blocks.map((block, idx) => (
+                                    <DraggableLibraryBlock
+                                        key={`${block.type}-${idx}`}
+                                        item={block}
+                                    >
+                                        <BlockThumbnail
+                                            type={block.type}
+                                            name={block.name}
+                                            icon={block.icon}
+                                            onClick={() => addBlock(block.type, block.name, block.icon, (block as any).layoutPreset)}
+                                        />
+                                    </DraggableLibraryBlock>
+                                ))}
+                            </div>
+                        ) : (
+                            <div style={{ textAlign: "center", padding: 12, color: "#999", fontSize: 11 }}>
+                                No blocks in this category
+                            </div>
+                        ),
+                    }))}
+                />
+            ),
+        })),
+        // Templates tab
+        {
+            key: "templates",
+            label: <Tooltip title="Templates" placement="right"><AppstoreOutlined /></Tooltip>,
+            children: (
+                <div style={{ padding: 8 }}>
+                    <div style={{ fontSize: 11, color: '#666', marginBottom: 12 }}>
+                        Pre-built page sections. Click to preview.
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {pageTemplates.map(template => (
+                            <div
+                                key={template.id}
+                                onClick={() => handleTemplateClick(template)}
+                                style={{
+                                    padding: 12,
+                                    border: '1px solid #e8e8e8',
+                                    borderRadius: 8,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    background: '#fafafa',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = '#667eea';
+                                    e.currentTarget.style.background = '#f0f2ff';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = '#e8e8e8';
+                                    e.currentTarget.style.background = '#fafafa';
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontSize: 20 }}>{template.preview}</span>
+                                    <div>
+                                        <div style={{ fontWeight: 600, fontSize: 12 }}>{template.name}</div>
+                                        <div style={{ fontSize: 10, color: '#999' }}>{template.description}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ),
+        },
+    ];
 
     return (
         <CMSLayout
@@ -621,130 +585,265 @@ function PageBuilderContent() {
             }
             subTitle="Drag blocks to build your page"
             extra={[
+                <Tooltip key="import-tip" title="Import Page">
+                    <Button
+                        key="import"
+                        icon={<UploadOutlined />}
+                        onClick={importPage}
+                    />
+                </Tooltip>,
+                <Tooltip key="export-tip" title="Export Page">
+                    <Button
+                        key="export"
+                        icon={<DownloadOutlined />}
+                        onClick={exportPage}
+                        disabled={blocks.length === 0}
+                    />
+                </Tooltip>,
                 <Button
                     key="preview"
                     icon={<EyeOutlined />}
                     onClick={() => setPreviewMode(!previewMode)}
                     type={previewMode ? "primary" : "default"}
                 >
-                    {previewMode ? "Edit Mode" : "Preview"}
+                    {previewMode ? "Edit" : "Preview"}
                 </Button>,
                 <Button
                     key="save"
-                    type="primary"
                     icon={saving ? <Spin size="small" /> : <SaveOutlined />}
                     onClick={savePage}
                     disabled={saving}
                 >
-                    {hasChanges ? "Save Changes" : "Saved"}
+                    {hasChanges ? "Save" : "Saved"}
+                </Button>,
+                <Button
+                    key="publish"
+                    type="primary"
+                    icon={<CloudUploadOutlined />}
+                    onClick={publishPage}
+                    disabled={saving || blocks.length === 0}
+                >
+                    Publish
                 </Button>,
             ]}
         >
-            <Row gutter={16}>
-                {/* Block Library */}
-                <Col xs={24} md={5}>
-                    <Card
-                        title={<><DragOutlined /> Block Library</>}
-                        size="small"
-                        style={{ marginBottom: 16 }}
+            {/* Canvas - Full width with dynamic margins based on docked panels */}
+            <div
+                style={{
+                    marginLeft: libraryDock === 'left' && !libraryMinimized ? 320 : 0,
+                    marginRight: (libraryDock === 'right' && !libraryMinimized) || (structureDock === 'right' && !structureMinimized) ? 320 : 0,
+                    transition: 'margin 0.2s ease',
+                    height: 'calc(100vh - 120px)',
+                    padding: 16,
+                }}
+            >
+                <Card
+                    title={previewMode ? "Preview" : "Canvas"}
+                    size="small"
+                    style={{ height: '100%', overflow: 'hidden' }}
+                    extra={!previewMode && <DragOutlined />}
+                    bodyStyle={{ height: 'calc(100% - 40px)', padding: 24, background: '#f5f5f5', overflowY: 'auto' }}
+                >
+                    <CanvasDropZone
+                        onDrop={handleDropFromLibrary}
+                        isEmpty={blocks.length === 0}
                     >
-                        <Tabs items={blockLibraryItems} size="small" />
-                        <Divider style={{ margin: "12px 0" }} />
-                        <div style={{ fontSize: 12, color: "#999" }}>
-                            💡 Drag blocks to the canvas or click to add
-                        </div>
-                    </Card>
-                </Col>
-
-                {/* Canvas */}
-                <Col xs={24} md={previewMode ? 19 : 13}>
-                    <Card
-                        title={previewMode ? "Preview" : "Canvas"}
-                        size="small"
-                        style={{ minHeight: 600 }}
-                        extra={!previewMode && <DragOutlined />}
-                    >
-                        <CanvasDropZone
-                            onDrop={handleDropFromLibrary}
-                            isEmpty={blocks.length === 0}
-                        >
-                            {blocks.length > 0 && (
-                                <div style={{ display: "flex", flexDirection: "column", gap: previewMode ? 0 : 8 }}>
-                                    {blocks.map((block, index) => (
-                                        <SortableBlock
-                                            key={block.id}
-                                            id={block.id}
-                                            index={index}
-                                            moveBlock={moveBlock}
+                        {blocks.length > 0 && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: previewMode ? 0 : 8 }}>
+                                {blocks.map((block, index) => (
+                                    <SortableBlock
+                                        key={block.id}
+                                        id={block.id}
+                                        index={index}
+                                        moveBlock={moveBlock}
+                                    >
+                                        <div
+                                            style={{
+                                                border: previewMode ? "none" : (selectedBlockId === block.id
+                                                    ? "2px solid #1677ff"
+                                                    : "1px solid #d9d9d9"),
+                                                borderRadius: previewMode ? 0 : 4,
+                                                overflow: "hidden",
+                                                cursor: previewMode ? "default" : "pointer",
+                                                position: "relative",
+                                                background: '#fff'
+                                            }}
+                                            onClick={() => !previewMode && handleBlockSelect(block.id)}
                                         >
-                                            <div
-                                                style={{
-                                                    border: previewMode ? "none" : (selectedBlockId === block.id
-                                                        ? "2px solid #1677ff"
-                                                        : "1px solid #d9d9d9"),
-                                                    borderRadius: previewMode ? 0 : 4,
-                                                    overflow: "hidden",
-                                                    cursor: previewMode ? "default" : "pointer",
-                                                    position: "relative",
-                                                }}
-                                                onClick={() => !previewMode && setSelectedBlockId(block.id)}
-                                            >
-                                                <BlockPreview block={block} />
+                                            <BlockRenderer
+                                                block={block}
+                                                selectedElement={selectedBlockId === block.id ? selectedElement : null}
+                                                onSelectElement={setSelectedElement}
+                                                editMode={!previewMode && selectedBlockId === block.id}
+                                                onDropToCell={addBlockToGridCell}
+                                            />
 
-                                                {!previewMode && selectedBlockId === block.id && (
-                                                    <div style={{
-                                                        position: "absolute",
-                                                        top: 4,
-                                                        right: 4,
-                                                        display: "flex",
-                                                        gap: 4,
-                                                    }}>
-                                                        <Button
-                                                            size="small"
-                                                            icon={<ArrowUpOutlined />}
-                                                            disabled={index === 0}
-                                                            onClick={(e) => { e.stopPropagation(); moveBlock(index, index - 1); }}
-                                                        />
-                                                        <Button
-                                                            size="small"
-                                                            icon={<ArrowDownOutlined />}
-                                                            disabled={index === blocks.length - 1}
-                                                            onClick={(e) => { e.stopPropagation(); moveBlock(index, index + 1); }}
-                                                        />
-                                                        <Button
-                                                            size="small"
-                                                            icon={<SettingOutlined />}
-                                                            onClick={(e) => { e.stopPropagation(); setDrawerOpen(true); }}
-                                                        />
-                                                        <Button
-                                                            size="small"
-                                                            danger
-                                                            icon={<DeleteOutlined />}
-                                                            onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }}
-                                                        />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </SortableBlock>
-                                    ))}
-                                </div>
-                            )}
-                        </CanvasDropZone>
-                    </Card>
-                </Col>
+                                            {!previewMode && selectedBlockId === block.id && (
+                                                <div style={{
+                                                    position: "absolute",
+                                                    top: 4,
+                                                    right: 4,
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: 4,
+                                                    zIndex: 20,
+                                                    background: "rgba(255,255,255,0.9)",
+                                                    padding: "2px 4px",
+                                                    borderRadius: 4,
+                                                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                                                }}>
+                                                    <span style={{ fontSize: 11, fontWeight: 600, marginRight: 4, color: "#1677ff" }}>{block.name}</span>
+                                                    <Button
+                                                        size="small"
+                                                        icon={<ArrowUpOutlined />}
+                                                        disabled={index === 0}
+                                                        onClick={(e) => { e.stopPropagation(); moveBlock(index, index - 1); }}
+                                                    />
+                                                    <Button
+                                                        size="small"
+                                                        icon={<ArrowDownOutlined />}
+                                                        disabled={index === blocks.length - 1}
+                                                        onClick={(e) => { e.stopPropagation(); moveBlock(index, index + 1); }}
+                                                    />
+                                                    <Button
+                                                        size="small"
+                                                        icon={<SettingOutlined />}
+                                                        onClick={(e) => { e.stopPropagation(); setSidebarView('properties'); }}
+                                                    />
+                                                    <Button
+                                                        size="small"
+                                                        danger
+                                                        icon={<DeleteOutlined />}
+                                                        onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </SortableBlock>
+                                ))}
+                            </div>
+                        )}
+                    </CanvasDropZone>
+                </Card>
+            </div>
 
-                {/* Properties Panel - only in edit mode */}
-                {!previewMode && (
-                    <Col xs={24} md={6}>
-                        <Card title="Properties" size="small" extra={<SettingOutlined />}>
-                            <PropertyEditor
-                                block={selectedBlock}
-                                onUpdate={updateBlockProps}
+            {/* Floating Block Library Panel */}
+            {!previewMode && (
+                <FloatingPanel
+                    id="library"
+                    title={sidebarView === 'properties' ? 'Properties' : 'Block Library'}
+                    icon={sidebarView === 'properties' ? <SettingOutlined /> : <DragOutlined />}
+                    dockPosition={libraryDock}
+                    onDockChange={setLibraryDock}
+                    minimized={libraryMinimized}
+                    onMinimizedChange={setLibraryMinimized}
+                >
+                    {/* Inner Card - headless for content */}
+                    <Card
+                        bordered={false}
+                        bodyStyle={{ padding: 0, height: '100%' }}
+                        style={{ background: 'transparent', height: '100%' }}
+                    >
+                        {sidebarView === 'library' ? (
+                            <Tabs
+                                items={blockLibraryItems}
+                                size="small"
+                                tabPosition="left"
+                                style={{ height: '100%' }}
+                                tabBarStyle={{
+                                    width: 48,
+                                    borderRight: 'none',
+                                    background: 'transparent',
+                                }}
                             />
-                        </Card>
-                    </Col>
+                        ) : (
+                            <div style={{ padding: 12 }}>
+                                <Button
+                                    type="text"
+                                    icon={<LeftOutlined />}
+                                    size="small"
+                                    onClick={() => setSidebarView('library')}
+                                    style={{ marginBottom: 12 }}
+                                >
+                                    Back to Library
+                                </Button>
+                                {selectedBlock ? (
+                                    <PropertyEditor
+                                        block={selectedBlock}
+                                        selectedElement={selectedElement}
+                                        onUpdate={updateBlockProps}
+                                    />
+                                ) : (
+                                    <div style={{ textAlign: 'center', color: '#999', marginTop: 40 }}>
+                                        Select a block to edit
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </Card>
+                </FloatingPanel>
+            )}
+
+            {/* Floating Page Structure Panel */}
+            {!previewMode && (
+                <FloatingPanel
+                    id="structure"
+                    title="Page Structure"
+                    icon={<AppstoreOutlined />}
+                    dockPosition={structureDock}
+                    onDockChange={setStructureDock}
+                    minimized={structureMinimized}
+                    onMinimizedChange={setStructureMinimized}
+                    defaultWidth={280}
+                >
+                    {/* Content directly - no extra title needed */}
+                    <PageStructure
+                        blocks={blocks}
+                        selectedBlockId={selectedBlockId}
+                        selectedElement={selectedElement}
+                        selectedMediaId={null}
+                        onSelectBlock={handleBlockSelect}
+                        onSelectElement={setSelectedElement}
+                    />
+                </FloatingPanel>
+            )}
+
+            {/* Template Preview Modal */}
+            <Modal
+                title={templatePreview ? `Template: ${templatePreview.name}` : 'Template Preview'}
+                open={!!templatePreview}
+                onCancel={() => setTemplatePreview(null)}
+                onOk={applyTemplate}
+                okText="Add to Page"
+                width={480}
+            >
+                {templatePreview && (
+                    <div>
+                        <div style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>
+                            {templatePreview.description}
+                        </div>
+                        <div style={{ fontWeight: 600, marginBottom: 8 }}>Blocks included:</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {templatePreview.blocks.map((block, idx) => (
+                                <div
+                                    key={idx}
+                                    style={{
+                                        padding: 8,
+                                        background: '#f5f5f5',
+                                        borderRadius: 4,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8
+                                    }}
+                                >
+                                    <span>{block.icon}</span>
+                                    <span>{block.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 )}
-            </Row>
+            </Modal>
 
             {/* Mobile Properties Drawer */}
             <Drawer
@@ -756,10 +855,11 @@ function PageBuilderContent() {
             >
                 <PropertyEditor
                     block={selectedBlock}
+                    selectedElement={selectedElement}
                     onUpdate={updateBlockProps}
                 />
             </Drawer>
-        </CMSLayout>
+        </CMSLayout >
     );
 }
 

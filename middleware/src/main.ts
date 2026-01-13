@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import graphqlUploadExpress from 'graphql-upload/graphqlUploadExpress.mjs';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
@@ -16,8 +17,12 @@ async function bootstrap() {
         credentials: true,
     });
 
+    // Enable file upload handling for GraphQL
+    app.use(graphqlUploadExpress({ maxFileSize: 50000000, maxFiles: 10 }));
+
     const port = process.env.PORT || 4001;
     await app.listen(port);
     console.log(`🚀 Middleware running on http://localhost:${port}/graphql`);
 }
 bootstrap();
+

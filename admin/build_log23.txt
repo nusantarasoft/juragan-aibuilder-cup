@@ -1,0 +1,51 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 10.7s
+  Running TypeScript ...
+npm : Failed to compile.
+At line:1 char:11
++ cd admin; npm run build 2>&1 | 
+Out-File -FilePath build_log23.txt -En 
+...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecif 
+   ied: (Failed to compile.:String) []  
+  , RemoteException
+    + FullyQualifiedErrorId : NativeCom 
+   mandError
+ 
+
+./src/components/mvpblocks/chatbot-ui/v0
+-chat.tsx:21:63
+Type error: Argument of type '{ 
+minHeight: number; maxHeight: number; 
+}' is not assignable to parameter of 
+type 'number'.
+
+[0m [90m 19 |[39m [36mexport[39m 
+[36mfunction[39m 
+[33mVercelV0Chat[39m() {
+ [90m 20 |[39m   [36mconst[39m 
+[value[33m,[39m setValue] [33m=[39m 
+useState([32m''[39m)[33m;[39m
+[31m[1m>[22m[39m[90m 21 |[39m   
+[36mconst[39m { 
+textareaRef[33m,[39m adjustHeight } 
+[33m=[39m useAutoResizeTextarea({
+ [90m    |[39m                        
+                                       
+[31m[1m^[22m[39m
+ [90m 22 |[39m     
+minHeight[33m:[39m 
+[35m60[39m[33m,[39m
+ [90m 23 |[39m     
+maxHeight[33m:[39m 
+[35m200[39m[33m,[39m
+ [90m 24 |[39m   })[33m;[39m[0m
+Next.js build worker exited with code: 
+1 and signal: null

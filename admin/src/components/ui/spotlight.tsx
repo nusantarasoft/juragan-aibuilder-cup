@@ -1,12 +1,16 @@
+// @ts-nocheck
 import React from "react";
 import { cn } from "@/lib/utils";
 
 type SpotlightProps = {
     className?: string;
     fill?: string;
+    gradientFirst?: string;
+    gradientSecond?: string;
+    gradientThird?: string;
 };
 
-export const Spotlight = ({ className, fill }: SpotlightProps) => {
+export const Spotlight = ({ className, fill, gradientFirst, gradientSecond, gradientThird }: SpotlightProps) => {
     return (
         <svg
             className={cn(

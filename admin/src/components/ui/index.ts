@@ -16,7 +16,6 @@ export * from "./glowing-effect";
 export * from "./grid-background";
 export * from "./hero-highlight";
 export * from "./lamp";
-export * from "./meteors";
 export * from "./noise-background";
 export * from "./shooting-stars";
 export * from "./sparkles";
@@ -29,7 +28,6 @@ export * from "./wavy-background";
 
 // Cards
 export * from "./3d-card";
-export * from "./bento-grid";
 export * from "./card-hover-effect";
 export * from "./card-spotlight";
 export * from "./card-stack";
@@ -115,7 +113,6 @@ export * from "./3d-pin";
 
 // Cursor & Pointer
 export * from "./following-pointer";
-export * from "./lens";
 
 // Testimonials
 export * from "./animated-testimonials";

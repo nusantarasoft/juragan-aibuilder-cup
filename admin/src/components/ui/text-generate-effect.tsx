@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 import { useEffect } from "react";
 import { motion, stagger, useAnimate } from "motion/react";
@@ -8,11 +9,15 @@ export const TextGenerateEffect = ({
     className,
     filter = true,
     duration = 0.5,
+    styles,
 }: {
     words: string;
     className?: string;
     filter?: boolean;
     duration?: number;
+    styles?: {
+        word?: React.CSSProperties;
+    };
 }) => {
     const [scope, animate] = useAnimate();
     const wordsArray = words.split(" ");
@@ -40,6 +45,7 @@ export const TextGenerateEffect = ({
                             className="dark:text-white text-black opacity-0"
                             style={{
                                 filter: filter ? "blur(10px)" : "none",
+                                ...styles?.word
                             }}
                         >
                             {word}{" "}

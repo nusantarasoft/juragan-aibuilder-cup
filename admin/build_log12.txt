@@ -1,0 +1,51 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 11.6s
+  Running TypeScript ...
+npm : Failed to compile.
+At line:1 char:11
++ cd admin; npm run build 2>&1 | 
+Out-File -FilePath build_log12.txt -En 
+...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecif 
+   ied: (Failed to compile.:String) []  
+  , RemoteException
+    + FullyQualifiedErrorId : NativeCom 
+   mandError
+ 
+
+./src/components/mvpblocks/basics/text-t
+ype-demo.tsx:15:13
+Type error: Type '{ text: string[]; 
+typingSpeed: number; pauseDuration: 
+number; showCursor: true; 
+cursorCharacter: string; className: 
+string; }' is not assignable to type 
+'IntrinsicAttributes & TextTypeProps'.
+  Property 'cursorCharacter' does not 
+exist on type 'IntrinsicAttributes & 
+TextTypeProps'.
+
+[0m [90m 13 |[39m             
+pauseDuration[33m=[39m{[35m1500[39m}
+ [90m 14 |[39m             
+showCursor[33m=[39m{[36mtrue[39m}
+[31m[1m>[22m[39m[90m 15 |[39m     
+        
+cursorCharacter[33m=[39m[32m"|"[39m
+ [90m    |[39m             
+[31m[1m^[22m[39m
+ [90m 16 |[39m             className[
+33m=[39m[32m"text-foreground"[39m
+ [90m 17 |[39m           
+[33m/[39m[33m>[39m
+ [90m 18 |[39m         [33m<[39m[33
+m/[39m[33mh1[39m[33m>[39m[0m
+Next.js build worker exited with code: 
+1 and signal: null

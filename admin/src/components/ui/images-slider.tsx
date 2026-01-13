@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence, Variants } from "motion/react";

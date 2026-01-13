@@ -1,0 +1,48 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 18.6s
+  Running TypeScript ...
+npm : Failed to compile.
+At line:1 char:11
++ cd admin; npm run build 2>&1 | Out-File 
+-FilePath build_log43.txt -En ...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified:  
+   (Failed to compile.:String) [], RemoteEx  
+  ception
+    + FullyQualifiedErrorId : NativeCommandE 
+   rror
+ 
+
+./src/components/mvpblocks/text-animations/te
+xt-reveal-1.tsx:13:6
+Type error: Type '{ children: string; 
+className: string; from: string; split: 
+string; }' is not assignable to type 
+'IntrinsicAttributes & TextRevealProps'.
+  Property 'children' does not exist on type 
+'IntrinsicAttributes & TextRevealProps'.
+
+[0m [90m 11 |[39m [36mexport[39m 
+[36mdefault[39m [36mfunction[39m 
+[33mTextRevealLetters[39m() {
+ [90m 12 |[39m   [36mreturn[39m (
+[31m[1m>[22m[39m[90m 13 |[39m     
+[33m<[39m[33mTextReveal[39m
+ [90m    |[39m      [31m[1m^[22m[39m
+ [90m 14 |[39m       
+className[33m=[39m{cn(
+ [90m 15 |[39m         [32m`bg-primary 
+from-foreground to-primary via-rose-200 
+bg-clip-text text-6xl font-bold 
+text-transparent 
+dark:bg-gradient-to-b`[39m[33m,[39m
+ [90m 16 |[39m         
+geist[33m.[39mclassName[33m,[39m[0m
+Next.js build worker exited with code: 1 and 
+signal: null

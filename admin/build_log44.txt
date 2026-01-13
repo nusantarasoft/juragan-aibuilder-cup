@@ -1,0 +1,45 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 18.4s
+  Running TypeScript ...
+npm : Failed to compile.
+At line:1 char:11
++ cd admin; npm run build 2>&1 | Out-File 
+-FilePath build_log44.txt -En ...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified:  
+   (Failed to compile.:String) [], RemoteEx  
+  ception
+    + FullyQualifiedErrorId : NativeCommandE 
+   rror
+ 
+
+./src/components/mvpblocks/text-animations/te
+xt-reveal-2.tsx:9:7
+Type error: Type '{ children: string; 
+className: string; from: string; split: 
+string; blur: number; delay: number; 
+duration: number; }' is not assignable to 
+type 'IntrinsicAttributes & TextRevealProps'.
+  Property 'blur' does not exist on type 
+'IntrinsicAttributes & TextRevealProps'.
+
+[0m [90m  7 |[39m       
+[36mfrom[39m[33m=[39m[32m"top"[39m
+ [90m  8 |[39m       
+split[33m=[39m[32m"word"[39m
+[31m[1m>[22m[39m[90m  9 |[39m       
+blur[33m=[39m{[35m3[39m}
+ [90m    |[39m       [31m[1m^[22m[39m
+ [90m 10 |[39m       
+delay[33m=[39m{[35m0.2[39m}
+ [90m 11 |[39m       
+duration[33m=[39m{[35m1.2[39m}
+ [90m 12 |[39m     [33m>[39m[0m
+Next.js build worker exited with code: 1 and 
+signal: null

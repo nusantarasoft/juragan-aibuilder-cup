@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { AnimatedThemeToggler } from "@/components/magicui/animated-theme-toggler";
 import {
     LogoutOutlined,
     SearchOutlined,
@@ -13,11 +14,10 @@ import {
     StarOutlined,
     HistoryOutlined,
     ClockCircleOutlined,
-    SunOutlined,
-    MoonOutlined,
     PlusOutlined,
     FileAddOutlined,
     AppstoreOutlined,
+    RobotOutlined,
 } from "@ant-design/icons";
 import {
     PageContainer,
@@ -31,7 +31,6 @@ import {
     Input,
     theme,
     Segmented,
-    Switch,
     Tooltip,
     Popover,
     Avatar,
@@ -39,6 +38,9 @@ import {
 } from "antd";
 import { useRouter, usePathname } from "next/navigation";
 import menuConfig from "@/config/menuConfig";
+import GlitchText from "@/components/react-bits/GlitchText";
+import MetaBalls from "@/components/react-bits/MetaBalls";
+import AnimatedTooltip from "@/components/mvpblocks/AnimatedTooltip";
 
 const { Text } = Typography;
 
@@ -123,6 +125,7 @@ const getInnerMenuRoutes = (segment: string) => {
         case "starred":
             return [
                 { path: "/admin/media", name: "Media Library", icon: <StarOutlined /> },
+                { path: "/admin/ai-studio", name: "AI Studio (NotebookLM)", icon: <RobotOutlined /> },
                 { path: "/admin/users/list", name: "User Management", icon: <StarOutlined /> },
             ];
         case "history":
@@ -139,7 +142,7 @@ const getInnerMenuRoutes = (segment: string) => {
 interface CMSLayoutProps {
     children: React.ReactNode;
     title?: React.ReactNode;
-    subTitle?: string;
+    subTitle?: React.ReactNode;
     extra?: React.ReactNode[];
     breadcrumb?: { title: string; path?: string }[];
 }
@@ -241,11 +244,163 @@ export default function CMSLayout({
     const router = useRouter();
     const currentPath = usePathname();
     const [pathname, setPathname] = useState(currentPath || "/admin/dashboard");
-    const [innerCollapsed, setInnerCollapsed] = useState(false);
+    const [innerCollapsed, setInnerCollapsed] = useState(true); // Default collapsed
     const [outerCollapsed, setOuterCollapsed] = useState(false);
     const [selectedSegment, setSelectedSegment] = useState<string>("recent");
     const [darkMode, setDarkMode] = useState(false);
     const [appListOpen, setAppListOpen] = useState(false);
+    const [isHydrated, setIsHydrated] = useState(false);
+    const [showBackground, setShowBackground] = useState(true);
+
+    // Initialize preferences from localStorage and system preferences
+    React.useEffect(() => {
+        // Get saved preferences from localStorage
+        const savedInnerCollapsed = localStorage.getItem("cms-inner-collapsed");
+        const savedOuterCollapsed = localStorage.getItem("cms-outer-collapsed");
+        const savedDarkMode = localStorage.getItem("cms-dark-mode");
+        const savedShowBackground = localStorage.getItem("cms-show-background");
+
+        // Inner sidebar: use saved preference, default to collapsed (true)
+        if (savedInnerCollapsed !== null) {
+            setInnerCollapsed(savedInnerCollapsed === "true");
+        }
+        // If no saved preference, keep the default (true = collapsed)
+
+        // Outer sidebar: use saved preference, default to expanded (false)
+        if (savedOuterCollapsed !== null) {
+            setOuterCollapsed(savedOuterCollapsed === "true");
+        }
+
+        // Dark mode: use saved preference, or fall back to system preference
+        if (savedDarkMode !== null) {
+            setDarkMode(savedDarkMode === "true");
+        } else {
+            // Check system preference
+            const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+            setDarkMode(prefersDark);
+        }
+
+        // Background toggle: use saved preference, default to true
+        if (savedShowBackground !== null) {
+            setShowBackground(savedShowBackground === "true");
+        }
+
+        setIsHydrated(true);
+    }, []);
+
+    // Listen for system theme changes
+    React.useEffect(() => {
+        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        const handleChange = (e: MediaQueryListEvent) => {
+            // Only auto-switch if user hasn't set a preference
+            const savedDarkMode = localStorage.getItem("cms-dark-mode");
+            if (savedDarkMode === null) {
+                setDarkMode(e.matches);
+            }
+        };
+
+        mediaQuery.addEventListener("change", handleChange);
+        return () => mediaQuery.removeEventListener("change", handleChange);
+    }, []);
+
+    // Ref to track if initial ProLayout setup has completed
+    // ProLayout calls onCollapse during mount, so we delay allowing saves
+    const hasInitialized = React.useRef(false);
+
+    // Set hasInitialized after a delay to let ProLayout finish its initial render
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            hasInitialized.current = true;
+        }, 500);
+        return () => clearTimeout(timer);
+    }, []);
+
+    // Ref to track theme transitions (blocks onCollapse during dark mode change)
+    const isTransitioning = React.useRef(false);
+
+    // Handler for inner sidebar collapse - ignores calls during initialization and theme transitions
+    const handleInnerCollapse = React.useCallback((collapsed: boolean) => {
+        if (!hasInitialized.current || isTransitioning.current) {
+            // Ignore ProLayout's initialization and theme transition calls
+            return;
+        }
+        setInnerCollapsed(collapsed);
+        localStorage.setItem("cms-inner-collapsed", String(collapsed));
+    }, []);
+
+    // Handler for outer sidebar collapse - ignores calls during initialization and theme transitions
+    const handleOuterCollapse = React.useCallback((collapsed: boolean) => {
+        if (!hasInitialized.current || isTransitioning.current) {
+            // Ignore ProLayout's initialization and theme transition calls
+            return;
+        }
+        setOuterCollapsed(collapsed);
+        localStorage.setItem("cms-outer-collapsed", String(collapsed));
+    }, []);
+
+    // Handler for dark mode toggle - saves to localStorage and updates document class
+    // Uses isTransitioning ref to block ProLayout's onCollapse calls during theme change
+    const handleDarkModeChange = (dark: boolean) => {
+        // Block onCollapse calls during theme transition  
+        isTransitioning.current = true;
+
+        setDarkMode(dark);
+        localStorage.setItem("cms-dark-mode", String(dark));
+        // Toggle dark class on documentElement for Tailwind CSS
+        if (dark) {
+            document.documentElement.classList.add("dark");
+        } else {
+            document.documentElement.classList.remove("dark");
+        }
+
+        // Re-enable onCollapse after ProLayout re-renders
+        setTimeout(() => {
+            isTransitioning.current = false;
+        }, 500);
+    };
+
+    // Sync dark class on initial hydration
+    React.useEffect(() => {
+        if (darkMode) {
+            document.documentElement.classList.add("dark");
+        } else {
+            document.documentElement.classList.remove("dark");
+        }
+    }, [darkMode]);
+
+    // Force sticky sidebar for inner layout
+    React.useEffect(() => {
+        // Function to apply sticky styles with !important
+        const applySticky = () => {
+            const sider = document.querySelector(".cms-inner-sider");
+            if (sider instanceof HTMLElement) {
+                sider.style.setProperty("position", "sticky", "important");
+                sider.style.setProperty("top", "0", "important");
+                sider.style.setProperty("height", "100vh", "important");
+                sider.style.setProperty("overflow", "visible", "important");
+                sider.style.setProperty("z-index", "10", "important");
+            }
+        };
+
+        // Apply immediately
+        console.log("Run Stick Fix - Attempting to apply sticky styles...");
+        applySticky();
+
+        // Re-apply periodically to fight against AntD re-renders
+        const intervalId = setInterval(applySticky, 500);
+
+        // And observe for changes
+        const observer = new MutationObserver(applySticky);
+        const container = document.querySelector(".cms-inner-layout");
+        if (container) {
+            observer.observe(container, { childList: true, subtree: true });
+        }
+
+        return () => {
+            clearInterval(intervalId);
+            observer.disconnect();
+        };
+    }, [pathname, innerCollapsed]);
 
     // Auto-generate breadcrumb if not provided
     const breadcrumbItems = breadcrumb || generateBreadcrumb(currentPath || "/admin/dashboard");
@@ -289,7 +444,7 @@ export default function CMSLayout({
                     {/* OUTER PROLAYOUT - Main section navigation */}
                     <ProLayout
                         prefixCls="cms-outer"
-                        title="Nusantarasoft"
+                        title=""
                         logo={logoSrc}
                         {...menuConfig}
                         location={{
@@ -297,7 +452,7 @@ export default function CMSLayout({
                         }}
                         fixSiderbar
                         collapsed={outerCollapsed}
-                        onCollapse={setOuterCollapsed}
+                        onCollapse={handleOuterCollapse}
                         headerRender={false}
                         siderWidth={260}
                         navTheme={darkMode ? "realDark" : "light"}
@@ -334,6 +489,18 @@ export default function CMSLayout({
                                             }}
                                             onClick={() => router.push("/admin/dashboard")}
                                         />
+                                        {/* NS GlitchText under logo in collapsed state */}
+                                        <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: '1px', lineHeight: '14px', marginTop: 2 }}>
+                                            <GlitchText
+                                                speed={0.5}
+                                                enableShadows={true}
+                                                color={darkMode ? '#ffffff' : '#333333'}
+                                                glitchColor1="#00ffff"
+                                                glitchColor2="#ff00ff"
+                                            >
+                                                NS
+                                            </GlitchText>
+                                        </div>
                                         {/* App List Popover */}
                                         <Popover
                                             content={<AppListContent darkMode={darkMode} />}
@@ -355,15 +522,15 @@ export default function CMSLayout({
                                             </div>
                                         </Popover>
                                         {/* Dark/Light Toggle */}
-                                        <Tooltip title={darkMode ? "Light" : "Dark"} placement="right">
-                                            <Switch
-                                                checked={darkMode}
-                                                onChange={setDarkMode}
-                                                checkedChildren={<MoonOutlined />}
-                                                unCheckedChildren={<SunOutlined />}
-                                                size="small"
-                                            />
-                                        </Tooltip>
+                                        <AnimatedThemeToggler
+                                            isDark={darkMode}
+                                            onThemeChange={handleDarkModeChange}
+                                            size={16}
+                                            style={{
+                                                color: darkMode ? "#fff" : "#000",
+                                                padding: 4,
+                                            }}
+                                        />
                                     </>
                                 ) : (
                                     // Expanded: Horizontal layout
@@ -404,29 +571,29 @@ export default function CMSLayout({
                                                 }}
                                                 onClick={() => router.push("/admin/dashboard")}
                                             />
-                                            {/* Title */}
-                                            <span style={{
-                                                fontWeight: 600,
-                                                fontSize: 15,
-                                                color: darkMode ? "#fff" : "#000",
-                                                whiteSpace: "nowrap",
-                                                overflow: "hidden",
-                                                textOverflow: "ellipsis",
-                                            }}>
-                                                Nusantarasoft
-                                            </span>
+                                            {/* Title with GlitchText - vertically centered with logo */}
+                                            <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: '2px', lineHeight: '24px', display: 'flex', alignItems: 'center' }}>
+                                                <GlitchText
+                                                    speed={0.5}
+                                                    enableShadows={true}
+                                                    color={darkMode ? '#ffffff' : '#333333'}
+                                                    glitchColor1="#00ffff"
+                                                    glitchColor2="#ff00ff"
+                                                >
+                                                    NS
+                                                </GlitchText>
+                                            </div>
                                         </div>
                                         {/* Right: Dark/Light Toggle */}
                                         <div style={{ marginLeft: 16, flexShrink: 0 }}>
-                                            <Tooltip title={darkMode ? "Light Mode" : "Dark Mode"}>
-                                                <Switch
-                                                    checked={darkMode}
-                                                    onChange={setDarkMode}
-                                                    checkedChildren={<MoonOutlined />}
-                                                    unCheckedChildren={<SunOutlined />}
-                                                    size="small"
-                                                />
-                                            </Tooltip>
+                                            <AnimatedThemeToggler
+                                                isDark={darkMode}
+                                                onThemeChange={handleDarkModeChange}
+                                                size={18}
+                                                style={{
+                                                    color: darkMode ? "#fff" : "#000",
+                                                }}
+                                            />
                                         </div>
                                     </>
                                 )}
@@ -473,9 +640,8 @@ export default function CMSLayout({
                                 path: "/admin/inner",
                                 routes: innerRoutes,
                             }}
-                            fixSiderbar={false}
                             collapsed={innerCollapsed}
-                            onCollapse={setInnerCollapsed}
+                            onCollapse={handleInnerCollapse}
                             siderWidth={280}
                             navTheme={darkMode ? "realDark" : "light"}
                             layout="side"
@@ -486,6 +652,7 @@ export default function CMSLayout({
                             menuHeaderRender={false}
                             menuExtraRender={() => (
                                 <div style={{
+                                    marginBlockStart: 8,
                                     minHeight: HEADER_HEIGHT,
                                     display: "flex",
                                     alignItems: "center",
@@ -501,6 +668,10 @@ export default function CMSLayout({
                                         size={innerCollapsed ? "large" : "middle"}
                                         vertical={innerCollapsed}
                                         options={segmentedOptions}
+                                        style={{
+                                            background: darkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.08)',
+                                            border: darkMode ? '1px solid rgba(139, 92, 246, 0.3)' : '1px solid rgba(139, 92, 246, 0.2)',
+                                        }}
                                     />
                                 </div>
                             )}
@@ -598,6 +769,42 @@ export default function CMSLayout({
                 </ConfigProvider>
             </ProConfigProvider>
 
+            {/* MetaBalls Background Toggle - Fixed at bottom-right corner */}
+            <AnimatedTooltip
+                content={showBackground ? "Disable Background" : "Enable Background"}
+                position="left"
+                usePortal={true}
+            >
+                <div
+                    className="fixed bottom-0 right-0 z-50 w-48 h-48 cursor-pointer hover:scale-105 transition-transform duration-300 hidden md:block"
+                    onClick={() => {
+                        const newValue = !showBackground;
+                        setShowBackground(newValue);
+                        localStorage.setItem("cms-show-background", String(newValue));
+                    }}
+                >
+                    <MetaBalls
+                        color={darkMode ? "#ffffff" : "#8b5cf6"}
+                        cursorBallColor={darkMode ? "#e0e7ff" : "#6366f1"}
+                        enableTransparency={true}
+                        ballCount={12}
+                        cursorBallSize={4}
+                        animationSize={28}
+                        speed={0.3}
+                    />
+                    {/* 3-dot icon inside main ball area (center) */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-14 h-14 rounded-full bg-black/20 dark:bg-white/10 flex items-center justify-center">
+                            <div className="flex gap-1.5">
+                                <div className="w-2 h-2 rounded-full bg-white"></div>
+                                <div className="w-2 h-2 rounded-full bg-white"></div>
+                                <div className="w-2 h-2 rounded-full bg-white"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </AnimatedTooltip>
+
             {/* CSS for sidebar alignment */}
             <style jsx global>{`
                 /* Fix margin-inline for sider-extra */
@@ -617,6 +824,62 @@ export default function CMSLayout({
                     width: ${INNER_COLLAPSED_WIDTH}px !important;
                     min-width: ${INNER_COLLAPSED_WIDTH}px !important;
                     max-width: ${INNER_COLLAPSED_WIDTH}px !important;
+                }
+                
+                /* Remove gap between outer and inner sidebars */
+                .cms-inner-layout {
+                    margin-left: 0 !important;
+                    padding-left: 0 !important;
+                }
+                
+                /* Hide the placeholder div that ProLayout creates */
+                /* This div is the first child inside .ant-layout-has-sider, before the aside */
+                .cms-inner-layout .ant-layout-has-sider > div:first-child:not(.cms-inner-sider):not(.ant-layout-content):not(.cms-inner-layout-container) {
+                    display: none !important;
+                    width: 0 !important;
+                    min-width: 0 !important;
+                    max-width: 0 !important;
+                    flex: 0 0 0 !important;
+                }
+                
+                /* Fix inner sidebar - use clip for children only, not the sidebar itself */
+                /* This allows the collapse button to extend beyond the sidebar */
+                .cms-inner-sider {
+                    overflow: visible !important;
+                }
+                
+                /* The sider-children contains the collapse button, so we can't clip it */
+                /* Instead, use clip-path or keep overflow visible */
+                .cms-inner-sider .ant-layout-sider-children {
+                    overflow: visible !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                }
+                
+                /* Apply overflow hidden only to the menu and extra containers */
+                .cms-inner-sider .ant-menu {
+                    overflow-x: hidden !important;
+                    overflow-y: auto !important;
+                }
+                
+                .cms-inner-sider .cms-inner-sider-extra {
+                    overflow-x: hidden !important;
+                }
+                
+                .cms-inner-sider .ant-menu-item,
+                .cms-inner-sider .ant-menu-submenu-title {
+                    padding-inline: 12px !important;
+                }
+                
+                /* Fix segmented control to fit within sidebar */
+                .cms-inner-sider .ant-segmented {
+                    max-width: 100% !important;
+                    box-sizing: border-box !important;
+                }
+                
+                /* Ensure collapse button is fully visible and above other elements */
+                .cms-inner-sider-collapsed-button {
+                    z-index: 200 !important;
                 }
             `}</style>
         </div>

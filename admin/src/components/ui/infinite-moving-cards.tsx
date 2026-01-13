@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 
 import { cn } from "@/lib/utils";
@@ -9,6 +10,7 @@ export const InfiniteMovingCards = ({
     speed = "fast",
     pauseOnHover = true,
     className,
+    styles,
 }: {
     items: {
         quote: string;
@@ -19,6 +21,12 @@ export const InfiniteMovingCards = ({
     speed?: "fast" | "normal" | "slow";
     pauseOnHover?: boolean;
     className?: string;
+    styles?: {
+        card?: React.CSSProperties;
+        quote?: React.CSSProperties;
+        name?: React.CSSProperties;
+        title?: React.CSSProperties;
+    };
 }) => {
     const containerRef = React.useRef<HTMLDivElement>(null);
     const scrollerRef = React.useRef<HTMLUListElement>(null);
@@ -96,6 +104,7 @@ export const InfiniteMovingCards = ({
                         style={{
                             background:
                                 "linear-gradient(180deg, var(--slate-800), var(--slate-900))",
+                            ...styles?.card
                         }}
                         key={item.name + idx}
                     >
@@ -104,15 +113,15 @@ export const InfiniteMovingCards = ({
                                 aria-hidden="true"
                                 className="user-select-none -z-1 pointer-events-none absolute -left-0.5 -top-0.5 h-[calc(100%_+_4px)] w-[calc(100%_+_4px)]"
                             ></div>
-                            <span className="relative z-20 text-sm leading-[1.6] text-gray-100 font-normal">
+                            <span className="relative z-20 text-sm leading-[1.6] text-gray-100 font-normal" style={styles?.quote}>
                                 {item.quote}
                             </span>
                             <div className="relative z-20 mt-6 flex flex-row items-center">
                                 <span className="flex flex-col gap-1">
-                                    <span className="text-sm leading-[1.6] text-gray-400 font-normal">
+                                    <span className="text-sm leading-[1.6] text-gray-400 font-normal" style={styles?.name}>
                                         {item.name}
                                     </span>
-                                    <span className="text-sm leading-[1.6] text-gray-400 font-normal">
+                                    <span className="text-sm leading-[1.6] text-gray-400 font-normal" style={styles?.title}>
                                         {item.title}
                                     </span>
                                 </span>

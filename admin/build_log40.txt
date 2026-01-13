@@ -1,0 +1,46 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 17.8s
+  Running TypeScript ...
+npm : Failed to compile.
+At line:1 char:11
++ cd admin; npm run build 2>&1 | Out-File 
+-FilePath build_log40.txt -En ...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified:  
+   (Failed to compile.:String) [], RemoteEx  
+  ception
+    + FullyQualifiedErrorId : NativeCommandE 
+   rror
+ 
+
+./src/components/mvpblocks/mainsections/prici
+ng/congusted-pricing.tsx:13:24
+Type error: Cannot find module 
+'@number-flow/react' or its corresponding 
+type declarations.
+
+[0m [90m 11 |[39m [36mimport[39m { 
+useState[33m,[39m useRef } [36mfrom[39m 
+[32m'react'[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m confetti 
+[36mfrom[39m 
+[32m'canvas-confetti'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 13 |[39m 
+[36mimport[39m [33mNumberFlow[39m 
+[36mfrom[39m 
+[32m'@number-flow/react'[39m[33m;[39m
+ [90m    |[39m                        
+[31m[1m^[22m[39m
+ [90m 14 |[39m
+ [90m 15 |[39m [90m// Define your 
+plans[39m
+ [90m 16 |[39m [36mconst[39m plans 
+[33m=[39m [[0m
+Next.js build worker exited with code: 1 and 
+signal: null

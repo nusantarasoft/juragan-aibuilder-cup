@@ -5,7 +5,7 @@ WORKDIR /app
 
 # ===== Dependencies Stage =====
 FROM base AS deps
-COPY package.json package-lock.json* ./
+COPY package.json ./
 RUN npm install --legacy-peer-deps
 
 # ===== Builder Stage =====

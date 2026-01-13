@@ -11,6 +11,7 @@ import { HealthModule } from './health/health.module';
 import { BlocksModule } from './blocks/blocks.module';
 import { SettingsModule } from './settings/settings.module';
 import { MediaModule } from './media/media.module';
+import { RagModule } from './rag/rag.module';
 
 @Module({
     imports: [
@@ -39,6 +40,7 @@ import { MediaModule } from './media/media.module';
         BlocksModule,
         SettingsModule,
         MediaModule,
+        RagModule,
     ],
 })
 export class AppModule { }

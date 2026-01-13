@@ -186,7 +186,7 @@ Helper scripts for common operations:
 .\scripts\start-minimal.bat  # Start services
 ```
 
-**Includes**: LDAP, Reverse Proxy, DNS (BIND9), Email, Portainer, **Supabase** (postgres, studio, auth, rest, meta, kong, analytics), **n8n**, **Dremio**
+**Includes**: **AI Middleware** (Gemini Auto-Label), **Supabase** (Auth, Storage, Realtime, REST), **DNS** (Pi-hole, BIND9), **Email** (Mailserver, Roundcube), **Infra** (Traefik, NPM, Portainer, Socket.IO)
 
 ---
 

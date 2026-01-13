@@ -1,0 +1,59 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 11.1s
+  Running TypeScript ...
+npm : Failed to compile.
+At line:1 char:11
++ cd admin; npm run build 2>&1 | 
+Out-File -FilePath build_log19.txt -En 
+...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecif 
+   ied: (Failed to compile.:String) []  
+  , RemoteException
+    + FullyQualifiedErrorId : NativeCom 
+   mandError
+ 
+
+./src/components/mvpblocks/cards/expanda
+ble-meeting-card.tsx:83:36
+Type error: Type '{ children: Element; 
+preset: string; }' is not assignable to 
+type 'IntrinsicAttributes & 
+ExpandableContentProps'.
+  Property 'preset' does not exist on 
+type 'IntrinsicAttributes & 
+ExpandableContentProps'.
+
+[0m [90m 81 |[39m                 [3
+3m<[39m[33m/[39m[33mdiv[39m[33m>[
+39m
+ [90m 82 |[39m
+[31m[1m>[22m[39m[90m 83 |[39m     
+            
+[33m<[39m[33mExpandableContent[39m p
+reset[33m=[39m[32m"blur-md"[39m[33m
+>[39m
+ [90m    |[39m                        
+            [31m[1m^[22m[39m
+ [90m 84 |[39m                   
+[33m<[39m[33mdiv[39m 
+className[33m=[39m[32m"flex 
+items-center text-sm text-gray-600 
+dark:text-gray-300"[39m[33m>[39m
+ [90m 85 |[39m                     
+[33m<[39m[33mMapPin[39m 
+className[33m=[39m[32m"mr-1 h-4 
+w-4"[39m [33m/[39m[33m>[39m
+ [90m 86 |[39m                     [3
+3m<[39m[33mspan[39m[33m>[39m[33mCo
+nference[39m [33mRoom[39m [33mA[39m
+[33m<[39m[33m/[39m[33mspan[39m[33
+m>[39m[0m
+Next.js build worker exited with code: 
+1 and signal: null

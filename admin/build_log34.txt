@@ -1,0 +1,54 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 11.6s
+  Running TypeScript ...
+npm : Failed to compile.
+At line:1 char:11
++ cd admin; npm run build 2>&1 | Out-File 
+-FilePath build_log34.txt -En ...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified:  
+   (Failed to compile.:String) [], RemoteEx  
+  ception
+    + FullyQualifiedErrorId : NativeCommandE 
+   rror
+ 
+
+./src/components/mvpblocks/mainsections/about
+/about-us-1.tsx:90:9
+Type error: Type '{ gradientFirst: string; 
+gradientSecond: string; gradientThird: 
+string; }' is not assignable to type 
+'IntrinsicAttributes & SpotlightProps'.
+  Property 'gradientFirst' does not exist on 
+type 'IntrinsicAttributes & SpotlightProps'.
+
+[0m [90m 88 |[39m     
+[33m<[39m[33msection[39m 
+className[33m=[39m[32m"relative w-full 
+overflow-hidden pt-20"[39m[33m>[39m
+ [90m 89 |[39m       
+[33m<[39m[33mSpotlight[39m
+[31m[1m>[22m[39m[90m 90 |[39m         g
+radientFirst[33m=[39m[32m"radial-gradient(
+68.54% 68.72% at 55.02% 31.46%, hsla(336, 
+100%, 50%, 0.08) 0, hsla(341, 100%, 55%, 
+0.04) 50%, hsla(336, 100%, 45%, 0) 80%)"[39m
+ [90m    |[39m         [31m[1m^[22m[39m
+ [90m 91 |[39m         gradientSecond[33m=
+[39m[32m"radial-gradient(50% 50% at 50% 
+50%, hsla(333, 100%, 85%, 0.08) 0, hsla(335, 
+100%, 55%, 0.04) 80%, transparent 100%)"[39m
+ [90m 92 |[39m         gradientThird[33m=
+[39m[32m"radial-gradient(50% 50% at 50% 
+50%, hsla(332, 100%, 85%, 0.06) 0, hsla(327, 
+100%, 85%, 0.06) 80%, transparent 100%)"[39m
+ [90m 93 |[39m       
+[33m/[39m[33m>[39m[0m
+Next.js build worker exited with code: 1 and 
+signal: null

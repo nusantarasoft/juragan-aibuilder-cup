@@ -1,0 +1,45 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 12.7s
+  Running TypeScript ...
+npm : Failed to compile.
+At line:1 char:11
++ cd admin; npm run build 2>&1 | 
+Out-File -FilePath build_log14.txt -En 
+...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecif 
+   ied: (Failed to compile.:String) []  
+  , RemoteException
+    + FullyQualifiedErrorId : NativeCom 
+   mandError
+ 
+
+./src/components/mvpblocks/cards/expanda
+ble-meeting-card.tsx:18:3
+Type error: 
+'"@/components/ui/expandable"' has no 
+exported member named 
+'ExpandableCardContent'. Did you mean 
+'ExpandableContent'?
+
+[0m [90m 16 |[39m   
+[33mExpandable[39m[33m,[39m
+ [90m 17 |[39m   
+[33mExpandableCard[39m[33m,[39m
+[31m[1m>[22m[39m[90m 18 |[39m   [
+33mExpandableCardContent[39m[33m,[39m
+ [90m    |[39m   [31m[1m^[22m[39m
+ [90m 19 |[39m   [33mExpandableCardFo
+oter[39m[33m,[39m
+ [90m 20 |[39m   [33mExpandableCardHe
+ader[39m[33m,[39m
+ [90m 21 |[39m   [33mExpandableConten
+t[39m[33m,[39m[0m
+Next.js build worker exited with code: 
+1 and signal: null

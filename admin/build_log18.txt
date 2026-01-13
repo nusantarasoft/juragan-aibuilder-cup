@@ -1,0 +1,58 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 11.1s
+  Running TypeScript ...
+npm : Failed to compile.
+At line:1 char:11
++ cd admin; npm run build 2>&1 | 
+Out-File -FilePath build_log18.txt -En 
+...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecif 
+   ied: (Failed to compile.:String) []  
+  , RemoteException
+    + FullyQualifiedErrorId : NativeCom 
+   mandError
+ 
+
+./src/components/mvpblocks/cards/expanda
+ble-meeting-card.tsx:46:13
+Type error: Type '{ children: 
+Element[]; className: string; 
+collapsedSize: { width: number; height: 
+number; }; expandedSize: { width: 
+number; height: number; }; 
+hoverToExpand: false; expandDelay: 
+number; collapseDelay: number; }' is 
+not assignable to type 
+'IntrinsicAttributes & 
+ExpandableCardProps'.
+  Property 'collapseDelay' does not 
+exist on type 'IntrinsicAttributes & 
+ExpandableCardProps'.
+
+[0m [90m 44 |[39m             hoverTo
+Expand[33m=[39m{[36mfalse[39m}
+ [90m 45 |[39m             
+expandDelay[33m=[39m{[35m200[39m}
+[31m[1m>[22m[39m[90m 46 |[39m     
+        
+collapseDelay[33m=[39m{[35m500[39m}
+ [90m    |[39m             
+[31m[1m^[22m[39m
+ [90m 47 |[39m           [33m>[39m
+ [90m 48 |[39m             [33m<[39m
+[33mExpandableCardHeader[39m[33m>[39
+m
+ [90m 49 |[39m               
+[33m<[39m[33mdiv[39m 
+className[33m=[39m[32m"flex w-full 
+items-start 
+justify-between"[39m[33m>[39m[0m
+Next.js build worker exited with code: 
+1 and signal: null

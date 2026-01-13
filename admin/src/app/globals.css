@@ -52,6 +52,149 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  --animate-gradient: gradient 8s linear infinite;
+  @keyframes gradient {
+  to {
+    background-position: var(--bg-size, 300%) 0;
+    }
+  }
+  --animate-shiny-text: shiny-text 8s infinite
+;
+  @keyframes shiny-text {
+  0%, 90%, 100% {
+    background-position: calc(-100% - var(--shiny-width)) 0;}
+  30%, 60% {
+    background-position: calc(100% + var(--shiny-width)) 0;}}
+  --animate-aurora: aurora 8s ease-in-out infinite alternate;
+  @keyframes aurora {
+  0% {
+    background-position: 0% 50%;
+    transform: rotate(-5deg) scale(0.9);}
+  25% {
+    background-position: 50% 100%;
+    transform: rotate(5deg) scale(1.1);}
+  50% {
+    background-position: 100% 50%;
+    transform: rotate(-3deg) scale(0.95);}
+  75% {
+    background-position: 50% 0%;
+    transform: rotate(3deg) scale(1.05);}
+  100% {
+    background-position: 0% 50%;
+    transform: rotate(-5deg) scale(0.9);}}
+  --animate-line-shadow: line-shadow 15s linear infinite;
+  @keyframes line-shadow {
+  0% {
+    background-position: 0 0;}
+  100% {
+    background-position: 100% -100%;}}
+  --animate-marquee: marquee var(--duration) infinite linear;
+  --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+  @keyframes marquee {
+  from {
+    transform: translateX(0);}
+  to {
+    transform: translateX(calc(-100% - var(--gap)));}}
+  @keyframes marquee-vertical {
+  from {
+    transform: translateY(0);}
+  to {
+    transform: translateY(calc(-100% - var(--gap)));}}
+  --animate-meteor: meteor 5s linear infinite;
+  @keyframes meteor {
+  0% {
+    transform: rotate(var(--angle)) translateX(0);
+    opacity: 1;}
+  70% {
+    opacity: 1;}
+  100% {
+    transform: rotate(var(--angle)) translateX(-500px);
+    opacity: 0;}}
+  --animate-background-position-spin: background-position-spin 3000ms infinite alternate;
+  @keyframes background-position-spin {
+  0% {
+    background-position: top center;}
+  100% {
+    background-position: bottom center;}}
+  --animate-orbit: orbit calc(var(--duration)*1s) linear infinite;
+  @keyframes orbit {
+  0% {
+    transform: rotate(calc(var(--angle) * 1deg)) translateY(calc(var(--radius) * 1px)) rotate(calc(var(--angle) * -1deg));}
+  100% {
+    transform: rotate(calc(var(--angle) * 1deg + 360deg)) translateY(calc(var(--radius) * 1px)) rotate(calc((var(--angle) * -1deg) - 360deg));}}
+  --animate-pulse: pulse var(--duration) ease-out infinite;
+  @keyframes pulse {
+  0%, 100% {
+    boxShadow: 0 0 0 0 var(--pulse-color);}
+  50% {
+    boxShadow: 0 0 0 8px var(--pulse-color);}}
+  --animate-rainbow: rainbow var(--speed, 2s) infinite linear;
+  --color-color-5: var(--color-5);
+  --color-color-4: var(--color-4);
+  --color-color-3: var(--color-3);
+  --color-color-2: var(--color-2);
+  --color-color-1: var(--color-1);
+  @keyframes rainbow {
+  0% {
+    background-position: 0%;}
+  100% {
+    background-position: 200%;}}
+  --animate-grid: grid 15s linear infinite;
+  @keyframes grid {
+  0% {
+    transform: translateY(-50%);}
+  100% {
+    transform: translateY(0);}}
+  --animate-rippling: rippling var(--duration) ease-out;
+  @keyframes rippling {
+  0% {
+    opacity: 1;}
+  100% {
+    transform: scale(2);
+    opacity: 0;}}
+  --animate-ripple: ripple var(--duration,2s) ease calc(var(--i, 0)*.2s) infinite;
+  @keyframes ripple {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);}
+  50% {
+    transform: translate(-50%, -50%) scale(0.9);}}
+  --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;
+  --animate-spin-around: spin-around calc(var(--speed) * 2) infinite linear;
+  @keyframes shimmer-slide {
+  to {
+    transform: translate(calc(100cqw - 100%), 0);}}
+  @keyframes spin-around {
+  0% {
+    transform: translateZ(0) rotate(0);}
+  15%, 35% {
+    transform: translateZ(0) rotate(90deg);}
+  65%, 85% {
+    transform: translateZ(0) rotate(270deg);}
+  100% {
+    transform: translateZ(0) rotate(360deg);}}
+  --animate-shine: shine var(--duration) infinite linear;
+  @keyframes shine {
+  0% {
+    background-position: 0% 0%;}
+  50% {
+    background-position: 100% 100%;}
+  to {
+    background-position: 0% 0%;}}
+  --animate-blink-cursor: blink-cursor 1.2s step-end infinite;
+  @keyframes blink-cursor {
+  0%, 49% {
+    opacity: 1;}
+  50%, 100% {
+    opacity: 0;}}
+  --animate-aurora: aurora 10s linear infinite;
+  @keyframes aurora {
+    from {
+      background-position: 50% 50%, 50% 50%;
+    }
+    to {
+      background-position: 350% 50%, 350% 50%;
+    }
+  }
 }
 
 /* Aceternity UI Keyframes */
@@ -186,19 +329,19 @@
   color: #4b5563 !important;
 }
 
-/* Hover State - Colorful Tint */
+/* Hover State - Cyberpunk Purple/Cyan Tint */
 .cms-prefix-sider .ant-menu-item:hover,
 .cms-prefix-sider .ant-menu-submenu-title:hover {
-  background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, rgba(255, 255, 255, 0) 100%) !important;
-  color: #2563eb !important; /* Blue 600 */
-  border-left-color: #60a5fa !important; /* Blue 400 */
+  background: linear-gradient(90deg, rgba(147, 51, 234, 0.12) 0%, rgba(0, 255, 255, 0.02) 50%, rgba(255, 255, 255, 0) 100%) !important;
+  color: #9333ea !important; /* Purple 600 */
+  border-left-color: #a855f7 !important; /* Purple 400 */
 }
 
-/* Active State - Vibrant Gradient & Border */
+/* Active State - Vibrant Purple Gradient & Border */
 .cms-prefix-sider .ant-menu-item-selected {
-  background: linear-gradient(90deg, rgba(37, 99, 235, 0.15) 0%, rgba(147, 51, 234, 0.05) 100%) !important;
-  color: #1d4ed8 !important; /* Blue 700 */
-  border-left-color: #2563eb !important; /* Blue 600 */
+  background: linear-gradient(90deg, rgba(147, 51, 234, 0.18) 0%, rgba(255, 0, 255, 0.05) 50%, rgba(0, 255, 255, 0.02) 100%) !important;
+  color: #7c3aed !important; /* Violet 600 */
+  border-left-color: #9333ea !important; /* Purple 600 */
   font-weight: 600 !important;
 }
 
@@ -299,8 +442,8 @@
 }
 
 .cms-prefix-sider .ant-menu-item-selected .anticon {
-  color: #2563eb !important;
-  filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.4));
+  color: #9333ea !important;
+  filter: drop-shadow(0 0 8px rgba(147, 51, 234, 0.5));
 }
 
 /* Submenu Popup Flat Theme */
@@ -320,12 +463,12 @@
 
 .ant-menu-submenu-popup .ant-menu-item:hover {
   background: rgba(243, 244, 246, 1) !important;
-  color: #2563eb !important;
+  color: #9333ea !important;
 }
 
 .ant-menu-submenu-popup .ant-menu-item-selected {
-  background: rgba(239, 246, 255, 1) !important;
-  color: #1d4ed8 !important;
+  background: rgba(250, 245, 255, 1) !important;
+  color: #7c3aed !important;
   font-weight: 600 !important;
 }
 
@@ -362,6 +505,11 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --color-1: oklch(66.2% 0.225 25.9);
+  --color-2: oklch(60.4% 0.26 302);
+  --color-3: oklch(69.6% 0.165 251);
+  --color-4: oklch(80.2% 0.134 225);
+  --color-5: oklch(90.7% 0.231 133);
 }
 
 .dark {
@@ -390,12 +538,17 @@
   --chart-5: oklch(0.645 0.246 16.439);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary: oklch(0.627 0.265 303.9);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent: oklch(0.269 0.02 300);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.627 0.265 303.9);
+  --color-1: oklch(66.2% 0.225 25.9);
+  --color-2: oklch(60.4% 0.26 302);
+  --color-3: oklch(69.6% 0.165 251);
+  --color-4: oklch(80.2% 0.134 225);
+  --color-5: oklch(90.7% 0.231 133);
 }
 
 @layer base {
@@ -405,4 +558,395 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Sticky Inner Sidebar */
+/* Sticky Inner Sidebar - Increased Specificity */
+.cms-inner-layout .cms-inner-sider.ant-layout-sider {
+  position: sticky !important;
+  top: 0 !important;
+  height: 100vh !important;
+  overflow-y: auto !important;
+  z-index: 10 !important;
+}
+/* View Transition API - Theme Toggle Animation */
+/* Animation is controlled by AnimatedThemeToggler component via JS */
+/* Do NOT set animation-duration here - it will override the JS animation */
+::view-transition-old(root),
+::view-transition-new(root) {
+    mix-blend-mode: normal;
+    animation: none !important;
+}
+
+::view-transition-old(root) {
+    z-index: 1;
+}
+
+::view-transition-new(root) {
+    z-index: 999;
+}
+
+/* Border Beam Animation for Magic Button */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Shimmer move animation for Magic Button */
+@keyframes shimmer-move {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+/* Aurora flow animation for AuroraText */
+@keyframes aurora-flow {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* ========================================
+   Dark Mode Cyberpunk Sidebar Styles
+   ======================================== */
+
+/* Dark Mode Glassmorphism Sidebar */
+.dark .cms-prefix-sider,
+.dark .cms-outer-sider,
+.dark .cms-inner-sider {
+  background: rgba(15, 15, 23, 0.95) !important;
+  border-right: 1px solid rgba(147, 51, 234, 0.2) !important;
+  backdrop-filter: blur(25px) !important;
+  -webkit-backdrop-filter: blur(25px) !important;
+  box-shadow: 4px 0 32px rgba(147, 51, 234, 0.08) !important;
+}
+
+/* Dark mode base menu */
+.dark .cms-prefix-sider .ant-menu,
+.dark .cms-outer-sider .ant-menu,
+.dark .cms-inner-sider .ant-menu {
+  background: transparent !important;
+  color: #a5b4fc !important; /* Soft indigo */
+}
+
+/* Dark mode menu items */
+.dark .cms-prefix-sider .ant-menu-item,
+.dark .cms-prefix-sider .ant-menu-submenu-title,
+.dark .cms-outer-sider .ant-menu-item,
+.dark .cms-outer-sider .ant-menu-submenu-title,
+.dark .cms-inner-sider .ant-menu-item,
+.dark .cms-inner-sider .ant-menu-submenu-title {
+  color: #94a3b8 !important;
+  border-left: 3px solid transparent !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Dark mode hover - Neon Cyan/Purple Glow */
+.dark .cms-prefix-sider .ant-menu-item:hover,
+.dark .cms-prefix-sider .ant-menu-submenu-title:hover,
+.dark .cms-outer-sider .ant-menu-item:hover,
+.dark .cms-outer-sider .ant-menu-submenu-title:hover,
+.dark .cms-inner-sider .ant-menu-item:hover,
+.dark .cms-inner-sider .ant-menu-submenu-title:hover {
+  background: linear-gradient(90deg, rgba(0, 255, 255, 0.08) 0%, rgba(147, 51, 234, 0.05) 50%, transparent 100%) !important;
+  color: #00ffff !important;
+  border-left-color: #00ffff !important;
+  text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+}
+
+/* Dark mode active - Vibrant Magenta/Purple Gradient */
+.dark .cms-prefix-sider .ant-menu-item-selected,
+.dark .cms-outer-sider .ant-menu-item-selected,
+.dark .cms-inner-sider .ant-menu-item-selected {
+  background: linear-gradient(90deg, rgba(255, 0, 255, 0.12) 0%, rgba(147, 51, 234, 0.08) 50%, rgba(0, 255, 255, 0.03) 100%) !important;
+  color: #ff00ff !important;
+  border-left-color: #ff00ff !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 10px rgba(255, 0, 255, 0.6);
+}
+
+/* Dark mode icons with neon glow */
+.dark .cms-prefix-sider .anticon,
+.dark .cms-outer-sider .anticon,
+.dark .cms-inner-sider .anticon {
+  color: #818cf8 !important;
+  transition: all 0.3s ease;
+}
+
+.dark .cms-prefix-sider .ant-menu-item:hover .anticon,
+.dark .cms-outer-sider .ant-menu-item:hover .anticon,
+.dark .cms-inner-sider .ant-menu-item:hover .anticon {
+  color: #00ffff !important;
+  filter: drop-shadow(0 0 6px rgba(0, 255, 255, 0.6));
+}
+
+.dark .cms-prefix-sider .ant-menu-item-selected .anticon,
+.dark .cms-outer-sider .ant-menu-item-selected .anticon,
+.dark .cms-inner-sider .ant-menu-item-selected .anticon {
+  color: #ff00ff !important;
+  filter: drop-shadow(0 0 8px rgba(255, 0, 255, 0.7));
+}
+
+/* Dark mode submenu popup */
+.dark .ant-menu-submenu-popup .ant-menu {
+  background: rgba(15, 15, 23, 0.98) !important;
+  border: 1px solid rgba(147, 51, 234, 0.2) !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(147, 51, 234, 0.1) !important;
+}
+
+.dark .ant-menu-submenu-popup .ant-menu-item {
+  color: #94a3b8 !important;
+}
+
+.dark .ant-menu-submenu-popup .ant-menu-item:hover {
+  background: linear-gradient(90deg, rgba(0, 255, 255, 0.1) 0%, transparent 100%) !important;
+  color: #00ffff !important;
+}
+
+.dark .ant-menu-submenu-popup .ant-menu-item-selected {
+  background: linear-gradient(90deg, rgba(255, 0, 255, 0.12) 0%, transparent 100%) !important;
+  color: #ff00ff !important;
+}
+
+/* Dark mode sidebar footer */
+.dark .cms-outer-sider .ant-pro-sider-footer,
+.dark .cms-inner-sider .ant-pro-sider-footer {
+  border-top: 1px solid rgba(147, 51, 234, 0.15) !important;
+  color: rgba(148, 163, 184, 0.6) !important;
+}
+
+/* ========================================
+   Dark Mode Cyberpunk Tags
+   ======================================== */
+
+.dark .ant-tag {
+  background: rgba(147, 51, 234, 0.15) !important;
+  border: 1px solid rgba(147, 51, 234, 0.3) !important;
+  color: #c4b5fd !important;
+}
+
+.dark .ant-tag-blue {
+  background: rgba(0, 255, 255, 0.12) !important;
+  border-color: rgba(0, 255, 255, 0.3) !important;
+  color: #00ffff !important;
+}
+
+.dark .ant-tag-green {
+  background: rgba(34, 197, 94, 0.12) !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+  color: #4ade80 !important;
+}
+
+/* ========================================
+   Light Mode Cyberpunk Theme
+   ======================================== */
+
+/* Light mode cyberpunk sidebar */
+.cms-prefix-sider,
+.cms-outer-sider,
+.cms-inner-sider {
+  background: linear-gradient(180deg, rgba(250, 245, 255, 0.95) 0%, rgba(240, 235, 255, 0.95) 100%) !important;
+  border-right: 1px solid rgba(147, 51, 234, 0.15) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  box-shadow: 4px 0 32px rgba(147, 51, 234, 0.05) !important;
+}
+
+/* Light mode menu items with cyberpunk accents */
+.cms-prefix-sider .ant-menu-item,
+.cms-prefix-sider .ant-menu-submenu-title,
+.cms-outer-sider .ant-menu-item,
+.cms-outer-sider .ant-menu-submenu-title,
+.cms-inner-sider .ant-menu-item,
+.cms-inner-sider .ant-menu-submenu-title {
+  color: #6b21a8 !important; /* Purple 800 */
+}
+
+/* Light mode hover - Purple/Violet glow */
+.cms-prefix-sider .ant-menu-item:hover,
+.cms-prefix-sider .ant-menu-submenu-title:hover,
+.cms-outer-sider .ant-menu-item:hover,
+.cms-outer-sider .ant-menu-submenu-title:hover,
+.cms-inner-sider .ant-menu-item:hover,
+.cms-inner-sider .ant-menu-submenu-title:hover {
+  background: linear-gradient(90deg, rgba(147, 51, 234, 0.12) 0%, rgba(99, 102, 241, 0.05) 50%, transparent 100%) !important;
+  color: #7c3aed !important;
+  border-left-color: #9333ea !important;
+}
+
+/* Light mode active - Vibrant Purple */
+.cms-prefix-sider .ant-menu-item-selected,
+.cms-outer-sider .ant-menu-item-selected,
+.cms-inner-sider .ant-menu-item-selected {
+  background: linear-gradient(90deg, rgba(147, 51, 234, 0.18) 0%, rgba(168, 85, 247, 0.08) 50%, transparent 100%) !important;
+  color: #6d28d9 !important;
+  border-left-color: #7c3aed !important;
+  font-weight: 600 !important;
+}
+
+/* Light mode icons */
+.cms-prefix-sider .anticon,
+.cms-outer-sider .anticon,
+.cms-inner-sider .anticon {
+  color: #7c3aed !important;
+}
+
+.cms-prefix-sider .ant-menu-item-selected .anticon,
+.cms-outer-sider .ant-menu-item-selected .anticon,
+.cms-inner-sider .ant-menu-item-selected .anticon {
+  color: #6d28d9 !important;
+  filter: drop-shadow(0 0 4px rgba(109, 40, 217, 0.4));
+}
+
+/* Light mode cyberpunk tags */
+.ant-tag {
+  background: rgba(147, 51, 234, 0.08) !important;
+  border: 1px solid rgba(147, 51, 234, 0.2) !important;
+  color: #7c3aed !important;
+}
+
+.ant-tag-blue {
+  background: rgba(99, 102, 241, 0.1) !important;
+  border-color: rgba(99, 102, 241, 0.25) !important;
+  color: #4f46e5 !important;
+}
+
+.ant-tag-green {
+  background: rgba(34, 197, 94, 0.1) !important;
+  border-color: rgba(34, 197, 94, 0.25) !important;
+  color: #16a34a !important;
+}
+
+/* ========================================
+   Glassmorphism Cards
+   ======================================== */
+
+/* Light mode glassmorphism cards */
+.ant-card {
+  background: rgba(255, 255, 255, 0.4) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(147, 51, 234, 0.12) !important;
+  box-shadow: 0 8px 32px rgba(147, 51, 234, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+.ant-card:hover {
+  border-color: rgba(147, 51, 234, 0.25) !important;
+  box-shadow: 0 12px 40px rgba(147, 51, 234, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Dark mode glassmorphism cards */
+.dark .ant-card {
+  background: rgba(15, 15, 23, 0.4) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(147, 51, 234, 0.2) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 16px rgba(147, 51, 234, 0.1) !important;
+}
+
+.dark .ant-card:hover {
+  border-color: rgba(147, 51, 234, 0.4) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 24px rgba(147, 51, 234, 0.15) !important;
+}
+
+/* Cyberpunk Pro Card styling */
+.ant-pro-card {
+  background: rgba(255, 255, 255, 0.4) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(147, 51, 234, 0.1) !important;
+}
+
+.dark .ant-pro-card {
+  background: rgba(15, 15, 23, 0.4) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(147, 51, 234, 0.15) !important;
+}
+
+/* ========================================
+   Transparent Layout for Hyperspeed Background
+   ======================================== */
+
+/* Make the main layout area transparent to show Hyperspeed */
+.ant-layout {
+  background: transparent !important;
+}
+
+.ant-layout-content {
+  background: transparent !important;
+}
+
+/* Page container/grid content transparency */
+.ant-pro-page-container {
+  background: transparent !important;
+}
+
+.ant-pro-grid-content {
+  background: transparent !important;
+}
+
+.ant-pro-page-container .ant-pro-page-container-children-content {
+  background: transparent !important;
+}
+
+/* Make sure the pro-card body is also transparent enough */
+.ant-pro-card-body {
+  background: transparent !important;
+}
+
+/* Light mode: body with subtle gradient for contrast but transparent enough */
+body {
+  background: linear-gradient(135deg, rgba(250, 245, 255, 0.7) 0%, rgba(240, 235, 255, 0.7) 50%, rgba(230, 225, 255, 0.7) 100%) !important;
+}
+
+/* Dark mode: transparent dark body to show Hyperspeed */
+.dark body {
+  background: rgba(10, 10, 15, 0.6) !important;
+}
+
+/* ========================================
+   GlitchText Animation Keyframes
+   ======================================== */
+
+@keyframes glitch {
+  0% { clip-path: inset(20% 0 50% 0); }
+  5% { clip-path: inset(10% 0 60% 0); }
+  10% { clip-path: inset(15% 0 55% 0); }
+  15% { clip-path: inset(25% 0 35% 0); }
+  20% { clip-path: inset(30% 0 40% 0); }
+  25% { clip-path: inset(40% 0 20% 0); }
+  30% { clip-path: inset(10% 0 60% 0); }
+  35% { clip-path: inset(15% 0 55% 0); }
+  40% { clip-path: inset(25% 0 35% 0); }
+  45% { clip-path: inset(30% 0 40% 0); }
+  50% { clip-path: inset(20% 0 50% 0); }
+  55% { clip-path: inset(10% 0 60% 0); }
+  60% { clip-path: inset(15% 0 55% 0); }
+  65% { clip-path: inset(25% 0 35% 0); }
+  70% { clip-path: inset(30% 0 40% 0); }
+  75% { clip-path: inset(40% 0 20% 0); }
+  80% { clip-path: inset(20% 0 50% 0); }
+  85% { clip-path: inset(10% 0 60% 0); }
+  90% { clip-path: inset(15% 0 55% 0); }
+  95% { clip-path: inset(25% 0 35% 0); }
+  100% { clip-path: inset(30% 0 40% 0); }
+}
+
+.animate-glitch-after {
+  animation: glitch var(--after-duration, 1.5s) infinite linear alternate-reverse;
+}
+
+.animate-glitch-before {
+  animation: glitch var(--before-duration, 1s) infinite linear alternate-reverse;
 }

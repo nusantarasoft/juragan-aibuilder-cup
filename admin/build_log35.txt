@@ -1,0 +1,54 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 11.9s
+  Running TypeScript ...
+npm : Failed to compile.
+At line:1 char:11
++ cd admin; npm run build 2>&1 | Out-File 
+-FilePath build_log35.txt -En ...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified:  
+   (Failed to compile.:String) [], RemoteEx  
+  ception
+    + FullyQualifiedErrorId : NativeCommandE 
+   rror
+ 
+
+./src/components/mvpblocks/mainsections/about
+/about-us-1.tsx:208:21
+Type error: Type '{ icon: Element; title: 
+string; description: string; variant: 
+string; glowEffect: boolean; size: string; 
+}' is not assignable to type 
+'IntrinsicAttributes & { items: { title: 
+string; description: string; link: string; 
+}[]; className?: string | undefined; }'.
+  Property 'icon' does not exist on type 
+'IntrinsicAttributes & { items: { title: 
+string; description: string; link: string; 
+}[]; className?: string | undefined; }'.
+
+[0m [90m 206 |[39m                 
+[33m>[39m
+ [90m 207 |[39m                   
+[33m<[39m[33mCardHoverEffect[39m
+[31m[1m>[22m[39m[90m 208 |[39m         
+            icon[33m=[39m{[33m<[39m[33mI
+conComponent[39m 
+className[33m=[39m[32m"h-6 w-6"[39m 
+[33m/[39m[33m>[39m}
+ [90m     |[39m                     
+[31m[1m^[22m[39m
+ [90m 209 |[39m                     
+title[33m=[39m{value[33m.[39mtitle}
+ [90m 210 |[39m                     descrip
+tion[33m=[39m{value[33m.[39mdescription}
+ [90m 211 |[39m                     
+variant[33m=[39m{[0m
+Next.js build worker exited with code: 1 and 
+signal: null

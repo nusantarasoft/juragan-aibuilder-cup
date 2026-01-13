@@ -1,0 +1,45 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+npm : 
+At line:1 char:11
++ cd admin; npm run build 2>&1 | Out-File -FilePath build_log53.txt -En ...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+> Build error occurred
+Error: Turbopack build failed with 1 errors:
+./src/app/admin/media/page.tsx:618:11
+Ecmascript file had an error
+[0m [90m 616 |[39m     [90m// Versioning operations[39m
+ [90m 617 |[39m     [90m// Versioning operations[39m
+[31m[1m>[22m[39m[90m 618 |[39m     [36mconst[39m loadVersioningStatus [33m=[39m [36masync[39m 
+(bucketName[33m:[39m string) [33m=>[39m {
+ [90m     |[39m           [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[
+1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[
+31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[
+39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 619 |[39m         [36mtry[39m {
+ [90m 620 |[39m             [36mconst[39m status [33m=[39m [36mawait[39m 
+mediaService[33m.[39mgetVersioningStatus(bucketName)[33m;[39m
+ [90m 621 |[39m             setBucketVersioning(prev [33m=>[39m ({ [33m...[39mprev[33m,[39m 
+[bucketName][33m:[39m status [33m===[39m [32m'Enabled'[39m }))[33m;[39m[0m
+
+the name `loadVersioningStatus` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./src/app/admin/media/page.tsx [Client Component Browser]
+    ./src/app/admin/media/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/admin/media/page.tsx [Client Component SSR]
+    ./src/app/admin/media/page.tsx [Server Component]
+
+
+    at <unknown> (./src/app/admin/media/page.tsx:618:11)

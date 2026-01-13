@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 import React from "react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "motion/react";

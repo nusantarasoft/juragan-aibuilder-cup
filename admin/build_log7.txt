@@ -1,0 +1,45 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 11.6s
+  Running TypeScript ...
+npm : Failed to compile.
+At line:1 char:11
++ cd admin; npm run build 2>&1 | 
+Out-File -FilePath build_log7.txt -Enc 
+...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecif 
+   ied: (Failed to compile.:String) []  
+  , RemoteException
+    + FullyQualifiedErrorId : NativeCom 
+   mandError
+ 
+
+./src/components/mvpblocks/basics/pointe
+r-highlight-demo.tsx:3:34
+Type error: Cannot find module 
+'@/components/ui/pointer-highlight' or 
+its corresponding type declarations.
+
+[0m [90m 1 |[39m [32m'use 
+client'[39m[33m;[39m
+ [90m 2 |[39m
+[31m[1m>[22m[39m[90m 3 |[39m 
+[36mimport[39m { 
+[33mPointerHighlight[39m } 
+[36mfrom[39m [32m'@/components/ui/poi
+nter-highlight'[39m[33m;[39m
+ [90m   |[39m                         
+         [31m[1m^[22m[39m
+ [90m 4 |[39m
+ [90m 5 |[39m [36mexport[39m 
+[36mdefault[39m [36mfunction[39m 
+[33mPointerHighlightDemo[39m() {
+ [90m 6 |[39m   [36mreturn[39m ([0m
+Next.js build worker exited with code: 
+1 and signal: null

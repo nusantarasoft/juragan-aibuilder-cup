@@ -5,6 +5,8 @@
 
 name: nusantarasoft
 
+# CMS services (Admin CMS and NestJS Middleware) are defined in section 12 below
+
 services:
   # ╔═══════════════════════════════════════════════════════════════════════════╗
   # ║  1. DATA & ANALYTICS STACK                                                ║
@@ -84,8 +86,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXP: ${JWT_EXPIRY}
-    ports:
-      - "5432:5432"
+    # Port removed - use supavisor (port 5432) to connect to postgres
     networks:
       - management-network
     volumes:
@@ -373,6 +374,8 @@ services:
       APP_NAME: realtime
       SEED_SELF_HOST: "true"
       RUN_JANITOR: "true"
+    networks:
+      - management-network
 
   # Supabase Storage with S3 backend (Minio)
   storage:
@@ -417,6 +420,8 @@ services:
       REGION: stub
       ENABLE_IMAGE_TRANSFORMATION: "true"
       IMGPROXY_URL: http://imgproxy:5001
+    networks:
+      - management-network
 
   imgproxy:
     container_name: supabase-imgproxy
@@ -578,6 +583,8 @@ services:
       POOLER_POOL_MODE: transaction
       DB_POOL_SIZE: ${POOLER_DB_POOL_SIZE}
     command: [ "/bin/sh", "-c", "/app/bin/migrate && /app/bin/supavisor eval \"$$(cat /etc/pooler/pooler.exs)\" && /app/bin/server" ]
+    networks:
+      - management-network
 
   # ╔═══════════════════════════════════════════════════════════════════════════╗
   # ║  3. WORKFLOW & AUTOMATION                                                 ║
@@ -702,12 +709,24 @@ services:
       - "3002:3000"
     working_dir: /app
     command: >
-      sh -c "npm init -y && npm install socket.io express &&  node -e \"const app = require('express')(); const http = require('http').createServer(app);  const io = require('socket.io')(http, {cors:{origin:'*'}});  io.on('connection', s => console.log('client connected'));  http.listen(3000, () => console.log('Socket.IO server running on port 3000'));\""
+      sh -c "npm init -y && npm install socket.io express @socket.io/admin-ui && node -e \"const app = require('express')(); const http = require('http').createServer(app); const { instrument } = require('@socket.io/admin-ui'); const io = require('socket.io')(http, {cors:{origin:['https://admin.socket.io', 'http://localhost:8088'], credentials:true}}); instrument(io, {auth: false}); io.on('connection', s => console.log('client connected')); http.listen(3000, () => console.log('Socket.IO server running on port 3000'));\""
     volumes:
       - socketio-data:/app
     networks:
-      management-network:
+      - management-network
 
+  # Socket.IO Admin UI
+  socketio-admin:
+    image: node:20-alpine
+    container_name: socketio-admin
+    restart: unless-stopped
+    ports:
+      - "8088:8080"
+    working_dir: /app
+    command: >
+      sh -c "npm install -g serve @socket.io/admin-ui && serve -s node_modules/@socket.io/admin-ui/ui/dist -p 8080"
+    networks:
+      - management-network
         # ╔═══════════════════════════════════════════════════════════════════════════╗
         # ║  4. INFRASTRUCTURE & DNS                                                  ║
         # ║     Pi-hole, BIND9 DNS, LDAP Directory Services                           ║
@@ -991,7 +1010,7 @@ services:
     container_name: grafana
     restart: unless-stopped
     ports:
-      - "3003:3000"
+      - "3004:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=${ADMIN_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD}
@@ -1139,7 +1158,7 @@ services:
     container_name: jitsi-web
     restart: unless-stopped
     ports:
-      - "8443:443"
+      - "8446:443"
     environment:
       - PUBLIC_URL=https://localhost:8443
       - TZ=${TZ}
@@ -1155,27 +1174,29 @@ services:
   # ╚═══════════════════════════════════════════════════════════════════════════╝
 
   # GitLab - Complete DevOps Platform
-  gitlab:
-    image: gitlab/gitlab-ce:latest
-    container_name: gitlab
-    restart: unless-stopped
-    hostname: gitlab.local
-    ports:
-      - "8929:80"
-      - "8930:443"
-      - "2222:22"
-    environment:
-      GITLAB_OMNIBUS_CONFIG: |
-        external_url 'http://localhost:8929'
-        gitlab_rails['gitlab_shell_ssh_port'] = 2222
-        gitlab_rails['initial_root_password'] = '${GITLAB_ROOT_PASSWORD:-Nusantarasoft123!}'
-    volumes:
-      - gitlab-config:/etc/gitlab
-      - gitlab-logs:/var/log/gitlab
-      - gitlab-data:/var/opt/gitlab
-    shm_size: '256m'
-    networks:
-      - management-network
+  # DISABLED: GitLab consumes significant resources (4GB+ RAM)
+  # To re-enable: uncomment lines below
+  # gitlab:
+  #   image: gitlab/gitlab-ce:latest
+  #   container_name: gitlab
+  #   restart: unless-stopped
+  #   hostname: gitlab.local
+  #   ports:
+  #     - "8929:80"
+  #     - "8930:443"
+  #     - "2222:22"
+  #   environment:
+  #     GITLAB_OMNIBUS_CONFIG: |
+  #       external_url 'http://localhost:8929'
+  #       gitlab_rails['gitlab_shell_ssh_port'] = 2222
+  #       gitlab_rails['initial_root_password'] = '${GITLAB_ROOT_PASSWORD:-Nusantarasoft123!}'
+  #   volumes:
+  #     - gitlab-config:/etc/gitlab
+  #     - gitlab-logs:/var/log/gitlab
+  #     - gitlab-data:/var/opt/gitlab
+  #   shm_size: '256m'
+  #   networks:
+  #     - management-network
 
   # Docker Registry - Container Image Registry
   # Note: Harbor requires full installer from https://goharbor.io/
@@ -1198,7 +1219,7 @@ services:
     container_name: sonarqube
     restart: unless-stopped
     ports:
-      - "9092:9000"
+      - "9094:9000"
     environment:
       - SONAR_JDBC_URL=jdbc:postgresql://postgres:5432/sonarqube
       - SONAR_JDBC_USERNAME=${POSTGRES_USER}
@@ -1320,6 +1341,11 @@ services:
       - SUPABASE_URL=http://kong:8000
       - SUPABASE_ANON_KEY=${ANON_KEY}
       - SUPABASE_SERVICE_KEY=${SERVICE_ROLE_KEY}
+      - GOOGLE_API_KEY=AIzaSyD0iYhFsz-PosM5l-507R4JClGcCwO71EA
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
     networks:
       - management-network
     depends_on:
@@ -1342,7 +1368,7 @@ services:
       - "3003:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_GRAPHQL_URL=http://middleware:4001/graphql
+      - NEXT_PUBLIC_GRAPHQL_URL=http://localhost:4001/graphql
       - GRAPHQL_API_URL=http://middleware:4001/graphql
       - NEXT_PUBLIC_SUPABASE_URL=http://kong:8000
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
@@ -1364,6 +1390,48 @@ services:
       retries: 3
       start_period: 40s
 
+  # Landing Page - Public Website (renders CMS-built pages)
+  landing-page:
+    build:
+      context: ./landing-page
+      dockerfile: Dockerfile
+    container_name: landing-page
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_CMS_API_URL=http://admin:3000
+      - NEXT_PUBLIC_SUPABASE_URL=http://kong:8000
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
+    networks:
+      - management-network
+    depends_on:
+      - middleware
+      - kong
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:3000" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Label Studio - Data Labeling
+  label-studio:
+    image: heartexlabs/label-studio:latest
+    container_name: label-studio
+    restart: unless-stopped
+    ports:
+      - "8095:8080"
+    environment:
+      - LABEL_STUDIO_USERNAME=${ADMIN_EMAIL:-admin@example.com}
+      - LABEL_STUDIO_PASSWORD=${ADMIN_PASSWORD:-changeme123}
+      - LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK=true
+    volumes:
+      - label-studio-data:/label-studio/data
+    networks:
+      - management-network
+
 networks:
   management-network:
     driver: bridge
@@ -1375,6 +1443,7 @@ volumes:
   pgadmin-data:
   mindsdb-data:
   anythingllm-data:
+  label-studio-data:
 
   # 2. Backend Services - Supabase
   supabase-db-data:

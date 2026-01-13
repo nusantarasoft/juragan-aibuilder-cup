@@ -152,20 +152,26 @@ interface CanvasDropZoneProps {
 
 export const CanvasDropZone: React.FC<CanvasDropZoneProps> = ({ onDrop, children, isEmpty }) => {
     const ref = useRef<HTMLDivElement>(null);
-    const [{ isOver, canDrop }, drop] = useDrop(() => ({
+    const [{ isOver, canDrop, isDirectlyOver }, drop] = useDrop(() => ({
         accept: ItemTypes.LIBRARY_BLOCK,
-        drop: (item: LibraryItem) => {
+        drop: (item: LibraryItem, monitor) => {
+            // Only handle drop if dropping directly on canvas, not on nested drop zones
+            if (monitor.didDrop()) {
+                // A nested drop zone already handled this drop
+                return;
+            }
             onDrop(item);
         },
         collect: (monitor) => ({
             isOver: monitor.isOver(),
             canDrop: monitor.canDrop(),
+            isDirectlyOver: monitor.isOver({ shallow: true }),
         }),
     }));
 
     drop(ref);
 
-    const isActive = isOver && canDrop;
+    const isActive = isDirectlyOver && canDrop;
 
     return (
         <div

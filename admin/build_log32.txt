@@ -1,0 +1,46 @@
+﻿
+> admin@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.0 (Turbopack)
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 33.4s
+  Running TypeScript ...
+npm : Failed to compile.
+At line:1 char:11
++ cd admin; npm run build 2>&1 | Out-File 
+-FilePath build_log32.txt -En ...
++           ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified:  
+   (Failed to compile.:String) [], RemoteEx  
+  ception
+    + FullyQualifiedErrorId : NativeCommandE 
+   rror
+ 
+
+./src/components/mvpblocks/forms/multi-step-f
+orm-preview.tsx:7:9
+Type error: Type '{ onSubmit: (data: any) => 
+void; }' is not assignable to type 
+'IntrinsicAttributes & MultiStepFormProps'.
+  Property 'onSubmit' does not exist on type 
+'IntrinsicAttributes & MultiStepFormProps'.
+
+[0m [90m  5 |[39m     
+[33m<[39m[33mdiv[39m 
+className[33m=[39m[32m"mx-auto w-full 
+max-w-lg"[39m[33m>[39m
+ [90m  6 |[39m       
+[33m<[39m[33mMultiStepForm[39m
+[31m[1m>[22m[39m[90m  7 |[39m         
+onSubmit[33m=[39m{(data) [33m=>[39m {
+ [90m    |[39m         [31m[1m^[22m[39m
+ [90m  8 |[39m           
+console[33m.[39mlog([32m'Form 
+submitted:'[39m[33m,[39m data)[33m;[39m
+ [90m  9 |[39m         }}
+ [90m 10 |[39m       
+[33m/[39m[33m>[39m[0m
+Next.js build worker exited with code: 1 and 
+signal: null
