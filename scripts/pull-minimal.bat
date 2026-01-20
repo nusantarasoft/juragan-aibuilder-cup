@@ -1,10 +1,10 @@
 @echo off
 REM Nusantarasoft Docker - Minimal Infrastructure Pull
-REM Updated: 2026-01-01
+REM Updated: 2026-01-13
 REM Full Stack: Frontend (Landing + Admin), Middleware, Backend (Supabase)
 
 echo =======================================
-echo NUSANTARASOFT - MINIMAL FULL STACK
+echo NUSANTARASOFT - MINIMAL STACK PULL
 echo =======================================
 echo.
 echo Stack Components:
@@ -13,7 +13,9 @@ echo   MIDDLEWARE: GraphQL API Layer
 echo   BACKEND:    Supabase (Database, Auth, Storage, API)
 echo.
 
-echo [1/6] Backend - Supabase Core...
+cd /d "%~dp0.."
+
+echo [1/5] Backend - Supabase Core...
 docker pull supabase/postgres:15.8.1.085
 docker pull supabase/studio:2025.12.09-sha-434634f
 docker pull supabase/gotrue:v2.183.0
@@ -24,44 +26,49 @@ docker pull supabase/realtime:v2.68.0
 docker pull supabase/storage-api:v1.33.0
 docker pull supabase/supavisor:2.7.4
 docker pull kong:2.8.1
-docker compose pull postgres minio minio-createbucket kong auth rest realtime storage imgproxy meta functions analytics vector supavisor studio traefik nginxproxymanager portainer n8n mailserver bind9 pihole roundcube socketio socketio-admin
 
 echo.
-echo [2/6] Backend - Storage (Minio)...
-REM Minio is now pulled via docker compose pull in [1/6]
+echo [2/5] Storage and Infrastructure...
+docker pull minio/minio:latest
+docker pull minio/mc:latest
+docker pull darthsim/imgproxy:v3.8.0
+docker pull timberio/vector:0.28.1-alpine
 
 echo.
-echo [3/6] Infrastructure - Proxy...
-REM Traefik and Nginx Proxy Manager are now pulled via docker compose pull in [1/6]
+echo [3/5] Proxy and Management...
+docker pull traefik:latest
+docker pull jc21/nginx-proxy-manager:latest
+docker pull portainer/portainer-ce:latest
 
 echo.
-echo [4/6] Infrastructure - Management...
-REM Portainer is now pulled via docker compose pull in [1/6]
+echo [4/5] DNS and Mail...
+docker pull pihole/pihole:latest
+docker pull sameersbn/bind:latest
+docker pull ghcr.io/docker-mailserver/docker-mailserver:latest
+docker pull roundcube/roundcubemail:latest
 
 echo.
-echo [5/6] Middleware + Frontend (Build locally)...
-echo    Middleware and Frontend are built from local Dockerfiles
-echo    Run: docker compose build middleware admin landing-page
-
-echo.
-echo [6/6] Automation...
-docker pull n8nio/n8n:latest
+echo [5/5] Realtime...
+docker pull node:20-alpine
 
 echo.
 echo =======================================
-echo MINIMAL FULL STACK IMAGES READY!
+echo MINIMAL STACK IMAGES READY!
 echo =======================================
 echo.
-echo Images pulled: 22 + 3 local builds
+echo Next Steps:
+echo   1. Build local images:
+echo      docker compose -f docker-compose.minimal.yml build middleware admin landing-page
 echo.
-echo Run: docker compose build middleware admin landing-page
-echo Then: start-minimal.bat
+echo   2. Start minimal stack:
+echo      scripts\start-minimal.bat
 echo.
-echo Access URLs:
-echo   - Landing Page:     http://localhost:3000 (PUBLIC)
-echo   - Admin CMS:        http://localhost:3003 (ADMIN)
-echo   - Supabase Studio:  http://localhost:8000
-echo   - Portainer:        http://localhost:9090
-echo   - n8n:              http://localhost:5678
+echo Access URLs after starting:
+echo   - Landing Page:        http://localhost:3000
+echo   - Admin CMS:           http://localhost:3003
+echo   - GraphQL Middleware:  http://localhost:4001/graphql
+echo   - Supabase Studio:     http://localhost:8000
+echo   - Minio Console:       http://localhost:9001
+echo   - Portainer:           http://localhost:9090
 echo.
 pause

@@ -1,10 +1,10 @@
 @echo off
 REM Nusantarasoft Docker - Start Minimal Full Stack
-REM Updated: 2026-01-01
+REM Updated: 2026-01-13
 REM Full Stack: Frontend (Landing + Admin), Middleware, Backend (Supabase)
 
 echo =======================================
-echo NUSANTARASOFT - STARTING FULL STACK
+echo NUSANTARASOFT - STARTING MINIMAL STACK
 echo =======================================
 echo.
 echo Stack:
@@ -28,7 +28,7 @@ docker compose -f docker-compose.minimal.yml up -d
 
 echo.
 echo =======================================
-echo FULL STACK STARTED!
+echo MINIMAL STACK STARTED!
 echo =======================================
 echo.
 echo ===================== ACCESS URLS =====================
@@ -40,6 +40,7 @@ echo.
 echo   ADMIN / CMS:
 echo   ------------------------------------------------
 echo   Admin CMS:          http://localhost:3003
+echo   GraphQL Middleware: http://localhost:4001/graphql
 echo   Supabase Studio:    http://localhost:8000
 echo.
 echo   REALTIME:
@@ -51,9 +52,8 @@ echo   MANAGEMENT:
 echo   ------------------------------------------------
 echo   Portainer:          http://localhost:9090
 echo   Nginx Proxy Mgr:    http://localhost:8081
-echo   n8n Automation:     http://localhost:5678
 echo.
-echo   MAIL & DNS:
+echo   MAIL ^& DNS:
 echo   ------------------------------------------------
 echo   Roundcube Mail:     http://localhost:8082
 echo   Pi-hole DNS:        http://localhost:8053/admin
@@ -66,9 +66,9 @@ echo.
 echo ========================================================
 echo.
 echo Commands:
-echo   Stop:   docker compose stop
-echo   View:   docker compose ps
-echo   Logs:   docker compose logs -f [service]
-echo   Build:  docker compose build [service]
+echo   Stop:   docker compose -f docker-compose.minimal.yml stop
+echo   View:   docker compose -f docker-compose.minimal.yml ps
+echo   Logs:   docker compose -f docker-compose.minimal.yml logs -f [service]
+echo   Build:  docker compose -f docker-compose.minimal.yml build [service]
 echo.
 pause
