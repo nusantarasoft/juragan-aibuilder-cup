@@ -1,28 +1,10 @@
-# Usage
-#   Start:              docker compose up
-#   Stop:               docker compose down
-#   Destroy:            docker compose down -v --remove-orphans
-
-name: nusantarasoft
-
-# CMS services (Admin CMS and NestJS Middleware) are defined in section 12 below
+name: nusantarasoft-minimal
 
 services:
-  # ╔═══════════════════════════════════════════════════════════════════════════╗
-  # ║  1. DATA & ANALYTICS STACK                                                ║
-  # ║     Iceberg Data Lakehouse with Nessie, Dremio, Minio                     ║
-  # ╚═══════════════════════════════════════════════════════════════════════════╝
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 1. CORE DATA & STORAGE
+  # ═══════════════════════════════════════════════════════════════════════════
 
-  # Nessie Catalog Server Using In-Memory Store
-  nessie:
-    image: projectnessie/nessie:latest
-    container_name: nessie
-    networks:
-      management-network:
-    ports:
-      - 19120:19120
-
-  # Minio Storage Server (S3-compatible)
   minio:
     image: minio/minio:latest
     container_name: minio
@@ -46,7 +28,6 @@ services:
     volumes:
       - minio-data:/data
 
-  # Minio bucket creation (runs once to create the bucket)
   minio-createbucket:
     image: minio/mc:latest
     container_name: minio-createbucket
@@ -56,22 +37,6 @@ services:
     entrypoint: >
       /bin/sh -c " /usr/bin/mc alias set supa-minio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; /usr/bin/mc mb supa-minio/stub; exit 0; "
 
-  # Dremio
-  dremio:
-    platform: linux/x86_64
-    image: dremio/dremio-oss:latest
-    ports:
-      - 9047:9047
-      - 31010:31010
-      - 32010:32010
-      - 45678:45678
-    container_name: dremio
-    environment:
-      - DREMIO_JAVA_SERVER_EXTRA_OPTS=-Dpaths.dist=file:///opt/dremio/data/dist
-    networks:
-      management-network:
-
-        # Postgres - Main Database (with Supabase extensions)
   postgres:
     image: supabase/postgres:15.8.1.085
     container_name: postgres
@@ -86,7 +51,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXP: ${JWT_EXPIRY}
-    # Port removed - use supavisor (port 5432) to connect to postgres
     networks:
       - management-network
     volumes:
@@ -97,6 +61,9 @@ services:
       - ./volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:Z
       - ./volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
       - ./volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
+      - ./volumes/db/media_embeddings.sql:/docker-entrypoint-initdb.d/migrations/99-media-embeddings.sql:Z
+      - ./volumes/db/media_annotations.sql:/docker-entrypoint-initdb.d/migrations/99-media-annotations.sql:Z
+      - ./volumes/db/add_metadata.sql:/docker-entrypoint-initdb.d/migrations/99-add-metadata.sql:Z
       - ./volumes/db/data:/var/lib/postgresql/data:Z
       - db-config:/etc/postgresql-custom
     healthcheck:
@@ -106,63 +73,10 @@ services:
       retries: 10
     command: [ "postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal" ]
 
-  # PgAdmin
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: pgadmin4
-    ports:
-      - "8888:80"
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    networks:
-      management-network:
-    volumes:
-      - pgadmin-data:/var/lib/pgadmin
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 2. SUPABASE BACKEND STACK
+  # ═══════════════════════════════════════════════════════════════════════════
 
-  # Superset
-  superset:
-    image: alexmerced/dremio-superset:latest
-    container_name: superset
-    networks:
-      management-network:
-    ports:
-      - 8080:8088
-
-  # MindsDB - AI/ML Database Platform
-  mindsdb:
-    image: mindsdb/mindsdb:latest
-    container_name: mindsdb
-    restart: unless-stopped
-    ports:
-      - "47334:47334" # HTTP API
-      - "47335:47335" # MySQL API
-    environment:
-      - MINDSDB_STORAGE_DIR=/mindsdb/var
-    volumes:
-      - mindsdb-data:/mindsdb/var
-    networks:
-      management-network:
-
-        # AnythingLLM - Private LLM Interface
-  anythingllm:
-    image: mintplexlabs/anythingllm:latest
-    container_name: anythingllm
-    restart: unless-stopped
-    ports:
-      - "3001:3001"
-    environment:
-      - STORAGE_DIR=/app/server/storage
-      - JWT_SECRET=${JWT_SECRET}
-    volumes:
-      - anythingllm-data:/app/server/storage
-    networks:
-      management-network:
-
-        # ╔═══════════════════════════════════════════════════════════════════════════╗
-        # ║  2. BACKEND SERVICES - SUPABASE                                           ║
-        # ║     Open source Firebase alternative (Auth, Database, Storage, API)       ║
-        # ╚═══════════════════════════════════════════════════════════════════════════╝
   studio:
     container_name: supabase-studio
     image: supabase/studio:2025.12.09-sha-434634f
@@ -180,37 +94,27 @@ services:
     networks:
       - management-network
     environment:
-      # Binds nestjs listener to both IPv4 and IPv6 network interfaces
       HOSTNAME: "::"
-
       STUDIO_PG_META_URL: http://meta:8080
       POSTGRES_PORT: ${POSTGRES_PORT}
       POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PG_META_CRYPTO_KEY: ${PG_META_CRYPTO_KEY}
-
       DEFAULT_ORGANIZATION_NAME: ${STUDIO_DEFAULT_ORGANIZATION}
       DEFAULT_PROJECT_NAME: ${STUDIO_DEFAULT_PROJECT}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-
       SUPABASE_URL: http://kong:8000
       SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
       AUTH_JWT_SECRET: ${JWT_SECRET}
-
-      # LOGFLARE_API_KEY is deprecated
       LOGFLARE_API_KEY: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
       LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
       LOGFLARE_PRIVATE_ACCESS_TOKEN: ${LOGFLARE_PRIVATE_ACCESS_TOKEN}
-
       LOGFLARE_URL: http://analytics:4000
       NEXT_PUBLIC_ENABLE_LOGS: true
-      # Comment to use Big Query backend for analytics
       NEXT_ANALYTICS_BACKEND_PROVIDER: postgres
-      # Uncomment to use Big Query backend for analytics
-      # NEXT_ANALYTICS_BACKEND_PROVIDER: bigquery
 
   kong:
     container_name: supabase-kong
@@ -220,7 +124,6 @@ services:
       - ${KONG_HTTP_PORT}:8000/tcp
       - ${KONG_HTTPS_PORT}:8443/tcp
     volumes:
-      # https://github.com/supabase/supabase/issues/12661
       - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
     depends_on:
       analytics:
@@ -230,7 +133,6 @@ services:
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
-      # https://github.com/supabase/cli/issues/14
       KONG_DNS_ORDER: LAST,A,CNAME
       KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth,request-termination,ip-restriction
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
@@ -239,7 +141,6 @@ services:
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
       DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
-    # https://unix.stackexchange.com/a/294837
     entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
 
   auth:
@@ -253,7 +154,6 @@ services:
       retries: 3
     depends_on:
       postgres:
-        # Disable this if you are using an external Postgres database
         condition: service_healthy
       analytics:
         condition: service_healthy
@@ -263,29 +163,19 @@ services:
       GOTRUE_API_HOST: 0.0.0.0
       GOTRUE_API_PORT: 9999
       API_EXTERNAL_URL: ${API_EXTERNAL_URL}
-
       GOTRUE_DB_DRIVER: postgres
       GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
-
       GOTRUE_SITE_URL: ${SITE_URL}
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS}
       GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
-
       GOTRUE_JWT_ADMIN_ROLES: service_role
       GOTRUE_JWT_AUD: authenticated
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       GOTRUE_JWT_EXP: ${JWT_EXPIRY}
       GOTRUE_JWT_SECRET: ${JWT_SECRET}
-
       GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP}
       GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: ${ENABLE_ANONYMOUS_USERS}
       GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM}
-
-      # Uncomment to bypass nonce check in ID Token flow. Commonly set to true when using Google Sign In on mobile.
-      # GOTRUE_EXTERNAL_SKIP_NONCE_CHECK: true
-
-      # GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED: true
-      # GOTRUE_SMTP_MAX_FREQUENCY: 1s
       GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
       GOTRUE_SMTP_HOST: ${SMTP_HOST}
       GOTRUE_SMTP_PORT: ${SMTP_PORT}
@@ -296,28 +186,8 @@ services:
       GOTRUE_MAILER_URLPATHS_CONFIRMATION: ${MAILER_URLPATHS_CONFIRMATION}
       GOTRUE_MAILER_URLPATHS_RECOVERY: ${MAILER_URLPATHS_RECOVERY}
       GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: ${MAILER_URLPATHS_EMAIL_CHANGE}
-
       GOTRUE_EXTERNAL_PHONE_ENABLED: ${ENABLE_PHONE_SIGNUP}
       GOTRUE_SMS_AUTOCONFIRM: ${ENABLE_PHONE_AUTOCONFIRM}
-      # Uncomment to enable custom access token hook. Please see: https://supabase.com/docs/guides/auth/auth-hooks for full list of hooks and additional details about custom_access_token_hook
-
-      # GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_ENABLED: "true"
-      # GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_URI: "pg-functions://postgres/public/custom_access_token_hook"
-      # GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_SECRETS: "<standard-base64-secret>"
-
-      # GOTRUE_HOOK_MFA_VERIFICATION_ATTEMPT_ENABLED: "true"
-      # GOTRUE_HOOK_MFA_VERIFICATION_ATTEMPT_URI: "pg-functions://postgres/public/mfa_verification_attempt"
-
-      # GOTRUE_HOOK_PASSWORD_VERIFICATION_ATTEMPT_ENABLED: "true"
-      # GOTRUE_HOOK_PASSWORD_VERIFICATION_ATTEMPT_URI: "pg-functions://postgres/public/password_verification_attempt"
-
-      # GOTRUE_HOOK_SEND_SMS_ENABLED: "false"
-      # GOTRUE_HOOK_SEND_SMS_URI: "pg-functions://postgres/public/custom_access_token_hook"
-      # GOTRUE_HOOK_SEND_SMS_SECRETS: "v1,whsec_VGhpcyBpcyBhbiBleGFtcGxlIG9mIGEgc2hvcnRlciBCYXNlNjQgc3RyaW5n"
-
-      # GOTRUE_HOOK_SEND_EMAIL_ENABLED: "false"
-      # GOTRUE_HOOK_SEND_EMAIL_URI: "http://host.docker.internal:54321/functions/v1/email_sender"
-      # GOTRUE_HOOK_SEND_EMAIL_SECRETS: "v1,whsec_VGhpcyBpcyBhbiBleGFtcGxlIG9mIGEgc2hvcnRlciBCYXNlNjQgc3RyaW5n"
 
   rest:
     container_name: supabase-rest
@@ -325,7 +195,6 @@ services:
     restart: unless-stopped
     depends_on:
       postgres:
-        # Disable this if you are using an external Postgres database
         condition: service_healthy
       analytics:
         condition: service_healthy
@@ -342,13 +211,11 @@ services:
     command: [ "postgrest" ]
 
   realtime:
-    # This container name looks inconsistent but is correct because realtime constructs tenant id by parsing the subdomain
     container_name: realtime-dev.supabase-realtime
     image: supabase/realtime:v2.68.0
     restart: unless-stopped
     depends_on:
       postgres:
-        # Disable this if you are using an external Postgres database
         condition: service_healthy
       analytics:
         condition: service_healthy
@@ -377,7 +244,6 @@ services:
     networks:
       - management-network
 
-  # Supabase Storage with S3 backend (Minio)
   storage:
     container_name: supabase-storage
     image: supabase/storage-api:v1.33.0
@@ -385,13 +251,13 @@ services:
     volumes:
       - supabase-storage:/var/lib/storage
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/status" ]
-      timeout: 5s
-      interval: 5s
-      retries: 3
+      test: [ "CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:5000/status', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\"" ]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+      start_period: 30s
     depends_on:
       postgres:
-        # Disable this if you are using an external Postgres database
         condition: service_healthy
       rest:
         condition: service_started
@@ -416,7 +282,6 @@ services:
       AWS_DEFAULT_REGION: stub
       FILE_STORAGE_BACKEND_PATH: /var/lib/storage
       TENANT_ID: stub
-      # TODO: https://github.com/supabase/storage-api/issues/55
       REGION: stub
       ENABLE_IMAGE_TRANSFORMATION: "true"
       IMGPROXY_URL: http://imgproxy:5001
@@ -446,7 +311,6 @@ services:
     restart: unless-stopped
     depends_on:
       postgres:
-        # Disable this if you are using an external Postgres database
         condition: service_healthy
       analytics:
         condition: service_healthy
@@ -476,7 +340,6 @@ services:
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
-      # TODO: Allow configuring VERIFY_JWT per function. This PR might help: https://github.com/supabase/cli/pull/786
       VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT}"
     command: [ "start", "--main-service", "/home/deno/functions/main" ]
 
@@ -486,12 +349,6 @@ services:
     restart: unless-stopped
     ports:
       - 4000:4000
-    # Uncomment to use Big Query backend for analytics
-    # volumes:
-    #   - type: bind
-    #     source: ${PWD}/gcloud.json
-    #     target: /opt/app/rel/logflare/bin/gcloud.json
-    #     read_only: true
     healthcheck:
       test: [ "CMD", "curl", "http://localhost:4000/health" ]
       timeout: 5s
@@ -499,7 +356,6 @@ services:
       retries: 10
     depends_on:
       postgres:
-        # Disable this if you are using an external Postgres database
         condition: service_healthy
     networks:
       - management-network
@@ -515,16 +371,10 @@ services:
       LOGFLARE_PRIVATE_ACCESS_TOKEN: ${LOGFLARE_PRIVATE_ACCESS_TOKEN}
       LOGFLARE_SINGLE_TENANT: true
       LOGFLARE_SUPABASE_MODE: true
-
-      # Comment variables to use Big Query backend for analytics
       POSTGRES_BACKEND_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/_supabase
       POSTGRES_BACKEND_SCHEMA: _analytics
       LOGFLARE_FEATURE_FLAG_OVERRIDE: multibackend=true
-      # Uncomment to use Big Query backend for analytics
-      # GOOGLE_PROJECT_ID: ${GOOGLE_PROJECT_ID}
-      # GOOGLE_PROJECT_NUMBER: ${GOOGLE_PROJECT_NUMBER}
 
-      # Vector - Log Aggregation
   vector:
     container_name: supabase-vector
     image: timberio/vector:0.28.1-alpine
@@ -543,8 +393,6 @@ services:
     security_opt:
       - "label=disable"
 
-  # Supavisor - Connection Pooler
-  # Update the DATABASE_URL if you are using an external Postgres database
   supavisor:
     container_name: supabase-pooler
     image: supabase/supavisor:2.7.4
@@ -586,12 +434,10 @@ services:
     networks:
       - management-network
 
-  # ╔═══════════════════════════════════════════════════════════════════════════╗
-  # ║  3. WORKFLOW & AUTOMATION                                                 ║
-  # ║     n8n workflow automation with Traefik reverse proxy                    ║
-  # ╚═══════════════════════════════════════════════════════════════════════════╝
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 3. INFRASTRUCTURE Services
+  # ═══════════════════════════════════════════════════════════════════════════
 
-  # Traefik Reverse Proxy (for n8n SSL)
   traefik:
     image: traefik:latest
     container_name: traefik
@@ -614,179 +460,13 @@ services:
       - traefik_data:/letsencrypt
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
-  # n8n Workflow Automation
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: n8n
-    restart: always
-    ports:
-      - "127.0.0.1:5678:5678"
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.n8n.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)
-      - traefik.http.routers.n8n.tls=true
-      - traefik.http.routers.n8n.entrypoints=web,websecure
-      - traefik.http.routers.n8n.tls.certresolver=mytlschallenge
-      - traefik.http.middlewares.n8n.headers.SSLRedirect=true
-      - traefik.http.middlewares.n8n.headers.STSSeconds=315360000
-      - traefik.http.middlewares.n8n.headers.browserXSSFilter=true
-      - traefik.http.middlewares.n8n.headers.contentTypeNosniff=true
-      - traefik.http.middlewares.n8n.headers.forceSTSHeader=true
-      - traefik.http.middlewares.n8n.headers.SSLHost=${DOMAIN_NAME}
-      - traefik.http.middlewares.n8n.headers.STSIncludeSubdomains=true
-      - traefik.http.middlewares.n8n.headers.STSPreload=true
-      - traefik.http.routers.n8n.middlewares=n8n@docker
-    environment:
-      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
-      - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=https
-      - N8N_RUNNERS_ENABLED=true
-      - NODE_ENV=production
-      - WEBHOOK_URL=https://${SUBDOMAIN}.${DOMAIN_NAME}/
-      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
-      - TZ=${GENERIC_TIMEZONE}
-    volumes:
-      - n8n_data:/home/node/.n8n
-      - ./volumes/n8n/local-files:/files
-
-  # Jenkins - CI/CD Server
-  jenkins:
-    image: jenkins/jenkins:lts
-    container_name: jenkins
-    restart: unless-stopped
-    ports:
-      - "8084:8080" # Web UI
-      - "50000:50000" # Agent connections
-    environment:
-      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
-    volumes:
-      - jenkins-data:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      management-network:
-
-        # AWX - Ansible Automation Platform
-  awx-redis:
-    image: redis:7-alpine
-    container_name: awx-redis
-    restart: unless-stopped
-    volumes:
-      - awx-redis-data:/data
-    networks:
-      management-network:
-
-
-  awx:
-    image: quay.io/ansible/awx:latest
-    container_name: awx
-    restart: unless-stopped
-    ports:
-      - "8085:8052"
-    environment:
-      - DATABASE_HOST=postgres
-      - DATABASE_NAME=awx
-      - DATABASE_USER=${POSTGRES_USER}
-      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
-      - DATABASE_PORT=5432
-      - AWX_ADMIN_USER=${ADMIN_USER:-admin}
-      - AWX_ADMIN_PASSWORD=${ADMIN_PASSWORD:-Nusantarasoft123!}
-      - REDIS_HOST=awx-redis
-    volumes:
-      - awx-data:/var/lib/awx
-    depends_on:
-      - postgres
-      - awx-redis
-    networks:
-      management-network:
-
-        # Socket.IO Server - Real-time Communication
-  socketio:
-    image: node:20-alpine
-    container_name: socketio-server
-    restart: unless-stopped
-    ports:
-      - "3002:3000"
-    working_dir: /app
-    command: >
-      sh -c "npm init -y && npm install socket.io express @socket.io/admin-ui && node -e \"const app = require('express')(); const http = require('http').createServer(app); const { instrument } = require('@socket.io/admin-ui'); const io = require('socket.io')(http, {cors:{origin:['https://admin.socket.io', 'http://localhost:8088'], credentials:true}}); instrument(io, {auth: false}); io.on('connection', s => console.log('client connected')); http.listen(3000, () => console.log('Socket.IO server running on port 3000'));\""
-    volumes:
-      - socketio-data:/app
-    networks:
-      - management-network
-
-  # Socket.IO Admin UI
-  socketio-admin:
-    image: node:20-alpine
-    container_name: socketio-admin
-    restart: unless-stopped
-    ports:
-      - "8088:8080"
-    working_dir: /app
-    command: >
-      sh -c "npm install -g serve @socket.io/admin-ui && serve -s node_modules/@socket.io/admin-ui/ui/dist -p 8080"
-    networks:
-      - management-network
-        # ╔═══════════════════════════════════════════════════════════════════════════╗
-        # ║  4. INFRASTRUCTURE & DNS                                                  ║
-        # ║     Pi-hole, BIND9 DNS, LDAP Directory Services                           ║
-        # ╚═══════════════════════════════════════════════════════════════════════════╝
-
-        # ---------------------------------------------------------------------------
-        # LDAP Directory Service
-        # ---------------------------------------------------------------------------
-
-  openldap:
-    image: osixia/openldap:latest
-    container_name: openldap
-    restart: unless-stopped
-    hostname: ldap.${DOMAIN}
-    ports:
-      - "389:389" # LDAP
-      - "636:636" # LDAPS
-    environment:
-      - LDAP_ORGANISATION=${LDAP_ORGANISATION}
-      - LDAP_DOMAIN=${LDAP_DOMAIN}
-      - LDAP_BASE_DN=${LDAP_BASE_DN}
-      - LDAP_ADMIN_PASSWORD=${LDAP_ADMIN_PASSWORD}
-      - LDAP_CONFIG_PASSWORD=${LDAP_CONFIG_PASSWORD}
-      - LDAP_READONLY_USER=${LDAP_READONLY_USER}
-      - LDAP_READONLY_USER_USERNAME=${LDAP_READONLY_USER_USERNAME}
-      - LDAP_READONLY_USER_PASSWORD=${LDAP_READONLY_USER_PASSWORD}
-      - LDAP_TLS=true
-      - LDAP_TLS_VERIFY_CLIENT=try
-    volumes:
-      - ldap-data:/var/lib/ldap
-      - ldap-config:/etc/ldap/slapd.d
-      - ldap-certs:/container/service/slapd/assets/certs
-    networks:
-      - management-network
-
-  phpldapadmin:
-    image: osixia/phpldapadmin:latest
-    container_name: phpldapadmin
-    restart: unless-stopped
-    ports:
-      - "8089:80"
-    environment:
-      - PHPLDAPADMIN_LDAP_HOSTS=openldap
-      - PHPLDAPADMIN_HTTPS=${LDAP_ADMIN_HTTPS}
-    depends_on:
-      - openldap
-    networks:
-      - management-network
-
-  # ---------------------------------------------------------------------------
-  # Reverse Proxy - Nginx Proxy Manager
-  # ---------------------------------------------------------------------------
-
   nginxproxymanager:
     image: 'jc21/nginx-proxy-manager:latest'
     container_name: nginxproxymanager
     restart: unless-stopped
     ports:
-      - '81:80' # HTTP (changed from 80 to avoid traefik conflict)
-      - '444:443' # HTTPS (changed from 443 to avoid traefik conflict)
+      - '81:80' # HTTP (alternate)
+      - '444:443' # HTTPS (alternate)
       - '8081:81' # Admin Panel
     environment:
       - TZ=${TZ}
@@ -798,23 +478,15 @@ services:
     volumes:
       - npm-data:/data
       - npm-letsencrypt:/etc/letsencrypt
-    depends_on:
-      - postgres
-    networks:
-      - management-network
-
-  # ---------------------------------------------------------------------------
-  # DNS Servers - Pi-hole & BIND9
-  # ---------------------------------------------------------------------------
 
   pihole:
     image: pihole/pihole:latest
     container_name: pihole
     restart: unless-stopped
     ports:
-      - "5380:53/tcp" # DNS TCP (alternate port, 53 used by Windows, 5354 by BIND9)
-      - "5380:53/udp" # DNS UDP
-      - "8053:80/tcp" # Web Admin
+      - "5380:53/tcp"
+      - "5380:53/udp"
+      - "8053:80/tcp"
     environment:
       - TZ=${TZ}
       - FTLCONF_webserver_api_password=${PIHOLE_PASSWORD}
@@ -833,9 +505,9 @@ services:
     container_name: bind9
     restart: unless-stopped
     ports:
-      - "5354:53/tcp" # DNS TCP (alternate port, 5353 used by mDNS)
-      - "5354:53/udp" # DNS UDP (alternate port)
-      - "10000:10000/tcp" # Webmin Admin
+      - "5354:53/tcp"
+      - "5354:53/udp"
+      - "10000:10000/tcp"
     environment:
       - WEBMIN_ENABLED=true
       - WEBMIN_INIT_SSL_ENABLED=false
@@ -843,15 +515,11 @@ services:
       - TZ=${TZ}
     volumes:
       - bind9-data:/data
+      - ./volumes/bind9/etc/named.conf.local:/data/bind/etc/named.conf.local
+      - ./volumes/bind9/zones:/data/bind/zones
     networks:
       - management-network
 
-  # ╔═══════════════════════════════════════════════════════════════════════════╗
-  # ║  5. EMAIL SERVER (Docker-Mailserver)                                      ║
-  # ║     Simple, full-featured mail server in a single container               ║
-  # ╚═══════════════════════════════════════════════════════════════════════════╝
-
-  # Docker-Mailserver - All-in-one mail server (SMTP, IMAP, antispam)
   mailserver:
     image: ghcr.io/docker-mailserver/docker-mailserver:latest
     container_name: mailserver
@@ -859,10 +527,10 @@ services:
     domainname: ${MAIL_DOMAIN:-nusantarasoft.local}
     restart: unless-stopped
     ports:
-      - "25:25" # SMTP
-      - "465:465" # SMTPS (implicit TLS)
-      - "587:587" # Submission (explicit TLS)
-      - "993:993" # IMAPS
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "993:993"
     environment:
       - ENABLE_SPAMASSASSIN=1
       - ENABLE_CLAMAV=0
@@ -881,13 +549,12 @@ services:
     networks:
       - management-network
 
-  # Roundcube - Webmail Client
   roundcube:
     image: roundcube/roundcubemail:latest
     container_name: roundcube
     restart: unless-stopped
     ports:
-      - "8082:80" # Webmail
+      - "8082:80"
     environment:
       - ROUNDCUBEMAIL_DEFAULT_HOST=mailserver
       - ROUNDCUBEMAIL_SMTP_SERVER=mailserver
@@ -901,17 +568,12 @@ services:
     networks:
       - management-network
 
-  # ╔═══════════════════════════════════════════════════════════════════════════╗
-  # ║  6. MANAGEMENT & MONITORING                                               ║
-  # ║     Portainer, Zabbix monitoring, K3s Kubernetes                          ║
-  # ╚═══════════════════════════════════════════════════════════════════════════╝
-
   portainer:
     image: portainer/portainer-ce:latest
     container_name: portainer
     restart: unless-stopped
     ports:
-      - "9090:9000" # Changed from 9000 to avoid minio conflict
+      - "9090:9000"
       - "9444:9443"
     volumes:
       - portainer-data:/data
@@ -919,414 +581,51 @@ services:
     networks:
       - management-network
 
-  # Zabbix Server
-  zabbix-server:
-    image: zabbix/zabbix-server-pgsql:latest
-    container_name: zabbix-server
+  socketio:
+    image: node:20-alpine
+    container_name: socketio-server
     restart: unless-stopped
     ports:
-      - "10051:10051"
-    environment:
-      - DB_SERVER_HOST=postgres
-      - POSTGRES_DB=zabbix
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - "3002:3000"
+    working_dir: /app
+    command: >
+      sh -c "npm init -y && npm install socket.io express @socket.io/admin-ui && node -e \"const app = require('express')(); const http = require('http').createServer(app); const { instrument } = require('@socket.io/admin-ui'); const io = require('socket.io')(http, {cors:{origin:['https://admin.socket.io', 'http://localhost:8088'], credentials:true}}); instrument(io, {auth: false}); io.on('connection', s => console.log('client connected')); http.listen(3000, () => console.log('Socket.IO server running on port 3000'));\""
     volumes:
-      - zabbix-server-data:/var/lib/zabbix
-    depends_on:
-      - postgres
+      - socketio-data:/app
     networks:
       - management-network
 
-  # Zabbix Web Interface
-  zabbix-web:
-    image: zabbix/zabbix-web-nginx-pgsql:latest
-    container_name: zabbix-web
+  socketio-admin:
+    image: node:20-alpine
+    container_name: socketio-admin
     restart: unless-stopped
     ports:
-      - "8086:8080"
-    environment:
-      - ZBX_SERVER_HOST=zabbix-server
-      - DB_SERVER_HOST=postgres
-      - POSTGRES_DB=zabbix
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - PHP_TZ=${TZ}
-    depends_on:
-      - zabbix-server
-      - postgres
+      - "8088:8080"
+    working_dir: /app
+    command: >
+      sh -c "npm install -g serve @socket.io/admin-ui && serve -s node_modules/@socket.io/admin-ui/ui/dist -p 8080"
     networks:
       - management-network
 
-  # K3s - Lightweight Kubernetes
-  k3s:
-    image: rancher/k3s:latest
-    container_name: k3s
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 4. CMS & AI STACK
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  labelstudio:
+    image: heartexlabs/label-studio:latest
+    container_name: labelstudio
     restart: unless-stopped
-    privileged: true
     ports:
-      - "6443:6443" # Kubernetes API
-      - "8087:80" # HTTP ingress
-      - "8445:443" # HTTPS ingress
+      - "8080:8080"
     environment:
-      - K3S_TOKEN=${K3S_TOKEN:-k3s_secret_token}
-      - K3S_KUBECONFIG_OUTPUT=/output/kubeconfig.yaml
-      - K3S_KUBECONFIG_MODE=666
-    command:
-      - server
-      - --disable=traefik
-      - --tls-san=localhost
+      - LABEL_STUDIO_USERNAME=${LABEL_STUDIO_USERNAME}
+      - LABEL_STUDIO_PASSWORD=${LABEL_STUDIO_PASSWORD}
+      - LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK=true
     volumes:
-      - k3s-data:/var/lib/rancher/k3s
-      - k3s-output:/output
+      - labelstudio-data:/label-studio/data
     networks:
       - management-network
 
-  # ╔═══════════════════════════════════════════════════════════════════════════╗
-  # ║  7. OBSERVABILITY STACK                                                   ║
-  # ║     Grafana, Prometheus, Loki for metrics and logging                     ║
-  # ╚═══════════════════════════════════════════════════════════════════════════╝
-
-  # Prometheus - Metrics Collection
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    restart: unless-stopped
-    ports:
-      - "9091:9090"
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.enable-lifecycle'
-    volumes:
-      - prometheus-data:/prometheus
-      - ./volumes/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    networks:
-      - management-network
-
-  # Grafana - Visualization & Dashboards
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    restart: unless-stopped
-    ports:
-      - "3004:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=${ADMIN_USER}
-      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - GF_USERS_ALLOW_SIGN_UP=false
-    volumes:
-      - grafana-data:/var/lib/grafana
-    depends_on:
-      - prometheus
-    networks:
-      - management-network
-
-  # Loki - Log Aggregation
-  loki:
-    image: grafana/loki:latest
-    container_name: loki
-    restart: unless-stopped
-    ports:
-      - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
-    volumes:
-      - loki-data:/loki
-    networks:
-      - management-network
-
-  # Promtail - Log Collector
-  promtail:
-    image: grafana/promtail:latest
-    container_name: promtail
-    restart: unless-stopped
-    volumes:
-      - /var/log:/var/log:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    command: -config.file=/etc/promtail/config.yml
-    networks:
-      - management-network
-
-  # ╔═══════════════════════════════════════════════════════════════════════════╗
-  # ║  8. SECURITY & IDENTITY                                                   ║
-  # ║     Keycloak SSO, Vault secrets, CrowdSec security                        ║
-  # ╚═══════════════════════════════════════════════════════════════════════════╝
-
-  # Keycloak - Identity & Access Management (SSO)
-  keycloak:
-    image: quay.io/keycloak/keycloak:latest
-    container_name: keycloak
-    restart: unless-stopped
-    ports:
-      - "8180:8080"
-    environment:
-      - KEYCLOAK_ADMIN=${ADMIN_USER}
-      - KEYCLOAK_ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - KC_DB=postgres
-      - KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
-      - KC_DB_USERNAME=${POSTGRES_USER}
-      - KC_DB_PASSWORD=${POSTGRES_PASSWORD}
-    command: start-dev
-    depends_on:
-      - postgres
-    networks:
-      - management-network
-
-  # HashiCorp Vault - Secrets Management
-  vault:
-    image: hashicorp/vault:latest
-    container_name: vault
-    restart: unless-stopped
-    ports:
-      - "8200:8200"
-    environment:
-      - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_ROOT_TOKEN:-vault-root-token}
-      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
-    cap_add:
-      - IPC_LOCK
-    volumes:
-      - vault-data:/vault/data
-    networks:
-      - management-network
-
-  # CrowdSec - Intrusion Prevention
-  crowdsec:
-    image: crowdsecurity/crowdsec:latest
-    container_name: crowdsec
-    restart: unless-stopped
-    ports:
-      - "8083:8080"
-    environment:
-      - COLLECTIONS=crowdsecurity/linux crowdsecurity/nginx crowdsecurity/docker
-    volumes:
-      - crowdsec-data:/var/lib/crowdsec/data
-      - crowdsec-config:/etc/crowdsec
-      - /var/log:/var/log:ro
-    networks:
-      - management-network
-
-  # ╔═══════════════════════════════════════════════════════════════════════════╗
-  # ║  9. COLLABORATION & COMMUNICATION                                         ║
-  # ║     Mattermost chat, Nextcloud files, Jitsi video                         ║
-  # ╚═══════════════════════════════════════════════════════════════════════════╝
-
-  # Mattermost - Team Chat (Slack alternative)
-  mattermost:
-    image: mattermost/mattermost-team-edition:latest
-    container_name: mattermost
-    restart: unless-stopped
-    ports:
-      - "8065:8065"
-    environment:
-      - MM_SQLSETTINGS_DRIVERNAME=postgres
-      - MM_SQLSETTINGS_DATASOURCE=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mattermost?sslmode=disable
-      - MM_SERVICESETTINGS_SITEURL=http://localhost:8065
-    volumes:
-      - mattermost-data:/mattermost/data
-      - mattermost-logs:/mattermost/logs
-      - mattermost-config:/mattermost/config
-      - mattermost-plugins:/mattermost/plugins
-    depends_on:
-      - postgres
-    networks:
-      - management-network
-
-  # Nextcloud - File Sharing & Collaboration
-  nextcloud:
-    image: nextcloud:latest
-    container_name: nextcloud
-    restart: unless-stopped
-    ports:
-      - "8090:80"
-    environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_DB=nextcloud
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - NEXTCLOUD_ADMIN_USER=${ADMIN_USER}
-      - NEXTCLOUD_ADMIN_PASSWORD=${ADMIN_PASSWORD}
-    volumes:
-      - nextcloud-data:/var/www/html
-    depends_on:
-      - postgres
-    networks:
-      - management-network
-
-  # Jitsi Meet - Video Conferencing
-  jitsi-web:
-    image: jitsi/web:stable
-    container_name: jitsi-web
-    restart: unless-stopped
-    ports:
-      - "8446:443"
-    environment:
-      - PUBLIC_URL=https://localhost:8443
-      - TZ=${TZ}
-    volumes:
-      - jitsi-web-config:/config
-      - jitsi-web-certs:/etc/jitsi/meet/certs
-    networks:
-      - management-network
-
-  # ╔═══════════════════════════════════════════════════════════════════════════╗
-  # ║  10. DEVOPS & CODE MANAGEMENT                                             ║
-  # ║     GitLab, Harbor registry, SonarQube code quality                       ║
-  # ╚═══════════════════════════════════════════════════════════════════════════╝
-
-  # GitLab - Complete DevOps Platform
-  # DISABLED: GitLab consumes significant resources (4GB+ RAM)
-  # To re-enable: uncomment lines below
-  # gitlab:
-  #   image: gitlab/gitlab-ce:latest
-  #   container_name: gitlab
-  #   restart: unless-stopped
-  #   hostname: gitlab.local
-  #   ports:
-  #     - "8929:80"
-  #     - "8930:443"
-  #     - "2222:22"
-  #   environment:
-  #     GITLAB_OMNIBUS_CONFIG: |
-  #       external_url 'http://localhost:8929'
-  #       gitlab_rails['gitlab_shell_ssh_port'] = 2222
-  #       gitlab_rails['initial_root_password'] = '${GITLAB_ROOT_PASSWORD:-Nusantarasoft123!}'
-  #   volumes:
-  #     - gitlab-config:/etc/gitlab
-  #     - gitlab-logs:/var/log/gitlab
-  #     - gitlab-data:/var/opt/gitlab
-  #   shm_size: '256m'
-  #   networks:
-  #     - management-network
-
-  # Docker Registry - Container Image Registry
-  # Note: Harbor requires full installer from https://goharbor.io/
-  registry:
-    image: registry:2
-    container_name: registry
-    restart: unless-stopped
-    ports:
-      - "5000:5000"
-    environment:
-      - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/var/lib/registry
-    volumes:
-      - registry-data:/var/lib/registry
-    networks:
-      - management-network
-
-  # SonarQube - Code Quality & Security
-  sonarqube:
-    image: sonarqube:community
-    container_name: sonarqube
-    restart: unless-stopped
-    ports:
-      - "9094:9000"
-    environment:
-      - SONAR_JDBC_URL=jdbc:postgresql://postgres:5432/sonarqube
-      - SONAR_JDBC_USERNAME=${POSTGRES_USER}
-      - SONAR_JDBC_PASSWORD=${POSTGRES_PASSWORD}
-    volumes:
-      - sonarqube-data:/opt/sonarqube/data
-      - sonarqube-extensions:/opt/sonarqube/extensions
-      - sonarqube-logs:/opt/sonarqube/logs
-    depends_on:
-      - postgres
-    networks:
-      - management-network
-
-  # ╔═══════════════════════════════════════════════════════════════════════════╗
-  # ║  11. MESSAGING & API                                                      ║
-  # ║     Kafka streaming, RabbitMQ queues, Hasura GraphQL                      ║
-  # ╚═══════════════════════════════════════════════════════════════════════════╝
-
-  # Apache Kafka - Event Streaming
-  zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    container_name: zookeeper
-    restart: unless-stopped
-    environment:
-      - ZOOKEEPER_CLIENT_PORT=2181
-      - ZOOKEEPER_TICK_TIME=2000
-    volumes:
-      - zookeeper-data:/var/lib/zookeeper/data
-      - zookeeper-logs:/var/lib/zookeeper/log
-    networks:
-      - management-network
-
-  kafka:
-    image: confluentinc/cp-kafka:latest
-    container_name: kafka
-    restart: unless-stopped
-    ports:
-      - "9092:9092"
-      - "29092:29092"
-    environment:
-      - KAFKA_BROKER_ID=1
-      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
-      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
-    volumes:
-      - kafka-data:/var/lib/kafka/data
-    depends_on:
-      - zookeeper
-    networks:
-      - management-network
-
-  # Kafka UI
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    restart: unless-stopped
-    ports:
-      - "8093:8080"
-    environment:
-      - KAFKA_CLUSTERS_0_NAME=local
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
-    depends_on:
-      - kafka
-    networks:
-      - management-network
-
-  # RabbitMQ - Message Queue
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq
-    restart: unless-stopped
-    ports:
-      - "5672:5672" # AMQP
-      - "15672:15672" # Management UI
-    environment:
-      - RABBITMQ_DEFAULT_USER=${ADMIN_USER}
-      - RABBITMQ_DEFAULT_PASS=${ADMIN_PASSWORD}
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-    networks:
-      - management-network
-
-  # Hasura - Instant GraphQL API
-  hasura:
-    image: hasura/graphql-engine:latest
-    container_name: hasura
-    restart: unless-stopped
-    ports:
-      - "8094:8080"
-    environment:
-      - HASURA_GRAPHQL_DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
-      - HASURA_GRAPHQL_ENABLE_CONSOLE=true
-      - HASURA_GRAPHQL_DEV_MODE=true
-      - HASURA_GRAPHQL_ADMIN_SECRET=${HASURA_ADMIN_SECRET:-hasura_secret}
-    depends_on:
-      - postgres
-    networks:
-      - management-network
-
-  # ╔═══════════════════════════════════════════════════════════════════════════╗
-  # ║  12. NUSANTARASOFT CMS STACK                                              ║
-  # ║     Admin CMS and NestJS Middleware                                       ║
-  # ╚═══════════════════════════════════════════════════════════════════════════╝
-
-  # NestJS Middleware - GraphQL API Layer
   middleware:
     build:
       context: ./middleware
@@ -1341,23 +640,37 @@ services:
       - SUPABASE_URL=http://kong:8000
       - SUPABASE_ANON_KEY=${ANON_KEY}
       - SUPABASE_SERVICE_KEY=${SERVICE_ROLE_KEY}
-      - GOOGLE_API_KEY=AIzaSyD0iYhFsz-PosM5l-507R4JClGcCwO71EA
-      - MINIO_ENDPOINT=minio
-      - MINIO_PORT=9000
-      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
-      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - SUPABASE_DB_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_PROJECT_ID}
+      - GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION:-us-central1}
+      - GOOGLE_APPLICATION_CREDENTIALS=/gcp/key.json
+      # MinIO/S3 Configuration
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - S3_REGION=us-east-1
+      - S3_BUCKET=cms-media
+      # LabelStudio Config
+      - LABELSTUDIO_URL=http://labelstudio:8080
+      - LABELSTUDIO_API_TOKEN=${LABELSTUDIO_API_TOKEN}
+      - LABELSTUDIO_PROJECT_ID=${LABELSTUDIO_PROJECT_ID}
+      - LABELSTUDIO_WEBHOOK_SECRET=${LABELSTUDIO_WEBHOOK_SECRET:-}
     networks:
       - management-network
     depends_on:
       - postgres
+      - minio
+      - labelstudio
+    volumes:
+      - ./volumes/google-credentials.json:/gcp/key.json:ro
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:4001/graphql" ]
+      test: [ "CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:4001/graphql', (r) => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))\"" ]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 60s
 
-  # Admin CMS - Next.js Frontend
   admin:
     build:
       context: ./admin
@@ -1372,11 +685,10 @@ services:
       - GRAPHQL_API_URL=http://middleware:4001/graphql
       - NEXT_PUBLIC_SUPABASE_URL=http://kong:8000
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
-      # S3/MinIO configuration for file uploads
-      - NEXT_PUBLIC_S3_ENDPOINT=http://minio:9000
+      - NEXT_PUBLIC_S3_ENDPOINT=http://127.0.0.1:9000
       - NEXT_PUBLIC_S3_BUCKET=cms-media
-      - S3_ACCESS_KEY=supa-storage
-      - S3_SECRET_KEY=secret1234
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - S3_REGION=us-east-1
     networks:
       - management-network
@@ -1384,13 +696,12 @@ services:
       - middleware
       - minio
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:3000" ]
+      test: [ "CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000', (r) => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))\"" ]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 60s
 
-  # Landing Page - Public Website (renders CMS-built pages)
   landing-page:
     build:
       context: ./landing-page
@@ -1410,114 +721,35 @@ services:
       - middleware
       - kong
     healthcheck:
-      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:3000" ]
+      test: [ "CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\"" ]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # Label Studio - Data Labeling
-  label-studio:
-    image: heartexlabs/label-studio:latest
-    container_name: label-studio
-    restart: unless-stopped
-    ports:
-      - "8095:8080"
-    environment:
-      - LABEL_STUDIO_USERNAME=${ADMIN_EMAIL:-admin@example.com}
-      - LABEL_STUDIO_PASSWORD=${ADMIN_PASSWORD:-changeme123}
-      - LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK=true
-    volumes:
-      - label-studio-data:/label-studio/data
-    networks:
-      - management-network
+      retries: 5
+      start_period: 60s
 
 networks:
   management-network:
     driver: bridge
 
 volumes:
-  # 1. Data & Analytics
   minio-data:
   postgres-data:
-  pgadmin-data:
-  mindsdb-data:
-  anythingllm-data:
-  label-studio-data:
-
-  # 2. Backend Services - Supabase
   supabase-db-data:
   supabase-storage:
   db-config:
-  postgres-config:
+  postgres-config: # Infrastructure Volumes
 
-  # 3. Workflow & Automation
-  n8n_data:
   traefik_data:
-  jenkins-data:
-  awx-data:
-  awx-db-data:
-  awx-redis-data:
-  socketio-data:
-
-  # 4. Infrastructure & DNS
-  ldap-data:
-  ldap-config:
-  ldap-certs:
   npm-data:
   npm-letsencrypt:
   pihole-data:
   pihole-dnsmasq:
   bind9-data:
-
-  # 5. Email Server (docker-mailserver)
   mailserver-data:
   mailserver-state:
   mailserver-logs:
   mailserver-config:
   roundcube-data:
-
-  # 6. Management & Monitoring
   portainer-data:
-  zabbix-db-data:
-  zabbix-server-data:
-  k3s-data:
-  k3s-output:
-
-  # 7. Observability
-  prometheus-data:
-  grafana-data:
-  loki-data:
-
-  # 8. Security & Identity
-  keycloak-db-data:
-  vault-data:
-  crowdsec-data:
-  crowdsec-config:
-
-  # 9. Collaboration & Communication
-  mattermost-db-data:
-  mattermost-data:
-  mattermost-logs:
-  mattermost-config:
-  mattermost-plugins:
-  nextcloud-db-data:
-  nextcloud-data:
-  jitsi-web-config:
-  jitsi-web-certs:
-
-  # 10. DevOps & Code Management
-  gitlab-config:
-  gitlab-logs:
-  gitlab-data:
-  registry-data:
-  sonarqube-db-data:
-  sonarqube-data:
-  sonarqube-extensions:
-  sonarqube-logs:
-
-  # 11. Messaging & API
-  zookeeper-data:
-  zookeeper-logs:
-  kafka-data:
-  rabbitmq-data:
+  socketio-data:
+  labelstudio-data:

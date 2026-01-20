@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS public.media (
     alt_text VARCHAR(255),
     folder VARCHAR(255) DEFAULT '/',
     uploaded_by UUID,
+    metadata JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -1,0 +1,34 @@
+$TTL 86400
+@       IN      SOA     ns1.nusantarasoft.dev. admin.nusantarasoft.dev. (
+                        2026011702      ; Serial (YYYYMMDDNN)
+                        3600            ; Refresh (1 hour)
+                        1800            ; Retry (30 minutes)
+                        604800          ; Expire (1 week)
+                        86400 )         ; Minimum TTL (1 day)
+
+; Name servers
+@       IN      NS      ns1.nusantarasoft.dev.
+
+; A records - point to localhost for development
+ns1             IN      A       127.0.0.1
+@               IN      A       127.0.0.1
+
+; Service subdomains - all resolve to localhost
+admin           IN      A       127.0.0.1
+api             IN      A       127.0.0.1
+middleware      IN      A       127.0.0.1
+minio           IN      A       127.0.0.1
+storage         IN      A       127.0.0.1
+supabase        IN      A       127.0.0.1
+studio          IN      A       127.0.0.1
+pihole          IN      A       127.0.0.1
+mail            IN      A       127.0.0.1
+webmail         IN      A       127.0.0.1
+portainer       IN      A       127.0.0.1
+traefik         IN      A       127.0.0.1
+ldap            IN      A       127.0.0.1
+grafana         IN      A       127.0.0.1
+cms             IN      A       127.0.0.1
+
+; Wildcard - catch all subdomains
+*               IN      A       127.0.0.1

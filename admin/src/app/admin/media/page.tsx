@@ -72,6 +72,8 @@ import {
     ThunderboltOutlined,
     ExperimentOutlined,
     RobotOutlined,
+    LoadingOutlined,
+    InfoCircleOutlined,
 } from "@ant-design/icons";
 import { MagicButton } from "@/components/custom/MagicButton";
 import { AuroraText } from "@/components/magicui/aurora-text";
@@ -124,8 +126,11 @@ const ScaleButton = ({ children, onClick, className, icon, ...props }: any) => (
 import BucketSettingsDrawer from "./BucketSettingsDrawer";
 import VersionHistoryModal from "./VersionHistoryModal";
 import UploadModal from './UploadModal';
+
 import MediaDetailDrawer from './MediaDetailDrawer';
+import MediaPreviewModal from './MediaPreviewModal';
 import AIStudioDrawer from './AIStudioDrawer';
+
 
 const { Text, Title } = Typography;
 
@@ -203,10 +208,18 @@ export default function MediaLibraryPage() {
     const [moveDestinationBucket, setMoveDestinationBucket] = useState("");
     const [moveDestinationPath, setMoveDestinationPath] = useState("");
     const [isCopyMode, setIsCopyMode] = useState(false);
+    const [moveDestinationFolders, setMoveDestinationFolders] = useState<S3Object[]>([]);
 
     // AI & Upload State
     const [uploadModalVisible, setUploadModalVisible] = useState(false);
     const [aiStudioVisible, setAIStudioVisible] = useState(false);
+    const [aiSearchEnabled, setAiSearchEnabled] = useState(false);
+    const [aiSearchResults, setAiSearchResults] = useState<string[]>([]);
+    const [aiSearchLoading, setAiSearchLoading] = useState(false);
+
+    // Detail Modal State
+    const [detailModalVisible, setDetailModalVisible] = useState(false);
+    const [detailModalFile, setDetailModalFile] = useState<MediaFile | null>(null);
 
     // Load initial data
     useEffect(() => {
@@ -217,6 +230,7 @@ export default function MediaLibraryPage() {
     useEffect(() => {
         if (currentBucket) {
             loadMedia();
+            loadStorageStats(currentBucket);
             fetchBucketVersioningStatus(currentBucket);
         }
     }, [currentBucket]);
@@ -225,6 +239,16 @@ export default function MediaLibraryPage() {
     useEffect(() => {
         loadMedia();
     }, [currentPath]);
+
+    // Load folders when move modal opens
+    useEffect(() => {
+        if (moveModalVisible) {
+            const bucket = moveDestinationBucket || currentBucket;
+            if (bucket) {
+                loadMoveDestinationFolders(bucket);
+            }
+        }
+    }, [moveModalVisible]);
 
 
     const loadAllData = async () => {
@@ -248,7 +272,7 @@ export default function MediaLibraryPage() {
             const mappedFiles: MediaFile[] = files.map(f => ({
                 id: f.key,
                 filename: f.key.split('/').pop() || f.key,
-                url: `${process.env.NEXT_PUBLIC_S3_ENDPOINT || 'http://localhost:9000'}/${currentBucket || 'cms-media'}/${f.key}`,
+                url: `${process.env.NEXT_PUBLIC_S3_ENDPOINT || 'http://127.0.0.1:9000'}/${currentBucket || 'cms-media'}/${f.key}`,
                 s3_key: f.key,
                 mime_type: getMimeType(f.key),
                 size_bytes: f.size,
@@ -272,6 +296,24 @@ export default function MediaLibraryPage() {
             // Set empty array to indicate we tried loading (not undefined)
             setFoldersByBucket(prev => ({ ...prev, [bucketName]: [] }));
         }
+    };
+
+    // Load folders for move modal destination bucket
+    const loadMoveDestinationFolders = async (bucketName: string) => {
+        try {
+            const folders = await mediaService.listFolders('', bucketName);
+            setMoveDestinationFolders(folders);
+        } catch (error) {
+            console.warn(`Error loading folders for ${bucketName}:`, error);
+            setMoveDestinationFolders([]);
+        }
+    };
+
+    // Handle destination bucket change in move modal
+    const handleMoveDestinationBucketChange = async (bucketName: string) => {
+        setMoveDestinationBucket(bucketName);
+        setMoveDestinationPath(""); // Reset path when bucket changes
+        await loadMoveDestinationFolders(bucketName);
     };
 
     // Build unified tree with buckets as top-level, folders as children
@@ -458,9 +500,9 @@ export default function MediaLibraryPage() {
         }
     };
 
-    const loadStorageStats = async () => {
+    const loadStorageStats = async (bucket?: string) => {
         try {
-            const stats = await mediaService.getStorageStats();
+            const stats = await mediaService.getStorageStats(bucket || currentBucket);
             setStorageStats(stats);
         } catch (error) {
             console.warn("Error loading stats:", error);
@@ -652,24 +694,29 @@ export default function MediaLibraryPage() {
     const handleMoveFile = async () => {
         if (!selectedFileForMove?.s3_key) return;
 
+        const srcBucket = currentBucket;
         const destBucket = moveDestinationBucket || currentBucket;
         const destPath = moveDestinationPath ?
             (moveDestinationPath.endsWith('/') ? moveDestinationPath : moveDestinationPath + '/') : '';
         const filename = selectedFileForMove.s3_key.split('/').pop() || selectedFileForMove.filename;
         const fullDestKey = `${destPath}${filename}`;
 
-        // For cross-bucket operations, the backend needs to handle it differently
-        // For now, use the existing API if same bucket
+        // Pass bucket parameters for cross-bucket operations
         const success = isCopyMode
-            ? await mediaService.copyFile(selectedFileForMove.s3_key, fullDestKey)
-            : await mediaService.moveFile(selectedFileForMove.s3_key, fullDestKey);
+            ? await mediaService.copyFile(selectedFileForMove.s3_key, fullDestKey, srcBucket, destBucket)
+            : await mediaService.moveFile(selectedFileForMove.s3_key, fullDestKey, srcBucket, destBucket);
 
         if (success) {
             message.success(`File ${isCopyMode ? "copied" : "moved"} successfully`);
             setMoveModalVisible(false);
             setMoveDestinationBucket("");
             setMoveDestinationPath("");
+            setSelectedFileForMove(null);
             loadMedia();
+            // Reload folders for destination bucket if different
+            if (destBucket !== srcBucket) {
+                loadFoldersForBucket(destBucket);
+            }
         } else {
             message.error(`Failed to ${isCopyMode ? "copy" : "move"} file`);
         }
@@ -764,11 +811,22 @@ export default function MediaLibraryPage() {
         return <FileOutlined />;
     };
 
-    const filteredMedia = media.filter(
-        (m) =>
-            m.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            m.alt_text?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // Filter media based on search mode
+    const filteredMedia = useMemo(() => {
+        // AI search mode: filter by aiSearchResults IDs
+        if (aiSearchEnabled && aiSearchResults.length > 0) {
+            return media.filter(m => aiSearchResults.includes(m.id));
+        }
+        // Text search mode: filter by filename/alt_text
+        if (searchQuery.trim()) {
+            return media.filter(
+                (m) =>
+                    m.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    m.alt_text?.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+        }
+        return media;
+    }, [media, searchQuery, aiSearchEnabled, aiSearchResults]);
 
     // Breadcrumb items
     const breadcrumbItems = [
@@ -789,9 +847,10 @@ export default function MediaLibraryPage() {
             { type: "divider" as const },
             { key: "move", label: "Move to...", icon: <SwapOutlined />, onClick: () => { setSelectedFileForMove(item); setIsCopyMode(false); setMoveModalVisible(true); } },
             { key: "copy", label: "Copy to...", icon: <ScissorOutlined />, onClick: () => { setSelectedFileForMove(item); setIsCopyMode(true); setMoveModalVisible(true); } },
-            ...(bucketVersioning[currentBucket] ? [{ key: "versions", label: "Version History", icon: <HistoryOutlined />, onClick: () => handleViewVersionHistory(item) }] : []),
-            { type: "divider" as const },
-            { type: "divider" as const },
+            ...(bucketVersioning[currentBucket] ? [
+                { type: "divider" as const },
+                { key: "versions", label: "Version History", icon: <HistoryOutlined />, onClick: () => handleViewVersionHistory(item) }
+            ] : []),
             { key: "ai-embeddings", label: "Generate Embeddings", icon: <ExperimentOutlined />, onClick: () => handleGenerateEmbeddings(item) },
             { key: "auto-label", label: "Auto Label", icon: <ThunderboltOutlined />, onClick: () => handleAutoLabelMedia(item) },
             { key: "ai-label", label: "Label Studio", icon: <RobotOutlined />, onClick: () => handleSendToLabelStudio(item) },
@@ -839,6 +898,9 @@ export default function MediaLibraryPage() {
                 actions={[
                     <AnimatedTooltip key="preview" content="Preview" position="bottom">
                         <EyeOutlined onClick={() => { setSelectedMedia(item); setPreviewVisible(true); }} />
+                    </AnimatedTooltip>,
+                    <AnimatedTooltip key="info" content="Details" position="bottom">
+                        <InfoCircleOutlined onClick={() => { setDetailModalFile(item); setDetailModalVisible(true); }} />
                     </AnimatedTooltip>,
                     <AnimatedTooltip key="download" content="Download" position="bottom">
                         <DownloadOutlined onClick={() => handleDownload(item)} />
@@ -891,13 +953,40 @@ export default function MediaLibraryPage() {
                 </Space>,
                 <Space key="actions">
                     <Input
-                        placeholder="Search media..."
-                        prefix={<SearchOutlined />}
+                        placeholder={aiSearchEnabled ? "AI semantic search..." : "Search media..."}
+                        prefix={aiSearchEnabled ? <RobotOutlined /> : <SearchOutlined />}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        style={{ width: 180 }}
+                        onPressEnter={async () => {
+                            if (aiSearchEnabled && searchQuery.trim()) {
+                                setAiSearchLoading(true);
+                                try {
+                                    const results = await mediaService.semanticSearch(searchQuery, 20);
+                                    setAiSearchResults(results.map(r => r.id));
+                                    message.success(`Found ${results.length} matching files`);
+                                } catch (e) {
+                                    message.error('AI search failed');
+                                } finally {
+                                    setAiSearchLoading(false);
+                                }
+                            }
+                        }}
+                        style={{ width: 220 }}
                         allowClear
+                        suffix={aiSearchLoading ? <LoadingOutlined spin /> : null}
                     />
+                    <Tooltip title={aiSearchEnabled ? "AI semantic search enabled" : "Enable AI semantic search"}>
+                        <Switch
+                            checked={aiSearchEnabled}
+                            onChange={(checked) => {
+                                setAiSearchEnabled(checked);
+                                if (!checked) setAiSearchResults([]);
+                            }}
+                            checkedChildren={<RobotOutlined />}
+                            unCheckedChildren={<SearchOutlined />}
+                            size="small"
+                        />
+                    </Tooltip>
 
                     <Segmented
                         value={viewMode}
@@ -910,14 +999,9 @@ export default function MediaLibraryPage() {
                         size="small"
                     />
 
-                    <Space>
-                        <PremiumButton icon={<ReloadOutlined />} onClick={loadAllData} className="from-slate-500 to-slate-600">
-                            Refresh
-                        </PremiumButton>
-                        <PremiumButton icon={<CloudOutlined />} onClick={() => setUploadModalVisible(true)}>
-                            Upload
-                        </PremiumButton>
-                    </Space>
+                    <MagicButton icon={<UploadOutlined />} onClick={() => setUploadModalVisible(true)}>
+                        Upload
+                    </MagicButton>
                 </Space>,
             ]}
         >
@@ -1237,101 +1321,203 @@ export default function MediaLibraryPage() {
             </div>
 
             {/* Preview Modal */}
-            <Modal
-                open={previewVisible}
-                title={selectedMedia?.filename}
-                footer={null}
-                onCancel={() => setPreviewVisible(false)}
-                width={800}
-            >
-                {selectedMedia?.mime_type?.startsWith("image/") ? (
-                    <Image src={selectedMedia.url} alt={selectedMedia.alt_text || selectedMedia.filename} style={{ width: "100%" }} preview={false} />
-                ) : (
-                    <div style={{ textAlign: "center", padding: 40 }}>
-                        <div style={{ fontSize: 72, color: "#999", marginBottom: 16 }}>{getFileIcon(selectedMedia?.mime_type)}</div>
-                        <p>{selectedMedia?.filename}</p>
-                    </div>
-                )}
-                <div style={{ marginTop: 16 }}>
-                    <Space>
-                        <Tag>{selectedMedia?.mime_type}</Tag>
-                        <Tag>{formatFileSize(selectedMedia?.size_bytes)}</Tag>
-                    </Space>
-                </div>
-                <div style={{ marginTop: 16 }}>
-                    <Input
-                        value={selectedMedia?.url}
-                        addonAfter={<CopyOutlined style={{ cursor: "pointer" }} onClick={() => selectedMedia && copyToClipboard(selectedMedia.url, selectedMedia.id)} />}
-                        readOnly
-                    />
-                </div>
-            </Modal>
+            <MediaPreviewModal
+                visible={previewVisible}
+                mediaFile={selectedMedia}
+                mode="preview"
+                onClose={() => setPreviewVisible(false)}
+            />
 
             {/* New Folder Modal */}
             <Modal
-                title="Create New Folder"
+                title={
+                    <div className="flex items-center gap-2">
+                        <FolderAddOutlined className="text-violet-500" />
+                        <span>Create New Folder</span>
+                    </div>
+                }
                 open={newFolderModalVisible}
                 onOk={handleCreateFolder}
-                onCancel={() => setNewFolderModalVisible(false)}
+                onCancel={() => {
+                    setNewFolderModalVisible(false);
+                    setNewFolderName("");
+                }}
+                okText="Create Folder"
+                okButtonProps={{
+                    style: {
+                        background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+                        borderColor: 'transparent'
+                    }
+                }}
             >
-                <Input
-                    placeholder="Folder name"
-                    value={newFolderName}
-                    onChange={(e) => setNewFolderName(e.target.value)}
-                    prefix={<FolderOutlined />}
-                />
+                <div className="py-2">
+                    <Text type="secondary" className="text-xs uppercase tracking-wide mb-2 block">
+                        Folder Name
+                    </Text>
+                    <Input
+                        placeholder="Enter folder name"
+                        value={newFolderName}
+                        onChange={(e) => setNewFolderName(e.target.value)}
+                        prefix={<FolderOutlined className="text-yellow-500" />}
+                        size="large"
+                    />
+                    <Text type="secondary" className="text-xs mt-2 block">
+                        Will be created in: {currentBucket}/{currentPath || "(root)"}
+                    </Text>
+                </div>
             </Modal>
 
             {/* New Bucket Modal */}
             <Modal
-                title="Create New Bucket"
+                title={
+                    <div className="flex items-center gap-2">
+                        <DatabaseOutlined className="text-violet-500" />
+                        <span>Create New Bucket</span>
+                    </div>
+                }
                 open={newBucketModalVisible}
                 onOk={handleCreateBucket}
-                onCancel={() => setNewBucketModalVisible(false)}
+                onCancel={() => {
+                    setNewBucketModalVisible(false);
+                    setNewBucketName("");
+                }}
+                okText="Create Bucket"
+                okButtonProps={{
+                    style: {
+                        background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+                        borderColor: 'transparent'
+                    }
+                }}
             >
-                <Input
-                    placeholder="Bucket name (lowercase, no spaces)"
-                    value={newBucketName}
-                    onChange={(e) => setNewBucketName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                    prefix={<DatabaseOutlined />}
-                />
+                <div className="py-2">
+                    <Text type="secondary" className="text-xs uppercase tracking-wide mb-2 block">
+                        Bucket Name
+                    </Text>
+                    <Input
+                        placeholder="my-bucket-name"
+                        value={newBucketName}
+                        onChange={(e) => setNewBucketName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                        prefix={<DatabaseOutlined className="text-blue-500" />}
+                        size="large"
+                    />
+                    <Text type="secondary" className="text-xs mt-2 block">
+                        Bucket names must be lowercase, and can only contain letters, numbers, and hyphens.
+                    </Text>
+                </div>
             </Modal>
 
             {/* Move/Copy Modal */}
             <Modal
-                title={`${isCopyMode ? "Copy" : "Move"} to Different Location`}
+                title={
+                    <div className="flex items-center gap-2">
+                        {isCopyMode ? <ScissorOutlined /> : <SwapOutlined />}
+                        <span>{isCopyMode ? "Copy" : "Move"} to Different Location</span>
+                    </div>
+                }
                 open={moveModalVisible}
                 onOk={handleMoveFile}
-                onCancel={() => setMoveModalVisible(false)}
+                onCancel={() => {
+                    setMoveModalVisible(false);
+                    setMoveDestinationBucket("");
+                    setMoveDestinationPath("");
+                    setSelectedFileForMove(null);
+                }}
                 okText={isCopyMode ? "Copy" : "Move"}
+                okButtonProps={{
+                    style: {
+                        background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+                        borderColor: 'transparent'
+                    }
+                }}
+                width={500}
             >
-                <div className="flex flex-col gap-4">
-                    <div>
-                        <Text type="secondary">File:</Text>
+                <div className="flex flex-col gap-4 py-2">
+                    {/* File Info */}
+                    <div className="p-3 rounded-lg bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20">
+                        <Text type="secondary" className="text-xs uppercase tracking-wide">Selected File</Text>
                         <div className="flex items-center gap-2 mt-1">
-                            <FileOutlined />
+                            <FileOutlined className="text-violet-500" />
                             <Text strong>{selectedFileForMove?.filename}</Text>
                         </div>
+                        {selectedFileForMove?.s3_key && (
+                            <Text type="secondary" className="text-xs mt-1 block">
+                                Current: {currentBucket}/{selectedFileForMove.s3_key}
+                            </Text>
+                        )}
                     </div>
-                    <Divider style={{ margin: '8px 0' }} />
+
+                    <Divider style={{ margin: '4px 0' }} />
+
+                    {/* Destination Bucket */}
                     <div>
-                        <Text type="secondary">Destination Bucket:</Text>
+                        <Text type="secondary" className="text-xs uppercase tracking-wide mb-1 block">
+                            <DatabaseOutlined className="mr-1" />
+                            Destination Bucket
+                        </Text>
                         <Select
                             value={moveDestinationBucket || currentBucket}
-                            onChange={setMoveDestinationBucket}
-                            style={{ width: '100%', marginTop: 4 }}
-                            options={buckets.map(b => ({ value: b.name, label: b.name }))}
+                            onChange={handleMoveDestinationBucketChange}
+                            style={{ width: '100%' }}
+                            options={buckets.map(b => ({
+                                value: b.name,
+                                label: (
+                                    <div className="flex items-center gap-2">
+                                        <DatabaseOutlined />
+                                        <span>{b.name}</span>
+                                        {b.name === currentBucket && (
+                                            <Tag color="blue" style={{ fontSize: 10 }}>Current</Tag>
+                                        )}
+                                    </div>
+                                )
+                            }))}
                         />
                     </div>
+
+                    {/* Destination Folder */}
                     <div>
-                        <Text type="secondary">Destination Folder:</Text>
-                        <Input
-                            placeholder="e.g., uploads/images/ (leave empty for root)"
+                        <Text type="secondary" className="text-xs uppercase tracking-wide mb-1 block">
+                            <FolderOutlined className="mr-1" />
+                            Destination Folder
+                        </Text>
+                        <Select
                             value={moveDestinationPath}
-                            onChange={(e) => setMoveDestinationPath(e.target.value)}
-                            prefix={<FolderOutlined />}
-                            style={{ marginTop: 4 }}
+                            onChange={setMoveDestinationPath}
+                            style={{ width: '100%' }}
+                            placeholder="Select folder (leave empty for root)"
+                            allowClear
+                            showSearch
+                            filterOption={(input, option) =>
+                                String(option?.value || '')?.toLowerCase().includes(input.toLowerCase())
+                            }
+                            options={[
+                                {
+                                    value: "",
+                                    label: (
+                                        <div className="flex items-center gap-2">
+                                            <HomeOutlined />
+                                            <span className="text-gray-500">(Root)</span>
+                                        </div>
+                                    )
+                                },
+                                ...moveDestinationFolders.map(folder => {
+                                    const folderName = folder.key.replace(/\/$/, "");
+                                    return {
+                                        value: folder.key,
+                                        label: (
+                                            <div className="flex items-center gap-2">
+                                                <FolderOutlined className="text-yellow-500" />
+                                                <span>{folderName}</span>
+                                            </div>
+                                        )
+                                    };
+                                })
+                            ]}
                         />
+                        <Text type="secondary" className="text-xs mt-1 block">
+                            {moveDestinationFolders.length === 0
+                                ? "No folders in this bucket. Files will be placed in root."
+                                : `${moveDestinationFolders.length} folder(s) available`}
+                        </Text>
                     </div>
                 </div>
             </Modal>
@@ -1373,15 +1559,6 @@ export default function MediaLibraryPage() {
                 }}
             />
 
-            {/* AI Studio Floating Button */}
-            <FloatButton
-                icon={<RobotOutlined />}
-                type="primary"
-                style={{ right: 24, bottom: 24, width: 60, height: 60 }}
-                onClick={() => setAIStudioVisible(true)}
-                tooltip="Open AI Studio"
-            />
-
             {/* New Modals & Drawers */}
             <UploadModal
                 visible={uploadModalVisible}
@@ -1391,16 +1568,19 @@ export default function MediaLibraryPage() {
                 bucket={currentBucket}
             />
 
-            <MediaDetailDrawer
-                visible={!!selectedMedia && !previewVisible} // Only show if not previewing (or handle overlap)
-                media={selectedMedia}
-                onClose={() => setSelectedMedia(null)}
-                onRefresh={loadAllData}
-            />
+
 
             <AIStudioDrawer
                 visible={aiStudioVisible}
                 onClose={() => setAIStudioVisible(false)}
+            />
+
+            {/* Media Detail Modal */}
+            <MediaPreviewModal
+                visible={detailModalVisible}
+                mediaFile={detailModalFile}
+                mode="detail"
+                onClose={() => { setDetailModalVisible(false); setDetailModalFile(null); }}
             />
 
         </CMSLayout >

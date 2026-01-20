@@ -75,6 +75,9 @@ export class MediaType {
 
     @Field({ nullable: true })
     updatedAt?: string;
+
+    @Field(() => GraphQLJSON, { nullable: true })
+    metadata?: any;
 }
 
 @InputType()
@@ -257,8 +260,8 @@ export class MediaResolver {
     }
 
     @Query(() => StorageStats, { name: 'getStorageStats', nullable: true })
-    async getStorageStats(): Promise<StorageStats> {
-        return this.mediaService.getStorageStats();
+    async getStorageStats(@Args('bucket', { nullable: true }) bucket?: string): Promise<StorageStats> {
+        return this.mediaService.getStorageStats(bucket);
     }
 
     @Query(() => String, { name: 'getDefaultBucket' })
@@ -286,7 +289,9 @@ export class MediaResolver {
         @Args('path') path: string,
         @Args('bucket', { nullable: true }) bucket?: string
     ): Promise<boolean> {
-        return this.mediaService.createFolder(path, bucket);
+        // Ensure path ends with / for proper folder marker
+        const folderPath = path.endsWith('/') ? path : `${path}/`;
+        return this.mediaService.createFolder(folderPath, bucket);
     }
 
     @Mutation(() => Boolean, { name: 'deleteFolder' })
@@ -301,6 +306,27 @@ export class MediaResolver {
         @Args('bucket', { nullable: true }) bucket?: string
     ): Promise<boolean> {
         return this.mediaService.makeBucketPublic(bucket);
+    }
+
+    // File Move/Copy Operations
+    @Mutation(() => Boolean, { name: 'moveFile' })
+    async moveFile(
+        @Args('sourceKey') sourceKey: string,
+        @Args('destKey') destKey: string,
+        @Args('sourceBucket', { nullable: true }) sourceBucket?: string,
+        @Args('destBucket', { nullable: true }) destBucket?: string
+    ): Promise<boolean> {
+        return this.mediaService.moveFile(sourceKey, destKey, sourceBucket, destBucket);
+    }
+
+    @Mutation(() => Boolean, { name: 'copyFile' })
+    async copyFile(
+        @Args('sourceKey') sourceKey: string,
+        @Args('destKey') destKey: string,
+        @Args('sourceBucket', { nullable: true }) sourceBucket?: string,
+        @Args('destBucket', { nullable: true }) destBucket?: string
+    ): Promise<boolean> {
+        return this.mediaService.copyFile(sourceKey, destKey, sourceBucket, destBucket);
     }
 
     // Versioning

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
+import { RagService } from '../rag/rag.service';
 import * as Minio from 'minio';
 
 export interface MediaFile {
@@ -16,6 +17,7 @@ export interface MediaFile {
     embedding?: string;
     createdAt: string;
     updatedAt?: string;
+    metadata?: any;
 }
 
 export interface S3Object {
@@ -59,17 +61,33 @@ export class MediaService {
 
     constructor(
         private readonly supabase: SupabaseService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly ragService: RagService
     ) {
         this.initializeMinio();
     }
 
     private initializeMinio() {
-        const endPoint = this.configService.get('MINIO_ENDPOINT') || 'minio';
-        const port = parseInt(this.configService.get('MINIO_PORT') || '9000', 10);
-        const useSSL = this.configService.get('MINIO_USE_SSL') === 'true';
-        const accessKey = this.configService.get('MINIO_ACCESS_KEY') || 'minioadmin';
-        const secretKey = this.configService.get('MINIO_SECRET_KEY') || 'minioadmin';
+        // Try S3_ prefix first (what Docker provides), then MINIO_ prefix as fallback
+        const endpointUrl = this.configService.get('S3_ENDPOINT') || this.configService.get('MINIO_ENDPOINT') || 'http://minio:9000';
+
+        // Parse endpoint URL to extract host and port
+        let endPoint = 'minio';
+        let port = 9000;
+        let useSSL = false;
+
+        try {
+            const url = new URL(endpointUrl);
+            endPoint = url.hostname;
+            port = parseInt(url.port || (url.protocol === 'https:' ? '443' : '9000'), 10);
+            useSSL = url.protocol === 'https:';
+        } catch {
+            // If parsing fails, use defaults
+            this.logger.warn(`Failed to parse S3_ENDPOINT: ${endpointUrl}, using defaults`);
+        }
+
+        const accessKey = this.configService.get('S3_ACCESS_KEY') || this.configService.get('MINIO_ACCESS_KEY') || 'minioadmin';
+        const secretKey = this.configService.get('S3_SECRET_KEY') || this.configService.get('MINIO_SECRET_KEY') || 'minioadmin';
 
         this.minioClient = new Minio.Client({
             endPoint,
@@ -78,7 +96,7 @@ export class MediaService {
             accessKey,
             secretKey,
         });
-        this.logger.log(`MinIO Client initialized for ${endPoint}:${port}`);
+        this.logger.log(`MinIO Client initialized for ${endPoint}:${port} (SSL: ${useSSL})`);
     }
 
     // ---------------------------------------------------------
@@ -317,8 +335,19 @@ export class MediaService {
     // Let's inject RagService in the constructor. (Requires updating constructor)
 
     // TEMPORARY: Empty methods to avoid compilation error until RagService injection is added
-    private async resolveAutoLabel(id: string) { this.logger.log(`Triggering auto-label for ${id}`); }
-    private async resolveEmbedding(id: string) { this.logger.log(`Triggering embedding for ${id}`); }
+    private async resolveAutoLabel(id: string) {
+        this.logger.log(`Triggering auto-label for ${id}`);
+        await this.ragService.autoLabelMedia(id);
+    }
+    private async resolveEmbedding(id: string) {
+        this.logger.log(`Triggering embedding for ${id}`);
+        // We need content to embed, normally text. 
+        // For images, we might use description/tags. 
+        // RagService.generateMediaEmbeddings expects(content: string).
+        // If empty, RagService refactor handles fetching title/desc/OCR? 
+        // Checking RagService... refactored version fetches data if content is empty.
+        await this.ragService.generateMediaEmbeddings(id, '');
+    }
 
     // ---------------------------------------------------------
     // S3 Operations
@@ -383,20 +412,24 @@ export class MediaService {
         });
     }
 
-    async getStorageStats(): Promise<StorageStats> {
+    async getStorageStats(bucket?: string): Promise<StorageStats> {
         try {
             const buckets = await this.listBuckets();
             let totalFiles = 0;
             let totalSizeBytes = 0;
 
-            // This is expensive if many files, but for CMS it's okay-ish.
-            // Better to cache or use metrics.
+            // If specific bucket requested, only count that bucket
+            const targetBucket = bucket || await this.getDefaultBucket();
+
             for (const b of buckets) {
-                // Only counting default bucket to avoid timeout
-                if (b.name === 'cms-media') {
+                // Only count the specified bucket (or default if not specified)
+                if (b.name === targetBucket) {
                     const objs = await this.listObjects(b.name, '', true);
-                    totalFiles += objs.length;
-                    totalSizeBytes += objs.reduce((acc, curr) => acc + curr.size, 0);
+                    // Filter out folder markers (zero-size objects ending with /)
+                    const files = objs.filter(o => !o.isFolder && o.size > 0);
+                    totalFiles = files.length;
+                    totalSizeBytes = files.reduce((acc, curr) => acc + curr.size, 0);
+                    break;
                 }
             }
 
@@ -417,7 +450,7 @@ export class MediaService {
     }
 
     async getS3Endpoint(): Promise<string> {
-        return this.configService.get('NEXT_PUBLIC_S3_ENDPOINT') || 'http://localhost:9000';
+        return this.configService.get('NEXT_PUBLIC_S3_ENDPOINT') || 'http://127.0.0.1:9000';
     }
 
     async createBucket(name: string): Promise<boolean> {
@@ -456,6 +489,55 @@ export class MediaService {
         return true;
     }
 
+    // Move file - copy then delete source
+    async moveFile(
+        sourceKey: string,
+        destKey: string,
+        sourceBucket?: string,
+        destBucket?: string
+    ): Promise<boolean> {
+        try {
+            const srcBucket = sourceBucket || await this.getDefaultBucket();
+            const dstBucket = destBucket || await this.getDefaultBucket();
+
+            // Use copyObject to copy the file
+            const copySource = `/${srcBucket}/${sourceKey}`;
+            await this.minioClient.copyObject(dstBucket, destKey, copySource, new Minio.CopyConditions());
+
+            // Delete the original
+            await this.minioClient.removeObject(srcBucket, sourceKey);
+
+            this.logger.log(`Moved file from ${srcBucket}/${sourceKey} to ${dstBucket}/${destKey}`);
+            return true;
+        } catch (e) {
+            this.logger.error('moveFile failed', e);
+            return false;
+        }
+    }
+
+    // Copy file to new location
+    async copyFile(
+        sourceKey: string,
+        destKey: string,
+        sourceBucket?: string,
+        destBucket?: string
+    ): Promise<boolean> {
+        try {
+            const srcBucket = sourceBucket || await this.getDefaultBucket();
+            const dstBucket = destBucket || await this.getDefaultBucket();
+
+            // Use copyObject to copy the file
+            const copySource = `/${srcBucket}/${sourceKey}`;
+            await this.minioClient.copyObject(dstBucket, destKey, copySource, new Minio.CopyConditions());
+
+            this.logger.log(`Copied file from ${srcBucket}/${sourceKey} to ${dstBucket}/${destKey}`);
+            return true;
+        } catch (e) {
+            this.logger.error('copyFile failed', e);
+            return false;
+        }
+    }
+
     async makeBucketPublic(bucket?: string): Promise<boolean> {
         try {
             const b = bucket || await this.getDefaultBucket();
@@ -478,12 +560,116 @@ export class MediaService {
         }
     }
 
-    async getVersioningStatus(bucket?: string): Promise<string> { return 'Suspended'; }
-    async enableVersioning(bucket?: string): Promise<boolean> { return false; }
-    async disableVersioning(bucket?: string): Promise<boolean> { return false; }
-    async getLifecycleRules(bucket?: string): Promise<any[]> { return []; }
-    async setLifecycleRules(rules: any[], bucket?: string): Promise<boolean> { return true; }
-    async deleteLifecycleRules(bucket?: string): Promise<boolean> { return true; }
+    async getVersioningStatus(bucket?: string): Promise<string> {
+        try {
+            const b = bucket || await this.getDefaultBucket();
+            const result = await this.minioClient.getBucketVersioning(b);
+            // Result is { Status: 'Enabled' | 'Suspended' | undefined }
+            return result.Status || 'Suspended';
+        } catch (e) {
+            this.logger.error('getVersioningStatus failed', e);
+            return 'Suspended';
+        }
+    }
+
+    async enableVersioning(bucket?: string): Promise<boolean> {
+        try {
+            const b = bucket || await this.getDefaultBucket();
+            await this.minioClient.setBucketVersioning(b, { Status: 'Enabled' });
+            this.logger.log(`Versioning enabled for bucket: ${b}`);
+            return true;
+        } catch (e) {
+            this.logger.error('enableVersioning failed', e);
+            return false;
+        }
+    }
+
+    async disableVersioning(bucket?: string): Promise<boolean> {
+        try {
+            const b = bucket || await this.getDefaultBucket();
+            await this.minioClient.setBucketVersioning(b, { Status: 'Suspended' });
+            this.logger.log(`Versioning suspended for bucket: ${b}`);
+            return true;
+        } catch (e) {
+            this.logger.error('disableVersioning failed', e);
+            return false;
+        }
+    }
+
+    async getLifecycleRules(bucket?: string): Promise<any[]> {
+        try {
+            const b = bucket || await this.getDefaultBucket();
+            const config = await this.minioClient.getBucketLifecycle(b);
+            // MinIO returns { rules: [...] } or null
+            if (!config || !config.Rule) return [];
+
+            // Map MinIO format to our format
+            return (Array.isArray(config.Rule) ? config.Rule : [config.Rule]).map((rule: any) => ({
+                id: rule.ID || '',
+                prefix: rule.Filter?.Prefix || rule.Prefix || '',
+                enabled: rule.Status === 'Enabled',
+                expirationDays: rule.Expiration?.Days,
+                transitionDays: rule.Transition?.Days,
+                transitionStorageClass: rule.Transition?.StorageClass,
+            }));
+        } catch (e: any) {
+            // NoSuchLifecycleConfiguration is not an error, just means no rules
+            if (e.code === 'NoSuchLifecycleConfiguration') return [];
+            this.logger.error('getLifecycleRules failed', e);
+            return [];
+        }
+    }
+
+    async setLifecycleRules(rules: any[], bucket?: string): Promise<boolean> {
+        try {
+            const b = bucket || await this.getDefaultBucket();
+
+            if (!rules || rules.length === 0) {
+                // Delete lifecycle if no rules
+                return this.deleteLifecycleRules(b);
+            }
+
+            // Convert our format to MinIO format
+            const minioRules = rules.map(rule => {
+                const minioRule: any = {
+                    ID: rule.id || `rule-${Date.now()}`,
+                    Status: rule.enabled ? 'Enabled' : 'Disabled',
+                    Filter: { Prefix: rule.prefix || '' },
+                };
+
+                if (rule.expirationDays) {
+                    minioRule.Expiration = { Days: rule.expirationDays };
+                }
+                if (rule.transitionDays && rule.transitionStorageClass) {
+                    minioRule.Transition = {
+                        Days: rule.transitionDays,
+                        StorageClass: rule.transitionStorageClass,
+                    };
+                }
+
+                return minioRule;
+            });
+
+            await this.minioClient.setBucketLifecycle(b, { Rule: minioRules });
+            this.logger.log(`Lifecycle rules set for bucket: ${b}`);
+            return true;
+        } catch (e) {
+            this.logger.error('setLifecycleRules failed', e);
+            return false;
+        }
+    }
+
+    async deleteLifecycleRules(bucket?: string): Promise<boolean> {
+        try {
+            const b = bucket || await this.getDefaultBucket();
+            await this.minioClient.removeBucketLifecycle(b);
+            this.logger.log(`Lifecycle rules deleted for bucket: ${b}`);
+            return true;
+        } catch (e) {
+            this.logger.error('deleteLifecycleRules failed', e);
+            return false;
+        }
+    }
 
     // Helpers
 
@@ -501,6 +687,7 @@ export class MediaService {
             embedding: data.embedding as string | undefined,
             createdAt: data.created_at as string,
             updatedAt: data.updated_at as string | undefined,
+            metadata: data.metadata,
         };
     }
 

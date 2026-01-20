@@ -12,6 +12,8 @@ import { BlocksModule } from './blocks/blocks.module';
 import { SettingsModule } from './settings/settings.module';
 import { MediaModule } from './media/media.module';
 import { RagModule } from './rag/rag.module';
+import { MLBackendModule } from './ml-backend/ml-backend.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
     imports: [
@@ -41,6 +43,8 @@ import { RagModule } from './rag/rag.module';
         SettingsModule,
         MediaModule,
         RagModule,
+        MLBackendModule,
+        WebhooksModule,
     ],
 })
 export class AppModule { }

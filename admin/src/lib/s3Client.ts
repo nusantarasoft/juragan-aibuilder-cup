@@ -10,7 +10,7 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // S3/MinIO configuration
-const S3_ENDPOINT = process.env.NEXT_PUBLIC_S3_ENDPOINT || "http://localhost:9000";
+const S3_ENDPOINT = process.env.NEXT_PUBLIC_S3_ENDPOINT || "http://127.0.0.1:9000";
 const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET || "cms-media";
 const S3_ACCESS_KEY = process.env.S3_ACCESS_KEY || "minioadmin";
 const S3_SECRET_KEY = process.env.S3_SECRET_KEY || "minioadmin";

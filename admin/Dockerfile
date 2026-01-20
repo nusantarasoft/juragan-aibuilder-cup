@@ -18,7 +18,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 # Build-time env vars for Next.js (baked at build time)
 # Admin uses GraphQL middleware - using localhost for browser access
-ENV NEXT_PUBLIC_GRAPHQL_URL=http://localhost:4001/graphql
+ENV NEXT_PUBLIC_GRAPHQL_URL=http://127.0.0.1:4001/graphql
 # Supabase vars kept for backward compatibility (deprecated)
 ENV NEXT_PUBLIC_SUPABASE_URL=http://kong:8000
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0

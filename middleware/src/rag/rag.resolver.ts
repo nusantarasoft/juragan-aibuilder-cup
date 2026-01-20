@@ -1,9 +1,34 @@
-import { Resolver, Mutation, Args } from '@nestjs/graphql';
+import { Resolver, Mutation, Query, Args, ObjectType, Field, Float, Int } from '@nestjs/graphql';
 import { RagService } from './rag.service';
+
+@ObjectType()
+export class MediaSearchResult {
+    @Field()
+    id: string;
+
+    @Field()
+    filename: string;
+
+    @Field(() => Float)
+    score: number;
+}
 
 @Resolver()
 export class RagResolver {
     constructor(private readonly ragService: RagService) { }
+
+    @Query(() => [MediaSearchResult])
+    async semanticSearch(
+        @Args('query') query: string,
+        @Args('limit', { type: () => Int, defaultValue: 10 }) limit: number
+    ): Promise<MediaSearchResult[]> {
+        return this.ragService.semanticSearch(query, limit);
+    }
+
+    @Query(() => String)
+    async chatWithLibrary(@Args('query') query: string): Promise<string> {
+        return this.ragService.generateAnswer(query);
+    }
 
     @Mutation(() => [String], { nullable: true })
     async autoLabelMedia(@Args('mediaId') mediaId: string): Promise<string[]> {

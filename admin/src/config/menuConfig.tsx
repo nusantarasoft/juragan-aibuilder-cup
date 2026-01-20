@@ -17,6 +17,10 @@ import {
     ToolOutlined,
     GlobalOutlined,
     MenuOutlined,
+    CloudServerOutlined,
+    GatewayOutlined,
+    SafetyCertificateOutlined,
+    WifiOutlined,
 } from "@ant-design/icons";
 
 // CMS Menu Configuration
@@ -97,6 +101,37 @@ const menuConfig = {
                         path: "/admin/users/roles",
                         name: "Roles & Permissions",
                         icon: <SafetyOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/infrastructure",
+                name: "Infrastructure",
+                icon: <CloudServerOutlined />,
+                routes: [
+                    {
+                        path: "/admin/infrastructure/traefik",
+                        name: "Traefik Proxy",
+                        icon: <GatewayOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/npm",
+                        name: "Nginx Proxy Mgr",
+                        icon: <SafetyCertificateOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/pihole",
+                        name: "Pi-hole DNS",
+                        icon: <WifiOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/bind9",
+                        name: "BIND9 DNS",
+                        icon: <GlobalOutlined />,
                         isLeaf: true,
                     },
                 ],

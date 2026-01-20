@@ -8,6 +8,7 @@ import type { MediaFile } from "./graphqlTypes";
 // Re-export MediaFile type for backward compatibility
 export type { MediaFile };
 
+
 export interface UploadResult {
     success: boolean;
     media?: MediaFile;
@@ -50,7 +51,7 @@ export interface StorageStats {
 }
 
 // GraphQL URL for media operations
-const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4001/graphql';
+const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
 
 async function graphqlRequest<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
     const response = await fetch(GRAPHQL_URL, {
@@ -77,13 +78,14 @@ interface GraphQLMediaFile {
     embedding?: string;
     createdAt: string;
     updatedAt?: string;
+    metadata?: any;
 }
 
 // Convert internal minio:9000 URLs to browser-accessible localhost:9000 URLs
 function normalizeMinioUrl(url: string | undefined): string | undefined {
     if (!url) return url;
     // Replace Docker internal hostname with localhost for browser access
-    return url.replace(/http:\/\/minio:9000/g, 'http://localhost:9000');
+    return url.replace(/http:\/\/minio:9000/g, 'http://127.0.0.1:9000');
 }
 
 // Map camelCase GraphQL response to snake_case MediaFile
@@ -101,6 +103,7 @@ function mapToMediaFile(gql: GraphQLMediaFile): MediaFile {
         embedding: gql.embedding,
         created_at: gql.createdAt,
         updated_at: gql.updatedAt,
+        metadata: gql.metadata
     };
 }
 
@@ -230,6 +233,8 @@ export const mediaService = {
                     sizeBytes
                     altText
                     createdAt
+                    embedding
+                    metadata
                 }
             }
         `;
@@ -385,15 +390,15 @@ export const mediaService = {
         }
     },
 
-    async moveFile(sourceKey: string, destKey: string): Promise<boolean> {
+    async moveFile(sourceKey: string, destKey: string, sourceBucket?: string, destBucket?: string): Promise<boolean> {
         const mutation = `
-            mutation MoveFile($sourceKey: String!, $destKey: String!) {
-                moveFile(sourceKey: $sourceKey, destKey: $destKey)
+            mutation MoveFile($sourceKey: String!, $destKey: String!, $sourceBucket: String, $destBucket: String) {
+                moveFile(sourceKey: $sourceKey, destKey: $destKey, sourceBucket: $sourceBucket, destBucket: $destBucket)
             }
         `;
 
         try {
-            const data = await graphqlRequest<{ moveFile: boolean }>(mutation, { sourceKey, destKey });
+            const data = await graphqlRequest<{ moveFile: boolean }>(mutation, { sourceKey, destKey, sourceBucket, destBucket });
             return data.moveFile;
         } catch (error) {
             console.error("Error moving file:", error);
@@ -401,15 +406,15 @@ export const mediaService = {
         }
     },
 
-    async copyFile(sourceKey: string, destKey: string): Promise<boolean> {
+    async copyFile(sourceKey: string, destKey: string, sourceBucket?: string, destBucket?: string): Promise<boolean> {
         const mutation = `
-            mutation CopyFile($sourceKey: String!, $destKey: String!) {
-                copyFile(sourceKey: $sourceKey, destKey: $destKey)
+            mutation CopyFile($sourceKey: String!, $destKey: String!, $sourceBucket: String, $destBucket: String) {
+                copyFile(sourceKey: $sourceKey, destKey: $destKey, sourceBucket: $sourceBucket, destBucket: $destBucket)
             }
         `;
 
         try {
-            const data = await graphqlRequest<{ copyFile: boolean }>(mutation, { sourceKey, destKey });
+            const data = await graphqlRequest<{ copyFile: boolean }>(mutation, { sourceKey, destKey, sourceBucket, destBucket });
             return data.copyFile;
         } catch (error) {
             console.error("Error copying file:", error);
@@ -673,10 +678,10 @@ export const mediaService = {
     // STATS & INFO
     // ═══════════════════════════════════════════════════════════════════════════
 
-    async getStorageStats(): Promise<StorageStats | null> {
+    async getStorageStats(bucket?: string): Promise<StorageStats | null> {
         const query = `
-            query GetStorageStats {
-                getStorageStats {
+            query GetStorageStats($bucket: String) {
+                getStorageStats(bucket: $bucket) {
                     totalFiles
                     totalSizeBytes
                     buckets {
@@ -688,7 +693,7 @@ export const mediaService = {
         `;
 
         try {
-            const data = await graphqlRequest<{ getStorageStats: StorageStats }>(query);
+            const data = await graphqlRequest<{ getStorageStats: StorageStats }>(query, { bucket });
             return data.getStorageStats;
         } catch (error) {
             console.error("Error getting storage stats:", error);
@@ -724,7 +729,7 @@ export const mediaService = {
             return data.getS3Endpoint;
         } catch (error) {
             console.error("Error getting S3 endpoint:", error);
-            return 'http://localhost:9000';
+            return 'http://127.0.0.1:9000';
         }
     },
 
@@ -867,6 +872,37 @@ export const mediaService = {
         } catch (error) {
             console.error("Error generating podcast script:", error);
             return "[]";
+        }
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SEMANTIC SEARCH
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    async semanticSearch(query: string, limit: number = 10): Promise<MediaSearchResult[]> {
+        const gqlQuery = `
+            query SemanticSearch($query: String!, $limit: Int) {
+                semanticSearch(query: $query, limit: $limit) {
+                    id
+                    filename
+                    score
+                }
+            }
+        `;
+        try {
+            const data = await graphqlRequest<{ semanticSearch: { id: string; filename: string; score: number }[] }>(
+                gqlQuery,
+                { query, limit }
+            );
+            return data.semanticSearch.map(r => ({
+                id: r.id,
+                filename: r.filename,
+                url: '', // URL will be fetched separately if needed
+                similarity: r.score
+            }));
+        } catch (error) {
+            console.error("Semantic search error:", error);
+            return [];
         }
     },
 };

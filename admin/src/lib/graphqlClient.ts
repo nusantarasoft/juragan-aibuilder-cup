@@ -5,7 +5,7 @@
 
 const GRAPHQL_URL = (typeof window === 'undefined' && process.env.GRAPHQL_API_URL)
     ? process.env.GRAPHQL_API_URL
-    : (process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4001/graphql');
+    : (process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql');
 
 export interface GraphQLResponse<T> {
     data?: T;

@@ -76,6 +76,7 @@ export interface MediaFile {
     embedding?: string;
     created_at: string;
     updated_at?: string;
+    metadata?: any;
 }
 
 export interface UploadFileInput {

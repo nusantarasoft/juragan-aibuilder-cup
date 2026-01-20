@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import { AnimatedThemeToggler } from "@/components/magicui/animated-theme-toggler";
 import {
     LogoutOutlined,
@@ -35,12 +36,21 @@ import {
     Popover,
     Avatar,
     Typography,
+    Menu,
 } from "antd";
+import AIStudioDrawer from "./AIStudioDrawer";
 import { useRouter, usePathname } from "next/navigation";
 import menuConfig from "@/config/menuConfig";
 import GlitchText from "@/components/react-bits/GlitchText";
-import MetaBalls from "@/components/react-bits/MetaBalls";
+// Dynamic import for MetaBalls to prevent SSR crash (ogl WebGL library requires browser)
+const MetaBalls = dynamic(
+    () => import("@/components/react-bits/MetaBalls"),
+    { ssr: false }
+);
 import AnimatedTooltip from "@/components/mvpblocks/AnimatedTooltip";
+import { SpeedDial } from 'primereact/speeddial';
+import 'primereact/resources/themes/lara-light-cyan/theme.css';
+import 'primeicons/primeicons.css';
 
 const { Text } = Typography;
 
@@ -251,6 +261,8 @@ export default function CMSLayout({
     const [appListOpen, setAppListOpen] = useState(false);
     const [isHydrated, setIsHydrated] = useState(false);
     const [showBackground, setShowBackground] = useState(true);
+    const [aiStudioVisible, setAIStudioVisible] = useState(false);
+    const [metaballsMenuOpen, setMetaballsMenuOpen] = useState(false);
 
     // Initialize preferences from localStorage and system preferences
     React.useEffect(() => {
@@ -769,41 +781,72 @@ export default function CMSLayout({
                 </ConfigProvider>
             </ProConfigProvider>
 
-            {/* MetaBalls Background Toggle - Fixed at bottom-right corner */}
-            <AnimatedTooltip
-                content={showBackground ? "Disable Background" : "Enable Background"}
-                position="left"
-                usePortal={true}
-            >
-                <div
-                    className="fixed bottom-0 right-0 z-50 w-48 h-48 cursor-pointer hover:scale-105 transition-transform duration-300 hidden md:block"
-                    onClick={() => {
-                        const newValue = !showBackground;
-                        setShowBackground(newValue);
-                        localStorage.setItem("cms-show-background", String(newValue));
-                    }}
-                >
-                    <MetaBalls
-                        color={darkMode ? "#ffffff" : "#8b5cf6"}
-                        cursorBallColor={darkMode ? "#e0e7ff" : "#6366f1"}
-                        enableTransparency={true}
-                        ballCount={12}
-                        cursorBallSize={4}
-                        animationSize={28}
-                        speed={0.3}
-                    />
-                    {/* 3-dot icon inside main ball area (center) */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-14 h-14 rounded-full bg-black/20 dark:bg-white/10 flex items-center justify-center">
-                            <div className="flex gap-1.5">
-                                <div className="w-2 h-2 rounded-full bg-white"></div>
-                                <div className="w-2 h-2 rounded-full bg-white"></div>
-                                <div className="w-2 h-2 rounded-full bg-white"></div>
-                            </div>
-                        </div>
+            {/* AI Studio Drawer */}
+            <AIStudioDrawer visible={aiStudioVisible} onClose={() => setAIStudioVisible(false)} />
+
+            {/* SpeedDial Quarter Circle with MetaBalls - Bottom Right */}
+            <div className="fixed bottom-0 right-0 z-50 w-48 h-48 hidden md:block">
+                {/* MetaBalls animation - purely decorative, non-interactive */}
+                {showBackground && (
+                    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', zIndex: 1 }}>
+                        <MetaBalls
+                            color={darkMode ? "#ffffff" : "#8b5cf6"}
+                            cursorBallColor={darkMode ? "#e0e7ff" : "#6366f1"}
+                            enableTransparency={true}
+                            enableMouseInteraction={true}
+                            hoverSmoothness={0.05}
+                            clumpFactor={1.1}
+                            ballCount={15}
+                            cursorBallSize={3.5}
+                            animationSize={25}
+                            speed={0.4}
+                        />
+                    </div>
+                )}
+                {/* SpeedDial - positioned in center, above MetaBalls */}
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, pointerEvents: 'none' }}>
+                    <div style={{ pointerEvents: 'auto' }}>
+                        <SpeedDial
+                            model={[
+                                {
+                                    label: 'AI Studio',
+                                    icon: 'pi pi-sparkles',
+                                    command: () => setAIStudioVisible(true),
+                                },
+                                {
+                                    label: showBackground ? 'Disable Background' : 'Enable Background',
+                                    icon: showBackground ? 'pi pi-eye-slash' : 'pi pi-eye',
+                                    command: () => {
+                                        const newValue = !showBackground;
+                                        setShowBackground(newValue);
+                                        localStorage.setItem('cms-show-background', String(newValue));
+                                    }
+                                },
+                                {
+                                    label: darkMode ? 'Light Mode' : 'Dark Mode',
+                                    icon: darkMode ? 'pi pi-sun' : 'pi pi-moon',
+                                    command: () => handleDarkModeChange(!darkMode)
+                                },
+                                {
+                                    label: 'Settings',
+                                    icon: 'pi pi-cog',
+                                    command: () => router.push('/admin/settings')
+                                }
+                            ]}
+                            direction="up-left"
+                            type="quarter-circle"
+                            buttonClassName="speeddial-metaballs-btn"
+                            showIcon="pi pi-ellipsis-v"
+                            hideIcon="pi pi-times"
+                            rotateAnimation={true}
+                            style={{
+                                '--p-speeddial-button-width': '2.5rem',
+                                '--p-speeddial-button-height': '2.5rem',
+                            } as React.CSSProperties}
+                        />
                     </div>
                 </div>
-            </AnimatedTooltip>
+            </div>
 
             {/* CSS for sidebar alignment */}
             <style jsx global>{`
@@ -881,7 +924,47 @@ export default function CMSLayout({
                 .cms-inner-sider-collapsed-button {
                     z-index: 200 !important;
                 }
+                
+                /* SpeedDial button styling - smaller size with MetaBalls colors */
+                .speeddial-metaballs-btn {
+                    width: 2.5rem !important;
+                    height: 2.5rem !important;
+                    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%) !important;
+                    border: none !important;
+                    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4) !important;
+                    transition: all 0.3s ease !important;
+                }
+                
+                .speeddial-metaballs-btn:hover {
+                    transform: scale(1.1) !important;
+                    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.6) !important;
+                }
+                
+                .speeddial-metaballs-btn .pi {
+                    font-size: 1rem !important;
+                    color: white !important;
+                }
+                
+                /* SpeedDial action buttons - purple theme */
+                .p-speeddial-action {
+                    width: 2.25rem !important;
+                    height: 2.25rem !important;
+                    background: linear-gradient(135deg, #a78bfa 0%, #818cf8 100%) !important;
+                    border: none !important;
+                    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3) !important;
+                }
+                
+                .p-speeddial-action:hover {
+                    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%) !important;
+                    transform: scale(1.15) !important;
+                }
+                
+                .p-speeddial-action .pi {
+                    font-size: 0.875rem !important;
+                    color: white !important;
+                }
             `}</style>
         </div>
     );
 }
+

@@ -2,6 +2,252 @@
 
 Complete enterprise infrastructure with 11 integrated stacks and 65+ services.
 
+---
+
+## 🏗️ Architecture Overview
+
+### High-Level System Architecture
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        LP["Landing Page<br/>Next.js :3000"]
+        ADMIN["Admin CMS<br/>Next.js :3003"]
+        MOBILE["Mobile Apps"]
+    end
+    
+    subgraph "Gateway Layer"
+        TRAEFIK["Traefik<br/>:80/:443<br/>SSL/Routing"]
+        KONG["Kong API Gateway<br/>:8000<br/>Auth/Rate Limit"]
+    end
+    
+    subgraph "Application Layer"
+        MW["Middleware API<br/>NestJS + GraphQL :4001"]
+        FUNCTIONS["Edge Functions<br/>Deno Runtime"]
+    end
+    
+    subgraph "Supabase Backend"
+        AUTH["GoTrue Auth<br/>JWT/OAuth"]
+        REST["PostgREST<br/>Auto REST API"]
+        REALTIME["Realtime<br/>WebSocket"]
+        STORAGE["Storage API<br/>S3 Proxy"]
+        STUDIO["Supabase Studio<br/>Admin UI"]
+        ANALYTICS["Logflare<br/>Analytics"]
+    end
+    
+    subgraph "Data Layer"
+        PG[("PostgreSQL 15<br/>81 Extensions<br/>pgVector")]
+        MINIO[("MinIO S3<br/>Object Storage")]
+    end
+    
+    subgraph "AI/ML Services"
+        GEMINI["Google Gemini<br/>Content Gen"]
+        LABELSTUDIO["Label Studio<br/>Data Annotation"]
+    end
+    
+    subgraph "Infrastructure"
+        PIHOLE["Pi-hole DNS"]
+        BIND9["BIND9"]
+        MAIL["Mailserver"]
+        PORTAINER["Portainer"]
+        SOCKETIO["Socket.IO"]
+    end
+    
+    LP --> TRAEFIK
+    ADMIN --> TRAEFIK
+    MOBILE --> TRAEFIK
+    
+    TRAEFIK --> KONG
+    TRAEFIK --> MW
+    
+    KONG --> AUTH
+    KONG --> REST
+    KONG --> REALTIME
+    KONG --> STORAGE
+    KONG --> FUNCTIONS
+    KONG --> STUDIO
+    
+    MW --> KONG
+    MW --> PG
+    MW --> MINIO
+    MW --> GEMINI
+    MW --> LABELSTUDIO
+    
+    AUTH --> PG
+    REST --> PG
+    REALTIME --> PG
+    STORAGE --> MINIO
+    ANALYTICS --> PG
+```
+
+---
+
+### Data Flow Diagram
+
+```mermaid
+flowchart LR
+    subgraph "User Actions"
+        U1["Browse Website"]
+        U2["Upload Media"]
+        U3["AI Content Gen"]
+        U4["Data Labeling"]
+    end
+    
+    subgraph "Frontend Apps"
+        FE1["Landing Page"]
+        FE2["Admin CMS"]
+    end
+    
+    subgraph "API Gateway"
+        GW["Kong + Traefik"]
+    end
+    
+    subgraph "Business Logic"
+        API["Middleware API<br/>GraphQL"]
+    end
+    
+    subgraph "Backend Services"
+        SB1["Supabase Auth"]
+        SB2["Supabase REST"]
+        SB3["Storage API"]
+        SB4["Edge Functions"]
+    end
+    
+    subgraph "AI Pipeline"
+        AI1["Gemini API"]
+        AI2["Label Studio"]
+        AI3["Embeddings"]
+    end
+    
+    subgraph "Data Stores"
+        DB[("PostgreSQL<br/>+ pgVector")]
+        S3[("MinIO S3")]
+    end
+    
+    U1 --> FE1 --> GW --> SB2 --> DB
+    U2 --> FE2 --> API --> SB3 --> S3
+    U3 --> FE2 --> API --> AI1 --> DB
+    U4 --> API --> AI2 --> AI3 --> DB
+    
+    API --> DB
+    S3 -.-> AI3
+```
+
+---
+
+### CMS & AI Data Flow
+
+```mermaid
+sequenceDiagram
+    participant User as Admin User
+    participant CMS as Admin CMS
+    participant MW as Middleware API
+    participant Gemini as Google Gemini
+    participant LS as Label Studio
+    participant DB as PostgreSQL
+    participant S3 as MinIO S3
+
+    User->>CMS: Upload Media File
+    CMS->>MW: GraphQL Mutation
+    MW->>S3: Store File
+    S3-->>MW: File URL
+    MW->>DB: Save Metadata
+    
+    MW->>Gemini: Generate Embeddings
+    Gemini-->>MW: Vector Embeddings
+    MW->>DB: Store in pgVector
+    
+    MW->>Gemini: Auto-Label Content
+    Gemini-->>MW: Labels/Tags
+    MW->>LS: Create Annotation Task
+    LS-->>MW: Task Created
+    
+    MW->>DB: Update Media Record
+    MW-->>CMS: Success Response
+    CMS-->>User: Media Uploaded
+```
+
+---
+
+### Service Stacks Overview
+
+| Stack | Services | Ports | Purpose |
+|-------|----------|-------|---------|
+| **Data & Storage** | MinIO, PostgreSQL, pgAdmin | 9000, 9001, 5432 | Object storage, RDBMS |
+| **Supabase** | Kong, Auth, REST, Realtime, Storage, Studio | 8000, 4000 | Backend-as-a-Service |
+| **CMS & AI** | Admin, Middleware, Label Studio | 3003, 4001, 8080 | Content management + AI |
+| **Frontend** | Landing Page | 3000 | Public website |
+| **Infrastructure** | Traefik, NPM, Pi-hole, BIND9, Portainer | 80, 443, 8081 | Proxy, DNS, monitoring |
+| **Email** | Mailserver, Roundcube | 25, 465, 587, 993 | Email infrastructure |
+| **Real-time** | Socket.IO, Realtime | 3002 | WebSocket communication |
+
+---
+
+### Technology Stack
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        CLIENT LAYER                             │
+├─────────────────────────────────────────────────────────────────┤
+│  Landing Page (Next.js)  │  Admin CMS (Next.js + PrimeReact)   │
+├─────────────────────────────────────────────────────────────────┤
+│                       GATEWAY LAYER                             │
+├─────────────────────────────────────────────────────────────────┤
+│          Traefik (Reverse Proxy)  │  Kong (API Gateway)        │
+├─────────────────────────────────────────────────────────────────┤
+│                     APPLICATION LAYER                           │
+├─────────────────────────────────────────────────────────────────┤
+│  Middleware (NestJS + GraphQL)  │  Edge Functions (Deno)       │
+├─────────────────────────────────────────────────────────────────┤
+│                      BACKEND LAYER                              │
+├─────────────────────────────────────────────────────────────────┤
+│  Auth (GoTrue)  │  REST (PostgREST)  │  Storage  │  Realtime   │
+├─────────────────────────────────────────────────────────────────┤
+│                        DATA LAYER                               │
+├─────────────────────────────────────────────────────────────────┤
+│  PostgreSQL 15 (pgVector, 81 extensions)  │  MinIO S3          │
+├─────────────────────────────────────────────────────────────────┤
+│                       AI/ML LAYER                               │
+├─────────────────────────────────────────────────────────────────┤
+│  Google Gemini (Embeddings, Generation)  │  Label Studio       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Directory Structure
+
+```
+nusantarasoft/
+├── admin/                 # Next.js Admin CMS Dashboard
+│   └── src/
+│       ├── app/           # App Router pages
+│       ├── components/    # 496+ React components (PrimeReact)
+│       ├── hooks/         # Custom React hooks
+│       └── lib/           # GraphQL client, utilities
+├── middleware/            # NestJS GraphQL API Server
+│   └── src/
+│       ├── auth/          # Authentication resolvers
+│       ├── media/         # Media management module
+│       ├── rag/           # RAG/AI integration
+│       ├── pages/         # CMS pages module
+│       └── webhooks/      # Label Studio webhooks
+├── landing-page/          # Next.js Public Website
+│   └── src/
+│       ├── app/           # App Router pages
+│       └── components/    # UI components
+├── volumes/               # Docker persistent data & configs
+│   ├── db/                # PostgreSQL init scripts
+│   ├── functions/         # Supabase Edge Functions
+│   ├── api/               # Kong configuration
+│   └── bind9/             # DNS zone files
+├── docker-compose.yml     # Main orchestration (30+ services)
+├── docker-compose.full.yml# Full stack (65+ services)
+└── .env                   # Environment variables
+```
+
+---
+
 ## 💻 System Requirements
 
 | Component | Minimum | Recommended |
@@ -85,6 +331,8 @@ docker compose up -d
 
 ## 🔗 Access Links & Credentials
 
+> 🔐 **Configuration**: All credentials below are default values defined in `.env`. Change them there for security.
+
 ### 1. Data & Analytics
 | Service | URL | User | Password |
 |---------|-----|------|----------|
@@ -136,7 +384,7 @@ docker compose up -d
 ### 7. Observability
 | Service | URL | User | Password |
 |---------|-----|------|----------|
-| Grafana | http://localhost:3003 | `admin` | `Nusantarasoft123!` |
+| Grafana | http://localhost:3004 | `admin` | `Nusantarasoft123!` |
 | Prometheus | http://localhost:9091 | - | - |
 | Loki | http://localhost:3100 | - | - |
 
@@ -167,6 +415,20 @@ docker compose up -d
 | Kafka UI | http://localhost:8093 | - | - |
 | RabbitMQ | http://localhost:15672 | `admin` | `Nusantarasoft123!` |
 | Hasura | http://localhost:8094 | *(secret)* | `hasura_admin_secret_change_me` |
+
+### 12. CMS & AI Stack
+| Service | URL | Description |
+|---------|-----|-------------|
+| Admin CMS | http://localhost:3003 | Next.js Admin Dashboard with SpeedDial + MetaBalls |
+| Middleware API | http://localhost:4001/graphql | NestJS GraphQL API with Gemini AI |
+| Landing Page | http://localhost:3000 | Public website |
+
+> **CMS Features**: PrimeReact SpeedDial for quick actions (AI Studio, Dark Mode, Settings), MetaBalls animation, Supabase Auth, MinIO file storage with pgVector semantic search
+
+### 13. AI Data Labelling
+| Service | URL | User | Password |
+|---------|-----|------|----------|
+| Label Studio | http://localhost:8080 | `admin@nusantarasoft.local` | `Nusantarasoft123!` |
 
 ---
 
