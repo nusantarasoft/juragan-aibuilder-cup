@@ -457,7 +457,7 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
                     background: transparent; 
                     position: relative;
                     z-index: 10;
-                    margin-right: -4px; /* Counter spacing to bring closer to drag grip */
+                    margin-right: 7px; /* 7px gap between expand button and drag grid as requested */
                 }
                 .ant-tree-node-content-wrapper {
                     flex: 1 1 auto !important;
