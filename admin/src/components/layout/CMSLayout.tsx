@@ -480,9 +480,9 @@ export default function CMSLayout({
                                 flexDirection: outerCollapsed ? "column" : "row",
                                 alignItems: "center",
                                 justifyContent: outerCollapsed ? "center" : "space-between",
-                                minHeight: HEADER_HEIGHT,
-                                padding: outerCollapsed ? "12px 0" : "0 16px",
-                                gap: outerCollapsed ? 12 : 0,
+                                minHeight: 48,
+                                padding: outerCollapsed ? "4px 0" : "0 12px",
+                                gap: outerCollapsed ? 8 : 0,
                                 borderBottom: darkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid #f0f0f0",
                                 boxSizing: "border-box",
                             }}>

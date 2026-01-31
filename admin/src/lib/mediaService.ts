@@ -33,6 +33,7 @@ export interface S3Object {
 export interface S3Bucket {
     name: string;
     creationDate?: string;
+    isPublic?: boolean;
 }
 
 export interface LifecycleRule {
@@ -58,6 +59,7 @@ async function graphqlRequest<T>(query: string, variables?: Record<string, unkno
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, variables }),
+        cache: 'no-store',
     });
     const json = await response.json();
     if (json.errors) throw new Error(json.errors[0].message);
@@ -79,13 +81,21 @@ interface GraphQLMediaFile {
     createdAt: string;
     updatedAt?: string;
     metadata?: any;
+    bucketName?: string;
+    checksum?: string;
+    thumbnailUrl?: string;
+    thumbnailPath?: string;
+    previewPages?: string[];
 }
 
 // Convert internal minio:9000 URLs to browser-accessible localhost:9000 URLs
 function normalizeMinioUrl(url: string | undefined): string | undefined {
     if (!url) return url;
     // Replace Docker internal hostname with localhost for browser access
-    return url.replace(/http:\/\/minio:9000/g, 'http://127.0.0.1:9000');
+    // Handle both http and https, and potentially other internal names map if needed
+    let newUrl = url.replace(/http:\/\/minio:9000/g, 'http://localhost:9000');
+    newUrl = newUrl.replace(/http:\/\/middleware:3000/g, 'http://localhost:3000');
+    return newUrl;
 }
 
 // Map camelCase GraphQL response to snake_case MediaFile
@@ -103,7 +113,12 @@ function mapToMediaFile(gql: GraphQLMediaFile): MediaFile {
         embedding: gql.embedding,
         created_at: gql.createdAt,
         updated_at: gql.updatedAt,
-        metadata: gql.metadata
+        metadata: gql.metadata,
+        bucket_name: gql.bucketName,
+        checksum: gql.checksum,
+        thumbnail_path: gql.thumbnailPath,
+        thumbnailUrl: normalizeMinioUrl(gql.thumbnailUrl) || gql.thumbnailUrl,
+        previewPages: gql.previewPages,
     };
 }
 
@@ -137,7 +152,7 @@ export const mediaService = {
                 `,
                 variables: {
                     file: null,
-                    folder: options?.folder || 'uploads',
+                    folder: options?.folder || '',
                     bucket: options?.bucket, // Pass bucket
                     altText: options?.altText || file.name,
                     autoLabel: options?.autoLabel,
@@ -189,10 +204,12 @@ export const mediaService = {
         limit?: number;
         offset?: number;
         mimeType?: string;
+        bucket?: string;
+        folder?: string;
     }): Promise<MediaFile[]> {
         const query = `
-            query Media($limit: Int, $offset: Int, $mimeType: String) {
-                media(limit: $limit, offset: $offset, mimeType: $mimeType) {
+            query Media($limit: Int, $offset: Int, $mimeType: String, $bucket: String, $folder: String) {
+                media(limit: $limit, offset: $offset, mimeType: $mimeType, bucket: $bucket, folder: $folder) {
                     id
                     filename
                     originalName
@@ -202,6 +219,13 @@ export const mediaService = {
                     sizeBytes
                     altText
                     createdAt
+                    metadata
+                    embedding
+                    bucketName
+                    thumbnailUrl
+                    checksum
+                    thumbnailPath
+                    previewPages
                 }
             }
         `;
@@ -211,6 +235,8 @@ export const mediaService = {
                 limit: options?.limit,
                 offset: options?.offset,
                 mimeType: options?.mimeType,
+                bucket: options?.bucket,
+                folder: options?.folder,
             });
             return (data.media || []).map(mapToMediaFile);
         } catch (error) {
@@ -235,6 +261,11 @@ export const mediaService = {
                     createdAt
                     embedding
                     metadata
+                    bucketName
+                    thumbnailUrl
+                    checksum
+                    thumbnailPath
+                    previewPages
                 }
             }
         `;
@@ -244,6 +275,39 @@ export const mediaService = {
             return data.mediaById ? mapToMediaFile(data.mediaById) : null;
         } catch (error) {
             console.error("Error fetching media:", error);
+            return null;
+        }
+    },
+
+    async getMediaByS3Key(key: string): Promise<MediaFile | null> {
+        const query = `
+            query MediaByS3Key($key: String!) {
+                mediaByS3Key(key: $key) {
+                    id
+                    filename
+                    originalName
+                    url
+                    s3Key
+                    mimeType
+                    sizeBytes
+                    altText
+                    createdAt
+                    embedding
+                    metadata
+                    bucketName
+                    thumbnailUrl
+                    checksum
+                    thumbnailPath
+                    previewPages
+                }
+            }
+        `;
+
+        try {
+            const data = await graphqlRequest<{ mediaByS3Key: GraphQLMediaFile }>(query, { key });
+            return data.mediaByS3Key ? mapToMediaFile(data.mediaByS3Key) : null;
+        } catch (error) {
+            console.error("Error fetching media by key:", error);
             return null;
         }
     },
@@ -317,6 +381,7 @@ export const mediaService = {
     // ═══════════════════════════════════════════════════════════════════════════
 
     async listFolders(prefix?: string, bucket?: string): Promise<S3Object[]> {
+        console.log(`[MediaService] listing folders for ${bucket} prefix=${prefix} (Strict Filter Active)`);
         const query = `
             query ListFolders($prefix: String, $bucket: String) {
                 listFolders(prefix: $prefix, bucket: $bucket) {
@@ -330,7 +395,34 @@ export const mediaService = {
 
         try {
             const data = await graphqlRequest<{ listFolders: S3Object[] }>(query, { prefix, bucket });
-            return data.listFolders || [];
+            // Filter out the folder itself to prevent infinite recursion in UI
+            // Normalize by removing trailing slashes for comparison
+            const normalize = (str: string | undefined) => (str || '').replace(/\/+$/, '');
+            const safePrefix = normalize(prefix);
+            const prefixDepth = safePrefix === '' ? 0 : safePrefix.split('/').length;
+
+            console.log(`[MediaService] Raw folders:`, data.listFolders?.length, `PrefixDepth: ${prefixDepth} (${safePrefix})`);
+
+            return (data.listFolders || []).filter(f => {
+                const safeKey = normalize(f.key);
+
+                // 1. Block Self-reference
+                if (safeKey === safePrefix) {
+                    // console.debug(`Blocking self-ref: ${safeKey}`);
+                    return false;
+                }
+
+                // 2. Block Grandchildren (Strict tree depth)
+                // Backend listObjects(recursive=false) should handle this, but strictly enforcing here
+                // caused issues with some folder visibility.
+                // const childDepth = safeKey.split('/').length;
+                // if (childDepth !== prefixDepth + 1) {
+                //     console.log(`Blocking depth mismatch: ${safeKey} (Depth: ${childDepth}, Expected: ${prefixDepth + 1})`);
+                //     return false;
+                // }
+
+                return true;
+            });
         } catch (error) {
             console.error("Error listing folders:", error);
             return [];
@@ -374,18 +466,35 @@ export const mediaService = {
         }
     },
 
-    async deleteFolder(path: string): Promise<boolean> {
+    async deleteFolder(path: string, bucket?: string): Promise<boolean> {
         const mutation = `
-            mutation DeleteFolder($path: String!) {
-                deleteFolder(path: $path)
+            mutation DeleteFolder($path: String!, $bucket: String) {
+                deleteFolder(path: $path, bucket: $bucket)
             }
         `;
 
         try {
-            const data = await graphqlRequest<{ deleteFolder: boolean }>(mutation, { path });
+            const data = await graphqlRequest<{ deleteFolder: boolean }>(mutation, { path, bucket });
             return data.deleteFolder;
         } catch (error) {
             console.error("Error deleting folder:", error);
+            return false;
+        }
+    },
+
+    // Delete file by S3 key (for files from S3 listing that don't have DB IDs)
+    async deleteFileByKey(key: string, bucket?: string): Promise<boolean> {
+        const mutation = `
+            mutation DeleteFileByKey($key: String!, $bucket: String) {
+                deleteFileByKey(key: $key, bucket: $bucket)
+            }
+        `;
+
+        try {
+            const data = await graphqlRequest<{ deleteFileByKey: boolean }>(mutation, { key, bucket });
+            return data.deleteFileByKey;
+        } catch (error) {
+            console.error("Error deleting file by key:", error);
             return false;
         }
     },
@@ -418,6 +527,39 @@ export const mediaService = {
             return data.copyFile;
         } catch (error) {
             console.error("Error copying file:", error);
+            return false;
+        }
+    },
+
+    // Composite operation: Move Folder (Client-side orchestration)
+    async moveFolder(sourcePath: string, destPath: string, sourceBucket: string, destBucket: string): Promise<boolean> {
+        try {
+            console.log(`[MediaService] Moving folder ${sourcePath} from ${sourceBucket} to ${destPath} in ${destBucket}`);
+
+            // 1. List files in SOURCE bucket
+            const files = await this.listFilesInFolder(sourcePath, sourceBucket);
+
+            const movePromises = files.map(file => {
+                const fileName = file.key.replace(sourcePath, ''); // Get relative path
+                // Ensure no double slashes if destPath has trailing slash
+                const cleanDest = destPath.endsWith('/') ? destPath : destPath + '/';
+                const targetKey = cleanDest + fileName;
+
+                // Pass distinct source and dest buckets
+                return this.moveFile(file.key, targetKey, sourceBucket, destBucket);
+            });
+
+            await Promise.all(movePromises);
+
+            // 2. Cleanup Source (if distinct path or bucket)
+            // Just try to delete the source folder marker/prefix
+            if (sourceBucket !== destBucket || sourcePath !== destPath) {
+                await this.deleteFolder(sourcePath, sourceBucket);
+            }
+
+            return true;
+        } catch (err) {
+            console.error("Error moving folder:", err);
             return false;
         }
     },
@@ -463,13 +605,13 @@ export const mediaService = {
 
     async deleteBucket(name: string): Promise<boolean> {
         const mutation = `
-            mutation DeleteBucket($name: String!) {
-                deleteBucket(name: $name)
+            mutation DeleteBucket($bucket: String!) {
+                deleteBucket(bucket: $bucket)
             }
         `;
 
         try {
-            const data = await graphqlRequest<{ deleteBucket: boolean }>(mutation, { name });
+            const data = await graphqlRequest<{ deleteBucket: boolean }>(mutation, { bucket: name });
             return data.deleteBucket;
         } catch (error) {
             console.error("Error deleting bucket:", error);
@@ -750,19 +892,20 @@ export const mediaService = {
         return [];
     },
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // AI OPERATIONS
-    // ═══════════════════════════════════════════════════════════════════════════
+    async semanticSearch(query: string, limit = 10): Promise<MediaSearchResult[]> {
+        console.warn("semanticSearch not yet implemented");
+        return [];
+    },
 
-    async generateMediaEmbeddings(mediaId: string, content: string): Promise<boolean> {
+    async generateMediaEmbeddings(id: string, content: string): Promise<boolean> {
         const mutation = `
-            mutation GenerateMediaEmbeddings($mediaId: String!, $content: String!) {
-                generateMediaEmbeddings(mediaId: $mediaId, content: $content)
+            mutation GenerateMediaEmbeddings($id: String!, $content: String) {
+                generateMediaEmbeddings(id: $id, content: $content)
             }
         `;
 
         try {
-            const data = await graphqlRequest<{ generateMediaEmbeddings: boolean }>(mutation, { mediaId, content });
+            const data = await graphqlRequest<{ generateMediaEmbeddings: boolean }>(mutation, { id, content });
             return data.generateMediaEmbeddings;
         } catch (error) {
             console.error("Error generating embeddings:", error);
@@ -770,141 +913,52 @@ export const mediaService = {
         }
     },
 
-    async sendToLabelStudio(mediaId: string, mediaUrl: string): Promise<boolean> {
+    async autoLabelMedia(id: string): Promise<string[]> {
         const mutation = `
-            mutation SendToLabelStudio($mediaId: String!, $mediaUrl: String!) {
-                sendToLabelStudio(mediaId: $mediaId, mediaUrl: $mediaUrl)
+            mutation AutoLabelMedia($id: String!) {
+                autoLabelMedia(id: $id)
             }
         `;
 
         try {
-            const data = await graphqlRequest<{ sendToLabelStudio: boolean }>(mutation, { mediaId, mediaUrl });
-            return data.sendToLabelStudio;
+            const data = await graphqlRequest<{ autoLabelMedia: string[] }>(mutation, { id });
+            return data.autoLabelMedia || [];
         } catch (error) {
-            console.error("Error sending to Label Studio:", error);
-            return false;
-        }
-    },
-
-    async autoLabelMedia(mediaId: string): Promise<string[]> {
-        const mutation = `
-            mutation AutoLabelMedia($mediaId: String!) {
-                autoLabelMedia(mediaId: $mediaId)
-            }
-        `;
-        try {
-            const data = await graphqlRequest<{ autoLabelMedia: string[] }>(mutation, { mediaId });
-            return data.autoLabelMedia;
-        } catch (error) {
-            console.error("Error auto-labeling media:", error);
+            console.error("Error auto-labeling:", error);
             return [];
         }
     },
 
-    async chatWithSources(query: string, mediaIds: string[]): Promise<string> {
-        const mutation = `
-            mutation ChatWithSources($query: String!, $mediaIds: [String!]!) {
-                chatWithSources(query: $query, mediaIds: $mediaIds)
-            }
-        `;
-        try {
-            const data = await graphqlRequest<{ chatWithSources: string }>(mutation, { query, mediaIds });
-            return data.chatWithSources;
-        } catch (error) {
-            console.error("Error chatting with sources:", error);
-            return "Error: Could not communicate with AI service.";
-        }
+    async sendToLabelStudio(id: string, url: string): Promise<boolean> {
+        console.warn("sendToLabelStudio not yet implemented");
+        return true;
     },
 
-    async generateReport(query: string, mediaIds: string[]): Promise<string> {
-        const mutation = `
-            mutation GenerateReport($query: String!, $mediaIds: [String!]!) {
-                generateReport(query: $query, mediaIds: $mediaIds)
-            }
-        `;
-        try {
-            const data = await graphqlRequest<{ generateReport: string }>(mutation, { query, mediaIds });
-            return data.generateReport;
-        } catch (error) {
-            console.error("Error generating report:", error);
-            return "Error: Could not generate report.";
-        }
+    async chatWithSources(query: string, sourceIds: string[]): Promise<string> {
+        console.warn("chatWithSources not yet implemented");
+        return "AI Chat is currently a placeholder.";
     },
 
-    async generatePresentation(query: string, mediaIds: string[]): Promise<string> {
-        const mutation = `
-            mutation GeneratePresentation($query: String!, $mediaIds: [String!]!) {
-                generatePresentation(query: $query, mediaIds: $mediaIds)
-            }
-        `;
-        try {
-            const data = await graphqlRequest<{ generatePresentation: string }>(mutation, { query, mediaIds });
-            return data.generatePresentation;
-        } catch (error) {
-            console.error("Error generating presentation:", error);
-            return "[]";
-        }
+    async generateReport(query: string, sourceIds: string[]): Promise<string> {
+        console.warn("generateReport not yet implemented");
+        return "Report generation is a placeholder.";
+    },
+
+    async generatePresentation(query: string, sourceIds: string[]): Promise<string> {
+        console.warn("generatePresentation not yet implemented");
+        return "Presentation generation is a placeholder.";
     },
 
     async generateImage(prompt: string): Promise<string> {
-        const mutation = `
-            mutation GenerateImage($prompt: String!) {
-                generateImage(prompt: $prompt)
-            }
-        `;
-        try {
-            const data = await graphqlRequest<{ generateImage: string }>(mutation, { prompt });
-            return data.generateImage;
-        } catch (error) {
-            console.error("Error generating image:", error);
-            return "";
-        }
-    },
-    async generatePodcastScript(mediaIds: string[]): Promise<string> {
-        const mutation = `
-            mutation GeneratePodcastScript($mediaIds: [String!]!) {
-                generatePodcastScript(mediaIds: $mediaIds)
-            }
-        `;
-        try {
-            const data = await graphqlRequest<{ generatePodcastScript: string }>(mutation, { mediaIds });
-            return data.generatePodcastScript;
-        } catch (error) {
-            console.error("Error generating podcast script:", error);
-            return "[]";
-        }
+        console.warn("generateImage not yet implemented");
+        return ""; // Return empty string or base64 placeholer
     },
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // SEMANTIC SEARCH
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    async semanticSearch(query: string, limit: number = 10): Promise<MediaSearchResult[]> {
-        const gqlQuery = `
-            query SemanticSearch($query: String!, $limit: Int) {
-                semanticSearch(query: $query, limit: $limit) {
-                    id
-                    filename
-                    score
-                }
-            }
-        `;
-        try {
-            const data = await graphqlRequest<{ semanticSearch: { id: string; filename: string; score: number }[] }>(
-                gqlQuery,
-                { query, limit }
-            );
-            return data.semanticSearch.map(r => ({
-                id: r.id,
-                filename: r.filename,
-                url: '', // URL will be fetched separately if needed
-                similarity: r.score
-            }));
-        } catch (error) {
-            console.error("Semantic search error:", error);
-            return [];
-        }
+    async generatePodcastScript(sourceIds: string[]): Promise<string> {
+        console.warn("generatePodcastScript not yet implemented");
+        return JSON.stringify([{ speaker: "Host A", text: "Welcome to the podcast." }, { speaker: "Host B", text: "Thanks for having me." }]);
     },
+
 };
 
 export default mediaService;

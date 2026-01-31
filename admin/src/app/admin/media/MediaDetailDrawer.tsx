@@ -109,6 +109,12 @@ export default function MediaDetailDrawer({ visible, onClose, media, onRefresh }
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f5f5f5', padding: 20, borderRadius: 8, minHeight: 200 }}>
                     {media.mime_type?.startsWith('image/') ? (
                         <Image src={media.url} alt={media.alt_text} style={{ maxHeight: 300, objectFit: 'contain' }} />
+                    ) : media.mime_type?.includes('pdf') ? (
+                        <iframe
+                            src={media.url}
+                            title={media.filename}
+                            style={{ width: '100%', height: '500px', border: 'none' }}
+                        />
                     ) : (
                         getFileIcon(media.mime_type)
                     )}

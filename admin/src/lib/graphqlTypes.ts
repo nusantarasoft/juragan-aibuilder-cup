@@ -77,6 +77,11 @@ export interface MediaFile {
     created_at: string;
     updated_at?: string;
     metadata?: any;
+    bucket_name?: string;
+    checksum?: string;
+    thumbnail_path?: string;
+    thumbnailUrl?: string;
+    previewPages?: string[];
 }
 
 export interface UploadFileInput {

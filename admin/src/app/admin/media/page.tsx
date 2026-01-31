@@ -74,7 +74,21 @@ import {
     RobotOutlined,
     LoadingOutlined,
     InfoCircleOutlined,
+    MenuFoldOutlined,
+    MenuUnfoldOutlined,
+    LayoutOutlined,
+    FilePdfOutlined,
+    FileWordOutlined,
+    FileExcelOutlined,
+    FileTextOutlined,
+    FileZipOutlined,
+    AudioOutlined,
+    FileUnknownOutlined,
+    SafetyCertificateOutlined,
+    MinusSquareOutlined,
+    PlusSquareOutlined
 } from "@ant-design/icons";
+
 import { MagicButton } from "@/components/custom/MagicButton";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
@@ -83,6 +97,7 @@ import { hyperspeedPresets } from "@/components/react-bits/HyperSpeedPresets";
 import MetaBalls from "@/components/react-bits/MetaBalls";
 import type { DataNode, TreeProps } from "antd/es/tree";
 import { mediaService, MediaFile, S3Object, S3Bucket, StorageStats, LifecycleRule } from "@/lib/mediaService";
+import FolderTree, { FolderTreeRef } from "./FolderTree";
 
 // Animated components
 const PremiumButton = ({ children, onClick, icon, className, style, ...props }: any) => {
@@ -175,6 +190,8 @@ export default function MediaLibraryPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [viewMode, setViewMode] = useState<"grid" | "list" | "detail">("grid");
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [showExplorer, setShowExplorer] = useState(true);
+    const folderTreeRef = React.useRef<FolderTreeRef>(null);
 
     // Folder state
     const [currentPath, setCurrentPath] = useState("");
@@ -221,6 +238,15 @@ export default function MediaLibraryPage() {
     const [detailModalVisible, setDetailModalVisible] = useState(false);
     const [detailModalFile, setDetailModalFile] = useState<MediaFile | null>(null);
 
+    // System Bucket Lock State (Safety Mechanism)
+    const [isSystemBucketLocked, setIsSystemBucketLocked] = useState(true);
+
+    // Helper to check if operation is allowed
+    const isOperationAllowed = (bucketName: string) => {
+        if (bucketName === 'ns-system' && isSystemBucketLocked) return false;
+        return true;
+    };
+
     // Load initial data
     useEffect(() => {
         loadAllData();
@@ -264,21 +290,29 @@ export default function MediaLibraryPage() {
 
     const loadMedia = async () => {
         try {
-            // Load files from S3 for current bucket/path, not from DB
-            const s3Files = await mediaService.listFilesInFolder(currentPath);
-            // Filter out folders, only show files
-            const files = s3Files.filter(f => !f.isFolder);
-            // Map S3 objects to MediaFile format for display
-            const mappedFiles: MediaFile[] = files.map(f => ({
-                id: f.key,
-                filename: f.key.split('/').pop() || f.key,
-                url: `${process.env.NEXT_PUBLIC_S3_ENDPOINT || 'http://127.0.0.1:9000'}/${currentBucket || 'cms-media'}/${f.key}`,
-                s3_key: f.key,
-                mime_type: getMimeType(f.key),
-                size_bytes: f.size,
-                created_at: f.lastModified,
-            }));
-            setMedia(mappedFiles);
+            // Load files from DB to get metadata (Tags, Embeddings)
+            // Backend `findAll` with folder returns all recursive files, so we filter for direct children here.
+            const dbFiles = await mediaService.getMedia({
+                bucket: currentBucket,
+                folder: currentPath
+            });
+
+            // Filter for direct children only (simulate flat folder view)
+            // Also ensure we handle potential missing s3_key by falling back to filename
+            const directFiles = dbFiles.filter(f => {
+                const key = f.s3_key || f.filename;
+                // If currentPath is empty, key should not have slashes (root files)
+                // If currentPath is "folder", key should start with "folder/" and have no more slashes
+
+                const prefix = currentPath ? (currentPath.endsWith('/') ? currentPath : `${currentPath}/`) : '';
+
+                if (!key.startsWith(prefix)) return false; // Should catch by backend query, but safety check
+
+                const relativePath = key.slice(prefix.length);
+                return !relativePath.includes('/');
+            });
+
+            setMedia(directFiles);
         } catch (error) {
             console.warn("Error loading media:", error);
             setMedia([]);
@@ -323,6 +357,8 @@ export default function MediaLibraryPage() {
             const bucketFolders = foldersByBucket[bucket.name];
             const hasFoldersLoaded = bucketFolders !== undefined;
 
+            const isBucketLocked = bucket.name === 'ns-system' && isSystemBucketLocked;
+
             const baseNode: DataNode = {
                 key: `bucket:${bucket.name}`,
                 // Always show expand icon for buckets (they can always have folders)
@@ -350,23 +386,37 @@ export default function MediaLibraryPage() {
                             setBucketSettingsDrawerVisible(true);
                         }}
                     />
-                    <Popconfirm
-                        title="Delete bucket?"
-                        description="This action cannot be undone."
-                        onConfirm={(e) => { e?.stopPropagation(); handleDeleteBucket(bucket.name); }}
-                        onCancel={(e) => e?.stopPropagation()}
-                        okText="Delete"
-                        cancelText="Cancel"
-                    >
-                        <DeleteOutlined
-                            style={{
-                                color: '#ff4d4f',
-                                fontSize: 12,
-                                flexShrink: 0,
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                    </Popconfirm>
+                    {!isBucketLocked ? (
+                        <Popconfirm
+                            title="Delete bucket?"
+                            description="This action cannot be undone."
+                            onConfirm={(e) => { e?.stopPropagation(); handleDeleteBucket(bucket.name); }}
+                            onCancel={(e) => e?.stopPropagation()}
+                            okText="Delete"
+                            cancelText="Cancel"
+                        >
+                            <DeleteOutlined
+                                style={{
+                                    color: '#ff4d4f',
+                                    fontSize: 12,
+                                    flexShrink: 0,
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        </Popconfirm>
+                    ) : (
+                        <Tooltip title="System Bucket Protected">
+                            <SafetyCertificateOutlined
+                                style={{
+                                    color: '#faad14',
+                                    fontSize: 12,
+                                    flexShrink: 0,
+                                    cursor: 'not-allowed'
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        </Tooltip>
+                    )}
                 </div>,
             };
 
@@ -399,23 +449,38 @@ export default function MediaLibraryPage() {
                                 }}>
                                     {folderName}
                                 </span>
-                                <Popconfirm
-                                    title="Delete folder?"
-                                    onConfirm={(e) => { e?.stopPropagation(); handleDeleteFolder(f.key); }}
-                                    onCancel={(e) => e?.stopPropagation()}
-                                    okText="Delete"
-                                    cancelText="Cancel"
-                                >
-                                    <DeleteOutlined
-                                        style={{
-                                            color: '#ff4d4f',
-                                            fontSize: 12,
-                                            flexShrink: 0,
-                                            marginLeft: 'auto'
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                    />
-                                </Popconfirm>
+                                {!(bucket.name === 'ns-system' && isSystemBucketLocked) ? (
+                                    <Popconfirm
+                                        title="Delete folder?"
+                                        onConfirm={(e: any) => { e?.stopPropagation(); handleDeleteFolder(f.key); }}
+                                        onCancel={(e: any) => e?.stopPropagation()}
+                                        okText="Delete"
+                                        cancelText="Cancel"
+                                    >
+                                        <DeleteOutlined
+                                            style={{
+                                                color: '#ff4d4f',
+                                                fontSize: 12,
+                                                flexShrink: 0,
+                                                marginLeft: 'auto'
+                                            }}
+                                            onClick={(e: any) => e.stopPropagation()}
+                                        />
+                                    </Popconfirm>
+                                ) : (
+                                    <Tooltip title="System Folder Protected">
+                                        <SafetyCertificateOutlined
+                                            style={{
+                                                color: '#faad14',
+                                                fontSize: 12,
+                                                flexShrink: 0,
+                                                marginLeft: 'auto',
+                                                cursor: 'not-allowed'
+                                            }}
+                                            onClick={(e: any) => e.stopPropagation()}
+                                        />
+                                    </Tooltip>
+                                )}
                             </div>
                         ),
                     };
@@ -424,7 +489,7 @@ export default function MediaLibraryPage() {
 
             return baseNode;
         });
-    }, [buckets, foldersByBucket]);
+    }, [buckets, foldersByBucket, isSystemBucketLocked]);
 
     // Handle tree selection - parse bucket vs folder
     const handleTreeSelect = (keys: React.Key[]) => {
@@ -487,9 +552,16 @@ export default function MediaLibraryPage() {
         try {
             const bucketList = await mediaService.listBuckets();
             setBuckets(bucketList);
+            if (bucketList.length === 0) {
+                // No buckets exist - clear selection
+                setCurrentBucket("");
+                return;
+            }
             if (!currentBucket && bucketList.length > 0) {
                 const defaultBucket = await mediaService.getDefaultBucket();
-                const initialBucket = defaultBucket || bucketList[0].name;
+                // Only use default if it actually exists in the list
+                const bucketExists = bucketList.some(b => b.name === defaultBucket);
+                const initialBucket = bucketExists ? defaultBucket : bucketList[0].name;
                 setCurrentBucket(initialBucket);
                 // Auto-expand and load folders for initial bucket
                 setExpandedTreeKeys([`bucket:${initialBucket}`]);
@@ -531,7 +603,7 @@ export default function MediaLibraryPage() {
 
         try {
             const result = await mediaService.uploadMedia(file, {
-                folder: currentPath || "uploads",
+                folder: currentPath || "",
             });
 
             clearInterval(progressInterval);
@@ -541,6 +613,8 @@ export default function MediaLibraryPage() {
                 setMedia([result.media, ...media]);
                 message.success(`${file.name} uploaded successfully!`);
                 loadStorageStats();
+                // Refresh listing from S3 to ensure file is visible
+                loadMedia();
             } else {
                 throw new Error(result.error || "Upload failed");
             }
@@ -555,19 +629,30 @@ export default function MediaLibraryPage() {
         }, 500);
     };
 
-    // Delete handler
+    // Delete handler - uses S3 key for files from S3 listing
     const handleDelete = async (id: string) => {
+        // Find the file to get its s3_key
+        const fileToDelete = media.find(m => m.id === id);
+        if (!fileToDelete) {
+            message.error("File not found");
+            return;
+        }
+
         Modal.confirm({
             title: "Delete Media?",
             content: "This action cannot be undone.",
             okText: "Delete",
             okType: "danger",
             onOk: async () => {
-                const success = await mediaService.deleteMedia(id);
+                // Use S3 key-based deletion (files from S3 listing use key as id)
+                const s3Key = fileToDelete.s3_key || id;
+                const success = await mediaService.deleteFileByKey(s3Key, currentBucket || undefined);
                 if (success) {
                     setMedia(media.filter((m) => m.id !== id));
                     message.success("Media deleted");
                     loadStorageStats();
+                    loadBuckets();
+                    loadMedia(); // Refresh file list
                 } else {
                     message.error("Failed to delete media");
                 }
@@ -575,76 +660,7 @@ export default function MediaLibraryPage() {
         });
     };
 
-    // Folder operations
-    const handleCreateFolder = async () => {
-        if (!newFolderName.trim()) {
-            message.warning("Please enter a folder name");
-            return;
-        }
-        const folderPath = currentPath ? `${currentPath}${newFolderName}/` : `${newFolderName}/`;
-        const success = await mediaService.createFolder(folderPath, currentBucket);
-        if (success) {
-            message.success(`Folder "${newFolderName}" created`);
-            setNewFolderModalVisible(false);
-            setNewFolderName("");
-            loadFoldersForBucket(currentBucket);
-        } else {
-            message.error("Failed to create folder");
-        }
-    };
 
-    const handleDeleteFolder = async (path: string) => {
-        Modal.confirm({
-            title: "Delete Folder?",
-            content: "This will delete the folder and all its contents.",
-            okText: "Delete",
-            okType: "danger",
-            onOk: async () => {
-                const success = await mediaService.deleteFolder(path);
-                if (success) {
-                    message.success("Folder deleted");
-                    loadFoldersForBucket(currentBucket);
-                } else {
-                    message.error("Failed to delete folder");
-                }
-            },
-        });
-    };
-
-    // Bucket operations
-    const handleCreateBucket = async () => {
-        if (!newBucketName.trim()) {
-            message.warning("Please enter a bucket name");
-            return;
-        }
-        const success = await mediaService.createBucket(newBucketName);
-        if (success) {
-            message.success(`Bucket "${newBucketName}" created`);
-            setNewBucketModalVisible(false);
-            setNewBucketName("");
-            loadBuckets();
-        } else {
-            message.error("Failed to create bucket");
-        }
-    };
-
-    const handleDeleteBucket = async (name: string) => {
-        Modal.confirm({
-            title: "Delete Bucket?",
-            content: "This will delete the bucket and all its contents.",
-            okText: "Delete",
-            okType: "danger",
-            onOk: async () => {
-                const success = await mediaService.deleteBucket(name);
-                if (success) {
-                    message.success("Bucket deleted");
-                    loadBuckets();
-                } else {
-                    message.error("Failed to delete bucket");
-                }
-            },
-        });
-    };
 
     const handleMakeBucketPublic = async () => {
         const success = await mediaService.makeBucketPublic(currentBucket);
@@ -652,6 +668,15 @@ export default function MediaLibraryPage() {
             message.success("Bucket is now public");
         } else {
             message.error("Failed to make bucket public");
+        }
+    };
+
+    const handleMakeBucketPrivate = async () => {
+        const success = await mediaService.deleteBucketPolicy(currentBucket);
+        if (success) {
+            message.success("Bucket is now private");
+        } else {
+            message.error("Failed to make bucket private");
         }
     };
 
@@ -805,9 +830,15 @@ export default function MediaLibraryPage() {
     };
 
     const getFileIcon = (mimeType?: string) => {
-        if (!mimeType) return <FileOutlined />;
+        if (!mimeType) return <FileUnknownOutlined />;
         if (mimeType.startsWith("image/")) return <FileImageOutlined />;
         if (mimeType.startsWith("video/")) return <VideoCameraOutlined />;
+        if (mimeType.startsWith("audio/")) return <AudioOutlined />;
+        if (mimeType === "application/pdf") return <FilePdfOutlined />;
+        if (mimeType.includes("word") || mimeType.includes("document")) return <FileWordOutlined />;
+        if (mimeType.includes("excel") || mimeType.includes("spreadsheet")) return <FileExcelOutlined />;
+        if (mimeType.includes("zip") || mimeType.includes("compressed")) return <FileZipOutlined />;
+        if (mimeType.includes("text/")) return <FileTextOutlined />;
         return <FileOutlined />;
     };
 
@@ -855,7 +886,7 @@ export default function MediaLibraryPage() {
             { key: "auto-label", label: "Auto Label", icon: <ThunderboltOutlined />, onClick: () => handleAutoLabelMedia(item) },
             { key: "ai-label", label: "Label Studio", icon: <RobotOutlined />, onClick: () => handleSendToLabelStudio(item) },
             { type: "divider" as const },
-            { key: "delete", label: "Delete", icon: <DeleteOutlined />, danger: true, onClick: () => handleDelete(item.id) },
+            { key: "delete", label: "Delete", icon: <DeleteOutlined />, danger: true, disabled: !isOperationAllowed(currentBucket), onClick: () => handleDelete(item.id) },
         ],
     });
 
@@ -868,28 +899,30 @@ export default function MediaLibraryPage() {
                 className="cursor-pointer transition-all hover:shadow-md hover:border-blue-400"
                 styles={{ body: { padding: 12 } }}
                 cover={
-                    item.mime_type?.startsWith("image/") ? (
-                        <div style={{ height: 194, overflow: "hidden", background: "#fafafa", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: '8px 8px 0 0' }}>
+                    (item.thumbnailUrl || item.mime_type?.startsWith("image/")) ? (
+                        <div style={{ height: 194, overflow: "hidden", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: '8px 8px 0 0' }}>
                             <Image
-                                src={item.url}
+                                src={item.thumbnailUrl || item.url}
                                 alt={item.alt_text || item.filename}
                                 style={{ objectFit: "cover", width: "100%", height: 194 }}
                                 preview={false}
+                                fallback="/assets/file-icons/error.svg" // Optional fallback
                                 onClick={() => { setSelectedMedia(item); setPreviewVisible(true); }}
                             />
                         </div>
                     ) : (
                         <div
-                            className="bg-gradient-to-br from-violet-600 to-indigo-600"
+                            className="bg-gradient-to-br from-slate-100 to-slate-200"
                             style={{
                                 height: 194,
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                fontSize: 48,
-                                color: "rgba(255,255,255,0.9)",
+                                fontSize: 64,
+                                color: "#64748b",
                                 borderRadius: '8px 8px 0 0'
                             }}
+                            onClick={() => { setSelectedMedia(item); setPreviewVisible(true); }}
                         >
                             {getFileIcon(item.mime_type)}
                         </div>
@@ -921,6 +954,87 @@ export default function MediaLibraryPage() {
             </Card>
         </Col>
     );
+
+    // State for forcing tree refresh
+    const [treeRefreshTrigger, setTreeRefreshTrigger] = useState(0);
+
+    const refreshTree = () => {
+        setTreeRefreshTrigger(prev => prev + 1);
+        loadAllData(); // Keep loading stats/media
+    };
+
+    const handleCreateBucket = async () => {
+        if (!newBucketName.trim()) return;
+        const success = await mediaService.createBucket(newBucketName);
+        if (success) {
+            message.success("Bucket created");
+            setNewBucketModalVisible(false);
+            setNewBucketName("");
+            refreshTree(); // Refresh tree
+        } else {
+            message.error("Failed to create bucket");
+        }
+    };
+
+    const handleCreateFolder = async () => {
+        if (!newFolderName.trim() || !currentBucket) return;
+        // Ensure path ends with slash
+        const path = newFolderName.endsWith('/') ? newFolderName : `${newFolderName}/`;
+        // If currentPath is set, append to it
+        const fullPath = currentPath ? `${currentPath}${path}` : path;
+
+        const success = await mediaService.createFolder(fullPath, currentBucket);
+        if (success) {
+            message.success("Folder created");
+            setNewFolderModalVisible(false);
+            setNewFolderName("");
+            refreshTree(); // Refresh tree
+        } else {
+            message.error("Failed to create folder");
+        }
+    };
+
+    const handleDeleteBucket = async (bucket: string) => {
+
+        // Security Guard
+        if (bucket === 'ns-system' && isSystemBucketLocked) {
+            message.warning("System is locked. Unlock via settings to delete this bucket.");
+            return;
+        }
+
+        const success = await mediaService.deleteBucket(bucket);
+        if (success) {
+            message.success("Bucket deleted");
+            refreshTree(); // Refresh tree
+            if (currentBucket === bucket) {
+                setCurrentBucket("");
+                setCurrentPath("");
+            }
+        } else {
+            message.error("Failed to delete bucket");
+        }
+    };
+
+    const handleDeleteFolder = async (path: string, bucketName?: string) => {
+        const targetBucket = bucketName || currentBucket;
+
+        // Security Guard
+        if (targetBucket === 'ns-system' && isSystemBucketLocked) {
+            message.warning("System is locked. Unlock via settings to delete folders.");
+            return;
+        }
+
+        const success = await mediaService.deleteFolder(path, targetBucket);
+        if (success) {
+            message.success("Folder deleted");
+            refreshTree(); // Refresh tree
+            if (currentPath === path) {
+                setCurrentPath("");
+            }
+        } else {
+            message.error("Failed to delete folder");
+        }
+    };
 
     return (
         <CMSLayout
@@ -999,7 +1113,14 @@ export default function MediaLibraryPage() {
                         size="small"
                     />
 
-                    <MagicButton icon={<UploadOutlined />} onClick={() => setUploadModalVisible(true)}>
+                    <MagicButton
+                        icon={<UploadOutlined />}
+                        onClick={() => (currentBucket && buckets.length > 0) && setUploadModalVisible(true)}
+
+                        disabled={!currentBucket || buckets.length === 0 || !isOperationAllowed(currentBucket)}
+                        className={(!currentBucket || buckets.length === 0 || !isOperationAllowed(currentBucket)) ? "opacity-50 cursor-not-allowed" : ""}
+                        title={(!currentBucket || buckets.length === 0) ? "Create a bucket first" : !isOperationAllowed(currentBucket) ? "System bucket is locked" : "Upload file"}
+                    >
                         Upload
                     </MagicButton>
                 </Space>,
@@ -1008,72 +1129,97 @@ export default function MediaLibraryPage() {
             {/* Content Wrapper */}
             <div className="relative" style={{ zIndex: 1 }}>
                 <Row gutter={[32, 24]} align="top">
-                    <Col xs={24} sm={8} md={6} lg={5}>
-                        <div style={{ position: 'sticky', top: 16 }}>
-                            <Card
-                                size="small"
-                                title={
-                                    <span className="text-white font-semibold flex items-center gap-2">
-                                        <DatabaseOutlined />Explorer
-                                    </span>
-                                }
-                                extra={
-                                    <Space size={4}>
-                                        <AnimatedTooltip content="New Folder">
-                                            <ScaleButton onClick={() => setNewFolderModalVisible(true)} className="p-1">
-                                                <FolderAddOutlined style={{ color: 'white', fontSize: '16px' }} />
-                                            </ScaleButton>
-                                        </AnimatedTooltip>
-                                        <AnimatedTooltip content="New Bucket">
-                                            <ScaleButton onClick={() => setNewBucketModalVisible(true)} className="p-1">
-                                                <PlusOutlined style={{ color: 'white', fontSize: '16px' }} />
-                                            </ScaleButton>
-                                        </AnimatedTooltip>
-                                    </Space>
-                                }
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    // Removed overflow: hidden to allow tooltips to show
-                                    minHeight: 'calc(100vh - 200px)',
-                                    background: 'rgba(255, 255, 255, 0.6)',
-                                    backdropFilter: 'blur(16px)',
-                                    WebkitBackdropFilter: 'blur(16px)',
-                                    boxShadow: '0 8px 32px rgba(139, 92, 246, 0.1)',
-                                    border: '1px solid rgba(139, 92, 246, 0.15)'
-                                }}
-                                className="dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20"
-                                styles={{
-                                    header: {
-                                        background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 50%, #6366f1 100%)',
-                                        borderRadius: '8px 8px 0 0',
-                                        borderBottom: 'none'
-                                    },
-                                    body: {
-                                        padding: 12,
-                                        flex: 1,
-                                        overflow: 'auto'
+                    {showExplorer && (
+                        <Col xs={24} sm={8} md={6} lg={5}>
+                            <div style={{ position: 'sticky', top: 16 }}>
+                                <Card
+                                    size="small"
+                                    title={
+                                        <div className="flex items-center gap-2">
+                                            <span style={{ background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600 }}>
+                                                Explorer
+                                            </span>
+                                        </div>
                                     }
-                                }}
-                            >
-                                <Tree
-                                    showLine={{ showLeafIcon: false }}
-                                    expandedKeys={expandedTreeKeys}
-                                    onExpand={handleTreeExpand}
-                                    treeData={folderTreeData}
-                                    onSelect={handleTreeSelect}
-                                    selectedKeys={[
-                                        currentPath ? `folder:${currentBucket}:${currentPath}` : `bucket:${currentBucket}`
-                                    ]}
-                                    className="[&_.ant-tree-treenode]:py-0.5 [&_.ant-tree-title]:text-xs [&_.ant-tree-switcher]:w-4"
-                                    blockNode
-                                />
-                            </Card>
-                        </div>
-                    </Col>
+                                    extra={
+                                        <Space>
+                                            <AnimatedTooltip content="Expand All">
+                                                <ScaleButton onClick={() => folderTreeRef.current?.expandAll()} className="p-1">
+                                                    <PlusSquareOutlined style={{ color: '#8b5cf6', fontSize: '16px' }} />
+                                                </ScaleButton>
+                                            </AnimatedTooltip>
+                                            <AnimatedTooltip content="Collapse All">
+                                                <ScaleButton onClick={() => folderTreeRef.current?.collapseAll()} className="p-1">
+                                                    <MinusSquareOutlined style={{ color: '#8b5cf6', fontSize: '16px' }} />
+                                                </ScaleButton>
+                                            </AnimatedTooltip>
+                                            <AnimatedTooltip content={(!currentBucket || buckets.length === 0) ? "Create a bucket first" : "New Folder"}>
+                                                <ScaleButton
+                                                    onClick={() => (currentBucket && buckets.length > 0) && setNewFolderModalVisible(true)}
+                                                    className={`p-1 ${(!currentBucket || buckets.length === 0 || !isOperationAllowed(currentBucket)) ? "opacity-50 cursor-not-allowed" : ""}`}
+                                                    disabled={!isOperationAllowed(currentBucket)}
+                                                >
+                                                    <FolderAddOutlined style={{ color: !isOperationAllowed(currentBucket) ? '#ccc' : '#8b5cf6', fontSize: '16px' }} />
+                                                </ScaleButton>
+                                            </AnimatedTooltip>
+                                            <AnimatedTooltip content="New Bucket">
+                                                <ScaleButton onClick={() => setNewBucketModalVisible(true)} className="p-1">
+                                                    <PlusOutlined style={{ color: '#8b5cf6', fontSize: '16px' }} />
+                                                </ScaleButton>
+                                            </AnimatedTooltip>
+                                        </Space>
+                                    }
+                                    style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        minHeight: 'calc(100vh - 200px)',
+                                        background: 'rgba(255, 255, 255, 0.4)',
+                                        backdropFilter: 'blur(20px)',
+                                        WebkitBackdropFilter: 'blur(20px)',
+                                        boxShadow: '0 8px 32px rgba(31, 38, 135, 0.15)',
+                                        border: '1px solid rgba(255, 255, 255, 0.18)'
+                                    }}
+                                    className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-purple-500/20"
+                                    styles={{
+                                        header: {
+                                            background: 'rgba(255, 255, 255, 0.1)',
+                                            borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+                                        },
+                                        body: {
+                                            padding: 12,
+                                            flex: 1,
+                                            overflow: 'auto'
+                                        }
+                                    }}
+                                >
+                                    <FolderTree
+                                        ref={folderTreeRef}
+                                        currentBucket={currentBucket}
+                                        currentPath={currentPath}
+                                        onSelect={(bucket, path) => {
+                                            setCurrentBucket(bucket);
+                                            setCurrentPath(path);
+                                        }}
+                                        onRefresh={loadAllData}
+                                        refreshTrigger={treeRefreshTrigger}
+                                        className="[&_.ant-tree-treenode]:py-0.5 [&_.ant-tree-title]:text-xs [&_.ant-tree-switcher]:w-4"
+                                        onDeleteBucket={(name) => handleDeleteBucket(name)}
+                                        onDeleteFolder={(path, bucket) => handleDeleteFolder(path, bucket)}
+                                        onBucketSettings={(name) => {
+                                            setCurrentBucket(name);
+                                            loadLifecycleRules();
+                                            fetchBucketVersioningStatus(name);
+                                            setBucketSettingsDrawerVisible(true);
+                                        }}
+                                        isSystemBucketLocked={isSystemBucketLocked}
+                                    />
+                                </Card>
+                            </div>
+                        </Col>
+                    )}
 
                     {/* Main Content */}
-                    <Col xs={24} sm={16} md={18} lg={19}>
+                    <Col xs={24} sm={showExplorer ? 16 : 24} md={showExplorer ? 18 : 24} lg={showExplorer ? 19 : 24}>
                         {/* Breadcrumb */}
                         <Card
                             size="small"
@@ -1081,17 +1227,17 @@ export default function MediaLibraryPage() {
                                 marginBottom: 16,
                                 display: 'flex',
                                 flexDirection: 'column',
-                                background: 'rgba(255, 255, 255, 0.6)',
-                                backdropFilter: 'blur(16px)',
-                                WebkitBackdropFilter: 'blur(16px)',
-                                boxShadow: '0 8px 32px rgba(139, 92, 246, 0.1)',
-                                border: '1px solid rgba(139, 92, 246, 0.15)'
+                                background: 'rgba(255, 255, 255, 0.4)',
+                                backdropFilter: 'blur(20px)',
+                                WebkitBackdropFilter: 'blur(20px)',
+                                boxShadow: '0 8px 32px rgba(31, 38, 135, 0.15)',
+                                border: '1px solid rgba(255, 255, 255, 0.18)'
                             }}
-                            className="dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20"
+                            className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-purple-500/20"
                             styles={{
                                 header: {
-                                    background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 50%, #6366f1 100%)',
-                                    borderRadius: '8px 8px 0 0'
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
                                 },
                                 body: {
                                     flex: 1,
@@ -1100,9 +1246,19 @@ export default function MediaLibraryPage() {
                                 }
                             }}
                             title={
-                                <span className="text-white font-semibold flex items-center gap-2">
-                                    <PictureOutlined />Media Files
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        icon={showExplorer ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
+                                        onClick={() => setShowExplorer(!showExplorer)}
+                                        className="!text-violet-500 hover:!text-violet-600 !flex items-center justify-center"
+                                    />
+                                    <PictureOutlined className="text-violet-500" />
+                                    <span style={{ background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600 }}>
+                                        Media Files
+                                    </span>
+                                </div>
                             }
                         >
                             <Space>
@@ -1111,17 +1267,24 @@ export default function MediaLibraryPage() {
                                     <ScaleButton size="small" icon={<ReloadOutlined />} onClick={loadAllData} />
                                 </AnimatedTooltip>
                                 {currentPath && (
-                                    <Popconfirm
-                                        title="Delete this folder?"
-                                        description="This will delete the folder and all its contents."
-                                        onConfirm={() => handleDeleteFolder(currentPath)}
-                                        okText="Delete"
-                                        cancelText="Cancel"
-                                    >
-                                        <AnimatedTooltip content="Delete current folder">
-                                            <Button size="small" danger icon={<DeleteOutlined />}>Delete Folder</Button>
+                                    isOperationAllowed(currentBucket) ? (
+                                        <Popconfirm
+                                            title="Delete this folder?"
+                                            description="This will delete the folder and all its contents."
+                                            onConfirm={() => handleDeleteFolder(currentPath)}
+                                            okText="Delete"
+                                            cancelText="Cancel"
+                                        >
+                                            <AnimatedTooltip content="Delete current folder">
+                                                <Button size="small" danger icon={<DeleteOutlined />}>Delete Folder</Button>
+                                            </AnimatedTooltip>
+                                        </Popconfirm>
+                                    ) : (
+                                        <AnimatedTooltip content="System Locked: Navigate to Settings to Unlock">
+                                            <Button size="small" danger icon={<DeleteOutlined />} disabled={true}>Delete Folder</Button>
                                         </AnimatedTooltip>
-                                    </Popconfirm>
+                                    )
+
                                 )}
                             </Space>
                         </Card>
@@ -1213,9 +1376,11 @@ export default function MediaLibraryPage() {
                                     <MagicButton
                                         icon={<UploadOutlined />}
                                         size="large"
-                                        onClick={() => setUploadModalVisible(true)}
+                                        onClick={() => (currentBucket && buckets.length > 0) && setUploadModalVisible(true)}
+                                        disabled={!currentBucket || buckets.length === 0}
+                                        className={(!currentBucket || buckets.length === 0) ? "opacity-50 cursor-not-allowed" : ""}
                                     >
-                                        Upload First File
+                                        {buckets.length === 0 ? "Create a Bucket First" : "Upload First File"}
                                     </MagicButton>
                                 )}
                             </Empty>
@@ -1326,6 +1491,7 @@ export default function MediaLibraryPage() {
                 mediaFile={selectedMedia}
                 mode="preview"
                 onClose={() => setPreviewVisible(false)}
+                isPublicBucket={buckets.find(b => b.name === selectedMedia?.bucket_name)?.isPublic}
             />
 
             {/* New Folder Modal */}
@@ -1536,9 +1702,13 @@ export default function MediaLibraryPage() {
                 onClose={() => setBucketSettingsDrawerVisible(false)}
                 bucket={currentBucket}
                 buckets={buckets}
+                isSystemLocked={isSystemBucketLocked}
+                onToggleLock={(locked) => setIsSystemBucketLocked(locked)}
+                onToggleVersioning={() => fetchBucketVersioningStatus(currentBucket)}
                 storageStats={storageStats}
                 onDeleteBucket={handleDeleteBucket}
                 onMakePublic={handleMakeBucketPublic}
+                onDeletePolicy={handleMakeBucketPrivate}
                 onCreateBucket={async (name: string) => {
                     const success = await mediaService.createBucket(name);
                     if (success) {
@@ -1566,6 +1736,7 @@ export default function MediaLibraryPage() {
                 onUploadSuccess={() => { loadAllData(); }}
                 currentFolder={currentPath}
                 bucket={currentBucket}
+                buckets={buckets}
             />
 
 
@@ -1581,6 +1752,7 @@ export default function MediaLibraryPage() {
                 mediaFile={detailModalFile}
                 mode="detail"
                 onClose={() => { setDetailModalVisible(false); setDetailModalFile(null); }}
+                isPublicBucket={buckets.find(b => b.name === detailModalFile?.bucket_name)?.isPublic}
             />
 
         </CMSLayout >

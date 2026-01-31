@@ -15,6 +15,7 @@ export const MagicButton: React.FC<MagicButtonProps> = ({
     className = "",
     icon,
     size = "default",
+    disabled,
     ...props
 }) => {
     const [isHovered, setIsHovered] = useState(false);
@@ -29,30 +30,43 @@ export const MagicButton: React.FC<MagicButtonProps> = ({
     // Using same distance from right edge as left icon from left edge
     const circleRight = circleLeft;
 
+    // Muted gradient for disabled state
+    const borderGradient = disabled
+        ? "conic-gradient(from 0deg at 50% 50%, transparent 0deg, transparent 270deg, #9ca3af 300deg, #6b7280 330deg, #4b5563 345deg, #9ca3af 360deg)"
+        : "conic-gradient(from 0deg at 50% 50%, transparent 0deg, transparent 270deg, #00ffff 300deg, #ff00ff 330deg, #9333ea 345deg, #00ffff 360deg)";
+
     return (
-        <div className="relative inline-block">
-            {/* Outer wrapper for beam effect - NOT clipped */}
+        <div className={`relative inline-block ${disabled ? "opacity-60" : ""}`}>
+            {/* Outer wrapper for beam effect - masked to show only border */}
             <span
                 className="absolute inset-[-1.5px] rounded-full pointer-events-none overflow-hidden"
-                style={{ zIndex: 0 }}
+                style={{
+                    zIndex: 0,
+                    // Mask creates a ring by making center transparent
+                    WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                    WebkitMaskComposite: "xor",
+                    maskComposite: "exclude",
+                    padding: "1.5px", // This controls border thickness
+                }}
             >
                 <span
                     className="absolute inset-[-200%]"
                     style={{
-                        background: "conic-gradient(from 0deg at 50% 50%, transparent 0deg, transparent 270deg, #00ffff 300deg, #ff00ff 330deg, #9333ea 345deg, #00ffff 360deg)",
+                        background: borderGradient,
                         animation: "spin 3s linear infinite",
                     }}
                 />
             </span>
 
             <motion.button
-                whileTap={{ scale: 0.98 }}
-                onMouseEnter={() => setIsHovered(true)}
+                whileTap={disabled ? {} : { scale: 0.98 }}
+                onMouseEnter={() => !disabled && setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
+                disabled={disabled}
                 className={`
                     group relative inline-flex h-9 items-center justify-center 
                     rounded-full ${padding} text-xs font-medium
-                    cursor-pointer overflow-hidden
+                    ${disabled ? "cursor-not-allowed" : "cursor-pointer"} overflow-hidden
                     bg-white dark:bg-[#1a1b23]
                     shadow-[0_4px_14px_rgba(147,51,234,0.15),0_2px_6px_rgba(0,0,0,0.08)]
                     dark:shadow-[0_4px_14px_rgba(147,51,234,0.4),0_2px_6px_rgba(0,0,0,0.2)]

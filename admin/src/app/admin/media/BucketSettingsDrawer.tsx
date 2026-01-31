@@ -20,6 +20,7 @@ import {
     DatabaseOutlined,
     CopyOutlined,
     GlobalOutlined,
+    EyeOutlined,
 } from '@ant-design/icons';
 import mediaService, { LifecycleRule, S3Bucket, StorageStats } from '@/lib/mediaService';
 
@@ -59,8 +60,12 @@ interface BucketSettingsDrawerProps {
     storageStats?: StorageStats | null;
     onDeleteBucket?: (name: string) => Promise<void>;
     onMakePublic?: () => Promise<void>;
+    onDeletePolicy?: () => Promise<void>;
     onCreateBucket?: (name: string) => Promise<boolean>;
     onDuplicateBucket?: (sourceName: string, targetName: string) => Promise<boolean>;
+    isSystemLocked?: boolean;
+    onToggleLock?: (locked: boolean) => void;
+    onToggleVersioning?: () => void;
 }
 
 export default function BucketSettingsDrawer({
@@ -71,8 +76,12 @@ export default function BucketSettingsDrawer({
     storageStats,
     onDeleteBucket,
     onMakePublic,
+    onDeletePolicy,
     onCreateBucket,
     onDuplicateBucket,
+    isSystemLocked = false,
+    onToggleLock,
+    onToggleVersioning
 }: BucketSettingsDrawerProps) {
     const [activeTab, setActiveTab] = useState('general');
     const [loading, setLoading] = useState(false);
@@ -140,6 +149,8 @@ export default function BucketSettingsDrawer({
 
     const handleSavePolicy = async () => {
         try {
+            console.log('[BucketSettings] Saving policy raw:', policyJson);
+
             if (!policyJson.trim()) {
                 await mediaService.deleteBucketPolicy(bucket);
                 message.success('Policy deleted');
@@ -148,39 +159,84 @@ export default function BucketSettingsDrawer({
                 return;
             }
 
-            const policyObj = JSON.parse(policyJson);
-            const success = await mediaService.setBucketPolicy(policyObj, bucket);
-            if (success) {
-                message.success('Bucket policy updated');
-                setOriginalPolicy(policyJson);
-            } else {
-                message.error('Failed to update policy');
+            let policyObj;
+            try {
+                policyObj = JSON.parse(policyJson);
+            } catch (e: any) {
+                message.error(`Invalid JSON syntax: ${e.message}`);
+                return;
             }
-        } catch {
-            message.error('Invalid JSON format');
+
+            console.log('[BucketSettings] Sending policy object:', policyObj);
+            const success = await mediaService.setBucketPolicy(policyObj, bucket);
+
+            if (success) {
+                message.success('Bucket policy updated successfully');
+                setOriginalPolicy(policyJson);
+                // Reload to confirm backend persistence
+                loadPolicy();
+            } else {
+                message.error('Failed to update policy. Check console for details.');
+            }
+        } catch (err) {
+            console.error('[BucketSettings] Unexpected error:', err);
+            message.error('An unexpected error occurred while saving.');
         }
     };
 
+    // Policy Detection Logic
+    const detectPolicyType = (json: string): 'public' | 'readonly' | 'private' | 'custom' => {
+        if (!json || !json.trim() || json === '{}') return 'private';
+
+        try {
+            const obj = JSON.parse(json);
+            const stmt = obj.Statement?.[0];
+            if (!stmt) return 'custom';
+
+            const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
+            const resources = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
+
+            // Loose check for "Public" (Read/List)
+            const hasGet = actions.includes('s3:GetObject');
+            const hasList = actions.includes('s3:ListBucket');
+            const isPublicPrincipal = stmt.Principal === '*' || stmt.Principal?.AWS?.includes('*');
+
+            if (isPublicPrincipal && hasGet && !hasList) return 'public'; // Our "Public Read" template
+            if (isPublicPrincipal && hasGet && hasList) return 'readonly'; // Our "Read Only" template
+
+            return 'custom';
+        } catch {
+            return 'custom';
+        }
+    };
+
+    const activePolicyType = detectPolicyType(policyJson);
+
     const applyPolicyPreset = (type: 'public' | 'readonly' | 'private') => {
+        if (type === 'private') {
+            setPolicyJson('');
+            return;
+        }
+
         let preset = {};
         if (type === 'public') {
             preset = {
-                Version: '2012-10-17',
-                Statement: [{
-                    Effect: 'Allow',
-                    Principal: '*',
-                    Action: ['s3:GetObject'],
-                    Resource: [`arn:aws:s3:::${bucket}/*`],
+                "Version": "2012-10-17",
+                "Statement": [{
+                    "Effect": "Allow",
+                    "Principal": { "AWS": ["*"] },
+                    "Action": ["s3:GetObject"],
+                    "Resource": [`arn:aws:s3:::${bucket}/*`],
                 }],
             };
         } else if (type === 'readonly') {
             preset = {
-                Version: '2012-10-17',
-                Statement: [{
-                    Effect: 'Allow',
-                    Principal: '*',
-                    Action: ['s3:ListBucket', 's3:GetObject'],
-                    Resource: [`arn:aws:s3:::${bucket}`, `arn:aws:s3:::${bucket}/*`],
+                "Version": "2012-10-17",
+                "Statement": [{
+                    "Effect": "Allow",
+                    "Principal": { "AWS": ["*"] },
+                    "Action": ["s3:GetBucketLocation", "s3:ListBucket", "s3:GetObject"],
+                    "Resource": [`arn:aws:s3:::${bucket}`, `arn:aws:s3:::${bucket}/*`],
                 }],
             };
         }
@@ -190,7 +246,6 @@ export default function BucketSettingsDrawer({
     // ════════════════════════════════════════════════════════════════════════
     // LIFECYCLE HANDLERS
     // ════════════════════════════════════════════════════════════════════════
-
     const handleAddRule = async (values: any) => {
         const newRule: LifecycleRule = {
             id: `rule-${Date.now()}`,
@@ -237,24 +292,27 @@ export default function BucketSettingsDrawer({
         if (success) {
             setVersioningStatus(checked ? 'Enabled' : 'Suspended');
             message.success(`Versioning ${checked ? 'enabled' : 'suspended'}`);
+            // Trigger parent refresh
+            onToggleVersioning?.();
         } else {
             message.error(`Failed to ${checked ? 'enable' : 'suspend'} versioning`);
         }
         setVersioningLoading(false);
     };
 
-    // ════════════════════════════════════════════════════════════════════════
-    // RENDER
-    // ════════════════════════════════════════════════════════════════════════
-
-    const policyStatus = policyJson.trim() ? (
-        policyJson.includes('"Effect": "Allow"') && policyJson.includes('"Principal": "*"')
-            ? { color: 'orange', text: 'Public', icon: <UnlockOutlined /> }
-            : { color: 'blue', text: 'Custom', icon: <SettingOutlined /> }
-    ) : { color: 'green', text: 'Private', icon: <LockOutlined /> };
+    // Helper for rendering Active Badge
+    const renderActiveBadge = () => {
+        const map = {
+            'public': { color: 'orange', text: 'Public Read', icon: <UnlockOutlined /> },
+            'readonly': { color: 'blue', text: 'Listing Enabled', icon: <EyeOutlined /> },
+            'private': { color: 'green', text: 'Private', icon: <LockOutlined /> },
+            'custom': { color: 'purple', text: 'Custom Policy', icon: <SettingOutlined /> }
+        };
+        const status = map[activePolicyType] || map['custom'];
+        return <Tag color={status.color}>{status.icon} {status.text}</Tag>;
+    };
 
     const items = [
-        // ==== GENERAL TAB ====
         {
             key: 'general',
             label: (
@@ -274,9 +332,7 @@ export default function BucketSettingsDrawer({
                         title={<span className="font-semibold flex items-center gap-2 text-white"><InfoCircleOutlined /> Bucket Information</span>}
                     >
                         <div className="flex items-center gap-4">
-                            <div
-                                className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-md bg-gradient-to-br from-violet-500 to-indigo-600"
-                            >
+                            <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-md bg-gradient-to-br from-violet-500 to-indigo-600">
                                 <DatabaseOutlined style={{ fontSize: 32, color: '#fff' }} />
                             </div>
                             <div className="flex-1">
@@ -284,11 +340,6 @@ export default function BucketSettingsDrawer({
                                     {bucket}
                                 </Title>
                                 <Space direction="vertical" size={0}>
-                                    <Text type="secondary">
-                                        Created: {currentBucketInfo?.creationDate
-                                            ? new Date(currentBucketInfo.creationDate).toLocaleDateString()
-                                            : 'Unknown'}
-                                    </Text>
                                     <Tag color={versioningStatus === 'Enabled' ? 'green' : 'orange'} className="mt-1">
                                         Versioning: {versioningStatus}
                                     </Tag>
@@ -297,34 +348,56 @@ export default function BucketSettingsDrawer({
                         </div>
                     </Card>
 
+                    {/* System Protection Lock (Only for ns-system) */}
+                    {bucket === 'ns-system' && (
+                        <Card
+                            size="small"
+                            className="shadow-sm border-orange-200 bg-orange-50 dark:bg-orange-900/10 dark:border-orange-800"
+                            title={<span className="font-semibold flex items-center gap-2 text-orange-600"><SafetyCertificateOutlined /> System Protection</span>}
+                        >
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <Text strong className={isSystemLocked ? "text-orange-600" : "text-green-600"}>
+                                        {isSystemLocked ? "Administration Locked" : "Administration Enabled"}
+                                    </Text>
+                                    <div className="text-xs text-gray-500">
+                                        {isSystemLocked
+                                            ? "Critical operations are disabled to prevent accidental damage."
+                                            : "You can now delete files and modify settings. Proceed with caution."}
+                                    </div>
+                                </div>
+                                {isSystemLocked ? (
+                                    <Popconfirm
+                                        title="Enable Administration?"
+                                        description="This allows deletion of system files. Only proceed if you know what you are doing."
+                                        onConfirm={() => onToggleLock?.(false)}
+                                        okText="Enable"
+                                        cancelText="Cancel"
+                                        okButtonProps={{ danger: true }}
+                                    >
+                                        <Button type="primary" danger ghost icon={<UnlockOutlined />}>
+                                            Unlock
+                                        </Button>
+                                    </Popconfirm>
+                                ) : (
+                                    <Button type="primary" icon={<LockOutlined />} onClick={() => onToggleLock?.(true)}>
+                                        Lock
+                                    </Button>
+                                )}
+                            </div>
+                        </Card>
+                    )}
+
                     {/* Storage Stats */}
                     <Row gutter={[16, 16]}>
                         <Col span={12}>
-                            <Card
-                                size="small"
-                                className="shadow-sm h-full dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20"
-                                style={glassCardStyle}
-                            >
-                                <Statistic
-                                    title="Total Files"
-                                    value={storageStats?.totalFiles || 0}
-                                    prefix={<InfoCircleOutlined style={{ color: '#8b5cf6' }} />}
-                                    valueStyle={{ fontWeight: 600 }}
-                                />
+                            <Card size="small" className="shadow-sm h-full dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20" style={glassCardStyle}>
+                                <Statistic title="Total Files" value={storageStats?.totalFiles || 0} prefix={<InfoCircleOutlined style={{ color: '#8b5cf6' }} />} valueStyle={{ fontWeight: 600 }} />
                             </Card>
                         </Col>
                         <Col span={12}>
-                            <Card
-                                size="small"
-                                className="shadow-sm h-full dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20"
-                                style={glassCardStyle}
-                            >
-                                <Statistic
-                                    title="Total Size"
-                                    value={storageStats ? formatFileSize(storageStats.totalSizeBytes) : '0 B'}
-                                    prefix={<DatabaseOutlined style={{ color: '#6366f1' }} />}
-                                    valueStyle={{ fontWeight: 600 }}
-                                />
+                            <Card size="small" className="shadow-sm h-full dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20" style={glassCardStyle}>
+                                <Statistic title="Total Size" value={storageStats ? formatFileSize(storageStats.totalSizeBytes) : '0 B'} prefix={<DatabaseOutlined style={{ color: '#6366f1' }} />} valueStyle={{ fontWeight: 600 }} />
                             </Card>
                         </Col>
                     </Row>
@@ -340,64 +413,42 @@ export default function BucketSettingsDrawer({
                         styles={{ header: glassHeaderStyle }}
                     >
                         <Space direction="vertical" className="w-full" size="middle">
-                            {/* Make Public */}
                             <div className="flex justify-between items-center p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                                 <div>
-                                    <Text strong>Public Access</Text>
-                                    <div className="text-xs text-gray-500">Make all files in this bucket public</div>
+                                    <Text strong>Access Control</Text>
+                                    <div className="text-xs text-gray-500">Quickly toggle public access</div>
                                 </div>
-                                <Button
-                                    icon={<GlobalOutlined />}
-                                    onClick={async () => {
-                                        if (onMakePublic) await onMakePublic();
-                                    }}
-                                >
-                                    Make Public
-                                </Button>
-                            </div>
-
-                            {/* Duplicate Bucket */}
-                            <div className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                                <div className="mb-2">
-                                    <Text strong>Duplicate Bucket</Text>
-                                    <div className="text-xs text-gray-500">Create a copy of this bucket (Structure only)</div>
-                                </div>
-                                <Space.Compact style={{ width: '100%' }}>
-                                    <Input
-                                        placeholder="New bucket name"
-                                        value={duplicateBucketName}
-                                        onChange={e => setDuplicateBucketName(e.target.value)}
-                                    />
+                                <Space>
                                     <Button
-                                        icon={<CopyOutlined />}
-                                        loading={duplicateLoading}
-                                        disabled={!duplicateBucketName.trim()}
+                                        danger
+                                        icon={<LockOutlined />}
+                                        disabled={bucket === 'ns-system' && isSystemLocked}
                                         onClick={async () => {
-                                            if (onDuplicateBucket && duplicateBucketName.trim()) {
-                                                setDuplicateLoading(true);
-                                                await onDuplicateBucket(bucket, duplicateBucketName.trim());
-                                                setDuplicateBucketName('');
-                                                setDuplicateLoading(false);
-                                            }
+                                            if (onDeletePolicy) await onDeletePolicy();
                                         }}
                                     >
-                                        Duplicate
+                                        Make Private
                                     </Button>
-                                </Space.Compact>
+                                    <Button
+                                        type="primary"
+                                        icon={<GlobalOutlined />}
+                                        disabled={bucket === 'ns-system' && isSystemLocked}
+                                        onClick={async () => {
+                                            if (onMakePublic) await onMakePublic();
+                                        }}
+                                    >
+                                        Make Public
+                                    </Button>
+                                </Space>
                             </div>
 
-                            {/* Create New Bucket */}
                             <div className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                                 <div className="mb-2">
                                     <Text strong>New Bucket</Text>
                                     <div className="text-xs text-gray-500">Create a brand new empty bucket</div>
                                 </div>
                                 <Space.Compact style={{ width: '100%' }}>
-                                    <Input
-                                        placeholder="New bucket name"
-                                        value={newBucketName}
-                                        onChange={e => setNewBucketName(e.target.value)}
-                                    />
+                                    <Input placeholder="New bucket name" value={newBucketName} onChange={e => setNewBucketName(e.target.value)} />
                                     <Button
                                         type="primary"
                                         icon={<PlusOutlined />}
@@ -424,11 +475,7 @@ export default function BucketSettingsDrawer({
                         size="small"
                         title={<span className="text-red-500 font-semibold flex items-center gap-2"><ExclamationCircleOutlined /> Danger Zone</span>}
                         className="shadow-sm"
-                        style={{
-                            background: 'rgba(255, 77, 79, 0.05)',
-                            borderColor: 'rgba(255, 77, 79, 0.2)',
-                            backdropFilter: 'blur(16px)',
-                        }}
+                        style={{ background: 'rgba(255, 77, 79, 0.05)', borderColor: 'rgba(255, 77, 79, 0.2)', backdropFilter: 'blur(16px)' }}
                     >
                         <div className="flex justify-between items-center">
                             <div>
@@ -444,11 +491,12 @@ export default function BucketSettingsDrawer({
                                         onClose();
                                     }
                                 }}
+                                disabled={bucket === 'ns-system' && isSystemLocked}
                                 okText="Delete"
                                 cancelText="Cancel"
                                 okButtonProps={{ danger: true }}
                             >
-                                <Button danger icon={<DeleteOutlined />}>
+                                <Button danger icon={<DeleteOutlined />} disabled={bucket === 'ns-system' && isSystemLocked}>
                                     Delete
                                 </Button>
                             </Popconfirm>
@@ -457,55 +505,63 @@ export default function BucketSettingsDrawer({
                 </div>
             )
         },
-        // ==== POLICY TAB ====
         {
             key: 'policy',
             label: (
                 <Space>
                     <SafetyCertificateOutlined />
                     <span>Access Policy</span>
-                    <Tag color={policyStatus.color} style={{ margin: 0, fontSize: 10 }}>
-                        {policyStatus.icon} {policyStatus.text}
-                    </Tag>
+                    {renderActiveBadge()}
                 </Space>
             ),
             children: (
                 <div className="flex flex-col gap-4">
-                    {/* Quick Presets - Clean inline buttons */}
+                    {/* Quick Presets */}
                     <Card size="small" style={glassCardStyle}>
-                        <div className="flex gap-2 flex-wrap">
-                            <Button
-                                type={policyStatus.text === 'Public' ? 'primary' : 'default'}
-                                icon={<UnlockOutlined />}
-                                onClick={() => applyPolicyPreset('public')}
-                            >
-                                Public Read
-                            </Button>
-                            <Button
-                                type={policyStatus.text === 'Custom' ? 'primary' : 'default'}
-                                icon={<InfoCircleOutlined />}
-                                onClick={() => applyPolicyPreset('readonly')}
-                            >
-                                Read Only
-                            </Button>
-                            <Button
-                                type={policyStatus.text === 'Private' ? 'primary' : 'default'}
-                                icon={<LockOutlined />}
-                                onClick={() => setPolicyJson('')}
-                            >
-                                Private
-                            </Button>
+                        <div className="flex flex-col gap-2">
+                            <Text type="secondary" className="text-xs uppercase font-bold tracking-wider">Templates</Text>
+                            <div className="flex gap-2 flex-wrap">
+                                <Button
+                                    type={activePolicyType === 'public' ? 'primary' : 'default'}
+                                    icon={<UnlockOutlined />}
+                                    onClick={() => applyPolicyPreset('public')}
+                                    className={activePolicyType === 'public' ? 'bg-orange-500 hover:bg-orange-600' : ''}
+                                >
+                                    Public Read (Standard)
+                                </Button>
+                                <Button
+                                    type={activePolicyType === 'readonly' ? 'primary' : 'default'}
+                                    icon={<EyeOutlined />}
+                                    onClick={() => applyPolicyPreset('readonly')}
+                                    className={activePolicyType === 'readonly' ? 'bg-blue-500 hover:bg-blue-600' : ''}
+                                >
+                                    Public + Listing
+                                </Button>
+                                <Button
+                                    type={activePolicyType === 'private' ? 'primary' : 'default'}
+                                    icon={<LockOutlined />}
+                                    onClick={() => applyPolicyPreset('private')}
+                                    className={activePolicyType === 'private' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                >
+                                    Private (Reset)
+                                </Button>
+                                {activePolicyType === 'custom' && (
+                                    <Button type="dashed" icon={<SettingOutlined />} disabled>
+                                        Custom Active
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                     </Card>
 
-                    {/* Policy Editor Card */}
+                    {/* Policy Editor */}
                     <Card
                         size="small"
                         title={<span className="text-white font-semibold flex items-center gap-2"><SettingOutlined /> Policy JSON</span>}
                         extra={
                             <Space>
                                 <Button size="small" ghost onClick={loadPolicy} disabled={policyJson === originalPolicy}>
-                                    Reset
+                                    Discard Changes
                                 </Button>
                                 <Button
                                     size="small"
@@ -514,7 +570,7 @@ export default function BucketSettingsDrawer({
                                     onClick={handleSavePolicy}
                                     disabled={policyJson === originalPolicy}
                                 >
-                                    Save
+                                    Save Policy
                                 </Button>
                             </Space>
                         }

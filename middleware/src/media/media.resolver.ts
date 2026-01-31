@@ -1,6 +1,7 @@
 import { Resolver, Query, Mutation, Args, ID, Int } from '@nestjs/graphql';
 import { ObjectType, Field, InputType } from '@nestjs/graphql';
 import { MediaService, MediaFile } from './media.service';
+import { RagService } from '../rag/rag.service';
 import GraphQLJSON from 'graphql-type-json';
 import GraphQLUpload from 'graphql-upload/GraphQLUpload.mjs';
 import type { FileUpload } from 'graphql-upload/processRequest.mjs';
@@ -12,6 +13,8 @@ export class S3Bucket {
     name: string;
     @Field({ nullable: true })
     creationDate?: string;
+    @Field({ nullable: true })
+    isPublic?: boolean;
 }
 
 @ObjectType()
@@ -40,6 +43,9 @@ export class StorageStats {
 
 @ObjectType()
 export class MediaType {
+    @Field({ nullable: true })
+    _debug_version_: string; // Force schema update
+
     @Field(() => ID)
     id: string;
 
@@ -78,6 +84,21 @@ export class MediaType {
 
     @Field(() => GraphQLJSON, { nullable: true })
     metadata?: any;
+
+    @Field({ nullable: true })
+    bucketName?: string;
+
+    @Field({ nullable: true })
+    checksum?: string;
+
+    @Field({ nullable: true })
+    thumbnailPath?: string;
+
+    @Field({ nullable: true })
+    thumbnailUrl?: string;
+
+    @Field(() => [String], { nullable: true })
+    previewPages?: string[];
 }
 
 @InputType()
@@ -111,6 +132,18 @@ class UpdateMediaInput {
 
     @Field({ nullable: true })
     filename?: string;
+
+    @Field({ nullable: true })
+    bucketName?: string;
+
+    @Field({ nullable: true })
+    checksum?: string;
+
+    @Field({ nullable: true })
+    thumbnailPath?: string;
+
+    @Field({ nullable: true })
+    thumbnailUrl?: string;
 }
 
 @InputType()
@@ -156,7 +189,12 @@ class DeleteMediaResponse {
 
 @Resolver(() => MediaType)
 export class MediaResolver {
-    constructor(private readonly mediaService: MediaService) { }
+    constructor(
+        private readonly mediaService: MediaService,
+        private readonly ragService: RagService
+    ) {
+        console.log("MediaResolver Initialized - SCHEMA CHECK 123");
+    }
 
     // ---------------------------------------------------------
     // DB CRUD
@@ -167,8 +205,10 @@ export class MediaResolver {
         @Args('limit', { type: () => Int, nullable: true }) limit?: number,
         @Args('offset', { type: () => Int, nullable: true }) offset?: number,
         @Args('mimeType', { nullable: true }) mimeType?: string,
+        @Args('bucket', { nullable: true }) bucket?: string,
+        @Args('folder', { nullable: true }) folder?: string,
     ): Promise<MediaFile[]> {
-        return this.mediaService.findAll({ limit, offset, mimeType });
+        return this.mediaService.findAll({ limit, offset, mimeType, bucket, folder });
     }
 
     @Mutation(() => MediaType, { nullable: true })
@@ -195,6 +235,11 @@ export class MediaResolver {
     @Query(() => MediaType, { name: 'mediaById', nullable: true })
     async findOne(@Args('id', { type: () => ID }) id: string): Promise<MediaFile | null> {
         return this.mediaService.findOne(id);
+    }
+
+    @Query(() => MediaType, { name: 'mediaByS3Key', nullable: true })
+    async findByS3Key(@Args('key') key: string): Promise<MediaFile | null> {
+        return this.mediaService.findByS3Key(key);
     }
 
     @Mutation(() => MediaType, { nullable: true })
@@ -274,31 +319,22 @@ export class MediaResolver {
         return this.mediaService.getS3Endpoint();
     }
 
-    @Mutation(() => Boolean, { name: 'createBucket' })
-    async createBucket(@Args('name') name: string): Promise<boolean> {
-        return this.mediaService.createBucket(name);
-    }
 
-    @Mutation(() => Boolean, { name: 'deleteBucket' })
-    async deleteBucket(@Args('name') name: string): Promise<boolean> {
-        return this.mediaService.deleteBucket(name);
-    }
-
-    @Mutation(() => Boolean, { name: 'createFolder' })
-    async createFolder(
-        @Args('path') path: string,
-        @Args('bucket', { nullable: true }) bucket?: string
-    ): Promise<boolean> {
-        // Ensure path ends with / for proper folder marker
-        const folderPath = path.endsWith('/') ? path : `${path}/`;
-        return this.mediaService.createFolder(folderPath, bucket);
-    }
 
     @Mutation(() => Boolean, { name: 'deleteFolder' })
     async deleteFolder(
-        @Args('path') path: string
+        @Args('path') path: string,
+        @Args('bucket', { nullable: true }) bucket?: string
     ): Promise<boolean> {
-        return this.mediaService.deleteFolder(path);
+        return this.mediaService.deleteFolder(path, bucket);
+    }
+
+    @Mutation(() => Boolean, { name: 'deleteFileByKey' })
+    async deleteFileByKey(
+        @Args('key') key: string,
+        @Args('bucket', { nullable: true }) bucket?: string
+    ): Promise<boolean> {
+        return this.mediaService.deleteFileByKey(key, bucket);
     }
 
     @Mutation(() => Boolean, { name: 'makeBucketPublic' })
@@ -367,7 +403,7 @@ export class MediaResolver {
     // Placeholders
     @Query(() => GraphQLJSON, { name: 'getBucketPolicy', nullable: true })
     async getBucketPolicy(@Args('bucket', { nullable: true }) bucket?: string): Promise<any> {
-        return {};
+        return this.mediaService.getBucketPolicy(bucket);
     }
 
     @Mutation(() => Boolean, { name: 'setBucketPolicy' })
@@ -375,11 +411,35 @@ export class MediaResolver {
         @Args('policy', { type: () => GraphQLJSON }) policy: any,
         @Args('bucket', { nullable: true }) bucket?: string
     ): Promise<boolean> {
-        return true;
+        return this.mediaService.setBucketPolicy(policy, bucket);
     }
 
     @Mutation(() => Boolean, { name: 'deleteBucketPolicy' })
     async deleteBucketPolicy(@Args('bucket', { nullable: true }) bucket?: string): Promise<boolean> {
+        return this.mediaService.deleteBucketPolicy(bucket);
+    }
+
+    // ---------------------------------------------------------
+    // AI Operations
+    // ---------------------------------------------------------
+
+    @Mutation(() => [String], { name: 'autoLabelMedia', nullable: true })
+    async autoLabelMedia(@Args('id') id: string): Promise<string[]> {
+        return this.ragService.autoLabelMedia(id);
+    }
+
+    @Mutation(() => Boolean, { name: 'generateMediaEmbeddings' })
+    async generateMediaEmbeddings(
+        @Args('id') id: string,
+        @Args('content', { nullable: true }) content?: string
+    ): Promise<boolean> {
+        return this.ragService.generateMediaEmbeddings(id, content || '');
+    }
+
+    @Mutation(() => Boolean, { name: 'regenerateThumbnails' })
+    async regenerateThumbnails(): Promise<boolean> {
+        console.log("Triggering manual thumbnail regeneration via GraphQL");
+        await this.mediaService.regenerateMissingThumbnails();
         return true;
     }
 }

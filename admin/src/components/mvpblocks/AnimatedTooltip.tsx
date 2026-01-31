@@ -66,7 +66,7 @@ export default function TooltipWrapper({
         if (usePortal && isHovered && triggerRef.current) {
             const rect = triggerRef.current.getBoundingClientRect();
             let posX = 0, posY = 0;
-            
+
             switch (position) {
                 case 'top':
                     posX = rect.left + rect.width / 2;
@@ -85,7 +85,7 @@ export default function TooltipWrapper({
                     posY = rect.top + rect.height / 2;
                     break;
             }
-            
+
             setPortalPosition({ x: posX, y: posY });
         }
     }, [isHovered, usePortal, position]);
@@ -110,9 +110,9 @@ export default function TooltipWrapper({
                 left: portalPosition.x,
                 top: portalPosition.y,
                 transform: position === 'top' ? 'translate(-50%, -100%)' :
-                           position === 'bottom' ? 'translate(-50%, 0)' :
-                           position === 'left' ? 'translate(-100%, -50%)' :
-                           'translate(0, -50%)',
+                    position === 'bottom' ? 'translate(-50%, 0)' :
+                        position === 'left' ? 'translate(-100%, -50%)' :
+                            'translate(0, -50%)',
                 whiteSpace: 'nowrap',
                 zIndex: 99999,
             } : {
@@ -120,7 +120,7 @@ export default function TooltipWrapper({
                 rotate: rotate,
                 whiteSpace: 'nowrap',
             }}
-            className={usePortal 
+            className={usePortal
                 ? `bg-white/95 dark:bg-zinc-900/95 border border-zinc-200 dark:border-zinc-700 flex flex-col items-center justify-center rounded-lg px-4 py-2 text-xs shadow-xl backdrop-blur-sm pointer-events-none`
                 : `bg-white/95 dark:bg-zinc-900/95 border border-zinc-200 dark:border-zinc-700 absolute ${positionClasses[position]} z-[9999] flex flex-col items-center justify-center rounded-lg px-4 py-2 text-xs shadow-xl backdrop-blur-sm pointer-events-none`
             }

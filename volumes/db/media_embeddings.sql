@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS media (
     size_bytes BIGINT,
     alt_text TEXT,
     uploaded_by UUID,
+    bucket_name TEXT, -- Stores the MinIO/S3 bucket name where this file resides
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -37,7 +38,7 @@ CREATE INDEX IF NOT EXISTS media_mime_type_idx ON media(mime_type);
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS media_embeddings (
     id UUID PRIMARY KEY REFERENCES media(id) ON DELETE CASCADE,
-    embedding vector(768),  -- Gemini embedding-001 produces 768 dimensions
+    embedding vector(1408),  -- Vertex AI multimodalembedding produces 1408 dimensions
     chunk_index INTEGER DEFAULT 0,  -- For chunked documents
     chunk_text TEXT,  -- Original text that was embedded
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -63,7 +64,7 @@ END $$;
 
 -- Search media by semantic similarity
 CREATE OR REPLACE FUNCTION search_media_by_embedding(
-    query_embedding vector(768),
+    query_embedding vector(1408),
     match_threshold FLOAT DEFAULT 0.5,
     match_count INT DEFAULT 10
 )
@@ -91,7 +92,7 @@ $$;
 -- Helper to insert or update embedding
 CREATE OR REPLACE FUNCTION upsert_media_embedding(
     p_id UUID,
-    p_embedding vector(768),
+    p_embedding vector(1408),
     p_chunk_text TEXT DEFAULT NULL
 )
 RETURNS VOID

@@ -106,7 +106,7 @@ export default function Web3LandingPage() {
             p.xLast = p.x;
             p.yLast = p.y;
 
-            let idx = p.attractor.gridSpotIndex;
+            const idx = p.attractor.gridSpotIndex;
             let spot = this.grid[idx];
 
             if (Math.random() < 0.5 && !spot.isEdge) {

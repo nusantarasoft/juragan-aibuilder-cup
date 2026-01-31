@@ -15,7 +15,9 @@ import {
     RollbackOutlined,
     CheckCircleOutlined,
     ClockCircleOutlined,
-    LoadingOutlined
+    LoadingOutlined,
+    CloseOutlined,
+    TagOutlined
 } from '@ant-design/icons';
 import { mediaService } from '@/lib/mediaService';
 import type { MediaFile } from '@/lib/mediaService';
@@ -36,6 +38,7 @@ interface MediaPreviewModalProps {
     mediaFile: MediaFile | null;
     onClose: () => void;
     mode?: 'preview' | 'detail';
+    isPublicBucket?: boolean;
 }
 
 function formatDetailFileSize(bytes?: number): string {
@@ -70,16 +73,19 @@ export default function MediaPreviewModal({
     visible,
     mediaFile,
     onClose,
-    mode = 'preview'
+    mode = 'preview',
+    isPublicBucket
 }: MediaPreviewModalProps) {
     const [fullMedia, setFullMedia] = useState<MediaFile | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isGeneratingEmbed, setIsGeneratingEmbed] = useState(false);
+    const [isAutoLabeling, setIsAutoLabeling] = useState(false);
 
     // Version History State
     const [versions, setVersions] = useState<ObjectVersion[]>([]);
     const [loadingVersions, setLoadingVersions] = useState(false);
     const [imgDimensions, setImgDimensions] = useState<{ w: number; h: number } | null>(null);
+    const [fetchError, setFetchError] = useState<string | null>(null);
 
     useEffect(() => {
         if (visible && mediaFile?.id) {
@@ -91,16 +97,29 @@ export default function MediaPreviewModal({
             setFullMedia(null);
             setVersions([]);
             setImgDimensions(null);
+            setFetchError(null);
         }
     }, [visible, mediaFile, mode]);
 
-    const fetchMediaDetails = async (id: string) => {
+    const fetchMediaDetails = async (idOrKey: string) => {
         setIsLoading(true);
+        setFetchError(null);
         try {
-            const data = await mediaService.getMediaById(id);
+            // Check if it's a UUID (approximate regex)
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrKey);
+            let data;
+
+            if (isUuid) {
+                data = await mediaService.getMediaById(idOrKey);
+            } else {
+                // Assume it's an S3 Key if not a UUID
+                data = await mediaService.getMediaByS3Key(idOrKey);
+            }
+
             setFullMedia(data || mediaFile);
         } catch (err) {
             console.error("Failed to fetch media details:", err);
+            setFetchError(err instanceof Error ? err.message : 'Unknown error');
             setFullMedia(mediaFile);
         } finally {
             setIsLoading(false);
@@ -162,6 +181,26 @@ export default function MediaPreviewModal({
         }
     };
 
+    const handleAutoLabel = async () => {
+        if (!mediaFile) return;
+        setIsAutoLabeling(true);
+        try {
+            message.loading({ content: 'Auto-labeling in progress...', key: 'autolabel' });
+            const labels = await mediaService.autoLabelMedia(mediaFile.id);
+            if (labels && labels.length > 0) {
+                message.success({ content: `Labels generated: ${labels.join(', ')}`, key: 'autolabel' });
+                await fetchMediaDetails(mediaFile.id);
+            } else {
+                message.warning({ content: 'No labels were generated', key: 'autolabel' });
+            }
+        } catch (error) {
+            console.error(error);
+            message.error({ content: 'Failed to auto-label media', key: 'autolabel' });
+        } finally {
+            setIsAutoLabeling(false);
+        }
+    };
+
     const getFileIcon = (mimeType?: string) => {
         if (!mimeType) return <FileOutlined />;
         if (mimeType.startsWith("image/")) return <FileImageOutlined />;
@@ -184,6 +223,7 @@ export default function MediaPreviewModal({
     const embeddingStr = activeMedia.embedding;
     let embeddingVector: number[] = [];
     let embeddingDim = 0;
+
     if (embeddingStr) {
         try {
             if (typeof embeddingStr === 'string') {
@@ -209,132 +249,148 @@ export default function MediaPreviewModal({
         setImgDimensions({ w: vid.videoWidth, h: vid.videoHeight });
     };
 
-    const MediaPreviewContent = () => (
-        <div className="w-full h-full flex flex-col relative group">
-            {/* Wrapper for Media */}
-            <div className="flex-1 relative flex items-center justify-center bg-gray-100 dark:bg-[#0a0a0a] rounded-xl overflow-hidden shadow-inner border border-gray-200 dark:border-gray-800">
+    const MediaPreviewContent = () => {
+        // Privacy Logic:
+        // Private -> Show Generated Preview (Thumbnail for image, PreviewPages for PDF)
+        // Public -> Show Real File (activeMedia.url)
+        const isPublic = isPublicBucket ?? false;
 
-                {/* Overlay Tags (Bottom Right) */}
-                <div className="absolute bottom-6 right-6 flex flex-col items-end gap-2 z-10 pointer-events-none">
-                    {/* Version Tag */}
-                    <div className="backdrop-blur-md bg-white/70 dark:bg-black/60 border border-white/20 dark:border-white/10 p-1.5 rounded-lg shadow-sm flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <div className="flex flex-col items-end pr-1">
-                            <span className="text-[10px] uppercase font-bold text-gray-500 dark:text-gray-400 leading-none">Version</span>
-                            <span className="text-xs font-semibold text-gray-800 dark:text-gray-100 leading-none mt-0.5">Latest</span>
-                        </div>
-                        <div className="bg-green-500 rounded-full p-1 shadow-green-500/20 shadow-lg">
-                            <CheckCircleOutlined className="text-[10px] text-white block" />
-                        </div>
-                    </div>
+        let displayUrl = activeMedia.url;
+        let showGenerated = false;
 
-                    {/* Annotation Tag */}
-                    <div className="backdrop-blur-md bg-white/70 dark:bg-black/60 border border-white/20 dark:border-white/10 p-1.5 rounded-lg shadow-sm flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-75">
-                        <div className="flex flex-col items-end pr-1">
-                            <span className="text-[10px] uppercase font-bold text-gray-500 dark:text-gray-400 leading-none">Annotation</span>
-                            <span className="text-xs font-semibold text-gray-800 dark:text-gray-100 leading-none mt-0.5">
-                                {activeMedia.metadata?.label_studio_task_id ? 'Labeled' : 'Unlabeled'}
-                            </span>
-                        </div>
-                        <div className={`rounded-full p-1 shadow-lg ${activeMedia.metadata?.label_studio_task_id ? 'bg-purple-500 shadow-purple-500/20' : 'bg-gray-400'}`}>
-                            {activeMedia.metadata?.label_studio_task_id ? <ExperimentOutlined className="text-[10px] text-white block" /> : <InfoCircleOutlined className="text-[10px] text-white block" />}
-                        </div>
-                    </div>
-                </div>
+        if (!isPublic) {
+            if (activeMedia.mime_type?.startsWith('image/') && activeMedia.thumbnailUrl) {
+                displayUrl = activeMedia.thumbnailUrl;
+                showGenerated = true;
+            }
+            // Video: Thumbnail is poster. We still need URL to play.
+            // If URL is presigned (which it is), we can play it.
+            // User said "show preview system generated". For video that might mean just thumbnail? 
+            // But a modal should probably play it. 
+            // Let's stick to Image/PDF focus as per context.
+        }
 
-                {/* Dimensions Badge (Top Right - Keep) */}
-                {(imgDimensions) && (
-                    <div className="absolute top-3 right-3 z-10 backdrop-blur-md bg-black/50 text-white px-2 py-1 rounded-md text-[10px] font-mono border border-white/10">
-                        {imgDimensions.w} × {imgDimensions.h} px
-                    </div>
-                )}
+        const isPdf = activeMedia.mime_type === 'application/pdf';
+        const hasPdfPreviews = isPdf && activeMedia.previewPages && activeMedia.previewPages.length > 0;
 
-                {/* Media Content - Allow Scroll */}
-                <div className="w-full h-full overflow-auto flex items-center justify-center p-4 custom-scrollbar">
-                    {activeMedia.mime_type?.startsWith("image/") ? (
-                        <Image
-                            src={activeMedia.url}
-                            alt={activeMedia.alt_text || activeMedia.filename}
-                            className="object-contain"
-                            // Remove fixed height constraint to allow scroll if natural size is large, but usually preview fits. 
-                            // User asked for scroll, so maybe max-height should be unset or large?
-                            // But usually "Preview" fits to screen. If user wants scroll, they imply zooming or large images.
-                            // I'll set max-height to none but max-width to none?
-                            // Let's keep it responsive but allow overflow if needed. 
-                            // Actually, standard preview usually fits. "Need scroll for the preview" implies content is being cut off.
-                            // I will allow it to expand.
-                            style={{ height: 'auto', width: 'auto', maxWidth: '100%', maxHeight: '100%' }}
-                            // Initial state: fit.
-                            onLoad={handleImageLoad}
-                            preview={false}
-                        />
-                    ) : activeMedia.mime_type?.startsWith("video/") ? (
-                        <video
-                            src={activeMedia.url}
-                            controls
-                            className="max-h-full max-w-full"
-                            onLoadedMetadata={handleVideoLoad}
-                        />
-                    ) : isDocumentPreviewable(activeMedia.filename, activeMedia.mime_type) ? (
-                        <div className="w-full h-full bg-white relative">
-                            <DocumentPreview
-                                url={activeMedia.url}
-                                filename={activeMedia.filename}
-                                mimeType={activeMedia.mime_type}
-                            />
-                        </div>
-                    ) : (
-                        <div className="text-center p-8">
-                            <div className="text-6xl text-gray-300 dark:text-gray-700 mb-4 mx-auto w-fit p-4 bg-gray-50 dark:bg-white/5 rounded-full">
-                                {getFileIcon(activeMedia.mime_type)}
-                            </div>
-                            <Text className="block text-gray-500 font-medium">Preview not available</Text>
-                            <Button type="primary" className="mt-4 bg-violet-600 hover:bg-violet-500" onClick={handleDownload}>Download File</Button>
+        // Always show generated previews if available (safer and faster than original PDF)
+        // User Request: Force Full PDF (iframe) for Detail/Preview Modal.
+        const showPdfPreviews = false; // Disable generated previews to show Iframe
+
+        return (
+            <div className="w-full h-full flex flex-col relative">
+                {/* Standard Preview Container */}
+                <div className="flex-1 relative flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+
+                    {/* Dimensions Badge */}
+                    {(imgDimensions) && (
+                        <div className="absolute top-3 right-3 z-10 bg-black/50 text-white px-2 py-0.5 rounded text-xs font-mono">
+                            {imgDimensions.w} × {imgDimensions.h}
                         </div>
                     )}
-                </div>
-            </div>
 
-            {/* Preview Bottom Bar: URL & Actions */}
-            {mode === 'preview' && (
-                <div className="mt-4 flex flex-col gap-3">
-                    <div className="flex items-center gap-3">
-                        <div className="relative flex-1">
-                            <Input
-                                value={activeMedia.url}
-                                readOnly
-                                className="pl-10 pr-24 py-2.5 bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-gray-700 hover:border-violet-400 focus:border-violet-500 rounded-xl text-sm text-gray-700 dark:text-gray-200 truncate font-mono shadow-sm transition-all duration-200"
-                                style={{ textOverflow: 'ellipsis' }}
-                            />
-                            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-                                <CodeOutlined className="text-base" />
-                            </div>
-                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                                <Tooltip title="Copy Link">
-                                    <Button
-                                        type="text"
-                                        size="small"
-                                        className="text-gray-500 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/30 cursor-pointer transition-all duration-200 rounded-lg"
-                                        icon={<CopyOutlined />}
-                                        onClick={() => copyToClipboard(activeMedia.url)}
-                                    >
-                                        Copy
-                                    </Button>
-                                </Tooltip>
-                            </div>
+                    {/* Generated Preview Badge */}
+                    {showGenerated && (
+                        <div className="absolute top-3 left-3 z-10 bg-violet-600/90 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm">
+                            System Preview
                         </div>
-                        <Tooltip title="Download File">
-                            <Button
-                                icon={<DownloadOutlined />}
-                                size="large"
-                                onClick={handleDownload}
-                                className="aspect-square flex items-center justify-center border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-white hover:bg-violet-600 hover:border-violet-600 cursor-pointer transition-all duration-200 rounded-xl shadow-sm"
+                    )}
+
+                    {/* Media Content */}
+                    <div className="w-full h-full overflow-auto flex items-center justify-center">
+                        {activeMedia.mime_type?.startsWith("image/") ? (
+                            <Image
+                                src={displayUrl}
+                                alt={activeMedia.alt_text || activeMedia.filename}
+                                className="object-contain"
+                                style={{ height: 'auto', width: 'auto', maxWidth: '100%', maxHeight: '100%' }}
+                                onLoad={handleImageLoad}
+                                preview={false}
                             />
-                        </Tooltip>
+                        ) : showPdfPreviews ? (
+                            <div className="w-full h-full overflow-y-auto bg-gray-100 flex flex-col items-center gap-4 p-4">
+                                {activeMedia.previewPages!.map((pageUrl, idx) => (
+                                    <img
+                                        key={idx}
+                                        src={pageUrl}
+                                        className="shadow-lg border border-gray-200 max-w-full"
+                                        style={{ width: '100%', maxWidth: '600px' }}
+                                    />
+                                ))}
+                            </div>
+                        ) : activeMedia.mime_type?.startsWith("video/") ? (
+                            <video
+                                src={activeMedia.url}
+                                poster={activeMedia.thumbnailUrl}
+                                controls
+                                className="max-h-full max-w-full"
+                                onLoadedMetadata={handleVideoLoad}
+                            />
+                        ) : activeMedia.mime_type?.includes('pdf') ? (
+                            <iframe
+                                src={displayUrl}
+                                className="w-full h-full border-none rounded-sm"
+                                title="PDF Preview"
+                            />
+                        ) : isDocumentPreviewable(activeMedia.filename, activeMedia.mime_type) ? (
+                            <div className="w-full h-full bg-white relative">
+                                <DocumentPreview
+                                    url={activeMedia.url}
+                                    filename={activeMedia.filename}
+                                    mimeType={activeMedia.mime_type}
+                                />
+                            </div>
+                        ) : (
+                            <div className="text-center p-8">
+                                <div className="text-4xl text-gray-400 mb-4">
+                                    {getFileIcon(activeMedia.mime_type)}
+                                </div>
+                                <Text type="secondary" className="block mb-4">Preview not available</Text>
+                                <Button type="primary" onClick={handleDownload}>Download File</Button>
+                            </div>
+                        )}
                     </div>
                 </div>
-            )}
-        </div>
-    );
+                {/* Footer Bar */}
+                {mode === 'preview' && (
+                    <div className="mt-4 space-y-3">
+                        {/* Info Tags */}
+                        <Space size="small">
+                            <Tag color="success" icon={<CheckCircleOutlined />}>Latest Version</Tag>
+                            {activeMedia.metadata?.label_studio_task_id ? (
+                                <Tag color="purple" icon={<ExperimentOutlined />}>Labeled</Tag>
+                            ) : (
+                                <Tag color="default" icon={<InfoCircleOutlined />}>Not Labeled</Tag>
+                            )}
+                            <Tag>{formatFileSize(activeMedia.size_bytes)}</Tag>
+                            {isPublic && <Tag color="blue">Public</Tag>}
+                            {!isPublic && <Tag color="gold">Private</Tag>}
+                        </Space>
+
+                        {/* URL Bar */}
+                        <div className="flex items-center gap-2">
+                            <Input
+                                prefix={<CodeOutlined className="text-gray-400" />}
+                                value={activeMedia.url}
+                                readOnly
+                                suffix={
+                                    <Tooltip title="Copy URL">
+                                        <CopyOutlined
+                                            className="text-gray-400 hover:text-blue-500 cursor-pointer"
+                                            onClick={() => copyToClipboard(activeMedia.url)}
+                                        />
+                                    </Tooltip>
+                                }
+                            />
+                            <Tooltip title="Download">
+                                <Button icon={<DownloadOutlined />} onClick={handleDownload} />
+                            </Tooltip>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     const VersionsTab = () => (
         <div className="h-full flex flex-col">
@@ -411,66 +467,152 @@ export default function MediaPreviewModal({
                 </div>
             </div>
 
-            {/* Embeddings */}
+            {/* AI Intelligence: Embeddings */}
             <div className="bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-900/10 dark:to-indigo-900/10 rounded-xl p-3 border border-violet-100 dark:border-violet-500/20">
                 <div className="flex justify-between items-center mb-2">
                     <h3 className="text-xs font-bold text-violet-700 dark:text-violet-300 flex items-center gap-1.5">
-                        <ExperimentOutlined /> AI EMBEDDINGS
+                        <ExperimentOutlined /> AI INTELLIGENCE
                     </h3>
                     {embeddingDim > 0 && <Tag color="purple" bordered={false} className="m-0 text-[9px] font-bold px-1">{embeddingDim} DIM</Tag>}
                 </div>
-                <div className="bg-white/50 dark:bg-black/20 rounded-lg p-2 border border-violet-100/50 dark:border-violet-500/10 mb-2">
+
+                {/* Vector Display */}
+                <div className="bg-white/50 dark:bg-black/20 rounded-lg p-2 border border-violet-100/50 dark:border-violet-500/10 mb-3">
                     <Spin spinning={isLoading || isGeneratingEmbed} indicator={<LoadingOutlined className="text-violet-500" spin />}>
                         {embeddingDim > 0 ? (
-                            <div className="font-mono text-[9px] text-gray-500 dark:text-gray-400 truncate opacity-70">
-                                [{embeddingVector.slice(0, 5).join(', ')}...]
+                            <div className="flex flex-col gap-1">
+                                <div className="font-mono text-[9px] text-gray-500 dark:text-gray-400 break-all leading-relaxed max-h-20 overflow-y-auto custom-scrollbar">
+                                    <span className="text-violet-500 font-bold">Vector: </span>
+                                    [{embeddingVector.slice(0, 50).join(', ')}
+                                    {embeddingVector.length > 50 && <span className="text-gray-400 italic"> ... +{embeddingVector.length - 50} more</span>}]
+                                </div>
+                                <Button
+                                    size="small"
+                                    type="text"
+                                    className="self-end text-[9px] text-violet-500 h-5"
+                                    onClick={() => copyToClipboard(JSON.stringify(embeddingVector), "Full embedding vector copied")}
+                                >
+                                    Copy Full Vector
+                                </Button>
                             </div>
                         ) : (
                             <div className="text-center text-[10px] text-gray-400 italic">No embeddings generated</div>
                         )}
                     </Spin>
                 </div>
+
+                {/* Generate Button */}
                 <Button
                     type="primary" size="small" ghost
-                    className="w-full text-xs border-violet-300 text-violet-600 hover:!bg-violet-500 hover:!text-white hover:!border-violet-500"
+                    block
+                    className="text-xs border-violet-300 text-violet-600 hover:!bg-violet-500 hover:!text-white hover:!border-violet-500"
                     onClick={handleGenerateEmbeddings} loading={isGeneratingEmbed} icon={<ReloadOutlined />}
                 >
                     {embeddingDim > 0 ? "Regenerate Embeddings" : "Generate Embeddings"}
                 </Button>
             </div>
 
-            {/* Metadata */}
-            <Collapse
-                ghost size="small"
-                className="bg-transparent"
-                items={[{
-                    key: '1',
-                    label: <span className="text-xs font-semibold text-gray-500"><CodeOutlined /> Metadata JSON</span>,
-                    children: (
-                        <div className="max-h-24 overflow-y-auto custom-scrollbar">
-                            <pre className="text-[9px] font-mono whitespace-pre-wrap bg-gray-50 dark:bg-[#121212] p-2 rounded border border-gray-100 dark:border-gray-800 text-gray-500">
-                                {activeMedia.metadata ? JSON.stringify(activeMedia.metadata, null, 2) : '{}'}
-                            </pre>
+            {/* Automation & Labeling Card */}
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/10 dark:to-cyan-900/10 rounded-xl p-3 border border-blue-100 dark:border-blue-500/20">
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-xs font-bold text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                        <ExperimentOutlined /> AUTOMATION & METADATA
+                    </h3>
+                </div>
+
+                {/* Auto Label Button */}
+                <Button
+                    type="default" size="small" block
+                    className="text-xs border-blue-300 text-blue-600 hover:!bg-blue-500 hover:!text-white hover:!border-blue-500 bg-white/50 mb-3"
+                    onClick={handleAutoLabel} loading={isAutoLabeling} icon={<ExperimentOutlined />}
+                >
+                    Auto Label Media
+                </Button>
+
+                {/* Generated Tags Display */}
+                {activeMedia.metadata?.tags && Array.isArray(activeMedia.metadata.tags) && activeMedia.metadata.tags.length > 0 && (
+                    <div className="mb-3 bg-white/50 dark:bg-black/20 rounded-lg p-2 border border-blue-100/50 dark:border-blue-500/10">
+                        <div className="text-[10px] font-bold text-blue-700 dark:text-blue-400 mb-1.5 flex items-center gap-1">
+                            <TagOutlined /> GENERATED LABELS
                         </div>
-                    )
-                }]}
-            />
+                        <div className="flex flex-wrap gap-1">
+                            {activeMedia.metadata.tags.map((tag: string, i: number) => (
+                                <Tag key={i} color="blue" bordered={false} className="m-0 text-[10px] px-1.5 py-0.5 leading-none">
+                                    {tag}
+                                </Tag>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Metadata / Annotation View */}
+                {activeMedia.metadata?.label_studio_task_id ? (
+                    <div className="bg-white/50 dark:bg-black/20 rounded-lg p-2 border border-blue-100/50 dark:border-blue-500/10">
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">LabelStudio</span>
+                            <Tag color="cyan" className="m-0 text-[9px] px-1">TASK {activeMedia.metadata.label_studio_task_id}</Tag>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 mb-2">
+                            <div className="bg-white dark:bg-black/40 p-1.5 rounded border border-gray-100 dark:border-gray-700">
+                                <div className="text-[9px] text-gray-400 uppercase">Project ID</div>
+                                <div className="text-xs font-mono font-bold text-gray-600 dark:text-gray-300">{activeMedia.metadata.project_id || 'N/A'}</div>
+                            </div>
+                        </div>
+
+                        <Collapse
+                            ghost size="small"
+                            className="bg-transparent p-0"
+                            items={[{
+                                key: '1',
+                                label: <span className="text-[10px] font-semibold text-gray-400">View Raw Metadata</span>,
+                                children: (
+                                    <div className="max-h-40 overflow-y-auto custom-scrollbar">
+                                        <pre className="text-[9px] font-mono whitespace-pre-wrap bg-gray-50 dark:bg-[#121212] p-2 rounded border border-gray-100 dark:border-gray-800 text-gray-500">
+                                            {JSON.stringify(activeMedia.metadata, null, 2)}
+                                        </pre>
+                                    </div>
+                                )
+                            }]}
+                        />
+                    </div>
+                ) : (
+                    <Collapse
+                        ghost size="small"
+                        className="bg-transparent"
+                        items={[{
+                            key: '1',
+                            label: <span className="text-xs font-semibold text-gray-500"><CodeOutlined /> Metadata JSON</span>,
+                            children: (
+                                <div className="max-h-40 overflow-y-auto custom-scrollbar">
+                                    <pre className="text-[9px] font-mono whitespace-pre-wrap bg-gray-50 dark:bg-[#121212] p-2 rounded border border-gray-100 dark:border-gray-800 text-gray-500">
+                                        {activeMedia.metadata ? JSON.stringify(activeMedia.metadata, null, 2) : '{}'}
+                                    </pre>
+                                </div>
+                            )
+                        }]}
+                    />
+                )}
+            </div>
         </div>
     );
 
     // --- Render ---
 
     const modalTitle = (
-        <div className="flex items-center gap-3 py-1">
-            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white">
+        <div className="flex items-center gap-3 px-6 py-3.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-violet-500/30">
                 {getFileIcon(activeMedia.mime_type)}
             </div>
             <div className="flex flex-col min-w-0">
-                <Text strong className="truncate max-w-[300px] text-sm leading-tight text-white">{activeMedia.filename}</Text>
+                <span className="truncate max-w-[300px] text-sm leading-tight tracking-wide font-bold"
+                    style={{ background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                    {activeMedia.filename}
+                </span>
                 <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] text-white/70 uppercase tracking-wider font-semibold">{activeMedia.mime_type?.split('/')[1] || 'UNKNOWN'}</span>
-                    <span className="w-1 h-1 rounded-full bg-white/40"></span>
-                    <span className="text-[10px] text-white/70">{formatFileSize(activeMedia.size_bytes)}</span>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold">{activeMedia.mime_type?.split('/')[1] || 'UNKNOWN'}</span>
+                    <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">{formatFileSize(activeMedia.size_bytes)}</span>
                 </div>
             </div>
         </div>
@@ -489,50 +631,96 @@ export default function MediaPreviewModal({
             maskClosable={true}
             destroyOnClose
             keyboard={true}
+            closeIcon={
+                <div className="flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 cursor-pointer hover:bg-white/20 active:scale-95">
+                    <CloseOutlined className="text-white text-base" />
+                </div>
+            }
             styles={{
-                mask: {
-                    backdropFilter: 'blur(12px)',
-                    background: 'rgba(0, 0, 0, 0.65)',
-                    transition: 'all 300ms ease'
-                },
-                wrapper: {
-                    zIndex: 1050
-                },
                 header: {
-                    padding: '18px 24px',
-                    margin: 0,
-                    background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)',
-                    borderBottom: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: '16px 16px 0 0'
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    padding: 0,
+                    borderRadius: '16px 16px 0 0',
+                    borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+                    marginBottom: 0
                 },
                 body: {
-                    padding: '24px',
-                    background: '#fafafa',
-                    borderRadius: '0 0 16px 16px'
+                    padding: 0
                 }
             }}
-            closeIcon={
-                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 hover:scale-110 text-white/80 hover:text-white text-lg transition-all duration-200 cursor-pointer shadow-sm">
-                    ×
-                </span>
-            }
+            modalRender={(modal) => (
+                <div className="custom-modal-wrapper">
+                    <style>{`
+                        .custom-modal-wrapper .ant-modal,
+                        .media-preview-modal .ant-modal,
+                        .custom-modal-wrapper .ant-modal-content,
+                        .media-preview-modal .ant-modal-content,
+                        .custom-modal-wrapper .ant-modal-body,
+                        .media-preview-modal .ant-modal-body,
+                        .custom-modal-wrapper .ant-modal-container {
+                            padding: 0 !important;
+                            padding-bottom: 0 !important;
+                            border-radius: 16px !important;
+                        }
+
+                        /* Content Styling moved here */
+                        .custom-modal-wrapper .ant-modal-content, 
+                        .media-preview-modal .ant-modal-content {
+                            background: rgba(255, 255, 255, 0.8) !important;
+                            backdrop-filter: blur(20px) !important;
+                            -webkit-backdrop-filter: blur(20px) !important;
+                            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+                            box-shadow: 0 20px 50px rgba(0,0,0,0.1) !important;
+                        }
+                        
+                        /* Glass Header specific tweaks */
+                        .custom-modal-wrapper .ant-modal-header,
+                        .media-preview-modal .ant-modal-header {
+                            background: transparent !important; /* Managed by styles prop */
+                        }
+
+                        .custom-modal-wrapper .ant-modal-title,
+                        .media-preview-modal .ant-modal-title {
+                            color: inherit !important;
+                            font-weight: 600 !important;
+                            font-size: 16px !important;
+                            padding: 0 !important;
+                        }
+
+                        .custom-modal-wrapper .ant-modal-close,
+                        .media-preview-modal .ant-modal-close {
+                            top: 14px !important; 
+                            right: 16px !important;
+                        }
+                        
+                        /* Dark mode support logic (assumed via class or parent) */
+                        :global(.dark) .custom-modal-wrapper .ant-modal-content {
+                            background: rgba(15, 23, 42, 0.85) !important;
+                            border: 1px solid rgba(139, 92, 246, 0.2) !important;
+                        }
+                    `}</style>
+                    {modal}
+                </div>
+            )}
         >
             {mode === 'preview' ? (
                 // PREVIEW MODE LAYOUT
-                <div className="h-[60vh] flex flex-col">
+                <div className="h-[60vh] flex flex-col p-6">
                     <MediaPreviewContent />
                     {/* Keyboard hint */}
-                    <div className="mt-3 text-center">
-                        <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded font-mono">Press ESC to close</span>
+                    <div className="mt-2 text-center text-xs text-gray-400">
+                        <Space><Text type="secondary" style={{ fontSize: 12 }}>Press ESC to close</Text></Space>
                     </div>
                 </div>
             ) : (
                 // DETAIL MODE LAYOUT
-                <div className="flex flex-col md:flex-row h-[65vh] gap-6">
+                <div className="flex flex-col md:flex-row h-[65vh] gap-5 p-6">
                     <div className="flex-1 overflow-hidden h-full flex flex-col">
                         <MediaPreviewContent />
                     </div>
-                    <div className="w-full md:w-[340px] h-full flex flex-col border-l border-gray-200 dark:border-gray-700 pl-6">
+                    <div className="w-full md:w-[320px] h-full flex flex-col border-l border-gray-200 dark:border-gray-700 pl-5">
                         <Tabs
                             defaultActiveKey="info"
                             size="small"
@@ -553,9 +741,26 @@ export default function MediaPreviewModal({
                                 },
                             ]}
                         />
+
+                        {/* DEBUG DATA PANEL - TEMPORARY */}
+                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-[10px] font-mono text-red-800 break-all">
+                            <div className="font-bold mb-1">DEBUG DATA</div>
+                            <div>ID: {activeMedia?.id}</div>
+                            <div>Source: {fullMedia ? 'FULL (Fetched)' : 'LIST (Local)'}</div>
+                            <div>Embedding Raw: {JSON.stringify(activeMedia?.embedding || null).substring(0, 50)}...</div>
+                            {fetchError && <div className="text-red-600 font-bold bg-white px-1">Error: {fetchError}</div>}
+                            <Button
+                                size="small"
+                                danger
+                                className="mt-2"
+                                onClick={() => activeMedia?.id && fetchMediaDetails(activeMedia.id)}
+                            >
+                                Force Refresh
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}
-        </Modal>
+        </Modal >
     );
 }

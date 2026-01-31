@@ -72,7 +72,7 @@ export class RagService implements OnModuleInit {
     }
 
     async generateAnswer(query: string): Promise<string> {
-        this.logger.log(`Generating answer for: "${query}" (REST-gemini-2.5-pro)`);
+        this.logger.log(`Generating answer for: "${query}" (REST-gemini-pro)`);
 
         // 1. Get Context
         const searchResults = await this.semanticSearch(query, 5);
@@ -82,11 +82,9 @@ export class RagService implements OnModuleInit {
         }
 
         // 2. Format Context
-        const contextText = searchResults.map(doc => `[File: ${doc.filename}]\n(Content would ideally be here or summary)`).join('\n\n');
+        const contextText = searchResults.map(doc => `[File: ${doc.filename}]`).join('\n');
 
         const prompt = `You are an intelligent assistant having access to the user's media library.
-Based on the following relevant files found in the library, answer the user's question.
-
 Context Files:
 ${contextText}
 
@@ -94,60 +92,37 @@ User Question: ${query}
 
 Answer:`;
 
-        // 3. Generate Answer via REST (v1beta1 for gemini-2.5-pro)
+        // 3. Generate Answer (Try API Key first, then Vertex)
+        const apiKey = this.configService.get('GOOGLE_API_KEY');
+
         try {
-            // Dynamic import for auth
-            const { GoogleAuth } = await (new Function('return import("google-auth-library")')());
+            if (apiKey) {
+                // Use Gemini API directly
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                });
 
-            const auth = new GoogleAuth({
-                scopes: ['https://www.googleapis.com/auth/cloud-platform']
-            });
-            const client = await auth.getClient();
-            const tokenResponse = await client.getAccessToken();
-            const accessToken = tokenResponse.token;
-
-            const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
-            const location = this.configService.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
-            const modelId = 'gemini-2.5-pro';
-
-            const url = `https://${location}-aiplatform.googleapis.com/v1beta1/projects/${projectId}/locations/${location}/publishers/google/models/${modelId}:generateContent`;
-
-            const payload = {
-                contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                generation_config: {
-                    temperature: 0.7,
-                    top_p: 0.8,
-                    max_output_tokens: 1024
+                if (response.ok) {
+                    const data = await response.json();
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) return text;
+                } else {
+                    this.logger.error(`Gemini API Error: ${response.status} ${response.statusText}`);
                 }
-            };
-
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                const errText = await response.text();
-                this.logger.error(`Vertex AI (Gen) Error: ${response.status} - ${errText}`);
-                return `Error generating answer: ${response.statusText}`;
             }
 
-            const data: any = await response.json();
-            const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-            if (answer) {
-                return answer;
-            }
-
-            return "No text answer generated.";
+            // Fallback to Vertex AI (Old Logic)
+            // ... (Removing complex Vertex auth for now to simplify fix, relying on API Key)
+            return "Could not generate answer (API Key issue).";
 
         } catch (e) {
             this.logger.error("Gemini Generation Error", e);
-            return `Error generating answer: ${e.message}`;
+            return `Error: ${e.message}`;
         }
     }
 
@@ -230,28 +205,38 @@ Answer:`;
 
         if (!isUUID) {
             this.logger.warn(`Received non-UUID mediaId: "${mediaId}". Attempting to resolve by s3_key or filename...`);
-            const { data: lookedUpMedia } = await this.supabaseService.getAdminClient()
+
+            // Try explicit safe lookups instead of fragile .or() string
+            let { data: lookedUpMedia } = await this.supabaseService.getAdminClient()
                 .from('media')
                 .select('id')
-                .or(`s3_key.eq.${mediaId},filename.eq.${mediaId}`)
-                .single();
+                .eq('s3_key', mediaId)
+                .limit(1);
 
-            if (lookedUpMedia) {
-                actualMediaId = lookedUpMedia.id;
-                this.logger.log(`Resolved "${mediaId}" to UUID: ${actualMediaId}`);
-            } else {
-                this.logger.error(`Could not resolve media ID for: "${mediaId}"`);
-                return false;
+            if (!lookedUpMedia || lookedUpMedia.length === 0) {
+                const { data: byFilename } = await this.supabaseService.getAdminClient()
+                    .from('media')
+                    .select('id')
+                    .eq('filename', mediaId)
+                    .limit(1);
+                lookedUpMedia = byFilename;
             }
+
+            if (lookedUpMedia && lookedUpMedia.length > 0) {
+                actualMediaId = lookedUpMedia[0].id;
+                this.logger.log(`Resolved "${mediaId}" to UUID: ${actualMediaId}`);
+            } // else fallthrough
         }
 
         try {
             // 2. Fetch Media Metadata
-            const { data: m, error } = await this.supabaseService.getAdminClient()
+            const { data: mRes, error } = await this.supabaseService.getAdminClient()
                 .from('media')
                 .select('*')
                 .eq('id', actualMediaId)
-                .single();
+                .limit(1);
+
+            const m = mRes?.[0];
 
             if (error || !m) {
                 this.logger.error(`Media not found: ${actualMediaId}`, error);
@@ -299,31 +284,25 @@ Answer:`;
                 if (parts.length > 0) textToEmbed = parts.join('\n');
             }
 
-            if (!textToEmbed || textToEmbed.trim() === '') {
-                this.logger.warn('No content to embed (no description or tags found)');
-                return false;
-            }
 
             // 5. Generate Embedding
-            const vectors = await this.getVertexEmbedding(textToEmbed);
-            if (!vectors) return false;
+            const embedding = await this.getVertexEmbedding(textToEmbed);
+            if (!embedding) return false;
 
-            // 6. Store in Supabase
             const { error: upsertError } = await this.supabaseService.getAdminClient()
                 .from('media_embeddings')
                 .upsert({
                     id: actualMediaId,
-                    embedding: vectors,
+                    embedding: embedding,
                     chunk_text: textToEmbed,
-                    updated_at: new Date().toISOString()
+                    updated_at: new Date()
                 });
 
             if (upsertError) {
-                this.logger.error('Supabase Upsert failed', upsertError);
+                this.logger.error('Error saving embedding:', upsertError);
                 return false;
             }
 
-            this.logger.log(`Stored embedding for media ${actualMediaId}`);
             return true;
 
         } catch (e) {
@@ -333,139 +312,140 @@ Answer:`;
     }
 
 
-    // Helper for Vertex AI Embedding
-    // Helper for Vertex AI Embedding
+    // Helper for Vertex AI Embedding (Multimodal - 1408 Dimensions) via SDK
     private async getVertexEmbedding(text: string): Promise<number[] | null> {
-        // Validated Fix: Using 'text-embedding-004' to match Supabase vector dimension (768).
-        // The standard ':predict' endpoint works (Status 200 verified).
-        // We use direct REST call with GoogleAuth to bypass SDK limitations for this specific model.
+        const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
+        const location = this.configService.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
 
-        const PROJECT_ID = this.configService.get<string>('GOOGLE_CLOUD_PROJECT');
-        const LOCATION = this.configService.get<string>('GOOGLE_CLOUD_LOCATION') || 'us-central1';
-        const MODEL = 'multimodalembedding@001';
-
-        const endpoint = `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/${LOCATION}/publishers/google/models/${MODEL}:predict`;
+        if (!projectId) {
+            this.logger.warn('GOOGLE_CLOUD_PROJECT not set, cannot generate embeddings');
+            return null;
+        }
 
         try {
-            // 1. Get Access Token assuming we are in a Google Cloud environment (or Key file mounted)
-            // Note: Dynamic import of GoogleAuth to avoid build issues if not top-level
-            const { GoogleAuth } = await import('google-auth-library');
-            const auth = new GoogleAuth({
-                scopes: ['https://www.googleapis.com/auth/cloud-platform']
+            // SDK Dynamic Import for ESM compatibility
+            const { VertexAI } = await (new Function('return import("@google-cloud/vertexai")')());
+            const vertexAI = new VertexAI({ project: projectId, location: location });
+            const generativeModel = vertexAI.preview.getGenerativeModel({
+                model: 'multimodalembedding',
             });
-            const client = await auth.getClient();
-            const tokenResponse = await client.getAccessToken();
-            const accessToken = tokenResponse.token;
 
-            if (!accessToken) {
-                this.logger.error('Failed to retrieve Access Token for Vertex AI');
-                return null;
-            }
-
-            // 2. Make Request for multimodalembedding@001
-            // Input: { instances: [{ text: "text" }] }
-            const payload = {
-                instances: [
-                    { text: text }
-                ]
+            const request = {
+                instances: [{ text: text }],
             };
 
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
+            const response = await generativeModel.predict(request);
+            const embeddings = response.predictions?.[0]?.embeddingsValues;
 
-            if (!response.ok) {
-                const errText = await response.text();
-                this.logger.error(`Vertex AI API Error: ${response.status} - ${errText}`);
-                return null;
-            }
-
-            const data: any = await response.json();
-
-            // 3. Parse Prediction Response
-            // text-embedding-004: { predictions: [ { embeddings: { values: [...] } } ] }
-            const pred = data.predictions?.[0];
-            const vector = pred?.embeddings?.values || pred?.textEmbedding || pred?.embedding || pred?.values;
-
-            if (Array.isArray(vector)) {
-                return vector;
-            }
-
-            // Log if unexpected structure
-            if (data.predictions?.[0]) {
-                this.logger.warn('Unexpected embedding structure:', JSON.stringify(data.predictions[0]));
+            if (embeddings) {
+                this.logger.log(`Successfully generated ${embeddings.length} dimensions embedding via SDK`);
+                return embeddings;
             }
 
             return null;
-
         } catch (e) {
-            this.logger.error('Vertex Embedding Exception', e);
+            this.logger.error('Vertex AI Embedding SDK failed', e);
             return null;
         }
     }
 
-
-
     async autoLabelMedia(mediaId: string): Promise<string[]> {
-        this.logger.log(`Auto-labelling media ${mediaId} via Vertex AI...`);
+        this.logger.log(`Auto-labelling media ${mediaId} via Gemini 1.5 Pro (Vertex AI)...`);
 
-        // Fetch media via Supabase
-        const response: any = await this.supabaseService.getAdminClient()
+        // 1. ID Resolution
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(mediaId);
+        let actualMediaId = mediaId;
+
+        if (!isUUID) {
+            const { data: lookedUpMedia } = await this.supabaseService.getAdminClient()
+                .from('media')
+                .select('id')
+                .or(`s3_key.eq.${mediaId},filename.eq.${mediaId}`)
+                .limit(1); // Safer than single()
+
+            if (lookedUpMedia && lookedUpMedia.length > 0) actualMediaId = lookedUpMedia[0].id;
+            else return [];
+        }
+
+        const { data: mediaRecordRes } = await this.supabaseService.getAdminClient()
             .from('media')
             .select('*')
-            .eq('id', mediaId)
-            .single();
+            .eq('id', actualMediaId)
+            .limit(1);
 
-        const mediaRecord = response.data;
+        const mediaRecord = mediaRecordRes?.[0];
 
         if (!mediaRecord) return [];
 
         try {
-            // Get File Buffer
             const fileKey = mediaRecord.s3_key || mediaRecord.filepath || mediaRecord.filename;
-            const buffer = await this.getFileBuffer(fileKey);
+            // Use bucket from DB record if available
+            const bucketName = mediaRecord.bucket_name;
+            const buffer = await this.getFileBuffer(fileKey, bucketName);
             if (!buffer) return [];
+
+            // Check size limit (approx 10MB-18MB safety for inline base64)
+            if (buffer.length > 20 * 1024 * 1024) {
+                this.logger.warn(`Media ${actualMediaId} is too large (${(buffer.length / 1024 / 1024).toFixed(2)}MB) for inline analysis. Skipping.`);
+                return [];
+            }
 
             const base64Data = buffer.toString('base64');
             const mimeType = mediaRecord.mime_type || "application/octet-stream";
 
-            // Vertex AI Generation
+            // Vertex AI SDK Usage with Service Account
+            if (!this.vertexAI) {
+                this.logger.error('Vertex AI not initialized');
+                return [];
+            }
+
+            // Switch to Gemini 1.5 Pro-002 (Highest Quality SOTA)
+            const model = this.vertexAI.getGenerativeModel({ model: 'gemini-1.5-pro-002' });
+
+            // Dynamic Prompt based on MimeType
+            let promptText = "Analyze this media. Return ONLY a JSON array of 10-15 descriptive string tags.";
+
+            if (mimeType.startsWith('image/')) {
+                promptText = "Analyze this image with high attention to detail. Return ONLY a JSON array of 10-15 highly accurate, specific, and descriptive string tags. Focus on visual elements, style, and context.";
+            } else if (mimeType.startsWith('video/')) {
+                promptText = "Analyze this video. Describe the actions, scene, markers, and overall mood. Return ONLY a JSON array of 10-15 descriptive string tags summarizing the video content.";
+            } else if (mimeType.startsWith('audio/')) {
+                promptText = "Listen to this audio. Identify valid sounds, speech topics, or musical genre. Return ONLY a JSON array of 10-15 descriptive string tags.";
+            } else if (mimeType === 'application/pdf') {
+                promptText = "Analyze this PDF document. Summarize its key topics, entities, and themes. Return ONLY a JSON array of 10-15 descriptive string tags representing the document content.";
+            }
+
             const request = {
                 contents: [{
                     role: 'user',
                     parts: [
-                        { text: "Analyze this file. Provide a JSON array of 5-10 descriptive tags: [\"tag1\", \"tag2\"]" },
-                        { inlineData: { mimeType: mimeType, data: base64Data } }
+                        { text: promptText },
+                        { inlineData: { mimeType, data: base64Data } }
                     ]
                 }]
             };
 
-            const result = await this.geminiModel.generateContent(request as any);
-            const text = result.response.candidates?.[0]?.content?.parts?.[0]?.text;
-
-            if (!text) return [];
+            const result = await model.generateContent(request);
+            const response = await result.response;
+            const text = response.candidates[0].content.parts[0].text;
 
             let tags: string[] = [];
-            const jsonMatch = text.match(/\[.*\]/s);
-            if (jsonMatch) {
-                tags = JSON.parse(jsonMatch[0]);
-            } else {
-                tags = text.split(',').map(t => t.trim()).slice(0, 10);
+            if (text) {
+                // Extract JSON array from text (markdown block handling)
+                const match = text.match(/\[.*\]/s);
+                if (match) {
+                    try { tags = JSON.parse(match[0]); } catch { }
+                } else {
+                    tags = text.split(',').map((t: string) => t.trim());
+                }
             }
 
             if (tags.length > 0) {
-                const existingMetadata = mediaRecord.metadata || {};
-                existingMetadata.tags = tags;
-
+                const newMeta = { ...(mediaRecord.metadata || {}), tags };
                 await this.supabaseService.getAdminClient()
                     .from('media')
-                    .update({ metadata: existingMetadata })
-                    .eq('id', mediaId);
+                    .update({ metadata: newMeta })
+                    .eq('id', actualMediaId);
             }
 
             return tags;
@@ -482,14 +462,35 @@ Answer:`;
     async describeMedia(mediaId: string): Promise<string | null> {
         this.logger.log(`Auto-describing media ${mediaId} via Gemini Vision...`);
 
+        // 1. ID Resolution
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(mediaId);
+        let actualMediaId = mediaId;
+
+        if (!isUUID) {
+            this.logger.warn(`Received non-UUID mediaId: "${mediaId}". Attempting to resolve by s3_key or filename...`);
+            const { data: lookedUpMedia } = await this.supabaseService.getAdminClient()
+                .from('media')
+                .select('id')
+                .or(`s3_key.eq.${mediaId},filename.eq.${mediaId}`)
+                .limit(1); // Safer
+
+            if (lookedUpMedia && lookedUpMedia.length > 0) {
+                actualMediaId = lookedUpMedia[0].id;
+                this.logger.log(`Resolved "${mediaId}" to UUID: ${actualMediaId}`);
+            } else {
+                this.logger.error(`Could not resolve media ID for: "${mediaId}"`);
+                return null;
+            }
+        }
+
         // Fetch media via Supabase based on mediaId
         const response: any = await this.supabaseService.getAdminClient()
             .from('media')
             .select('*')
-            .eq('id', mediaId)
-            .single();
+            .eq('id', actualMediaId)
+            .limit(1);
 
-        const mediaRecord = response.data;
+        const mediaRecord = response.data?.[0];
 
         if (!mediaRecord) {
             this.logger.warn(`Media ${mediaId} not found for description`);
@@ -504,7 +505,7 @@ Answer:`;
                 return null;
             }
 
-            const buffer = await this.getFileBuffer(fileKey);
+            const buffer = await this.getFileBuffer(fileKey, mediaRecord.bucket_name);
             if (!buffer) {
                 this.logger.warn(`Buffer retrieval failed for ${fileKey}`);
                 return null;
@@ -521,23 +522,15 @@ Answer:`;
             }
             mimeType = mimeType || "application/octet-stream";
 
-            // Vertex AI Generation via REST (v1beta1 for gemini-2.5-pro)
-            // Dynamic import for auth
-            const { GoogleAuth } = await (new Function('return import("google-auth-library")')());
-            const auth = new GoogleAuth({
-                scopes: ['https://www.googleapis.com/auth/cloud-platform']
-            });
-            const client = await auth.getClient();
-            const tokenResponse = await client.getAccessToken();
-            const accessToken = tokenResponse.token;
-
+            // Vertex AI Generation via SDK
+            const { VertexAI } = await (new Function('return import("@google-cloud/vertexai")')());
             const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
             const location = this.configService.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
-            const modelId = 'gemini-2.5-pro';
 
-            const url = `https://${location}-aiplatform.googleapis.com/v1beta1/projects/${projectId}/locations/${location}/publishers/google/models/${modelId}:generateContent`;
+            const vertexAI = new VertexAI({ project: projectId, location: location });
+            const model = vertexAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-            const payload = {
+            const request = {
                 contents: [{
                     role: 'user',
                     parts: [
@@ -545,30 +538,11 @@ Answer:`;
                         { inlineData: { mimeType: mimeType, data: base64Data } }
                     ]
                 }],
-                generation_config: {
-                    temperature: 0.4,
-                    top_p: 1,
-                    max_output_tokens: 500
-                }
             };
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                const errText = await response.text();
-                this.logger.error(`Vertex AI (Vision) Error: ${response.status} - ${errText}`);
-                return null;
-            }
-
-            const data: any = await response.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            const result = await model.generateContent(request);
+            const response = await result.response;
+            const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
 
             if (text) return text;
             return null;
@@ -580,8 +554,11 @@ Answer:`;
     }
 
     // Helper to get file buffer via MinIO Client
-    private async getFileBuffer(fileKey: string): Promise<Buffer | null> {
-        const bucket = this.configService.get('NEXT_PUBLIC_S3_BUCKET') || 'cms-media';
+    private async getFileBuffer(fileKey: string, bucketName?: string): Promise<Buffer | null> {
+        // Priority: DB bucket > Environment S3_BUCKET > 'cms-media' fallback
+        const defaultBucket = this.configService.get('S3_BUCKET') || this.configService.get('NEXT_PUBLIC_S3_BUCKET') || 'cms-media';
+        const bucket = bucketName || defaultBucket;
+
         this.logger.log(`Getting file buffer via MinIO for key: ${fileKey} in bucket: ${bucket}`);
 
         return new Promise((resolve) => {
