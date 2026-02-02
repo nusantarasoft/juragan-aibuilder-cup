@@ -406,9 +406,12 @@ export const mediaService = {
             return (data.listFolders || []).filter(f => {
                 const safeKey = normalize(f.key);
 
+                // Debug Log
+                // console.log(`[MediaService] Checking: ${f.key} (Safe: ${safeKey}) vs Prefix: ${safePrefix}`);
+
                 // 1. Block Self-reference
                 if (safeKey === safePrefix) {
-                    // console.debug(`Blocking self-ref: ${safeKey}`);
+                    console.log(`[MediaService] Blocking self-ref: ${f.key}`);
                     return false;
                 }
 
@@ -458,7 +461,9 @@ export const mediaService = {
         `;
 
         try {
+            console.log(`[MediaService] createFolder: path=${path} bucket=${bucket}`);
             const data = await graphqlRequest<{ createFolder: boolean }>(mutation, { path, bucket });
+            console.log(`[MediaService] createFolder result:`, data.createFolder);
             return data.createFolder;
         } catch (error) {
             console.error("Error creating folder:", error);
@@ -579,7 +584,9 @@ export const mediaService = {
         `;
 
         try {
+            console.log('[MediaService] listBuckets called');
             const data = await graphqlRequest<{ listBuckets: S3Bucket[] }>(query);
+            console.log(`[MediaService] listBuckets success: ${data.listBuckets?.length} buckets`);
             return data.listBuckets || [];
         } catch (error) {
             console.error("Error listing buckets:", error);
@@ -595,7 +602,9 @@ export const mediaService = {
         `;
 
         try {
+            console.log(`[MediaService] createBucket: ${name}`);
             const data = await graphqlRequest<{ createBucket: boolean }>(mutation, { name });
+            console.log(`[MediaService] createBucket result:`, data.createBucket);
             return data.createBucket;
         } catch (error) {
             console.error("Error creating bucket:", error);

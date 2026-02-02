@@ -1367,4 +1367,71 @@ export class MediaService implements OnModuleInit {
     // Helpers
 
 
+    async createBucket(name: string): Promise<boolean> {
+        // Validate name (basic S3 rules: lowercase, no spaces, 3-63 chars)
+        if (!/^[a-z0-9.-]{3,63}$/.test(name)) {
+            this.logger.error(`Invalid bucket name: ${name}`);
+            return false;
+        }
+
+        try {
+            const exists = await this.minioClient.bucketExists(name);
+            if (exists) {
+                this.logger.warn(`Bucket already exists: ${name}`);
+                return false;
+            }
+
+            // Create Bucket
+            await this.minioClient.makeBucket(name, 'us-east-1'); // Region is required but often ignored by MinIO
+            this.logger.log(`Bucket created: ${name}`);
+
+            // Set Public Policy (Read-Only)
+            const policy = {
+                Version: '2012-10-17',
+                Statement: [
+                    {
+                        Action: ['s3:GetObject'],
+                        Effect: 'Allow',
+                        Principal: '*',
+                        Resource: [`arn:aws:s3:::${name}/*`],
+                    },
+                ],
+            };
+            await this.minioClient.setBucketPolicy(name, JSON.stringify(policy));
+
+            // Enable Versioning
+            await this.minioClient.setBucketVersioning(name, { Status: 'Enabled' });
+
+            return true;
+        } catch (e) {
+            this.logger.error(`createBucket failed for ${name}`, e);
+            return false;
+        }
+    }
+
+    async createFolder(path: string, bucket?: string): Promise<boolean> {
+        const b = bucket || await this.getDefaultBucket();
+        // Ensure path ends with /
+        const folderKey = path.endsWith('/') ? path : `${path}/`;
+
+        try {
+            // Check if exists
+            try {
+                await this.minioClient.statObject(b, folderKey);
+                this.logger.warn(`Folder already exists: ${folderKey} in ${b}`);
+                return true; // Treat as success
+            } catch (err) {
+                // Not found, proceed to create
+            }
+
+            // Create 0-byte object
+            await this.minioClient.putObject(b, folderKey, Buffer.from(''));
+            this.logger.log(`Folder created: ${folderKey} in ${b}`);
+            return true;
+        } catch (e) {
+            this.logger.error(`createFolder failed for ${folderKey} in ${b}`, e);
+            return false;
+        }
+    }
+
 }

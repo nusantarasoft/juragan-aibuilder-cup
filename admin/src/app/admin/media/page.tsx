@@ -1173,16 +1173,16 @@ export default function MediaLibraryPage() {
                                         display: 'flex',
                                         flexDirection: 'column',
                                         minHeight: 'calc(100vh - 200px)',
-                                        background: 'rgba(255, 255, 255, 0.4)',
-                                        backdropFilter: 'blur(20px)',
-                                        WebkitBackdropFilter: 'blur(20px)',
-                                        boxShadow: '0 8px 32px rgba(31, 38, 135, 0.15)',
-                                        border: '1px solid rgba(255, 255, 255, 0.18)'
+                                        background: 'transparent',
+                                        backdropFilter: 'none',
+                                        WebkitBackdropFilter: 'none',
+                                        boxShadow: 'none',
+                                        border: 'none'
                                     }}
-                                    className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-purple-500/20"
+                                    className="dark:!bg-transparent dark:!border-none"
                                     styles={{
                                         header: {
-                                            background: 'rgba(255, 255, 255, 0.1)',
+                                            background: 'transparent',
                                             borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
                                         },
                                         body: {

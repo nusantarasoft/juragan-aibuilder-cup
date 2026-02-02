@@ -442,4 +442,26 @@ export class MediaResolver {
         await this.mediaService.regenerateMissingThumbnails();
         return true;
     }
+
+    // ---------------------------------------------------------
+    // Bucket & Folder Operations
+    // ---------------------------------------------------------
+
+    @Mutation(() => Boolean, { name: 'createBucket' })
+    async createBucket(@Args('name') name: string): Promise<boolean> {
+        return this.mediaService.createBucket(name);
+    }
+
+    @Mutation(() => Boolean, { name: 'deleteBucket' })
+    async deleteBucket(@Args('bucket') bucket: string): Promise<boolean> {
+        return this.mediaService.deleteBucket(bucket);
+    }
+
+    @Mutation(() => Boolean, { name: 'createFolder' })
+    async createFolder(
+        @Args('path') path: string,
+        @Args('bucket', { nullable: true }) bucket?: string
+    ): Promise<boolean> {
+        return this.mediaService.createFolder(path, bucket);
+    }
 }

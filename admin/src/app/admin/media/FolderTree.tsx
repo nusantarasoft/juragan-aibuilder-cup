@@ -1,5 +1,5 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Tree, Popconfirm, Button, message } from 'antd';
+import { Tree, Popconfirm, Button, message, ConfigProvider } from 'antd';
 import type { TreeProps } from 'antd';
 import {
     FolderOutlined,
@@ -46,6 +46,11 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
     isSystemBucketLocked = true
 }, ref) => {
     const [treeData, setTreeData] = useState<any[]>([]);
+
+    // Debug Effect
+    useEffect(() => {
+        console.log('[FolderTree] Refresh triggered:', refreshTrigger);
+    }, [refreshTrigger]);
     const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
     const [isMoving, setIsMoving] = useState(false);
     const [expandingDeep, setExpandingDeep] = useState(false);
@@ -92,23 +97,77 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
     // Initial Load & Auto Refresh
     useEffect(() => {
         const refresh = async () => {
-            // Always reload buckets to catch new/deleted buckets
-            await loadBuckets();
+            // 1. Reload buckets (Resets tree structure to roots only)
+            const buckets = await mediaService.listBuckets();
+            const nodes: any[] = buckets.map(b => ({
+                title: b.name,
+                key: `bucket::${b.name}`,
+                icon: <DatabaseOutlined />,
+                isLeaf: false,
+                className: 'root-bucket',
+                data: { type: 'bucket', name: b.name, path: '' }
+            }));
+            setTreeData(nodes);
 
-            // If we have an active context, restore it
-            if (currentBucket) {
-                // Reload root of bucket
-                await loadFoldersForBucket(currentBucket, '');
-                // If deep in a path, reload that path's parent to ensure new folders show up
-                if (currentPath) {
-                    // safely reload current path content
-                    await loadFoldersForBucket(currentBucket, currentPath);
+            // 3. Collect unique buckets AND folders to load
+
+            // Map of bucket -> Set of paths to load (always include '' for root)
+            const bucketsMap = new Map<string, Set<string>>();
+
+            // Helper to add path
+            const addPath = (bucket: string, path: string) => {
+                if (!bucketsMap.has(bucket)) {
+                    bucketsMap.set(bucket, new Set([''])); // Always load root
                 }
+                const paths = bucketsMap.get(bucket)!;
+                paths.add(path);
+            };
+
+            // a) Active Context
+            if (currentBucket) {
+                addPath(currentBucket, ''); // Root
+                // Ensure current bucket is expanded in UI logic
+                setExpandedKeys(prev => [...new Set([...prev, `bucket::${currentBucket}`])]);
+            }
+
+            // b) Expanded Keys (Buckets AND Folders)
+            expandedKeys.forEach(key => {
+                const k = String(key);
+                if (k.startsWith('bucket::')) {
+                    const bName = k.replace('bucket::', '');
+                    addPath(bName, '');
+                } else if (k.startsWith('folder::')) {
+                    // key format: folder::bucketName::path/
+                    const parts = k.split('::');
+                    if (parts.length >= 3) {
+                        const bName = parts[1];
+                        const path = parts.slice(2).join('::'); // Handle path containing :: if any, though unlikely unique key
+                        if (bName && path) {
+                            addPath(bName, path);
+                        }
+                    }
+                }
+            });
+
+            // 4. Sequential Load Order: Roots first, then Depth-first by path length
+            // We iterate buckets, then for each bucket, sort paths by length
+            for (const [bucket, paths] of bucketsMap.entries()) {
+                const sortedPaths = Array.from(paths).sort((a, b) => a.length - b.length);
+
+                for (const path of sortedPaths) {
+                    await loadFoldersForBucket(bucket, path);
+                }
+            }
+
+            // 4. If current path exists, reload deep path
+            if (currentBucket && currentPath) {
+                await loadFoldersForBucket(currentBucket, currentPath);
             }
         };
         refresh();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [refreshTrigger]);
+    }, [refreshTrigger]); // expandedKeys included via closure, intentional
+
 
     const loadBuckets = async () => {
         const buckets = await mediaService.listBuckets();
@@ -130,7 +189,9 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
     };
 
     const loadFoldersForBucket = async (bucketName: string, parentPath: string = '') => {
+
         const folders = await mediaService.listFolders(parentPath, bucketName);
+
         setTreeData((origin: any[]) => updateTreeData(origin, `bucket::${bucketName}`, parentPath, folders));
     };
 
@@ -140,6 +201,7 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
             // 1. Match Bucket Key
             if (nodeKey === bucketKey) {
                 if (parentPath === '') {
+
                     return {
                         ...node,
                         children: folders.map(f => ({
@@ -156,7 +218,9 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
                 }
             }
             // 2. Match Folder Key
-            if (node.data?.type === 'folder' && node.data.path === parentPath) {
+            const targetBucketName = bucketKey.replace('bucket::', '');
+            if (node.data?.type === 'folder' && node.data.path === parentPath && node.data.bucket === targetBucketName) {
+
                 return {
                     ...node,
                     children: folders.map(f => ({
@@ -301,6 +365,18 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
         const isBucket = node.data?.type === 'bucket';
         const isFolder = node.data?.type === 'folder';
 
+        // Calculate Selection State Logic
+        let isSelected = false;
+        if (isBucket) {
+            isSelected = (currentBucket === node.data.name) && (!currentPath);
+        } else if (isFolder) {
+            isSelected = (currentBucket === node.data.bucket) && (currentPath === node.data.path);
+        }
+
+        const iconColor = isSelected ? '#ffffff' : '#9ca3af'; // White vs Gray-400
+        const dragHandleColor = isSelected ? 'rgba(255, 255, 255, 0.7)' : '#9ca3af';
+        const actionBtnColor = isSelected ? 'rgba(255, 255, 255, 0.9)' : '#9ca3af';
+
         return (
             <div className="flex items-center w-full group/tree-node h-full pr-16" style={{ gap: 4, minHeight: 28 }}>
                 {/* Drag Handle */}
@@ -314,29 +390,36 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
                     </span>
                 ) : (
                     <span
-                        className="drag-handle cursor-grab text-gray-400 hover:text-gray-600 flex items-center justify-center"
+                        className="drag-handle cursor-grab flex items-center justify-center"
                         onClick={(e) => { e.stopPropagation(); }}
-                        style={{ width: 14, height: 24 }}
+                        style={{ width: 14, height: 24, color: dragHandleColor }}
                     >
                         <HolderOutlined style={{ fontSize: 13 }} />
                     </span>
                 )}
 
                 {/* Icon */}
-                <span className="custom-tree-icon flex items-center text-gray-400 shrink-0">
+                <span className="custom-tree-icon flex items-center shrink-0" style={{ color: iconColor }}>
                     {isBucket && <DatabaseOutlined style={{ fontSize: 16 }} />}
                     {isFolder && <FolderOutlined style={{ fontSize: 16 }} />}
                 </span>
 
                 {/* Title - truncated with tooltip for full name */}
                 <AnimatedTooltip content={node.title} position="top" usePortal={true}>
-                    <span className="truncate text-left select-none text-gray-700 dark:text-gray-300 font-medium text-xs">
+                    <span
+                        className="truncate text-left select-none font-medium text-xs text-xs text-gray-700 dark:text-gray-300"
+                        style={{ color: isSelected ? '#ffffff' : undefined }}
+                    >
                         {node.title.length > 6 ? node.title.substring(0, 6) + '...' : node.title}
                     </span>
                 </AnimatedTooltip>
 
                 {/* Actions - Absolutely positioned far right (Anchors to .ant-tree-treenode) */}
-                <div className="absolute top-0 bottom-0 flex flex-row-reverse items-center gap-1 bg-transparent" style={{ right: '8px', zIndex: 100 }}>
+                <div
+                    className="absolute top-0 bottom-0 flex flex-row-reverse items-center gap-1 bg-transparent"
+                    style={{ right: '8px', zIndex: 100 }}
+                    onClick={(e) => e.stopPropagation()} // Stop propagation HERE, allowing child clicks to bubble to Popconfirm first
+                >
                     {isBucket && (
                         (node.data.name !== 'ns-system' || !isSystemBucketLocked) ? (
                             <Popconfirm
@@ -356,8 +439,8 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
                                             type="text"
                                             size="small"
                                             icon={<DeleteOutlined />}
-                                            className="!text-gray-400 hover:!text-red-500 !w-5 !h-5 !min-w-0 flex items-center justify-center !p-0"
-                                            onClick={(e) => e.stopPropagation()}
+                                            className="!w-5 !h-5 !min-w-0 flex items-center justify-center !p-0"
+                                            style={{ color: actionBtnColor }}
                                         />
                                     </AnimatedTooltip>
                                 </div>
@@ -369,8 +452,8 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
                                     size="small"
                                     icon={<DeleteOutlined />}
                                     disabled={true}
-                                    className="!text-gray-300 !w-5 !h-5 !min-w-0 flex items-center justify-center !p-0 cursor-not-allowed"
-                                    onClick={(e) => e.stopPropagation()}
+                                    className="!w-5 !h-5 !min-w-0 flex items-center justify-center !p-0 cursor-not-allowed"
+                                    style={{ color: '#d1d5db' }} // gray-300
                                 />
                             </AnimatedTooltip>
                         )
@@ -382,6 +465,7 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
                                 description="Are you sure?"
                                 onConfirm={(e) => {
                                     e?.stopPropagation();
+
                                     onDeleteFolder?.(node.data.path, node.data.bucket);
                                 }}
                                 onCancel={(e) => e?.stopPropagation()}
@@ -392,8 +476,8 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
                                             type="text"
                                             size="small"
                                             icon={<DeleteOutlined />}
-                                            className="!text-gray-400 hover:!text-red-500 !w-5 !h-5 !min-w-0 flex items-center justify-center !p-0"
-                                            onClick={(e) => e.stopPropagation()}
+                                            className="!w-5 !h-5 !min-w-0 flex items-center justify-center !p-0"
+                                            style={{ color: actionBtnColor }}
                                         />
                                     </AnimatedTooltip>
                                 </div>
@@ -405,8 +489,8 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
                                     size="small"
                                     icon={<DeleteOutlined />}
                                     disabled={true}
-                                    className="!text-gray-300 !w-5 !h-5 !min-w-0 flex items-center justify-center !p-0 cursor-not-allowed"
-                                    onClick={(e) => e.stopPropagation()}
+                                    className="!w-5 !h-5 !min-w-0 flex items-center justify-center !p-0 cursor-not-allowed"
+                                    style={{ color: '#d1d5db' }}
                                 />
                             </AnimatedTooltip>
                         )
@@ -417,21 +501,46 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
                                 type="text"
                                 size="small"
                                 icon={<SettingOutlined />}
-                                className="!text-gray-400 hover:!text-violet-500 !w-5 !h-5 !min-w-0 flex items-center justify-center !p-0"
+                                className="!w-5 !h-5 !min-w-0 flex items-center justify-center !p-0"
+                                style={{ color: actionBtnColor }}
                                 onClick={(e) => {
-                                    e.stopPropagation();
+                                    // Settings still needs explicit handling or rely on container?
+                                    // Verify if Popconfirm is involved. No.
+                                    // So we can leave onClick here calling prop, but we don't need stopPropagation if container has it.
+                                    // BUT, button onClick fires BEFORE container onClick.
+                                    // So we can just call the handler.
                                     onBucketSettings?.(node.data.name);
                                 }}
                             />
                         </AnimatedTooltip>
                     )}
                 </div>
+                {/* Debug Badge */}
+                <div className="absolute top-0 right-0 text-[8px] opacity-30 pointer-events-none" style={{ color: isSelected ? 'rgba(255,255,255,0.3)' : 'transparent' }}>v3.0</div>
             </div>
         );
     };
 
+    // Construct Selected Keys from Props
+    const getSelectedKeys = () => {
+        if (!currentBucket) return [];
+        if (!currentPath) return [`bucket::${currentBucket}`];
+        return [`folder::${currentBucket}::${currentPath}`];
+    };
+
     return (
-        <>
+        <ConfigProvider
+            theme={{
+                components: {
+                    Tree: {
+                        controlItemBgActive: 'rgba(139, 92, 246, 0.12)', // Violet-500 @ 12%
+                        controlItemBgHover: 'rgba(139, 92, 246, 0.04)',
+                        colorText: '#374151', // Gray-700
+                        colorPrimary: '#7c3aed', // Violet-600
+                    }
+                }
+            }}
+        >
             <style jsx global>{`
                 /* Tree Layout Fixes */
                 .ant-tree .ant-tree-treenode {
@@ -439,7 +548,7 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
                     display: flex !important;
                     align-items: center; 
                     padding-bottom: 2px;
-                    position: relative; /* Context for absolute children */
+                    position: relative;
                 }
                 .ant-tree-list-holder-inner {
                     align-items: stretch !important;
@@ -457,49 +566,104 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
                     background: transparent; 
                     position: relative;
                     z-index: 10;
-                    margin-right: 7px; /* 7px gap between expand button and drag grid as requested */
+                    margin-right: 3px;
+                    margin-left: 8px;
                 }
                 .ant-tree-node-content-wrapper {
                     flex: 1 1 auto !important;
                     display: flex !important; 
                     align-items: center;
-                    overflow: visible !important; /* For tooltips */
+                    overflow: visible !important;
                     width: 100% !important;
                     min-width: 0 !important;
-                    position: static !important; /* Allow absolute children to anchor to treenode row */
-                    padding-right: 64px !important; /* Rigid space for far-right actions */
+                    position: static !important;
+                    padding-right: 64px !important;
                     background: transparent !important;
                 }
-                .ant-tree-node-content-wrapper:hover {
-                    background: rgba(139, 92, 246, 0.04) !important;
+
+                /* Active State Styling via ConfigProvider + CSS Polish - FIXED VISIBILITY */
+                
+                /* Force Solid Violet Background on Selection */
+                .ant-tree .ant-tree-treenode-selected .ant-tree-node-content-wrapper {
+                    background-color: #7c3aed !important; /* Violet-600 */
+                    border-radius: 6px !important;
+                }
+
+                /* Force Text Color on Selection - WHITE for Contrast */
+                .ant-tree .ant-tree-treenode-selected .ant-tree-title span, 
+                .ant-tree .ant-tree-treenode-selected .ant-tree-title {
+                    color: #ffffff !important;
+                    font-weight: 600 !important;
+                }
+
+                /* Force Icon Color on Selection - WHITE - AND FORCE VISIBILITY */
+                .ant-tree .ant-tree-treenode-selected .custom-tree-icon {
+                    color: #ffffff !important;
+                    display: flex !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    z-index: 20;
+                }
+                
+                /* Force Action Buttons Color on Selection - WHITE/Transparent */
+                .ant-tree .ant-tree-treenode-selected button {
+                     color: rgba(255, 255, 255, 0.9) !important;
+                }
+                .ant-tree .ant-tree-treenode-selected button:hover {
+                     color: #ffffff !important;
+                     background-color: rgba(255, 255, 255, 0.2) !important;
+                }
+
+                /* Force Switcher (Expand/Collapse) Color on Selection */
+                .ant-tree .ant-tree-treenode-selected .ant-tree-switcher span,
+                .ant-tree .ant-tree-treenode-selected .ant-tree-switcher svg {
+                    color: rgba(255, 255, 255, 0.9) !important;
+                    fill: rgba(255, 255, 255, 0.9) !important;
+                }
+                
+                /* Force Drag Handle (HolderOutlined) Color on Selection - AND FORCE VISIBILITY */
+                .ant-tree .ant-tree-treenode-selected .drag-handle, 
+                .ant-tree .ant-tree-treenode-selected .drag-handle span,
+                .ant-tree .ant-tree-treenode-selected .drag-handle svg {
+                     color: rgba(255, 255, 255, 0.7) !important;
+                     display: flex !important;
+                     visibility: visible !important;
+                     opacity: 1 !important;
+                     z-index: 20;
+                }
+                
+                .ant-tree .ant-tree-treenode-selected .drag-handle:hover,
+                .ant-tree .ant-tree-treenode-selected .drag-handle:hover span,
+                .ant-tree .ant-tree-treenode-selected .drag-handle:hover svg {
+                     color: #ffffff !important;
+                }
+
+                /* Hover State (Non-selected) */
+                .ant-tree .ant-tree-node-content-wrapper:hover {
+                    background: rgba(139, 92, 246, 0.05) !important;
+                }
+
+                /* Remove default AntD directory highlights */
+                .ant-tree.ant-tree-directory .ant-tree-treenode::before {
+                    display: none !important;
                 }
                 .ant-tree .ant-tree-draggable-icon {
                      display: none !important;
                 }
                 
-                /* =========================================================================
-                   HIDE ALL TREE LINES (User Preference - Reset)
-                   ========================================================================= */
-                
-                /* Hide vertical connector lines */
+                /* Hide lines */
                 .ant-tree-indent-unit::before,
-                .ant-tree-indent-unit-end::before {
-                    display: none !important;
-                }
-                
-                /* Hide horizontal connector lines from switcher */
+                .ant-tree-indent-unit-end::before,
                 .ant-tree-switcher::before {
                     display: none !important;
                 }
                 
-                /* =========================================================================
-                   DROP INDICATOR (High Visibility)
-                   ========================================================================= */
+                /* Drop Indicator */
                 .ant-tree-drop-indicator {
                     height: 2px !important;
-                    background-color: #8b5cf6 !important; /* Violet-500 */
+                    background-color: #8b5cf6 !important;
                     box-shadow: 0 0 8px rgba(139, 92, 246, 0.6);
-                    z-index: 9999 !important; /* Always on top */
+                    z-index: 9999 !important;
                     pointer-events: none;
                     border-radius: 1px;
                 }
@@ -507,11 +671,13 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
             <DirectoryTree
                 showLine={false}
                 showIcon={false}
+                selectedKeys={getSelectedKeys()}
                 switcherIcon={(props: any) => {
+                    const iconStyle = { fontSize: 10, color: props.selected ? 'white' : '#6b7280' };
                     if (props.isLeaf) return null;
                     return props.expanded ?
-                        <MinusSquareOutlined style={{ fontSize: 10, color: '#6b7280' }} /> :
-                        <PlusSquareOutlined style={{ fontSize: 10, color: '#6b7280' }} />;
+                        <MinusSquareOutlined style={iconStyle} /> :
+                        <PlusSquareOutlined style={iconStyle} />;
                 }}
                 disabled={isMoving}
                 blockNode
@@ -532,7 +698,7 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
                 titleRender={titleRender}
                 expandAction="click"
             />
-        </>
+        </ConfigProvider>
     );
 });
 
