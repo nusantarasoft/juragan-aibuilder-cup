@@ -21,6 +21,10 @@ import {
     GatewayOutlined,
     SafetyCertificateOutlined,
     WifiOutlined,
+    DatabaseOutlined,
+    TableOutlined,
+    CodeOutlined, // Added
+    RobotOutlined,
 } from "@ant-design/icons";
 
 // CMS Menu Configuration
@@ -83,6 +87,32 @@ const menuConfig = {
                 path: "/admin/media",
                 name: "Media Library",
                 icon: <PictureOutlined />,
+                isLeaf: true,
+                isTopLevel: true,
+            },
+            {
+                path: "/admin/bigdata",
+                name: "Big Data",
+                icon: <DatabaseOutlined />,
+                routes: [
+                    {
+                        path: "/admin/datasets",
+                        name: "Datasets",
+                        icon: <TableOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/sql-runner",
+                        name: "SQL Runner",
+                        icon: <CodeOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/ai-studio",
+                name: "AI Studio",
+                icon: <RobotOutlined />,
                 isLeaf: true,
                 isTopLevel: true,
             },

@@ -187,6 +187,21 @@ class DeleteMediaResponse {
     s3Key?: string;
 }
 
+
+@ObjectType()
+export class ObjectVersion {
+    @Field()
+    key: string;
+    @Field()
+    versionId: string;
+    @Field()
+    lastModified: string;
+    @Field(() => Int)
+    size: number;
+    @Field()
+    isLatest: boolean;
+}
+
 @Resolver(() => MediaType)
 export class MediaResolver {
     constructor(
@@ -195,6 +210,46 @@ export class MediaResolver {
     ) {
         console.log("MediaResolver Initialized - SCHEMA CHECK 123");
     }
+
+    // ... (existing code) ...
+
+    @Mutation(() => Boolean, { name: 'removeMediaEmbeddings' })
+    async removeMediaEmbeddings(@Args('id') id: string): Promise<boolean> {
+        return this.mediaService.removeEmbedding(id);
+    }
+
+    // ---------------------------------------------------------
+    // VERSIONING
+    // ---------------------------------------------------------
+
+    // ... existing versioning methods ...
+
+    @Query(() => [ObjectVersion], { name: 'listObjectVersions', nullable: true })
+    async listObjectVersions(
+        @Args('key') key: string,
+        @Args('bucket', { nullable: true }) bucket?: string
+    ): Promise<ObjectVersion[]> {
+        return this.mediaService.listObjectVersions(key, bucket);
+    }
+
+    @Mutation(() => Boolean, { name: 'setDefaultVersion' })
+    async setDefaultVersion(
+        @Args('key') key: string,
+        @Args('versionId') versionId: string,
+        @Args('bucket', { nullable: true }) bucket?: string
+    ): Promise<boolean> {
+        return this.mediaService.restoreVersion(key, versionId, bucket);
+    }
+
+    @Query(() => String, { name: 'getVersionPresignedUrl', nullable: true })
+    async getVersionPresignedUrl(
+        @Args('key') key: string,
+        @Args('versionId') versionId: string,
+        @Args('bucket', { nullable: true }) bucket?: string
+    ): Promise<string> {
+        return this.mediaService.getVersionPresignedUrl(key, versionId, bucket);
+    }
+
 
     // ---------------------------------------------------------
     // DB CRUD
@@ -207,29 +262,35 @@ export class MediaResolver {
         @Args('mimeType', { nullable: true }) mimeType?: string,
         @Args('bucket', { nullable: true }) bucket?: string,
         @Args('folder', { nullable: true }) folder?: string,
-    ): Promise<MediaFile[]> {
-        return this.mediaService.findAll({ limit, offset, mimeType, bucket, folder });
+    ): Promise<MediaType[]> {
+        const results = await this.mediaService.findAll({ limit, offset, mimeType, bucket, folder });
+        // The service returns MediaFile[], but the resolver expects MediaType[]
+        // MediaType is a class with _debug_version_, MediaFile is an interface.
+        // We cast here to satisfy the compiler, assuming runtime shape is compatible.
+        return results as unknown as MediaType[];
     }
 
     @Mutation(() => MediaType, { nullable: true })
-    async uploadFile(
+    async uploadMedia(
         @Args({ name: 'file', type: () => GraphQLUpload }) file: FileUpload,
-        @Args('folder', { type: () => String, nullable: true }) folder?: string,
-        @Args('bucket', { type: () => String, nullable: true }) bucket?: string,
-        @Args('altText', { type: () => String, nullable: true }) altText?: string,
-        @Args('autoLabel', { type: () => Boolean, nullable: true }) autoLabel?: boolean,
-        @Args('generateEmbedding', { type: () => Boolean, nullable: true }) generateEmbedding?: boolean,
-    ): Promise<MediaFile | null> {
-        return this.mediaService.uploadMedia(file, { folder, bucket, altText, autoLabel, generateEmbedding });
+        @Args('folder', { nullable: true }) folder?: string,
+        @Args('bucket', { nullable: true }) bucket?: string,
+        @Args('altText', { nullable: true }) altText?: string,
+        @Args('autoLabel', { nullable: true }) autoLabel?: boolean,
+        @Args('generateEmbedding', { nullable: true }) generateEmbedding?: boolean,
+        @Args('onConflict', { nullable: true, type: () => String, description: 'Strategy for name collisions: RENAME | OVERWRITE | ERROR' }) onConflict?: 'RENAME' | 'OVERWRITE' | 'ERROR',
+    ): Promise<MediaType | null> {
+        const result = await this.mediaService.uploadMedia(file, { folder, bucket, altText, autoLabel, generateEmbedding, onConflict });
+        return result as unknown as MediaType;
     }
 
     @Query(() => Boolean)
     async checkDuplicateMedia(
         @Args('filename') filename: string,
-        @Args('folder') folder: string
+        @Args('folder') folder: string,
     ): Promise<boolean> {
-        const result = await this.mediaService.checkDuplicateMedia(filename, folder);
-        return result.exists;
+        const { exists } = await this.mediaService.checkDuplicateMedia(filename, folder);
+        return exists;
     }
 
     @Query(() => MediaType, { name: 'mediaById', nullable: true })
@@ -243,7 +304,7 @@ export class MediaResolver {
     }
 
     @Mutation(() => MediaType, { nullable: true })
-    async uploadMedia(
+    async createMedia(
         @Args('uploadMediaInput') input: UploadMediaInput,
     ): Promise<MediaFile | null> {
         return this.mediaService.create(input);

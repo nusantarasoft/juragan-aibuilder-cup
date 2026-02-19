@@ -318,7 +318,7 @@ export class MediaService implements OnModuleInit {
         let query = this.supabase
             .getAdminClient()
             .from('media')
-            .select('*')
+            .select('*, media_embeddings(embedding)')
             .order('created_at', { ascending: false });
 
         if (options?.limit) {
@@ -457,11 +457,11 @@ export class MediaService implements OnModuleInit {
     }
 
     async delete(id: string): Promise<{ success: boolean; s3Key?: string }> {
-        // First get the s3_key and bucket for cleanup
+        // First get the s3_key, bucket, and thumbnail_path for cleanup
         const { data: media } = await this.supabase
             .getAdminClient()
             .from('media')
-            .select('s3_key, bucket_name')
+            .select('s3_key, bucket_name, thumbnail_path')
             .eq('id', id)
             .single();
 
@@ -484,7 +484,15 @@ export class MediaService implements OnModuleInit {
                 await this.minioClient.removeObject(bucket, media.s3_key);
 
                 // Cleanup Generated Artifacts in ns-system
-                // 1. Thumbnail
+
+                // 1. Thumbnail (Robust cleanup via DB record)
+                if (media.thumbnail_path) {
+                    await this.minioClient.removeObject(this.SYSTEM_BUCKET_NAME, media.thumbnail_path).catch((e) => {
+                        this.logger.warn(`Failed to delete thumbnail ${media.thumbnail_path}`, e);
+                    });
+                }
+
+                // Fallback: Try legacy/fallback paths just in case (e.g. PDF specific ID-based)
                 const diffKey = `_thumbnails/${id}.png`;
                 await this.minioClient.removeObject(this.SYSTEM_BUCKET_NAME, diffKey).catch(() => { });
 
@@ -510,8 +518,8 @@ export class MediaService implements OnModuleInit {
         return { success: true, s3Key: media?.s3_key };
     }
 
-    // Upload media file via GraphQL (file goes to middleware â†’ MinIO)
-    // Updated to handle AI flags
+    // Upload media file via GraphQL (file goes to middleware -> MinIO)
+    // Updated to handle Smart Duplicate Handling (Checksum & Auto-Rename)
     async uploadMedia(
         file: any, // GraphQL Upload scalar
         options?: {
@@ -520,45 +528,122 @@ export class MediaService implements OnModuleInit {
             altText?: string;
             autoLabel?: boolean;
             generateEmbedding?: boolean;
+            onConflict?: 'RENAME' | 'OVERWRITE' | 'ERROR';
         }
     ): Promise<MediaFile | null> {
         const { createReadStream, filename, mimetype } = await file;
-        const stream = createReadStream();
+        const bucket = options?.bucket || 'cms-media';
         const folder = options?.folder || '';
         const prefix = folder ? (folder.endsWith('/') ? folder : `${folder}/`) : '';
-        const s3Key = `${prefix}${filename}`;
-        const bucket = options?.bucket || 'cms-media';
 
-        // 1. Setup Integrity Check (SHA-256)
+        // 1. Buffer to Temp File to calculate Checksum
+        const tempDir = os.tmpdir();
+        const tempPath = path.join(tempDir, `upload-${Date.now()}-${filename}`);
+        const writeStream = fs.createWriteStream(tempPath);
         const hash = crypto.createHash('sha256');
-        const pass = new PassThrough();
-
-        // Fork stream: one for hash, one for MinIO
-        // Note: Piping to PassThrough for MinIO ensures MinIO consumes a valid stream
-        stream.on('data', (chunk) => hash.update(chunk));
-        stream.pipe(pass);
+        const stream = createReadStream();
 
         try {
-            // 2. Upload to MinIO
-            await this.minioClient.putObject(bucket, s3Key, pass, null, {
+            await new Promise<void>((resolve, reject) => {
+                stream.on('error', reject);
+                writeStream.on('error', reject);
+
+                stream.pipe(hash);
+                stream.pipe(writeStream);
+
+                writeStream.on('finish', () => resolve());
+            });
+
+            const checksum = hash.digest('hex');
+            this.logger.log(`File buffered: ${filename}, SHA256: ${checksum}`);
+
+            // 2. CHECK: Duplicate Content (Same Checksum in SAME FOLDER)
+            // Query DB for checksum + bucket (get all matches to check folder)
+            const { data: duplicateCandidates } = await this.supabase
+                .getAdminClient()
+                .from('media')
+                .select('id, filename, s3_key')
+                .eq('bucket_name', bucket)
+                .eq('checksum', checksum);
+
+            if (duplicateCandidates && duplicateCandidates.length > 0) {
+                // strict check: collision only if in the exact same folder
+                const collision = duplicateCandidates.find(candidate => {
+                    // Extract folder from s3_key
+                    const lastSlashIndex = candidate.s3_key.lastIndexOf('/');
+                    const candidateFolder = lastSlashIndex !== -1 ? candidate.s3_key.substring(0, lastSlashIndex) : '';
+
+                    // Compare with target folder (normalized: no trailing slash)
+                    const targetFolderRaw = folder.endsWith('/') ? folder.slice(0, -1) : folder;
+
+                    return candidateFolder === targetFolderRaw;
+                });
+
+                if (collision) {
+                    this.logger.warn(`Duplicate content detected in same folder: ${filename} matches ${collision.filename}`);
+                    throw new Error(`Duplicate file detected: Identical content already exists in this folder as '${collision.filename}'`);
+                }
+            }
+
+            // 3. CHECK: Duplicate Name (Same Name in Same Folder)
+            // Strategy: RENAME | OVERWRITE | ERROR (default)
+            let finalFilename = filename;
+            let finalS3Key = `${prefix}${finalFilename}`;
+            let counter = 1;
+            const conflictStrategy = options?.onConflict || 'ERROR';
+
+            if (conflictStrategy === 'OVERWRITE') {
+                // Skip name check, allow overwrite (S3 versioning handles history)
+                this.logger.log(`Overwrite allowed for ${filename} (onConflict: OVERWRITE)`);
+            } else {
+                // Check if name exists
+                while (true) {
+                    const { data: existingName } = await this.supabase
+                        .getAdminClient()
+                        .from('media')
+                        .select('id')
+                        .eq('s3_key', finalS3Key)
+                        .eq('bucket_name', bucket)
+                        .maybeSingle();
+
+                    if (!existingName) break; // Name is free
+
+                    // Collision Detected
+                    if (conflictStrategy === 'RENAME') {
+                        // Conflict -> Auto-Rename
+                        const ext = path.extname(filename);
+                        const name = path.basename(filename, ext);
+                        finalFilename = `${name}-${counter}${ext}`;
+                        finalS3Key = `${prefix}${finalFilename}`;
+                        counter++;
+                    } else {
+                        // Conflict -> Error (Default)
+                        throw new Error(`ConflictError: File '${finalFilename}' already exists under '${folder}'.`);
+                    }
+                }
+            }
+
+            if (finalFilename !== filename) {
+                this.logger.log(`Auto-renamed '${filename}' to '${finalFilename}'`);
+            }
+
+            // 4. Upload to MinIO
+            // Use fPutObject since we have the file on disk
+            await this.minioClient.fPutObject(bucket, finalS3Key, tempPath, {
                 'Content-Type': mimetype,
             });
 
-            // 3. Finalize Hash
-            const checksum = hash.digest('hex');
-            this.logger.log(`File uploaded: ${s3Key}, SHA256: ${checksum}`);
+            // 5. Get file stats
+            const stats = fs.statSync(tempPath);
 
-            // 4. Get file stats
-            const stats = await this.minioClient.statObject(bucket, s3Key);
-
-            // 5. Create DB Entry
+            // 6. Create DB Entry
             const { data, error } = await this.supabase
                 .getAdminClient()
                 .from('media')
                 .insert({
-                    filename: filename,
-                    url: `${await this.getS3Endpoint()}/${bucket}/${s3Key}`,
-                    s3_key: s3Key,
+                    filename: finalFilename, // Use final/renamed filename
+                    url: `${await this.getS3Endpoint()}/${bucket}/${finalS3Key}`,
+                    s3_key: finalS3Key,
                     mime_type: mimetype,
                     size_bytes: stats.size,
                     alt_text: options?.altText || filename,
@@ -570,12 +655,13 @@ export class MediaService implements OnModuleInit {
 
             if (error) {
                 this.logger.error('Error creating media DB entry:', error);
+                // Try to cleanup S3 if DB failed? For now keep it simple.
                 return null;
             }
 
             const mediaFile = await this.mapMediaFile(data);
 
-            // 6. Trigger Background Tasks (AI & Thumbnails)
+            // 7. Trigger Background Tasks (AI & Thumbnails)
             this.processBackgroundTasks(mediaFile, options);
 
             if (options?.generateEmbedding) {
@@ -588,6 +674,11 @@ export class MediaService implements OnModuleInit {
         } catch (e) {
             this.logger.error('Upload failed', e);
             throw e;
+        } finally {
+            // Cleanup Temp File
+            if (fs.existsSync(tempPath)) {
+                fs.unlinkSync(tempPath);
+            }
         }
     }
 
@@ -626,6 +717,12 @@ export class MediaService implements OnModuleInit {
 
 
     private async mapMediaFile(row: any): Promise<MediaFile> {
+        // DEBUG: Trace embedding mapping
+        if (row.media_embeddings) {
+            const eVal = Array.isArray(row.media_embeddings) ? row.media_embeddings[0] : row.media_embeddings;
+            this.logger.log(`[Mapper] Media ${row.id} has embeddings: ${!!eVal} (Type: ${typeof eVal?.embedding})`);
+        }
+
         let thumbnailUrl = '';
         if (row.thumbnail_path) {
             // Thumbnails are now stored in the SYSTEM bucket
@@ -673,6 +770,14 @@ export class MediaService implements OnModuleInit {
             thumbnailPath: row.thumbnail_path,
             thumbnailUrl: thumbnailUrl,
             previewPages: previewPages,
+            embedding: (row.media_embeddings) ?
+                (() => {
+                    const e = Array.isArray(row.media_embeddings) ?
+                        (row.media_embeddings[0]?.embedding) : row.media_embeddings?.embedding;
+                    if (!e) return undefined;
+                    return typeof e === 'string' ? e : JSON.stringify(e);
+                })()
+                : undefined,
         } as any;
     }
 
@@ -874,6 +979,34 @@ export class MediaService implements OnModuleInit {
         // If empty, RagService refactor handles fetching title/desc/OCR? 
         // Checking RagService... refactored version fetches data if content is empty.
         await this.ragService.generateMediaEmbeddings(id, '');
+    }
+
+    async removeEmbedding(id: string): Promise<boolean> {
+        this.logger.log(`Removing embedding for media ID: ${id}`);
+        try {
+            // Delete from media_embeddings table
+            const { error, count } = await this.supabase.getAdminClient()
+                .from('media_embeddings')
+                .delete()
+                .eq('id', id);
+
+            if (error) {
+                this.logger.error(`Failed to delete from media_embeddings for ${id}:`, error.message);
+                return false;
+            }
+            this.logger.log(`Successfully deleted record in media_embeddings for media ID: ${id}. Rows affected: ${count}`);
+
+            // Also null out the embedding column in media table just in case (though findOne joins media_embeddings)
+            await this.supabase.getAdminClient()
+                .from('media')
+                .update({ embedding: null })
+                .eq('id', id);
+
+            return true;
+        } catch (err) {
+            this.logger.error(`Exception removing embedding for ${id}:`, err);
+            return false;
+        }
     }
 
     // ---------------------------------------------------------
@@ -1434,4 +1567,63 @@ export class MediaService implements OnModuleInit {
         }
     }
 
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // OBJECT VERSIONING OPERATIONS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    async listObjectVersions(key: string, bucket?: string): Promise<Array<{ key: string; versionId: string; lastModified: string; size: number; isLatest: boolean }>> {
+        try {
+            const b = bucket || await this.getDefaultBucket();
+
+            // MinIO listObjects with IncludeVersion: true
+            const versionStream = this.minioClient.listObjects(b, key, true, { IncludeVersion: true });
+            const versions: any[] = [];
+
+            for await (const version of versionStream) {
+                if (version.name === key) {
+                    versions.push({
+                        key: version.name,
+                        versionId: (version as any).versionId,
+                        lastModified: version.lastModified.toISOString(),
+                        size: version.size,
+                        isLatest: (version as any).isLatest === 'true' || (version as any).isLatest === true
+                    });
+                }
+            }
+
+            return versions.sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime());
+        } catch (e) {
+            this.logger.error(`listObjectVersions failed for ${key}`, e);
+            return [];
+        }
+    }
+
+    async restoreVersion(key: string, versionId: string, bucket?: string): Promise<boolean> {
+        try {
+            const b = bucket || await this.getDefaultBucket();
+
+            // Restore by copying the specific version to the latest
+            // MinIO/S3 source format with versionId
+            const copySource = `/${b}/${key}?versionId=${versionId}`;
+            await this.minioClient.copyObject(b, key, copySource, new Minio.CopyConditions());
+
+            this.logger.log(`Restored version ${versionId} for ${key} in ${b}`);
+            return true;
+        } catch (e) {
+            this.logger.error(`restoreVersion failed for ${key} version ${versionId}`, e);
+            return false;
+        }
+    }
+
+    async getVersionPresignedUrl(key: string, versionId: string, bucket?: string, expiresIn = 3600): Promise<string> {
+        try {
+            const b = bucket || await this.getDefaultBucket();
+            // Pass versionId in request parameters
+            return await this.minioClient.presignedGetObject(b, key, expiresIn, { versionId: versionId });
+        } catch (e) {
+            this.logger.error(`getVersionPresignedUrl failed`, e);
+            throw e;
+        }
+    }
 }

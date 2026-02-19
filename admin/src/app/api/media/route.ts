@@ -81,8 +81,8 @@ export async function POST(request: NextRequest) {
         console.log("Saving metadata to database via GraphQL:", GRAPHQL_URL);
 
         const mutation = `
-            mutation UploadMedia($input: UploadMediaInput!) {
-                uploadMedia(uploadMediaInput: $input) {
+            mutation CreateMedia($input: UploadMediaInput!) {
+                createMedia(uploadMediaInput: $input) {
                     id
                     filename
                     originalName
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
                 // Still return success for S3, but log the DB error
             }
 
-            const savedMedia = graphqlResult.data?.uploadMedia;
+            const savedMedia = graphqlResult.data?.createMedia;
             if (savedMedia) {
                 return NextResponse.json({
                     success: true,

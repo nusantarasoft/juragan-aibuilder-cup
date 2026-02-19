@@ -32,12 +32,13 @@ services:
       - MINIO_DOMAIN=storage
       - MINIO_REGION_NAME=us-east-1
       - MINIO_REGION=us-east-1
+      - MINIO_API_CORS_ALLOW_ORIGIN=*
     networks:
       management-network:
     ports:
       - 9001:9001
       - 9000:9000
-    command: server --console-address ":9001" /data
+    command: server --console-address ":9001" /data/disk{1...4}
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://minio:9000/minio/health/live" ]
       interval: 2s
@@ -54,7 +55,7 @@ services:
       minio:
         condition: service_healthy
     entrypoint: >
-      /bin/sh -c " /usr/bin/mc alias set supa-minio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; /usr/bin/mc mb supa-minio/stub; exit 0; "
+      /bin/sh -c " /usr/bin/mc alias set supa-minio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; /usr/bin/mc mb --ignore-existing supa-minio/${S3_BUCKET}; /usr/bin/mc anonymous set public supa-minio/${S3_BUCKET}; /usr/bin/mc version enable supa-minio/${S3_BUCKET}; exit 0; "
 
   # Dremio
   dremio:
@@ -97,6 +98,9 @@ services:
       - ./volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:Z
       - ./volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
       - ./volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
+      - ./volumes/db/media_embeddings.sql:/docker-entrypoint-initdb.d/migrations/99-media-embeddings.sql:Z
+      - ./volumes/db/media_annotations.sql:/docker-entrypoint-initdb.d/migrations/99-media-annotations.sql:Z
+      - ./volumes/db/add_metadata.sql:/docker-entrypoint-initdb.d/migrations/99-add-metadata.sql:Z
       - ./volumes/db/data:/var/lib/postgresql/data:Z
       - db-config:/etc/postgresql-custom
     healthcheck:
@@ -385,10 +389,11 @@ services:
     volumes:
       - supabase-storage:/var/lib/storage
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/status" ]
-      timeout: 5s
-      interval: 5s
-      retries: 3
+      test: [ "CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:5000/status', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\"" ]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+      start_period: 30s
     depends_on:
       postgres:
         # Disable this if you are using an external Postgres database
@@ -407,7 +412,7 @@ services:
       DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       FILE_SIZE_LIMIT: 52428800
       STORAGE_BACKEND: s3
-      GLOBAL_S3_BUCKET: stub
+      GLOBAL_S3_BUCKET: ${S3_BUCKET}
       GLOBAL_S3_ENDPOINT: http://minio:9000
       GLOBAL_S3_PROTOCOL: http
       GLOBAL_S3_FORCE_PATH_STYLE: true
@@ -843,6 +848,8 @@ services:
       - TZ=${TZ}
     volumes:
       - bind9-data:/data
+      - ./volumes/bind9/etc/named.conf.local:/data/bind/etc/named.conf.local
+      - ./volumes/bind9/zones:/data/bind/zones
     networks:
       - management-network
 
@@ -1341,25 +1348,39 @@ services:
       - SUPABASE_URL=http://kong:8000
       - SUPABASE_ANON_KEY=${ANON_KEY}
       - SUPABASE_SERVICE_KEY=${SERVICE_ROLE_KEY}
-      - GOOGLE_API_KEY=AIzaSyD0iYhFsz-PosM5l-507R4JClGcCwO71EA
-      - MINIO_ENDPOINT=minio
-      - MINIO_PORT=9000
-      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
-      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - SUPABASE_DB_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_PROJECT_ID}
+      - GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION:-us-central1}
+      - GOOGLE_APPLICATION_CREDENTIALS=/gcp/key.json
+      # MinIO/S3 Configuration
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - S3_REGION=us-east-1
+      - S3_BUCKET=${S3_BUCKET}
       # LabelStudio Config
-      - LABELSTUDIO_URL=http://label-studio:8080
+      - LABELSTUDIO_URL=http://labelstudio:8080
       - LABELSTUDIO_API_TOKEN=${LABELSTUDIO_API_TOKEN}
       - LABELSTUDIO_PROJECT_ID=${LABELSTUDIO_PROJECT_ID}
+      - LABELSTUDIO_WEBHOOK_SECRET=${LABELSTUDIO_WEBHOOK_SECRET:-}
     networks:
       - management-network
     depends_on:
       - postgres
+      - minio
+      - labelstudio
+    volumes:
+      - ./volumes/google-credentials.json:/gcp/key.json:ro
+    extra_hosts:
+      - "localhost:host-gateway"
+
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:4001/graphql" ]
+      test: [ "CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:4001/graphql', (r) => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))\"" ]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 60s
 
   # Admin CMS - Next.js Frontend
   admin:
@@ -1376,9 +1397,8 @@ services:
       - GRAPHQL_API_URL=http://middleware:4001/graphql
       - NEXT_PUBLIC_SUPABASE_URL=http://kong:8000
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
-      # S3/MinIO configuration for file uploads
-      - NEXT_PUBLIC_S3_ENDPOINT=http://minio:9000
-      - NEXT_PUBLIC_S3_BUCKET=cms-media
+      - NEXT_PUBLIC_S3_ENDPOINT=http://127.0.0.1:9000
+      - NEXT_PUBLIC_S3_BUCKET=${S3_BUCKET}
       - S3_ACCESS_KEY=${MINIO_ROOT_USER}
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - S3_REGION=us-east-1
@@ -1388,11 +1408,11 @@ services:
       - middleware
       - minio
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:3000" ]
+      test: [ "CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000', (r) => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))\"" ]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 60s
 
   # Landing Page - Public Website (renders CMS-built pages)
   landing-page:
@@ -1420,19 +1440,18 @@ services:
       retries: 3
       start_period: 40s
 
-  # Label Studio - Data Labeling
-  label-studio:
+  labelstudio:
     image: heartexlabs/label-studio:latest
-    container_name: label-studio
+    container_name: labelstudio
     restart: unless-stopped
     ports:
-      - "8095:8080"
+      - "8080:8080"
     environment:
       - LABEL_STUDIO_USERNAME=${LABEL_STUDIO_USERNAME}
       - LABEL_STUDIO_PASSWORD=${LABEL_STUDIO_PASSWORD}
       - LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK=true
     volumes:
-      - label-studio-data:/label-studio/data
+      - labelstudio-data:/label-studio/data
     networks:
       - management-network
 
@@ -1447,7 +1466,7 @@ volumes:
   pgadmin-data:
   mindsdb-data:
   anythingllm-data:
-  label-studio-data:
+  labelstudio-data:
 
   # 2. Backend Services - Supabase
   supabase-db-data:

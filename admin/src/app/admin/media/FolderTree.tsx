@@ -300,6 +300,19 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
             return;
         }
 
+        // Prevent dropping folder outside of any bucket (invalid drop target)
+        if (!destBucket) {
+            message.warning('Folders must be dropped inside a bucket.');
+            return;
+        }
+
+        // Prevent dropping folder in the gap next to a bucket (would place it at root level)
+        // When dropToGap is true and target is a bucket, the folder becomes a sibling of buckets
+        if (info.dropToGap && dropParts[0] === 'bucket') {
+            message.warning('Folders cannot be placed at root level. Drop inside a bucket instead.');
+            return;
+        }
+
         // Optimistic UI Update
         const loop = (data: any[], key: string, callback: (item: any, index: number, arr: any[]) => void) => {
             for (let i = 0; i < data.length; i++) {

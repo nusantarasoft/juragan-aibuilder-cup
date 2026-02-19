@@ -1,38 +1,45 @@
-# Plan: Media Library Reset & Upload Refactor
+# Plan: Media Detail Modal UI/UX Overhaul (Cinema Mode)
 
-## Objective
-Reset the Media Library to a pristine state (empty S3, empty DB) and simplify the upload logic by removing the mandatory default `uploads/` folder structure, allowing files to be stored at the bucket root.
+## 🎯 Objective
+Create a **premium, full-screen "Cinema Mode"** for media details that completely eliminates double scrollbars.
+-   **Core Goal 1**: Maxiumum screen usage (95vw / 90vh).
+-   **Core Goal 2**: **Zero Scroll** on the modal body itself. Only specific panels scroll internally.
+-   **Core Goal 3**: **Fixed Sidebar** (Right) always visible, with tabs fully expanded.
 
-## Phase 1: Deep Clean (Infrastructure)
-**Agent**: `backend-specialist` / `database-architect`
-1.  **S3 Reset**:
-    *   Delete the `cms-media` bucket and any other artifacts in MinIO.
-    *   Recreate the `cms-media` bucket as empty.
-    *   Set bucket policy to public (if required for viewing).
-2.  **Database Reset**:
-    *   Truncate `public.media` and `public.media_embeddings` tables to remove any orphaned records.
+## 🛠️ Layout Strategy: "Cinema Mode" (Split View)
 
-## Phase 2: Refactor Upload Logic (Backend)
-**Agent**: `backend-specialist`
-1.  **Modify `MediaService.uploadMedia`**:
-    *   Target: `middleware/src/media/media.service.ts`
-    *   Change default folder from `'uploads/'` to `''` (root).
-    *   Ensure proper key generation (no leading slashes for root files).
+### 1. The Container (The Fix for Scrollbars)
+-   **Modal**: `width: 95vw`, `height: 90vh`, `padding: 0`.
+-   **Modal Body**: `flex h-full w-full overflow-hidden` (This is the KEY fix).
+-   **Grid Layout**:
+    -   **Left Panel (Preview)**: `flex-1 (approx 70%)`, `h-full`, `bg-gray-100/dark:bg-black`.
+        -   **Content**: `flex items-center justify-center h-full w-full`.
+        -   **Scroll**: `overflow-hidden` by default. `overflow-auto` ONLY for deep zoom or PDF if needed (internal).
+    -   **Right Panel (Info/Tabs)**: `w-[400px] (fixed)`, `h-full`, `bg-white/dark:bg-gray-900`, `border-l`.
+        -   **Header**: Fixed Tabs at Top (Never scroll).
+        -   **Body**: `flex-1 overflow-y-auto` (The ONLY scrollbar user typically interacts with).
 
-## Phase 3: Verification (QA)
-**Agent**: `test-engineer`
-1.  **Upload Test**:
-    *   Upload an image without specifying a folder.
-    *   Verify `s3_key` is just `filename.ext` (not `uploads/filename.ext`).
-    *   Verify file exists in MinIO at root.
-    *   Verify DB record exists.
-2.  **Display Test**:
-    *   Ensure the frontend can properly display the image using the new `s3_key` (which is now just a filename). *Note: The previous fix for `s3_key` lookup should handle this natively.*
+### 2. The Right Panel (The Fix for Tabs)
+-   **Width**: Fixed `400px` (Wide enough for 4 tabs: Info | AI | Auto | Ver).
+-   **Tabs Style**:
+    -   **Compact Modern**: Icons + Short Text (e.g., `Info`, `AI`, `Auto`, `History`).
+    -   **No overflow**, no scroll arrows.
+-   **Content Flow**: All metadata, tags, and versions live here. Long content scrolls vertically *inside* this panel, leaving the rest of the UI stable.
 
-## Phase 4: Frontend Check (Optional)
-**Agent**: `frontend-specialist`
-*   Verify that the Media Library UI doesn't hardcode `uploads/` anywhere when listing or displaying files. (Based on previous review, it seems dynamic, but good to check).
+### 3. The Left Panel (Preview Excellence)
+-   **Image**: `object-contain`, centered. No crop.
+-   **Video**: Native controls, `max-h-full`.
+-   **PDF/Doc**:
+    -   Use `iframe` or `DocumentPreview` set to `h-full w-full`.
+    -   Let the viewer handle internal scrolling (e.g., PDF sidebar).
+    -   **Result**: The user scrolls *inside* the document, not the modal page.
 
----
-**User Approval Required**:
-Please confirm if you want to proceed with this destructive reset and logic change.
+## 👥 Agent Orchestration
+-   **frontend-specialist**: Execute the "Cinema Mode" CSS/Layout changes.
+-   **test-engineer**: Verify strict `overflow-hidden` on parent containers.
+
+## ✅ Success Criteria
+-   [ ] **Zero Page/Body Scroll**: The modal never triggers a browser window scrollbar.
+-   [ ] **Single Internal Scroll**: Only the Right Sidebar content scrolls vertically.
+-   [ ] **Full Tabs**: All 4 tabs visible in the sidebar header without horizontal scrolling.
+-   [ ] **Maximized Preview**: Images/Videos use ~70% of screen width.

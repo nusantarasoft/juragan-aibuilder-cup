@@ -5,10 +5,11 @@ WORKDIR /app
 
 # ===== Dependencies Stage =====
 FROM base AS deps
-COPY package.json package-lock.json ./
+RUN apk add --no-cache python3 make g++
+COPY package.json ./
 RUN npm config set fetch-retry-mintimeout 600000 && \
     npm config set fetch-retry-maxtimeout 1200000 && \
-    npm ci --legacy-peer-deps
+    npm install --legacy-peer-deps
 
 # ===== Builder Stage =====
 FROM base AS builder

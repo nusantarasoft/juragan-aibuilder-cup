@@ -197,7 +197,8 @@ Answer:`;
     }
 
     async generateMediaEmbeddings(mediaId: string, content: string): Promise<boolean> {
-        this.logger.log(`Generating embeddings for media: ${mediaId}`);
+        this.logger.log(`[EMBED-ENTRY] ========== generateMediaEmbeddings called ==========`);
+        this.logger.log(`[EMBED-ENTRY] mediaId: "${mediaId}", content length: ${content?.length || 0}`);
 
         // 1. ID Resolution
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(mediaId);
@@ -273,10 +274,55 @@ Answer:`;
                 }
             }
 
-            // 4. Prepare Text to Embed
+            // 4. Prepare Content
             let textToEmbed = content;
+            let imageToEmbed: { data: string, mimeType: string } | undefined;
+
+            // Handle Images (Multimodal)
+            if (isImage) {
+                const fileKey = m.s3_key || m.filepath || m.filename;
+                this.logger.log(`[IMG-EMBED-DEBUG] Preparing image embedding for ${actualMediaId}`);
+                this.logger.log(`[IMG-EMBED-DEBUG] fileKey: "${fileKey}", bucket_name: "${m.bucket_name}", mime: ${m.mime_type}`);
+
+                const buffer = await this.getFileBuffer(fileKey, m.bucket_name);
+                if (buffer) {
+                    // Resize/Compress if too large (Vertex Limit ~20MB, but safer to keep smaller)
+                    // For now, raw buffer.
+                    imageToEmbed = {
+                        data: buffer.toString('base64'),
+                        mimeType: m.mime_type || 'image/jpeg'
+                    };
+                    this.logger.log(`[IMG-EMBED-DEBUG] ✓ Image buffer ready (${(buffer.length / 1024).toFixed(0)}KB)`);
+                } else {
+                    this.logger.error(`[IMG-EMBED-DEBUG] ✗ getFileBuffer returned null for image ${actualMediaId}. Check MinIO connectivity and bucket/key.`);
+                }
+            }
+
+            // Handle Docs (PDF/Docx) -> Ensure Description Exists
+            if (!isImage && m.mime_type && (
+                m.mime_type.startsWith('application/pdf') ||
+                m.mime_type.includes('wordprocessingml') ||
+                m.mime_type.includes('msword')
+            )) {
+                if (!m.metadata?.description) {
+                    this.logger.log(`Auto-describing document ${actualMediaId} for embedding context...`);
+                    const desc = await this.describeMedia(actualMediaId);
+                    if (desc) {
+                        const newMeta = { ...m.metadata, description: desc };
+                        await this.supabaseService.getAdminClient()
+                            .from('media')
+                            .update({ metadata: newMeta })
+                            .eq('id', actualMediaId);
+                        m.metadata = newMeta;
+                    }
+                }
+            }
+
+
             if (!textToEmbed || textToEmbed.trim() === '') {
                 const parts = [];
+                // If it's an image, we don't strictkly NEED text if we have the image, 
+                // but metadata helps the model.
                 if (m.filename) parts.push(`Filename: ${m.filename}`);
                 if (m.metadata?.description) parts.push(`Description: ${m.metadata?.description}`);
                 if (m.metadata?.tags) parts.push(`Tags: ${Array.isArray(m.metadata.tags) ? m.metadata.tags.join(', ') : m.metadata.tags}`);
@@ -286,9 +332,10 @@ Answer:`;
 
 
             // 5. Generate Embedding
-            const embedding = await this.getVertexEmbedding(textToEmbed);
+            const embedding = await this.getVertexEmbedding(textToEmbed, imageToEmbed);
             if (!embedding) return false;
 
+            // ... (rest is same)
             const { error: upsertError } = await this.supabaseService.getAdminClient()
                 .from('media_embeddings')
                 .upsert({
@@ -307,45 +354,83 @@ Answer:`;
 
         } catch (e) {
             this.logger.error('Embedding generation failed', e);
-            return false;
+            throw e;
         }
     }
 
 
-    // Helper for Vertex AI Embedding (Multimodal - 1408 Dimensions) via SDK
-    private async getVertexEmbedding(text: string): Promise<number[] | null> {
+    // Helper for Vertex AI Embedding (Multimodal - 1408 Dimensions) via REST API
+    private async getVertexEmbedding(text: string, image?: { data: string; mimeType: string }): Promise<number[] | null> {
         const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
         const location = this.configService.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
 
+        this.logger.log(`[EMBED-DEBUG] Starting Vertex Embedding. Project: ${projectId}, Location: ${location}`);
+
         if (!projectId) {
-            this.logger.warn('GOOGLE_CLOUD_PROJECT not set, cannot generate embeddings');
+            this.logger.warn('[EMBED-DEBUG] GOOGLE_CLOUD_PROJECT not set, cannot generate embeddings');
             return null;
         }
 
         try {
-            // SDK Dynamic Import for ESM compatibility
-            const { VertexAI } = await (new Function('return import("@google-cloud/vertexai")')());
-            const vertexAI = new VertexAI({ project: projectId, location: location });
-            const generativeModel = vertexAI.preview.getGenerativeModel({
-                model: 'multimodalembedding',
+            // Use GoogleAuth to get access token
+            const { GoogleAuth } = await import('google-auth-library');
+            const auth = new GoogleAuth({
+                scopes: 'https://www.googleapis.com/auth/cloud-platform'
+            });
+            const client = await auth.getClient();
+            const accessToken = await client.getAccessToken();
+            this.logger.log(`[EMBED-DEBUG] Got Access Token: ${accessToken.token ? 'Yes' : 'No'}`);
+
+            const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/multimodalembedding:predict`;
+
+            const instance: any = {};
+            if (text) instance.text = text;
+            if (image) {
+                instance.image = { bytesBase64Encoded: image.data };
+                this.logger.log(`[EMBED-DEBUG] Attaching image data (${Math.ceil(image.data.length * 0.75 / 1024)} KB). Mime: ${image.mimeType}`);
+            }
+
+            this.logger.log(`[EMBED-DEBUG] Sending request to ${url}`);
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    instances: [instance]
+                })
             });
 
-            const request = {
-                instances: [{ text: text }],
-            };
+            if (!response.ok) {
+                const errorText = await response.text();
+                this.logger.error(`[EMBED-DEBUG] Vertex API 400/500 Error: ${response.status} - ${errorText}`);
+                throw new Error(`Vertex AI REST API failed: ${response.status} ${response.statusText} - ${errorText}`);
+            }
 
-            const response = await generativeModel.predict(request);
-            const embeddings = response.predictions?.[0]?.embeddingsValues;
+            const data = await response.json();
+            // Log response keys for debugging
+            this.logger.log(`[EMBED-DEBUG] Vertex Response Keys: ${Object.keys(data).join(',')}`);
+            if (data.predictions && data.predictions.length > 0) {
+                this.logger.log(`[EMBED-DEBUG] Predictions Keys: ${Object.keys(data.predictions[0]).join(',')}`);
+            }
+
+            const embeddings = data.predictions?.[0]?.embeddingsValues
+                || data.predictions?.[0]?.embedding
+                || data.predictions?.[0]?.textEmbedding
+                || data.predictions?.[0]?.imageEmbedding; // Handle image-only return if applicable
 
             if (embeddings) {
-                this.logger.log(`Successfully generated ${embeddings.length} dimensions embedding via SDK`);
+                this.logger.log(`[EMBED-DEBUG] Successfully generated ${embeddings.length} dimensions embedding`);
                 return embeddings;
             }
 
+            this.logger.error('[EMBED-DEBUG] No embeddings found in response', data);
             return null;
         } catch (e) {
-            this.logger.error('Vertex AI Embedding SDK failed', e);
-            return null;
+            this.logger.error('[EMBED-DEBUG] Vertex AI Embedding REST failed', e);
+            throw e;
         }
     }
 
@@ -519,6 +604,7 @@ Answer:`;
                 if (['jpg', 'jpeg'].includes(ext)) mimeType = 'image/jpeg';
                 if (ext === 'png') mimeType = 'image/png';
                 if (ext === 'webp') mimeType = 'image/webp';
+                if (ext === 'pdf') mimeType = 'application/pdf';
             }
             mimeType = mimeType || "application/octet-stream";
 
@@ -530,11 +616,15 @@ Answer:`;
             const vertexAI = new VertexAI({ project: projectId, location: location });
             const model = vertexAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
+            let promptText = "Describe this content in detail.";
+            if (mimeType.startsWith('image/')) promptText = "Describe this image in detail, capturing visual elements, text, and context.";
+            else if (mimeType === 'application/pdf') promptText = "Summarize the content of this document in detail, capturing key points and entities.";
+
             const request = {
                 contents: [{
                     role: 'user',
                     parts: [
-                        { text: "Describe this image in detail." },
+                        { text: promptText },
                         { inlineData: { mimeType: mimeType, data: base64Data } }
                     ]
                 }],

@@ -612,6 +612,51 @@ services:
   # 4. CMS & AI STACK
   # ═══════════════════════════════════════════════════════════════════════════
 
+  # Nessie Catalog Server Using In-Memory Store
+  nessie:
+    image: projectnessie/nessie:latest
+    container_name: nessie
+    restart: unless-stopped
+    networks:
+      management-network:
+    ports:
+      - 19120:19120
+
+  # Dremio - Data Lakehouse Query Engine
+  dremio:
+    platform: linux/x86_64
+    image: dremio/dremio-oss:latest
+    container_name: dremio
+    restart: unless-stopped
+    ports:
+      - 9047:9047
+      - 31010:31010
+      - 32010:32010
+      - 45678:45678
+    environment:
+      - DREMIO_JAVA_SERVER_EXTRA_OPTS=-Dpaths.dist=file:///opt/dremio/data/dist
+    networks:
+      management-network:
+
+        # MindsDB - AI/ML Database Platform
+  mindsdb:
+    build:
+      context: ./volumes/mindsdb
+      dockerfile: Dockerfile
+    container_name: mindsdb
+    restart: unless-stopped
+    ports:
+      - "47334:47334"
+      - "47335:47335"
+    environment:
+      - MINDSDB_STORAGE_DIR=/mindsdb/var
+    volumes:
+      - mindsdb-data:/mindsdb/var
+      - ./volumes/google-credentials.json:/tmp/gcp-key.json:ro
+    networks:
+      management-network:
+
+
   labelstudio:
     image: heartexlabs/label-studio:latest
     container_name: labelstudio
@@ -652,6 +697,8 @@ services:
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - S3_REGION=us-east-1
       - S3_BUCKET=${S3_BUCKET}
+      # Dremio Config
+      - DREMIO_URL=http://dremio:9047
       # LabelStudio Config
       - LABELSTUDIO_URL=http://labelstudio:8080
       - LABELSTUDIO_API_TOKEN=${LABELSTUDIO_API_TOKEN}
@@ -757,3 +804,4 @@ volumes:
   portainer-data:
   socketio-data:
   labelstudio-data:
+  mindsdb-data:

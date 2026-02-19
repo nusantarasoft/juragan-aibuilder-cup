@@ -68,6 +68,7 @@ import {
     ReloadOutlined,
     SwapOutlined,
     ScissorOutlined,
+    ExclamationCircleOutlined,
     ToolOutlined,
     ThunderboltOutlined,
     ExperimentOutlined,
@@ -602,57 +603,132 @@ export default function MediaLibraryPage() {
         }, 200);
 
         try {
-            const result = await mediaService.uploadMedia(file, {
-                folder: currentPath || "",
-            });
+            await uploadWithConflictStrategy(file, progressInterval);
+        } catch (error: any) {
+            clearInterval(progressInterval);
+            setUploading(false);
+            setUploadProgress(0);
+            message.error(`Upload failed: ${error.message}`);
+        }
+    };
+
+    const uploadWithConflictStrategy = async (file: File, progressInterval: NodeJS.Timeout, strategy: 'RENAME' | 'OVERWRITE' | 'ERROR' = 'ERROR') => {
+        try {
+            // Use positional arguments: file, folder, bucket, altText, autoLabel, generateEmbedding, onConflict
+            const uploadedFile = await mediaService.uploadMedia(
+                file,
+                currentPath || "",
+                currentBucket || undefined,
+                undefined, // altText
+                false, // autoLabel
+                false, // generateEmbedding
+                strategy
+            );
 
             clearInterval(progressInterval);
             setUploadProgress(100);
 
-            if (result.success && result.media) {
-                setMedia([result.media, ...media]);
-                message.success(`${file.name} uploaded successfully!`);
+            if (uploadedFile) {
+                setMedia(prev => [uploadedFile, ...prev]);
+                message.success(`${file.name} uploaded successfully ${strategy !== 'ERROR' ? `(${strategy})` : ''}!`);
                 loadStorageStats();
-                // Refresh listing from S3 to ensure file is visible
                 loadMedia();
             } else {
-                throw new Error(result.error || "Upload failed");
+                throw new Error("Upload failed (No response)");
             }
+            setTimeout(() => {
+                setUploading(false);
+                setUploadProgress(0);
+            }, 500);
+
         } catch (error: any) {
-            clearInterval(progressInterval);
-            message.error(`Upload failed: ${error.message}`);
+            // Check for Conflict Error
+            const errorMessage = error.message || JSON.stringify(error);
+            // GraphQL error structure might be nested
+            const isConflict = errorMessage.includes("ConflictError") || errorMessage.includes("already exists");
+            const isDuplicateContent = errorMessage.includes("Duplicate file detected");
+
+            if (isConflict && !isDuplicateContent) {
+                clearInterval(progressInterval);
+                // Show Conflict Resolution Modal
+                Modal.confirm({
+                    title: 'File Already Exists',
+                    content: (
+                        <div>
+                            <p>A file named <strong>{file.name}</strong> already exists in this folder.</p>
+                            <p>What would you like to do?</p>
+                        </div>
+                    ),
+                    okText: 'Rename (Keep Both)',
+                    okType: 'primary',
+                    cancelText: 'Overwrite (Replace)',
+                    icon: <ExclamationCircleOutlined />,
+                    width: 500,
+                    footer: (_, { OkBtn, CancelBtn }) => (
+                        <div style={{ textAlign: 'right', marginTop: '10px' }}>
+                            <Button onClick={() => {
+                                Modal.destroyAll(); // Close modal
+                                // Restart upload with OVERWRITE
+                                setUploading(true);
+                                uploadWithConflictStrategy(file, progressInterval, 'OVERWRITE');
+                            }} danger type="dashed" style={{ marginRight: 8 }}>
+                                Overwrite (New Version)
+                            </Button>
+                            <Button onClick={() => {
+                                Modal.destroyAll(); // Close modal
+                                // Restart upload with RENAME
+                                setUploading(true);
+                                uploadWithConflictStrategy(file, progressInterval, 'RENAME');
+                            }} type="primary">
+                                Rename (Keep Both)
+                            </Button>
+                        </div>
+                    ),
+                });
+            } else if (isDuplicateContent) {
+                clearInterval(progressInterval);
+                message.error("Duplicate content detected (Rejected). Identical file exists.");
+                setUploading(false);
+                setUploadProgress(0);
+            } else {
+                throw error; // Re-throw generic errors to outer catch
+            }
         }
+    }
 
-        setTimeout(() => {
-            setUploading(false);
-            setUploadProgress(0);
-        }, 500);
-    };
-
-    // Delete handler - uses S3 key for files from S3 listing
+    // Delete handler - uses ID for full media deletion (DB + S3 + cleanup)
     const handleDelete = async (id: string) => {
-        // Find the file to get its s3_key
+        // Find the file to check permissions
         const fileToDelete = media.find(m => m.id === id);
         if (!fileToDelete) {
             message.error("File not found");
             return;
         }
 
+        // Security Guard
+        // Check bucket_name (snake_case from mapToMediaFile)
+        const bucket = fileToDelete.bucket_name || currentBucket;
+        if (bucket === 'ns-system' && isSystemBucketLocked) {
+            message.warning("System is locked. Unlock via settings to delete files.");
+            return;
+        }
+
         Modal.confirm({
             title: "Delete Media?",
-            content: "This action cannot be undone.",
+            content: "This action cannot be undone. It will delete the file, database record, and all generated previews.",
             okText: "Delete",
             okType: "danger",
             onOk: async () => {
-                // Use S3 key-based deletion (files from S3 listing use key as id)
-                const s3Key = fileToDelete.s3_key || id;
-                const success = await mediaService.deleteFileByKey(s3Key, currentBucket || undefined);
+                // Use ID-based deletion to ensure full cleanup via Middleware
+                const success = await mediaService.deleteMedia(id);
                 if (success) {
                     setMedia(media.filter((m) => m.id !== id));
                     message.success("Media deleted");
                     loadStorageStats();
                     loadBuckets();
                     loadMedia(); // Refresh file list
+                    refreshTree(); // Refresh explorer tree
+                    setPreviewVisible(false);
                 } else {
                     message.error("Failed to delete media");
                 }
@@ -745,19 +821,21 @@ export default function MediaLibraryPage() {
         } else {
             message.error(`Failed to ${isCopyMode ? "copy" : "move"} file`);
         }
-    };
+    }
 
-    // Download handler
-    const handleDownload = async (file: MediaFile) => {
-        try {
-            const url = await mediaService.getMediaUrl(file.id);
-            if (url) {
-                window.open(url, "_blank");
-            } else {
-                message.error("Failed to get download URL");
-            }
-        } catch (error) {
-            message.error("Failed to download file");
+    // Download file
+    const handleDownload = (file: MediaFile) => {
+        if (file.url) {
+            // Create a temporary link to trigger download
+            const link = document.createElement('a');
+            link.href = file.url;
+            link.download = file.filename || file.original_name || 'download';
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else {
+            message.warning("No download URL available");
         }
     };
 
@@ -1014,6 +1092,8 @@ export default function MediaLibraryPage() {
             message.error("Failed to delete bucket");
         }
     };
+
+
 
     const handleDeleteFolder = async (path: string, bucketName?: string) => {
         const targetBucket = bucketName || currentBucket;
@@ -1492,6 +1572,7 @@ export default function MediaLibraryPage() {
                 mode="preview"
                 onClose={() => setPreviewVisible(false)}
                 isPublicBucket={buckets.find(b => b.name === selectedMedia?.bucket_name)?.isPublic}
+                onUpdate={loadMedia}
             />
 
             {/* New Folder Modal */}
@@ -1753,6 +1834,7 @@ export default function MediaLibraryPage() {
                 mode="detail"
                 onClose={() => { setDetailModalVisible(false); setDetailModalFile(null); }}
                 isPublicBucket={buckets.find(b => b.name === detailModalFile?.bucket_name)?.isPublic}
+                onUpdate={loadMedia}
             />
 
         </CMSLayout >

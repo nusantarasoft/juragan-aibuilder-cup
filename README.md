@@ -337,7 +337,7 @@ docker compose up -d
 | Service | URL | User | Password |
 |---------|-----|------|----------|
 | Minio | http://localhost:9001 | `supa-storage` | `secret1234` |
-| Dremio | http://localhost:9047 | *(setup)* | - |
+| Dremio | http://localhost:9047 | *(setup)* / `admin` | `secret1234` |
 | Superset | http://localhost:8080 | `admin` | `admin` |
 | MindsDB | http://localhost:47334 | - | - |
 | AnythingLLM | http://localhost:3001 | *(setup)* | - |

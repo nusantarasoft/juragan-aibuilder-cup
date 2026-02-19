@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { Modal, Button, Typography, Space, Tag, Input, Image, Tooltip, message, Collapse, Spin, Divider, Tabs, List, Avatar } from 'antd';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Modal, Button, Typography, Space, Tag, Input, Image, Tooltip, message, Collapse, Spin, Divider, Tabs, List, Avatar, theme } from 'antd';
 import {
     DownloadOutlined,
     CopyOutlined,
@@ -17,11 +17,16 @@ import {
     ClockCircleOutlined,
     LoadingOutlined,
     CloseOutlined,
-    TagOutlined
+    TagOutlined,
+    RobotOutlined,
+    SettingOutlined,
+    DeleteOutlined,
+    UploadOutlined
 } from '@ant-design/icons';
 import { mediaService } from '@/lib/mediaService';
 import type { MediaFile } from '@/lib/mediaService';
 import DocumentPreview, { isDocumentPreviewable } from '@/components/media/DocumentPreview';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 const { Text } = Typography;
 
@@ -39,6 +44,7 @@ interface MediaPreviewModalProps {
     onClose: () => void;
     mode?: 'preview' | 'detail';
     isPublicBucket?: boolean;
+    onUpdate?: () => void;
 }
 
 function formatDetailFileSize(bytes?: number): string {
@@ -69,12 +75,516 @@ function getRelativeTime(dateStr: string): string {
     return date.toLocaleDateString();
 }
 
+// --- Sub-components moved outside to stabilize rendering ---
+
+interface InfoTabProps {
+    activeMedia: MediaFile;
+    embeddingDim: number;
+    embeddingVector: number[];
+    versions: ObjectVersion[];
+    getRelativeTime: (date: string) => string;
+    formatFileSize: (bytes?: number) => string;
+}
+
+const InfoTab = ({ activeMedia, embeddingDim, embeddingVector, versions, getRelativeTime, formatFileSize }: InfoTabProps) => (
+    <div className="space-y-3 pr-1">
+        <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-sm bg-gray-50 dark:bg-[#121212] p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+            <div className="flex flex-col">
+                <span className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Size</span>
+                <span className="font-medium text-gray-700 dark:text-gray-200">{formatFileSize(activeMedia.size_bytes)}</span>
+            </div>
+            <div className="flex flex-col">
+                <span className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Created</span>
+                <span className="font-medium text-gray-700 dark:text-gray-200">{activeMedia.created_at ? new Date(activeMedia.created_at).toLocaleDateString() : '-'}</span>
+            </div>
+            <div className="col-span-2 flex flex-col pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
+                <span className="text-gray-400 text-xs uppercase tracking-wider font-semibold">S3 Key</span>
+                <Text copyable className="font-mono text-[10px] text-gray-500 break-all hover:text-violet-500 transition-colors cursor-pointer mt-1">
+                    {activeMedia.s3_key}
+                </Text>
+            </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-900/10 dark:to-indigo-900/10 rounded-xl p-3 border border-violet-100 dark:border-violet-500/20">
+            <div className="flex justify-between items-center mb-2">
+                <h3 className="text-xs font-bold text-violet-700 dark:text-violet-300 flex items-center gap-1.5">
+                    <RobotOutlined /> AI INTEL
+                </h3>
+                {embeddingDim > 0 ? (
+                    <Tag color="purple" bordered={false} className="m-0 text-[9px] font-bold px-1">{embeddingDim} DIM</Tag>
+                ) : (
+                    <Tag color="default" bordered={false} className="m-0 text-[9px] px-1">No Vector</Tag>
+                )}
+            </div>
+            {embeddingDim > 0 ? (
+                <div className="font-mono text-[9px] text-gray-500 dark:text-gray-400 truncate bg-white/50 dark:bg-black/20 rounded p-1.5">
+                    [{embeddingVector.slice(0, 8).join(', ')}...]
+                </div>
+            ) : (
+                <div className="text-[10px] text-gray-400 italic">Click AI Intel tab to generate</div>
+            )}
+        </div>
+
+        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/10 dark:to-cyan-900/10 rounded-xl p-3 border border-blue-100 dark:border-blue-500/20">
+            <div className="flex justify-between items-center mb-2">
+                <h3 className="text-xs font-bold text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                    <SettingOutlined /> AUTOMATION
+                </h3>
+                {activeMedia.metadata?.tags?.length > 0 ? (
+                    <Tag color="blue" bordered={false} className="m-0 text-[9px] font-bold px-1">{activeMedia.metadata?.tags?.length} LABELS</Tag>
+                ) : (
+                    <Tag color="default" bordered={false} className="m-0 text-[9px] px-1">No Labels</Tag>
+                )}
+            </div>
+            {Array.isArray(activeMedia.metadata?.tags) && activeMedia.metadata.tags.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                    {activeMedia.metadata?.tags?.slice(0, 5).map((tag: string, i: number) => (
+                        <Tag key={i} color="blue" bordered={false} className="m-0 text-[9px] px-1">{tag}</Tag>
+                    ))}
+                    {activeMedia.metadata?.tags?.length > 5 && <span className="text-[9px] text-gray-400">+{activeMedia.metadata.tags.length - 5} more</span>}
+                </div>
+            ) : (
+                <div className="text-[10px] text-gray-400 italic">Click Automation tab to generate labels</div>
+            )}
+        </div>
+
+        <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 rounded-xl p-3 border border-green-100 dark:border-green-500/20">
+            <div className="flex justify-between items-center mb-2">
+                <h3 className="text-xs font-bold text-green-700 dark:text-green-300 flex items-center gap-1.5">
+                    <HistoryOutlined /> VERSIONS
+                </h3>
+                <Tag color="green" bordered={false} className="m-0 text-[9px] font-bold px-1">{versions.length} VER</Tag>
+            </div>
+            {versions.length > 0 ? (
+                <div className="text-[10px] text-gray-600 dark:text-gray-400">
+                    Latest: <span className="font-mono">{versions[0]?.versionId?.slice(0, 8)}...</span>
+                    {versions[0]?.lastModified && <span className="text-gray-400 ml-1">({getRelativeTime(versions[0].lastModified)})</span>}
+                </div>
+            ) : (
+                <div className="text-[10px] text-gray-400 italic">No versions history</div>
+            )}
+        </div>
+    </div>
+);
+
+interface AIIntelTabProps {
+    embeddingDim: number;
+    embeddingVector: number[];
+    isLoading: boolean;
+    isGeneratingEmbed: boolean;
+    handleGenerateEmbeddings: () => void;
+    handleRemoveEmbeddings: () => void;
+    copyToClipboard: (text: string, msg?: string) => void;
+}
+
+const AIIntelTab = ({ embeddingDim, embeddingVector, isLoading, isGeneratingEmbed, handleGenerateEmbeddings, handleRemoveEmbeddings, copyToClipboard }: AIIntelTabProps) => (
+    <div className="space-y-4 pr-1">
+        <div className="bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-900/10 dark:to-indigo-900/10 rounded-xl p-4 border border-violet-100 dark:border-violet-500/20">
+            <div className="flex justify-between items-center mb-3">
+                <h3 className="text-sm font-bold text-violet-700 dark:text-violet-300 flex items-center gap-2">
+                    <RobotOutlined /> Vector Embeddings
+                </h3>
+                {embeddingDim > 0 && <Tag color="purple" bordered={false} className="m-0 text-[10px] font-bold px-2">{embeddingDim} Dimensions</Tag>}
+            </div>
+
+            <div className="bg-white/60 dark:bg-black/30 rounded-lg p-3 border border-violet-100/50 dark:border-violet-500/10 mb-4">
+                <Spin spinning={isLoading || isGeneratingEmbed} indicator={<LoadingOutlined className="text-violet-500" spin />} tip={isGeneratingEmbed ? "Generating embeddings..." : undefined}>
+                    {embeddingDim > 0 ? (
+                        <div className="flex flex-col gap-2">
+                            <div className="font-mono text-[10px] text-gray-500 dark:text-gray-400 break-all leading-relaxed max-h-28 overflow-y-auto custom-scrollbar bg-gray-50 dark:bg-black/20 p-2 rounded">
+                                <span className="text-violet-500 font-bold">Vector: </span>
+                                [{embeddingVector.slice(0, 30).join(', ')}
+                                {embeddingVector.length > 30 && <span className="text-gray-400 italic"> ... +{embeddingVector.length - 30} more</span>}]
+                            </div>
+                            <Button
+                                size="small"
+                                type="text"
+                                icon={<CopyOutlined />}
+                                className="self-end text-[10px] text-violet-600 hover:text-violet-700"
+                                onClick={() => copyToClipboard(JSON.stringify(embeddingVector), "Full embedding vector copied")}
+                            >
+                                Copy Full Vector
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="text-center py-6">
+                            <RobotOutlined className="text-4xl text-violet-300 mb-2" />
+                            <div className="text-sm text-gray-500">No embeddings generated yet</div>
+                            <div className="text-xs text-gray-400 mt-1">Click the button below to generate</div>
+                        </div>
+                    )}
+                </Spin>
+            </div>
+
+            <div className="flex gap-2">
+                <Button
+                    type="primary" size="small"
+                    className="flex-1 text-xs bg-violet-600 hover:!bg-violet-700 border-violet-600 hover:!border-violet-700"
+                    onClick={handleGenerateEmbeddings}
+                    loading={isGeneratingEmbed}
+                    disabled={isGeneratingEmbed || isLoading}
+                    icon={isGeneratingEmbed ? undefined : <ReloadOutlined />}
+                >
+                    {isGeneratingEmbed ? "Generating..." : embeddingDim > 0 ? "Regenerate" : "Generate Embeddings"}
+                </Button>
+                {embeddingDim > 0 && (
+                    <Tooltip title="Remove embeddings">
+                        <Button
+                            type="default" size="small" danger
+                            icon={<DeleteOutlined />}
+                            className="text-xs"
+                            onClick={handleRemoveEmbeddings}
+                        />
+                    </Tooltip>
+                )}
+            </div>
+        </div>
+    </div>
+);
+
+interface AutomationTabProps {
+    activeMedia: MediaFile;
+    isAutoLabeling: boolean;
+    handleAutoLabel: () => void;
+    copyToClipboard: (text: string, msg?: string) => void;
+}
+
+const AutomationTab = ({ activeMedia, isAutoLabeling, handleAutoLabel, copyToClipboard }: AutomationTabProps) => (
+    <div className="space-y-4 pr-1">
+        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/10 dark:to-cyan-900/10 rounded-xl p-4 border border-blue-100 dark:border-blue-500/20">
+            <div className="flex justify-between items-center mb-3">
+                <h3 className="text-sm font-bold text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                    <TagOutlined /> Auto Labels
+                </h3>
+                {activeMedia.metadata?.tags?.length > 0 && (
+                    <Tag color="blue" bordered={false} className="m-0 text-[10px] font-bold px-2">{activeMedia.metadata.tags.length} Labels</Tag>
+                )}
+            </div>
+
+            <Button
+                type="primary" size="small" block
+                className="text-xs bg-blue-600 hover:!bg-blue-700 border-blue-600 hover:!border-blue-700 mb-3"
+                onClick={handleAutoLabel}
+                loading={isAutoLabeling}
+                disabled={isAutoLabeling}
+                icon={isAutoLabeling ? undefined : <ExperimentOutlined />}
+            >
+                {isAutoLabeling ? "Labeling..." : activeMedia.metadata?.tags?.length > 0 ? "Re-generate Labels" : "Auto Label Media"}
+            </Button>
+
+            {activeMedia.metadata?.tags && Array.isArray(activeMedia.metadata.tags) && activeMedia.metadata.tags.length > 0 && (
+                <div className="bg-white/60 dark:bg-black/30 rounded-lg p-3 border border-blue-100/50 dark:border-blue-500/10">
+                    <div className="text-[10px] font-bold text-blue-700 dark:text-blue-400 mb-2 flex items-center gap-1">
+                        <TagOutlined /> GENERATED LABELS
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                        {activeMedia.metadata.tags.map((tag: string, i: number) => (
+                            <Tag key={i} color="blue" bordered={false} className="m-0 text-[10px] px-2 py-0.5">
+                                {tag}
+                            </Tag>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+
+        <div className="bg-gray-50 dark:bg-[#121212] rounded-xl p-4 border border-gray-200 dark:border-gray-800">
+            <div className="flex justify-between items-center mb-3">
+                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <CodeOutlined /> Metadata
+                </h3>
+            </div>
+
+            {activeMedia.metadata?.label_studio_task_id && (
+                <div className="bg-white dark:bg-black/40 rounded-lg p-2 border border-gray-100 dark:border-gray-700 mb-3">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase">LabelStudio</span>
+                        <Tag color="cyan" className="m-0 text-[9px] px-1">TASK {activeMedia.metadata.label_studio_task_id}</Tag>
+                    </div>
+                    <div className="text-[10px] text-gray-400">Project ID: {activeMedia.metadata.project_id || 'N/A'}</div>
+                </div>
+            )}
+
+            <Collapse
+                ghost size="small"
+                className="bg-transparent"
+                items={[{
+                    key: '1',
+                    label: <span className="text-xs font-semibold text-gray-500"><CodeOutlined className="mr-1" />View Raw JSON</span>,
+                    children: (
+                        <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                            <pre className="text-[9px] font-mono whitespace-pre-wrap bg-white dark:bg-black/40 p-2 rounded border border-gray-100 dark:border-gray-800 text-gray-500">
+                                {activeMedia.metadata ? JSON.stringify(activeMedia.metadata, null, 2) : '{}'}
+                            </pre>
+                        </div>
+                    )
+                }]}
+            />
+        </div>
+    </div>
+);
+
+interface VersionsTabProps {
+    versions: ObjectVersion[];
+    loadingVersions: boolean;
+    isUploadingVersion: boolean;
+    handleUploadVersion: () => void;
+    handlePreviewVersion: (version: ObjectVersion) => void;
+    handleDownloadVersion: (versionId: string) => void;
+    handleRestoreVersion: (versionId: string) => void;
+    previewUrl: string | null;
+    getRelativeTime: (date: string) => string;
+    formatDetailFileSize: (bytes?: number) => string;
+}
+
+const VersionsTab = ({
+    versions,
+    loadingVersions,
+    isUploadingVersion,
+    handleUploadVersion,
+    handlePreviewVersion,
+    handleDownloadVersion,
+    handleRestoreVersion,
+    previewUrl,
+    getRelativeTime,
+    formatDetailFileSize
+}: VersionsTabProps) => (
+    <div className="h-full flex flex-col px-5 py-5">
+        <div className="flex justify-between items-center mb-4">
+            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <HistoryOutlined /> VERSION HISTORY
+            </h3>
+            <Button
+                type="primary"
+                size="small"
+                icon={<UploadOutlined />}
+                className="bg-green-600 hover:!bg-green-700 border-green-600 text-[10px] h-7 px-3 rounded-lg shadow-sm font-medium tracking-wide"
+                onClick={handleUploadVersion}
+                loading={isUploadingVersion}
+            >
+                Upload
+            </Button>
+        </div>
+
+        {loadingVersions ? (
+            <div className="flex-1 flex items-center justify-center flex-col gap-3 text-gray-400">
+                <Spin indicator={<LoadingOutlined style={{ fontSize: 24, color: '#16a34a' }} spin />} />
+                <span className="text-xs">Loading versions...</span>
+            </div>
+        ) : versions.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 bg-gray-50 dark:bg-white/5 rounded-xl border-2 border-dashed border-gray-100 dark:border-white/5 m-1">
+                <HistoryOutlined className="text-3xl mb-3 opacity-20" />
+                <span className="text-xs font-medium">No version history</span>
+                <span className="text-[10px] opacity-60 mt-1">Upload a new version to see it here</span>
+            </div>
+        ) : (
+            <List
+                className="overflow-y-auto flex-1 pr-2 custom-scrollbar"
+                itemLayout="horizontal"
+                dataSource={versions}
+                renderItem={(version, index) => (
+                    <List.Item
+                        className={`group hover:bg-gray-50 dark:hover:bg-white/5 rounded-lg px-2 transition-colors border-b border-gray-50 dark:border-white/5 last:border-0 cursor-pointer ${previewUrl?.includes(version.versionId) ? 'bg-violet-50 dark:bg-violet-900/10 border-violet-100' : ''}`}
+                        onClick={() => handlePreviewVersion(version)}
+                        actions={[
+                            <Tooltip key="download" title="Download">
+                                <Button type="text" size="small" className="text-gray-400 hover:text-violet-600" icon={<DownloadOutlined />} onClick={(e) => { e.stopPropagation(); handleDownloadVersion(version.versionId); }} />
+                            </Tooltip>,
+                            !version.isLatest && (
+                                <Tooltip key="restore" title="Restore as Default">
+                                    <Button type="text" size="small" className="text-gray-400 hover:text-green-600" icon={<RollbackOutlined />} onClick={(e) => { e.stopPropagation(); handleRestoreVersion(version.versionId); }} />
+                                </Tooltip>
+                            ),
+                        ]}
+                    >
+                        <List.Item.Meta
+                            avatar={
+                                <div className={`mt-1 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${version.isLatest ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
+                                    {version.isLatest ? <CheckCircleOutlined /> : index + 1}
+                                </div>
+                            }
+                            title={
+                                <div className="flex items-center gap-2">
+                                    <Text className={`text-xs font-mono ${previewUrl?.includes(version.versionId) ? 'text-violet-600 font-bold' : 'text-gray-600 dark:text-gray-300'}`}>
+                                        {version.versionId?.substring(0, 8) || 'unknown'}...
+                                    </Text>
+                                    {version.isLatest && <Tag color="success" className="mx-0 text-[10px] h-4 leading-4 px-1">Current</Tag>}
+                                </div>
+                            }
+                            description={
+                                <div className="flex flex-col text-[10px] text-gray-400 mt-0.5">
+                                    <span className="flex items-center gap-1"><ClockCircleOutlined className="text-[8px]" /> {getRelativeTime(version.lastModified)}</span>
+                                    <span>{formatDetailFileSize(version.size)}</span>
+                                </div>
+                            }
+                        />
+                    </List.Item>
+                )}
+            />
+        )}
+    </div>
+);
+
+interface MediaPreviewContentProps {
+    activeMedia: MediaFile;
+    imgDimensions: { w: number; h: number } | null;
+    isPublicBucket?: boolean;
+    mode: 'preview' | 'detail';
+    handleImageLoad: (e: React.SyntheticEvent<HTMLImageElement>) => void;
+    handleVideoLoad: (e: React.SyntheticEvent<HTMLVideoElement>) => void;
+    handleDownload: () => void;
+    copyToClipboard: (text: string, msg?: string) => void;
+    getFileIcon: (mimeType?: string) => React.ReactNode;
+    formatFileSize: (bytes?: number) => string;
+    previewUrl: string | null; // Added previewUrl
+}
+
+const MediaPreviewContent = ({
+    activeMedia,
+    imgDimensions,
+    isPublicBucket,
+    mode,
+    handleImageLoad,
+    handleVideoLoad,
+    handleDownload,
+    copyToClipboard,
+    getFileIcon,
+    formatFileSize,
+    previewUrl // Destructure previewUrl
+}: MediaPreviewContentProps) => {
+    const isPublic = isPublicBucket ?? false;
+
+    let displayUrl = previewUrl || activeMedia.url; // Use previewUrl if available, otherwise activeMedia.url
+    let showGenerated = false;
+
+    if (!isPublic && !previewUrl) { // Only show "System Preview" if not public and not a version preview
+        if (activeMedia.mime_type?.startsWith('image/') && activeMedia.thumbnailUrl) {
+            displayUrl = activeMedia.thumbnailUrl;
+            showGenerated = true;
+        }
+    }
+
+    const isPdf = activeMedia.mime_type === 'application/pdf';
+    const hasPdfPreviews = isPdf && activeMedia.previewPages && activeMedia.previewPages.length > 0;
+    const showPdfPreviews = hasPdfPreviews && mode === 'preview';
+
+    return (
+        <div className="w-full h-full flex flex-col relative">
+            <div className="flex-1 relative flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                {imgDimensions && (
+                    <div className="absolute top-3 right-3 z-10 bg-black/50 text-white px-2 py-0.5 rounded text-xs font-mono">
+                        {imgDimensions.w} × {imgDimensions.h}
+                    </div>
+                )}
+
+                {showGenerated && (
+                    <div className="absolute top-3 left-3 z-10 bg-violet-600/90 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm">
+                        System Preview
+                    </div>
+                )}
+
+                <div className="w-full h-full overflow-auto flex items-center justify-center">
+                    {activeMedia.mime_type?.startsWith("image/") ? (
+                        <Image
+                            src={displayUrl}
+                            alt={activeMedia.alt_text || activeMedia.filename}
+                            className="object-contain"
+                            style={{ height: 'auto', width: 'auto', maxWidth: '100%', maxHeight: '100%' }}
+                            onLoad={handleImageLoad}
+                            preview={false}
+                        />
+                    ) : showPdfPreviews ? (
+                        <div className="w-full h-full overflow-y-auto bg-gray-100 flex flex-col items-center gap-4 p-4">
+                            {activeMedia.previewPages!.map((pageUrl, idx) => (
+                                <img
+                                    key={idx}
+                                    src={pageUrl}
+                                    alt={`Page ${idx + 1}`}
+                                    className="shadow-lg border border-gray-200 max-w-full"
+                                    style={{ width: '100%', maxWidth: '600px' }}
+                                />
+                            ))}
+                        </div>
+                    ) : activeMedia.mime_type?.startsWith("video/") ? (
+                        <video
+                            src={displayUrl} // Use displayUrl for video as well
+                            poster={activeMedia.thumbnailUrl}
+                            controls
+                            className="max-h-full max-w-full"
+                            onLoadedMetadata={handleVideoLoad}
+                        />
+                    ) : activeMedia.mime_type?.includes('pdf') ? (
+                        <iframe
+                            src={displayUrl}
+                            className="w-full h-full border-none rounded-sm"
+                            title="PDF Preview"
+                        />
+                    ) : isDocumentPreviewable(activeMedia.filename, activeMedia.mime_type) ? (
+                        <div className="w-full h-full bg-white relative">
+                            <ErrorBoundary>
+                                <DocumentPreview
+                                    url={displayUrl || ""}
+                                    filename={activeMedia.filename || ""}
+                                    mimeType={activeMedia.mime_type || ""}
+                                />
+                            </ErrorBoundary>
+                        </div>
+                    ) : (
+                        <div className="text-center p-8">
+                            <div className="text-4xl text-gray-400 mb-4">
+                                {getFileIcon(activeMedia.mime_type)}
+                            </div>
+                            <Text type="secondary" className="block mb-4">Preview not available</Text>
+                            <Button type="primary" onClick={handleDownload}>Download File</Button>
+                        </div>
+                    )}
+                </div>
+            </div>
+            {mode === 'preview' && (
+                <div className="mt-4 space-y-3">
+                    <Space size="small">
+                        <Tag color="success" icon={<CheckCircleOutlined />}>Latest Version</Tag>
+                        {activeMedia.metadata?.label_studio_task_id ? (
+                            <Tag color="purple" icon={<ExperimentOutlined />}>Labeled</Tag>
+                        ) : (
+                            <Tag color="default" icon={<InfoCircleOutlined />}>Not Labeled</Tag>
+                        )}
+                        <Tag>{formatFileSize(activeMedia.size_bytes)}</Tag>
+                        {isPublic && <Tag color="blue">Public</Tag>}
+                        {!isPublic && <Tag color="gold">Private</Tag>}
+                    </Space>
+
+                    <div className="flex items-center gap-2">
+                        <Input
+                            prefix={<CodeOutlined className="text-gray-400" />}
+                            value={activeMedia.url}
+                            readOnly
+                            suffix={
+                                <Tooltip title="Copy URL">
+                                    <CopyOutlined
+                                        className="text-gray-400 hover:text-blue-500 cursor-pointer"
+                                        onClick={() => copyToClipboard(activeMedia.url)}
+                                    />
+                                </Tooltip>
+                            }
+                        />
+                        <Tooltip title="Download">
+                            <Button icon={<DownloadOutlined />} onClick={handleDownload} />
+                        </Tooltip>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 export default function MediaPreviewModal({
     visible,
     mediaFile,
     onClose,
     mode = 'preview',
-    isPublicBucket
+    isPublicBucket,
+    onUpdate
 }: MediaPreviewModalProps) {
     const [fullMedia, setFullMedia] = useState<MediaFile | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -82,13 +592,18 @@ export default function MediaPreviewModal({
     const [isAutoLabeling, setIsAutoLabeling] = useState(false);
 
     // Version History State
+    const { token } = theme.useToken();
+    const isDarkMode = token.colorBgContainer === '#141414' || token.colorBgBase === '#000' || token.colorBgBase === '#000000';
     const [versions, setVersions] = useState<ObjectVersion[]>([]);
     const [loadingVersions, setLoadingVersions] = useState(false);
     const [imgDimensions, setImgDimensions] = useState<{ w: number; h: number } | null>(null);
-    const [fetchError, setFetchError] = useState<string | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [isUploadingVersion, setIsUploadingVersion] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (visible && mediaFile?.id) {
+            console.log('[MediaPreviewModal] Opening:', mediaFile.id, mediaFile.filename);
             fetchMediaDetails(mediaFile.id);
             if (mode === 'detail') {
                 loadVersions(mediaFile.s3_key || mediaFile.id);
@@ -97,13 +612,26 @@ export default function MediaPreviewModal({
             setFullMedia(null);
             setVersions([]);
             setImgDimensions(null);
-            setFetchError(null);
         }
     }, [visible, mediaFile, mode]);
 
+    const activeMedia = fullMedia || mediaFile;
+
+    // Diagnostic logging for activeMedia updates
+    useEffect(() => {
+        if (activeMedia) {
+            console.log('[MediaPreviewModal] activeMedia:', {
+                id: activeMedia.id,
+                filename: activeMedia.filename,
+                mime_type: activeMedia.mime_type,
+                url: !!activeMedia.url,
+                hasTags: Array.isArray(activeMedia.metadata?.tags)
+            });
+        }
+    }, [activeMedia]);
+
     const fetchMediaDetails = async (idOrKey: string) => {
         setIsLoading(true);
-        setFetchError(null);
         try {
             // Check if it's a UUID (approximate regex)
             const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrKey);
@@ -116,10 +644,11 @@ export default function MediaPreviewModal({
                 data = await mediaService.getMediaByS3Key(idOrKey);
             }
 
-            setFullMedia(data || mediaFile);
+            console.log('[MediaPreviewModal] fetchMediaDetails result:', data?.id, 'embedding:', data?.embedding ? 'exists' : 'null');
+            // Force new object reference for React state update
+            setFullMedia(data ? { ...data } : mediaFile);
         } catch (err) {
             console.error("Failed to fetch media details:", err);
-            setFetchError(err instanceof Error ? err.message : 'Unknown error');
             setFullMedia(mediaFile);
         } finally {
             setIsLoading(false);
@@ -137,25 +666,148 @@ export default function MediaPreviewModal({
         setLoadingVersions(false);
     };
 
-    const handleDownload = async () => {
-        if (!mediaFile) return;
+
+    const handleDownloadVersion = async (versionId: string) => {
+        if (!activeMedia?.s3_key) return;
         try {
-            window.open(mediaFile.url, "_blank");
-        } catch (error) {
-            message.error("Failed to download file");
+            message.loading({ content: 'Getting download link...', key: 'dl_ver' });
+            const url = await mediaService.getVersionPresignedUrl(activeMedia.s3_key, versionId);
+            if (url) {
+                window.open(url, '_blank');
+                message.success({ content: 'Download started', key: 'dl_ver' });
+            } else {
+                message.error({ content: 'Failed to get download link', key: 'dl_ver' });
+            }
+        } catch (e) {
+            message.error({ content: 'Error downloading version', key: 'dl_ver' });
         }
     };
 
-    const handleDownloadVersion = async (versionId: string) => {
-        message.info(`Download version: ${versionId.substring(0, 8)}...`);
+    const handlePreviewVersion = async (version: ObjectVersion) => {
+        if (!version || !activeMedia?.s3_key) return;
+        try {
+            message.loading({ content: 'Loading version preview...', key: 'preview' });
+            if (version.isLatest) {
+                setPreviewUrl(null); // Clear manual override to use default
+                message.success({ content: 'Showing latest version', key: 'preview' });
+            } else {
+                const url = await mediaService.getVersionPresignedUrl(activeMedia.s3_key, version.versionId);
+                if (url) {
+                    setPreviewUrl(url);
+                    message.success({ content: 'Previewing selected version', key: 'preview' });
+                } else {
+                    message.error({ content: 'Failed to get preview URL', key: 'preview' });
+                }
+            }
+        } catch (error) {
+            console.error('Preview error:', error);
+            message.error({ content: 'Failed to preview version', key: 'preview' });
+        }
     };
 
     const handleRestoreVersion = async (versionId: string) => {
-        message.loading('Restoring version...');
-        setTimeout(() => {
-            message.success('Version restored successfully');
-            if (activeMedia?.s3_key) loadVersions(activeMedia.s3_key);
-        }, 1000);
+        if (!activeMedia?.s3_key) return;
+        try {
+            message.loading({ content: 'Restoring version...', key: 'restore' });
+            const success = await mediaService.setDefaultVersion(activeMedia.s3_key, versionId);
+            if (success) {
+                message.success({ content: 'Version restored as default', key: 'restore' });
+                if (activeMedia.id) await fetchMediaDetails(activeMedia.id);
+                loadVersions(activeMedia.s3_key);
+                onUpdate?.();
+            } else {
+                message.error({ content: 'Failed to restore version', key: 'restore' });
+            }
+        } catch (error) {
+            message.error({ content: 'Error restoring version', key: 'restore' });
+        }
+    };
+
+    const handleUploadVersion = () => {
+        fileInputRef.current?.click();
+    };
+
+    const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !activeMedia) return;
+
+        setIsUploadingVersion(true);
+        try {
+            message.loading({ content: 'Uploading new version...', key: 'upload' });
+
+            // Standard upload to same bucket/folder acts as new version if key matches (or overwrites)
+            // We reuse uploadMedia. If user uploads same filename, it updates.
+            // If strict logic needed, we'd need to force key.
+            // Assumption: User knows to upload same file or we accept filename drift (which changes s3 key actually if not renamed).
+            // To ensure it updates THIS media entry, we should rename file to match original filename?
+            // If filenames differ, it creates a NEW media entry in DB usually.
+            // Unless we update existing media entry?
+            // `uploadMedia` creates new DB entry.
+            // If we want versioning, we typically mean S3 versioning under SAME KEY.
+            // So we must force filename match if we rely on `uploadMedia` resolver logic.
+
+            const renamedFile = new File([file], activeMedia.filename, { type: file.type });
+            const s3Key = activeMedia.s3_key || '';
+            const lastSlash = s3Key.lastIndexOf('/');
+            const folder = lastSlash > -1 ? s3Key.substring(0, lastSlash) : '';
+
+            // Using 'OVERWRITE' conflict strategy to force S3 update (new version) and DB update?
+            // backend uploadMedia might create duplicate DB entry if not careful.
+            // But if we overwrite, maybe it updates?
+
+            const result = await mediaService.uploadMedia(
+                renamedFile,
+                folder,
+                activeMedia.bucket_name,
+                activeMedia.alt_text,
+                false,
+                false,
+                'OVERWRITE'
+            );
+
+            if (result) {
+                message.success({ content: 'New version uploaded', key: 'upload' });
+                // Refresh
+                if (activeMedia.id) await fetchMediaDetails(activeMedia.id);
+                if (activeMedia.s3_key) loadVersions(activeMedia.s3_key);
+                onUpdate?.();
+            } else {
+                message.error({ content: 'Upload failed', key: 'upload' });
+            }
+        } catch (error) {
+            console.error(error);
+            message.error({ content: 'Failed to upload version', key: 'upload' });
+        } finally {
+            setIsUploadingVersion(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleRemoveEmbeddings = async () => {
+        if (!activeMedia?.id) return;
+        try {
+            message.loading({ content: 'Removing embeddings...', key: 'embed_rm' });
+            console.log('[MediaPreviewModal] Removing embeddings for ID:', activeMedia.id);
+            const success = await mediaService.removeMediaEmbeddings(activeMedia.id);
+            console.log('[MediaPreviewModal] Remove result:', success);
+            if (success) {
+                message.success({ content: 'Embeddings removed', key: 'embed_rm' });
+
+                // Explicitly clear the embedding in local state to ensure UI reacts immediately
+                if (fullMedia) {
+                    setFullMedia({ ...fullMedia, embedding: undefined });
+                }
+
+                // Re-fetch to sync with backend and trigger other updates
+                await fetchMediaDetails(activeMedia.id);
+                onUpdate?.();
+            } else {
+                message.error({ content: 'Failed to remove embeddings', key: 'embed_rm' });
+            }
+        } catch (error) {
+            console.error('[MediaPreviewModal] Error removing embeddings:', error);
+            message.error({ content: 'Error removing embeddings', key: 'embed_rm' });
+        }
     };
 
     const copyToClipboard = (text: string, msg: string = "Copied to clipboard") => {
@@ -167,15 +819,21 @@ export default function MediaPreviewModal({
         if (!mediaFile) return;
         setIsGeneratingEmbed(true);
         try {
+            console.log("Calling generateMediaEmbeddings...");
             const success = await mediaService.generateMediaEmbeddings(mediaFile.id, "");
+            console.log("Result:", success);
             if (success) {
                 message.success('Embeddings generated successfully');
                 await fetchMediaDetails(mediaFile.id);
+                onUpdate?.();
             } else {
-                message.error('Failed to generate embeddings');
+                const msg = 'Failed to generate embeddings (Server returned false)';
+                message.error(msg);
             }
-        } catch (error) {
-            message.error('Error generating embeddings');
+        } catch (error: any) {
+            console.error("Error in handleGenerateEmbeddings:", error);
+            const msg = `Error generating embeddings: ${error.message || JSON.stringify(error)}`;
+            message.error(msg);
         } finally {
             setIsGeneratingEmbed(false);
         }
@@ -216,28 +874,31 @@ export default function MediaPreviewModal({
         return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
     };
 
-    const activeMedia = fullMedia || mediaFile;
-    if (!activeMedia) return null;
-
     // Embedding parsing
-    const embeddingStr = activeMedia.embedding;
-    let embeddingVector: number[] = [];
-    let embeddingDim = 0;
-
-    if (embeddingStr) {
+    const embeddingVector = useMemo(() => {
+        if (!activeMedia?.embedding) return [];
         try {
-            if (typeof embeddingStr === 'string') {
-                embeddingVector = JSON.parse(embeddingStr);
-            } else if (Array.isArray(embeddingStr)) {
-                embeddingVector = embeddingStr;
-            }
-            if (Array.isArray(embeddingVector)) embeddingDim = embeddingVector.length;
-        } catch (e) {
-            console.error("Failed to parse embedding", e);
-        }
-    }
+            let result = typeof activeMedia.embedding === 'string'
+                ? JSON.parse(activeMedia.embedding)
+                : activeMedia.embedding;
 
-    // --- Content Components ---
+            // Handle potential double-encoding (string inside string)
+            if (typeof result === 'string') {
+                try {
+                    result = JSON.parse(result);
+                } catch (e) {
+                    console.warn('Failed to double-parse embedding', e);
+                }
+            }
+
+            return Array.isArray(result) ? result : [];
+        } catch (e) {
+            console.error('Failed to parse embedding', e);
+            return [];
+        }
+    }, [activeMedia]);
+
+    const embeddingDim = embeddingVector.length;
 
     const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
         const img = e.currentTarget;
@@ -249,370 +910,33 @@ export default function MediaPreviewModal({
         setImgDimensions({ w: vid.videoWidth, h: vid.videoHeight });
     };
 
-    const MediaPreviewContent = () => {
-        // Privacy Logic:
-        // Private -> Show Generated Preview (Thumbnail for image, PreviewPages for PDF)
-        // Public -> Show Real File (activeMedia.url)
-        const isPublic = isPublicBucket ?? false;
+    // --- Actions ---
 
-        let displayUrl = activeMedia.url;
-        let showGenerated = false;
-
-        if (!isPublic) {
-            if (activeMedia.mime_type?.startsWith('image/') && activeMedia.thumbnailUrl) {
-                displayUrl = activeMedia.thumbnailUrl;
-                showGenerated = true;
-            }
-            // Video: Thumbnail is poster. We still need URL to play.
-            // If URL is presigned (which it is), we can play it.
-            // User said "show preview system generated". For video that might mean just thumbnail? 
-            // But a modal should probably play it. 
-            // Let's stick to Image/PDF focus as per context.
+    const handleDownload = async () => {
+        if (!activeMedia) return;
+        try {
+            window.open(activeMedia.url, "_blank");
+        } catch (error) {
+            message.error("Failed to download file");
         }
-
-        const isPdf = activeMedia.mime_type === 'application/pdf';
-        const hasPdfPreviews = isPdf && activeMedia.previewPages && activeMedia.previewPages.length > 0;
-
-        // Always show generated previews if available (safer and faster than original PDF)
-        // User Request: Force Full PDF (iframe) for Detail/Preview Modal.
-        const showPdfPreviews = false; // Disable generated previews to show Iframe
-
-        return (
-            <div className="w-full h-full flex flex-col relative">
-                {/* Standard Preview Container */}
-                <div className="flex-1 relative flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-
-                    {/* Dimensions Badge */}
-                    {(imgDimensions) && (
-                        <div className="absolute top-3 right-3 z-10 bg-black/50 text-white px-2 py-0.5 rounded text-xs font-mono">
-                            {imgDimensions.w} × {imgDimensions.h}
-                        </div>
-                    )}
-
-                    {/* Generated Preview Badge */}
-                    {showGenerated && (
-                        <div className="absolute top-3 left-3 z-10 bg-violet-600/90 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm">
-                            System Preview
-                        </div>
-                    )}
-
-                    {/* Media Content */}
-                    <div className="w-full h-full overflow-auto flex items-center justify-center">
-                        {activeMedia.mime_type?.startsWith("image/") ? (
-                            <Image
-                                src={displayUrl}
-                                alt={activeMedia.alt_text || activeMedia.filename}
-                                className="object-contain"
-                                style={{ height: 'auto', width: 'auto', maxWidth: '100%', maxHeight: '100%' }}
-                                onLoad={handleImageLoad}
-                                preview={false}
-                            />
-                        ) : showPdfPreviews ? (
-                            <div className="w-full h-full overflow-y-auto bg-gray-100 flex flex-col items-center gap-4 p-4">
-                                {activeMedia.previewPages!.map((pageUrl, idx) => (
-                                    <img
-                                        key={idx}
-                                        src={pageUrl}
-                                        className="shadow-lg border border-gray-200 max-w-full"
-                                        style={{ width: '100%', maxWidth: '600px' }}
-                                    />
-                                ))}
-                            </div>
-                        ) : activeMedia.mime_type?.startsWith("video/") ? (
-                            <video
-                                src={activeMedia.url}
-                                poster={activeMedia.thumbnailUrl}
-                                controls
-                                className="max-h-full max-w-full"
-                                onLoadedMetadata={handleVideoLoad}
-                            />
-                        ) : activeMedia.mime_type?.includes('pdf') ? (
-                            <iframe
-                                src={displayUrl}
-                                className="w-full h-full border-none rounded-sm"
-                                title="PDF Preview"
-                            />
-                        ) : isDocumentPreviewable(activeMedia.filename, activeMedia.mime_type) ? (
-                            <div className="w-full h-full bg-white relative">
-                                <DocumentPreview
-                                    url={activeMedia.url}
-                                    filename={activeMedia.filename}
-                                    mimeType={activeMedia.mime_type}
-                                />
-                            </div>
-                        ) : (
-                            <div className="text-center p-8">
-                                <div className="text-4xl text-gray-400 mb-4">
-                                    {getFileIcon(activeMedia.mime_type)}
-                                </div>
-                                <Text type="secondary" className="block mb-4">Preview not available</Text>
-                                <Button type="primary" onClick={handleDownload}>Download File</Button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-                {/* Footer Bar */}
-                {mode === 'preview' && (
-                    <div className="mt-4 space-y-3">
-                        {/* Info Tags */}
-                        <Space size="small">
-                            <Tag color="success" icon={<CheckCircleOutlined />}>Latest Version</Tag>
-                            {activeMedia.metadata?.label_studio_task_id ? (
-                                <Tag color="purple" icon={<ExperimentOutlined />}>Labeled</Tag>
-                            ) : (
-                                <Tag color="default" icon={<InfoCircleOutlined />}>Not Labeled</Tag>
-                            )}
-                            <Tag>{formatFileSize(activeMedia.size_bytes)}</Tag>
-                            {isPublic && <Tag color="blue">Public</Tag>}
-                            {!isPublic && <Tag color="gold">Private</Tag>}
-                        </Space>
-
-                        {/* URL Bar */}
-                        <div className="flex items-center gap-2">
-                            <Input
-                                prefix={<CodeOutlined className="text-gray-400" />}
-                                value={activeMedia.url}
-                                readOnly
-                                suffix={
-                                    <Tooltip title="Copy URL">
-                                        <CopyOutlined
-                                            className="text-gray-400 hover:text-blue-500 cursor-pointer"
-                                            onClick={() => copyToClipboard(activeMedia.url)}
-                                        />
-                                    </Tooltip>
-                                }
-                            />
-                            <Tooltip title="Download">
-                                <Button icon={<DownloadOutlined />} onClick={handleDownload} />
-                            </Tooltip>
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
     };
 
-    const VersionsTab = () => (
-        <div className="h-full flex flex-col">
-            {loadingVersions ? (
-                <div className="py-12 flex justify-center"><Spin indicator={<LoadingOutlined style={{ fontSize: 24, color: '#7c3aed' }} spin />} tip="Loading versions..." /></div>
-            ) : versions.length === 0 ? (
-                <div className="py-8 text-center flex flex-col items-center justify-center h-full text-gray-400">
-                    <HistoryOutlined className="text-3xl mb-2 opacity-20" />
-                    <span>No version history</span>
-                </div>
-            ) : (
-                <List
-                    className="overflow-y-auto flex-1 pr-2 custom-scrollbar"
-                    itemLayout="horizontal"
-                    dataSource={versions}
-                    renderItem={(version, index) => (
-                        <List.Item
-                            className="group hover:bg-gray-50 dark:hover:bg-white/5 rounded-lg px-2 transition-colors border-b border-gray-50 dark:border-white/5 last:border-0"
-                            actions={[
-                                <Tooltip key="download" title="Download">
-                                    <Button type="text" size="small" className="text-gray-400 hover:text-violet-600" icon={<DownloadOutlined />} onClick={() => handleDownloadVersion(version.versionId)} />
-                                </Tooltip>,
-                                !version.isLatest && (
-                                    <Tooltip key="restore" title="Restore">
-                                        <Button type="text" size="small" className="text-gray-400 hover:text-green-600" icon={<RollbackOutlined />} onClick={() => handleRestoreVersion(version.versionId)} />
-                                    </Tooltip>
-                                ),
-                            ]}
-                        >
-                            <List.Item.Meta
-                                avatar={
-                                    <div className={`mt-1 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${version.isLatest ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
-                                        {version.isLatest ? <CheckCircleOutlined /> : index + 1}
-                                    </div>
-                                }
-                                title={
-                                    <div className="flex items-center gap-2">
-                                        <Text className="text-xs font-mono text-gray-600 dark:text-gray-300">{version.versionId.substring(0, 8)}...</Text>
-                                        {version.isLatest && <Tag color="success" className="mx-0 text-[10px] h-4 leading-4 px-1">Avg</Tag>}
-                                    </div>
-                                }
-                                description={
-                                    <div className="flex flex-col text-[10px] text-gray-400 mt-0.5">
-                                        <span className="flex items-center gap-1"><ClockCircleOutlined className="text-[8px]" /> {getRelativeTime(version.lastModified)}</span>
-                                        <span>{formatDetailFileSize(version.size)}</span>
-                                    </div>
-                                }
-                            />
-                        </List.Item>
-                    )}
-                />
-            )
-            }
-        </div >
-    );
-
-    const DetailsTab = () => (
-        <div className="space-y-4 pr-1">
-            {/* Basic Details */}
-            <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-sm bg-gray-50 dark:bg-[#121212] p-3 rounded-xl border border-gray-100 dark:border-gray-800">
-                <div className="flex flex-col">
-                    <span className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Size</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-200">{formatFileSize(activeMedia.size_bytes)}</span>
-                </div>
-                <div className="flex flex-col">
-                    <span className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Created</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-200">{activeMedia.created_at ? new Date(activeMedia.created_at).toLocaleDateString() : '-'}</span>
-                </div>
-                <div className="col-span-2 flex flex-col pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
-                    <span className="text-gray-400 text-xs uppercase tracking-wider font-semibold">S3 Key</span>
-                    <Text copyable className="font-mono text-[10px] text-gray-500 break-all hover:text-violet-500 transition-colors cursor-pointer mt-1">
-                        {activeMedia.s3_key}
-                    </Text>
-                </div>
-            </div>
-
-            {/* AI Intelligence: Embeddings */}
-            <div className="bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-900/10 dark:to-indigo-900/10 rounded-xl p-3 border border-violet-100 dark:border-violet-500/20">
-                <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-xs font-bold text-violet-700 dark:text-violet-300 flex items-center gap-1.5">
-                        <ExperimentOutlined /> AI INTELLIGENCE
-                    </h3>
-                    {embeddingDim > 0 && <Tag color="purple" bordered={false} className="m-0 text-[9px] font-bold px-1">{embeddingDim} DIM</Tag>}
-                </div>
-
-                {/* Vector Display */}
-                <div className="bg-white/50 dark:bg-black/20 rounded-lg p-2 border border-violet-100/50 dark:border-violet-500/10 mb-3">
-                    <Spin spinning={isLoading || isGeneratingEmbed} indicator={<LoadingOutlined className="text-violet-500" spin />}>
-                        {embeddingDim > 0 ? (
-                            <div className="flex flex-col gap-1">
-                                <div className="font-mono text-[9px] text-gray-500 dark:text-gray-400 break-all leading-relaxed max-h-20 overflow-y-auto custom-scrollbar">
-                                    <span className="text-violet-500 font-bold">Vector: </span>
-                                    [{embeddingVector.slice(0, 50).join(', ')}
-                                    {embeddingVector.length > 50 && <span className="text-gray-400 italic"> ... +{embeddingVector.length - 50} more</span>}]
-                                </div>
-                                <Button
-                                    size="small"
-                                    type="text"
-                                    className="self-end text-[9px] text-violet-500 h-5"
-                                    onClick={() => copyToClipboard(JSON.stringify(embeddingVector), "Full embedding vector copied")}
-                                >
-                                    Copy Full Vector
-                                </Button>
-                            </div>
-                        ) : (
-                            <div className="text-center text-[10px] text-gray-400 italic">No embeddings generated</div>
-                        )}
-                    </Spin>
-                </div>
-
-                {/* Generate Button */}
-                <Button
-                    type="primary" size="small" ghost
-                    block
-                    className="text-xs border-violet-300 text-violet-600 hover:!bg-violet-500 hover:!text-white hover:!border-violet-500"
-                    onClick={handleGenerateEmbeddings} loading={isGeneratingEmbed} icon={<ReloadOutlined />}
-                >
-                    {embeddingDim > 0 ? "Regenerate Embeddings" : "Generate Embeddings"}
-                </Button>
-            </div>
-
-            {/* Automation & Labeling Card */}
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/10 dark:to-cyan-900/10 rounded-xl p-3 border border-blue-100 dark:border-blue-500/20">
-                <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-xs font-bold text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
-                        <ExperimentOutlined /> AUTOMATION & METADATA
-                    </h3>
-                </div>
-
-                {/* Auto Label Button */}
-                <Button
-                    type="default" size="small" block
-                    className="text-xs border-blue-300 text-blue-600 hover:!bg-blue-500 hover:!text-white hover:!border-blue-500 bg-white/50 mb-3"
-                    onClick={handleAutoLabel} loading={isAutoLabeling} icon={<ExperimentOutlined />}
-                >
-                    Auto Label Media
-                </Button>
-
-                {/* Generated Tags Display */}
-                {activeMedia.metadata?.tags && Array.isArray(activeMedia.metadata.tags) && activeMedia.metadata.tags.length > 0 && (
-                    <div className="mb-3 bg-white/50 dark:bg-black/20 rounded-lg p-2 border border-blue-100/50 dark:border-blue-500/10">
-                        <div className="text-[10px] font-bold text-blue-700 dark:text-blue-400 mb-1.5 flex items-center gap-1">
-                            <TagOutlined /> GENERATED LABELS
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                            {activeMedia.metadata.tags.map((tag: string, i: number) => (
-                                <Tag key={i} color="blue" bordered={false} className="m-0 text-[10px] px-1.5 py-0.5 leading-none">
-                                    {tag}
-                                </Tag>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Metadata / Annotation View */}
-                {activeMedia.metadata?.label_studio_task_id ? (
-                    <div className="bg-white/50 dark:bg-black/20 rounded-lg p-2 border border-blue-100/50 dark:border-blue-500/10">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">LabelStudio</span>
-                            <Tag color="cyan" className="m-0 text-[9px] px-1">TASK {activeMedia.metadata.label_studio_task_id}</Tag>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 mb-2">
-                            <div className="bg-white dark:bg-black/40 p-1.5 rounded border border-gray-100 dark:border-gray-700">
-                                <div className="text-[9px] text-gray-400 uppercase">Project ID</div>
-                                <div className="text-xs font-mono font-bold text-gray-600 dark:text-gray-300">{activeMedia.metadata.project_id || 'N/A'}</div>
-                            </div>
-                        </div>
-
-                        <Collapse
-                            ghost size="small"
-                            className="bg-transparent p-0"
-                            items={[{
-                                key: '1',
-                                label: <span className="text-[10px] font-semibold text-gray-400">View Raw Metadata</span>,
-                                children: (
-                                    <div className="max-h-40 overflow-y-auto custom-scrollbar">
-                                        <pre className="text-[9px] font-mono whitespace-pre-wrap bg-gray-50 dark:bg-[#121212] p-2 rounded border border-gray-100 dark:border-gray-800 text-gray-500">
-                                            {JSON.stringify(activeMedia.metadata, null, 2)}
-                                        </pre>
-                                    </div>
-                                )
-                            }]}
-                        />
-                    </div>
-                ) : (
-                    <Collapse
-                        ghost size="small"
-                        className="bg-transparent"
-                        items={[{
-                            key: '1',
-                            label: <span className="text-xs font-semibold text-gray-500"><CodeOutlined /> Metadata JSON</span>,
-                            children: (
-                                <div className="max-h-40 overflow-y-auto custom-scrollbar">
-                                    <pre className="text-[9px] font-mono whitespace-pre-wrap bg-gray-50 dark:bg-[#121212] p-2 rounded border border-gray-100 dark:border-gray-800 text-gray-500">
-                                        {activeMedia.metadata ? JSON.stringify(activeMedia.metadata, null, 2) : '{}'}
-                                    </pre>
-                                </div>
-                            )
-                        }]}
-                    />
-                )}
-            </div>
-        </div>
-    );
-
-    // --- Render ---
+    if (!activeMedia) return null;
 
     const modalTitle = (
-        <div className="flex items-center gap-3 px-6 py-3.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-violet-500/30">
+        <div className="flex items-center gap-3 px-4 py-3">
+            <div className="w-9 h-9 flex-none rounded-lg bg-white/20 flex items-center justify-center text-white shadow-sm border border-white/10">
                 {getFileIcon(activeMedia.mime_type)}
             </div>
-            <div className="flex flex-col min-w-0">
-                <span className="truncate max-w-[300px] text-sm leading-tight tracking-wide font-bold"
-                    style={{ background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <div className="flex flex-col min-w-0 justify-center">
+                <span className="truncate max-w-[300px] text-base leading-none tracking-tight font-bold text-white"
+                    style={{ paddingBottom: '2px', textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
                     {activeMedia.filename}
                 </span>
-                <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold">{activeMedia.mime_type?.split('/')[1] || 'UNKNOWN'}</span>
-                    <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">{formatFileSize(activeMedia.size_bytes)}</span>
+                <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[10px] text-blue-100 uppercase tracking-widest font-bold">{activeMedia.mime_type?.split('/')[1] || 'UNKNOWN'}</span>
+                    <span className="w-1 h-1 rounded-full bg-white/40"></span>
+                    <span className="text-[10px] text-blue-100 font-medium">{formatFileSize(activeMedia.size_bytes)}</span>
                 </div>
             </div>
         </div>
@@ -623,8 +947,8 @@ export default function MediaPreviewModal({
         <Modal
             open={visible}
             onCancel={onClose}
-            width={mode === 'detail' ? 980 : 720}
-            centered
+            width={mode === 'detail' ? '90vw' : 720}
+            centered={mode !== 'detail'}
             title={modalTitle}
             footer={null}
             className="media-preview-modal"
@@ -636,69 +960,90 @@ export default function MediaPreviewModal({
                     <CloseOutlined className="text-white text-base" />
                 </div>
             }
+            style={mode === 'detail' ? { top: '5vh', height: '85vh', maxWidth: '100vw', padding: 0, paddingBottom: 0 } : undefined}
             styles={{
                 header: {
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    backdropFilter: 'blur(16px)',
-                    WebkitBackdropFilter: 'blur(16px)',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     padding: 0,
-                    borderRadius: '16px 16px 0 0',
-                    borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
-                    marginBottom: 0
+                    // borderRadius removed as requested
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                    marginBottom: 0,
+                    height: '60px', // Explicit height
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: 'white'
                 },
                 body: {
-                    padding: 0
+                    padding: 0,
+                    height: mode === 'detail' ? 'calc(85vh - 60px)' : 'auto', // Match header height subtraction
+                    overflow: 'hidden'
+                },
+                // @ts-ignore
+                content: {
+                    padding: 0,
+                    borderRadius: '16px 16px 0 0',
+                    overflow: 'hidden',
+                    height: mode === 'detail' ? '85vh' : 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    background: isDarkMode
+                        ? 'rgba(15, 23, 42, 0.95)'
+                        : 'rgba(255, 255, 255, 0.8)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    border: `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255, 255, 255, 0.2)'}`,
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.1)'
                 }
             }}
             modalRender={(modal) => (
                 <div className="custom-modal-wrapper">
                     <style>{`
                         .custom-modal-wrapper .ant-modal,
-                        .media-preview-modal .ant-modal,
-                        .custom-modal-wrapper .ant-modal-content,
-                        .media-preview-modal .ant-modal-content,
-                        .custom-modal-wrapper .ant-modal-body,
-                        .media-preview-modal .ant-modal-body,
-                        .custom-modal-wrapper .ant-modal-container {
-                            padding: 0 !important;
+                        .ant-modal.media-preview-modal {
+                            max-width: 100vw !important;
+                            width: ${mode === 'detail' ? '90vw !important' : 'auto'};
                             padding-bottom: 0 !important;
-                            border-radius: 16px !important;
+                            
+                            /* User requested overrides */
+                            --ant-modal-content-padding: 0 !important;
+                            --ant-border-radius-xs: 2px !important;
+                            --ant-border-radius-sm: 4px !important;
+                            --ant-border-radius-lg: 8px !important;
+                            --ant-border-radius-outer: 4px !important;
                         }
 
-                        /* Content Styling moved here */
-                        .custom-modal-wrapper .ant-modal-content, 
-                        .media-preview-modal .ant-modal-content {
-                            background: rgba(255, 255, 255, 0.8) !important;
-                            backdrop-filter: blur(20px) !important;
-                            -webkit-backdrop-filter: blur(20px) !important;
-                            border: 1px solid rgba(255, 255, 255, 0.2) !important;
-                            box-shadow: 0 20px 50px rgba(0,0,0,0.1) !important;
-                        }
-                        
-                        /* Glass Header specific tweaks */
-                        .custom-modal-wrapper .ant-modal-header,
-                        .media-preview-modal .ant-modal-header {
-                            background: transparent !important; /* Managed by styles prop */
+                        /* Force override padding on content and body */
+                        .custom-modal-wrapper .ant-modal .ant-modal-content,
+                        .ant-modal.media-preview-modal .ant-modal-content {
+                            padding: 0 !important;
+                            overflow: hidden !important;
                         }
 
-                        .custom-modal-wrapper .ant-modal-title,
-                        .media-preview-modal .ant-modal-title {
-                            color: inherit !important;
-                            font-weight: 600 !important;
-                            font-size: 16px !important;
+                        .custom-modal-wrapper .ant-modal .ant-modal-body,
+                        .ant-modal.media-preview-modal .ant-modal-body {
                             padding: 0 !important;
                         }
 
-                        .custom-modal-wrapper .ant-modal-close,
-                        .media-preview-modal .ant-modal-close {
-                            top: 14px !important; 
-                            right: 16px !important;
+                        /* Ensure tabs fit */
+                        .custom-tabs .ant-tabs-nav {
+                            margin-bottom: 0 !important;
+                            padding: 0 12px;
                         }
-                        
-                        /* Dark mode support logic (assumed via class or parent) */
-                        :global(.dark) .custom-modal-wrapper .ant-modal-content {
-                            background: rgba(15, 23, 42, 0.85) !important;
-                            border: 1px solid rgba(139, 92, 246, 0.2) !important;
+                        .custom-tabs .ant-tabs-nav::before {
+                            border-bottom: 1px solid #f0f0f0;
+                        }
+                        .custom-tabs .ant-tabs-content-holder {
+                            height: 100%;
+                            overflow: hidden;
+                            flex: 1; /* Ensure flex grow */
+                        }
+                        .custom-tabs .ant-tabs-content {
+                            height: 100%;
+                        }
+                        .custom-tabs .ant-tabs-tabpane-active {
+                            height: 100%;
+                            display: flex;
+                            flex-direction: column;
                         }
                     `}</style>
                     {modal}
@@ -708,59 +1053,135 @@ export default function MediaPreviewModal({
             {mode === 'preview' ? (
                 // PREVIEW MODE LAYOUT
                 <div className="h-[60vh] flex flex-col p-6">
-                    <MediaPreviewContent />
+                    <MediaPreviewContent
+                        activeMedia={activeMedia}
+                        imgDimensions={imgDimensions}
+                        isPublicBucket={isPublicBucket}
+                        mode={mode}
+                        handleImageLoad={handleImageLoad}
+                        handleVideoLoad={handleVideoLoad}
+                        handleDownload={handleDownload}
+                        copyToClipboard={copyToClipboard}
+                        getFileIcon={getFileIcon}
+                        formatFileSize={formatFileSize}
+                        previewUrl={previewUrl}
+                    />
                     {/* Keyboard hint */}
                     <div className="mt-2 text-center text-xs text-gray-400">
                         <Space><Text type="secondary" style={{ fontSize: 12 }}>Press ESC to close</Text></Space>
                     </div>
                 </div>
             ) : (
-                // DETAIL MODE LAYOUT
-                <div className="flex flex-col md:flex-row h-[65vh] gap-5 p-6">
-                    <div className="flex-1 overflow-hidden h-full flex flex-col">
-                        <MediaPreviewContent />
+                // CINEMA DETAIL MODE LAYOUT
+                <div className="flex h-full w-full overflow-hidden">
+                    {/* LEFT PANEL: PREVIEW (70-75%) */}
+                    <div className="flex-1 bg-gray-100 dark:bg-black/40 relative overflow-hidden flex flex-col">
+                        <div className="flex-1 overflow-hidden relative p-4 flex items-center justify-center">
+                            <MediaPreviewContent
+                                activeMedia={activeMedia}
+                                imgDimensions={imgDimensions}
+                                isPublicBucket={isPublicBucket}
+                                mode={mode}
+                                handleImageLoad={handleImageLoad}
+                                handleVideoLoad={handleVideoLoad}
+                                handleDownload={handleDownload}
+                                copyToClipboard={copyToClipboard}
+                                getFileIcon={getFileIcon}
+                                formatFileSize={formatFileSize}
+                                previewUrl={previewUrl}
+                            />
+                        </div>
                     </div>
-                    <div className="w-full md:w-[320px] h-full flex flex-col border-l border-gray-200 dark:border-gray-700 pl-5">
+
+                    {/* RIGHT PANEL: SIDEBAR (Fixed Width) */}
+                    <div className="w-[380px] flex-none bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 flex flex-col h-full z-10 shadow-xl">
                         <Tabs
                             defaultActiveKey="info"
                             size="small"
-                            className="h-full custom-tabs"
-                            tabBarStyle={{ marginBottom: 16 }}
+                            className="flex-1 flex flex-col custom-tabs h-full"
                             items={[
                                 {
                                     icon: <InfoCircleOutlined />,
                                     key: 'info',
-                                    label: <span className="font-medium">Info</span>,
-                                    children: <div className="h-full overflow-y-auto pb-4 custom-scrollbar"><DetailsTab /></div>
+                                    label: <span className="font-medium text-xs">Info</span>,
+                                    children: (
+                                        <div className="h-full overflow-y-auto p-5 custom-scrollbar">
+                                            <InfoTab
+                                                activeMedia={activeMedia}
+                                                embeddingDim={embeddingDim}
+                                                embeddingVector={embeddingVector}
+                                                versions={versions}
+                                                getRelativeTime={getRelativeTime}
+                                                formatFileSize={formatFileSize}
+                                            />
+                                        </div>
+                                    )
+                                },
+                                {
+                                    icon: <RobotOutlined />,
+                                    key: 'ai-intel',
+                                    label: <span className="font-medium text-xs">AI</span>,
+                                    children: (
+                                        <div className="h-full overflow-y-auto p-5 custom-scrollbar">
+                                            <AIIntelTab
+                                                embeddingDim={embeddingDim}
+                                                embeddingVector={embeddingVector}
+                                                isLoading={isLoading}
+                                                isGeneratingEmbed={isGeneratingEmbed}
+                                                handleGenerateEmbeddings={handleGenerateEmbeddings}
+                                                handleRemoveEmbeddings={handleRemoveEmbeddings}
+                                                copyToClipboard={copyToClipboard}
+                                            />
+                                        </div>
+                                    )
+                                },
+                                {
+                                    icon: <SettingOutlined />,
+                                    key: 'automation',
+                                    label: <span className="font-medium text-xs">Auto</span>,
+                                    children: (
+                                        <div className="h-full overflow-y-auto p-5 custom-scrollbar">
+                                            <AutomationTab
+                                                activeMedia={activeMedia}
+                                                isAutoLabeling={isAutoLabeling}
+                                                handleAutoLabel={handleAutoLabel}
+                                                copyToClipboard={copyToClipboard}
+                                            />
+                                        </div>
+                                    )
                                 },
                                 {
                                     icon: <HistoryOutlined />,
                                     key: 'versions',
-                                    label: <span className="font-medium">Versions</span>,
-                                    children: <div className="h-full overflow-hidden"><VersionsTab /></div>
+                                    label: <span className="font-medium text-xs">History</span>,
+                                    children: (
+                                        <div className="h-full overflow-hidden flex flex-col p-0">
+                                            <VersionsTab
+                                                versions={versions}
+                                                loadingVersions={loadingVersions}
+                                                isUploadingVersion={isUploadingVersion}
+                                                handleUploadVersion={handleUploadVersion}
+                                                handlePreviewVersion={handlePreviewVersion}
+                                                handleDownloadVersion={handleDownloadVersion}
+                                                handleRestoreVersion={handleRestoreVersion}
+                                                previewUrl={previewUrl}
+                                                getRelativeTime={getRelativeTime}
+                                                formatDetailFileSize={formatDetailFileSize}
+                                            />
+                                        </div>
+                                    )
                                 },
                             ]}
                         />
-
-                        {/* DEBUG DATA PANEL - TEMPORARY */}
-                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-[10px] font-mono text-red-800 break-all">
-                            <div className="font-bold mb-1">DEBUG DATA</div>
-                            <div>ID: {activeMedia?.id}</div>
-                            <div>Source: {fullMedia ? 'FULL (Fetched)' : 'LIST (Local)'}</div>
-                            <div>Embedding Raw: {JSON.stringify(activeMedia?.embedding || null).substring(0, 50)}...</div>
-                            {fetchError && <div className="text-red-600 font-bold bg-white px-1">Error: {fetchError}</div>}
-                            <Button
-                                size="small"
-                                danger
-                                className="mt-2"
-                                onClick={() => activeMedia?.id && fetchMediaDetails(activeMedia.id)}
-                            >
-                                Force Refresh
-                            </Button>
-                        </div>
                     </div>
                 </div>
             )}
+            <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={onFileChange}
+            />
         </Modal >
     );
 }

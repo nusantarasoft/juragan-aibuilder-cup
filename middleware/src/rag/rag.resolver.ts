@@ -30,11 +30,6 @@ export class RagResolver {
         return this.ragService.generateAnswer(query);
     }
 
-    @Mutation(() => [String], { nullable: true })
-    async autoLabelMedia(@Args('mediaId') mediaId: string): Promise<string[]> {
-        return this.ragService.autoLabelMedia(mediaId);
-    }
-
     @Mutation(() => String)
     async chatWithSources(
         @Args('query') query: string,
@@ -62,15 +57,6 @@ export class RagResolver {
     @Mutation(() => String)
     async generateImage(@Args('prompt') prompt: string): Promise<string> {
         return this.ragService.generateImage(prompt);
-    }
-
-    @Mutation(() => Boolean)
-    async generateMediaEmbeddings(
-        @Args('mediaId') mediaId: string,
-        @Args('content') content: string
-    ): Promise<boolean> {
-        // Content might be empty if we want backend to fetch from S3 (which it does)
-        return this.ragService.generateMediaEmbeddings(mediaId, content);
     }
 
     @Mutation(() => Boolean)

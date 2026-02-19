@@ -131,32 +131,44 @@ export const mediaService = {
     // Upload media file via GraphQL (file goes to middleware → MinIO)
     async uploadMedia(
         file: File,
-        options?: { folder?: string; bucket?: string; altText?: string; autoLabel?: boolean; generateEmbedding?: boolean }
-    ): Promise<{ success: boolean; media?: MediaFile; error?: string }> {
+        folder?: string,
+        bucket?: string,
+        altText?: string,
+        autoLabel: boolean = false,
+        generateEmbedding: boolean = false,
+        onConflict: 'RENAME' | 'OVERWRITE' | 'ERROR' = 'ERROR'
+    ): Promise<MediaFile | null> {
         try {
             // Use GraphQL multipart upload
             const formData = new FormData();
 
             const operations = JSON.stringify({
                 query: `
-                    mutation UploadFile($file: Upload!, $folder: String, $bucket: String, $altText: String, $autoLabel: Boolean, $generateEmbedding: Boolean) {
-                        uploadFile(file: $file, folder: $folder, bucket: $bucket, altText: $altText, autoLabel: $autoLabel, generateEmbedding: $generateEmbedding) {
+                    mutation UploadMedia($file: Upload!, $folder: String, $bucket: String, $altText: String, $autoLabel: Boolean, $generateEmbedding: Boolean, $onConflict: String) {
+                        uploadMedia(file: $file, folder: $folder, bucket: $bucket, altText: $altText, autoLabel: $autoLabel, generateEmbedding: $generateEmbedding, onConflict: $onConflict) {
                             id
                             filename
                             url
                             mimeType
                             sizeBytes
+                            altText
+                            createdAt
+                            updatedAt
+                            bucketName
                             s3Key
+                            thumbnailUrl
+                            previewPages
                         }
                     }
                 `,
                 variables: {
                     file: null,
-                    folder: options?.folder || '',
-                    bucket: options?.bucket, // Pass bucket
-                    altText: options?.altText || file.name,
-                    autoLabel: options?.autoLabel,
-                    generateEmbedding: options?.generateEmbedding,
+                    folder,
+                    bucket,
+                    altText,
+                    autoLabel,
+                    generateEmbedding,
+                    onConflict
                 },
             });
 
@@ -177,10 +189,11 @@ export const mediaService = {
             const json = await response.json();
             if (json.errors) throw new Error(json.errors[0].message);
 
-            return { success: true, media: mapToMediaFile(json.data.uploadFile) };
+            return mapToMediaFile(json.data.uploadMedia);
         } catch (error: unknown) {
             console.error("Error uploading media:", error);
-            return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+            // Re-throw to allow caller to handle conflict errors
+            throw error;
         }
     },
 
@@ -766,6 +779,57 @@ export const mediaService = {
         }
     },
 
+    async setDefaultVersion(key: string, versionId: string): Promise<boolean> {
+        const mutation = `
+            mutation SetDefaultVersion($key: String!, $versionId: String!) {
+                setDefaultVersion(key: $key, versionId: $versionId)
+            }
+        `;
+
+        try {
+            const data = await graphqlRequest<{ setDefaultVersion: boolean }>(mutation, { key, versionId });
+            return data.setDefaultVersion;
+        } catch (error) {
+            console.error("Error setting default version:", error);
+            return false;
+        }
+    },
+
+    async removeMediaEmbeddings(id: string): Promise<boolean> {
+        console.log('[mediaService] Removing embeddings for ID:', id);
+        const mutation = `
+            mutation RemoveMediaEmbeddings($id: String!) {
+                removeMediaEmbeddings(id: $id)
+            }
+        `;
+
+        try {
+            console.log('[mediaService] Sending removeMediaEmbeddings mutation...');
+            const data = await graphqlRequest<{ removeMediaEmbeddings: boolean }>(mutation, { id });
+            console.log('[mediaService] Remove result:', data);
+            return data.removeMediaEmbeddings;
+        } catch (error) {
+            console.error("Error removing embeddings:", error);
+            return false;
+        }
+    },
+
+    async getVersionPresignedUrl(key: string, versionId: string): Promise<string | null> {
+        const query = `
+            query GetVersionPresignedUrl($key: String!, $versionId: String!) {
+                getVersionPresignedUrl(key: $key, versionId: $versionId)
+            }
+        `;
+
+        try {
+            const data = await graphqlRequest<{ getVersionPresignedUrl: string }>(query, { key, versionId });
+            return normalizeMinioUrl(data.getVersionPresignedUrl) || null;
+        } catch (error) {
+            console.error("Error getting version url:", error);
+            return null;
+        }
+    },
+
     // ═══════════════════════════════════════════════════════════════════════════
     // LIFECYCLE OPERATIONS
     // ═══════════════════════════════════════════════════════════════════════════
@@ -907,6 +971,7 @@ export const mediaService = {
     },
 
     async generateMediaEmbeddings(id: string, content: string): Promise<boolean> {
+        console.log('[mediaService] Generating embeddings for:', id, 'content:', content ? content.substring(0, 50) : '(empty)');
         const mutation = `
             mutation GenerateMediaEmbeddings($id: String!, $content: String) {
                 generateMediaEmbeddings(id: $id, content: $content)
@@ -914,11 +979,13 @@ export const mediaService = {
         `;
 
         try {
+            console.log('[mediaService] Sending generateMediaEmbeddings mutation...');
             const data = await graphqlRequest<{ generateMediaEmbeddings: boolean }>(mutation, { id, content });
+            console.log('[mediaService] Embedding result:', data);
             return data.generateMediaEmbeddings;
         } catch (error) {
-            console.error("Error generating embeddings:", error);
-            return false;
+            console.error("[mediaService] Error generating embeddings:", error);
+            throw error; // Re-throw to allow UI to show specific error
         }
     },
 

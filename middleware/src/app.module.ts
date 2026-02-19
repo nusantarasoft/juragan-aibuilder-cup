@@ -14,6 +14,7 @@ import { MediaModule } from './media/media.module';
 import { RagModule } from './rag/rag.module';
 import { MLBackendModule } from './ml-backend/ml-backend.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
+import { DremioModule } from './dremio/dremio.module';
 
 @Module({
     imports: [
@@ -45,6 +46,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
         RagModule,
         MLBackendModule,
         WebhooksModule,
+        DremioModule,
     ],
 })
 export class AppModule { }
