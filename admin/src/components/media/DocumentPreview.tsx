@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Spin, Empty, Typography, Button } from "antd";
+import { Spin, Empty, Typography, Button, Table, Pagination } from "antd";
 import {
     FilePdfOutlined,
     FileWordOutlined,
@@ -117,19 +117,66 @@ const DOCXRenderer = ({ mainState: { currentDocument } }: any) => {
     );
 };
 
-// Custom Renderer for XLSX using XLSX
+// Custom Renderer for XLSX using XLSX + Ant Design Table (matches DataPreview style)
 const XLSXRenderer = ({ mainState: { currentDocument } }: any) => {
-    const [html, setHtml] = React.useState<string>("");
+    const [columns, setColumns] = React.useState<any[]>([]);
+    const [rows, setRows] = React.useState<any[]>([]);
+    const [sheetNames, setSheetNames] = React.useState<string[]>([]);
+    const [activeSheet, setActiveSheet] = React.useState(0);
+    const [workbookRef, setWorkbookRef] = React.useState<any>(null);
     const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState<string | null>(null);
+
+    const parseSheet = React.useCallback((workbook: any, sheetIndex: number) => {
+        const XLSX = require('xlsx');
+        const sheet = workbook.Sheets[workbook.SheetNames[sheetIndex]];
+        const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+
+        if (jsonData.length === 0) {
+            setColumns([]);
+            setRows([]);
+            return;
+        }
+
+        // First row as headers
+        const headers = (jsonData[0] || []).map((h: any, i: number) => ({
+            title: (
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600 }}>{h != null ? String(h) : `Col ${i + 1}`}</span>
+                </div>
+            ),
+            dataIndex: `col_${i}`,
+            key: `col_${i}`,
+            ellipsis: true,
+            width: Math.max(150, String(h || '').length * 10), // Boosted to 150 minWidth
+            render: (val: any) => {
+                if (val === null || val === undefined || val === '') return <span style={{ color: "#bfbfbf", fontStyle: "italic" }}>—</span>;
+                if (typeof val === 'number') return <span style={{ fontSize: 13, fontFamily: "'Inter', monospace", color: '#1d4ed8' }}>{val}</span>;
+                return <span style={{ fontSize: 13, fontFamily: "'Inter', sans-serif" }}>{String(val)}</span>;
+            },
+        }));
+
+        const dataRows = jsonData.slice(1).map((row: any[], rowIdx: number) => {
+            const obj: any = { _key: rowIdx };
+            headers.forEach((_: any, colIdx: number) => {
+                obj[`col_${colIdx}`] = row[colIdx] ?? null;
+            });
+            return obj;
+        });
+
+        setColumns(headers);
+        setRows(dataRows);
+    }, []);
 
     React.useEffect(() => {
         if (!currentDocument || !currentDocument.uri) return;
 
         const loadXlsx = async () => {
+            setLoading(true);
+            setError(null);
             try {
                 const XLSX = await import("xlsx");
 
-                // Check if uri is string
                 if (typeof currentDocument.uri !== 'string') {
                     throw new Error("Invalid document URI");
                 }
@@ -139,12 +186,14 @@ const XLSXRenderer = ({ mainState: { currentDocument } }: any) => {
 
                 const arrayBuffer = await response.arrayBuffer();
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const htmlData = XLSX.utils.sheet_to_html(firstSheet);
-                setHtml(htmlData);
+
+                setWorkbookRef(workbook);
+                setSheetNames(workbook.SheetNames);
+                setActiveSheet(0);
+                parseSheet(workbook, 0);
             } catch (err) {
                 console.error("XLSX error:", err);
-                setHtml(`<div class="p-4 text-red-500">Failed to render spreadsheet: ${(err as Error).message}</div>`);
+                setError((err as Error).message);
             } finally {
                 setLoading(false);
             }
@@ -153,19 +202,89 @@ const XLSXRenderer = ({ mainState: { currentDocument } }: any) => {
         loadXlsx();
     }, [currentDocument]);
 
+    const handleSheetChange = (index: number) => {
+        if (workbookRef) {
+            setActiveSheet(index);
+            parseSheet(workbookRef, index);
+        }
+    };
+
+    const [currentPage, setCurrentPage] = React.useState(1);
+    const [pageSize, setPageSize] = React.useState(50);
+
+    const paginatedRows = React.useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return rows.slice(start, start + pageSize);
+    }, [rows, currentPage, pageSize]);
+
     if (loading) return <div className="p-10 text-center"><Spin tip="Rendering Spreadsheet..." /></div>;
 
+    if (error) return (
+        <div className="p-10 text-center flex flex-col items-center justify-center h-full">
+            <FileUnknownOutlined className="text-4xl text-red-400 mb-4" />
+            <Text type="danger">Failed to render spreadsheet</Text>
+            <Text type="secondary" className="text-xs mt-2">{error}</Text>
+        </div>
+    );
+
     return (
-        <div className="w-full h-full p-4 bg-gray-100 overflow-auto">
-            <div
-                className="bg-white shadow-sm border border-gray-300 excel-table-preview inline-block min-w-full"
-                dangerouslySetInnerHTML={{ __html: html }}
-            />
-            <style jsx global>{`
-                .excel-table-preview table { border-collapse: collapse; font-family: sans-serif; font-size: 13px; }
-                .excel-table-preview td { border: 1px solid #ccc; padding: 4px 8px; white-space: nowrap; }
-                .excel-table-preview tr:nth-child(even) { background: #f9f9f9; }
-            `}</style>
+        <div className="w-full h-full flex flex-col bg-white">
+            {/* Header with stats and sheet tabs */}
+            <div style={{ padding: '8px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <span style={{ fontSize: 12, color: '#6b7280' }}>Rows: <strong>{rows.length}</strong></span>
+                    <span style={{ fontSize: 12, color: '#6b7280' }}>Cols: <strong>{columns.length}</strong></span>
+                </div>
+
+                {sheetNames.length > 1 && (
+                    <div style={{ display: 'flex', gap: 4 }}>
+                        {sheetNames.map((name, idx) => (
+                            <Button
+                                key={idx}
+                                size="small"
+                                type={activeSheet === idx ? 'primary' : 'default'}
+                                onClick={() => handleSheetChange(idx)}
+                                style={{ fontSize: 11, height: 24, borderRadius: 4 }}
+                            >
+                                {name}
+                            </Button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Scrollable Table Area handled natively by Ant Table */}
+            <div className="xlsx-preview-table" style={{ flex: 1, minHeight: 0 }}>
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+                    .xlsx-preview-table .ant-table-thead > tr > th {
+                        border-radius: 0 !important;
+                    }
+                `}} />
+                <Table
+                    columns={columns}
+                    dataSource={paginatedRows}
+                    rowKey="_key"
+                    size="small"
+                    pagination={false}
+                    bordered
+                    scroll={{ x: 'max-content', y: 'calc(100vh - 280px)' }}
+                />
+            </div>
+
+            {/* Pagination pinned to bottom */}
+            <div style={{ padding: '12px 16px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
+                <Pagination
+                    current={currentPage}
+                    pageSize={pageSize}
+                    total={rows.length}
+                    size="small"
+                    showSizeChanger
+                    pageSizeOptions={['25', '50', '100']}
+                    showTotal={(total: number) => `${total} rows`}
+                    onChange={(page: number, size: number) => { setCurrentPage(page); setPageSize(size); }}
+                />
+            </div>
         </div>
     );
 };

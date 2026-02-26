@@ -14,10 +14,13 @@ import {
     SortAscendingOutlined,
     SortDescendingOutlined,
     MenuFoldOutlined,
-    MenuUnfoldOutlined
+    MenuUnfoldOutlined,
+    CloudServerOutlined,
+    PlusOutlined
 } from '@ant-design/icons';
 import { dremioService, CatalogItem } from '@/lib/dremioService';
 import { getTypeIcon } from './utils';
+import { MagicButton } from '@/components/custom/MagicButton';
 
 const { Text } = Typography;
 
@@ -28,9 +31,10 @@ interface CatalogBrowserProps {
     onNavigate: (path: string[], type: string, id: string) => void;
     sidebarOpen?: boolean;
     onToggleSidebar?: () => void;
+    onAddSource?: () => void;
 }
 
-export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen, onToggleSidebar }: CatalogBrowserProps) {
+export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen, onToggleSidebar, onAddSource }: CatalogBrowserProps) {
     console.log("CatalogBrowser rendering:", { path, id, type });
     const [loading, setLoading] = useState(false);
     const [items, setItems] = useState<CatalogItem[]>([]);
@@ -38,6 +42,11 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
     const [searchQuery, setSearchQuery] = useState('');
     const [filterType, setFilterType] = useState<string>('ALL');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [sourcesCount, setSourcesCount] = useState(0);
+
+    useEffect(() => {
+        dremioService.getSources().then(res => setSourcesCount(res.length)).catch(console.error);
+    }, []);
 
     useEffect(() => {
         loadChildren();
@@ -79,8 +88,19 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
         onNavigate(item.path, item.type, item.id);
     };
 
+    // Dremio-queryable file extensions
+    const QUERYABLE_EXTENSIONS = ['xlsx', 'xls', 'csv', 'tsv', 'json', 'parquet', 'orc', 'avro'];
+
+    const isQueryableFile = (item: CatalogItem): boolean => {
+        if (item.type !== 'FILE') return true; // Non-FILE items always pass
+        const name = item.path[item.path.length - 1] || '';
+        const ext = name.split('.').pop()?.toLowerCase() || '';
+        return QUERYABLE_EXTENSIONS.includes(ext);
+    };
+
     const processedItems = useMemo(() => {
-        let result = items;
+        // 0. Filter out non-queryable files
+        let result = items.filter(isQueryableFile);
 
         // 1. Search Filter
         if (searchQuery) {
@@ -95,7 +115,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
             if (filterType === 'FOLDER') {
                 result = result.filter(item => ['FOLDER', 'SPACE', 'SOURCE', 'HOME'].includes(item.type));
             } else if (filterType === 'DATASET') {
-                result = result.filter(item => ['DATASET', 'PHYSICAL_DATASET', 'VIRTUAL_DATASET', 'DATASET_TABLE', 'DATASET_VIRTUAL'].includes(item.type));
+                result = result.filter(item => ['DATASET', 'PHYSICAL_DATASET', 'VIRTUAL_DATASET', 'DATASET_TABLE', 'DATASET_VIRTUAL', 'FILE'].includes(item.type));
             }
         }
 
@@ -124,12 +144,11 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
     ];
 
     const glassCardStyle = {
-        background: 'rgba(255, 255, 255, 0.4)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        boxShadow: '0 8px 32px rgba(31, 38, 135, 0.15)',
-        border: '1px solid rgba(255, 255, 255, 0.18)',
-        marginBottom: 16
+        background: 'rgba(255, 255, 255, 0.6)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.04)',
+        border: '1px solid rgba(255, 255, 255, 0.5)',
     };
 
     const glassHeaderStyle = {
@@ -144,7 +163,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
             <div
                 key={item.id}
                 onClick={() => handleItemClick(item)}
-                className="group relative flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900/40 hover:border-violet-200 dark:hover:border-violet-900/50 hover:shadow-lg hover:shadow-violet-500/5 transition-all cursor-pointer aspect-square"
+                className="group relative flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900/40 shadow-sm hover:border-violet-200 dark:hover:border-violet-900/50 hover:shadow-md hover:shadow-violet-500/10 transition-all cursor-pointer aspect-square"
             >
                 <div className="mb-3 transform group-hover:scale-110 transition-transform duration-300">
                     <span className="flex text-[32px]">
@@ -159,7 +178,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
                 </Text>
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     {item.type === 'FOLDER' && <Tag bordered={false} className="m-0 text-[10px] bg-orange-50 text-orange-600">DIR</Tag>}
-                    {['DATASET', 'PHYSICAL_DATASET', 'VIRTUAL_DATASET'].includes(item.type) && <Tag bordered={false} className="m-0 text-[10px] bg-blue-50 text-blue-600">DS</Tag>}
+                    {['DATASET', 'PHYSICAL_DATASET', 'VIRTUAL_DATASET', 'FILE'].includes(item.type) && <Tag bordered={false} className="m-0 text-[10px] bg-blue-50 text-blue-600">DS</Tag>}
                 </div>
             </div>
         );
@@ -191,7 +210,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
     };
 
     return (
-        <div className="h-full flex flex-col p-6 overflow-hidden">
+        <div className="h-full flex flex-col gap-4 overflow-hidden">
             {/* Header Card */}
             <Card
                 size="small"
@@ -215,6 +234,11 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
                 }
                 extra={
                     <Space size={8}>
+                        {/* Sources Count */}
+                        <Tag icon={<CloudServerOutlined />} color="purple" bordered={false} className="px-2 py-0.5 text-[11px] bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 rounded-md m-0">
+                            {sourcesCount} Sources
+                        </Tag>
+
                         {/* Search */}
                         <Input
                             prefix={<SearchOutlined className="text-gray-400" />}
@@ -283,6 +307,17 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
                         <Tooltip title="Refresh">
                             <Button type="text" size="small" icon={<ReloadOutlined />} onClick={loadChildren} />
                         </Tooltip>
+
+                        {/* Add Source */}
+                        {onAddSource && (
+                            <MagicButton
+                                icon={<PlusOutlined style={{ fontSize: 10 }} />}
+                                onClick={onAddSource}
+                                size="small"
+                            >
+                                Add Source
+                            </MagicButton>
+                        )}
                     </Space>
                 }
             >

@@ -81,16 +81,11 @@ export default function DatasetsPage() {
     const [testingConnection, setTestingConnection] = useState(false);
 
     // Header State
-    const [searchQuery, setSearchQuery] = useState("");
-    const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-    const [sourcesCount, setSourcesCount] = useState(0);
-
-    useEffect(() => {
-        dremioService.getSources().then(res => setSourcesCount(res.length)).catch(console.error);
-    }, []);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     const isDataset = selectedType === "VIRTUAL" || selectedType === "PROMOTED" || selectedType === "DIRECT"
-        || selectedType === "DATASET_TABLE" || selectedType === "DATASET_VIRTUAL";
+        || selectedType === "DATASET" || selectedType === "DATASET_TABLE" || selectedType === "DATASET_VIRTUAL"
+        || selectedType === "FILE" || selectedType === "PHYSICAL_DATASET";
 
     const handleSelectDataset = useCallback((path: string[], type: string, id: string) => {
         console.log("handleSelectDataset called:", { path, type, id });
@@ -121,6 +116,7 @@ export default function DatasetsPage() {
             message.success(`Space "${spaceName}" created`);
             setSpaceModalOpen(false);
             setSpaceName("");
+            setRefreshTrigger(prev => prev + 1);
         } catch (err: any) {
             message.error("Failed: " + err.message);
         }
@@ -141,45 +137,7 @@ export default function DatasetsPage() {
                 </div>
             }
             subTitle="Manage your data sources and datasets"
-            extra={[
-                <Space key="actions" size={16} align="center">
-                    {/* Stats */}
-                    <Tag icon={<CloudServerOutlined />} color="purple" bordered={false} className="px-3 py-1 text-sm bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 rounded-md">
-                        {sourcesCount} Sources
-                    </Tag>
 
-                    {/* Search */}
-                    <div className="relative group hidden md:block">
-                        <Input
-                            prefix={<SearchOutlined className="text-gray-400 group-focus-within:text-violet-500 transition-colors" />}
-                            placeholder="Search catalog..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-48 focus:w-64 transition-all duration-300 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 focus:bg-white dark:focus:bg-gray-800 !shadow-none"
-                            allowClear
-                        />
-                    </div>
-
-                    {/* View Toggle */}
-                    <Segmented
-                        options={[
-                            { value: 'grid', icon: <AppstoreOutlined /> },
-                            { value: 'list', icon: <UnorderedListOutlined /> },
-                        ]}
-                        value={viewMode}
-                        onChange={(val: any) => setViewMode(val)}
-                        className="bg-gray-100 dark:bg-gray-800 p-1 rounded-lg custom-segmented hidden sm:block"
-                    />
-
-                    {/* Add Source Button */}
-                    <MagicButton
-                        icon={<PlusOutlined />}
-                        onClick={() => setAddSourceOpen(true)}
-                    >
-                        Add Source
-                    </MagicButton>
-                </Space>
-            ]}
         >
             <div style={{ display: "flex", flexDirection: "column", gap: 16, height: '100%' }}>
                 {/* Main content: sidebar + content */}
@@ -210,6 +168,7 @@ export default function DatasetsPage() {
                                     onCreateSpace={() => setSpaceModalOpen(true)}
                                     onCreateVDS={() => setVdsModalOpen(true)}
                                     onAddSource={() => setAddSourceOpen(true)}
+                                    refreshTrigger={refreshTrigger}
                                 />
                             </motion.div>
                         )}
@@ -262,12 +221,12 @@ export default function DatasetsPage() {
                         )}
 
                         {/* Data Content */}
-                        <div style={{ flex: 1, position: 'relative' }}>
+                        <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
                             <motion.div
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.3 }}
-                                style={{ height: '100%' }}
+                                className="absolute inset-0"
                             >
                                 {isDataset && selectedPath.length > 0 ? (
                                     <DataPreview path={selectedPath} />
@@ -280,6 +239,7 @@ export default function DatasetsPage() {
                                         onNavigate={handleSelectDataset}
                                         sidebarOpen={showExplorer}
                                         onToggleSidebar={() => setShowExplorer(!showExplorer)}
+                                        onAddSource={() => setAddSourceOpen(true)}
                                     />
                                 )}
                             </motion.div>

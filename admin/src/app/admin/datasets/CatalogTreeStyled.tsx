@@ -11,7 +11,10 @@ import {
     ReloadOutlined,
     PlusOutlined,
     ExpandAltOutlined,
-    CompressOutlined
+    CompressOutlined,
+    CaretRightOutlined,
+    CaretDownOutlined,
+    CloudServerOutlined
 } from '@ant-design/icons';
 import { dremioService, CatalogItem, DremioSource } from '@/lib/dremioService';
 import { getTypeIcon } from './utils';
@@ -39,6 +42,7 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
     const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([]);
     const [searchValue, setSearchValue] = useState('');
     const [loading, setLoading] = useState(false);
+    const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
     const { token } = theme.useToken();
 
     useEffect(() => {
@@ -63,7 +67,7 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
             // Process Spaces and Home from Catalog
             catalog.forEach(item => {
                 const name = item.path[item.path.length - 1];
-                const type = item.type;
+                const type = item.containerType || item.type;
 
                 const node: any = {
                     title: name,
@@ -224,49 +228,54 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
         );
     };
 
-    const renderHeader = (title: string, count: number, onAdd?: () => void) => (
-        <div className="flex items-center justify-between w-full py-2 group/header cursor-pointer select-none px-2 hover:bg-gray-50 dark:hover:bg-white/5 rounded-md transition-colors mb-1">
-            <Space size={6}>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500/80 dark:text-gray-400/80">
-                    {title} ({count})
-                </span>
-            </Space>
+    const toggleSection = (key: string) => {
+        setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const renderHeader = (title: string, count: number, sectionKey: string, onAdd?: () => void) => (
+        <div
+            className="flex items-center w-full py-2 group/header select-none px-2 mb-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 rounded-sm transition-colors"
+            onClick={() => toggleSection(sectionKey)}
+        >
+            <span className="mr-1.5 text-[10px] text-[#8b929e] transition-transform" style={{ transform: collapsedSections[sectionKey] ? 'rotate(0deg)' : 'rotate(90deg)' }}>
+                <CaretRightOutlined />
+            </span>
+            <span className="text-[11px] font-bold uppercase tracking-widest text-[#8b929e]">
+                {title} ({count})
+            </span>
             {onAdd && (
                 <PlusOutlined
                     onClick={(e) => { e.stopPropagation(); onAdd(); }}
-                    className="text-[12px] text-gray-400 hover:text-violet-500 opacity-0 group-hover/header:opacity-100 transition-opacity p-1"
+                    className="ml-auto text-[12px] text-gray-400 hover:text-violet-500 opacity-0 group-hover/header:opacity-100 transition-opacity p-1 cursor-pointer"
                 />
             )}
         </div>
     );
 
     const handleExpandAll = () => {
-        const keys: React.Key[] = [];
-        const traverse = (nodes: any[]) => {
-            nodes.forEach(node => {
-                if (node.children && node.children.length > 0) {
-                    keys.push(node.key);
-                    traverse(node.children);
-                }
-            });
-        };
-        traverse(treeGroups.spaces);
-        traverse(treeGroups.lakehouse);
-        traverse(treeGroups.storage);
-        traverse(treeGroups.databases);
-        setExpandedKeys(keys);
+        setCollapsedSections({});
     };
 
     const handleCollapseAll = () => {
-        setExpandedKeys([]);
+        setCollapsedSections({
+            spaces: true,
+            sources: true,
+            lakehouse: true,
+            storage: true,
+            databases: true
+        });
     };
 
     const treeProps: Partial<TreeProps> = {
         showLine: false,
         showIcon: false,
+        switcherIcon: () => <span style={{ width: 0 }} />,
         loadData: onLoadData,
-        onExpand: (keys) => setExpandedKeys(keys),
+        onExpand: (keys) => {
+            setExpandedKeys(keys);
+        },
         expandedKeys: expandedKeys,
+        autoExpandParent: true,
         onSelect: onTreeSelect,
         selectedKeys: selectedKeys,
         titleRender: titleRender,
@@ -288,30 +297,31 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
                     }}>
                         Explorer
                     </span>
-                    <Space size={4} className="ml-2">
-                        <AnimatedTooltip content="Expand All">
-                            <Button
-                                type="text"
-                                icon={<ExpandAltOutlined style={{ fontSize: 13 }} />}
-                                onClick={handleExpandAll}
-                                size="small"
-                                className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-6 h-6"
-                            />
-                        </AnimatedTooltip>
-                        <AnimatedTooltip content="Collapse All">
-                            <Button
-                                type="text"
-                                icon={<CompressOutlined style={{ fontSize: 13 }} />}
-                                onClick={handleCollapseAll}
-                                size="small"
-                                className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-6 h-6"
-                            />
-                        </AnimatedTooltip>
-                    </Space>
                 </div>
             }
             extra={
-                <Space size={4}>
+                <div className="flex items-center gap-1">
+                    <AnimatedTooltip content="Expand All">
+                        <Button
+                            type="text"
+                            icon={<ExpandAltOutlined style={{ fontSize: 14 }} />}
+                            onClick={handleExpandAll}
+                            size="small"
+                            className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                        />
+                    </AnimatedTooltip>
+                    <AnimatedTooltip content="Collapse All">
+                        <Button
+                            type="text"
+                            icon={<CompressOutlined style={{ fontSize: 14 }} />}
+                            onClick={handleCollapseAll}
+                            size="small"
+                            className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                        />
+                    </AnimatedTooltip>
+
+                    <div className="w-[1px] h-3 bg-gray-200 dark:bg-gray-700 mx-1" />
+
                     {onCreateSpace && (
                         <AnimatedTooltip content="New Space">
                             <Button
@@ -334,7 +344,7 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
                             />
                         </AnimatedTooltip>
                     )}
-                </Space>
+                </div>
             }
             style={{
                 display: 'flex',
@@ -398,39 +408,45 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
                     {/* Spaces Section */}
                     {(filteredGroups.spaces.length > 0 || !searchValue) && (
                         <div className="mb-4">
-                            {renderHeader("Spaces", treeGroups.spaces.length, onCreateSpace)}
-                            <Tree {...treeProps} treeData={filteredGroups.spaces} />
+                            {renderHeader("Spaces", treeGroups.spaces.length, 'spaces', onCreateSpace)}
+                            {!collapsedSections['spaces'] && <Tree {...treeProps} treeData={filteredGroups.spaces} />}
                         </div>
                     )}
 
                     <div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-600 px-2 py-1 flex items-center justify-between group/sources border-b border-gray-100 dark:border-gray-800 mb-2 mx-1">
-                            <span>SOURCES</span>
-                            {onAddSource && <PlusOutlined onClick={onAddSource} className="text-[11px] opacity-0 group-hover/sources:opacity-100 cursor-pointer p-1 text-gray-400 hover:text-violet-500" />}
-                        </div>
-
-                        {/* Lakehouse Section */}
-                        {(filteredGroups.lakehouse.length > 0 || !searchValue) && (
-                            <div className="mb-4">
-                                {renderHeader("Lakehouse Catalogs", treeGroups.lakehouse.length)}
-                                <Tree {...treeProps} treeData={filteredGroups.lakehouse} />
-                            </div>
+                        {renderHeader(
+                            "Sources",
+                            treeGroups.lakehouse.length + treeGroups.storage.length + treeGroups.databases.length,
+                            'sources',
+                            onAddSource
                         )}
 
-                        {/* Storage Section */}
-                        {(filteredGroups.storage.length > 0 || !searchValue) && (
-                            <div className="mb-4">
-                                {renderHeader("Object Storage", treeGroups.storage.length)}
-                                <Tree {...treeProps} treeData={filteredGroups.storage} />
-                            </div>
-                        )}
+                        {!collapsedSections['sources'] && (
+                            <>
+                                {/* Lakehouse Section */}
+                                {(filteredGroups.lakehouse.length > 0 || !searchValue) && (
+                                    <div className="mb-4">
+                                        {renderHeader("Lakehouse Catalogs", treeGroups.lakehouse.length, 'lakehouse')}
+                                        {!collapsedSections['lakehouse'] && <Tree {...treeProps} treeData={filteredGroups.lakehouse} />}
+                                    </div>
+                                )}
 
-                        {/* Databases Section */}
-                        {(filteredGroups.databases.length > 0 || !searchValue) && (
-                            <div className="mb-2">
-                                {renderHeader("Databases", treeGroups.databases.length)}
-                                <Tree {...treeProps} treeData={filteredGroups.databases} />
-                            </div>
+                                {/* Storage Section */}
+                                {(filteredGroups.storage.length > 0 || !searchValue) && (
+                                    <div className="mb-4">
+                                        {renderHeader("Object Storage", treeGroups.storage.length, 'storage')}
+                                        {!collapsedSections['storage'] && <Tree {...treeProps} treeData={filteredGroups.storage} />}
+                                    </div>
+                                )}
+
+                                {/* Databases Section */}
+                                {(filteredGroups.databases.length > 0 || !searchValue) && (
+                                    <div className="mb-2">
+                                        {renderHeader("Databases", treeGroups.databases.length, 'databases')}
+                                        {!collapsedSections['databases'] && <Tree {...treeProps} treeData={filteredGroups.databases} />}
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
@@ -442,16 +458,17 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
                         width: 100%;
                     }
                     .custom-dremio-tree .ant-tree-node-content-wrapper {
-                        padding: 0 8px !important;
-                        border-radius: 6px;
+                        padding: 0 4px !important;
+                        border-radius: 4px;
                         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                        line-height: 32px;
-                        height: 32px;
+                        line-height: 28px;
+                        height: 28px;
                     }
                     .custom-dremio-tree .ant-tree-switcher {
-                        line-height: 32px !important;
+                        line-height: 28px !important;
                         display: flex !important;
                         align-items: center;
+                        justify-content: center;
                         width: 16px !important;
                     }
                     .custom-dremio-tree .ant-tree-node-content-wrapper:hover {

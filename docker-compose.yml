@@ -8,6 +8,12 @@ services:
   minio:
     image: minio/minio:latest
     container_name: minio
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+        reservations:
+          memory: 1g
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
@@ -42,6 +48,12 @@ services:
     image: supabase/postgres:15.8.1.085
     container_name: postgres
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+        reservations:
+          memory: 2g
     environment:
       POSTGRES_HOST: /var/run/postgresql
       PGPORT: ${POSTGRES_PORT}
@@ -82,6 +94,12 @@ services:
     container_name: supabase-studio
     image: supabase/studio:2025.12.09-sha-434634f
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     healthcheck:
       test: [ "CMD", "node", "-e", "fetch('http://studio:3000/api/platform/profile').then((r) => {if (r.status !== 200) throw new Error(r.status)})" ]
       timeout: 10s
@@ -121,6 +139,12 @@ services:
     container_name: supabase-kong
     image: kong:2.8.1
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     ports:
       - ${KONG_HTTP_PORT}:8000/tcp
       - ${KONG_HTTPS_PORT}:8443/tcp
@@ -148,6 +172,12 @@ services:
     container_name: supabase-auth
     image: supabase/gotrue:v2.183.0
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     healthcheck:
       test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health" ]
       timeout: 5s
@@ -194,6 +224,12 @@ services:
     container_name: supabase-rest
     image: postgrest/postgrest:v14.1
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     depends_on:
       postgres:
         condition: service_healthy
@@ -215,6 +251,12 @@ services:
     container_name: realtime-dev.supabase-realtime
     image: supabase/realtime:v2.68.0
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     depends_on:
       postgres:
         condition: service_healthy
@@ -249,6 +291,12 @@ services:
     container_name: supabase-storage
     image: supabase/storage-api:v1.33.0
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     volumes:
       - supabase-storage:/var/lib/storage
     healthcheck:
@@ -293,6 +341,12 @@ services:
     container_name: supabase-imgproxy
     image: darthsim/imgproxy:v3.8.0
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     volumes:
       - supabase-storage:/var/lib/storage
     healthcheck:
@@ -310,6 +364,12 @@ services:
     container_name: supabase-meta
     image: supabase/postgres-meta:v0.93.1
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     depends_on:
       postgres:
         condition: service_healthy
@@ -330,6 +390,12 @@ services:
     container_name: supabase-edge-functions
     image: supabase/edge-runtime:v1.69.28
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     volumes:
       - ./volumes/functions:/home/deno/functions:Z
     depends_on:
@@ -348,6 +414,12 @@ services:
     container_name: supabase-analytics
     image: supabase/logflare:1.26.25
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     ports:
       - 4000:4000
     healthcheck:
@@ -380,6 +452,12 @@ services:
     container_name: supabase-vector
     image: timberio/vector:0.28.1-alpine
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+        reservations:
+          memory: 128m
     volumes:
       - ./volumes/logs/vector.yml:/etc/vector/vector.yml:ro,z
       - ${DOCKER_SOCKET_LOCATION}:/var/run/docker.sock:ro,z
@@ -398,6 +476,12 @@ services:
     container_name: supabase-pooler
     image: supabase/supavisor:2.7.4
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     ports:
       - ${POSTGRES_PORT}:5432
       - ${POOLER_PROXY_PORT_TRANSACTION}:6543
@@ -443,6 +527,12 @@ services:
     image: traefik:latest
     container_name: traefik
     restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+        reservations:
+          memory: 128m
     command:
       - "--api.insecure=true"
       - "--providers.docker=true"
@@ -465,6 +555,12 @@ services:
     image: 'jc21/nginx-proxy-manager:latest'
     container_name: nginxproxymanager
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     ports:
       - '81:80' # HTTP (alternate)
       - '444:443' # HTTPS (alternate)
@@ -484,6 +580,12 @@ services:
     image: pihole/pihole:latest
     container_name: pihole
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+        reservations:
+          memory: 128m
     ports:
       - "5380:53/tcp"
       - "5380:53/udp"
@@ -505,6 +607,12 @@ services:
     image: sameersbn/bind:latest
     container_name: bind9
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+        reservations:
+          memory: 128m
     ports:
       - "5354:53/tcp"
       - "5354:53/udp"
@@ -527,6 +635,12 @@ services:
     hostname: mail
     domainname: ${MAIL_DOMAIN:-nusantarasoft.local}
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     ports:
       - "25:25"
       - "465:465"
@@ -554,6 +668,12 @@ services:
     image: roundcube/roundcubemail:latest
     container_name: roundcube
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+        reservations:
+          memory: 128m
     ports:
       - "8082:80"
     environment:
@@ -573,6 +693,12 @@ services:
     image: portainer/portainer-ce:latest
     container_name: portainer
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     ports:
       - "9090:9000"
       - "9444:9443"
@@ -586,6 +712,12 @@ services:
     image: node:20-alpine
     container_name: socketio-server
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+        reservations:
+          memory: 128m
     ports:
       - "3002:3000"
     working_dir: /app
@@ -600,6 +732,12 @@ services:
     image: node:20-alpine
     container_name: socketio-admin
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+        reservations:
+          memory: 64m
     ports:
       - "8088:8080"
     working_dir: /app
@@ -616,6 +754,12 @@ services:
   nessie:
     image: projectnessie/nessie:latest
     container_name: nessie
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     restart: unless-stopped
     networks:
       management-network:
@@ -628,6 +772,12 @@ services:
     image: dremio/dremio-oss:latest
     container_name: dremio
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 8g
+        reservations:
+          memory: 4g
     ports:
       - 9047:9047
       - 31010:31010
@@ -635,6 +785,8 @@ services:
       - 45678:45678
     environment:
       - DREMIO_JAVA_SERVER_EXTRA_OPTS=-Dpaths.dist=file:///opt/dremio/data/dist
+    volumes:
+      - dremio-data:/opt/dremio/data
     networks:
       management-network:
 
@@ -645,6 +797,12 @@ services:
       dockerfile: Dockerfile
     container_name: mindsdb
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+        reservations:
+          memory: 2g
     ports:
       - "47334:47334"
       - "47335:47335"
@@ -661,6 +819,12 @@ services:
     image: heartexlabs/label-studio:latest
     container_name: labelstudio
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+        reservations:
+          memory: 1g
     ports:
       - "8080:8080"
     environment:
@@ -678,6 +842,12 @@ services:
       dockerfile: Dockerfile
     container_name: middleware
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     ports:
       - "4001:4001"
     environment:
@@ -728,6 +898,12 @@ services:
       dockerfile: Dockerfile
     container_name: admin
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     ports:
       - "3003:3000"
     environment:
@@ -759,6 +935,12 @@ services:
       dockerfile: Dockerfile
     container_name: landing-page
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     ports:
       - "3000:3000"
     environment:
@@ -805,3 +987,4 @@ volumes:
   socketio-data:
   labelstudio-data:
   mindsdb-data:
+  dremio-data:

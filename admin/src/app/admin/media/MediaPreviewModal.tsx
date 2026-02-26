@@ -483,16 +483,18 @@ const MediaPreviewContent = ({
                     </div>
                 )}
 
-                <div className="w-full h-full overflow-auto flex items-center justify-center">
+                <div className="w-full h-full flex items-center justify-center bg-white relative">
                     {activeMedia.mime_type?.startsWith("image/") ? (
-                        <Image
-                            src={displayUrl}
-                            alt={activeMedia.alt_text || activeMedia.filename}
-                            className="object-contain"
-                            style={{ height: 'auto', width: 'auto', maxWidth: '100%', maxHeight: '100%' }}
-                            onLoad={handleImageLoad}
-                            preview={false}
-                        />
+                        <div className="w-full h-full overflow-auto flex items-center justify-center">
+                            <Image
+                                src={displayUrl}
+                                alt={activeMedia.alt_text || activeMedia.filename}
+                                className="object-contain"
+                                style={{ height: 'auto', width: 'auto', maxWidth: '100%', maxHeight: '100%' }}
+                                onLoad={handleImageLoad}
+                                preview={false}
+                            />
+                        </div>
                     ) : showPdfPreviews ? (
                         <div className="w-full h-full overflow-y-auto bg-gray-100 flex flex-col items-center gap-4 p-4">
                             {activeMedia.previewPages!.map((pageUrl, idx) => (
@@ -506,13 +508,15 @@ const MediaPreviewContent = ({
                             ))}
                         </div>
                     ) : activeMedia.mime_type?.startsWith("video/") ? (
-                        <video
-                            src={displayUrl} // Use displayUrl for video as well
-                            poster={activeMedia.thumbnailUrl}
-                            controls
-                            className="max-h-full max-w-full"
-                            onLoadedMetadata={handleVideoLoad}
-                        />
+                        <div className="w-full h-full overflow-auto flex items-center justify-center">
+                            <video
+                                src={displayUrl} // Use displayUrl for video as well
+                                poster={activeMedia.thumbnailUrl}
+                                controls
+                                className="max-h-full max-w-full"
+                                onLoadedMetadata={handleVideoLoad}
+                            />
+                        </div>
                     ) : activeMedia.mime_type?.includes('pdf') ? (
                         <iframe
                             src={displayUrl}
@@ -520,22 +524,22 @@ const MediaPreviewContent = ({
                             title="PDF Preview"
                         />
                     ) : isDocumentPreviewable(activeMedia.filename, activeMedia.mime_type) ? (
-                        <div className="w-full h-full bg-white relative">
-                            <ErrorBoundary>
-                                <DocumentPreview
-                                    url={displayUrl || ""}
-                                    filename={activeMedia.filename || ""}
-                                    mimeType={activeMedia.mime_type || ""}
-                                />
-                            </ErrorBoundary>
-                        </div>
+                        <ErrorBoundary>
+                            <DocumentPreview
+                                url={displayUrl || ""}
+                                filename={activeMedia.filename || ""}
+                                mimeType={activeMedia.mime_type || ""}
+                            />
+                        </ErrorBoundary>
                     ) : (
-                        <div className="text-center p-8">
-                            <div className="text-4xl text-gray-400 mb-4">
-                                {getFileIcon(activeMedia.mime_type)}
+                        <div className="w-full h-full overflow-auto flex items-center justify-center">
+                            <div className="text-center p-8">
+                                <div className="text-4xl text-gray-400 mb-4">
+                                    {getFileIcon(activeMedia.mime_type)}
+                                </div>
+                                <Text type="secondary" className="block mb-4">Preview not available</Text>
+                                <Button type="primary" onClick={handleDownload}>Download File</Button>
                             </div>
-                            <Text type="secondary" className="block mb-4">Preview not available</Text>
-                            <Button type="primary" onClick={handleDownload}>Download File</Button>
                         </div>
                     )}
                 </div>

@@ -212,24 +212,31 @@ export const dremioService = {
         URL.revokeObjectURL(url);
     },
 
-    downloadExcel(result: QueryResult, filename = 'export.xlsx') {
-        // Generate CSV as Excel-compatible format (tab-separated with BOM for Excel)
-        const bom = '\uFEFF';
-        const header = result.columns.map(c => c.name).join('\t');
-        const rows = result.rows.map(row =>
-            result.columns.map(c => {
-                const val = row[c.name];
-                return val === null || val === undefined ? '' : String(val);
-            }).join('\t')
-        );
-        const content = bom + [header, ...rows].join('\n');
-        const blob = new Blob([content], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename.replace('.xlsx', '.xls');
-        a.click();
-        URL.revokeObjectURL(url);
+    async downloadExcel(result: QueryResult, filename = 'export.xlsx') {
+        try {
+            const XLSX = await import('xlsx');
+
+            // Format rows for XLSX
+            const formattedRows = result.rows.map(row => {
+                const newRow: any = {};
+                result.columns.forEach(c => {
+                    newRow[c.name] = row[c.name];
+                });
+                return newRow;
+            });
+
+            // Create workbook and worksheet
+            const worksheet = XLSX.utils.json_to_sheet(formattedRows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+
+            // Write and download
+            XLSX.writeFile(workbook, filename);
+        } catch (error) {
+            console.error("Failed to generate Excel file:", error);
+            // Re-throw or handle without this.resultsToCsv which doesn't exist here
+            throw new Error("Failed to generate Excel file. Ensure 'xlsx' library is installed.");
+        }
     },
 
     // ═══════════════ CONNECTION ═══════════════

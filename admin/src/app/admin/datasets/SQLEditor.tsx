@@ -57,10 +57,14 @@ export default function SQLEditor({ defaultSQL, context }: SQLEditorProps) {
         }
     };
 
-    const handleExportExcel = () => {
+    const handleExportExcel = async () => {
         if (!result) return;
-        dremioService.downloadExcel(result);
-        message.success("Excel downloaded");
+        try {
+            await dremioService.downloadExcel(result);
+            message.success("Excel downloaded");
+        } catch (err: any) {
+            message.error("Export failed: " + err.message);
+        }
     };
 
     const handleCopy = () => {

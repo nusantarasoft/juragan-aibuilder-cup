@@ -20,6 +20,25 @@ export default function DataPreview({ path, limit = 100 }: DataPreviewProps) {
     const [result, setResult] = useState<QueryResult | null>(null);
     const [loading, setLoading] = useState(false);
 
+    const tableContainerRef = React.useRef<HTMLDivElement>(null);
+    const [tableScrollHeight, setTableScrollHeight] = useState<number>(400);
+
+    React.useEffect(() => {
+        if (!tableContainerRef.current) return;
+
+        const observer = new ResizeObserver((entries) => {
+            for (let entry of entries) {
+                // The container includes table header (~40px) and pagination (~50px).
+                // Subtracting 100 ensures the table body doesn't push pagination out of the flex container.
+                const newHeight = entry.contentRect.height - 100;
+                setTableScrollHeight(Math.max(newHeight, 150));
+            }
+        });
+
+        observer.observe(tableContainerRef.current);
+        return () => observer.disconnect();
+    }, [result]); // Re-bind observer when result renders the table into DOM
+
     const loadPreview = async () => {
         if (!path.length) return;
         setLoading(true);
@@ -46,10 +65,14 @@ export default function DataPreview({ path, limit = 100 }: DataPreviewProps) {
         }
     };
 
-    const handleExportExcel = () => {
+    const handleExportExcel = async () => {
         if (!result) return;
-        dremioService.downloadExcel(result, `${path[path.length - 1]}.xlsx`);
-        message.success("Excel downloaded");
+        try {
+            await dremioService.downloadExcel(result, `${path[path.length - 1]}.xlsx`);
+            message.success("Excel downloaded");
+        } catch (err: any) {
+            message.error("Export failed: " + err.message);
+        }
     };
 
     const buildColumns = (cols: QueryColumn[]) =>
@@ -141,22 +164,30 @@ export default function DataPreview({ path, limit = 100 }: DataPreviewProps) {
                 </Space>
             }
         >
-            <Table
-                columns={buildColumns(result.columns)}
-                dataSource={result.rows.map((r, i) => ({ ...r, _key: i }))}
-                rowKey="_key"
-                size="small"
-                scroll={{ x: "max-content", y: 600 }} // Adjusted for full height usage
-                pagination={{
-                    pageSize: 50,
-                    showSizeChanger: true,
-                    pageSizeOptions: ["25", "50", "100"],
-                    showTotal: (total) => `${total} rows`,
-                    size: "small",
-                }}
-                bordered
-                style={{ flex: 1 }}
-            />
+            <div ref={tableContainerRef} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+                    .data-preview-table .ant-table-thead > tr > th {
+                        border-radius: 0 !important;
+                    }
+                `}} />
+                <Table
+                    className="data-preview-table"
+                    columns={buildColumns(result.columns)}
+                    dataSource={result.rows.map((r, i) => ({ ...r, _key: i }))}
+                    rowKey="_key"
+                    size="small"
+                    scroll={{ x: "max-content", y: tableScrollHeight }}
+                    pagination={{
+                        pageSize: 50,
+                        showSizeChanger: true,
+                        pageSizeOptions: ["25", "50", "100"],
+                        showTotal: (total) => `${total} rows`,
+                        size: "small",
+                    }}
+                    bordered
+                />
+            </div>
         </Card>
     );
 }

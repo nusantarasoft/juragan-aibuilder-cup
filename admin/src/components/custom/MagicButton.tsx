@@ -7,7 +7,7 @@ interface MagicButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>
     children: React.ReactNode;
     className?: string;
     icon?: React.ReactNode;
-    size?: "default" | "large";
+    size?: "small" | "default" | "large";
 }
 
 export const MagicButton: React.FC<MagicButtonProps> = ({
@@ -19,14 +19,15 @@ export const MagicButton: React.FC<MagicButtonProps> = ({
     ...props
 }) => {
     const [isHovered, setIsHovered] = useState(false);
-    const contentWidth = size === "large" ? 130 : 76;
-    const padding = size === "large" ? "px-5" : "px-4";
-    // Button height is h-9 = 36px. Circle is 24px. 
-    // To center vertically: (36 - 24) / 2 = 6px from top
-    const circleTop = 6;
-    const circleLeft = size === "large" ? 18 : 14;
-    // Text offset: more for large size
-    const textOffset = size === "large" ? 20 : 14;
+    const isSmall = size === "small";
+    const isLarge = size === "large";
+    const contentWidth = isLarge ? 130 : isSmall ? 66 : 76;
+    const padding = isLarge ? "px-5" : isSmall ? "pl-4 pr-5" : "px-4";
+    const circleSize = isSmall ? 18 : 24;
+    const buttonHeight = isSmall ? "h-7" : "h-9";
+    const circleTop = isSmall ? 5 : 6;
+    const circleLeft = isLarge ? 18 : isSmall ? 8 : 14;
+    const textOffset = isLarge ? 20 : isSmall ? 14 : 14;
     // Using same distance from right edge as left icon from left edge
     const circleRight = circleLeft;
 
@@ -64,8 +65,8 @@ export const MagicButton: React.FC<MagicButtonProps> = ({
                 onMouseLeave={() => setIsHovered(false)}
                 disabled={disabled}
                 className={`
-                    group relative inline-flex h-9 items-center justify-center 
-                    rounded-full ${padding} text-xs font-medium
+                    group relative inline-flex ${buttonHeight} items-center justify-center 
+                    rounded-full ${padding} ${isSmall ? 'text-[11px]' : 'text-xs'} font-medium
                     ${disabled ? "cursor-not-allowed" : "cursor-pointer"} overflow-hidden
                     bg-white dark:bg-[#1a1b23]
                     shadow-[0_4px_14px_rgba(147,51,234,0.15),0_2px_6px_rgba(0,0,0,0.08)]
@@ -84,8 +85,8 @@ export const MagicButton: React.FC<MagicButtonProps> = ({
                     initial={{
                         left: circleLeft,
                         top: circleTop,
-                        width: 24,
-                        height: 24,
+                        width: circleSize,
+                        height: circleSize,
                     }}
                     animate={isHovered ? {
                         left: -50,
@@ -95,8 +96,8 @@ export const MagicButton: React.FC<MagicButtonProps> = ({
                     } : {
                         left: circleLeft,
                         top: circleTop,
-                        width: 24,
-                        height: 24,
+                        width: circleSize,
+                        height: circleSize,
                     }}
                     transition={{
                         duration: 0.4,
@@ -127,14 +128,14 @@ export const MagicButton: React.FC<MagicButtonProps> = ({
                     style={{
                         left: circleLeft,
                         top: circleTop,
-                        width: 24,
-                        height: 24,
+                        width: circleSize,
+                        height: circleSize,
                         zIndex: 20
                     }}
                     animate={isHovered ? { opacity: 0, scale: 0.75 } : { opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3 }}
                 >
-                    <span className="text-white text-xs flex items-center justify-center">{icon}</span>
+                    <span className={`text-white ${isSmall ? 'text-[10px]' : 'text-xs'} flex items-center justify-center`}>{icon}</span>
                 </motion.span>
 
                 {/* Right Icon - Same vertical position as left icon */}
@@ -143,8 +144,8 @@ export const MagicButton: React.FC<MagicButtonProps> = ({
                     style={{
                         right: circleRight,
                         top: circleTop,
-                        width: 24,
-                        height: 24,
+                        width: circleSize,
+                        height: circleSize,
                         zIndex: 20
                     }}
                     animate={isHovered ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.75 }}
