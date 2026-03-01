@@ -815,27 +815,6 @@ services:
       management-network:
 
 
-  labelstudio:
-    image: heartexlabs/label-studio:latest
-    container_name: labelstudio
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 2g
-        reservations:
-          memory: 1g
-    ports:
-      - "8080:8080"
-    environment:
-      - LABEL_STUDIO_USERNAME=${LABEL_STUDIO_USERNAME}
-      - LABEL_STUDIO_PASSWORD=${LABEL_STUDIO_PASSWORD}
-      - LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK=true
-    volumes:
-      - labelstudio-data:/label-studio/data
-    networks:
-      - management-network
-
   middleware:
     build:
       context: ./middleware
@@ -879,7 +858,6 @@ services:
     depends_on:
       - postgres
       - minio
-      - labelstudio
     volumes:
       - ./volumes/google-credentials.json:/gcp/key.json:ro
     extra_hosts:
@@ -985,6 +963,6 @@ volumes:
   roundcube-data:
   portainer-data:
   socketio-data:
-  labelstudio-data:
+
   mindsdb-data:
   dremio-data:

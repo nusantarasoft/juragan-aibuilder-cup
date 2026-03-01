@@ -134,6 +134,9 @@ class UpdateMediaInput {
     filename?: string;
 
     @Field({ nullable: true })
+    description?: string;
+
+    @Field({ nullable: true })
     bucketName?: string;
 
     @Field({ nullable: true })

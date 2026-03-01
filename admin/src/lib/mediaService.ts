@@ -3,11 +3,6 @@
  * No direct S3 access from frontend - all S3 ops go through middleware
  */
 
-import type { MediaFile } from "./graphqlTypes";
-
-// Re-export MediaFile type for backward compatibility
-export type { MediaFile };
-
 
 export interface UploadResult {
     success: boolean;
@@ -67,6 +62,28 @@ async function graphqlRequest<T>(query: string, variables?: Record<string, unkno
 }
 
 // GraphQL returns camelCase, we need snake_case for backward compatibility
+export interface MediaFile {
+    id: string;
+    filename: string;
+    original_name?: string;
+    url: string;
+    s3_key?: string;
+    mime_type?: string;
+    size_bytes?: number;
+    alt_text?: string;
+    description?: string;
+    uploaded_by?: string;
+    embedding?: string;
+    created_at: string;
+    updated_at?: string;
+    metadata?: any;
+    bucket_name?: string;
+    checksum?: string;
+    thumbnail_path?: string;
+    thumbnailUrl?: string; // Signed URL for frontend
+    previewPages?: string[]; // JSON array of page image paths
+}
+
 interface GraphQLMediaFile {
     id: string;
     filename: string;
@@ -76,6 +93,7 @@ interface GraphQLMediaFile {
     mimeType?: string;
     sizeBytes?: number;
     altText?: string;
+    description?: string;
     uploadedBy?: string;
     embedding?: string;
     createdAt: string;
@@ -109,6 +127,7 @@ function mapToMediaFile(gql: GraphQLMediaFile): MediaFile {
         mime_type: gql.mimeType,
         size_bytes: gql.sizeBytes,
         alt_text: gql.altText,
+        description: gql.description,
         uploaded_by: gql.uploadedBy,
         embedding: gql.embedding,
         created_at: gql.createdAt,
@@ -364,7 +383,7 @@ export const mediaService = {
     // Update media metadata
     async updateMedia(
         id: string,
-        updates: Partial<Pick<MediaFile, "alt_text" | "filename">>
+        updates: Partial<Pick<MediaFile, "alt_text" | "filename" | "description">>
     ): Promise<MediaFile | null> {
         const mutation = `
             mutation UpdateMedia($id: ID!, $input: UpdateMediaInput!) {
@@ -380,7 +399,7 @@ export const mediaService = {
         try {
             const data = await graphqlRequest<{ updateMedia: GraphQLMediaFile }>(mutation, {
                 id,
-                input: { altText: updates.alt_text, filename: updates.filename },
+                input: { altText: updates.alt_text, filename: updates.filename, description: updates.description },
             });
             return data.updateMedia ? mapToMediaFile(data.updateMedia) : null;
         } catch (error) {

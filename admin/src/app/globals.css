@@ -950,3 +950,50 @@ body {
 .animate-glitch-before {
   animation: glitch var(--before-duration, 1s) infinite linear alternate-reverse;
 }
+
+/* ========================================
+   Custom Table Polish (Border Radius & Pagination)
+   ======================================== */
+
+/* 1. Remove Table and Column Header Border Radius */
+.ant-table-wrapper,
+.ant-table,
+.ant-table-container,
+.ant-table-thead > tr > th {
+  border-radius: 0 !important;
+}
+
+/* 2. Pagination Previous & Next Buttons Styling */
+/* Specifically target the 'Prev' and 'Next' navigation item links with high specificity */
+ul.ant-pagination li.ant-pagination-prev > button,
+ul.ant-pagination li.ant-pagination-prev > a,
+ul.ant-pagination li.ant-pagination-prev > span,
+ul.ant-pagination li.ant-pagination-next > button,
+ul.ant-pagination li.ant-pagination-next > a,
+ul.ant-pagination li.ant-pagination-next > span,
+ul.ant-pagination li.ant-pagination-prev .ant-pagination-item-link,
+ul.ant-pagination li.ant-pagination-next .ant-pagination-item-link {
+  background-color: rgba(139, 92, 246, 0.1) !important; /* Soft violet opacity */
+  color: #7c3aed !important; /* Violet 600 */
+  border-radius: 50% !important; /* Fully rounded */
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+ul.ant-pagination li.ant-pagination-prev:hover .ant-pagination-item-link,
+ul.ant-pagination li.ant-pagination-next:hover .ant-pagination-item-link,
+ul.ant-pagination li.ant-pagination-prev:hover > button,
+ul.ant-pagination li.ant-pagination-next:hover > button {
+  background-color: rgba(139, 92, 246, 0.2) !important; /* Slightly darker on hover */
+}
+
+/* Disabled state handling for arrows */
+ul.ant-pagination li.ant-pagination-prev.ant-pagination-disabled .ant-pagination-item-link,
+ul.ant-pagination li.ant-pagination-next.ant-pagination-disabled .ant-pagination-item-link,
+ul.ant-pagination li.ant-pagination-prev.ant-pagination-disabled > button,
+ul.ant-pagination li.ant-pagination-next.ant-pagination-disabled > button {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  color: rgba(0, 0, 0, 0.25) !important;
+}

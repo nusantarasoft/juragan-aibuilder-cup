@@ -67,6 +67,7 @@ export interface CreateMediaInput {
 export interface UpdateMediaInput {
     altText?: string;
     filename?: string;
+    description?: string;
 }
 
 @Injectable()
@@ -415,6 +416,20 @@ export class MediaService implements OnModuleInit {
 
         if (input.altText !== undefined) updates.alt_text = input.altText;
         if (input.filename !== undefined) updates.filename = input.filename;
+
+        if (input.description !== undefined) {
+            const { data: existingMedia } = await this.supabase
+                .getAdminClient()
+                .from('media')
+                .select('metadata')
+                .eq('id', id)
+                .single();
+
+            updates.metadata = {
+                ...(existingMedia?.metadata || {}),
+                description: input.description,
+            };
+        }
 
         const { data, error } = await this.supabase
             .getAdminClient()
@@ -1179,32 +1194,75 @@ export class MediaService implements OnModuleInit {
 
             // Ensure path ends with / for prefix matching
             const prefix = path.endsWith('/') ? path : `${path}/`;
-            this.logger.log(`Deleting folder: ${prefix} in bucket: ${targetBucket}`);
+            this.logger.log(`[deleteFolder] Start: prefix="${prefix}" bucket="${targetBucket}"`);
 
-            // 1. List all objects in the folder recursively using V2
+            // 1. Remove current objects first
             const objectsList: string[] = [];
             const stream = this.minioClient.listObjectsV2(targetBucket, prefix, true);
-
             for await (const obj of stream) {
                 if (obj.name) objectsList.push(obj.name);
             }
-
-            // 2. Delete objects in batches
             if (objectsList.length > 0) {
                 await this.minioClient.removeObjects(targetBucket, objectsList);
-                this.logger.log(`Deleted ${objectsList.length} objects from folder ${prefix}`);
+                this.logger.log(`[deleteFolder] Removed ${objectsList.length} current objects`);
             }
 
-            // 3. Try to remove the folder marker itself
+            // 2. Remove folder markers (with and without trailing slash)
+            for (const key of [prefix, prefix.replace(/\/+$/, '')]) {
+                if (!key) continue;
+                try { await this.minioClient.removeObject(targetBucket, key); } catch { }
+            }
+
+            // 3. Purge ALL versions and delete markers (critical for versioned buckets)
+            // listObjects with IncludeVersion returns old versions + delete markers
+            // that keep the prefix alive even after current objects are removed
             try {
-                await this.minioClient.removeObject(targetBucket, prefix);
-            } catch {
-                // Folder marker might have been part of objectsList or not exist
+                const versionStream = this.minioClient.listObjects(targetBucket, prefix, true, { IncludeVersion: true });
+                let versionCount = 0;
+
+                for await (const obj of versionStream) {
+                    const key = obj.name || (obj as any).prefix;
+                    const versionId = (obj as any).versionId;
+                    if (key && versionId) {
+                        try {
+                            await this.minioClient.removeObject(targetBucket, key, { versionId } as any);
+                            versionCount++;
+                        } catch {
+                            // OK - some versions might already be gone
+                        }
+                    }
+                }
+
+                // Also purge versions of the folder marker itself
+                for (const markerKey of [prefix, prefix.replace(/\/+$/, '')]) {
+                    if (!markerKey) continue;
+                    try {
+                        const markerStream = this.minioClient.listObjects(
+                            targetBucket, markerKey, false, { IncludeVersion: true }
+                        );
+                        for await (const obj of markerStream) {
+                            const vId = (obj as any).versionId;
+                            if (obj.name === markerKey && vId) {
+                                try {
+                                    await this.minioClient.removeObject(targetBucket, markerKey, { versionId: vId } as any);
+                                    versionCount++;
+                                } catch { }
+                            }
+                        }
+                    } catch { }
+                }
+
+                if (versionCount > 0) {
+                    this.logger.log(`[deleteFolder] Purged ${versionCount} versions/markers`);
+                }
+            } catch (e) {
+                this.logger.warn(`[deleteFolder] Version purge skipped: ${e}`);
             }
 
+            this.logger.log(`[deleteFolder] Done`);
             return true;
         } catch (e) {
-            this.logger.error('deleteFolder failed', e);
+            this.logger.error('[deleteFolder] failed', e);
             return false;
         }
     }
@@ -1221,6 +1279,7 @@ export class MediaService implements OnModuleInit {
         }
     }
 
+    // Move file - copy then delete source
     // Move file - copy then delete source
     async moveFile(
         sourceKey: string,
@@ -1242,7 +1301,8 @@ export class MediaService implements OnModuleInit {
             this.logger.log(`Moved file from ${srcBucket}/${sourceKey} to ${dstBucket}/${destKey}`);
             return true;
         } catch (e) {
-            this.logger.error('moveFile failed', e);
+            this.logger.error(`moveFile failed. SourceKey: ${sourceKey}, DestKey: ${destKey}`);
+            this.logger.error(e);
             return false;
         }
     }

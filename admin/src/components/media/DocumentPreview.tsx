@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Spin, Empty, Typography, Button, Table, Pagination } from "antd";
+import { Spin, Empty, Typography, Button, Table, Tabs } from "antd";
 import {
     FilePdfOutlined,
     FileWordOutlined,
@@ -55,7 +55,6 @@ const DOCXRenderer = ({ mainState: { currentDocument } }: any) => {
 
                 if (containerRef.current) {
                     await docx.renderAsync(blob, containerRef.current, containerRef.current, {
-                        className: "docx-viewer-wrapper",
                         inWrapper: true,
                         ignoreWidth: false,
                         ignoreHeight: false
@@ -84,35 +83,66 @@ const DOCXRenderer = ({ mainState: { currentDocument } }: any) => {
     );
 
     return (
-        <div className="w-full h-full bg-[#F1F3F4] overflow-auto flex flex-col items-center py-8">
+        <div className="w-full h-full bg-[#f3f4f6] dark:bg-[#1f2937] overflow-y-auto flex flex-col items-center py-8">
             <div
                 ref={containerRef}
-                className="w-full max-w-[850px]"
+                className="w-full flex justify-center"
             />
-            <style jsx global>{`
-                /* Wrapper - Make it transparent so we see the gray container background */
-                .docx-viewer-wrapper {
-                    padding: 0 !important;
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                /* Make the wrapper transparent so it blends with our React container */
+                .docx-wrapper {
+                    padding: 0 24px 24px 24px !important;
                     background: transparent !important;
+                    width: 100% !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    align-items: center !important;
                 }
                 
-                /* Page Styling - FORCE WHITE BACKGROUND */
-                .docx-viewer-wrapper section.docx,
-                .docx-viewer-wrapper .docx {
+                /* Page Styling - FORCE WHITE BACKGROUND and A4 shape */
+                .docx-wrapper section.docx,
+                .docx-wrapper .docx {
                     background-color: #ffffff !important;
-                    background-image: none !important; /* Ensure no background image overrides it */
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.1) !important;
-                    margin-bottom: 24px !important;
-                    padding: 48px !important; 
-                    min-height: 1000px;
-                    display: block; /* Ensure it behaves like a block */
+                    background-image: none !important;
+                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+                    margin: 0 auto 24px auto !important;
+                    padding: 60px 72px !important; /* Better margins for reading */
+                    min-height: 1056px !important; /* Approx letter height */
+                    width: 100% !important;
+                    display: block !important;
+                    border-radius: 4px !important;
+                    color: #1f2937 !important; /* Dark gray for text readability */
                 }
 
-                /* Ensure text color is black just in case */
-                .docx-viewer-wrapper {
-                    color: black !important;
+                /* Ensure dark text on the white paper regardless of dark mode */
+                .docx-wrapper p, .docx-wrapper span, .docx-wrapper div, .docx-wrapper h1, .docx-wrapper h2, .docx-wrapper h3, .docx-wrapper h4, .docx-wrapper h5, .docx-wrapper h6 {
+                    color: #1f2937 !important;
                 }
-            `}</style>
+
+                /* Override ANY inline background colors injected by docx-preview on internal elements */
+                /* CRITICAL: Must target descendants of section.docx, otherwise the page itself becomes transparent */
+                .docx-wrapper section.docx *,
+                .docx-wrapper .docx * {
+                    background-color: transparent !important;
+                    background: transparent !important;
+                    opacity: 1 !important; /* Fix potential opacity inheritance bugs */
+                }
+
+                /* Basic table styling for docx */
+                .docx-wrapper table {
+                    border-collapse: collapse !important;
+                    width: 100% !important;
+                    background-color: transparent !important;
+                    background: transparent !important;
+                }
+                .docx-wrapper td, .docx-wrapper th {
+                    border: 1px solid #d1d5db !important;
+                    padding: 4px 8px !important;
+                    background-color: transparent !important;
+                    background: transparent !important;
+                }
+            `}} />
         </div>
     );
 };
@@ -209,13 +239,23 @@ const XLSXRenderer = ({ mainState: { currentDocument } }: any) => {
         }
     };
 
-    const [currentPage, setCurrentPage] = React.useState(1);
-    const [pageSize, setPageSize] = React.useState(50);
+    const tableContainerRef = React.useRef<HTMLDivElement>(null);
+    const [tableScrollHeight, setTableScrollHeight] = React.useState<number>(400);
 
-    const paginatedRows = React.useMemo(() => {
-        const start = (currentPage - 1) * pageSize;
-        return rows.slice(start, start + pageSize);
-    }, [rows, currentPage, pageSize]);
+    React.useEffect(() => {
+        if (!tableContainerRef.current) return;
+
+        const observer = new ResizeObserver((entries) => {
+            for (let entry of entries) {
+                // Determine exact pixel height for the scrollable body by subtracting just the Header margin (~40px)
+                const newHeight = entry.contentRect.height - 40;
+                setTableScrollHeight(Math.max(newHeight, 100)); // Minimum 100px so it never completely collapses
+            }
+        });
+
+        observer.observe(tableContainerRef.current);
+        return () => observer.disconnect();
+    }, [rows]); // Re-evaluate when active dataset renders
 
     if (loading) return <div className="p-10 text-center"><Spin tip="Rendering Spreadsheet..." /></div>;
 
@@ -237,52 +277,30 @@ const XLSXRenderer = ({ mainState: { currentDocument } }: any) => {
                 </div>
 
                 {sheetNames.length > 1 && (
-                    <div style={{ display: 'flex', gap: 4 }}>
-                        {sheetNames.map((name, idx) => (
-                            <Button
-                                key={idx}
-                                size="small"
-                                type={activeSheet === idx ? 'primary' : 'default'}
-                                onClick={() => handleSheetChange(idx)}
-                                style={{ fontSize: 11, height: 24, borderRadius: 4 }}
-                            >
-                                {name}
-                            </Button>
-                        ))}
-                    </div>
+                    <Tabs
+                        size="small"
+                        activeKey={activeSheet.toString()}
+                        onChange={(key) => handleSheetChange(Number(key))}
+                        items={sheetNames.map((name, idx) => ({
+                            key: idx.toString(),
+                            label: name
+                        }))}
+                        style={{ margin: 0 }}
+                        className="document-preview-tabs"
+                    />
                 )}
             </div>
 
             {/* Scrollable Table Area handled natively by Ant Table */}
-            <div className="xlsx-preview-table" style={{ flex: 1, minHeight: 0 }}>
-                <style dangerouslySetInnerHTML={{
-                    __html: `
-                    .xlsx-preview-table .ant-table-thead > tr > th {
-                        border-radius: 0 !important;
-                    }
-                `}} />
+            <div ref={tableContainerRef} className="absolute-table" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                 <Table
                     columns={columns}
-                    dataSource={paginatedRows}
+                    dataSource={rows}
                     rowKey="_key"
                     size="small"
                     pagination={false}
                     bordered
-                    scroll={{ x: 'max-content', y: 'calc(100vh - 280px)' }}
-                />
-            </div>
-
-            {/* Pagination pinned to bottom */}
-            <div style={{ padding: '12px 16px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
-                <Pagination
-                    current={currentPage}
-                    pageSize={pageSize}
-                    total={rows.length}
-                    size="small"
-                    showSizeChanger
-                    pageSizeOptions={['25', '50', '100']}
-                    showTotal={(total: number) => `${total} rows`}
-                    onChange={(page: number, size: number) => { setCurrentPage(page); setPageSize(size); }}
+                    scroll={{ x: 'max-content', y: tableScrollHeight }}
                 />
             </div>
         </div>

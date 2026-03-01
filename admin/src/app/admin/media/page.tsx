@@ -38,6 +38,7 @@ import {
     Table,
     Segmented,
     FloatButton,
+    Badge,
 } from "antd";
 import {
     UploadOutlined,
@@ -83,11 +84,14 @@ import {
     FileExcelOutlined,
     FileTextOutlined,
     FileZipOutlined,
+    FilePptOutlined,
     AudioOutlined,
     FileUnknownOutlined,
     SafetyCertificateOutlined,
-    MinusSquareOutlined,
-    PlusSquareOutlined
+    ExpandAltOutlined,
+    CompressOutlined,
+    TableOutlined,
+    CloudServerOutlined,
 } from "@ant-design/icons";
 
 import { MagicButton } from "@/components/custom/MagicButton";
@@ -196,6 +200,19 @@ export default function MediaLibraryPage() {
 
     // Folder state
     const [currentPath, setCurrentPath] = useState("");
+
+    const glassCardStyle = {
+        background: 'rgba(255, 255, 255, 0.6)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.04)',
+        border: '1px solid rgba(255, 255, 255, 0.5)',
+    };
+
+    const glassHeaderStyle = {
+        background: 'rgba(255, 255, 255, 0.1)',
+        borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+    };
     const [newFolderModalVisible, setNewFolderModalVisible] = useState(false);
     const [newFolderName, setNewFolderName] = useState("");
 
@@ -907,15 +924,19 @@ export default function MediaLibraryPage() {
         return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
     };
 
-    const getFileIcon = (mimeType?: string) => {
+    const getFileIcon = (mimeType?: string, filename?: string) => {
+        const ext = filename?.split('.').pop()?.toLowerCase() || '';
+
+        if (ext === 'xlsx' || ext === 'xls' || ext === 'csv' || mimeType?.includes("excel") || mimeType?.includes("spreadsheet") || mimeType?.includes("sheet")) return <FileExcelOutlined />;
+        if (ext === 'docx' || ext === 'doc' || mimeType?.includes("word") || mimeType?.includes("wordprocessingml")) return <FileWordOutlined />;
+        if (ext === 'pptx' || ext === 'ppt' || mimeType?.includes("presentation")) return <FilePptOutlined />;
+        if (ext === 'pdf' || mimeType === "application/pdf") return <FilePdfOutlined />;
+
         if (!mimeType) return <FileUnknownOutlined />;
         if (mimeType.startsWith("image/")) return <FileImageOutlined />;
         if (mimeType.startsWith("video/")) return <VideoCameraOutlined />;
         if (mimeType.startsWith("audio/")) return <AudioOutlined />;
-        if (mimeType === "application/pdf") return <FilePdfOutlined />;
-        if (mimeType.includes("word") || mimeType.includes("document")) return <FileWordOutlined />;
-        if (mimeType.includes("excel") || mimeType.includes("spreadsheet")) return <FileExcelOutlined />;
-        if (mimeType.includes("zip") || mimeType.includes("compressed")) return <FileZipOutlined />;
+        if (mimeType.includes("zip") || mimeType.includes("compressed") || ext === 'zip' || ext === 'rar') return <FileZipOutlined />;
         if (mimeType.includes("text/")) return <FileTextOutlined />;
         return <FileOutlined />;
     };
@@ -1002,7 +1023,7 @@ export default function MediaLibraryPage() {
                             }}
                             onClick={() => { setSelectedMedia(item); setPreviewVisible(true); }}
                         >
-                            {getFileIcon(item.mime_type)}
+                            {getFileIcon(item.mime_type, item.filename)}
                         </div>
                     )
                 }
@@ -1097,157 +1118,102 @@ export default function MediaLibraryPage() {
 
     const handleDeleteFolder = async (path: string, bucketName?: string) => {
         const targetBucket = bucketName || currentBucket;
+        console.log('[DeleteFolder] called with path:', path, 'bucketName:', bucketName, 'currentBucket:', currentBucket, 'targetBucket:', targetBucket);
 
         // Security Guard
         if (targetBucket === 'ns-system' && isSystemBucketLocked) {
+            console.log('[DeleteFolder] BLOCKED: System bucket locked');
             message.warning("System is locked. Unlock via settings to delete folders.");
             return;
         }
 
-        const success = await mediaService.deleteFolder(path, targetBucket);
-        if (success) {
-            message.success("Folder deleted");
-            refreshTree(); // Refresh tree
-            if (currentPath === path) {
-                setCurrentPath("");
+        try {
+            console.log('[DeleteFolder] Calling mediaService.deleteFolder...');
+            const success = await mediaService.deleteFolder(path, targetBucket);
+            console.log('[DeleteFolder] Result:', success);
+            if (success) {
+                message.success("Folder deleted");
+                refreshTree();
+                if (currentPath === path) {
+                    setCurrentPath("");
+                }
+            } else {
+                message.error("Failed to delete folder");
             }
-        } else {
-            message.error("Failed to delete folder");
+        } catch (err) {
+            console.error('[DeleteFolder] Error:', err);
+            message.error("Error deleting folder");
         }
     };
 
     return (
         <CMSLayout
             title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>Media Library</AuroraText>}
-            subTitle={
-                <div className="flex items-center h-full pt-1">
-                    <DecryptedText
-                        text="Manage your media files and folders"
-                        className="text-gray-700 dark:text-gray-200"
-                        animateOn="both"
-                        sequential={true}
-                        speed={80}
-                        maxIterations={15}
-                        revealDirection="center"
-                    />
-                </div>
-            }
-            extra={[
-                <Space key="stats">
-                    {storageStats && (
-                        <>
-                            <Tag icon={<DatabaseOutlined />} color="blue">
-                                {storageStats.totalFiles} files
-                            </Tag>
-                            <Tag icon={<CloudOutlined />} color="green">
-                                {formatFileSize(storageStats.totalSizeBytes)}
-                            </Tag>
-                        </>
-                    )}
-                </Space>,
-                <Space key="actions">
-                    <Input
-                        placeholder={aiSearchEnabled ? "AI semantic search..." : "Search media..."}
-                        prefix={aiSearchEnabled ? <RobotOutlined /> : <SearchOutlined />}
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onPressEnter={async () => {
-                            if (aiSearchEnabled && searchQuery.trim()) {
-                                setAiSearchLoading(true);
-                                try {
-                                    const results = await mediaService.semanticSearch(searchQuery, 20);
-                                    setAiSearchResults(results.map(r => r.id));
-                                    message.success(`Found ${results.length} matching files`);
-                                } catch (e) {
-                                    message.error('AI search failed');
-                                } finally {
-                                    setAiSearchLoading(false);
-                                }
-                            }
-                        }}
-                        style={{ width: 220 }}
-                        allowClear
-                        suffix={aiSearchLoading ? <LoadingOutlined spin /> : null}
-                    />
-                    <Tooltip title={aiSearchEnabled ? "AI semantic search enabled" : "Enable AI semantic search"}>
-                        <Switch
-                            checked={aiSearchEnabled}
-                            onChange={(checked) => {
-                                setAiSearchEnabled(checked);
-                                if (!checked) setAiSearchResults([]);
-                            }}
-                            checkedChildren={<RobotOutlined />}
-                            unCheckedChildren={<SearchOutlined />}
-                            size="small"
-                        />
-                    </Tooltip>
-
-                    <Segmented
-                        value={viewMode}
-                        onChange={(val) => setViewMode(val as "grid" | "list" | "detail")}
-                        options={[
-                            { value: "grid", icon: <AppstoreOutlined /> },
-                            { value: "list", icon: <UnorderedListOutlined /> },
-                            { value: "detail", icon: <BarsOutlined /> },
-                        ]}
-                        size="small"
-                    />
-
-                    <MagicButton
-                        icon={<UploadOutlined />}
-                        onClick={() => (currentBucket && buckets.length > 0) && setUploadModalVisible(true)}
-
-                        disabled={!currentBucket || buckets.length === 0 || !isOperationAllowed(currentBucket)}
-                        className={(!currentBucket || buckets.length === 0 || !isOperationAllowed(currentBucket)) ? "opacity-50 cursor-not-allowed" : ""}
-                        title={(!currentBucket || buckets.length === 0) ? "Create a bucket first" : !isOperationAllowed(currentBucket) ? "System bucket is locked" : "Upload file"}
-                    >
-                        Upload
-                    </MagicButton>
-                </Space>,
-            ]}
+            subTitle="Manage your media files and folders"
         >
             {/* Content Wrapper */}
             <div className="relative" style={{ zIndex: 1 }}>
-                <Row gutter={[32, 24]} align="top">
+                <div style={{ display: 'flex', gap: 16, minHeight: 600, alignItems: 'stretch' }}>
                     {showExplorer && (
-                        <Col xs={24} sm={8} md={6} lg={5}>
+                        <div style={{ width: 280, minWidth: 280, display: 'flex', flexDirection: 'column' }}>
                             <div style={{ position: 'sticky', top: 16 }}>
                                 <Card
                                     size="small"
                                     title={
                                         <div className="flex items-center gap-2">
-                                            <span style={{ background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600 }}>
+                                            <span style={{
+                                                background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                                WebkitBackgroundClip: 'text',
+                                                WebkitTextFillColor: 'transparent',
+                                                fontWeight: 600,
+                                                fontSize: '14px'
+                                            }}>
                                                 Explorer
                                             </span>
                                         </div>
                                     }
                                     extra={
-                                        <Space>
+                                        <div className="flex items-center gap-1">
                                             <AnimatedTooltip content="Expand All">
-                                                <ScaleButton onClick={() => folderTreeRef.current?.expandAll()} className="p-1">
-                                                    <PlusSquareOutlined style={{ color: '#8b5cf6', fontSize: '16px' }} />
-                                                </ScaleButton>
+                                                <Button
+                                                    type="text"
+                                                    icon={<ExpandAltOutlined style={{ fontSize: 14 }} />}
+                                                    onClick={() => folderTreeRef.current?.expandAll()}
+                                                    size="small"
+                                                    className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                                                />
                                             </AnimatedTooltip>
                                             <AnimatedTooltip content="Collapse All">
-                                                <ScaleButton onClick={() => folderTreeRef.current?.collapseAll()} className="p-1">
-                                                    <MinusSquareOutlined style={{ color: '#8b5cf6', fontSize: '16px' }} />
-                                                </ScaleButton>
+                                                <Button
+                                                    type="text"
+                                                    icon={<CompressOutlined style={{ fontSize: 14 }} />}
+                                                    onClick={() => folderTreeRef.current?.collapseAll()}
+                                                    size="small"
+                                                    className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                                                />
                                             </AnimatedTooltip>
-                                            <AnimatedTooltip content={(!currentBucket || buckets.length === 0) ? "Create a bucket first" : "New Folder"}>
-                                                <ScaleButton
-                                                    onClick={() => (currentBucket && buckets.length > 0) && setNewFolderModalVisible(true)}
-                                                    className={`p-1 ${(!currentBucket || buckets.length === 0 || !isOperationAllowed(currentBucket)) ? "opacity-50 cursor-not-allowed" : ""}`}
-                                                    disabled={!isOperationAllowed(currentBucket)}
-                                                >
-                                                    <FolderAddOutlined style={{ color: !isOperationAllowed(currentBucket) ? '#ccc' : '#8b5cf6', fontSize: '16px' }} />
-                                                </ScaleButton>
+
+                                            <div className="w-[1px] h-3 bg-gray-200 dark:bg-gray-700 mx-1" />
+
+                                            <AnimatedTooltip content="New Folder">
+                                                <Button
+                                                    type="text"
+                                                    icon={<FolderAddOutlined style={{ fontSize: 14 }} />}
+                                                    onClick={() => setNewFolderModalVisible(true)}
+                                                    size="small"
+                                                    className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                                                />
                                             </AnimatedTooltip>
                                             <AnimatedTooltip content="New Bucket">
-                                                <ScaleButton onClick={() => setNewBucketModalVisible(true)} className="p-1">
-                                                    <PlusOutlined style={{ color: '#8b5cf6', fontSize: '16px' }} />
-                                                </ScaleButton>
+                                                <Button
+                                                    type="text"
+                                                    icon={<PlusOutlined style={{ fontSize: 14 }} />}
+                                                    onClick={() => setNewBucketModalVisible(true)}
+                                                    size="small"
+                                                    className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                                                />
                                             </AnimatedTooltip>
-                                        </Space>
+                                        </div>
                                     }
                                     style={{
                                         display: 'flex',
@@ -1264,305 +1230,403 @@ export default function MediaLibraryPage() {
                                         header: {
                                             background: 'transparent',
                                             borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+                                            minHeight: 40,
+                                            padding: '0 12px'
                                         },
                                         body: {
-                                            padding: 12,
+                                            padding: '8px 0',
                                             flex: 1,
                                             overflow: 'auto'
                                         }
                                     }}
                                 >
-                                    <FolderTree
-                                        ref={folderTreeRef}
-                                        currentBucket={currentBucket}
-                                        currentPath={currentPath}
-                                        onSelect={(bucket, path) => {
-                                            setCurrentBucket(bucket);
-                                            setCurrentPath(path);
-                                        }}
-                                        onRefresh={loadAllData}
-                                        refreshTrigger={treeRefreshTrigger}
-                                        className="[&_.ant-tree-treenode]:py-0.5 [&_.ant-tree-title]:text-xs [&_.ant-tree-switcher]:w-4"
-                                        onDeleteBucket={(name) => handleDeleteBucket(name)}
-                                        onDeleteFolder={(path, bucket) => handleDeleteFolder(path, bucket)}
-                                        onBucketSettings={(name) => {
-                                            setCurrentBucket(name);
-                                            loadLifecycleRules();
-                                            fetchBucketVersioningStatus(name);
-                                            setBucketSettingsDrawerVisible(true);
-                                        }}
-                                        isSystemBucketLocked={isSystemBucketLocked}
-                                    />
+                                    <div className="px-3 mb-4 flex items-center gap-2">
+                                        <Input
+                                            placeholder="Search tree..."
+                                            prefix={<SearchOutlined style={{ color: '#8b5cf6', fontSize: 13 }} />}
+                                            size="small"
+                                            className="flex-1 rounded-md border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 h-8 hover:bg-white dark:hover:bg-gray-800 focus:bg-white dark:focus:bg-gray-800 transition-all text-xs"
+                                            allowClear
+                                        />
+                                        <AnimatedTooltip content="Refresh Tree">
+                                            <Button
+                                                type="text"
+                                                icon={<ReloadOutlined style={{ fontSize: 13 }} />}
+                                                onClick={loadAllData} // Original handler
+                                                size="small"
+                                                className="text-gray-400 hover:text-violet-500"
+                                            />
+                                        </AnimatedTooltip>
+                                    </div>
+
+                                    <div className="px-1 custom-scrollbar overflow-x-hidden overflow-y-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+                                        <FolderTree
+                                            ref={folderTreeRef}
+                                            currentBucket={currentBucket}
+                                            currentPath={currentPath}
+                                            onSelect={(bucket, path) => {
+                                                setCurrentBucket(bucket);
+                                                setCurrentPath(path);
+                                            }}
+                                            onRefresh={loadAllData}
+                                            refreshTrigger={treeRefreshTrigger}
+                                            className="[&_.ant-tree-treenode]:py-0.5 [&_.ant-tree-title]:text-xs [&_.ant-tree-switcher]:w-4"
+                                            onDeleteBucket={(name) => handleDeleteBucket(name)}
+                                            onDeleteFolder={(path, bucket) => handleDeleteFolder(path, bucket)}
+                                            onBucketSettings={(name) => {
+                                                setCurrentBucket(name);
+                                                loadLifecycleRules();
+                                                fetchBucketVersioningStatus(name);
+                                                setBucketSettingsDrawerVisible(true);
+                                            }}
+                                            isSystemBucketLocked={isSystemBucketLocked}
+                                        />
+                                    </div>
                                 </Card>
                             </div>
-                        </Col>
+                        </div>
                     )}
 
                     {/* Main Content */}
-                    <Col xs={24} sm={showExplorer ? 16 : 24} md={showExplorer ? 18 : 24} lg={showExplorer ? 19 : 24}>
-                        {/* Breadcrumb */}
-                        <Card
-                            size="small"
-                            style={{
-                                marginBottom: 16,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                background: 'rgba(255, 255, 255, 0.4)',
-                                backdropFilter: 'blur(20px)',
-                                WebkitBackdropFilter: 'blur(20px)',
-                                boxShadow: '0 8px 32px rgba(31, 38, 135, 0.15)',
-                                border: '1px solid rgba(255, 255, 255, 0.18)'
-                            }}
-                            className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-purple-500/20"
-                            styles={{
-                                header: {
-                                    background: 'rgba(255, 255, 255, 0.1)',
-                                    borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
-                                },
-                                body: {
-                                    flex: 1,
-                                    display: 'flex',
-                                    flexDirection: 'column'
-                                }
-                            }}
-                            title={
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        type="text"
-                                        size="small"
-                                        icon={showExplorer ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
-                                        onClick={() => setShowExplorer(!showExplorer)}
-                                        className="!text-violet-500 hover:!text-violet-600 !flex items-center justify-center"
-                                    />
-                                    <PictureOutlined className="text-violet-500" />
-                                    <span style={{ background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600 }}>
-                                        Media Files
-                                    </span>
-                                </div>
-                            }
-                        >
-                            <Space>
-                                <Breadcrumb items={breadcrumbItems} />
-                                <AnimatedTooltip content="Refresh files">
-                                    <ScaleButton size="small" icon={<ReloadOutlined />} onClick={loadAllData} />
-                                </AnimatedTooltip>
-                                {currentPath && (
-                                    isOperationAllowed(currentBucket) ? (
-                                        <Popconfirm
-                                            title="Delete this folder?"
-                                            description="This will delete the folder and all its contents."
-                                            onConfirm={() => handleDeleteFolder(currentPath)}
-                                            okText="Delete"
-                                            cancelText="Cancel"
-                                        >
-                                            <AnimatedTooltip content="Delete current folder">
-                                                <Button size="small" danger icon={<DeleteOutlined />}>Delete Folder</Button>
-                                            </AnimatedTooltip>
-                                        </Popconfirm>
-                                    ) : (
-                                        <AnimatedTooltip content="System Locked: Navigate to Settings to Unlock">
-                                            <Button size="small" danger icon={<DeleteOutlined />} disabled={true}>Delete Folder</Button>
-                                        </AnimatedTooltip>
-                                    )
-
-                                )}
-                            </Space>
-                        </Card>
-
-                        {/* Storage Dashboard */}
-                        {storageStats && (
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                        <div className="flex flex-col gap-4 h-full">
+                            {/* Header Card */}
                             <Card
                                 size="small"
-                                style={{
-                                    marginBottom: 16,
-                                    background: 'rgba(255, 255, 255, 0.6)',
-                                    backdropFilter: 'blur(16px)',
-                                    WebkitBackdropFilter: 'blur(16px)',
-                                    boxShadow: '0 8px 32px rgba(139, 92, 246, 0.08)',
-                                    border: '1px solid rgba(139, 92, 246, 0.12)'
-                                }}
-                                className="dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20"
-                                styles={{
-                                    body: { padding: 16 }
-                                }}
-                            >
-                                <Row gutter={24} align="middle">
-                                    <Col span={6}>
-                                        <Statistic
-                                            title={
-                                                <Tooltip title="Total files in the current folder">
-                                                    <span className="flex items-center gap-1 cursor-help"><FileOutlined /> Bucket Files</span>
-                                                </Tooltip>
-                                            }
-                                            value={storageStats.totalFiles}
-                                            valueStyle={{ color: '#1890ff', fontWeight: 600 }}
+                                style={glassCardStyle}
+                                className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-purple-500/20 shadow-sm"
+                                styles={{ header: glassHeaderStyle }}
+                                title={
+                                    <div className="flex items-center gap-3">
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            icon={showExplorer ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
+                                            onClick={() => setShowExplorer(!showExplorer)}
+                                            className="text-gray-500 hover:text-violet-600"
                                         />
-                                    </Col>
-                                    <Col span={6}>
-                                        <Statistic
-                                            title={<><CloudOutlined /> Storage Used</>}
-                                            value={formatFileSize(storageStats.totalSizeBytes)}
-                                            valueStyle={{ color: '#52c41a', fontWeight: 600 }}
-                                        />
-                                    </Col>
-                                    <Col span={6}>
-                                        <Statistic
-                                            title={<><DatabaseOutlined /> Buckets</>}
-                                            value={buckets.length}
-                                            suffix={<Tag color="blue" style={{ marginLeft: 8 }}>{currentBucket}</Tag>}
-                                            valueStyle={{ fontWeight: 600 }}
-                                        />
-                                    </Col>
-                                    <Col span={6}>
-                                        <div className="flex items-center gap-2">
-                                            <Statistic
-                                                title={<><HistoryOutlined /> Versioning</>}
-                                                value={bucketVersioning[currentBucket] ? 'Enabled' : 'Disabled'}
-                                                valueStyle={{
-                                                    color: bucketVersioning[currentBucket] ? '#52c41a' : '#faad14',
-                                                    fontWeight: 600,
-                                                    fontSize: 16
-                                                }}
-                                            />
-                                        </div>
-                                    </Col>
-                                </Row>
-                            </Card>
-                        )}
-
-                        {/* Upload Progress */}
-                        {uploading && (
-                            <Card size="small" style={{ marginBottom: 16 }}>
-                                <Progress percent={uploadProgress} status="active" />
-                            </Card>
-                        )}
-
-                        {/* Media Views */}
-                        {loading ? (
-                            <div style={{ textAlign: "center", padding: 60 }}>
-                                <Spin size="large" />
-                            </div>
-                        ) : filteredMedia.length === 0 ? (
-                            <Empty
-                                description={
-                                    <span className="text-gray-600 dark:text-gray-300">
-                                        {searchQuery ? "No matching media found" : "No media in this folder"}
-                                    </span>
+                                        <span style={{
+                                            background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                            WebkitBackgroundClip: 'text',
+                                            WebkitTextFillColor: 'transparent',
+                                            fontWeight: 600,
+                                            fontSize: '14px'
+                                        }}>
+                                            {currentPath ? currentPath.split('/').filter(Boolean).pop() : currentBucket || 'Media Files'}
+                                        </span>
+                                    </div>
                                 }
-                                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                className="py-16"
+                                extra={
+                                    <Space size={8}>
+                                        <Tag icon={<CloudServerOutlined />} color="purple" bordered={false} className="px-2 py-0.5 text-[11px] bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 rounded-md m-0">
+                                            {currentBucket || 'S3'}
+                                        </Tag>
+
+                                        <Input
+                                            prefix={<SearchOutlined style={{ color: '#8b5cf6' }} />}
+                                            placeholder="Search files..."
+                                            value={searchQuery}
+                                            onChange={e => setSearchQuery(e.target.value)}
+                                            onPressEnter={async () => {
+                                                if (aiSearchEnabled && searchQuery.trim()) {
+                                                    setAiSearchLoading(true);
+                                                    try {
+                                                        const results = await mediaService.semanticSearch(searchQuery, 20);
+                                                        setAiSearchResults(results.map(r => r.id));
+                                                        message.success(`Found ${results.length} matching files`);
+                                                    } catch (e) {
+                                                        message.error('AI search failed');
+                                                    } finally {
+                                                        setAiSearchLoading(false);
+                                                    }
+                                                }
+                                            }}
+                                            className="w-32 md:w-48 !bg-transparent border-b !border-0 focus:border-b-violet-500 transition-colors text-xs"
+                                            bordered={false}
+                                            size="small"
+                                            suffix={aiSearchLoading ? <LoadingOutlined spin /> : null}
+                                        />
+
+                                        <Tooltip title={aiSearchEnabled ? "AI search enabled" : "Enable AI search"}>
+                                            <Switch
+                                                checked={aiSearchEnabled}
+                                                onChange={(checked) => {
+                                                    setAiSearchEnabled(checked);
+                                                    if (!checked) setAiSearchResults([]);
+                                                }}
+                                                checkedChildren={<RobotOutlined />}
+                                                unCheckedChildren={<SearchOutlined />}
+                                                size="small"
+                                            />
+                                        </Tooltip>
+
+                                        <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
+
+                                        {/* View Mode */}
+                                        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5" style={{ border: '1px solid rgba(0,0,0,0.05)' }}>
+                                            <AnimatedTooltip content="Grid View">
+                                                <Button
+                                                    type="text"
+                                                    size="small"
+                                                    icon={<AppstoreOutlined style={{ fontSize: 12 }} />}
+                                                    className={viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-violet-600' : 'text-gray-400 hover:text-violet-400'}
+                                                    onClick={() => setViewMode('grid')}
+                                                    style={{ width: 24, height: 24, minWidth: 24 }}
+                                                />
+                                            </AnimatedTooltip>
+                                            <AnimatedTooltip content="List View">
+                                                <Button
+                                                    type="text"
+                                                    size="small"
+                                                    icon={<UnorderedListOutlined style={{ fontSize: 12 }} />}
+                                                    className={viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-violet-600' : 'text-gray-400 hover:text-violet-400'}
+                                                    onClick={() => setViewMode('list')}
+                                                    style={{ width: 24, height: 24, minWidth: 24 }}
+                                                />
+                                            </AnimatedTooltip>
+                                            <AnimatedTooltip content="Detail View">
+                                                <Button
+                                                    type="text"
+                                                    size="small"
+                                                    icon={<BarsOutlined style={{ fontSize: 12 }} />}
+                                                    className={viewMode === 'detail' ? 'bg-white dark:bg-gray-700 shadow-sm text-violet-600' : 'text-gray-400 hover:text-violet-400'}
+                                                    onClick={() => setViewMode('detail')}
+                                                    style={{ width: 24, height: 24, minWidth: 24 }}
+                                                />
+                                            </AnimatedTooltip>
+                                        </div>
+
+                                        <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
+
+                                        {/* Refresh */}
+                                        <Tooltip title="Refresh">
+                                            <Button type="text" size="small" icon={<ReloadOutlined style={{ fontSize: 13 }} />} onClick={loadAllData} className="text-gray-400 hover:text-violet-500" />
+                                        </Tooltip>
+
+                                        {/* Upload */}
+                                        <MagicButton
+                                            icon={<UploadOutlined style={{ fontSize: 10 }} />}
+                                            onClick={() => (currentBucket && buckets.length > 0) && setUploadModalVisible(true)}
+                                            disabled={!currentBucket || buckets.length === 0 || !isOperationAllowed(currentBucket)}
+                                            size="small"
+                                        >
+                                            Upload
+                                        </MagicButton>
+                                    </Space>
+                                }
                             >
-                                {!searchQuery && (
-                                    <MagicButton
-                                        icon={<UploadOutlined />}
-                                        size="large"
-                                        onClick={() => (currentBucket && buckets.length > 0) && setUploadModalVisible(true)}
-                                        disabled={!currentBucket || buckets.length === 0}
-                                        className={(!currentBucket || buckets.length === 0) ? "opacity-50 cursor-not-allowed" : ""}
-                                    >
-                                        {buckets.length === 0 ? "Create a Bucket First" : "Upload First File"}
-                                    </MagicButton>
-                                )}
-                            </Empty>
-                        ) : viewMode === "grid" ? (
-                            <Row gutter={[16, 16]}>{filteredMedia.map(renderGridItem)}</Row>
-                        ) : viewMode === "list" ? (
-                            <List
-                                dataSource={filteredMedia}
-                                renderItem={(item) => (
-                                    <List.Item
-                                        style={{ background: '#fff', padding: '8px 12px', marginBottom: 4, borderRadius: 4 }}
-                                        actions={[
-                                            <AnimatedTooltip content="Preview"><Button key="preview" type="text" icon={<EyeOutlined />} onClick={() => { setSelectedMedia(item); setPreviewVisible(true); }} /></AnimatedTooltip>,
-                                            <AnimatedTooltip content="Download"><Button key="download" type="text" icon={<DownloadOutlined />} onClick={() => handleDownload(item)} /></AnimatedTooltip>,
-                                            <Dropdown key="more" menu={getFileActions(item)} trigger={["click"]}><Button type="text" icon={<MoreOutlined />} /></Dropdown>,
+                                <div className="flex items-center justify-between w-full">
+                                    <Breadcrumb
+                                        className="text-xs"
+                                        items={[
+                                            { title: <><HomeOutlined className="mr-1" /> Media</> },
+                                            ...currentPath.split('/').filter(Boolean).map((p, i) => ({
+                                                title: p,
+                                            })),
                                         ]}
-                                    >
-                                        <List.Item.Meta
-                                            avatar={
-                                                item.mime_type?.startsWith("image/") ? (
-                                                    <Image src={item.url} alt={item.filename} style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 4 }} preview={false} />
+                                        separator={<span className="text-gray-300 text-[10px] mx-1">/</span>}
+                                    />
+                                    {currentPath && (
+                                        isOperationAllowed(currentBucket) ? (
+                                            <Popconfirm
+                                                title="Delete this folder?"
+                                                onConfirm={() => handleDeleteFolder(currentPath)}
+                                                okText="Delete"
+                                                cancelText="Cancel"
+                                            >
+                                                <Button size="small" type="text" danger icon={<DeleteOutlined />} className="text-[10px]">Delete Folder</Button>
+                                            </Popconfirm>
+                                        ) : (
+                                            <Tag color="error" icon={<SafetyCertificateOutlined />} className="text-[10px] m-0">System Locked</Tag>
+                                        )
+                                    )}
+                                </div>
+                            </Card>
+
+                            {/* Stats Card */}
+                            {storageStats && (
+                                <Card
+                                    size="small"
+                                    style={glassCardStyle}
+                                    className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-purple-500/20 shadow-sm transition-all hover:shadow-md"
+                                    bodyStyle={{ padding: '10px 16px' }}
+                                >
+                                    <Row gutter={32} align="middle" justify="start">
+                                        <Col>
+                                            <Statistic
+                                                title={<span className="text-[10px] text-gray-500 uppercase tracking-wider">Files</span>}
+                                                value={storageStats.totalFiles}
+                                                valueStyle={{ color: '#8b5cf6', fontWeight: 600, fontSize: 16 }}
+                                                suffix={<span className="text-xs text-gray-400">items</span>}
+                                            />
+                                        </Col>
+                                        <Col>
+                                            <div className="h-8 w-px bg-gray-100 dark:bg-gray-800 mx-2" />
+                                        </Col>
+                                        <Col>
+                                            <Statistic
+                                                title={<span className="text-[10px] text-gray-500 uppercase tracking-wider">Storage</span>}
+                                                value={formatFileSize(storageStats.totalSizeBytes).split(' ')[0]}
+                                                suffix={<span className="text-xs text-gray-400">{formatFileSize(storageStats.totalSizeBytes).split(' ')[1]}</span>}
+                                                valueStyle={{ color: '#6366f1', fontWeight: 600, fontSize: 16 }}
+                                            />
+                                        </Col>
+                                        <Col>
+                                            <div className="h-8 w-px bg-gray-100 dark:bg-gray-800 mx-2" />
+                                        </Col>
+                                        <Col>
+                                            <Statistic
+                                                title={<span className="text-[10px] text-gray-500 uppercase tracking-wider">Status</span>}
+                                                value={`Live (${currentBucket})`}
+                                                valueStyle={{ color: '#4d7c0f', fontWeight: 600, fontSize: 14 }}
+                                            />
+                                        </Col>
+                                    </Row>
+                                </Card>
+                            )}
+
+                            {/* Upload Progress */}
+                            {uploading && (
+                                <Card size="small" style={{ marginBottom: 16 }}>
+                                    <Progress percent={uploadProgress} status="active" />
+                                </Card>
+                            )}
+
+                            {/* Media Views */}
+                            {loading ? (
+                                <div style={{ textAlign: "center", padding: 60 }}>
+                                    <Spin size="large" />
+                                </div>
+                            ) : filteredMedia.length === 0 ? (
+                                <Empty
+                                    description={
+                                        <span className="text-gray-600 dark:text-gray-300">
+                                            {searchQuery ? "No matching media found" : "No media in this folder"}
+                                        </span>
+                                    }
+                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                    className="py-16"
+                                >
+                                    {!searchQuery && (
+                                        <MagicButton
+                                            icon={<UploadOutlined />}
+                                            size="large"
+                                            onClick={() => (currentBucket && buckets.length > 0) && setUploadModalVisible(true)}
+                                            disabled={!currentBucket || buckets.length === 0}
+                                            className={(!currentBucket || buckets.length === 0) ? "opacity-50 cursor-not-allowed" : ""}
+                                        >
+                                            {buckets.length === 0 ? "Create a Bucket First" : "Upload First File"}
+                                        </MagicButton>
+                                    )}
+                                </Empty>
+                            ) : viewMode === "grid" ? (
+                                <Row gutter={[16, 16]}>{filteredMedia.map(renderGridItem)}</Row>
+                            ) : viewMode === "list" ? (
+                                <List
+                                    dataSource={filteredMedia}
+                                    renderItem={(item) => (
+                                        <List.Item
+                                            style={{ background: '#fff', padding: '8px 12px', marginBottom: 4, borderRadius: 4 }}
+                                            actions={[
+                                                <AnimatedTooltip content="Preview"><Button key="preview" type="text" icon={<EyeOutlined />} onClick={() => { setSelectedMedia(item); setPreviewVisible(true); }} /></AnimatedTooltip>,
+                                                <AnimatedTooltip content="Download"><Button key="download" type="text" icon={<DownloadOutlined />} onClick={() => handleDownload(item)} /></AnimatedTooltip>,
+                                                <Dropdown key="more" menu={getFileActions(item)} trigger={["click"]}><Button type="text" icon={<MoreOutlined />} /></Dropdown>,
+                                            ]}
+                                        >
+                                            <List.Item.Meta
+                                                avatar={
+                                                    item.mime_type?.startsWith("image/") ? (
+                                                        <Image src={item.url} alt={item.filename} style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 4 }} preview={false} />
+                                                    ) : (
+                                                        <div style={{ width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 4, fontSize: 24 }}>
+                                                            {getFileIcon(item.mime_type, item.filename)}
+                                                        </div>
+                                                    )
+                                                }
+                                                title={<span style={{ fontWeight: 500 }}>{item.filename}</span>}
+                                                description={<Space size="small"><Tag>{formatFileSize(item.size_bytes)}</Tag><Tag>{item.mime_type?.split('/')[1] || 'file'}</Tag></Space>}
+                                            />
+                                        </List.Item>
+                                    )}
+                                />
+                            ) : (
+                                <Table
+                                    dataSource={filteredMedia}
+                                    rowKey="id"
+                                    size="small"
+                                    pagination={{ pageSize: 20, showSizeChanger: true }}
+                                    columns={[
+                                        {
+                                            title: 'Preview',
+                                            dataIndex: 'url',
+                                            key: 'preview',
+                                            width: 60,
+                                            render: (url: string, record: MediaFile) => (
+                                                record.mime_type?.startsWith("image/") ? (
+                                                    <Image src={url} alt={record.filename} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4 }} preview={false} />
                                                 ) : (
-                                                    <div style={{ width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 4, fontSize: 24 }}>
-                                                        {getFileIcon(item.mime_type)}
+                                                    <div style={{ width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 4, fontSize: 20 }}>
+                                                        {getFileIcon(record.mime_type, record.filename)}
                                                     </div>
                                                 )
-                                            }
-                                            title={<span style={{ fontWeight: 500 }}>{item.filename}</span>}
-                                            description={<Space size="small"><Tag>{formatFileSize(item.size_bytes)}</Tag><Tag>{item.mime_type?.split('/')[1] || 'file'}</Tag></Space>}
-                                        />
-                                    </List.Item>
-                                )}
-                            />
-                        ) : (
-                            <Table
-                                dataSource={filteredMedia}
-                                rowKey="id"
-                                size="small"
-                                pagination={{ pageSize: 20, showSizeChanger: true }}
-                                columns={[
-                                    {
-                                        title: 'Preview',
-                                        dataIndex: 'url',
-                                        key: 'preview',
-                                        width: 60,
-                                        render: (url: string, record: MediaFile) => (
-                                            record.mime_type?.startsWith("image/") ? (
-                                                <Image src={url} alt={record.filename} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4 }} preview={false} />
-                                            ) : (
-                                                <div style={{ width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 4, fontSize: 20 }}>
-                                                    {getFileIcon(record.mime_type)}
-                                                </div>
                                             )
-                                        )
-                                    },
-                                    {
-                                        title: 'Filename',
-                                        dataIndex: 'filename',
-                                        key: 'filename',
-                                        ellipsis: true,
-                                        sorter: (a: MediaFile, b: MediaFile) => a.filename.localeCompare(b.filename),
-                                    },
-                                    {
-                                        title: 'Type',
-                                        dataIndex: 'mime_type',
-                                        key: 'type',
-                                        width: 100,
-                                        render: (mime: string) => <Tag>{mime?.split('/')[1] || 'file'}</Tag>,
-                                    },
-                                    {
-                                        title: 'Size',
-                                        dataIndex: 'size_bytes',
-                                        key: 'size',
-                                        width: 100,
-                                        render: (size: number) => formatFileSize(size),
-                                        sorter: (a: MediaFile, b: MediaFile) => (a.size_bytes || 0) - (b.size_bytes || 0),
-                                    },
-                                    {
-                                        title: 'Created',
-                                        dataIndex: 'created_at',
-                                        key: 'created',
-                                        width: 140,
-                                        render: (date: string) => date ? new Date(date).toLocaleDateString() : '-',
-                                        sorter: (a: MediaFile, b: MediaFile) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime(),
-                                    },
-                                    {
-                                        title: 'Actions',
-                                        key: 'actions',
-                                        width: 120,
-                                        render: (_: any, record: MediaFile) => (
-                                            <Space size={0}>
-                                                <AnimatedTooltip content="Preview"><Button type="text" size="small" icon={<EyeOutlined />} onClick={() => { setSelectedMedia(record); setPreviewVisible(true); }} /></AnimatedTooltip>
-                                                <AnimatedTooltip content="Download"><Button type="text" size="small" icon={<DownloadOutlined />} onClick={() => handleDownload(record)} /></AnimatedTooltip>
-                                                <Dropdown menu={getFileActions(record)} trigger={["click"]}><Button type="text" size="small" icon={<MoreOutlined />} /></Dropdown>
-                                            </Space>
-                                        )
-                                    },
-                                ]}
-                            />
-                        )}
-                    </Col>
-                </Row>
+                                        },
+                                        {
+                                            title: 'Filename',
+                                            dataIndex: 'filename',
+                                            key: 'filename',
+                                            ellipsis: true,
+                                            sorter: (a: MediaFile, b: MediaFile) => a.filename.localeCompare(b.filename),
+                                        },
+                                        {
+                                            title: 'Description',
+                                            dataIndex: 'metadata',
+                                            key: 'description',
+                                            width: 200,
+                                            ellipsis: true,
+                                            render: (metadata: any) => <Text className="text-xs text-gray-500">{metadata?.description || '-'}</Text>,
+                                        },
+                                        {
+                                            title: 'Type',
+                                            dataIndex: 'mime_type',
+                                            key: 'type',
+                                            width: 100,
+                                            render: (mime: string) => <Tag>{mime?.split('/')[1] || 'file'}</Tag>,
+                                        },
+                                        {
+                                            title: 'Size',
+                                            dataIndex: 'size_bytes',
+                                            key: 'size',
+                                            width: 100,
+                                            render: (size: number) => formatFileSize(size),
+                                            sorter: (a: MediaFile, b: MediaFile) => (a.size_bytes || 0) - (b.size_bytes || 0),
+                                        },
+                                        {
+                                            title: 'Created',
+                                            dataIndex: 'created_at',
+                                            key: 'created',
+                                            width: 140,
+                                            render: (date: string) => date ? new Date(date).toLocaleDateString() : '-',
+                                            sorter: (a: MediaFile, b: MediaFile) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime(),
+                                        },
+                                        {
+                                            title: 'Actions',
+                                            key: 'actions',
+                                            width: 120,
+                                            render: (_: any, record: MediaFile) => (
+                                                <Space size={0}>
+                                                    <AnimatedTooltip content="Preview"><Button type="text" size="small" icon={<EyeOutlined />} onClick={() => { setSelectedMedia(record); setPreviewVisible(true); }} /></AnimatedTooltip>
+                                                    <AnimatedTooltip content="Download"><Button type="text" size="small" icon={<DownloadOutlined />} onClick={() => handleDownload(record)} /></AnimatedTooltip>
+                                                    <Dropdown menu={getFileActions(record)} trigger={["click"]}><Button type="text" size="small" icon={<MoreOutlined />} /></Dropdown>
+                                                </Space>
+                                            )
+                                        },
+                                    ]}
+                                />
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Preview Modal */}

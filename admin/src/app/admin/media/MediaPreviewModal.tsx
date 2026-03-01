@@ -21,7 +21,9 @@ import {
     RobotOutlined,
     SettingOutlined,
     DeleteOutlined,
-    UploadOutlined
+    UploadOutlined,
+    CheckOutlined,
+    EditOutlined
 } from '@ant-design/icons';
 import { mediaService } from '@/lib/mediaService';
 import type { MediaFile } from '@/lib/mediaService';
@@ -84,88 +86,183 @@ interface InfoTabProps {
     versions: ObjectVersion[];
     getRelativeTime: (date: string) => string;
     formatFileSize: (bytes?: number) => string;
+    onUpdateDescription?: (newDesc: string) => Promise<void>;
 }
 
-const InfoTab = ({ activeMedia, embeddingDim, embeddingVector, versions, getRelativeTime, formatFileSize }: InfoTabProps) => (
-    <div className="space-y-3 pr-1">
-        <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-sm bg-gray-50 dark:bg-[#121212] p-3 rounded-xl border border-gray-100 dark:border-gray-800">
-            <div className="flex flex-col">
-                <span className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Size</span>
-                <span className="font-medium text-gray-700 dark:text-gray-200">{formatFileSize(activeMedia.size_bytes)}</span>
-            </div>
-            <div className="flex flex-col">
-                <span className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Created</span>
-                <span className="font-medium text-gray-700 dark:text-gray-200">{activeMedia.created_at ? new Date(activeMedia.created_at).toLocaleDateString() : '-'}</span>
-            </div>
-            <div className="col-span-2 flex flex-col pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
-                <span className="text-gray-400 text-xs uppercase tracking-wider font-semibold">S3 Key</span>
-                <Text copyable className="font-mono text-[10px] text-gray-500 break-all hover:text-violet-500 transition-colors cursor-pointer mt-1">
-                    {activeMedia.s3_key}
-                </Text>
-            </div>
-        </div>
+const InfoTab = ({ activeMedia, embeddingDim, embeddingVector, versions, getRelativeTime, formatFileSize, onUpdateDescription }: InfoTabProps) => {
+    const [isEditingDesc, setIsEditingDesc] = useState(false);
+    const [currentDescription, setCurrentDescription] = useState(activeMedia.metadata?.description || '');
+    const [descValue, setDescValue] = useState(activeMedia.metadata?.description || '');
+    const [isSavingDesc, setIsSavingDesc] = useState(false);
 
-        <div className="bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-900/10 dark:to-indigo-900/10 rounded-xl p-3 border border-violet-100 dark:border-violet-500/20">
-            <div className="flex justify-between items-center mb-2">
-                <h3 className="text-xs font-bold text-violet-700 dark:text-violet-300 flex items-center gap-1.5">
-                    <RobotOutlined /> AI INTEL
-                </h3>
+    // Update local state when activeMedia changes from external sources
+    useEffect(() => {
+        setCurrentDescription(activeMedia.metadata?.description || '');
+        setDescValue(activeMedia.metadata?.description || '');
+    }, [activeMedia.id, activeMedia.metadata?.description]);
+
+    const handleSaveDescription = async () => {
+        if (!onUpdateDescription) return;
+        setIsSavingDesc(true);
+        try {
+            await onUpdateDescription(descValue);
+            setCurrentDescription(descValue); // Optimistic UI update
+            setIsEditingDesc(false);
+        } catch (error) {
+            console.error("Failed to update description", error);
+            message.error("Failed to update description");
+        } finally {
+            setIsSavingDesc(false);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setDescValue(currentDescription);
+        setIsEditingDesc(false);
+    };
+
+    return (
+        <div className="space-y-3 pr-1">
+            <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-sm bg-gray-50 dark:bg-[#121212] p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                <div className="flex flex-col">
+                    <span className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Size</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-200">{formatFileSize(activeMedia.size_bytes)}</span>
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Created</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-200">{activeMedia.created_at ? new Date(activeMedia.created_at).toLocaleDateString() : '-'}</span>
+                </div>
+                <div className="col-span-2 flex flex-col pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
+                    <span className="text-gray-400 text-xs uppercase tracking-wider font-semibold">S3 Key</span>
+                    <Text copyable className="font-mono text-[10px] text-gray-500 break-all hover:text-violet-500 transition-colors cursor-pointer mt-1">
+                        {activeMedia.s3_key}
+                    </Text>
+                </div>
+                <div className="col-span-2 flex flex-col pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
+                    <div className="flex justify-between items-center">
+                        <span className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Description</span>
+                        {!isEditingDesc && onUpdateDescription && (
+                            <Tooltip title="Edit Description">
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<EditOutlined />}
+                                    onClick={() => setIsEditingDesc(true)}
+                                    className="text-gray-400 hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20"
+                                />
+                            </Tooltip>
+                        )}
+                    </div>
+                    {isEditingDesc ? (
+                        <div className="mt-2 text-xs space-y-2">
+                            <Input.TextArea
+                                value={descValue}
+                                onChange={(e) => setDescValue(e.target.value)}
+                                rows={3}
+                                className="text-xs custom-scrollbar rounded-md border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1A1A1A] hover:border-violet-400 focus:border-violet-500 transition-colors shadow-sm w-full"
+                                placeholder="Add a description..."
+                            />
+                            <div className="flex justify-end gap-2 mt-2">
+                                <Button
+                                    size="small"
+                                    onClick={handleCancelEdit}
+                                    disabled={isSavingDesc}
+                                    icon={<CloseOutlined />}
+                                    className="text-xs border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-md shadow-none"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    size="small"
+                                    onClick={handleSaveDescription}
+                                    loading={isSavingDesc}
+                                    icon={<CheckOutlined />}
+                                    className="text-xs bg-gray-800 hover:bg-black dark:bg-gray-200 dark:hover:bg-white dark:text-black text-white border-none shadow-sm rounded-md"
+                                >
+                                    Save
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div
+                            className="mt-1 group relative cursor-pointer rounded-md border border-transparent hover:border-gray-200 dark:hover:border-gray-700 hover:bg-white dark:hover:bg-[#1A1A1A] p-2 -mx-2 transition-all"
+                            onClick={() => onUpdateDescription && setIsEditingDesc(true)}
+                        >
+                            <Text className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap leading-relaxed">
+                                {currentDescription || <span className="italic opacity-50">No description</span>}
+                            </Text>
+                            {onUpdateDescription && (
+                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded shadow-sm border border-gray-200 dark:border-gray-700">Click to edit</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-900/10 dark:to-indigo-900/10 rounded-xl p-3 border border-violet-100 dark:border-violet-500/20">
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-xs font-bold text-violet-700 dark:text-violet-300 flex items-center gap-1.5">
+                        <RobotOutlined /> VECTOR INTEL
+                    </h3>
+                    {embeddingDim > 0 ? (
+                        <Tag color="purple" bordered={false} className="m-0 text-[9px] font-bold px-1">{embeddingDim} DIM</Tag>
+                    ) : (
+                        <Tag color="default" bordered={false} className="m-0 text-[9px] px-1">No Vector</Tag>
+                    )}
+                </div>
                 {embeddingDim > 0 ? (
-                    <Tag color="purple" bordered={false} className="m-0 text-[9px] font-bold px-1">{embeddingDim} DIM</Tag>
+                    <div className="font-mono text-[9px] text-gray-500 dark:text-gray-400 truncate bg-white/50 dark:bg-black/20 rounded p-1.5">
+                        [{embeddingVector.slice(0, 8).join(', ')}...]
+                    </div>
                 ) : (
-                    <Tag color="default" bordered={false} className="m-0 text-[9px] px-1">No Vector</Tag>
+                    <div className="text-[10px] text-gray-400 italic">Click Vector tab to generate</div>
                 )}
             </div>
-            {embeddingDim > 0 ? (
-                <div className="font-mono text-[9px] text-gray-500 dark:text-gray-400 truncate bg-white/50 dark:bg-black/20 rounded p-1.5">
-                    [{embeddingVector.slice(0, 8).join(', ')}...]
-                </div>
-            ) : (
-                <div className="text-[10px] text-gray-400 italic">Click AI Intel tab to generate</div>
-            )}
-        </div>
 
-        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/10 dark:to-cyan-900/10 rounded-xl p-3 border border-blue-100 dark:border-blue-500/20">
-            <div className="flex justify-between items-center mb-2">
-                <h3 className="text-xs font-bold text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
-                    <SettingOutlined /> AUTOMATION
-                </h3>
-                {activeMedia.metadata?.tags?.length > 0 ? (
-                    <Tag color="blue" bordered={false} className="m-0 text-[9px] font-bold px-1">{activeMedia.metadata?.tags?.length} LABELS</Tag>
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/10 dark:to-cyan-900/10 rounded-xl p-3 border border-blue-100 dark:border-blue-500/20">
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-xs font-bold text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                        <SettingOutlined /> LABEL AUTOMATION
+                    </h3>
+                    {activeMedia.metadata?.tags?.length > 0 ? (
+                        <Tag color="blue" bordered={false} className="m-0 text-[9px] font-bold px-1">{activeMedia.metadata?.tags?.length} LABELS</Tag>
+                    ) : (
+                        <Tag color="default" bordered={false} className="m-0 text-[9px] px-1">No Labels</Tag>
+                    )}
+                </div>
+                {Array.isArray(activeMedia.metadata?.tags) && activeMedia.metadata.tags.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                        {activeMedia.metadata?.tags?.slice(0, 5).map((tag: string, i: number) => (
+                            <Tag key={i} color="blue" bordered={false} className="m-0 text-[9px] px-1">{tag}</Tag>
+                        ))}
+                        {activeMedia.metadata?.tags?.length > 5 && <span className="text-[9px] text-gray-400">+{activeMedia.metadata.tags.length - 5} more</span>}
+                    </div>
                 ) : (
-                    <Tag color="default" bordered={false} className="m-0 text-[9px] px-1">No Labels</Tag>
+                    <div className="text-[10px] text-gray-400 italic">Click Label tab to generate labels</div>
                 )}
             </div>
-            {Array.isArray(activeMedia.metadata?.tags) && activeMedia.metadata.tags.length > 0 ? (
-                <div className="flex flex-wrap gap-1">
-                    {activeMedia.metadata?.tags?.slice(0, 5).map((tag: string, i: number) => (
-                        <Tag key={i} color="blue" bordered={false} className="m-0 text-[9px] px-1">{tag}</Tag>
-                    ))}
-                    {activeMedia.metadata?.tags?.length > 5 && <span className="text-[9px] text-gray-400">+{activeMedia.metadata.tags.length - 5} more</span>}
-                </div>
-            ) : (
-                <div className="text-[10px] text-gray-400 italic">Click Automation tab to generate labels</div>
-            )}
-        </div>
 
-        <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 rounded-xl p-3 border border-green-100 dark:border-green-500/20">
-            <div className="flex justify-between items-center mb-2">
-                <h3 className="text-xs font-bold text-green-700 dark:text-green-300 flex items-center gap-1.5">
-                    <HistoryOutlined /> VERSIONS
-                </h3>
-                <Tag color="green" bordered={false} className="m-0 text-[9px] font-bold px-1">{versions.length} VER</Tag>
-            </div>
-            {versions.length > 0 ? (
-                <div className="text-[10px] text-gray-600 dark:text-gray-400">
-                    Latest: <span className="font-mono">{versions[0]?.versionId?.slice(0, 8)}...</span>
-                    {versions[0]?.lastModified && <span className="text-gray-400 ml-1">({getRelativeTime(versions[0].lastModified)})</span>}
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 rounded-xl p-3 border border-green-100 dark:border-green-500/20">
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-xs font-bold text-green-700 dark:text-green-300 flex items-center gap-1.5">
+                        <HistoryOutlined /> VERSIONS
+                    </h3>
+                    <Tag color="green" bordered={false} className="m-0 text-[9px] font-bold px-1">{versions.length} VER</Tag>
                 </div>
-            ) : (
-                <div className="text-[10px] text-gray-400 italic">No versions history</div>
-            )}
+                {versions.length > 0 ? (
+                    <div className="text-[10px] text-gray-600 dark:text-gray-400">
+                        Latest: <span className="font-mono">{versions[0]?.versionId?.slice(0, 8)}...</span>
+                        {versions[0]?.lastModified && <span className="text-gray-400 ml-1">({getRelativeTime(versions[0].lastModified)})</span>}
+                    </div>
+                ) : (
+                    <div className="text-[10px] text-gray-400 italic">No versions history</div>
+                )}
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 interface AIIntelTabProps {
     embeddingDim: number;
@@ -1117,6 +1214,16 @@ export default function MediaPreviewModal({
                                                 versions={versions}
                                                 getRelativeTime={getRelativeTime}
                                                 formatFileSize={formatFileSize}
+                                                onUpdateDescription={async (newDesc) => {
+                                                    const updatedMedia = await mediaService.updateMedia(activeMedia.id, { description: newDesc });
+                                                    if (updatedMedia) {
+                                                        // Call parent onUpdate to refresh parent list
+                                                        if (onUpdate) onUpdate();
+                                                        message.success("Description updated successfully");
+                                                    } else {
+                                                        throw new Error("Failed to update");
+                                                    }
+                                                }}
                                             />
                                         </div>
                                     )
@@ -1124,7 +1231,7 @@ export default function MediaPreviewModal({
                                 {
                                     icon: <RobotOutlined />,
                                     key: 'ai-intel',
-                                    label: <span className="font-medium text-xs">AI</span>,
+                                    label: <span className="font-medium text-xs">Vector</span>,
                                     children: (
                                         <div className="h-full overflow-y-auto p-5 custom-scrollbar">
                                             <AIIntelTab
@@ -1142,7 +1249,13 @@ export default function MediaPreviewModal({
                                 {
                                     icon: <SettingOutlined />,
                                     key: 'automation',
-                                    label: <span className="font-medium text-xs">Auto</span>,
+                                    label: <span className="font-medium text-xs">Label</span>,
+                                    disabled: !(
+                                        activeMedia.mime_type?.startsWith('image/') ||
+                                        activeMedia.mime_type?.startsWith('video/') ||
+                                        activeMedia.mime_type?.startsWith('audio/') ||
+                                        activeMedia.mime_type === 'application/pdf'
+                                    ),
                                     children: (
                                         <div className="h-full overflow-y-auto p-5 custom-scrollbar">
                                             <AutomationTab

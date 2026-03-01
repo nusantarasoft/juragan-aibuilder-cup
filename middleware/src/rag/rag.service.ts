@@ -381,7 +381,7 @@ Answer:`;
             const accessToken = await client.getAccessToken();
             this.logger.log(`[EMBED-DEBUG] Got Access Token: ${accessToken.token ? 'Yes' : 'No'}`);
 
-            const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/multimodalembedding:predict`;
+            const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/multimodalembedding@001:predict`;
 
             const instance: any = {};
             if (text) instance.text = text;
@@ -478,14 +478,15 @@ Answer:`;
             const base64Data = buffer.toString('base64');
             const mimeType = mediaRecord.mime_type || "application/octet-stream";
 
-            // Vertex AI SDK Usage with Service Account
-            if (!this.vertexAI) {
-                this.logger.error('Vertex AI not initialized');
-                return [];
-            }
+            // Use GoogleAuth to get access token (REST API Approach)
+            const { GoogleAuth } = await import('google-auth-library');
+            const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
+            const client = await auth.getClient();
+            const accessToken = await client.getAccessToken();
 
-            // Switch to Gemini 1.5 Pro-002 (Highest Quality SOTA)
-            const model = this.vertexAI.getGenerativeModel({ model: 'gemini-1.5-pro-002' });
+            const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
+            const location = this.configService.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
+            const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/gemini-2.5-pro:generateContent`;
 
             // Dynamic Prompt based on MimeType
             let promptText = "Analyze this media. Return ONLY a JSON array of 10-15 descriptive string tags.";
@@ -500,7 +501,7 @@ Answer:`;
                 promptText = "Analyze this PDF document. Summarize its key topics, entities, and themes. Return ONLY a JSON array of 10-15 descriptive string tags representing the document content.";
             }
 
-            const request = {
+            const requestBody = {
                 contents: [{
                     role: 'user',
                     parts: [
@@ -510,9 +511,23 @@ Answer:`;
                 }]
             };
 
-            const result = await model.generateContent(request);
-            const response = await result.response;
-            const text = response.candidates[0].content.parts[0].text;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                this.logger.error(`Vertex API AutoLabel Error: ${response.status} - ${errorText}`);
+                return [];
+            }
+
+            const data = await response.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
             let tags: string[] = [];
             if (text) {
@@ -608,19 +623,21 @@ Answer:`;
             }
             mimeType = mimeType || "application/octet-stream";
 
-            // Vertex AI Generation via SDK
-            const { VertexAI } = await (new Function('return import("@google-cloud/vertexai")')());
+            // Use GoogleAuth to get access token (REST API Approach)
+            const { GoogleAuth } = await import('google-auth-library');
+            const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
+            const client = await auth.getClient();
+            const accessToken = await client.getAccessToken();
+
             const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
             const location = this.configService.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
-
-            const vertexAI = new VertexAI({ project: projectId, location: location });
-            const model = vertexAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+            const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/gemini-2.5-pro:generateContent`;
 
             let promptText = "Describe this content in detail.";
             if (mimeType.startsWith('image/')) promptText = "Describe this image in detail, capturing visual elements, text, and context.";
             else if (mimeType === 'application/pdf') promptText = "Summarize the content of this document in detail, capturing key points and entities.";
 
-            const request = {
+            const requestBody = {
                 contents: [{
                     role: 'user',
                     parts: [
@@ -630,9 +647,23 @@ Answer:`;
                 }],
             };
 
-            const result = await model.generateContent(request);
-            const response = await result.response;
-            const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+            const apiResponse = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!apiResponse.ok) {
+                const errorText = await apiResponse.text();
+                this.logger.error(`Vertex API Describe Error: ${apiResponse.status} - ${errorText}`);
+                return null;
+            }
+
+            const data = await apiResponse.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
             if (text) return text;
             return null;

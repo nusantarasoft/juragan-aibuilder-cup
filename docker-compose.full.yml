@@ -17,6 +17,13 @@ services:
   nessie:
     image: projectnessie/nessie:latest
     container_name: nessie
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
+    restart: unless-stopped
     networks:
       management-network:
     ports:
@@ -26,6 +33,12 @@ services:
   minio:
     image: minio/minio:latest
     container_name: minio
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+        reservations:
+          memory: 1g
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
@@ -55,28 +68,47 @@ services:
       minio:
         condition: service_healthy
     entrypoint: >
-      /bin/sh -c " /usr/bin/mc alias set supa-minio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; /usr/bin/mc mb --ignore-existing supa-minio/${S3_BUCKET}; /usr/bin/mc anonymous set public supa-minio/${S3_BUCKET}; /usr/bin/mc version enable supa-minio/${S3_BUCKET}; exit 0; "
+      /bin/sh -c " /usr/bin/mc alias set supa-minio http://minio:9000
+      ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; /usr/bin/mc mb
+      --ignore-existing supa-minio/${S3_BUCKET}; /usr/bin/mc anonymous set
+      public supa-minio/${S3_BUCKET}; /usr/bin/mc version enable
+      supa-minio/${S3_BUCKET}; exit 0; "
 
   # Dremio
   dremio:
     platform: linux/x86_64
     image: dremio/dremio-oss:latest
+    container_name: dremio
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 8g
+        reservations:
+          memory: 4g
     ports:
       - 9047:9047
       - 31010:31010
       - 32010:32010
       - 45678:45678
-    container_name: dremio
     environment:
       - DREMIO_JAVA_SERVER_EXTRA_OPTS=-Dpaths.dist=file:///opt/dremio/data/dist
+    volumes:
+      - dremio-data:/opt/dremio/data
     networks:
       management-network:
 
-        # Postgres - Main Database (with Supabase extensions)
+        # MindsDB - AI/ML Database Platform
   postgres:
     image: supabase/postgres:15.8.1.085
     container_name: postgres
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+        reservations:
+          memory: 2g
     environment:
       POSTGRES_HOST: /var/run/postgresql
       PGPORT: ${POSTGRES_PORT}
@@ -87,7 +119,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXP: ${JWT_EXPIRY}
-    # Port removed - use supavisor (port 5432) to connect to postgres
     networks:
       - management-network
     volumes:
@@ -108,7 +139,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-    command: [ "postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal" ]
+    command:
+      [
+        "postgres",
+        "-c",
+        "config_file=/etc/postgresql/postgresql.conf",
+        "-c",
+        "log_min_messages=fatal"
+      ]
 
   # PgAdmin
   pgadmin:
@@ -135,20 +173,28 @@ services:
 
   # MindsDB - AI/ML Database Platform
   mindsdb:
-    image: mindsdb/mindsdb:latest
+    build:
+      context: ./volumes/mindsdb
+      dockerfile: Dockerfile
     container_name: mindsdb
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+        reservations:
+          memory: 2g
     ports:
-      - "47334:47334" # HTTP API
-      - "47335:47335" # MySQL API
+      - "47334:47334"
+      - "47335:47335"
     environment:
       - MINDSDB_STORAGE_DIR=/mindsdb/var
     volumes:
       - mindsdb-data:/mindsdb/var
+      - ./volumes/google-credentials.json:/tmp/gcp-key.json:ro
     networks:
       management-network:
 
-        # AnythingLLM - Private LLM Interface
   anythingllm:
     image: mintplexlabs/anythingllm:latest
     container_name: anythingllm
@@ -171,8 +217,21 @@ services:
     container_name: supabase-studio
     image: supabase/studio:2025.12.09-sha-434634f
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     healthcheck:
-      test: [ "CMD", "node", "-e", "fetch('http://studio:3000/api/platform/profile').then((r) => {if (r.status !== 200) throw new Error(r.status)})" ]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://studio:3000/api/platform/profile').then((r) => {if
+            (r.status !== 200) throw new Error(r.status)})"
+        ]
       timeout: 10s
       interval: 5s
       retries: 3
@@ -184,47 +243,41 @@ services:
     networks:
       - management-network
     environment:
-      # Binds nestjs listener to both IPv4 and IPv6 network interfaces
       HOSTNAME: "::"
-
       STUDIO_PG_META_URL: http://meta:8080
       POSTGRES_PORT: ${POSTGRES_PORT}
       POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PG_META_CRYPTO_KEY: ${PG_META_CRYPTO_KEY}
-
       DEFAULT_ORGANIZATION_NAME: ${STUDIO_DEFAULT_ORGANIZATION}
       DEFAULT_PROJECT_NAME: ${STUDIO_DEFAULT_PROJECT}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-
       SUPABASE_URL: http://kong:8000
       SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
       AUTH_JWT_SECRET: ${JWT_SECRET}
-
-      # LOGFLARE_API_KEY is deprecated
       LOGFLARE_API_KEY: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
       LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
       LOGFLARE_PRIVATE_ACCESS_TOKEN: ${LOGFLARE_PRIVATE_ACCESS_TOKEN}
-
       LOGFLARE_URL: http://analytics:4000
       NEXT_PUBLIC_ENABLE_LOGS: true
-      # Comment to use Big Query backend for analytics
       NEXT_ANALYTICS_BACKEND_PROVIDER: postgres
-      # Uncomment to use Big Query backend for analytics
-      # NEXT_ANALYTICS_BACKEND_PROVIDER: bigquery
-
   kong:
     container_name: supabase-kong
     image: kong:2.8.1
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     ports:
       - ${KONG_HTTP_PORT}:8000/tcp
       - ${KONG_HTTPS_PORT}:8443/tcp
     volumes:
-      # https://github.com/supabase/supabase/issues/12661
       - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
     depends_on:
       analytics:
@@ -234,7 +287,6 @@ services:
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
-      # https://github.com/supabase/cli/issues/14
       KONG_DNS_ORDER: LAST,A,CNAME
       KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth,request-termination,ip-restriction
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
@@ -243,21 +295,34 @@ services:
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
       DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
-    # https://unix.stackexchange.com/a/294837
-    entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
+    entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml &&
+      /docker-entrypoint.sh kong docker-start'
 
   auth:
     container_name: supabase-auth
     image: supabase/gotrue:v2.183.0
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health" ]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:9999/health"
+        ]
       timeout: 5s
       interval: 5s
       retries: 3
     depends_on:
       postgres:
-        # Disable this if you are using an external Postgres database
         condition: service_healthy
       analytics:
         condition: service_healthy
@@ -267,29 +332,19 @@ services:
       GOTRUE_API_HOST: 0.0.0.0
       GOTRUE_API_PORT: 9999
       API_EXTERNAL_URL: ${API_EXTERNAL_URL}
-
       GOTRUE_DB_DRIVER: postgres
       GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
-
       GOTRUE_SITE_URL: ${SITE_URL}
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS}
       GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
-
       GOTRUE_JWT_ADMIN_ROLES: service_role
       GOTRUE_JWT_AUD: authenticated
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       GOTRUE_JWT_EXP: ${JWT_EXPIRY}
       GOTRUE_JWT_SECRET: ${JWT_SECRET}
-
       GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP}
       GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: ${ENABLE_ANONYMOUS_USERS}
       GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM}
-
-      # Uncomment to bypass nonce check in ID Token flow. Commonly set to true when using Google Sign In on mobile.
-      # GOTRUE_EXTERNAL_SKIP_NONCE_CHECK: true
-
-      # GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED: true
-      # GOTRUE_SMTP_MAX_FREQUENCY: 1s
       GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
       GOTRUE_SMTP_HOST: ${SMTP_HOST}
       GOTRUE_SMTP_PORT: ${SMTP_PORT}
@@ -300,36 +355,20 @@ services:
       GOTRUE_MAILER_URLPATHS_CONFIRMATION: ${MAILER_URLPATHS_CONFIRMATION}
       GOTRUE_MAILER_URLPATHS_RECOVERY: ${MAILER_URLPATHS_RECOVERY}
       GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: ${MAILER_URLPATHS_EMAIL_CHANGE}
-
       GOTRUE_EXTERNAL_PHONE_ENABLED: ${ENABLE_PHONE_SIGNUP}
       GOTRUE_SMS_AUTOCONFIRM: ${ENABLE_PHONE_AUTOCONFIRM}
-      # Uncomment to enable custom access token hook. Please see: https://supabase.com/docs/guides/auth/auth-hooks for full list of hooks and additional details about custom_access_token_hook
-
-      # GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_ENABLED: "true"
-      # GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_URI: "pg-functions://postgres/public/custom_access_token_hook"
-      # GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_SECRETS: "<standard-base64-secret>"
-
-      # GOTRUE_HOOK_MFA_VERIFICATION_ATTEMPT_ENABLED: "true"
-      # GOTRUE_HOOK_MFA_VERIFICATION_ATTEMPT_URI: "pg-functions://postgres/public/mfa_verification_attempt"
-
-      # GOTRUE_HOOK_PASSWORD_VERIFICATION_ATTEMPT_ENABLED: "true"
-      # GOTRUE_HOOK_PASSWORD_VERIFICATION_ATTEMPT_URI: "pg-functions://postgres/public/password_verification_attempt"
-
-      # GOTRUE_HOOK_SEND_SMS_ENABLED: "false"
-      # GOTRUE_HOOK_SEND_SMS_URI: "pg-functions://postgres/public/custom_access_token_hook"
-      # GOTRUE_HOOK_SEND_SMS_SECRETS: "v1,whsec_VGhpcyBpcyBhbiBleGFtcGxlIG9mIGEgc2hvcnRlciBCYXNlNjQgc3RyaW5n"
-
-      # GOTRUE_HOOK_SEND_EMAIL_ENABLED: "false"
-      # GOTRUE_HOOK_SEND_EMAIL_URI: "http://host.docker.internal:54321/functions/v1/email_sender"
-      # GOTRUE_HOOK_SEND_EMAIL_SECRETS: "v1,whsec_VGhpcyBpcyBhbiBleGFtcGxlIG9mIGEgc2hvcnRlciBCYXNlNjQgc3RyaW5n"
-
   rest:
     container_name: supabase-rest
     image: postgrest/postgrest:v14.1
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     depends_on:
       postgres:
-        # Disable this if you are using an external Postgres database
         condition: service_healthy
       analytics:
         condition: service_healthy
@@ -346,18 +385,27 @@ services:
     command: [ "postgrest" ]
 
   realtime:
-    # This container name looks inconsistent but is correct because realtime constructs tenant id by parsing the subdomain
     container_name: realtime-dev.supabase-realtime
     image: supabase/realtime:v2.68.0
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     depends_on:
       postgres:
-        # Disable this if you are using an external Postgres database
         condition: service_healthy
       analytics:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "curl -sSfL --head -o /dev/null -H \"Authorization: Bearer ${ANON_KEY}\" http://localhost:4000/api/tenants/realtime-dev/health" ]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sSfL --head -o /dev/null -H \"Authorization: Bearer
+            ${ANON_KEY}\" http://localhost:4000/api/tenants/realtime-dev/health"
+        ]
       timeout: 5s
       interval: 5s
       retries: 3
@@ -386,17 +434,28 @@ services:
     container_name: supabase-storage
     image: supabase/storage-api:v1.33.0
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     volumes:
       - supabase-storage:/var/lib/storage
     healthcheck:
-      test: [ "CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:5000/status', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\"" ]
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"require('http').get('http://127.0.0.1:5000/status', (r)
+            => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () =>
+            process.exit(1))\""
+        ]
       timeout: 10s
       interval: 10s
       retries: 5
       start_period: 30s
     depends_on:
       postgres:
-        # Disable this if you are using an external Postgres database
         condition: service_healthy
       rest:
         condition: service_started
@@ -421,7 +480,6 @@ services:
       AWS_DEFAULT_REGION: stub
       FILE_STORAGE_BACKEND_PATH: /var/lib/storage
       TENANT_ID: stub
-      # TODO: https://github.com/supabase/storage-api/issues/55
       REGION: stub
       ENABLE_IMAGE_TRANSFORMATION: "true"
       IMGPROXY_URL: http://imgproxy:5001
@@ -432,6 +490,12 @@ services:
     container_name: supabase-imgproxy
     image: darthsim/imgproxy:v3.8.0
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     volumes:
       - supabase-storage:/var/lib/storage
     healthcheck:
@@ -449,9 +513,14 @@ services:
     container_name: supabase-meta
     image: supabase/postgres-meta:v0.93.1
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     depends_on:
       postgres:
-        # Disable this if you are using an external Postgres database
         condition: service_healthy
       analytics:
         condition: service_healthy
@@ -470,6 +539,12 @@ services:
     container_name: supabase-edge-functions
     image: supabase/edge-runtime:v1.69.28
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     volumes:
       - ./volumes/functions:/home/deno/functions:Z
     depends_on:
@@ -481,7 +556,6 @@ services:
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
-      # TODO: Allow configuring VERIFY_JWT per function. This PR might help: https://github.com/supabase/cli/pull/786
       VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT}"
     command: [ "start", "--main-service", "/home/deno/functions/main" ]
 
@@ -489,14 +563,14 @@ services:
     container_name: supabase-analytics
     image: supabase/logflare:1.26.25
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     ports:
       - 4000:4000
-    # Uncomment to use Big Query backend for analytics
-    # volumes:
-    #   - type: bind
-    #     source: ${PWD}/gcloud.json
-    #     target: /opt/app/rel/logflare/bin/gcloud.json
-    #     read_only: true
     healthcheck:
       test: [ "CMD", "curl", "http://localhost:4000/health" ]
       timeout: 5s
@@ -504,7 +578,6 @@ services:
       retries: 10
     depends_on:
       postgres:
-        # Disable this if you are using an external Postgres database
         condition: service_healthy
     networks:
       - management-network
@@ -520,25 +593,32 @@ services:
       LOGFLARE_PRIVATE_ACCESS_TOKEN: ${LOGFLARE_PRIVATE_ACCESS_TOKEN}
       LOGFLARE_SINGLE_TENANT: true
       LOGFLARE_SUPABASE_MODE: true
-
-      # Comment variables to use Big Query backend for analytics
       POSTGRES_BACKEND_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/_supabase
       POSTGRES_BACKEND_SCHEMA: _analytics
       LOGFLARE_FEATURE_FLAG_OVERRIDE: multibackend=true
-      # Uncomment to use Big Query backend for analytics
-      # GOOGLE_PROJECT_ID: ${GOOGLE_PROJECT_ID}
-      # GOOGLE_PROJECT_NUMBER: ${GOOGLE_PROJECT_NUMBER}
-
-      # Vector - Log Aggregation
   vector:
     container_name: supabase-vector
     image: timberio/vector:0.28.1-alpine
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+        reservations:
+          memory: 128m
     volumes:
       - ./volumes/logs/vector.yml:/etc/vector/vector.yml:ro,z
       - ${DOCKER_SOCKET_LOCATION}:/var/run/docker.sock:ro,z
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://vector:9001/health" ]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://vector:9001/health"
+        ]
       timeout: 5s
       interval: 5s
       retries: 3
@@ -554,13 +634,28 @@ services:
     container_name: supabase-pooler
     image: supabase/supavisor:2.7.4
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     ports:
       - ${POSTGRES_PORT}:5432
       - ${POOLER_PROXY_PORT_TRANSACTION}:6543
     volumes:
       - ./volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro,z
     healthcheck:
-      test: [ "CMD", "curl", "-sSfL", "--head", "-o", "/dev/null", "http://127.0.0.1:4000/api/health" ]
+      test:
+        [
+          "CMD",
+          "curl",
+          "-sSfL",
+          "--head",
+          "-o",
+          "/dev/null",
+          "http://127.0.0.1:4000/api/health"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -587,7 +682,13 @@ services:
       POOLER_MAX_CLIENT_CONN: ${POOLER_MAX_CLIENT_CONN}
       POOLER_POOL_MODE: transaction
       DB_POOL_SIZE: ${POOLER_DB_POOL_SIZE}
-    command: [ "/bin/sh", "-c", "/app/bin/migrate && /app/bin/supavisor eval \"$$(cat /etc/pooler/pooler.exs)\" && /app/bin/server" ]
+    command:
+      [
+        "/bin/sh",
+        "-c",
+        "/app/bin/migrate && /app/bin/supavisor eval \"$$(cat
+          /etc/pooler/pooler.exs)\" && /app/bin/server"
+      ]
     networks:
       - management-network
 
@@ -601,6 +702,12 @@ services:
     image: traefik:latest
     container_name: traefik
     restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+        reservations:
+          memory: 128m
     command:
       - "--api.insecure=true"
       - "--providers.docker=true"
@@ -611,7 +718,8 @@ services:
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.mytlschallenge.acme.tlschallenge=true"
       - "--certificatesresolvers.mytlschallenge.acme.email=${SSL_EMAIL}"
-      - "--certificatesresolvers.mytlschallenge.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.mytlschallenge.acme.storage=/letsencrypt/acme.\
+        json"
     ports:
       - "80:80"
       - "443:443"
@@ -681,7 +789,6 @@ services:
     networks:
       management-network:
 
-
   awx:
     image: quay.io/ansible/awx:latest
     container_name: awx
@@ -710,11 +817,24 @@ services:
     image: node:20-alpine
     container_name: socketio-server
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+        reservations:
+          memory: 128m
     ports:
       - "3002:3000"
     working_dir: /app
     command: >
-      sh -c "npm init -y && npm install socket.io express @socket.io/admin-ui && node -e \"const app = require('express')(); const http = require('http').createServer(app); const { instrument } = require('@socket.io/admin-ui'); const io = require('socket.io')(http, {cors:{origin:['https://admin.socket.io', 'http://localhost:8088'], credentials:true}}); instrument(io, {auth: false}); io.on('connection', s => console.log('client connected')); http.listen(3000, () => console.log('Socket.IO server running on port 3000'));\""
+      sh -c "npm init -y && npm install socket.io express @socket.io/admin-ui &&
+      node -e \"const app = require('express')(); const http =
+      require('http').createServer(app); const { instrument } =
+      require('@socket.io/admin-ui'); const io = require('socket.io')(http,
+      {cors:{origin:['https://admin.socket.io', 'http://localhost:8088'],
+      credentials:true}}); instrument(io, {auth: false}); io.on('connection', s
+      => console.log('client connected')); http.listen(3000, () =>
+      console.log('Socket.IO server running on port 3000'));\""
     volumes:
       - socketio-data:/app
     networks:
@@ -725,21 +845,20 @@ services:
     image: node:20-alpine
     container_name: socketio-admin
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+        reservations:
+          memory: 64m
     ports:
       - "8088:8080"
     working_dir: /app
     command: >
-      sh -c "npm install -g serve @socket.io/admin-ui && serve -s node_modules/@socket.io/admin-ui/ui/dist -p 8080"
+      sh -c "npm install -g serve @socket.io/admin-ui && serve -s
+      node_modules/@socket.io/admin-ui/ui/dist -p 8080"
     networks:
       - management-network
-        # ╔═══════════════════════════════════════════════════════════════════════════╗
-        # ║  4. INFRASTRUCTURE & DNS                                                  ║
-        # ║     Pi-hole, BIND9 DNS, LDAP Directory Services                           ║
-        # ╚═══════════════════════════════════════════════════════════════════════════╝
-
-        # ---------------------------------------------------------------------------
-        # LDAP Directory Service
-        # ---------------------------------------------------------------------------
 
   openldap:
     image: osixia/openldap:latest
@@ -789,9 +908,15 @@ services:
     image: 'jc21/nginx-proxy-manager:latest'
     container_name: nginxproxymanager
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     ports:
-      - '81:80' # HTTP (changed from 80 to avoid traefik conflict)
-      - '444:443' # HTTPS (changed from 443 to avoid traefik conflict)
+      - '81:80' # HTTP (alternate)
+      - '444:443' # HTTPS (alternate)
       - '8081:81' # Admin Panel
     environment:
       - TZ=${TZ}
@@ -803,10 +928,6 @@ services:
     volumes:
       - npm-data:/data
       - npm-letsencrypt:/etc/letsencrypt
-    depends_on:
-      - postgres
-    networks:
-      - management-network
 
   # ---------------------------------------------------------------------------
   # DNS Servers - Pi-hole & BIND9
@@ -816,10 +937,16 @@ services:
     image: pihole/pihole:latest
     container_name: pihole
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+        reservations:
+          memory: 128m
     ports:
-      - "5380:53/tcp" # DNS TCP (alternate port, 53 used by Windows, 5354 by BIND9)
-      - "5380:53/udp" # DNS UDP
-      - "8053:80/tcp" # Web Admin
+      - "5380:53/tcp"
+      - "5380:53/udp"
+      - "8053:80/tcp"
     environment:
       - TZ=${TZ}
       - FTLCONF_webserver_api_password=${PIHOLE_PASSWORD}
@@ -837,10 +964,16 @@ services:
     image: sameersbn/bind:latest
     container_name: bind9
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+        reservations:
+          memory: 128m
     ports:
-      - "5354:53/tcp" # DNS TCP (alternate port, 5353 used by mDNS)
-      - "5354:53/udp" # DNS UDP (alternate port)
-      - "10000:10000/tcp" # Webmin Admin
+      - "5354:53/tcp"
+      - "5354:53/udp"
+      - "10000:10000/tcp"
     environment:
       - WEBMIN_ENABLED=true
       - WEBMIN_INIT_SSL_ENABLED=false
@@ -865,11 +998,17 @@ services:
     hostname: mail
     domainname: ${MAIL_DOMAIN:-nusantarasoft.local}
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     ports:
-      - "25:25" # SMTP
-      - "465:465" # SMTPS (implicit TLS)
-      - "587:587" # Submission (explicit TLS)
-      - "993:993" # IMAPS
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "993:993"
     environment:
       - ENABLE_SPAMASSASSIN=1
       - ENABLE_CLAMAV=0
@@ -893,8 +1032,14 @@ services:
     image: roundcube/roundcubemail:latest
     container_name: roundcube
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+        reservations:
+          memory: 128m
     ports:
-      - "8082:80" # Webmail
+      - "8082:80"
     environment:
       - ROUNDCUBEMAIL_DEFAULT_HOST=mailserver
       - ROUNDCUBEMAIL_SMTP_SERVER=mailserver
@@ -917,8 +1062,14 @@ services:
     image: portainer/portainer-ce:latest
     container_name: portainer
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     ports:
-      - "9090:9000" # Changed from 9000 to avoid minio conflict
+      - "9090:9000"
       - "9444:9443"
     volumes:
       - portainer-data:/data
@@ -1340,6 +1491,12 @@ services:
       dockerfile: Dockerfile
     container_name: middleware
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     ports:
       - "4001:4001"
     environment:
@@ -1359,6 +1516,8 @@ services:
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - S3_REGION=us-east-1
       - S3_BUCKET=${S3_BUCKET}
+      # Dremio Config
+      - DREMIO_URL=http://dremio:9047
       # LabelStudio Config
       - LABELSTUDIO_URL=http://labelstudio:8080
       - LABELSTUDIO_API_TOKEN=${LABELSTUDIO_API_TOKEN}
@@ -1369,14 +1528,19 @@ services:
     depends_on:
       - postgres
       - minio
-      - labelstudio
     volumes:
       - ./volumes/google-credentials.json:/gcp/key.json:ro
     extra_hosts:
       - "localhost:host-gateway"
 
     healthcheck:
-      test: [ "CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:4001/graphql', (r) => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))\"" ]
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"require('http').get('http://127.0.0.1:4001/graphql', (r)
+            => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () =>
+            process.exit(1))\""
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -1389,6 +1553,12 @@ services:
       dockerfile: Dockerfile
     container_name: admin
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
     ports:
       - "3003:3000"
     environment:
@@ -1408,7 +1578,13 @@ services:
       - middleware
       - minio
     healthcheck:
-      test: [ "CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000', (r) => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))\"" ]
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"require('http').get('http://127.0.0.1:3000', (r) =>
+            process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () =>
+            process.exit(1))\""
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -1421,6 +1597,12 @@ services:
       dockerfile: Dockerfile
     container_name: landing-page
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
     ports:
       - "3000:3000"
     environment:
@@ -1434,11 +1616,17 @@ services:
       - middleware
       - kong
     healthcheck:
-      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:3000" ]
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"require('http').get('http://127.0.0.1:3000', (r) =>
+            process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () =>
+            process.exit(1))\""
+        ]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 60s
 
   labelstudio:
     image: heartexlabs/label-studio:latest

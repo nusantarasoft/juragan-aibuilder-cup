@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Table, Spin, Empty, Tag, Button, Space, message, Tooltip, Statistic, Row, Col, Card } from "antd";
+import { Table, Spin, Empty, Tag, Button, Space, message, Tooltip, Statistic, Row, Col, Card, Pagination } from "antd";
 import {
     DownloadOutlined,
     FileExcelOutlined,
@@ -28,10 +28,10 @@ export default function DataPreview({ path, limit = 100 }: DataPreviewProps) {
 
         const observer = new ResizeObserver((entries) => {
             for (let entry of entries) {
-                // The container includes table header (~40px) and pagination (~50px).
-                // Subtracting 100 ensures the table body doesn't push pagination out of the flex container.
-                const newHeight = entry.contentRect.height - 100;
-                setTableScrollHeight(Math.max(newHeight, 150));
+                // The absolute-table flex container only holds the Table now.
+                // Subtracting 40 explicitly reserves space for the Table Head row, letting the body take the rest.
+                const newHeight = entry.contentRect.height - 40;
+                setTableScrollHeight(Math.max(newHeight, 100)); // Minimum height ensures it never collapses completely
             }
         });
 
@@ -119,6 +119,11 @@ export default function DataPreview({ path, limit = 100 }: DataPreviewProps) {
         </Card>
     );
 
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(50);
+
+    const paginatedRows = result ? result.rows.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((r, i) => ({ ...r, _key: ((currentPage - 1) * pageSize) + i })) : [];
+
     return (
         <Card
             size="small"
@@ -164,28 +169,64 @@ export default function DataPreview({ path, limit = 100 }: DataPreviewProps) {
                 </Space>
             }
         >
-            <div ref={tableContainerRef} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                <style dangerouslySetInnerHTML={{
-                    __html: `
-                    .data-preview-table .ant-table-thead > tr > th {
-                        border-radius: 0 !important;
-                    }
-                `}} />
+            <div ref={tableContainerRef} className="absolute-table" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                 <Table
-                    className="data-preview-table"
                     columns={buildColumns(result.columns)}
-                    dataSource={result.rows.map((r, i) => ({ ...r, _key: i }))}
+                    dataSource={paginatedRows}
                     rowKey="_key"
                     size="small"
                     scroll={{ x: "max-content", y: tableScrollHeight }}
-                    pagination={{
-                        pageSize: 50,
-                        showSizeChanger: true,
-                        pageSizeOptions: ["25", "50", "100"],
-                        showTotal: (total) => `${total} rows`,
-                        size: "small",
-                    }}
+                    pagination={false}
                     bordered
+                />
+            </div>
+
+            <div className="custom-pagination-wrapper" style={{ padding: '8px 16px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+                    .custom-pagination-wrapper .ant-pagination-prev .ant-pagination-item-link,
+                    .custom-pagination-wrapper .ant-pagination-next .ant-pagination-item-link,
+                    .custom-pagination-wrapper .ant-pagination-jump-prev .ant-pagination-item-link,
+                    .custom-pagination-wrapper .ant-pagination-jump-next .ant-pagination-item-link,
+                    .custom-pagination-wrapper .ant-pagination-jump-prev .ant-pagination-item-container,
+                    .custom-pagination-wrapper .ant-pagination-jump-next .ant-pagination-item-container,
+                    .custom-pagination-wrapper .ant-pagination-prev button,
+                    .custom-pagination-wrapper .ant-pagination-next button {
+                        background-color: rgba(139, 92, 246, 0.1) !important;
+                        color: #7c3aed !important;
+                        border-radius: 50% !important;
+                        border: none !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        min-width: 24px;
+                        height: 24px;
+                    }
+                    .custom-pagination-wrapper .ant-pagination-prev:hover .ant-pagination-item-link,
+                    .custom-pagination-wrapper .ant-pagination-next:hover .ant-pagination-item-link,
+                    .custom-pagination-wrapper .ant-pagination-jump-prev:hover .ant-pagination-item-link,
+                    .custom-pagination-wrapper .ant-pagination-jump-next:hover .ant-pagination-item-link,
+                    .custom-pagination-wrapper .ant-pagination-jump-prev:hover .ant-pagination-item-container,
+                    .custom-pagination-wrapper .ant-pagination-jump-next:hover .ant-pagination-item-container,
+                    .custom-pagination-wrapper .ant-pagination-prev:hover button,
+                    .custom-pagination-wrapper .ant-pagination-next:hover button {
+                        background-color: rgba(139, 92, 246, 0.2) !important;
+                    }
+                    .custom-pagination-wrapper .ant-pagination-disabled .ant-pagination-item-link,
+                    .custom-pagination-wrapper .ant-pagination-disabled button {
+                        background-color: rgba(0, 0, 0, 0.04) !important;
+                        color: rgba(0, 0, 0, 0.25) !important;
+                    }
+                `}} />
+                <Pagination
+                    current={currentPage}
+                    pageSize={pageSize}
+                    total={result.rows.length}
+                    size="small"
+                    showSizeChanger
+                    pageSizeOptions={['25', '50', '100']}
+                    showTotal={(total: number) => `${total} rows`}
+                    onChange={(page: number, size: number) => { setCurrentPage(page); setPageSize(size); }}
                 />
             </div>
         </Card>
