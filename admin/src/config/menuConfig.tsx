@@ -23,8 +23,16 @@ import {
     WifiOutlined,
     DatabaseOutlined,
     TableOutlined,
-    CodeOutlined, // Added
+    CodeOutlined,
     RobotOutlined,
+    ApartmentOutlined,
+    KeyOutlined,
+    ShareAltOutlined,
+    UsergroupAddOutlined,
+    IdcardOutlined,
+    SolutionOutlined,
+    ContactsOutlined,
+    BankOutlined,
 } from "@ant-design/icons";
 
 // CMS Menu Configuration
@@ -117,8 +125,33 @@ const menuConfig = {
                 isTopLevel: true,
             },
             {
+                path: "/admin/crm",
+                name: "CRM",
+                icon: <SolutionOutlined />,
+                routes: [
+                    {
+                        path: "/admin/crm/individuals",
+                        name: "Individuals",
+                        icon: <UserOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/crm/contacts",
+                        name: "Contacts",
+                        icon: <ContactsOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/crm/accounts",
+                        name: "Accounts",
+                        icon: <BankOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
                 path: "/admin/users",
-                name: "Users",
+                name: "Users & Access",
                 icon: <TeamOutlined />,
                 routes: [
                     {
@@ -128,9 +161,33 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/users/roles",
-                        name: "Roles & Permissions",
-                        icon: <SafetyOutlined />,
+                        path: "/admin/permissions/profiles",
+                        name: "Profiles",
+                        icon: <IdcardOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/permissions/roles",
+                        name: "Roles & Hierarchy",
+                        icon: <ApartmentOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/permissions/permission-sets",
+                        name: "Permission Sets",
+                        icon: <KeyOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/permissions/sharing",
+                        name: "Sharing & Security",
+                        icon: <ShareAltOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/permissions/groups",
+                        name: "Groups & Teams",
+                        icon: <UsergroupAddOutlined />,
                         isLeaf: true,
                     },
                 ],
