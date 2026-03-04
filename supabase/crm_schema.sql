@@ -137,6 +137,20 @@ BEGIN
         ALTER TABLE public.individuals ADD COLUMN company VARCHAR(255);
         -- Freeform company name before account is created
     END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'individuals' AND column_name = 'email'
+    ) THEN
+        ALTER TABLE public.individuals ADD COLUMN email VARCHAR(255);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'individuals' AND column_name = 'phone'
+    ) THEN
+        ALTER TABLE public.individuals ADD COLUMN phone VARCHAR(50);
+    END IF;
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_individuals_lead_status ON public.individuals(tenant_id, lead_status)

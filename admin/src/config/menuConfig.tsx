@@ -33,6 +33,11 @@ import {
     SolutionOutlined,
     ContactsOutlined,
     BankOutlined,
+    CalendarOutlined,
+    RocketOutlined,
+    BugOutlined,
+    ShoppingOutlined,
+    ThunderboltOutlined,
 } from "@ant-design/icons";
 
 // CMS Menu Configuration
@@ -130,6 +135,12 @@ const menuConfig = {
                 icon: <SolutionOutlined />,
                 routes: [
                     {
+                        path: "/admin/crm/dashboard",
+                        name: "Dashboard",
+                        icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                    {
                         path: "/admin/crm/individuals",
                         name: "Individuals",
                         icon: <UserOutlined />,
@@ -145,6 +156,48 @@ const menuConfig = {
                         path: "/admin/crm/accounts",
                         name: "Accounts",
                         icon: <BankOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/crm/activities",
+                        name: "Activities",
+                        icon: <CalendarOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/crm/deals",
+                        name: "Deals",
+                        icon: <BankOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/crm/campaigns",
+                        name: "Campaigns",
+                        icon: <RocketOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/crm/cases",
+                        name: "Cases",
+                        icon: <BugOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/crm/products",
+                        name: "Products",
+                        icon: <ShoppingOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/crm/quotes",
+                        name: "Quotes",
+                        icon: <FileTextOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/crm/intelligence",
+                        name: "AI Intelligence",
+                        icon: <ThunderboltOutlined />,
                         isLeaf: true,
                     },
                 ],

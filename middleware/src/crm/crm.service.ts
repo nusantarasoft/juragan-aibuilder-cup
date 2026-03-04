@@ -38,7 +38,8 @@ export class CrmService {
         preferredLanguage?: string; jobTitle?: string; department?: string;
         linkedinUrl?: string; twitterHandle?: string; website?: string;
         individualType?: string; source?: string; tags?: any;
-        avatarUrl?: string; status?: string; customFields?: any;
+        avatarUrl?: string; email?: string; phone?: string;
+        status?: string; customFields?: any;
         leadStatus?: string; leadSource?: string; company?: string;
         ownerId?: string;
     }) {
@@ -63,6 +64,8 @@ export class CrmService {
             source: input.source || null,
             tags: input.tags || [],
             avatar_url: input.avatarUrl || null,
+            email: input.email || null,
+            phone: input.phone || null,
             status: input.status || 'active',
             custom_fields: input.customFields || {},
             lead_status: input.leadStatus || null,
@@ -81,7 +84,8 @@ export class CrmService {
         preferredLanguage?: string; jobTitle?: string; department?: string;
         linkedinUrl?: string; twitterHandle?: string; website?: string;
         individualType?: string; source?: string; tags?: any;
-        avatarUrl?: string; status?: string; customFields?: any;
+        avatarUrl?: string; email?: string; phone?: string;
+        status?: string; customFields?: any;
         leadStatus?: string; leadSource?: string; company?: string;
         ownerId?: string;
     }) {
@@ -94,7 +98,8 @@ export class CrmService {
             department: 'department', linkedinUrl: 'linkedin_url',
             twitterHandle: 'twitter_handle', website: 'website',
             individualType: 'individual_type', source: 'source', tags: 'tags',
-            avatarUrl: 'avatar_url', status: 'status', customFields: 'custom_fields',
+            avatarUrl: 'avatar_url', email: 'email', phone: 'phone',
+            status: 'status', customFields: 'custom_fields',
             leadStatus: 'lead_status', leadSource: 'lead_source', company: 'company',
             ownerId: 'owner_id',
         };
@@ -315,5 +320,739 @@ export class CrmService {
         const { error } = await this.db.from('contacts').delete().eq('id', id);
         if (error) throw error;
         return true;
+    }
+
+    // ─── ACTIVITIES ──────────────────────────────────────────
+
+    async getActivities(tenantId: string, filters?: {
+        relatedToType?: string; relatedToId?: string;
+        activityType?: string; status?: string; search?: string;
+    }) {
+        let query = this.db.from('crm_activities').select('*').eq('tenant_id', tenantId);
+        if (filters?.relatedToType) query = query.eq('related_to_type', filters.relatedToType);
+        if (filters?.relatedToId) query = query.eq('related_to_id', filters.relatedToId);
+        if (filters?.activityType) query = query.eq('activity_type', filters.activityType);
+        if (filters?.status) query = query.eq('status', filters.status);
+        if (filters?.search) query = query.ilike('subject', `%${filters.search}%`);
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async getActivity(id: string) {
+        const { data, error } = await this.db.from('crm_activities').select('*').eq('id', id).single();
+        if (error) throw error;
+        return data;
+    }
+
+    async createActivity(tenantId: string, input: {
+        activityType: string; subject: string; description?: string;
+        relatedToType: string; relatedToId: string;
+        dueDate?: string; startTime?: string; endTime?: string;
+        priority?: string; status?: string; outcome?: string;
+        ownerId?: string; assignedTo?: string;
+        tags?: any; customFields?: any;
+    }) {
+        const { data, error } = await this.db.from('crm_activities').insert({
+            tenant_id: tenantId,
+            activity_type: input.activityType,
+            subject: input.subject,
+            description: input.description || null,
+            related_to_type: input.relatedToType,
+            related_to_id: input.relatedToId,
+            due_date: input.dueDate || null,
+            start_time: input.startTime || null,
+            end_time: input.endTime || null,
+            priority: input.priority || 'normal',
+            status: input.status || 'open',
+            outcome: input.outcome || null,
+            owner_id: input.ownerId || null,
+            assigned_to: input.assignedTo || null,
+            tags: input.tags || [],
+            custom_fields: input.customFields || {},
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateActivity(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const fieldMap: Record<string, string> = {
+            activityType: 'activity_type', subject: 'subject', description: 'description',
+            relatedToType: 'related_to_type', relatedToId: 'related_to_id',
+            dueDate: 'due_date', startTime: 'start_time', endTime: 'end_time',
+            completedAt: 'completed_at', isCompleted: 'is_completed',
+            priority: 'priority', status: 'status', outcome: 'outcome',
+            ownerId: 'owner_id', assignedTo: 'assigned_to',
+            tags: 'tags', customFields: 'custom_fields',
+        };
+        for (const [key, col] of Object.entries(fieldMap)) {
+            if (input[key] !== undefined) updates[col] = input[key];
+        }
+        const { data, error } = await this.db.from('crm_activities').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async completeActivity(id: string) {
+        const { data, error } = await this.db.from('crm_activities').update({
+            is_completed: true, completed_at: new Date().toISOString(),
+            status: 'completed', updated_at: new Date().toISOString(),
+        }).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteActivity(id: string): Promise<boolean> {
+        const { error } = await this.db.from('crm_activities').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    // ─── NOTES ───────────────────────────────────────────────
+
+    async getNotes(tenantId: string, filters?: {
+        relatedToType?: string; relatedToId?: string;
+    }) {
+        let query = this.db.from('crm_notes').select('*').eq('tenant_id', tenantId);
+        if (filters?.relatedToType) query = query.eq('related_to_type', filters.relatedToType);
+        if (filters?.relatedToId) query = query.eq('related_to_id', filters.relatedToId);
+        const { data, error } = await query.order('is_pinned', { ascending: false }).order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async createNote(tenantId: string, input: {
+        body: string; title?: string;
+        relatedToType: string; relatedToId: string;
+        isPinned?: boolean; ownerId?: string;
+    }) {
+        const { data, error } = await this.db.from('crm_notes').insert({
+            tenant_id: tenantId,
+            body: input.body,
+            title: input.title || null,
+            related_to_type: input.relatedToType,
+            related_to_id: input.relatedToId,
+            is_pinned: input.isPinned ?? false,
+            owner_id: input.ownerId || null,
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateNote(id: string, input: { body?: string; title?: string; isPinned?: boolean }) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        if (input.body !== undefined) updates.body = input.body;
+        if (input.title !== undefined) updates.title = input.title;
+        if (input.isPinned !== undefined) updates.is_pinned = input.isPinned;
+        const { data, error } = await this.db.from('crm_notes').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteNote(id: string): Promise<boolean> {
+        const { error } = await this.db.from('crm_notes').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    // ─── DEALS ───────────────────────────────────────────────
+
+    async getDeals(tenantId: string, filters?: {
+        stage?: string; status?: string; accountId?: string; search?: string;
+    }) {
+        let query = this.db.from('deals')
+            .select('*, accounts(name), contacts(individual_id, individuals(first_name, last_name))')
+            .eq('tenant_id', tenantId);
+        if (filters?.stage) query = query.eq('stage', filters.stage);
+        if (filters?.status) query = query.eq('status', filters.status);
+        if (filters?.accountId) query = query.eq('account_id', filters.accountId);
+        if (filters?.search) query = query.ilike('name', `%${filters.search}%`);
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async getDeal(id: string) {
+        const { data, error } = await this.db.from('deals')
+            .select('*, accounts(name), contacts(individual_id, individuals(first_name, last_name))')
+            .eq('id', id).single();
+        if (error) throw error;
+        return data;
+    }
+
+    async createDeal(tenantId: string, input: {
+        name: string; description?: string; amount?: number; currency?: string;
+        stage?: string; probability?: number; closeDate?: string;
+        accountId?: string; contactId?: string;
+        type?: string; leadSource?: string; nextStep?: string;
+        ownerId?: string; tags?: any; customFields?: any;
+    }) {
+        const { data, error } = await this.db.from('deals').insert({
+            tenant_id: tenantId,
+            name: input.name,
+            description: input.description || null,
+            amount: input.amount || null,
+            currency: input.currency || 'USD',
+            stage: input.stage || 'prospecting',
+            probability: input.probability ?? 10,
+            close_date: input.closeDate || null,
+            account_id: input.accountId || null,
+            contact_id: input.contactId || null,
+            type: input.type || null,
+            lead_source: input.leadSource || null,
+            next_step: input.nextStep || null,
+            owner_id: input.ownerId || null,
+            tags: input.tags || [],
+            custom_fields: input.customFields || {},
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateDeal(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const fieldMap: Record<string, string> = {
+            name: 'name', description: 'description', amount: 'amount',
+            currency: 'currency', stage: 'stage', probability: 'probability',
+            closeDate: 'close_date', accountId: 'account_id', contactId: 'contact_id',
+            type: 'type', leadSource: 'lead_source', nextStep: 'next_step',
+            lossReason: 'loss_reason', ownerId: 'owner_id', status: 'status',
+            tags: 'tags', customFields: 'custom_fields',
+        };
+        for (const [key, col] of Object.entries(fieldMap)) {
+            if (input[key] !== undefined) updates[col] = input[key];
+        }
+        const { data, error } = await this.db.from('deals').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteDeal(id: string): Promise<boolean> {
+        const { error } = await this.db.from('deals').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    // ─── LEAD CONVERSION ─────────────────────────────────────
+
+    async convertLead(tenantId: string, input: {
+        individualId: string;
+        accountName?: string; accountId?: string;
+        contactTitle?: string; contactRole?: string;
+        createDeal?: boolean; dealName?: string; dealAmount?: number;
+        dealStage?: string; dealCloseDate?: string;
+    }) {
+        // 1) Resolve or create Account
+        let accountId = input.accountId;
+        if (!accountId && input.accountName) {
+            const { data, error } = await this.db.from('accounts').insert({
+                tenant_id: tenantId,
+                name: input.accountName,
+                type: 'prospect',
+                status: 'active',
+            }).select('id').single();
+            if (error) throw error;
+            accountId = data.id;
+        }
+
+        // 2) Create Contact
+        const { data: contact, error: contactErr } = await this.db.from('contacts').insert({
+            tenant_id: tenantId,
+            individual_id: input.individualId,
+            account_id: accountId || null,
+            title: input.contactTitle || null,
+            role: input.contactRole || null,
+            is_primary: true,
+            status: 'active',
+        }).select('id').single();
+        if (contactErr) throw contactErr;
+
+        // 3) Optionally create Deal
+        let dealId: string | null = null;
+        if (input.createDeal && input.dealName) {
+            const { data: deal, error: dealErr } = await this.db.from('deals').insert({
+                tenant_id: tenantId,
+                name: input.dealName,
+                amount: input.dealAmount || null,
+                stage: input.dealStage || 'prospecting',
+                probability: 10,
+                close_date: input.dealCloseDate || null,
+                account_id: accountId || null,
+                contact_id: contact.id,
+                status: 'open',
+            }).select('id').single();
+            if (dealErr) throw dealErr;
+            dealId = deal.id;
+        }
+
+        // 4) Mark individual as converted
+        await this.db.from('individuals').update({
+            lead_status: 'converted',
+            updated_at: new Date().toISOString(),
+        }).eq('id', input.individualId);
+
+        return { accountId, contactId: contact.id, dealId };
+    }
+
+    // ─── CAMPAIGNS ───────────────────────────────────────────
+
+    async getCampaigns(tenantId: string, filters?: { status?: string; search?: string }) {
+        let query = this.db.from('campaigns').select('*').eq('tenant_id', tenantId);
+        if (filters?.status) query = query.eq('status', filters.status);
+        if (filters?.search) query = query.ilike('name', `%${filters.search}%`);
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async createCampaign(tenantId: string, input: {
+        name: string; type?: string; status?: string;
+        startDate?: string; endDate?: string;
+        budget?: number; actualCost?: number; expectedRevenue?: number;
+        description?: string;
+    }) {
+        const { data, error } = await this.db.from('campaigns').insert({
+            tenant_id: tenantId, name: input.name,
+            type: input.type || null, status: input.status || 'planned',
+            start_date: input.startDate || null, end_date: input.endDate || null,
+            budget: input.budget || null, actual_cost: input.actualCost || null,
+            expected_revenue: input.expectedRevenue || null,
+            description: input.description || null,
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateCampaign(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const fieldMap: Record<string, string> = {
+            name: 'name', type: 'type', status: 'status',
+            startDate: 'start_date', endDate: 'end_date',
+            budget: 'budget', actualCost: 'actual_cost',
+            expectedRevenue: 'expected_revenue', description: 'description',
+        };
+        for (const [key, col] of Object.entries(fieldMap)) {
+            if (input[key] !== undefined) updates[col] = input[key];
+        }
+        const { data, error } = await this.db.from('campaigns').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteCampaign(id: string): Promise<boolean> {
+        const { error } = await this.db.from('campaigns').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async getCampaignMembers(campaignId: string) {
+        const { data, error } = await this.db.from('campaign_members')
+            .select('*, individuals(first_name, last_name, email)')
+            .eq('campaign_id', campaignId)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async addCampaignMember(campaignId: string, individualId: string, status = 'sent') {
+        const { data, error } = await this.db.from('campaign_members').insert({
+            campaign_id: campaignId, individual_id: individualId, status,
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async removeCampaignMember(id: string): Promise<boolean> {
+        const { error } = await this.db.from('campaign_members').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    // ─── CASES ───────────────────────────────────────────────
+
+    async getCases(tenantId: string, filters?: { status?: string; priority?: string; search?: string }) {
+        let query = this.db.from('cases')
+            .select('*, contacts(individual_id, individuals(first_name, last_name)), accounts(name)')
+            .eq('tenant_id', tenantId);
+        if (filters?.status) query = query.eq('status', filters.status);
+        if (filters?.priority) query = query.eq('priority', filters.priority);
+        if (filters?.search) query = query.ilike('subject', `%${filters.search}%`);
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async createCase(tenantId: string, input: {
+        subject: string; description?: string;
+        status?: string; priority?: string; origin?: string; type?: string;
+        contactId?: string; accountId?: string;
+    }) {
+        const { data, error } = await this.db.from('cases').insert({
+            tenant_id: tenantId, subject: input.subject,
+            description: input.description || null,
+            status: input.status || 'new', priority: input.priority || 'medium',
+            origin: input.origin || null, type: input.type || null,
+            contact_id: input.contactId || null, account_id: input.accountId || null,
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateCase(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const fieldMap: Record<string, string> = {
+            subject: 'subject', description: 'description',
+            status: 'status', priority: 'priority', origin: 'origin',
+            type: 'type', contactId: 'contact_id', accountId: 'account_id',
+            resolution: 'resolution', closedAt: 'closed_at',
+        };
+        for (const [key, col] of Object.entries(fieldMap)) {
+            if (input[key] !== undefined) updates[col] = input[key];
+        }
+        const { data, error } = await this.db.from('cases').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async closeCase(id: string, resolution: string) {
+        const { data, error } = await this.db.from('cases').update({
+            status: 'closed', resolution, closed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        }).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteCase(id: string): Promise<boolean> {
+        const { error } = await this.db.from('cases').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    // ─── PRODUCTS ────────────────────────────────────────────
+
+    async getProducts(tenantId: string, filters?: { search?: string; category?: string; isActive?: boolean }) {
+        let query = this.db.from('products').select('*').eq('tenant_id', tenantId);
+        if (filters?.search) query = query.ilike('name', `%${filters.search}%`);
+        if (filters?.category) query = query.eq('category', filters.category);
+        if (filters?.isActive !== undefined) query = query.eq('is_active', filters.isActive);
+        const { data, error } = await query.order('name');
+        if (error) throw error;
+        return data;
+    }
+
+    async createProduct(tenantId: string, input: {
+        name: string; code?: string; description?: string;
+        unitPrice: number; currency?: string; category?: string;
+    }) {
+        const { data, error } = await this.db.from('products').insert({
+            tenant_id: tenantId, name: input.name,
+            code: input.code || null, description: input.description || null,
+            unit_price: input.unitPrice, currency: input.currency || 'USD',
+            category: input.category || null,
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateProduct(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const fieldMap: Record<string, string> = {
+            name: 'name', code: 'code', description: 'description',
+            unitPrice: 'unit_price', currency: 'currency', category: 'category',
+            isActive: 'is_active',
+        };
+        for (const [key, col] of Object.entries(fieldMap)) {
+            if (input[key] !== undefined) updates[col] = input[key];
+        }
+        const { data, error } = await this.db.from('products').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteProduct(id: string): Promise<boolean> {
+        const { error } = await this.db.from('products').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    // ─── QUOTES ──────────────────────────────────────────────
+
+    async getQuotes(tenantId: string, filters?: { status?: string; dealId?: string; search?: string }) {
+        let query = this.db.from('quotes')
+            .select('*, deals(name), accounts(name), contacts(individual_id, individuals(first_name, last_name))')
+            .eq('tenant_id', tenantId);
+        if (filters?.status) query = query.eq('status', filters.status);
+        if (filters?.dealId) query = query.eq('deal_id', filters.dealId);
+        if (filters?.search) query = query.ilike('name', `%${filters.search}%`);
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async createQuote(tenantId: string, input: {
+        name: string; dealId?: string; accountId?: string; contactId?: string;
+        discountPercent?: number; taxPercent?: number;
+        validUntil?: string; description?: string; terms?: string;
+        items?: { productId?: string; productName: string; quantity: number; unitPrice: number; discountPercent?: number }[];
+    }) {
+        // Calculate totals
+        const items = input.items || [];
+        const subtotal = items.reduce((s, i) => {
+            const lineTotal = i.quantity * i.unitPrice * (1 - (i.discountPercent || 0) / 100);
+            return s + lineTotal;
+        }, 0);
+        const discounted = subtotal * (1 - (input.discountPercent || 0) / 100);
+        const total = discounted * (1 + (input.taxPercent || 0) / 100);
+
+        const { data: quote, error } = await this.db.from('quotes').insert({
+            tenant_id: tenantId, name: input.name,
+            deal_id: input.dealId || null, account_id: input.accountId || null,
+            contact_id: input.contactId || null,
+            subtotal, discount_percent: input.discountPercent || 0,
+            tax_percent: input.taxPercent || 0, total,
+            valid_until: input.validUntil || null,
+            description: input.description || null, terms: input.terms || null,
+        }).select().single();
+        if (error) throw error;
+
+        // Insert line items
+        if (items.length > 0) {
+            const lineItems = items.map((item, idx) => ({
+                quote_id: quote.id,
+                product_id: item.productId || null,
+                product_name: item.productName,
+                quantity: item.quantity,
+                unit_price: item.unitPrice,
+                discount_percent: item.discountPercent || 0,
+                total: item.quantity * item.unitPrice * (1 - (item.discountPercent || 0) / 100),
+                sort_order: idx,
+            }));
+            await this.db.from('quote_items').insert(lineItems);
+        }
+
+        return quote;
+    }
+
+    async updateQuote(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const fieldMap: Record<string, string> = {
+            name: 'name', status: 'status', dealId: 'deal_id',
+            accountId: 'account_id', contactId: 'contact_id',
+            discountPercent: 'discount_percent', taxPercent: 'tax_percent',
+            validUntil: 'valid_until', description: 'description', terms: 'terms',
+            subtotal: 'subtotal', total: 'total',
+        };
+        for (const [key, col] of Object.entries(fieldMap)) {
+            if (input[key] !== undefined) updates[col] = input[key];
+        }
+        const { data, error } = await this.db.from('quotes').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async getQuoteItems(quoteId: string) {
+        const { data, error } = await this.db.from('quote_items')
+            .select('*').eq('quote_id', quoteId).order('sort_order');
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteQuote(id: string): Promise<boolean> {
+        const { error } = await this.db.from('quotes').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    // ─── DASHBOARD ───────────────────────────────────────────
+
+    async getDashboardStats(tenantId: string) {
+        const [individuals, accounts, contacts, deals, activities, cases, campaigns, quotes, products] = await Promise.all([
+            this.db.from('individuals').select('id, lead_status, status', { count: 'exact' }).eq('tenant_id', tenantId),
+            this.db.from('accounts').select('id', { count: 'exact' }).eq('tenant_id', tenantId),
+            this.db.from('contacts').select('id', { count: 'exact' }).eq('tenant_id', tenantId),
+            this.db.from('deals').select('id, stage, amount, status').eq('tenant_id', tenantId),
+            this.db.from('crm_activities').select('id, status, is_completed', { count: 'exact' }).eq('tenant_id', tenantId),
+            this.db.from('cases').select('id, status, priority', { count: 'exact' }).eq('tenant_id', tenantId),
+            this.db.from('campaigns').select('id, status, budget, actual_cost', { count: 'exact' }).eq('tenant_id', tenantId),
+            this.db.from('quotes').select('id, status, total', { count: 'exact' }).eq('tenant_id', tenantId),
+            this.db.from('products').select('id, is_active', { count: 'exact' }).eq('tenant_id', tenantId),
+        ]);
+
+        const dealRows = deals.data || [];
+        const openDeals = dealRows.filter((d: any) => d.status === 'open');
+        const wonDeals = dealRows.filter((d: any) => d.stage === 'closed_won');
+        const caseRows = cases.data || [];
+        const campaignRows = campaigns.data || [];
+        const quoteRows = quotes.data || [];
+
+        return {
+            totalIndividuals: individuals.count || 0,
+            totalAccounts: accounts.count || 0,
+            totalContacts: contacts.count || 0,
+            totalDeals: dealRows.length,
+            openDeals: openDeals.length,
+            pipelineValue: openDeals.reduce((s: number, d: any) => s + (d.amount || 0), 0),
+            wonValue: wonDeals.reduce((s: number, d: any) => s + (d.amount || 0), 0),
+            totalActivities: activities.count || 0,
+            openActivities: (activities.data || []).filter((a: any) => !a.is_completed).length,
+            totalCases: caseRows.length,
+            openCases: caseRows.filter((c: any) => c.status !== 'closed').length,
+            criticalCases: caseRows.filter((c: any) => c.priority === 'critical' && c.status !== 'closed').length,
+            totalCampaigns: campaignRows.length,
+            activeCampaigns: campaignRows.filter((c: any) => c.status === 'active').length,
+            campaignBudget: campaignRows.reduce((s: number, c: any) => s + (c.budget || 0), 0),
+            totalQuotes: quoteRows.length,
+            quotesValue: quoteRows.reduce((s: number, q: any) => s + (q.total || 0), 0),
+            acceptedQuotes: quoteRows.filter((q: any) => q.status === 'accepted').length,
+            totalProducts: products.count || 0,
+            activeProducts: (products.data || []).filter((p: any) => p.is_active).length,
+        };
+    }
+
+    // ─── AI / INTELLIGENCE ───────────────────────────────────
+
+    async scoreLeads(tenantId: string) {
+        const { data: individuals } = await this.db.from('individuals')
+            .select('*, contacts(id), crm_activities(id, is_completed)')
+            .eq('tenant_id', tenantId);
+
+        return (individuals || []).map((ind: any) => {
+            let score = 0;
+            const factors: string[] = [];
+
+            // Data completeness (0-25)
+            if (ind.email) { score += 8; factors.push('+8 Has email'); }
+            if (ind.phone) { score += 5; factors.push('+5 Has phone'); }
+            if (ind.company) { score += 5; factors.push('+5 Has company'); }
+            if (ind.job_title) { score += 4; factors.push('+4 Has job title'); }
+            if (ind.linkedin_url) { score += 3; factors.push('+3 Has LinkedIn'); }
+
+            // Engagement (0-35)
+            const activities = ind.crm_activities || [];
+            const activityCount = activities.length;
+            if (activityCount >= 5) { score += 20; factors.push('+20 High engagement (5+ activities)'); }
+            else if (activityCount >= 2) { score += 12; factors.push('+12 Medium engagement (2+ activities)'); }
+            else if (activityCount >= 1) { score += 5; factors.push('+5 Some engagement'); }
+
+            const completedActivities = activities.filter((a: any) => a.is_completed).length;
+            if (completedActivities >= 3) { score += 15; factors.push('+15 Strong follow-through'); }
+            else if (completedActivities >= 1) { score += 8; factors.push('+8 Some follow-through'); }
+
+            // Lead status progression (0-20)
+            const statusScores: Record<string, number> = { new: 5, contacted: 10, qualified: 18, converted: 20 };
+            const statusScore = statusScores[ind.lead_status] || 0;
+            if (statusScore > 0) { score += statusScore; factors.push(`+${statusScore} Lead status: ${ind.lead_status}`); }
+
+            // Source quality (0-10)
+            const sourceScores: Record<string, number> = { referral: 10, partner: 8, web: 5, phone: 6, campaign: 7, social: 4 };
+            const srcScore = sourceScores[ind.source] || 2;
+            score += srcScore;
+            factors.push(`+${srcScore} Source: ${ind.source || 'unknown'}`);
+
+            // Contact exists (0-10)
+            if ((ind.contacts || []).length > 0) { score += 10; factors.push('+10 Has contact record'); }
+
+            const finalScore = Math.min(score, 100);
+            const grade = finalScore >= 80 ? 'A' : finalScore >= 60 ? 'B' : finalScore >= 40 ? 'C' : finalScore >= 20 ? 'D' : 'F';
+
+            return {
+                individualId: ind.id,
+                firstName: ind.first_name,
+                lastName: ind.last_name,
+                email: ind.email,
+                company: ind.company,
+                leadStatus: ind.lead_status,
+                score: finalScore,
+                grade,
+                factors,
+            };
+        }).sort((a: any, b: any) => b.score - a.score);
+    }
+
+    async getDealInsights(tenantId: string) {
+        const { data: deals } = await this.db.from('deals')
+            .select('*, accounts(name), contacts(individual_id, individuals(first_name, last_name))')
+            .eq('tenant_id', tenantId).eq('status', 'open');
+
+        return (deals || []).map((deal: any) => {
+            const insights: string[] = [];
+            let riskLevel = 'low';
+            let recommendation = '';
+
+            // Stage analysis
+            const stageOrder = ['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won', 'closed_lost'];
+            const stageIdx = stageOrder.indexOf(deal.stage);
+
+            // Age analysis
+            const daysSinceCreation = Math.floor((Date.now() - new Date(deal.created_at).getTime()) / 86400000);
+            if (daysSinceCreation > 90 && stageIdx < 2) {
+                riskLevel = 'high';
+                insights.push(`⚠️ Stale deal — ${daysSinceCreation} days old, still in ${deal.stage}`);
+                recommendation = 'Consider re-engaging or disqualifying this deal.';
+            } else if (daysSinceCreation > 60 && stageIdx < 3) {
+                riskLevel = 'medium';
+                insights.push(`⏰ Deal aging — ${daysSinceCreation} days in pipeline`);
+                recommendation = 'Schedule a follow-up meeting to advance the deal.';
+            }
+
+            // Amount analysis
+            if (!deal.amount || deal.amount === 0) {
+                insights.push('💰 No deal amount set — quantify the opportunity.');
+                if (riskLevel === 'low') riskLevel = 'medium';
+            } else if (deal.amount > 50000) {
+                insights.push(`🎯 High-value deal: $${deal.amount.toLocaleString()}`);
+            }
+
+            // Close date analysis
+            if (deal.close_date) {
+                const daysToClose = Math.floor((new Date(deal.close_date).getTime() - Date.now()) / 86400000);
+                if (daysToClose < 0) {
+                    riskLevel = 'high';
+                    insights.push(`🔴 Overdue — close date was ${Math.abs(daysToClose)} days ago`);
+                    recommendation = 'Update the close date or close the deal.';
+                } else if (daysToClose < 7) {
+                    insights.push(`🟡 Closing soon — ${daysToClose} days left`);
+                }
+            } else {
+                insights.push('📅 No close date set — add one for forecasting.');
+            }
+
+            // Probability
+            if (deal.probability < 30 && stageIdx >= 2) {
+                insights.push('📉 Low probability for advanced stage — review and update.');
+            }
+
+            // Next step
+            if (!recommendation) {
+                const nextSteps: Record<string, string> = {
+                    prospecting: 'Qualify this lead — schedule a discovery call.',
+                    qualification: 'Send a proposal or demo to move forward.',
+                    proposal: 'Follow up on the proposal and address objections.',
+                    negotiation: 'Finalize terms and push for commitment.',
+                };
+                recommendation = nextSteps[deal.stage] || 'Review and update deal status.';
+            }
+
+            const contact = deal.contacts;
+            const contactName = contact?.individuals
+                ? `${contact.individuals.first_name} ${contact.individuals.last_name}` : null;
+
+            return {
+                dealId: deal.id,
+                dealName: deal.name,
+                stage: deal.stage,
+                amount: deal.amount,
+                probability: deal.probability,
+                accountName: deal.accounts?.name,
+                contactName,
+                closeDate: deal.close_date,
+                daysSinceCreation,
+                riskLevel,
+                insights,
+                recommendation,
+            };
+        });
     }
 }
