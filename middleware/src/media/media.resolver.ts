@@ -3,8 +3,7 @@ import { ObjectType, Field, InputType } from '@nestjs/graphql';
 import { MediaService, MediaFile } from './media.service';
 import { RagService } from '../rag/rag.service';
 import GraphQLJSON from 'graphql-type-json';
-import GraphQLUpload from 'graphql-upload/GraphQLUpload.mjs';
-import type { FileUpload } from 'graphql-upload/processRequest.mjs';
+import { GraphQLUpload, FileUpload } from 'graphql-upload-ts';
 
 
 @ObjectType()

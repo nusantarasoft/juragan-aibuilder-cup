@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { AnimatedThemeToggler } from "@/components/magicui/animated-theme-toggler";
 import {
     LogoutOutlined,
@@ -32,11 +33,9 @@ import {
     Input,
     theme,
     Segmented,
-    Tooltip,
     Popover,
     Avatar,
     Typography,
-    Menu,
 } from "antd";
 import AIStudioDrawer from "./AIStudioDrawer";
 import { useRouter, usePathname } from "next/navigation";
@@ -47,7 +46,6 @@ const MetaBalls = dynamic(
     () => import("@/components/react-bits/MetaBalls"),
     { ssr: false }
 );
-import AnimatedTooltip from "@/components/mvpblocks/AnimatedTooltip";
 import { SpeedDial } from 'primereact/speeddial';
 import 'primereact/resources/themes/lara-light-cyan/theme.css';
 import 'primeicons/primeicons.css';
@@ -99,6 +97,20 @@ const appList = [
         title: "Nusantarasoft CMS",
         desc: "Content Management System",
         url: "/admin",
+    },
+    {
+        key: "pm",
+        icon: "https://gw.alipayobjects.com/zos/bmw-prod/d3e3eb39-1cd7-4aa5-827c-877deced6b7e/kvx8snxc_w283_h280.png",
+        title: "Project Management",
+        desc: "PMBOK & Agile Tracker",
+        url: "/admin/pm/dashboard",
+    },
+    {
+        key: "crm",
+        icon: "https://gw.alipayobjects.com/zos/antfincdn/upvrAjAPQX/Logo_Tech%252520UI.svg",
+        title: "CRM Suite",
+        desc: "Sales & Client Tracking",
+        url: "/admin/crm/dashboard",
     },
     {
         key: "landing",
@@ -259,10 +271,8 @@ export default function CMSLayout({
     const [selectedSegment, setSelectedSegment] = useState<string>("recent");
     const [darkMode, setDarkMode] = useState(false);
     const [appListOpen, setAppListOpen] = useState(false);
-    const [isHydrated, setIsHydrated] = useState(false);
     const [showBackground, setShowBackground] = useState(true);
     const [aiStudioVisible, setAIStudioVisible] = useState(false);
-    const [metaballsMenuOpen, setMetaballsMenuOpen] = useState(false);
 
     // Initialize preferences from localStorage and system preferences
     React.useEffect(() => {
@@ -296,8 +306,6 @@ export default function CMSLayout({
         if (savedShowBackground !== null) {
             setShowBackground(savedShowBackground === "true");
         }
-
-        setIsHydrated(true);
     }, []);
 
     // Listen for system theme changes
@@ -490,12 +498,12 @@ export default function CMSLayout({
                                     // Collapsed: Vertical layout - Logo, AppList, Toggle
                                     <>
                                         {/* Logo */}
-                                        <img
+                                        <Image
                                             src={logoSrc}
                                             alt="Logo"
+                                            width={28}
+                                            height={28}
                                             style={{
-                                                width: 28,
-                                                height: 28,
                                                 objectFit: "contain",
                                                 cursor: "pointer",
                                             }}
@@ -571,12 +579,12 @@ export default function CMSLayout({
                                                 </div>
                                             </Popover>
                                             {/* Logo */}
-                                            <img
+                                            <Image
                                                 src={logoSrc}
                                                 alt="Logo"
+                                                width={24}
+                                                height={24}
                                                 style={{
-                                                    width: 24,
-                                                    height: 24,
                                                     objectFit: "contain",
                                                     cursor: "pointer",
                                                     flexShrink: 0,

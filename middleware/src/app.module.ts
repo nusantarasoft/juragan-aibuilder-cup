@@ -18,6 +18,8 @@ import { DremioModule } from './dremio/dremio.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { CrmModule } from './crm/crm.module';
+import { AiModule } from './ai/ai.module';
+import { PmModule } from './pm/pm.module';
 
 @Module({
     imports: [
@@ -53,6 +55,8 @@ import { CrmModule } from './crm/crm.module';
         TenantsModule,
         PermissionsModule,
         CrmModule,
+        AiModule,
+        PmModule,
     ],
 })
 export class AppModule { }

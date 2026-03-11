@@ -27,7 +27,7 @@ export default function DataPreview({ path, limit = 100 }: DataPreviewProps) {
         if (!tableContainerRef.current) return;
 
         const observer = new ResizeObserver((entries) => {
-            for (let entry of entries) {
+            for (const entry of entries) {
                 // The absolute-table flex container only holds the Table now.
                 // Subtracting 40 explicitly reserves space for the Table Head row, letting the body take the rest.
                 const newHeight = entry.contentRect.height - 40;

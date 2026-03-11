@@ -246,7 +246,7 @@ const XLSXRenderer = ({ mainState: { currentDocument } }: any) => {
         if (!tableContainerRef.current) return;
 
         const observer = new ResizeObserver((entries) => {
-            for (let entry of entries) {
+            for (const entry of entries) {
                 // Determine exact pixel height for the scrollable body by subtracting just the Header margin (~40px)
                 const newHeight = entry.contentRect.height - 40;
                 setTableScrollHeight(Math.max(newHeight, 100)); // Minimum 100px so it never completely collapses

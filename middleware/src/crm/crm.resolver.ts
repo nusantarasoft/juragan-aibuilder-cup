@@ -385,6 +385,10 @@ class Deal {
     // Joined
     @Field({ nullable: true }) accountName?: string;
     @Field({ nullable: true }) contactName?: string;
+
+    @Field(() => Float, { nullable: true }) expectedRevenue?: number;
+    @Field(() => [Quote], { nullable: 'itemsAndList' }) quotes?: Quote[];
+
     @Field() createdAt: string;
     @Field() updatedAt: string;
 }
@@ -807,6 +811,8 @@ function mapDeal(row: any): Deal {
         status: row.status, tags: row.tags, customFields: row.custom_fields,
         accountName: row.accounts?.name,
         contactName,
+        expectedRevenue: row.amount && row.probability ? (row.amount * (row.probability / 100)) : 0,
+        quotes: row.quotes?.map(mapQuote) || [],
         createdAt: row.created_at, updatedAt: row.updated_at,
     };
 }
@@ -1307,5 +1313,15 @@ export class CrmResolver {
     @Query(() => [DealInsight])
     async dealInsights(@Args('tenantId') tenantId: string) {
         return this.crmService.getDealInsights(tenantId);
+    }
+
+    @Query(() => String)
+    async generateCampaignContent(@Args('campaignId') campaignId: string) {
+        return this.crmService.generateCampaignContent(campaignId);
+    }
+
+    @Query(() => String)
+    async generateDealNextBestAction(@Args('dealId') dealId: string) {
+        return this.crmService.generateDealNextBestAction(dealId);
     }
 }

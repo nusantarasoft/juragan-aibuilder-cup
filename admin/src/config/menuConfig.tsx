@@ -38,6 +38,7 @@ import {
     BugOutlined,
     ShoppingOutlined,
     ThunderboltOutlined,
+    ProjectOutlined,
 } from "@ant-design/icons";
 
 // CMS Menu Configuration
@@ -198,6 +199,25 @@ const menuConfig = {
                         path: "/admin/crm/intelligence",
                         name: "AI Intelligence",
                         icon: <ThunderboltOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/pm",
+                name: "Project Management",
+                icon: <ProjectOutlined />,
+                routes: [
+                    {
+                        path: "/admin/pm/dashboard",
+                        name: "Dashboard",
+                        icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/pm/projects",
+                        name: "Projects",
+                        icon: <ProjectOutlined />,
                         isLeaf: true,
                     },
                 ],

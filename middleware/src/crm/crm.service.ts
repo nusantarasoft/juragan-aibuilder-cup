@@ -1,9 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { VertexAiService } from '../ai/vertex-ai.service';
 
 @Injectable()
 export class CrmService {
-    constructor(private supabaseService: SupabaseService) { }
+    private readonly logger = new Logger(CrmService.name);
+
+    constructor(
+        private supabaseService: SupabaseService,
+        private vertexAi: VertexAiService,
+    ) { }
 
     private get db() {
         return this.supabaseService.getAdminClient();
@@ -462,7 +468,7 @@ export class CrmService {
         stage?: string; status?: string; accountId?: string; search?: string;
     }) {
         let query = this.db.from('deals')
-            .select('*, accounts(name), contacts(individual_id, individuals(first_name, last_name))')
+            .select('*, accounts(name), contacts(individual_id, individuals(first_name, last_name)), quotes(*)')
             .eq('tenant_id', tenantId);
         if (filters?.stage) query = query.eq('stage', filters.stage);
         if (filters?.status) query = query.eq('status', filters.status);
@@ -475,7 +481,7 @@ export class CrmService {
 
     async getDeal(id: string) {
         const { data, error } = await this.db.from('deals')
-            .select('*, accounts(name), contacts(individual_id, individuals(first_name, last_name))')
+            .select('*, accounts(name), contacts(individual_id, individuals(first_name, last_name)), quotes(*)')
             .eq('id', id).single();
         if (error) throw error;
         return data;
@@ -532,6 +538,35 @@ export class CrmService {
         const { error } = await this.db.from('deals').delete().eq('id', id);
         if (error) throw error;
         return true;
+    }
+
+    async generateDealNextBestAction(dealId: string) {
+        const { data: deal, error } = await this.db.from('deals')
+            .select('*, accounts(name), contacts(individual_id, individuals(first_name, last_name))')
+            .eq('id', dealId).single();
+        if (error || !deal) throw new Error("Deal not found");
+
+        const prompt = `
+            You are an expert sales AI assistant. Analyze the following deal and recommend the "Next Best Action" for the sales rep to take to move this deal forward.
+            Keep it strictly actionable, highly specific, and professional. 
+            Limit your response to a 2-3 sentence summary.
+            Do not use conversational filler.
+
+            Deal Name: ${deal.name}
+            Stage: ${deal.stage}
+            Amount: ${deal.amount || 'Unknown'} (Probability: ${deal.probability || 0}%)
+            Account: ${deal.accounts?.name || 'Unknown'}
+            Contact: ${deal.contacts?.individuals?.first_name || ''} ${deal.contacts?.individuals?.last_name || ''}
+            Description: ${deal.description || 'None'}
+            Next Step (Current): ${deal.next_step || 'None'}
+        `;
+
+        try {
+            return await this.vertexAi.generateText(prompt);
+        } catch (e) {
+            this.logger.error("Failed to generate deal action via Vertex AI", e);
+            return "Reach out to the primary contact to confirm the next steps and align on their timeline.";
+        }
     }
 
     // ─── LEAD CONVERSION ─────────────────────────────────────
@@ -657,8 +692,24 @@ export class CrmService {
 
     async addCampaignMember(campaignId: string, individualId: string, status = 'sent') {
         const { data, error } = await this.db.from('campaign_members').insert({
-            campaign_id: campaignId, individual_id: individualId, status,
+            campaign_id: campaignId,
+            individual_id: individualId,
+            status: status || 'sent',
         }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateCampaignMemberStatus(id: string, status: string) {
+        const payload: any = { status };
+        if (status === 'responded' || status === 'converted') {
+            payload.responded_at = new Date().toISOString();
+        }
+        const { data, error } = await this.db.from('campaign_members')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single();
         if (error) throw error;
         return data;
     }
@@ -667,6 +718,41 @@ export class CrmService {
         const { error } = await this.db.from('campaign_members').delete().eq('id', id);
         if (error) throw error;
         return true;
+    }
+
+    // ─── AI CAMPAIGN CONTENT GENERATION ──────────────────────
+
+    async generateCampaignContent(campaignId: string): Promise<string> {
+        // Fetch campaign details locally
+        const { data: campaign, error } = await this.db.from('campaigns').select('*').eq('id', campaignId).single();
+        if (error || !campaign) {
+            throw new Error("Campaign not found");
+        }
+
+        const prompt = `
+            You are an expert B2B Marketing Copywriter.
+            Please generate high-converting marketing content for the following campaign:
+
+            Campaign Name: ${campaign.name}
+            Campaign Type: ${campaign.type || 'General Promotion'}
+            Objective/Description: ${campaign.description || 'Drive engagement and conversions.'}
+
+            Based on the type of campaign (${campaign.type}), please generate the appropriate draft:
+            - If it's an "email", generate an engaging Subject Line and a concise, persuasive email body with a clear CTA.
+            - If it's a "social", generate a catchy social media post with relevant hashtags.
+            - If it's an "ad", generate a bold headline, primary text, and description.
+            - For anything else, generate a generic but engaging announcement letter.
+
+            Format the response perfectly in Markdown format. Keep the tone professional, persuasive, and concise. Do not include any conversational filler (e.g., "Here is your email draft:").
+        `;
+
+        try {
+            const content = await this.vertexAi.generateText(prompt);
+            return content;
+        } catch (e) {
+            this.logger.error("Failed to generate campaign content via Vertex AI", e);
+            return "*AI Generation Failed*\n\nPlease write the content manually or check your Vertex AI configuration.";
+        }
     }
 
     // ─── CASES ───────────────────────────────────────────────
@@ -918,57 +1004,61 @@ export class CrmService {
             .select('*, contacts(id), crm_activities(id, is_completed)')
             .eq('tenant_id', tenantId);
 
-        return (individuals || []).map((ind: any) => {
-            let score = 0;
-            const factors: string[] = [];
+        if (!individuals || individuals.length === 0) return [];
 
-            // Data completeness (0-25)
-            if (ind.email) { score += 8; factors.push('+8 Has email'); }
-            if (ind.phone) { score += 5; factors.push('+5 Has phone'); }
-            if (ind.company) { score += 5; factors.push('+5 Has company'); }
-            if (ind.job_title) { score += 4; factors.push('+4 Has job title'); }
-            if (ind.linkedin_url) { score += 3; factors.push('+3 Has LinkedIn'); }
+        // In a real production app, we might batch these or score incrementally.
+        // For this feature expansion, we'll score them concurrently.
+        const scoredLeads = await Promise.all(individuals.map(async (ind: any) => {
+            try {
+                const activityCount = ind.crm_activities?.length || 0;
+                const completedCount = ind.crm_activities?.filter((a: any) => a.is_completed).length || 0;
+                const hasContact = ind.contacts && ind.contacts.length > 0;
 
-            // Engagement (0-35)
-            const activities = ind.crm_activities || [];
-            const activityCount = activities.length;
-            if (activityCount >= 5) { score += 20; factors.push('+20 High engagement (5+ activities)'); }
-            else if (activityCount >= 2) { score += 12; factors.push('+12 Medium engagement (2+ activities)'); }
-            else if (activityCount >= 1) { score += 5; factors.push('+5 Some engagement'); }
+                const prompt = `
+You are an expert CRM AI. Analyze this lead and provide a Lead Score (0-100), a Grade (A, B, C, D, F), and 3-5 brief reasoning factors.
+Be realistic. Good signals: lots of activities, high completion rate, good job title, has contact record, converted status.
 
-            const completedActivities = activities.filter((a: any) => a.is_completed).length;
-            if (completedActivities >= 3) { score += 15; factors.push('+15 Strong follow-through'); }
-            else if (completedActivities >= 1) { score += 8; factors.push('+8 Some follow-through'); }
+Lead info:
+- Name: ${ind.first_name} ${ind.last_name}
+- Job Title: ${ind.job_title || 'N/A'}
+- Company: ${ind.company || 'N/A'}
+- Status: ${ind.lead_status || 'New'}
+- Source: ${ind.source || 'N/A'}
+- Total Activities: ${activityCount} (${completedCount} completed)
+- Has Contact Record: ${hasContact}
 
-            // Lead status progression (0-20)
-            const statusScores: Record<string, number> = { new: 5, contacted: 10, qualified: 18, converted: 20 };
-            const statusScore = statusScores[ind.lead_status] || 0;
-            if (statusScore > 0) { score += statusScore; factors.push(`+${statusScore} Lead status: ${ind.lead_status}`); }
+Respond strictly with a JSON object in this exact format:
+{
+  "score": 85,
+  "grade": "A",
+  "factors": ["+20 Highly engaged", "+10 Has company info", "-5 No phone number"]
+}
+                `;
 
-            // Source quality (0-10)
-            const sourceScores: Record<string, number> = { referral: 10, partner: 8, web: 5, phone: 6, campaign: 7, social: 4 };
-            const srcScore = sourceScores[ind.source] || 2;
-            score += srcScore;
-            factors.push(`+${srcScore} Source: ${ind.source || 'unknown'}`);
+                const aiResult = await this.vertexAi.generateStructuredJSON(prompt);
 
-            // Contact exists (0-10)
-            if ((ind.contacts || []).length > 0) { score += 10; factors.push('+10 Has contact record'); }
+                return {
+                    individualId: ind.id,
+                    firstName: ind.first_name,
+                    lastName: ind.last_name,
+                    email: ind.email,
+                    company: ind.company,
+                    leadStatus: ind.lead_status,
+                    score: aiResult.score || 0,
+                    grade: aiResult.grade || 'C',
+                    factors: aiResult.factors || ['AI Score Generation Complete'],
+                };
+            } catch (err) {
+                this.logger.error(`Failed to score lead ${ind.id}:`, err);
+                return {
+                    individualId: ind.id, firstName: ind.first_name, lastName: ind.last_name,
+                    email: ind.email, company: ind.company, leadStatus: ind.lead_status,
+                    score: 0, grade: 'F', factors: ['Error generating AI score']
+                };
+            }
+        }));
 
-            const finalScore = Math.min(score, 100);
-            const grade = finalScore >= 80 ? 'A' : finalScore >= 60 ? 'B' : finalScore >= 40 ? 'C' : finalScore >= 20 ? 'D' : 'F';
-
-            return {
-                individualId: ind.id,
-                firstName: ind.first_name,
-                lastName: ind.last_name,
-                email: ind.email,
-                company: ind.company,
-                leadStatus: ind.lead_status,
-                score: finalScore,
-                grade,
-                factors,
-            };
-        }).sort((a: any, b: any) => b.score - a.score);
+        return scoredLeads.sort((a, b) => b.score - a.score);
     }
 
     async getDealInsights(tenantId: string) {
@@ -976,83 +1066,69 @@ export class CrmService {
             .select('*, accounts(name), contacts(individual_id, individuals(first_name, last_name))')
             .eq('tenant_id', tenantId).eq('status', 'open');
 
-        return (deals || []).map((deal: any) => {
-            const insights: string[] = [];
-            let riskLevel = 'low';
-            let recommendation = '';
+        if (!deals || deals.length === 0) return [];
 
-            // Stage analysis
-            const stageOrder = ['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won', 'closed_lost'];
-            const stageIdx = stageOrder.indexOf(deal.stage);
-
-            // Age analysis
-            const daysSinceCreation = Math.floor((Date.now() - new Date(deal.created_at).getTime()) / 86400000);
-            if (daysSinceCreation > 90 && stageIdx < 2) {
-                riskLevel = 'high';
-                insights.push(`⚠️ Stale deal — ${daysSinceCreation} days old, still in ${deal.stage}`);
-                recommendation = 'Consider re-engaging or disqualifying this deal.';
-            } else if (daysSinceCreation > 60 && stageIdx < 3) {
-                riskLevel = 'medium';
-                insights.push(`⏰ Deal aging — ${daysSinceCreation} days in pipeline`);
-                recommendation = 'Schedule a follow-up meeting to advance the deal.';
-            }
-
-            // Amount analysis
-            if (!deal.amount || deal.amount === 0) {
-                insights.push('💰 No deal amount set — quantify the opportunity.');
-                if (riskLevel === 'low') riskLevel = 'medium';
-            } else if (deal.amount > 50000) {
-                insights.push(`🎯 High-value deal: $${deal.amount.toLocaleString()}`);
-            }
-
-            // Close date analysis
-            if (deal.close_date) {
-                const daysToClose = Math.floor((new Date(deal.close_date).getTime() - Date.now()) / 86400000);
-                if (daysToClose < 0) {
-                    riskLevel = 'high';
-                    insights.push(`🔴 Overdue — close date was ${Math.abs(daysToClose)} days ago`);
-                    recommendation = 'Update the close date or close the deal.';
-                } else if (daysToClose < 7) {
-                    insights.push(`🟡 Closing soon — ${daysToClose} days left`);
+        const insights = await Promise.all(deals.map(async (deal: any) => {
+            try {
+                const daysSinceCreation = Math.floor((Date.now() - new Date(deal.created_at).getTime()) / 86400000);
+                let daysToClose = 'N/A';
+                if (deal.close_date) {
+                    daysToClose = Math.floor((new Date(deal.close_date).getTime() - Date.now()) / 86400000).toString();
                 }
-            } else {
-                insights.push('📅 No close date set — add one for forecasting.');
-            }
 
-            // Probability
-            if (deal.probability < 30 && stageIdx >= 2) {
-                insights.push('📉 Low probability for advanced stage — review and update.');
-            }
+                const contactName = deal.contacts?.individuals
+                    ? `${deal.contacts.individuals.first_name} ${deal.contacts.individuals.last_name}` : 'Unknown';
 
-            // Next step
-            if (!recommendation) {
-                const nextSteps: Record<string, string> = {
-                    prospecting: 'Qualify this lead — schedule a discovery call.',
-                    qualification: 'Send a proposal or demo to move forward.',
-                    proposal: 'Follow up on the proposal and address objections.',
-                    negotiation: 'Finalize terms and push for commitment.',
+                const prompt = `
+You are an expert Sales AI. Analyze this ongoing deal and provide a risk assessment, insights, and a recommendation.
+Consider the age of the deal, the probability vs stage, and the close date.
+
+Deal info:
+- Name: ${deal.name}
+- Account: ${deal.accounts?.name || 'N/A'}
+- Stage: ${deal.stage}
+- Amount: $${deal.amount || 0}
+- Probability: ${deal.probability || 0}%
+- Days Open: ${daysSinceCreation}
+- Days until Close Date: ${daysToClose}
+
+Respond strictly with a JSON object in this exact format:
+{
+  "riskLevel": "high", // must be "low", "medium", or "high"
+  "insights": ["⚠️ Stalled in proposal stage", "💰 High value opportunity"],
+  "recommendation": "Schedule an executive alignment call to push past the proposal stage."
+}
+                `;
+
+                const aiResult = await this.vertexAi.generateStructuredJSON(prompt);
+
+                return {
+                    dealId: deal.id,
+                    dealName: deal.name,
+                    stage: deal.stage,
+                    amount: deal.amount,
+                    probability: deal.probability,
+                    accountName: deal.accounts?.name,
+                    contactName,
+                    closeDate: deal.close_date,
+                    daysSinceCreation,
+                    riskLevel: ['low', 'medium', 'high'].includes(aiResult.riskLevel) ? aiResult.riskLevel : 'medium',
+                    insights: aiResult.insights || [],
+                    recommendation: aiResult.recommendation || 'Review deal status.',
                 };
-                recommendation = nextSteps[deal.stage] || 'Review and update deal status.';
+
+            } catch (err) {
+                this.logger.error(`Failed to generate insights for deal ${deal.id}:`, err);
+                return {
+                    dealId: deal.id, dealName: deal.name, stage: deal.stage,
+                    amount: deal.amount, probability: deal.probability,
+                    accountName: deal.accounts?.name, contactName: 'Unknown',
+                    closeDate: deal.close_date, daysSinceCreation: 0,
+                    riskLevel: 'high', insights: ['Error generating AI insights'], recommendation: 'Manual review required.'
+                };
             }
+        }));
 
-            const contact = deal.contacts;
-            const contactName = contact?.individuals
-                ? `${contact.individuals.first_name} ${contact.individuals.last_name}` : null;
-
-            return {
-                dealId: deal.id,
-                dealName: deal.name,
-                stage: deal.stage,
-                amount: deal.amount,
-                probability: deal.probability,
-                accountName: deal.accounts?.name,
-                contactName,
-                closeDate: deal.close_date,
-                daysSinceCreation,
-                riskLevel,
-                insights,
-                recommendation,
-            };
-        });
+        return insights;
     }
 }
