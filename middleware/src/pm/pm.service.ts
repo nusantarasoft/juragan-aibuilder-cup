@@ -131,7 +131,7 @@ export class PmService {
 
     async getTasks(tenantId: string, filters?: { projectId?: string; sprintId?: string; status?: string; assigneeId?: string }) {
         let query = this.db.from('pm_tasks')
-            .select('*, assignee:tenant_users!pm_tasks_assignee_id_fkey(id, users(first_name, last_name, avatar_url))')
+            .select('*, assignee:tenant_users!pm_tasks_assignee_id_fkey(id, individuals:individuals!tenant_users_individual_id_fkey(first_name, last_name, avatar_url))')
             .eq('tenant_id', tenantId)
             .eq('is_archived', false);
 
@@ -147,7 +147,7 @@ export class PmService {
 
     async getTask(id: string) {
         const { data, error } = await this.db.from('pm_tasks')
-            .select('*, assignee:tenant_users!pm_tasks_assignee_id_fkey(id, users(first_name, last_name, avatar_url))')
+            .select('*, assignee:tenant_users!pm_tasks_assignee_id_fkey(id, individuals:individuals!tenant_users_individual_id_fkey(first_name, last_name, avatar_url))')
             .eq('id', id).single();
         if (error) throw error;
         return data;
@@ -201,7 +201,7 @@ export class PmService {
 
     async getTimeLogs(taskId: string) {
         const { data, error } = await this.db.from('pm_time_logs')
-            .select('*, user:tenant_users!pm_time_logs_user_id_fkey(id, users(first_name, last_name, avatar_url))')
+            .select('*, user:tenant_users!pm_time_logs_user_id_fkey(id, individuals:individuals!tenant_users_individual_id_fkey(first_name, last_name, avatar_url))')
             .eq('task_id', taskId)
             .order('log_date', { ascending: false });
         if (error) throw error;
@@ -466,7 +466,7 @@ export class PmService {
 
     async getRiskRegisters(projectId: string) {
         const { data, error } = await this.db.from('pm_risk_registers')
-            .select('*, owner:tenant_users!pm_risk_registers_owner_id_fkey(id, users(first_name, last_name, avatar_url))')
+            .select('*, owner:tenant_users!pm_risk_registers_owner_id_fkey(id, individuals:individuals!tenant_users_individual_id_fkey(first_name, last_name, avatar_url))')
             .eq('project_id', projectId)
             .order('risk_score', { ascending: false });
         if (error) throw error;
@@ -486,7 +486,7 @@ export class PmService {
             contingency_plan: input.contingencyPlan,
             status: input.status || 'identified',
             owner_id: input.ownerId
-        }).select('*, owner:tenant_users!pm_risk_registers_owner_id_fkey(id, users(first_name, last_name, avatar_url))').single();
+        }).select('*, owner:tenant_users!pm_risk_registers_owner_id_fkey(id, individuals:individuals!tenant_users_individual_id_fkey(first_name, last_name, avatar_url))').single();
 
         if (error) throw error;
         return data;
@@ -504,7 +504,7 @@ export class PmService {
         }
 
         const { data, error } = await this.db.from('pm_risk_registers')
-            .update(updates).eq('id', id).select('*, owner:tenant_users!pm_risk_registers_owner_id_fkey(id, users(first_name, last_name, avatar_url))').single();
+            .update(updates).eq('id', id).select('*, owner:tenant_users!pm_risk_registers_owner_id_fkey(id, individuals:individuals!tenant_users_individual_id_fkey(first_name, last_name, avatar_url))').single();
 
         if (error) throw error;
         return data;
