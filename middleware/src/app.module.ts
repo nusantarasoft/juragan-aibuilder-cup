@@ -20,6 +20,7 @@ import { PermissionsModule } from './permissions/permissions.module';
 import { CrmModule } from './crm/crm.module';
 import { AiModule } from './ai/ai.module';
 import { PmModule } from './pm/pm.module';
+import { StarsModule } from './stars/stars.module';
 
 @Module({
     imports: [
@@ -57,6 +58,7 @@ import { PmModule } from './pm/pm.module';
         CrmModule,
         AiModule,
         PmModule,
+        StarsModule,
     ],
 })
 export class AppModule { }

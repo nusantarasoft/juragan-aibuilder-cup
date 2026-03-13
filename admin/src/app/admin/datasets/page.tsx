@@ -136,7 +136,16 @@ export default function DatasetsPage() {
                     </span>
                 </div>
             }
-            subTitle="Manage your data sources and datasets"
+            subTitle={
+                <DecryptedText
+                    text="Manage your data sources and datasets"
+                    animateOn="view"
+                    revealDirection="center"
+                    speed={50}
+                    maxIterations={15}
+                    sequential={true}
+                />
+            }
 
         >
             <div style={{ display: "flex", flexDirection: "column", gap: 16, height: '100%' }}>

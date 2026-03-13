@@ -36,11 +36,15 @@ import {
     Popover,
     Avatar,
     Typography,
+    Button,
+    Tooltip,
+    message,
 } from "antd";
 import AIStudioDrawer from "./AIStudioDrawer";
 import { useRouter, usePathname } from "next/navigation";
 import menuConfig from "@/config/menuConfig";
 import GlitchText from "@/components/react-bits/GlitchText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 // Dynamic import for MetaBalls to prevent SSR crash (ogl WebGL library requires browser)
 const MetaBalls = dynamic(
     () => import("@/components/react-bits/MetaBalls"),
@@ -121,8 +125,20 @@ const appList = [
     },
 ];
 
+// Helper to find menu item by path
+const findMenuItemByPath = (routes: any[], path: string): any => {
+    for (const route of routes) {
+        if (route.path === path) return route;
+        if (route.routes) {
+            const found = findMenuItemByPath(route.routes, path);
+            if (found) return found;
+        }
+    }
+    return null;
+};
+
 // Dummy inner menu routes based on selected segment
-const getInnerMenuRoutes = (segment: string) => {
+const getInnerMenuRoutes = (segment: string, pinned: any[], starred: any[]) => {
     switch (segment) {
         case "new":
             return [
@@ -140,16 +156,17 @@ const getInnerMenuRoutes = (segment: string) => {
                 { path: "/admin/blocks/content", name: "New Block", icon: <FileAddOutlined /> },
             ];
         case "pinned":
-            return [
-                { path: "/admin/dashboard", name: "Dashboard", icon: <PushpinOutlined /> },
-                { path: "/admin/settings/general", name: "Settings", icon: <PushpinOutlined /> },
-            ];
+            return pinned.map(item => ({
+                path: item.path,
+                name: item.name,
+                icon: <PushpinOutlined />
+            }));
         case "starred":
-            return [
-                { path: "/admin/media", name: "Media Library", icon: <StarOutlined /> },
-                { path: "/admin/ai-studio", name: "AI Studio (NotebookLM)", icon: <RobotOutlined /> },
-                { path: "/admin/users/list", name: "User Management", icon: <StarOutlined /> },
-            ];
+            return starred.map(item => ({
+                path: item.path,
+                name: item.name,
+                icon: <StarOutlined />
+            }));
         case "history":
             return [
                 { path: "/admin/pages/list", name: "Edited Homepage", icon: <HistoryOutlined /> },
@@ -273,6 +290,127 @@ export default function CMSLayout({
     const [appListOpen, setAppListOpen] = useState(false);
     const [showBackground, setShowBackground] = useState(true);
     const [aiStudioVisible, setAIStudioVisible] = useState(false);
+
+    // Preferences Store
+    const { 
+        pinnedItems, 
+        togglePinned, 
+        isPinned, 
+        setStarred, 
+        starredItems,
+        isStarred 
+    } = usePreferencesStore();
+
+    // Starrring logic
+    const GRAPHQL_URL = "http://127.0.0.1:4001/graphql";
+
+    const fetchStars = React.useCallback(async () => {
+        try {
+            const response = await fetch(GRAPHQL_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: `
+                        query GetUserStars($userId: String!) {
+                            userStars(userId: $userId) {
+                                id
+                                path
+                                name
+                                icon
+                            }
+                        }
+                    `,
+                    variables: { userId: "current-user-id" },
+                }),
+            });
+            
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const result = await response.json();
+            if (result.data?.userStars) {
+                setStarred(result.data.userStars);
+            }
+        } catch (e) {
+            console.error("Failed to fetch stars", e);
+        }
+    }, [setStarred]);
+
+    React.useEffect(() => {
+        if (typeof window !== "undefined") {
+            fetchStars();
+        }
+    }, [pathname, fetchStars]);
+
+    const handleToggleStar = async () => {
+        const menuItem = findMenuItemByPath(menuConfig.route.routes, pathname);
+        const name = (title as string) || menuItem?.name || "Untitled Page";
+        
+        try {
+            const isStarredNow = starredItems.some(i => i.path === pathname);
+            const response = await fetch(GRAPHQL_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: `
+                        mutation ToggleStar($userId: String!, $input: ToggleStarInput!) {
+                            toggleStar(userId: $userId, input: $input) {
+                                id
+                                path
+                                name
+                                icon
+                            }
+                        }
+                    `,
+                    variables: {
+                        userId: "current-user-id",
+                        input: {
+                            path: pathname,
+                            name: name,
+                        }
+                    }
+                }),
+            });
+            
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            
+            await fetchStars();
+            message.success(isStarredNow ? "Removed from favorites" : "Added to favorites");
+        } catch (e) {
+            message.error("Failed to update favorite");
+        }
+    };
+
+    const handleTogglePin = () => {
+        const menuItem = findMenuItemByPath(menuConfig.route.routes, pathname);
+        const name = (title as string) || menuItem?.name || "Untitled Page";
+        togglePinned({ path: pathname, name });
+        message.success(isPinned(pathname) ? "Unpinned from sidebar" : "Pinned to sidebar");
+    };
+
+    // Header Actions Component
+    const HeaderActions = () => (
+        <div style={{ display: "flex", gap: 8, marginLeft: 16 }}>
+            <Tooltip title={isPinned(pathname) ? "Unpin from sidebar" : "Pin to sidebar"}>
+                <Button
+                    type="text"
+                    icon={isPinned(pathname) ? <PushpinOutlined style={{ color: "#8b5cf6" }} /> : <PushpinOutlined />}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleTogglePin();
+                    }}
+                />
+            </Tooltip>
+            <Tooltip title={starredItems.some(i => i.path === pathname) ? "Remove from favorites" : "Add to favorites"}>
+                <Button
+                    type="text"
+                    icon={starredItems.some(i => i.path === pathname) ? <StarOutlined style={{ color: "#fadb14" }} /> : <StarOutlined />}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleStar();
+                    }}
+                />
+            </Tooltip>
+        </div>
+    );
 
     // Initialize preferences from localStorage and system preferences
     React.useEffect(() => {
@@ -426,7 +564,7 @@ export default function CMSLayout({
     const breadcrumbItems = breadcrumb || generateBreadcrumb(currentPath || "/admin/dashboard");
 
     // Get inner menu based on selected segment
-    const innerRoutes = getInnerMenuRoutes(selectedSegment);
+    const innerRoutes = getInnerMenuRoutes(selectedSegment, pinnedItems, starredItems);
 
     // Dynamic logo based on theme
     const logoSrc = darkMode ? "/logo-white.png" : "/logo-black.png";
@@ -435,7 +573,6 @@ export default function CMSLayout({
     const segmentedOptions = [
         { value: "new", icon: <PlusOutlined /> },
         { value: "recent", icon: <ClockCircleOutlined /> },
-        { value: "newfile", icon: <FileAddOutlined /> },
         { value: "pinned", icon: <PushpinOutlined /> },
         { value: "starred", icon: <StarOutlined /> },
         { value: "history", icon: <HistoryOutlined /> },
@@ -633,20 +770,7 @@ export default function CMSLayout({
                                 {dom}
                             </div>
                         )}
-                        menuFooterRender={(props) => {
-                            if (props?.collapsed) return null;
-                            return (
-                                <div style={{
-                                    textAlign: "center",
-                                    padding: 16,
-                                    borderTop: darkMode ? "1px solid rgba(255,255,255,0.1)" : "1px solid #f0f0f0",
-                                    fontSize: 12,
-                                    color: darkMode ? "rgba(255,255,255,0.45)" : "#999"
-                                }}>
-                                    © 2024 Nusantarasoft
-                                </div>
-                            );
-                        }}
+
                     >
                         {/* INNER PROLAYOUT - Sub-navigation with segmented header */}
                         <ProLayout
@@ -662,7 +786,7 @@ export default function CMSLayout({
                             }}
                             collapsed={innerCollapsed}
                             onCollapse={handleInnerCollapse}
-                            siderWidth={280}
+                            siderWidth={240}
                             navTheme={darkMode ? "realDark" : "light"}
                             layout="side"
                             contentStyle={{
@@ -672,8 +796,7 @@ export default function CMSLayout({
                             menuHeaderRender={false}
                             menuExtraRender={() => (
                                 <div style={{
-                                    marginBlockStart: 8,
-                                    minHeight: HEADER_HEIGHT,
+                                    minHeight: 48,
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
@@ -695,51 +818,8 @@ export default function CMSLayout({
                                     />
                                 </div>
                             )}
-                            avatarProps={{
-                                src: "https://gw.alipayobjects.com/zos/antfincdn/efFD%24IOql2/weixintupian_20170331104822.jpg",
-                                size: "small",
-                                title: "Admin User",
-                                render: (props, dom) => {
-                                    return (
-                                        <Dropdown
-                                            menu={{
-                                                items: [
-                                                    {
-                                                        key: "settings",
-                                                        icon: <SettingOutlined />,
-                                                        label: "Account Settings",
-                                                    },
-                                                    {
-                                                        key: "logout",
-                                                        icon: <LogoutOutlined />,
-                                                        label: "Logout",
-                                                    },
-                                                ],
-                                                onClick: ({ key }) => {
-                                                    if (key === "logout") {
-                                                        router.push("/login");
-                                                    } else if (key === "settings") {
-                                                        router.push("/admin/settings/account");
-                                                    }
-                                                },
-                                            }}
-                                        >
-                                            {dom}
-                                        </Dropdown>
-                                    );
-                                },
-                            }}
-                            actionsRender={(props) => {
-                                if (props.isMobile) return [];
-                                if (typeof window === "undefined") return [];
-                                return [
-                                    document.body.clientWidth > 1400 ? (
-                                        <SearchInput key="search" />
-                                    ) : undefined,
-                                    <InfoCircleFilled key="InfoCircleFilled" />,
-                                    <QuestionCircleFilled key="QuestionCircleFilled" />,
-                                ];
-                            }}
+
+
                             menuItemRender={(item, dom) => (
                                 <a
                                     onClick={() => {
@@ -753,24 +833,12 @@ export default function CMSLayout({
                                     {dom}
                                 </a>
                             )}
-                            menuFooterRender={(props) => {
-                                if (props?.collapsed) return undefined;
-                                return (
-                                    <div style={{
-                                        textAlign: "center",
-                                        paddingBlockStart: 12,
-                                        fontSize: 12,
-                                        color: darkMode ? "rgba(255,255,255,0.45)" : "#999",
-                                    }}>
-                                        CMS v1.0.0
-                                    </div>
-                                );
-                            }}
+
                         >
                             <PageContainer
                                 title={title}
                                 subTitle={subTitle}
-                                extra={extra}
+                                extra={[...(extra || []), <HeaderActions key="pin-star-actions" />]}
                                 breadcrumb={{
                                     items: breadcrumbItems.map((item, index) => ({
                                         key: index,
@@ -970,6 +1038,10 @@ export default function CMSLayout({
                 .p-speeddial-action .pi {
                     font-size: 0.875rem !important;
                     color: white !important;
+                }
+                /* Align PageContainer title and subtitle by baseline */
+                .ant-page-header-heading-left {
+                    align-items: baseline !important;
                 }
             `}</style>
         </div>

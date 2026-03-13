@@ -1149,7 +1149,16 @@ export default function MediaLibraryPage() {
     return (
         <CMSLayout
             title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>Media Library</AuroraText>}
-            subTitle="Manage your media files and folders"
+            subTitle={
+                <DecryptedText
+                    text="Manage your media files and folders"
+                    animateOn="view"
+                    revealDirection="center"
+                    speed={50}
+                    maxIterations={15}
+                    sequential={true}
+                />
+            }
         >
             {/* Content Wrapper */}
             <div className="relative" style={{ zIndex: 1 }}>
