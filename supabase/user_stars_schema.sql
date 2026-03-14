@@ -1,7 +1,13 @@
+-- Grant permissions for public schema
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO anon;
+GRANT ALL ON SCHEMA public TO authenticated;
+GRANT ALL ON SCHEMA public TO service_role;
+
 -- Create user_stars table
 CREATE TABLE IF NOT EXISTS public.user_stars (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL,
+    user_id TEXT NOT NULL,
     path TEXT NOT NULL,
     name TEXT NOT NULL,
     icon TEXT,

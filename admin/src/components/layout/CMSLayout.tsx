@@ -13,13 +13,18 @@ import {
     HomeOutlined,
     FileTextOutlined,
     PushpinOutlined,
+    PushpinFilled,
     StarOutlined,
+    StarFilled,
     HistoryOutlined,
     ClockCircleOutlined,
     PlusOutlined,
     FileAddOutlined,
     AppstoreOutlined,
     RobotOutlined,
+    DeleteOutlined,
+    ShareAltOutlined,
+    CopyOutlined,
 } from "@ant-design/icons";
 import {
     PageContainer,
@@ -39,6 +44,8 @@ import {
     Button,
     Tooltip,
     message,
+    Popconfirm,
+    Divider,
 } from "antd";
 import AIStudioDrawer from "./AIStudioDrawer";
 import { useRouter, usePathname } from "next/navigation";
@@ -139,6 +146,32 @@ const findMenuItemByPath = (routes: any[], path: string): any => {
 
 // Dummy inner menu routes based on selected segment
 const getInnerMenuRoutes = (segment: string, pinned: any[], starred: any[]) => {
+    const normalizePath = (p: string) => p.replace(/\/$/, "");
+    
+    // Diagnostic hook for debugging
+    if (typeof window !== "undefined") {
+        (window as any).CMS_MENU_ROUTES = { segment, pinned, starred };
+    }
+
+    const resolveIcon = (path: string, fallback: React.ReactNode) => {
+        if (!menuConfig?.route?.routes) return fallback;
+        const normalizedTarget = normalizePath(path);
+        
+        // Helper specifically for this resolve to use normalized paths
+        const findIconByNormalizedPath = (routes: any[], target: string): React.ReactNode | null => {
+            for (const route of routes) {
+                if (normalizePath(route.path) === target) return route.icon;
+                if (route.routes) {
+                    const icon = findIconByNormalizedPath(route.routes, target);
+                    if (icon) return icon;
+                }
+            }
+            return null;
+        };
+
+        return findIconByNormalizedPath(menuConfig.route.routes, normalizedTarget) || fallback;
+    };
+
     switch (segment) {
         case "new":
             return [
@@ -158,14 +191,14 @@ const getInnerMenuRoutes = (segment: string, pinned: any[], starred: any[]) => {
         case "pinned":
             return pinned.map(item => ({
                 path: item.path,
-                name: item.name,
-                icon: <PushpinOutlined />
+                name: typeof item.name === 'string' ? item.name : 'Untitled Item',
+                icon: resolveIcon(item.path, <PushpinOutlined />)
             }));
         case "starred":
             return starred.map(item => ({
                 path: item.path,
-                name: item.name,
-                icon: <StarOutlined />
+                name: typeof item.name === 'string' ? item.name : 'Untitled Item',
+                icon: resolveIcon(item.path, <StarOutlined />)
             }));
         case "history":
             return [
@@ -285,21 +318,23 @@ export default function CMSLayout({
     const [pathname, setPathname] = useState(currentPath || "/admin/dashboard");
     const [innerCollapsed, setInnerCollapsed] = useState(true); // Default collapsed
     const [outerCollapsed, setOuterCollapsed] = useState(false);
-    const [selectedSegment, setSelectedSegment] = useState<string>("recent");
-    const [darkMode, setDarkMode] = useState(false);
-    const [appListOpen, setAppListOpen] = useState(false);
-    const [showBackground, setShowBackground] = useState(true);
-    const [aiStudioVisible, setAIStudioVisible] = useState(false);
-
-    // Preferences Store
+    
     const { 
         pinnedItems, 
         togglePinned, 
         isPinned, 
         setStarred, 
         starredItems,
-        isStarred 
+        isStarred,
+        toggleStarred,
+        selectedSegment,
+        setSelectedSegment
     } = usePreferencesStore();
+
+    const [darkMode, setDarkMode] = useState(false);
+    const [appListOpen, setAppListOpen] = useState(false);
+    const [showBackground, setShowBackground] = useState(true);
+    const [aiStudioVisible, setAIStudioVisible] = useState(false);
 
     // Starrring logic
     const GRAPHQL_URL = "http://127.0.0.1:4001/graphql";
@@ -342,7 +377,7 @@ export default function CMSLayout({
 
     const handleToggleStar = async () => {
         const menuItem = findMenuItemByPath(menuConfig.route.routes, pathname);
-        const name = (title as string) || menuItem?.name || "Untitled Page";
+        const name = (typeof title === 'string' ? title : menuItem?.name) || "Untitled Page";
         
         try {
             const isStarredNow = starredItems.some(i => i.path === pathname);
@@ -381,34 +416,99 @@ export default function CMSLayout({
 
     const handleTogglePin = () => {
         const menuItem = findMenuItemByPath(menuConfig.route.routes, pathname);
-        const name = (title as string) || menuItem?.name || "Untitled Page";
+        const name = (typeof title === 'string' ? title : menuItem?.name) || "Untitled Page";
         togglePinned({ path: pathname, name });
         message.success(isPinned(pathname) ? "Unpinned from sidebar" : "Pinned to sidebar");
     };
 
     // Header Actions Component
     const HeaderActions = () => (
-        <div style={{ display: "flex", gap: 8, marginLeft: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 0, marginLeft: 16 }}>
             <Tooltip title={isPinned(pathname) ? "Unpin from sidebar" : "Pin to sidebar"}>
                 <Button
                     type="text"
-                    icon={isPinned(pathname) ? <PushpinOutlined style={{ color: "#8b5cf6" }} /> : <PushpinOutlined />}
+                    className="flex items-center justify-center"
+                    style={{ width: 32, height: 32 }}
+                    icon={
+                        <PushpinOutlined 
+                            style={{ 
+                                color: isPinned(pathname) ? "#52c41a" : undefined, 
+                                fontSize: 18 
+                            }} 
+                        />
+                    }
                     onClick={(e) => {
                         e.stopPropagation();
                         handleTogglePin();
                     }}
                 />
             </Tooltip>
-            <Tooltip title={starredItems.some(i => i.path === pathname) ? "Remove from favorites" : "Add to favorites"}>
+            <Divider type="vertical" style={{ height: 16, margin: '0 2px', background: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }} />
+            <Tooltip title={isStarred(pathname) ? "Remove from favorites" : "Add to favorites"}>
                 <Button
                     type="text"
-                    icon={starredItems.some(i => i.path === pathname) ? <StarOutlined style={{ color: "#fadb14" }} /> : <StarOutlined />}
+                    className="flex items-center justify-center"
+                    style={{ width: 32, height: 32 }}
+                    icon={
+                        <StarOutlined 
+                            style={{ 
+                                color: isStarred(pathname) ? "#fadb14" : undefined, 
+                                fontSize: 18 
+                            }} 
+                        />
+                    }
                     onClick={(e) => {
                         e.stopPropagation();
                         handleToggleStar();
                     }}
                 />
             </Tooltip>
+            <Divider type="vertical" style={{ height: 16, margin: '0 2px', background: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }} />
+            <Popover
+                content={
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
+                        <Input 
+                            value={typeof window !== 'undefined' ? window.location.href : ''} 
+                            readOnly 
+                            style={{ width: 250 }} 
+                        />
+                        <Button 
+                            icon={<CopyOutlined />} 
+                            onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                    await navigator.clipboard.writeText(typeof window !== 'undefined' ? window.location.href : '');
+                                    message.success("Link copied to clipboard!");
+                                } catch (err) {
+                                    message.error("Failed to copy link");
+                                }
+                            }}
+                        >
+                            Copy
+                        </Button>
+                    </div>
+                }
+                title="Share this page"
+                trigger="click"
+                placement="bottomRight"
+            >
+                <Tooltip title="Share">
+                    <Button
+                        type="text"
+                        className="flex items-center justify-center"
+                        style={{ width: 32, height: 32 }}
+                        icon={
+                            <ShareAltOutlined 
+                                style={{ 
+                                    color: "#8b5cf6", // Purple color
+                                    fontSize: 18 
+                                }} 
+                            />
+                        }
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </Tooltip>
+            </Popover>
         </div>
     );
 
@@ -820,19 +920,54 @@ export default function CMSLayout({
                             )}
 
 
-                            menuItemRender={(item, dom) => (
-                                <a
-                                    onClick={() => {
-                                        setPathname(item.path || "/admin/dashboard");
-                                        if (item.path) {
-                                            router.push(item.path);
-                                        }
-                                    }}
-                                    style={{ cursor: "pointer" }}
-                                >
-                                    {dom}
-                                </a>
-                            )}
+                            menuItemRender={(item, dom) => {
+                                const isPinnedOrStarred = selectedSegment === "pinned" || selectedSegment === "starred";
+                                
+                                return (
+                                    <div style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                                        <a
+                                            onClick={() => {
+                                                setPathname(item.path || "/admin/dashboard");
+                                                if (item.path) {
+                                                    router.push(item.path);
+                                                }
+                                            }}
+                                            style={{ cursor: "pointer", flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                        >
+                                            {dom}
+                                        </a>
+                                        {isPinnedOrStarred && !innerCollapsed && (
+                                            <Popconfirm
+                                                title={`Remove from ${selectedSegment}?`}
+                                                onConfirm={(e) => {
+                                                    e?.stopPropagation();
+                                                    if (selectedSegment === "pinned") {
+                                                        togglePinned({ path: item.path!, name: (item.name as string) || "" });
+                                                        message.success("Removed from pinned");
+                                                    } else {
+                                                        // For starred, we reuse toggleStarred or handle it via handleToggleStar logic
+                                                        // But since we are in the list, we can just call the store's toggleStarred
+                                                        toggleStarred({ path: item.path!, name: (item.name as string) || "" });
+                                                        message.success("Removed from favorites");
+                                                    }
+                                                }}
+                                                onCancel={(e) => e?.stopPropagation()}
+                                                okText="Yes"
+                                                cancelText="No"
+                                            >
+                                                <Button
+                                                    type="text"
+                                                    size="small"
+                                                    danger
+                                                    icon={<DeleteOutlined style={{ fontSize: 12 }} />}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    style={{ marginLeft: 4 }}
+                                                />
+                                            </Popconfirm>
+                                        )}
+                                    </div>
+                                );
+                            }}
 
                         >
                             <PageContainer

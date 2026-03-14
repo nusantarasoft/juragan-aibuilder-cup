@@ -20,6 +20,10 @@ interface PreferencesState {
     setStarred: (items: BookmarkItem[]) => void;
     toggleStarred: (item: BookmarkItem) => void;
     isStarred: (path: string) => boolean;
+
+    // Sidebar state persistence
+    selectedSegment: string;
+    setSelectedSegment: (segment: string) => void;
 }
 
 // Simple base64 obfuscation as requested ("encrypted" in local storage)
@@ -60,10 +64,15 @@ export const usePreferencesStore = create<PreferencesState>()(
             
             togglePinned: (item) => {
                 const { isPinned, addPinned, removePinned } = get();
+                
+                // Ensure name is a string (React Nodes/Elements can't be serialized/rendered as children)
+                const safeName = typeof item.name === 'string' ? item.name : 'Untitled Page';
+                const safeItem = { ...item, name: safeName };
+
                 if (isPinned(item.path)) {
                     removePinned(item.path);
                 } else {
-                    addPinned(item.path === '/admin/dashboard' ? { ...item, name: 'Dashboard' } : item);
+                    addPinned(item.path === '/admin/dashboard' ? { ...safeItem, name: 'Dashboard' } : safeItem);
                 }
             },
             
@@ -82,11 +91,17 @@ export const usePreferencesStore = create<PreferencesState>()(
             },
             
             isStarred: (path) => get().starredItems.some(i => i.path === path),
+
+            selectedSegment: 'recent',
+            setSelectedSegment: (segment) => set({ selectedSegment: segment }),
         }),
         {
             name: 'cms-preferences',
             storage: createJSONStorage(() => encryptedStorage),
-            partialize: (state) => ({ pinnedItems: state.pinnedItems }), // Only persist pinned to local storage
+            partialize: (state) => ({ 
+                pinnedItems: state.pinnedItems,
+                selectedSegment: state.selectedSegment
+            }), // Persist pinned and sidebar state
         }
     )
 );
