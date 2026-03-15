@@ -6,7 +6,7 @@ WORKDIR /app
 # ===== Dependencies Stage =====
 FROM base AS deps
 COPY package.json ./
-RUN npm ci || npm install
+RUN npm install
 
 # ===== Builder Stage =====
 FROM base AS builder
