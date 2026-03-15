@@ -110,8 +110,6 @@ services:
       interval: 5s
       retries: 3
     depends_on:
-      analytics:
-        condition: service_healthy
       meta:
         condition: service_healthy
     networks:
@@ -155,7 +153,9 @@ services:
     volumes:
       - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
     depends_on:
-      analytics:
+      rest:
+        condition: service_started
+      auth:
         condition: service_healthy
     networks:
       - management-network
@@ -189,8 +189,6 @@ services:
       retries: 3
     depends_on:
       postgres:
-        condition: service_healthy
-      analytics:
         condition: service_healthy
     networks:
       - management-network
@@ -236,8 +234,6 @@ services:
           memory: 256m
     depends_on:
       postgres:
-        condition: service_healthy
-      analytics:
         condition: service_healthy
     networks:
       - management-network
@@ -395,8 +391,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      analytics:
-        condition: service_healthy
     networks:
       - management-network
     environment:
@@ -421,7 +415,7 @@ services:
     volumes:
       - ./volumes/functions:/home/deno/functions:Z
     depends_on:
-      analytics:
+      kong:
         condition: service_healthy
     environment:
       JWT_SECRET: ${JWT_SECRET}
@@ -432,10 +426,11 @@ services:
       VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT}"
     command: [ "start", "--main-service", "/home/deno/functions/main" ]
 
+  # Butuh tabel di _analytics (system_metrics, backends); tanpa migrasi Logflare akan crash. Nonaktifkan restart agar tidak loop.
   analytics:
     container_name: supabase-analytics
     image: supabase/logflare:1.26.25
-    restart: unless-stopped
+    restart: "no"
     deploy:
       resources:
         limits:
@@ -644,6 +639,7 @@ services:
       - TZ=${TZ}
     volumes:
       - bind9-data:/data
+      - ./volumes/bind9/etc/named.conf:/data/bind/etc/named.conf
       - ./volumes/bind9/etc/named.conf.local:/data/bind/etc/named.conf.local
       - ./volumes/bind9/zones:/data/bind/zones
     networks:

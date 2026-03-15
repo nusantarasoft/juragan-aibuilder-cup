@@ -1,9 +1,19 @@
-// Local zone configuration for nusantarasoft.dev domain
-// Note: Using .dev instead of .local to avoid mDNS/Multicast DNS conflicts
-
+// Local zone configuration
 zone "nusantarasoft.dev" {
     type master;
     file "/data/bind/zones/db.nusantarasoft.dev";
+    allow-query { any; };
+    allow-transfer { none; };
+};
+zone "nusantarasoft.local" {
+    type master;
+    file "/data/bind/zones/db.nusantarasoft.local";
+    allow-query { any; };
+    allow-transfer { none; };
+};
+zone "nusantarasoft.com" {
+    type master;
+    file "/data/bind/zones/db.nusantarasoft.com";
     allow-query { any; };
     allow-transfer { none; };
 };
