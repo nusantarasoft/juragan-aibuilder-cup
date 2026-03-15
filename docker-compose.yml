@@ -35,14 +35,18 @@ services:
     volumes:
       - minio-data:/data
 
+  # One-shot: buat bucket lalu exit. Status "Exited (0)" = normal.
   minio-createbucket:
     image: minio/mc:latest
     container_name: minio-createbucket
+    restart: "no"
     depends_on:
       minio:
         condition: service_healthy
+    networks:
+      - management-network
     entrypoint: >
-      /bin/sh -c " /usr/bin/mc alias set supa-minio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; /usr/bin/mc mb --ignore-existing supa-minio/${S3_BUCKET}; /usr/bin/mc anonymous set public supa-minio/${S3_BUCKET}; /usr/bin/mc version enable supa-minio/${S3_BUCKET}; exit 0; "
+      /bin/sh -c " /usr/bin/mc alias set supa-minio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; /usr/bin/mc mb --ignore-existing supa-minio/${S3_BUCKET}; /usr/bin/mc anonymous set public supa-minio/${S3_BUCKET}; /usr/bin/mc version enable supa-minio/${S3_BUCKET} || true; exit 0; "
 
   postgres:
     image: supabase/postgres:15.8.1.085
@@ -247,6 +251,24 @@ services:
       PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY}
     command: [ "postgrest" ]
 
+  # One-shot: jalankan fix-realtime-schema.sql di dalam container postgres sebagai supabase_admin (owner DB).
+  realtime-db-init:
+    image: docker:cli
+    container_name: realtime-db-init
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - management-network
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./volumes/db/fix-realtime-schema.sql:/fix-realtime-schema.sql:ro
+    command: ["/bin/sh", "-c", "cat /fix-realtime-schema.sql | docker exec -i -e PGPASSWORD=$$POSTGRES_PASSWORD postgres psql -U supabase_admin -d \"$$POSTGRES_DB\" -f -"]
+
   realtime:
     container_name: realtime-dev.supabase-realtime
     image: supabase/realtime:v2.68.0
@@ -260,8 +282,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      analytics:
-        condition: service_healthy
+      realtime-db-init:
+        condition: service_completed_successfully
     healthcheck:
       test: [ "CMD-SHELL", "curl -sSfL --head -o /dev/null -H \"Authorization: Bearer ${ANON_KEY}\" http://localhost:4000/api/tenants/realtime-dev/health" ]
       timeout: 5s
@@ -494,8 +516,6 @@ services:
       retries: 5
     depends_on:
       postgres:
-        condition: service_healthy
-      analytics:
         condition: service_healthy
     environment:
       PORT: 4000

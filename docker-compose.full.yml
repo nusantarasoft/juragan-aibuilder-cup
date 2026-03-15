@@ -67,12 +67,14 @@ services:
     depends_on:
       minio:
         condition: service_healthy
+    networks:
+      - management-network
     entrypoint: >
       /bin/sh -c " /usr/bin/mc alias set supa-minio http://minio:9000
       ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; /usr/bin/mc mb
       --ignore-existing supa-minio/${S3_BUCKET}; /usr/bin/mc anonymous set
       public supa-minio/${S3_BUCKET}; /usr/bin/mc version enable
-      supa-minio/${S3_BUCKET}; exit 0; "
+      supa-minio/${S3_BUCKET} || true; exit 0; "
 
   # Dremio
   dremio:
