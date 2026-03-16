@@ -281,9 +281,19 @@ export class DremioService {
     }
 
     async updateSource(id: string, body: Record<string, any>): Promise<DremioSource> {
+        // Dremio PUT /api/v3/catalog/{id} requires entityType, tag, and id in body
+        const { tag, name, type, config } = body;
+        const payload: Record<string, any> = {
+            entityType: 'source',
+            id,
+            tag,
+        };
+        if (name !== undefined) payload.name = name;
+        if (type !== undefined) payload.type = type;
+        if (config !== undefined) payload.config = config;
         const data = await this.dremioFetch(`/api/v3/catalog/${encodeURIComponent(id)}`, {
             method: 'PUT',
-            body: JSON.stringify(body),
+            body: JSON.stringify(payload),
         });
         return { id: data.id, name: data.name, type: data.type, tag: data.tag, config: data.config };
     }

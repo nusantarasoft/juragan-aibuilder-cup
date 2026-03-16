@@ -160,6 +160,15 @@ export const dremioService = {
         return data.dremioCreateSource;
     },
 
+    async updateSource(id: string, tag: string, input: { name?: string; type?: string; config?: Record<string, any> }): Promise<DremioSource> {
+        const data = await graphqlRequest<{ dremioUpdateSource: DremioSource }>(`
+            mutation($input: DremioUpdateSourceInput!) {
+                dremioUpdateSource(input: $input) { id name type tag config }
+            }
+        `, { input: { id, tag, ...input } });
+        return data.dremioUpdateSource;
+    },
+
     async deleteSource(id: string, tag: string): Promise<boolean> {
         const data = await graphqlRequest<{ dremioDeleteSource: { success: boolean } }>(`
             mutation($id: String!, $tag: String!) {

@@ -37,7 +37,8 @@ import {
     SearchOutlined,
     ThunderboltOutlined,
     UnorderedListOutlined,
-    FolderOpenOutlined
+    FolderOpenOutlined,
+    EditOutlined
 } from "@ant-design/icons";
 import Hyperspeed from "@/components/react-bits/Hyperspeed";
 import { hyperspeedPresets } from "@/components/react-bits/HyperSpeedPresets";
@@ -49,6 +50,7 @@ import CatalogTree from "./CatalogTreeStyled";
 import CatalogBrowser from "./CatalogBrowser";
 import DataPreview from "./DataPreview";
 import AddSourceModal from "./AddSourceModal";
+import EditSourceModal from "./EditSourceModal";
 import CreateVDSModal from "./CreateVDSModal";
 import { dremioService } from "@/lib/dremioService";
 
@@ -75,6 +77,7 @@ export default function DatasetsPage() {
     const [selectedId, setSelectedId] = useState("");
     const [vdsModalOpen, setVdsModalOpen] = useState(false);
     const [addSourceOpen, setAddSourceOpen] = useState(false);
+    const [editSourceId, setEditSourceId] = useState<string | null>(null);
     const [spaceModalOpen, setSpaceModalOpen] = useState(false);
     const [spaceName, setSpaceName] = useState("");
     const [connectionStatus, setConnectionStatus] = useState<null | { success: boolean; message: string }>(null);
@@ -190,8 +193,8 @@ export default function DatasetsPage() {
                         display: 'flex',
                         flexDirection: 'column'
                     }}>
-                        {/* Toolbar - Only show when showing DataPreview (isDataset) */}
-                        {isDataset && (
+                        {/* Toolbar - show for dataset (DataPreview) or when source selected (Edit Source) */}
+                        {(isDataset || selectedType === "SOURCE") && (
                             <div style={{
                                 display: "flex",
                                 justifyContent: "space-between",
@@ -221,11 +224,25 @@ export default function DatasetsPage() {
                                     />
                                 </Space>
 
-                                {selectedType && (
-                                    <Tag bordered={false} color={isDataset ? "blue" : "green"} style={{ fontSize: 12, padding: '2px 10px', borderRadius: 12 }}>
-                                        {selectedType}
-                                    </Tag>
-                                )}
+                                <Space size={12}>
+                                    {selectedType && (
+                                        <Tag bordered={false} color={isDataset ? "blue" : "green"} style={{ fontSize: 12, padding: '2px 10px', borderRadius: 12 }}>
+                                            {selectedType}
+                                        </Tag>
+                                    )}
+                                    {selectedType === "SOURCE" && selectedId && (
+                                        <AnimatedTooltip content="Edit this source">
+                                            <Button
+                                                type="default"
+                                                size="small"
+                                                icon={<EditOutlined />}
+                                                onClick={() => setEditSourceId(selectedId)}
+                                            >
+                                                Edit Source
+                                            </Button>
+                                        </AnimatedTooltip>
+                                    )}
+                                </Space>
                             </div>
                         )}
 
@@ -270,11 +287,15 @@ export default function DatasetsPage() {
             <AddSourceModal
                 open={addSourceOpen}
                 onClose={() => setAddSourceOpen(false)}
-                onSuccess={() => {
-                    // Refresh catalog tree if needed
-                    // catalogTreeRef.current?.reload(); // We rely on user manual refresh or auto-refresh
-                    setThemeKey(prev => prev + 1); // Force re-render of something? No, better relying on reload button
-                }}
+                onSuccess={() => setRefreshTrigger(prev => prev + 1)}
+            />
+
+            {/* Edit Source Modal */}
+            <EditSourceModal
+                open={!!editSourceId}
+                onClose={() => setEditSourceId(null)}
+                onSuccess={() => setRefreshTrigger(prev => prev + 1)}
+                sourceId={editSourceId}
             />
 
             {/* Create Space Modal */}

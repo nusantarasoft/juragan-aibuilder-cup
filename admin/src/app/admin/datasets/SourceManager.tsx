@@ -5,6 +5,7 @@ import { Card, List, Button, Modal, Form, Input, Select, Space, message, Tag, Po
 import {
     PlusOutlined,
     DeleteOutlined,
+    EditOutlined,
     CloudServerOutlined,
     DatabaseOutlined,
     ReloadOutlined,
@@ -16,6 +17,7 @@ import {
 } from "@ant-design/icons";
 import { dremioService, DremioSource } from "@/lib/dremioService";
 import { motion } from "framer-motion";
+import EditSourceModal from "./EditSourceModal";
 
 const { Title, Text } = Typography;
 
@@ -49,6 +51,8 @@ export default function SourceManager() {
     const [loading, setLoading] = useState(true);
     const [addModalVisible, setAddModalVisible] = useState(false);
     const [detailSource, setDetailSource] = useState<DremioSource | null>(null);
+    const [editSourceId, setEditSourceId] = useState<string | null>(null);
+    const [editSourceTag, setEditSourceTag] = useState("");
     const [creating, setCreating] = useState(false);
     const [form] = Form.useForm();
     const [sourceType, setSourceType] = useState("");
@@ -235,6 +239,7 @@ export default function SourceManager() {
                                         overflow: 'hidden'
                                     }}
                                     actions={[
+                                        <Button key="edit" type="text" icon={<EditOutlined />} onClick={() => { setEditSourceId(source.id); setEditSourceTag(source.tag); }}>Edit</Button>,
                                         <Button key="info" type="text" icon={<InfoCircleOutlined />} onClick={() => handleDetail(source)}>Details</Button>,
                                         <Popconfirm key="del" title={`Delete "${source.name}"?`} onConfirm={() => handleDelete(source)} okText="Delete" okType="danger">
                                             <Button type="text" danger icon={<DeleteOutlined />}>Delete</Button>
@@ -290,6 +295,14 @@ export default function SourceManager() {
                     {sourceType && renderConfigFields()}
                 </Form>
             </Modal>
+
+            <EditSourceModal
+                open={!!editSourceId}
+                onClose={() => { setEditSourceId(null); setEditSourceTag(""); }}
+                onSuccess={loadSources}
+                sourceId={editSourceId}
+                sourceTag={editSourceTag}
+            />
 
             {/* Source Detail Modal */}
             <Modal
