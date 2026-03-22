@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import React, { useState, useRef } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { 
   Button, 
@@ -36,7 +37,8 @@ import {
   ContainerOutlined,
   SafetyCertificateOutlined,
   GlobalOutlined,
-  CarOutlined
+  CarOutlined,
+  BankOutlined
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 
@@ -51,6 +53,7 @@ const NUSANTARA_PORTS = [
 ];
 
 export default function SpeedboatReservation() {
+  const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const [tripType, setTripType] = useState<any>("one-way");
   const [fromPort, setFromPort] = useState("makassar");
@@ -97,16 +100,6 @@ export default function SpeedboatReservation() {
             itemSelectedBg: "#f97316",
             itemSelectedColor: "#fff",
             trackBg: "rgba(255, 255, 255, 0.1)",
-          },
-          Select: {
-            selectorBg: "#fff",
-            colorText: "#1e293b",
-            colorTextPlaceholder: "#94a3b8",
-          },
-          DatePicker: {
-            colorBgContainer: "#fff",
-            colorText: "#1e293b",
-            colorTextPlaceholder: "#94a3b8",
           }
         }
       }}
@@ -351,13 +344,13 @@ export default function SpeedboatReservation() {
                         <EnvironmentOutlined className="text-base text-blue-500 flex-shrink-0" />
                         <Select
                           showSearch
-                          placeholder="Select departure port"
-                          className="w-full text-lg"
+                          placeholder="Select origin"
+                          className="w-full text-lg custom-select-left"
+                          popupClassName="custom-select-popup"
                           variant="borderless"
                           value={fromPort}
                           onChange={setFromPort}
                           options={NUSANTARA_PORTS}
-                          dropdownClassName="custom-select-dropdown"
                         />
                       </div>
                       <div className="flex h-full items-center justify-end gap-2 pr-5 pl-5 relative z-0">
@@ -399,6 +392,7 @@ export default function SpeedboatReservation() {
                           size="middle"
                           defaultValue={dayjs().add(1, 'day')}
                           format="DD MMM YYYY"
+                          popupClassName="custom-datepicker-popup"
                         />
                       </div>
                       <div className={`flex h-full items-center justify-end gap-1.5 pr-4 pl-4 relative z-0 transition-opacity duration-300 ${!isReturn ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
@@ -408,6 +402,7 @@ export default function SpeedboatReservation() {
                           size="middle"
                           format="DD MMM YYYY"
                           placeholder="Ret"
+                          popupClassName="custom-datepicker-popup"
                         />
                         <CalendarOutlined className="text-sm text-slate-400 flex-shrink-0" />
                       </div>
@@ -419,6 +414,7 @@ export default function SpeedboatReservation() {
                     <Button 
                       type="primary" 
                       size="large"
+                      onClick={() => router.push(`/speedboat/search?from=${fromPort}&to=${toPort}`)}
                       className="!h-[54px] !w-full !rounded-2xl !bg-orange-500 hover:!bg-orange-600 border-none shadow-lg shadow-orange-500/20"
                       icon={<ArrowRightOutlined className="text-xl" />}
                     />
@@ -440,10 +436,11 @@ export default function SpeedboatReservation() {
               <p className="text-slate-400 max-w-md md:text-right">Experience the pinnacle of marine engineering with our curated selection of luxury speedboats.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[
                 {
                   name: "Oceanic Express V1",
+                  agency: "Bahari Fast Trans",
                   class: "Executive Luxury",
                   capacity: "24 Passengers",
                   speed: "45 Knots",
@@ -452,11 +449,21 @@ export default function SpeedboatReservation() {
                 },
                 {
                   name: "Nusantara Voyager II",
+                  agency: "Sea Explorer Group",
                   class: "Family Comfort Plus",
                   capacity: "32 Passengers",
                   speed: "38 Knots",
-                  image: "/images/luxury_speedboat.png", // Reuse for demo
+                  image: "/images/luxury_speedboat.png",
                   features: ["Spacious Deck", "Pantry Onboard", "Quiet Engine"]
+                },
+                {
+                  name: "Komodo Dragon Speed",
+                  agency: "Labuan Bajo Cruisers",
+                  class: "Adventure Standard",
+                  capacity: "40 Passengers",
+                  speed: "35 Knots",
+                  image: "/images/luxury_speedboat.png",
+                  features: ["Snorkeling Gear", "Sun Deck", "Refreshments"]
                 }
               ].map((ship, i) => (
                 <motion.div 
@@ -484,8 +491,13 @@ export default function SpeedboatReservation() {
                   <div className="absolute inset-x-8 bottom-8 z-20">
                     <div className="flex justify-between items-end">
                       <div>
-                        <div className="bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-full w-fit mb-4">
-                          {ship.class}
+                        <div className="flex gap-2 mb-4">
+                          <div className="bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-full w-fit">
+                            {ship.class}
+                          </div>
+                          <div className="bg-black/50 backdrop-blur-md text-white/80 text-[10px] font-bold px-3 py-1 rounded-full w-fit flex items-center gap-1 border border-white/10">
+                            <BankOutlined /> {ship.agency}
+                          </div>
                         </div>
                         <h3 className="text-3xl font-black text-white mb-2">{ship.name}</h3>
                         <div className="flex gap-4 text-slate-300 text-sm mb-6">
@@ -564,7 +576,10 @@ export default function SpeedboatReservation() {
                   <h2 className="text-4xl md:text-5xl font-black text-white mb-4">Popular Routes</h2>
                   <p className="text-slate-400">Discover the most traveled connections across the archipelago.</p>
                 </div>
-                <button className="px-8 py-3 rounded-full border border-white/10 text-white hover:bg-white hover:text-black transition-all font-bold group">
+                <button 
+                  onClick={() => router.push('/speedboat/search')}
+                  className="px-8 py-3 rounded-full border border-white/10 text-white hover:bg-white hover:text-black transition-all font-bold group"
+                >
                   View All Routes <ArrowRightOutlined className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>
@@ -671,6 +686,34 @@ export default function SpeedboatReservation() {
           .custom-select-right .ant-select-selection-search-input {
             text-align: right !important;
           }
+          
+          /* Enforce dark text on the white booking form inputs */
+          .custom-select-left,
+          .custom-select-right,
+          .custom-select-left .ant-select-selection-item,
+          .custom-select-left .ant-select-selection-placeholder,
+          .custom-select-left .ant-select-selection-search-input,
+          .custom-select-right .ant-select-selection-item,
+          .custom-select-right .ant-select-selection-placeholder,
+          .custom-select-right .ant-select-selection-search-input {
+             color: #1e293b !important;
+          }
+          
+          .custom-select-left .ant-select-selection-placeholder,
+          .custom-select-right .ant-select-selection-placeholder {
+             color: #94a3b8 !important;
+          }
+
+          .custom-datepicker-right input,
+          .custom-datepicker input {
+             color: #1e293b !important;
+          }
+          
+          .custom-datepicker-right input::placeholder,
+          .custom-datepicker input::placeholder {
+             color: #94a3b8 !important;
+          }
+
           .custom-datepicker-right input {
             text-align: right !important;
             font-size: 13px !important;
@@ -679,7 +722,7 @@ export default function SpeedboatReservation() {
             text-align: left !important;
             font-size: 15px !important;
           }
-          .custom-select .ant-select-selection-item,
+          .custom-select-left .ant-select-selection-item,
           .custom-select-right .ant-select-selection-item {
             font-size: 15px !important;
           }
