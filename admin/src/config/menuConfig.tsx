@@ -39,6 +39,15 @@ import {
     ShoppingOutlined,
     ThunderboltOutlined,
     ProjectOutlined,
+    InboxOutlined,
+    ShoppingCartOutlined,
+    DropboxOutlined,
+    BarChartOutlined,
+    AuditOutlined,
+    ReconciliationOutlined,
+    HomeOutlined,
+    NodeIndexOutlined,
+    ShopOutlined,
 } from "@ant-design/icons";
 
 // CMS Menu Configuration
@@ -218,6 +227,86 @@ const menuConfig = {
                         path: "/admin/pm/projects",
                         name: "Projects",
                         icon: <ProjectOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/inventory",
+                name: "Inventory & Supply Chain",
+                icon: <InboxOutlined />,
+                routes: [
+                    {
+                        path: "/admin/inventory/items",
+                        name: "Item Master",
+                        icon: <DropboxOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/procurement",
+                        name: "Procurement",
+                        icon: <ShoppingCartOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/manufacturing",
+                        name: "Manufacturing",
+                        icon: <ToolOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/warehouses",
+                        name: "Warehouses",
+                        icon: <HomeOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/stock",
+                        name: "Stock Dashboard",
+                        icon: <BarChartOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/stock-opname",
+                        name: "Stock Opname",
+                        icon: <AuditOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/analytics",
+                        name: "Analytics & AI",
+                        icon: <NodeIndexOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/ecommerce",
+                name: "E-Commerce",
+                icon: <ShopOutlined />,
+                routes: [
+                    {
+                        path: "/admin/ecommerce/products",
+                        name: "Products",
+                        icon: <ShoppingOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ecommerce/orders",
+                        name: "Orders",
+                        icon: <ReconciliationOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ecommerce/customers",
+                        name: "Customers",
+                        icon: <UserOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ecommerce/settings",
+                        name: "Settings",
+                        icon: <SettingOutlined />,
                         isLeaf: true,
                     },
                 ],

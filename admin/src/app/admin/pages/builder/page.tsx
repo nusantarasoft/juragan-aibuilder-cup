@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, Suspense } from "react";
+import React, { useState, useCallback, useEffect, Suspense, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import CMSLayout from "@/components/layout/CMSLayout";
 import {
@@ -18,6 +18,8 @@ import {
     Tooltip,
     Collapse,
     Modal,
+    Segmented,
+    Select,
 } from "antd";
 import {
     DragOutlined,
@@ -25,8 +27,12 @@ import {
     SaveOutlined,
     DeleteOutlined,
     SettingOutlined,
+    PlusOutlined,
     ArrowUpOutlined,
     ArrowDownOutlined,
+    DesktopOutlined,
+    TabletOutlined,
+    MobileOutlined,
     AppstoreOutlined,
     EditOutlined,
     ToolOutlined,
@@ -43,6 +49,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { DnDProvider, DraggableLibraryBlock, SortableBlock, CanvasDropZone } from "@/components/dnd/DragDropComponents";
 import pageService from "@/lib/pageService";
 import { FloatingPanel, DockPosition } from "@/components/builder/FloatingPanel";
+import { AuroraText } from "@/components/magicui/aurora-text";
+import DecryptedText from "@/components/react-bits/DecryptedText";
 
 // Import types and upgraded components
 import { PageBlock, BlockProps, blockDefaults } from "./types";
@@ -215,6 +223,7 @@ function PageBuilderContent() {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const [pageTitle, setPageTitle] = useState("Untitled Page");
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [hasChanges, setHasChanges] = useState(false);
     const [sidebarView, setSidebarView] = useState<'library' | 'properties'>('library');
 
@@ -223,9 +232,78 @@ function PageBuilderContent() {
     const [structureDock, setStructureDock] = useState<DockPosition>('float');
     const [libraryMinimized, setLibraryMinimized] = useState(false);
     const [structureMinimized, setStructureMinimized] = useState(false);
+    const [libraryVisible, setLibraryVisible] = useState(true);
+    const [structureVisible, setStructureVisible] = useState(true);
+    const [viewportMode, setViewportMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+    const [desktopResolution, setDesktopResolution] = useState<number | 'auto'>('auto');
     const [templatePreview, setTemplatePreview] = useState<typeof pageTemplates[0] | null>(null);
-
     const selectedBlock = blocks.find(b => b.id === selectedBlockId) || null;
+    const boundsRef = useRef<HTMLDivElement>(null);
+
+    // Initialize state tracker to prevent initial render overwriting
+    const [isInitialized, setIsInitialized] = useState(false);
+
+    // Load saved layout preferences on mount
+    useEffect(() => {
+        try {
+            const savedLibraryVisible = localStorage.getItem('builder_libraryVisible');
+            if (savedLibraryVisible !== null) setLibraryVisible(savedLibraryVisible === 'true');
+
+            const savedStructureVisible = localStorage.getItem('builder_structureVisible');
+            if (savedStructureVisible !== null) setStructureVisible(savedStructureVisible === 'true');
+
+            const savedLibraryDock = localStorage.getItem('builder_libraryDock');
+            if (savedLibraryDock) setLibraryDock(savedLibraryDock as DockPosition);
+
+            const savedStructureDock = localStorage.getItem('builder_structureDock');
+            if (savedStructureDock) setStructureDock(savedStructureDock as DockPosition);
+
+            const savedLibraryMinimized = localStorage.getItem('builder_libraryMinimized');
+            if (savedLibraryMinimized !== null) setLibraryMinimized(savedLibraryMinimized === 'true');
+
+            const savedStructureMinimized = localStorage.getItem('builder_structureMinimized');
+            if (savedStructureMinimized !== null) setStructureMinimized(savedStructureMinimized === 'true');
+
+            const savedViewportMode = localStorage.getItem('builder_viewportMode');
+            if (savedViewportMode) setViewportMode(savedViewportMode as any);
+
+            const savedDesktopRes = localStorage.getItem('builder_desktopResolution');
+            if (savedDesktopRes) {
+                if (savedDesktopRes === 'auto') {
+                    setDesktopResolution('auto');
+                } else {
+                    setDesktopResolution(parseInt(savedDesktopRes, 10));
+                }
+            }
+        } catch (e) {
+            console.error('Error loading builder layout preferences', e);
+        } finally {
+            setIsInitialized(true);
+        }
+    }, []);
+
+    // Save layout preferences when they change
+    useEffect(() => {
+        if (!isInitialized) return;
+        localStorage.setItem('builder_libraryVisible', String(libraryVisible));
+        localStorage.setItem('builder_structureVisible', String(structureVisible));
+        localStorage.setItem('builder_libraryDock', libraryDock);
+        localStorage.setItem('builder_structureDock', structureDock);
+        localStorage.setItem('builder_libraryMinimized', String(libraryMinimized));
+        localStorage.setItem('builder_structureMinimized', String(structureMinimized));
+        localStorage.setItem('builder_viewportMode', viewportMode);
+        localStorage.setItem('builder_desktopResolution', String(desktopResolution));
+    }, [
+        isInitialized,
+        libraryVisible,
+        structureVisible,
+        libraryDock,
+        structureDock,
+        libraryMinimized,
+        structureMinimized,
+        viewportMode,
+        desktopResolution
+    ]);
 
     // Auto-switch sidebar when block selected
     useEffect(() => {
@@ -573,17 +651,40 @@ function PageBuilderContent() {
     return (
         <CMSLayout
             title={
-                <Input
-                    value={pageTitle}
-                    onChange={(e) => {
-                        setPageTitle(e.target.value);
-                        setHasChanges(true);
-                    }}
-                    variant="borderless"
-                    style={{ fontSize: 20, fontWeight: 600, width: 300 }}
-                />
+                isEditingTitle ? (
+                    <Input
+                        autoFocus
+                        value={pageTitle}
+                        onChange={(e) => {
+                            setPageTitle(e.target.value);
+                            setHasChanges(true);
+                        }}
+                        onBlur={() => setIsEditingTitle(false)}
+                        onPressEnter={() => setIsEditingTitle(false)}
+                        style={{ fontSize: 20, fontWeight: 600, width: 250, borderBottom: '1px solid #8b5cf6', borderRadius: 0, padding: 0 }}
+                        placeholder="Enter page name..."
+                    />
+                ) : (
+                    <Space align="center" size={8} style={{ cursor: 'text' }} onClick={() => setIsEditingTitle(true)}>
+                        <AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>
+                            {pageTitle || "Untitled Page"}
+                        </AuroraText>
+                        <EditOutlined style={{ color: '#8b5cf6', fontSize: 16, cursor: 'pointer' }} />
+                    </Space>
+                )
             }
-            subTitle="Drag blocks to build your page"
+            subTitle={
+                <div style={{ marginTop: 6, marginLeft: 12 }} >
+                    <DecryptedText
+                        text="Drag blocks to build your page"
+                        animateOn="view"
+                        revealDirection="center"
+                        speed={50}
+                        maxIterations={15}
+                        sequential={true}
+                    />
+                </div>
+            }
             extra={[
                 <Tooltip key="import-tip" title="Import Page">
                     <Button
@@ -627,30 +728,118 @@ function PageBuilderContent() {
                 </Button>,
             ]}
         >
-            {/* Canvas - Full width with dynamic margins based on docked panels */}
-            <div
-                style={{
-                    marginLeft: libraryDock === 'left' && !libraryMinimized ? 320 : 0,
-                    marginRight: (libraryDock === 'right' && !libraryMinimized) || (structureDock === 'right' && !structureMinimized) ? 320 : 0,
-                    transition: 'margin 0.2s ease',
-                    height: 'calc(100vh - 120px)',
-                    padding: 16,
-                }}
-            >
-                <Card
-                    title={previewMode ? "Preview" : "Canvas"}
-                    size="small"
-                    style={{ height: '100%', overflow: 'hidden' }}
-                    extra={!previewMode && <DragOutlined />}
-                    bodyStyle={{ height: 'calc(100% - 40px)', padding: 24, background: '#f5f5f5', overflowY: 'auto' }}
+            {/* Main Workspace Wrapper (relative constraint for floating panels) */}
+            <div ref={boundsRef} style={{ position: 'relative', height: 'calc(100vh - 120px)', overflow: 'hidden', flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                {/* Canvas - Full width with dynamic margins based on docked panels */}
+                <div
+                    style={{
+                        marginLeft: libraryVisible && libraryDock === 'left' && !libraryMinimized ? 296 : 0,
+                        marginRight: (structureVisible && structureDock === 'right' && !structureMinimized) || (libraryVisible && libraryDock === 'right' && !libraryMinimized) ? 296 : 0,
+                        transition: 'margin 0.2s ease',
+                        flex: 1,
+                        minHeight: 0,
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}
                 >
-                    <CanvasDropZone
-                        onDrop={handleDropFromLibrary}
-                        isEmpty={blocks.length === 0}
-                    >
-                        {blocks.length > 0 && (
-                            <div style={{ display: "flex", flexDirection: "column", gap: previewMode ? 0 : 8 }}>
-                                {blocks.map((block, index) => (
+        <Card
+            title={
+                <Space size={16}>
+                    <span style={{
+                        background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        fontWeight: 600,
+                        fontSize: '14px'
+                    }} >{previewMode ? "Preview" : "Canvas"}</span>
+                    
+                    {!previewMode && (
+                        <Space size={8}>
+                            <Segmented
+                                size="small"
+                                value={viewportMode}
+                                onChange={(value) => setViewportMode(value as 'desktop' | 'tablet' | 'mobile')}
+                                options={[
+                                    { value: 'desktop', icon: <DesktopOutlined /> },
+                                    { value: 'tablet', icon: <TabletOutlined /> },
+                                    { value: 'mobile', icon: <MobileOutlined /> },
+                                ]}
+                            />
+                            {viewportMode === 'desktop' && (
+                                <Select
+                                    size="small"
+                                    value={desktopResolution}
+                                    onChange={setDesktopResolution}
+                                    style={{ width: 100 }}
+                                    options={[
+                                        { label: "Auto", value: "auto" },
+                                        { label: "1920px", value: 1920 },
+                                        { label: "1440px", value: 1440 },
+                                        { label: "1280px", value: 1280 },
+                                        { label: "1024px", value: 1024 },
+                                    ]}
+                                />
+                            )}
+                        </Space>
+                    )}
+                </Space>
+            }
+            size="small"
+                    style={{ 
+                        height: '100%', 
+                        width: '100%',
+                        overflow: 'hidden', 
+                        background: 'rgba(255, 255, 255, 0.6)',
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.04)',
+                        border: '1px solid rgba(255, 255, 255, 0.5)',
+                        borderRadius: 8,
+                    }}
+                    headStyle={{
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+                        minHeight: 40,
+                    }}
+                    extra={
+                        <Space size={8}>
+                            <Tooltip title={libraryVisible ? "Hide Block Library" : "Show Block Library"}>
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<PlusOutlined />}
+                                    onClick={() => setLibraryVisible(!libraryVisible)}
+                                    className={`w-6 h-6 flex items-center justify-center p-0 ${libraryVisible ? "text-violet-500 hover:text-violet-600" : "text-gray-400 hover:text-violet-500"}`}
+                                />
+                            </Tooltip>
+                            <Tooltip title={structureVisible ? "Hide Page Structure" : "Show Page Structure"}>
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<AppstoreOutlined />}
+                                    onClick={() => setStructureVisible(!structureVisible)}
+                                    className={`w-6 h-6 flex items-center justify-center p-0 ${structureVisible ? "text-violet-500 hover:text-violet-600" : "text-gray-400 hover:text-violet-500"}`}
+                                />
+                            </Tooltip>
+                        </Space>
+                    }
+                    bodyStyle={{ height: 'calc(100% - 40px)', padding: 0, background: 'transparent', overflowY: 'hidden' }}
+                >
+                    <div style={{ flex: 1, width: '100%', height: '100%', display: 'flex', justifyContent: 'center', background: 'rgba(0,0,0,0.02)', overflowY: 'auto', padding: 24 }}>
+                        <div style={{ 
+                            width: viewportMode === 'mobile' ? 375 : viewportMode === 'tablet' ? 768 : (viewportMode === 'desktop' && desktopResolution !== 'auto') ? desktopResolution : '100%', 
+                            minHeight: '100%',
+                            transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            display: 'flex',
+                            flexDirection: 'column'
+                        }}>
+                            <CanvasDropZone
+                                onDrop={handleDropFromLibrary}
+                                isEmpty={blocks.length === 0}
+                            >
+                                {blocks.length > 0 && (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: previewMode ? 0 : 8 }}>
+                                        {blocks.map((block, index) => (
                                     <SortableBlock
                                         key={block.id}
                                         id={block.id}
@@ -724,19 +913,22 @@ function PageBuilderContent() {
                             </div>
                         )}
                     </CanvasDropZone>
-                </Card>
-            </div>
+                    </div>
+                </div>
+            </Card>
+        </div>
 
             {/* Floating Block Library Panel */}
-            {!previewMode && (
+            {!previewMode && libraryVisible && (
                 <FloatingPanel
                     id="library"
                     title={sidebarView === 'properties' ? 'Properties' : 'Block Library'}
-                    icon={sidebarView === 'properties' ? <SettingOutlined /> : <DragOutlined />}
+                    icon={sidebarView === 'properties' ? <SettingOutlined /> : <PlusOutlined />}
                     dockPosition={libraryDock}
                     onDockChange={setLibraryDock}
                     minimized={libraryMinimized}
                     onMinimizedChange={setLibraryMinimized}
+                    dragConstraintsRef={boundsRef}
                 >
                     {/* Inner Card - headless for content */}
                     <Card
@@ -785,7 +977,7 @@ function PageBuilderContent() {
             )}
 
             {/* Floating Page Structure Panel */}
-            {!previewMode && (
+            {!previewMode && structureVisible && (
                 <FloatingPanel
                     id="structure"
                     title="Page Structure"
@@ -795,6 +987,7 @@ function PageBuilderContent() {
                     minimized={structureMinimized}
                     onMinimizedChange={setStructureMinimized}
                     defaultWidth={280}
+                    dragConstraintsRef={boundsRef}
                 >
                     {/* Content directly - no extra title needed */}
                     <PageStructure
@@ -807,6 +1000,8 @@ function PageBuilderContent() {
                     />
                 </FloatingPanel>
             )}
+            
+            </div>
 
             {/* Template Preview Modal */}
             <Modal

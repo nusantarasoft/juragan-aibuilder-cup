@@ -21,6 +21,7 @@ import { CrmModule } from './crm/crm.module';
 import { AiModule } from './ai/ai.module';
 import { PmModule } from './pm/pm.module';
 import { StarsModule } from './stars/stars.module';
+import { InventoryModule } from './inventory/inventory.module';
 
 @Module({
     imports: [
@@ -59,6 +60,7 @@ import { StarsModule } from './stars/stars.module';
         AiModule,
         PmModule,
         StarsModule,
+        InventoryModule,
     ],
 })
 export class AppModule { }
