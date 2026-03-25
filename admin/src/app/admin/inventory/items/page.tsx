@@ -7,7 +7,7 @@ import {
     Table, Button, Space, Tag, Input, Select, Modal, Form, Card,
     Statistic, Typography, message, Empty, Spin, Tabs, Tooltip,
     Drawer, Descriptions, Segmented, Badge, Row, Col, Popconfirm,
-    InputNumber, Divider, Switch, Steps
+    InputNumber, Divider, Switch, Steps, Image
 } from "antd";
 import {
     PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined,
@@ -18,11 +18,12 @@ import {
     ScheduleOutlined, ShoppingOutlined, ToolOutlined,
     ExportOutlined, ImportOutlined, EyeOutlined,
     CheckCircleOutlined, ArrowLeftOutlined, ArrowRightOutlined,
-    DollarOutlined, InboxOutlined, SafetyCertificateOutlined
+    DollarOutlined, InboxOutlined, SafetyCertificateOutlined, PictureOutlined,
 } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { TooltipWrapper as AnimatedTooltip } from "@/components/mvpblocks/AnimatedTooltip";
+import ItemMediaGallery, { ProductGallery, MediaInfo } from "@/components/inventory/ItemMediaGallery";
 import { inventoryService, InvItem, InvCategory, InvStockStats, AiClassification } from "@/lib/inventoryService";
 
 const { Title, Text, Paragraph } = Typography;
@@ -50,6 +51,7 @@ const STATUS_COLORS: Record<string, string> = {
 const WIZARD_STEPS = [
     { title: 'Type', icon: <AppstoreOutlined /> },
     { title: 'Details', icon: <EditOutlined /> },
+    { title: 'Media', icon: <PictureOutlined /> },
     { title: 'Pricing', icon: <DollarOutlined /> },
     { title: 'Inventory', icon: <InboxOutlined /> },
     { title: 'Review', icon: <CheckCircleOutlined /> },
@@ -81,7 +83,22 @@ export default function ItemMasterPage() {
     const [categoryModalOpen, setCategoryModalOpen] = useState(false);
     const [categoryForm] = Form.useForm();
 
+    // Gallery media IDs (for wizard)
+    const [galleryMediaIds, setGalleryMediaIds] = useState<string[]>([]);
+
+    // Media URL map
+    const [mediaMap, setMediaMap] = useState<Record<string, { url: string; filename: string; mimeType?: string }>>({});
+
     useEffect(() => { loadAll(); }, []);
+
+    const loadMediaForItems = useCallback(async (itemList: InvItem[]) => {
+        const allMediaIds = [...new Set(itemList.flatMap(i => i.mediaIds || []).filter(Boolean))];
+        if (allMediaIds.length === 0) return;
+        try {
+            const map = await inventoryService.getMediaByIds(allMediaIds);
+            setMediaMap(prev => ({ ...prev, ...map }));
+        } catch { /* ignore */ }
+    }, []);
 
     const loadAll = async () => {
         setLoading(true);
@@ -94,6 +111,7 @@ export default function ItemMasterPage() {
             setItems(itemsData);
             setCategories(catsData);
             setStats(statsData);
+            loadMediaForItems(itemsData);
         } catch (err) {
             console.error(err);
         } finally {
@@ -121,6 +139,7 @@ export default function ItemMasterPage() {
         setAiResult(null);
         setWizardStep(0);
         setSelectedFulfillment('physical');
+        setGalleryMediaIds([]);
         form.resetFields();
         form.setFieldsValue({ fulfillmentType: 'physical', itemType: 'goods', status: 'active', currency: 'IDR', primaryUom: 'pcs' });
         setFormOpen(true);
@@ -131,6 +150,7 @@ export default function ItemMasterPage() {
         setAiResult(null);
         setWizardStep(1); // skip type selection when editing
         setSelectedFulfillment(item.fulfillmentType || 'physical');
+        setGalleryMediaIds(item.mediaIds || []);
         form.setFieldsValue(item);
         setFormOpen(true);
     };
@@ -146,6 +166,7 @@ export default function ItemMasterPage() {
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields();
+            values.mediaIds = galleryMediaIds;
             if (editingItem) {
                 await inventoryService.updateItem(editingItem.id, values);
                 message.success("Item updated");
@@ -156,6 +177,20 @@ export default function ItemMasterPage() {
             setFormOpen(false);
             loadAll();
         } catch { message.error("Validation failed"); }
+    };
+
+    const handleGalleryUpload = async (file: File): Promise<MediaInfo | null> => {
+        const result = await inventoryService.uploadItemMedia(file);
+        if (result) {
+            const info: MediaInfo = { id: result.id, url: result.url, filename: result.filename, mimeType: result.mimeType };
+            setMediaMap(prev => ({ ...prev, [result.id]: info }));
+            return info;
+        }
+        return null;
+    };
+
+    const handleGalleryDelete = async (id: string) => {
+        await inventoryService.deleteMedia(id);
     };
 
     const handleAiClassify = async () => {
@@ -193,19 +228,28 @@ export default function ItemMasterPage() {
             title: 'Item',
             key: 'name',
             sorter: (a: InvItem, b: InvItem) => a.name.localeCompare(b.name),
-            render: (_: any, r: InvItem) => (
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
-                        style={{ background: `${FULFILLMENT_TYPES.find(f => f.value === r.fulfillmentType)?.color || '#7c3aed'}15` }}>
-                        {FULFILLMENT_TYPES.find(f => f.value === r.fulfillmentType)?.icon || <DropboxOutlined />}
+            render: (_: any, r: InvItem) => {
+                const firstMediaId = (r.mediaIds || [])[0];
+                const media = firstMediaId ? mediaMap[firstMediaId] : null;
+                return (
+                    <div className="flex items-center gap-3">
+                        {media ? (
+                            <img src={media.url} alt={r.name}
+                                style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
+                        ) : (
+                            <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
+                                style={{ background: `${FULFILLMENT_TYPES.find(f => f.value === r.fulfillmentType)?.color || '#7c3aed'}15` }}>
+                                {FULFILLMENT_TYPES.find(f => f.value === r.fulfillmentType)?.icon || <DropboxOutlined />}
+                            </div>
+                        )}
+                        <div>
+                            <Text strong className="block text-sm cursor-pointer hover:text-violet-500"
+                                onClick={() => setDetailDrawer(r)}>{r.name}</Text>
+                            <Text type="secondary" className="text-xs">{r.sku}</Text>
+                        </div>
                     </div>
-                    <div>
-                        <Text strong className="block text-sm cursor-pointer hover:text-violet-500"
-                            onClick={() => setDetailDrawer(r)}>{r.name}</Text>
-                        <Text type="secondary" className="text-xs">{r.sku}</Text>
-                    </div>
-                </div>
-            ),
+                );
+            },
         },
         {
             title: 'Type',
@@ -581,9 +625,25 @@ export default function ItemMasterPage() {
                                 </motion.div>
                             )}
 
-                            {/* ── Step 2: Pricing ── */}
+                            {/* ── Step 2: Media Gallery ── */}
                             {wizardStep === 2 && (
                                 <motion.div key="step2" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.2 }}>
+                                    <Text strong className="text-base block mb-1">Photos & Videos</Text>
+                                    <Text type="secondary" className="text-xs block mb-5">Upload product photos and videos. The first image will be the cover photo.</Text>
+                                    <ItemMediaGallery
+                                        mediaIds={galleryMediaIds}
+                                        mediaMap={mediaMap as Record<string, MediaInfo>}
+                                        onChange={setGalleryMediaIds}
+                                        onUpload={handleGalleryUpload}
+                                        onDelete={handleGalleryDelete}
+                                        maxFiles={20}
+                                    />
+                                </motion.div>
+                            )}
+
+                            {/* ── Step 3: Pricing ── */}
+                            {wizardStep === 3 && (
+                                <motion.div key="step3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.2 }}>
                                     <Text strong className="text-base block mb-1">Pricing & Cost</Text>
                                     <Text type="secondary" className="text-xs block mb-5">
                                         {selectedFulfillment === 'rental' ? 'Set the daily/period rate and deposit for this rental item.' : selectedFulfillment === 'ticket' ? 'Set ticket pricing by section or tier.' : 'Set cost and selling prices for this item.'}
@@ -636,9 +696,9 @@ export default function ItemMasterPage() {
                                 </motion.div>
                             )}
 
-                            {/* ── Step 3: Inventory ── */}
-                            {wizardStep === 3 && (
-                                <motion.div key="step3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.2 }}>
+                            {/* ── Step 4: Inventory ── */}
+                            {wizardStep === 4 && (
+                                <motion.div key="step4" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.2 }}>
                                     <Text strong className="text-base block mb-1">
                                         {selectedFulfillment === 'physical' ? 'Stock & Inventory' : selectedFulfillment === 'ticket' ? 'Capacity & Tracking' : selectedFulfillment === 'scheduled' ? 'Schedule & Capacity' : 'Asset Tracking'}
                                     </Text>
@@ -707,9 +767,9 @@ export default function ItemMasterPage() {
                                 </motion.div>
                             )}
 
-                            {/* ── Step 4: Review ── */}
-                            {wizardStep === 4 && (
-                                <motion.div key="step4" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.2 }}>
+                            {/* ── Step 5: Review ── */}
+                            {wizardStep === 5 && (
+                                <motion.div key="step5" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.2 }}>
                                     <Text strong className="text-base block mb-1">Review & Confirm</Text>
                                     <Text type="secondary" className="text-xs block mb-5">Double-check all details before {editingItem ? 'updating' : 'creating'} this item.</Text>
 
@@ -773,7 +833,7 @@ export default function ItemMasterPage() {
                     <Button icon={<ArrowLeftOutlined />} onClick={() => setWizardStep(Math.max(0, wizardStep - 1))}
                         disabled={wizardStep === 0} style={{ borderRadius: 10 }}>Back</Button>
                     <div className="flex items-center gap-2">
-                        {wizardStep < 4 ? (
+                        {wizardStep < 5 ? (
                             <Button type="primary" icon={<ArrowRightOutlined />} onClick={() => {
                                 if (wizardStep === 1) {
                                     form.validateFields(['name']).then(() => setWizardStep(wizardStep + 1)).catch(() => {});
@@ -817,6 +877,12 @@ export default function ItemMasterPage() {
             >
                 {detailDrawer && (
                     <div className="space-y-4">
+                        {/* Product Gallery */}
+                        <ProductGallery
+                            mediaIds={detailDrawer.mediaIds || []}
+                            mediaMap={mediaMap as Record<string, MediaInfo>}
+                        />
+
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl"
                                 style={{
