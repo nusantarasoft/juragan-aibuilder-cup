@@ -48,6 +48,8 @@ import {
     HomeOutlined,
     NodeIndexOutlined,
     ShopOutlined,
+    ScheduleOutlined,
+    SwapOutlined,
 } from "@ant-design/icons";
 
 // CMS Menu Configuration
@@ -270,6 +272,18 @@ const menuConfig = {
                         path: "/admin/inventory/stock-opname",
                         name: "Stock Opname",
                         icon: <AuditOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/bookings",
+                        name: "Bookings",
+                        icon: <ScheduleOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/rentals",
+                        name: "Rentals",
+                        icon: <SwapOutlined />,
                         isLeaf: true,
                     },
                     {

@@ -853,7 +853,572 @@ function mapTransfer(r: any): InvStockTransferType {
     };
 }
 
+// ═══════════════════════════════════════════════════════════
+// ─── MANUFACTURING Types, Inputs, Mappers ─────────────────
+// ═══════════════════════════════════════════════════════════
+
+@ObjectType()
+class MfgBomType {
+    @Field(() => ID) id: string;
+    @Field() tenantId: string;
+    @Field() code: string;
+    @Field() name: string;
+    @Field({ nullable: true }) version?: string;
+    @Field({ nullable: true }) productName?: string;
+    @Field({ nullable: true }) productSku?: string;
+    @Field({ nullable: true }) description?: string;
+    @Field({ nullable: true }) uom?: string;
+    @Field(() => Float, { nullable: true }) yieldQty?: number;
+    @Field(() => Float, { nullable: true }) laborHours?: number;
+    @Field(() => Float, { nullable: true }) laborCost?: number;
+    @Field(() => Float, { nullable: true }) overheadCost?: number;
+    @Field(() => Float, { nullable: true }) totalMaterialCost?: number;
+    @Field(() => Float, { nullable: true }) totalCost?: number;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field() createdAt: string;
+    @Field() updatedAt: string;
+}
+
+@ObjectType()
+class MfgBomLineType {
+    @Field(() => ID) id: string;
+    @Field() bomId: string;
+    @Field({ nullable: true }) itemId?: string;
+    @Field() itemName: string;
+    @Field({ nullable: true }) itemSku?: string;
+    @Field(() => Float) quantity: number;
+    @Field({ nullable: true }) uom?: string;
+    @Field(() => Float, { nullable: true }) unitCost?: number;
+    @Field(() => Float, { nullable: true }) totalCost?: number;
+    @Field(() => Float, { nullable: true }) scrapPct?: number;
+    @Field({ nullable: true }) notes?: string;
+    @Field(() => Int, { nullable: true }) sortOrder?: number;
+    @Field() createdAt: string;
+    @Field() updatedAt: string;
+}
+
+@ObjectType()
+class MfgWorkOrderType {
+    @Field(() => ID) id: string;
+    @Field() tenantId: string;
+    @Field() woNumber: string;
+    @Field({ nullable: true }) bomId?: string;
+    @Field({ nullable: true }) bomName?: string;
+    @Field({ nullable: true }) warehouseId?: string;
+    @Field({ nullable: true }) warehouseName?: string;
+    @Field(() => Float) plannedQty: number;
+    @Field(() => Float, { nullable: true }) completedQty?: number;
+    @Field({ nullable: true }) uom?: string;
+    @Field({ nullable: true }) priority?: string;
+    @Field({ nullable: true }) assignedTo?: string;
+    @Field({ nullable: true }) plannedStart?: string;
+    @Field({ nullable: true }) plannedEnd?: string;
+    @Field({ nullable: true }) actualStart?: string;
+    @Field({ nullable: true }) actualEnd?: string;
+    @Field(() => Float, { nullable: true }) estimatedCost?: number;
+    @Field(() => Float, { nullable: true }) actualCost?: number;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field() createdAt: string;
+    @Field() updatedAt: string;
+}
+
+@ObjectType()
+class ManufacturingStats {
+    @Field(() => Int) totalBoms: number;
+    @Field(() => Int) totalWorkOrders: number;
+    @Field(() => Int) draftWos: number;
+    @Field(() => Int) plannedWos: number;
+    @Field(() => Int) inProgressWos: number;
+    @Field(() => Int) completedWos: number;
+}
+
+@InputType()
+class CreateBomInput {
+    @Field() code: string;
+    @Field() name: string;
+    @Field({ nullable: true }) version?: string;
+    @Field({ nullable: true }) productName?: string;
+    @Field({ nullable: true }) productSku?: string;
+    @Field({ nullable: true }) description?: string;
+    @Field({ nullable: true }) uom?: string;
+    @Field(() => Float, { nullable: true }) yieldQty?: number;
+    @Field(() => Float, { nullable: true }) laborHours?: number;
+    @Field(() => Float, { nullable: true }) laborCost?: number;
+    @Field(() => Float, { nullable: true }) overheadCost?: number;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+}
+
+@InputType()
+class CreateBomLineInput {
+    @Field({ nullable: true }) itemId?: string;
+    @Field() itemName: string;
+    @Field({ nullable: true }) itemSku?: string;
+    @Field(() => Float) quantity: number;
+    @Field({ nullable: true }) uom?: string;
+    @Field(() => Float, { nullable: true }) unitCost?: number;
+    @Field(() => Float, { nullable: true }) totalCost?: number;
+    @Field(() => Float, { nullable: true }) scrapPct?: number;
+    @Field({ nullable: true }) notes?: string;
+    @Field(() => Int, { nullable: true }) sortOrder?: number;
+}
+
+@InputType()
+class CreateWorkOrderInput {
+    @Field() woNumber: string;
+    @Field({ nullable: true }) bomId?: string;
+    @Field({ nullable: true }) bomName?: string;
+    @Field({ nullable: true }) warehouseId?: string;
+    @Field({ nullable: true }) warehouseName?: string;
+    @Field(() => Float, { nullable: true }) plannedQty?: number;
+    @Field({ nullable: true }) uom?: string;
+    @Field({ nullable: true }) priority?: string;
+    @Field({ nullable: true }) assignedTo?: string;
+    @Field({ nullable: true }) plannedStart?: string;
+    @Field({ nullable: true }) plannedEnd?: string;
+    @Field(() => Float, { nullable: true }) estimatedCost?: number;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+}
+
+function mapBom(r: any): MfgBomType {
+    return {
+        id: r.id, tenantId: r.tenant_id, code: r.code, name: r.name,
+        version: r.version, productName: r.product_name, productSku: r.product_sku,
+        description: r.description, uom: r.uom, yieldQty: r.yield_qty,
+        laborHours: r.labor_hours, laborCost: r.labor_cost,
+        overheadCost: r.overhead_cost, totalMaterialCost: r.total_material_cost,
+        totalCost: r.total_cost, notes: r.notes, status: r.status,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+}
+
+function mapBomLine(r: any): MfgBomLineType {
+    return {
+        id: r.id, bomId: r.bom_id, itemId: r.item_id,
+        itemName: r.item_name, itemSku: r.item_sku,
+        quantity: r.quantity, uom: r.uom, unitCost: r.unit_cost,
+        totalCost: r.total_cost, scrapPct: r.scrap_pct,
+        notes: r.notes, sortOrder: r.sort_order,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+}
+
+function mapWorkOrder(r: any): MfgWorkOrderType {
+    return {
+        id: r.id, tenantId: r.tenant_id, woNumber: r.wo_number,
+        bomId: r.bom_id, bomName: r.bom_name,
+        warehouseId: r.warehouse_id, warehouseName: r.warehouse_name,
+        plannedQty: r.planned_qty, completedQty: r.completed_qty,
+        uom: r.uom, priority: r.priority, assignedTo: r.assigned_to,
+        plannedStart: r.planned_start, plannedEnd: r.planned_end,
+        actualStart: r.actual_start, actualEnd: r.actual_end,
+        estimatedCost: r.estimated_cost, actualCost: r.actual_cost,
+        notes: r.notes, status: r.status,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+}
+
 // ─── Resolver ───────────────────────────────────────────
+
+// ═══════════════════════════════════════════════════════════
+// ─── STOCK OPNAME Types, Inputs, Mappers ──────────────────
+// ═══════════════════════════════════════════════════════════
+
+@ObjectType()
+class OpnameSessionType {
+    @Field(() => ID) id: string;
+    @Field() tenantId: string;
+    @Field() sessionCode: string;
+    @Field() title: string;
+    @Field({ nullable: true }) warehouseId?: string;
+    @Field({ nullable: true }) warehouseName?: string;
+    @Field({ nullable: true }) countedBy?: string;
+    @Field({ nullable: true }) reviewedBy?: string;
+    @Field({ nullable: true }) scheduledDate?: string;
+    @Field({ nullable: true }) startedAt?: string;
+    @Field({ nullable: true }) completedAt?: string;
+    @Field(() => Int, { nullable: true }) totalItems?: number;
+    @Field(() => Int, { nullable: true }) itemsCounted?: number;
+    @Field(() => Float, { nullable: true }) totalVarianceQty?: number;
+    @Field(() => Float, { nullable: true }) totalVarianceValue?: number;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field() createdAt: string;
+    @Field() updatedAt: string;
+}
+
+@ObjectType()
+class OpnameLineType {
+    @Field(() => ID) id: string;
+    @Field() sessionId: string;
+    @Field({ nullable: true }) itemId?: string;
+    @Field() itemName: string;
+    @Field({ nullable: true }) itemSku?: string;
+    @Field({ nullable: true }) zoneName?: string;
+    @Field({ nullable: true }) binCode?: string;
+    @Field({ nullable: true }) uom?: string;
+    @Field(() => Float) systemQty: number;
+    @Field(() => Float, { nullable: true }) actualQty?: number;
+    @Field(() => Float, { nullable: true }) varianceQty?: number;
+    @Field(() => Float, { nullable: true }) unitCost?: number;
+    @Field(() => Float, { nullable: true }) varianceValue?: number;
+    @Field({ nullable: true }) countedAt?: string;
+    @Field({ nullable: true }) countedBy?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field(() => Int, { nullable: true }) sortOrder?: number;
+    @Field() createdAt: string;
+    @Field() updatedAt: string;
+}
+
+@ObjectType()
+class OpnameStats {
+    @Field(() => Int) totalSessions: number;
+    @Field(() => Int) draft: number;
+    @Field(() => Int) counting: number;
+    @Field(() => Int) review: number;
+    @Field(() => Int) completed: number;
+    @Field(() => Float) totalVariance: number;
+}
+
+@InputType()
+class CreateOpnameSessionInput {
+    @Field() sessionCode: string;
+    @Field() title: string;
+    @Field({ nullable: true }) warehouseId?: string;
+    @Field({ nullable: true }) warehouseName?: string;
+    @Field({ nullable: true }) countedBy?: string;
+    @Field({ nullable: true }) scheduledDate?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+}
+
+@InputType()
+class CreateOpnameLineInput {
+    @Field({ nullable: true }) itemId?: string;
+    @Field() itemName: string;
+    @Field({ nullable: true }) itemSku?: string;
+    @Field({ nullable: true }) zoneName?: string;
+    @Field({ nullable: true }) binCode?: string;
+    @Field({ nullable: true }) uom?: string;
+    @Field(() => Float) systemQty: number;
+    @Field(() => Float, { nullable: true }) actualQty?: number;
+    @Field(() => Float, { nullable: true }) unitCost?: number;
+    @Field({ nullable: true }) countedBy?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field(() => Int, { nullable: true }) sortOrder?: number;
+}
+
+function mapOpnameSession(r: any): OpnameSessionType {
+    return {
+        id: r.id, tenantId: r.tenant_id, sessionCode: r.session_code, title: r.title,
+        warehouseId: r.warehouse_id, warehouseName: r.warehouse_name,
+        countedBy: r.counted_by, reviewedBy: r.reviewed_by,
+        scheduledDate: r.scheduled_date, startedAt: r.started_at, completedAt: r.completed_at,
+        totalItems: r.total_items, itemsCounted: r.items_counted,
+        totalVarianceQty: r.total_variance_qty, totalVarianceValue: r.total_variance_value,
+        notes: r.notes, status: r.status,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+}
+
+function mapOpnameLine(r: any): OpnameLineType {
+    return {
+        id: r.id, sessionId: r.session_id, itemId: r.item_id,
+        itemName: r.item_name, itemSku: r.item_sku,
+        zoneName: r.zone_name, binCode: r.bin_code, uom: r.uom,
+        systemQty: r.system_qty, actualQty: r.actual_qty,
+        varianceQty: r.variance_qty, unitCost: r.unit_cost,
+        varianceValue: r.variance_value, countedAt: r.counted_at,
+        countedBy: r.counted_by, notes: r.notes, status: r.status,
+        sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+}
+
+// ═══════════════════════════════════════════════════════════
+// ─── BOOKING Types, Inputs, Mappers ───────────────────────
+// ═══════════════════════════════════════════════════════════
+
+@ObjectType()
+class BookingScheduleType {
+    @Field(() => ID) id: string;
+    @Field() tenantId: string;
+    @Field() scheduleCode: string;
+    @Field() routeName: string;
+    @Field({ nullable: true }) origin?: string;
+    @Field({ nullable: true }) destination?: string;
+    @Field({ nullable: true }) departureTime?: string;
+    @Field({ nullable: true }) arrivalTime?: string;
+    @Field(() => Int, { nullable: true }) durationMinutes?: number;
+    @Field(() => Int, { nullable: true }) capacity?: number;
+    @Field({ nullable: true }) vehicleName?: string;
+    @Field({ nullable: true }) vesselType?: string;
+    @Field(() => Float, { nullable: true }) priceEconomy?: number;
+    @Field(() => Float, { nullable: true }) priceBusiness?: number;
+    @Field(() => Float, { nullable: true }) priceVip?: number;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field() createdAt: string;
+    @Field() updatedAt: string;
+}
+
+@ObjectType()
+class BookingOccurrenceType {
+    @Field(() => ID) id: string;
+    @Field() scheduleId: string;
+    @Field() departureDate: string;
+    @Field({ nullable: true }) departureTime?: string;
+    @Field(() => Int, { nullable: true }) totalCapacity?: number;
+    @Field(() => Int, { nullable: true }) bookedCount?: number;
+    @Field(() => Int, { nullable: true }) checkedInCount?: number;
+    @Field({ nullable: true }) actualDeparture?: string;
+    @Field({ nullable: true }) actualArrival?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field() createdAt: string;
+}
+
+@ObjectType()
+class BookingType {
+    @Field(() => ID) id: string;
+    @Field() tenantId: string;
+    @Field() bookingCode: string;
+    @Field({ nullable: true }) scheduleId?: string;
+    @Field({ nullable: true }) occurrenceId?: string;
+    @Field({ nullable: true }) customerName?: string;
+    @Field({ nullable: true }) customerEmail?: string;
+    @Field({ nullable: true }) customerPhone?: string;
+    @Field(() => Int, { nullable: true }) passengerCount?: number;
+    @Field({ nullable: true }) class?: string;
+    @Field(() => Float, { nullable: true }) totalAmount?: number;
+    @Field(() => Float, { nullable: true }) paidAmount?: number;
+    @Field({ nullable: true }) qrCode?: string;
+    @Field({ nullable: true }) checkInTime?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field() createdAt: string;
+    @Field() updatedAt: string;
+}
+
+@ObjectType()
+class BookingPassengerType {
+    @Field(() => ID) id: string;
+    @Field() bookingId: string;
+    @Field() name: string;
+    @Field({ nullable: true }) idNumber?: string;
+    @Field({ nullable: true }) nationality?: string;
+    @Field({ nullable: true }) seatLabel?: string;
+    @Field({ nullable: true }) class?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field() createdAt: string;
+}
+
+@ObjectType()
+class BookingStats {
+    @Field(() => Int) totalSchedules: number;
+    @Field(() => Int) totalBookings: number;
+    @Field(() => Int) confirmedBookings: number;
+    @Field(() => Int) checkedInBookings: number;
+    @Field(() => Int) totalOccurrences: number;
+    @Field(() => Int) upcomingDepartures: number;
+    @Field(() => Float) totalRevenue: number;
+}
+
+@InputType()
+class CreateScheduleInput {
+    @Field() scheduleCode: string;
+    @Field() routeName: string;
+    @Field({ nullable: true }) origin?: string;
+    @Field({ nullable: true }) destination?: string;
+    @Field({ nullable: true }) departureTime?: string;
+    @Field({ nullable: true }) arrivalTime?: string;
+    @Field(() => Int, { nullable: true }) durationMinutes?: number;
+    @Field(() => Int, { nullable: true }) capacity?: number;
+    @Field({ nullable: true }) vehicleName?: string;
+    @Field({ nullable: true }) vesselType?: string;
+    @Field(() => Float, { nullable: true }) priceEconomy?: number;
+    @Field(() => Float, { nullable: true }) priceBusiness?: number;
+    @Field(() => Float, { nullable: true }) priceVip?: number;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+}
+
+@InputType()
+class CreateBookingInput {
+    @Field() bookingCode: string;
+    @Field({ nullable: true }) scheduleId?: string;
+    @Field({ nullable: true }) occurrenceId?: string;
+    @Field({ nullable: true }) customerName?: string;
+    @Field({ nullable: true }) customerEmail?: string;
+    @Field({ nullable: true }) customerPhone?: string;
+    @Field(() => Int, { nullable: true }) passengerCount?: number;
+    @Field({ nullable: true }) class?: string;
+    @Field(() => Float, { nullable: true }) totalAmount?: number;
+    @Field(() => Float, { nullable: true }) paidAmount?: number;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+}
+
+function mapSchedule(r: any): BookingScheduleType {
+    return { id: r.id, tenantId: r.tenant_id, scheduleCode: r.schedule_code, routeName: r.route_name,
+        origin: r.origin, destination: r.destination, departureTime: r.departure_time, arrivalTime: r.arrival_time,
+        durationMinutes: r.duration_minutes, capacity: r.capacity, vehicleName: r.vehicle_name, vesselType: r.vessel_type,
+        priceEconomy: r.price_economy, priceBusiness: r.price_business, priceVip: r.price_vip,
+        notes: r.notes, status: r.status, createdAt: r.created_at, updatedAt: r.updated_at };
+}
+function mapOccurrence(r: any): BookingOccurrenceType {
+    return { id: r.id, scheduleId: r.schedule_id, departureDate: r.departure_date, departureTime: r.departure_time,
+        totalCapacity: r.total_capacity, bookedCount: r.booked_count, checkedInCount: r.checked_in_count,
+        actualDeparture: r.actual_departure, actualArrival: r.actual_arrival,
+        notes: r.notes, status: r.status, createdAt: r.created_at };
+}
+function mapBooking(r: any): BookingType {
+    return { id: r.id, tenantId: r.tenant_id, bookingCode: r.booking_code,
+        scheduleId: r.schedule_id, occurrenceId: r.occurrence_id,
+        customerName: r.customer_name, customerEmail: r.customer_email, customerPhone: r.customer_phone,
+        passengerCount: r.passenger_count, class: r.class, totalAmount: r.total_amount, paidAmount: r.paid_amount,
+        qrCode: r.qr_code, checkInTime: r.check_in_time, notes: r.notes, status: r.status,
+        createdAt: r.created_at, updatedAt: r.updated_at };
+}
+function mapPassenger(r: any): BookingPassengerType {
+    return { id: r.id, bookingId: r.booking_id, name: r.name, idNumber: r.id_number,
+        nationality: r.nationality, seatLabel: r.seat_label, class: r.class, notes: r.notes, createdAt: r.created_at };
+}
+
+// ═══════════════════════════════════════════════════════════
+// ─── RENTAL Types, Inputs, Mappers ────────────────────────
+// ═══════════════════════════════════════════════════════════
+
+@ObjectType()
+class RentalAssetType {
+    @Field(() => ID) id: string;
+    @Field() tenantId: string;
+    @Field() assetCode: string;
+    @Field() assetName: string;
+    @Field({ nullable: true }) serialNumber?: string;
+    @Field({ nullable: true }) category?: string;
+    @Field({ nullable: true }) condition?: string;
+    @Field({ nullable: true }) purchaseDate?: string;
+    @Field(() => Float, { nullable: true }) purchaseCost?: number;
+    @Field({ nullable: true }) currentLocation?: string;
+    @Field(() => Float, { nullable: true }) dailyRate?: number;
+    @Field(() => Float, { nullable: true }) depositAmount?: number;
+    @Field({ nullable: true }) lastMaintenanceDate?: string;
+    @Field({ nullable: true }) nextMaintenanceDate?: string;
+    @Field(() => Int, { nullable: true }) totalRentals?: number;
+    @Field(() => Float, { nullable: true }) totalRevenue?: number;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field() createdAt: string;
+    @Field() updatedAt: string;
+}
+
+@ObjectType()
+class RentalContractType {
+    @Field(() => ID) id: string;
+    @Field() tenantId: string;
+    @Field() contractCode: string;
+    @Field() assetId: string;
+    @Field({ nullable: true }) assetName?: string;
+    @Field() customerName: string;
+    @Field({ nullable: true }) customerEmail?: string;
+    @Field({ nullable: true }) customerPhone?: string;
+    @Field({ nullable: true }) customerIdNumber?: string;
+    @Field() checkoutDate: string;
+    @Field() expectedReturnDate: string;
+    @Field({ nullable: true }) actualReturnDate?: string;
+    @Field(() => Float, { nullable: true }) dailyRate?: number;
+    @Field(() => Float, { nullable: true }) depositAmount?: number;
+    @Field(() => Float, { nullable: true }) depositReturned?: number;
+    @Field(() => Int, { nullable: true }) rentalDays?: number;
+    @Field(() => Float, { nullable: true }) subtotal?: number;
+    @Field(() => Float, { nullable: true }) lateFee?: number;
+    @Field(() => Float, { nullable: true }) damageFee?: number;
+    @Field(() => Float, { nullable: true }) totalCharge?: number;
+    @Field({ nullable: true }) checkoutCondition?: string;
+    @Field({ nullable: true }) returnCondition?: string;
+    @Field({ nullable: true }) checkoutNotes?: string;
+    @Field({ nullable: true }) returnNotes?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field() createdAt: string;
+    @Field() updatedAt: string;
+}
+
+@ObjectType()
+class RentalStats {
+    @Field(() => Int) totalAssets: number;
+    @Field(() => Int) available: number;
+    @Field(() => Int) rented: number;
+    @Field(() => Int) maintenance: number;
+    @Field(() => Int) totalContracts: number;
+    @Field(() => Int) activeContracts: number;
+    @Field(() => Int) overdue: number;
+    @Field(() => Float) totalRevenue: number;
+}
+
+@InputType()
+class CreateRentalAssetInput {
+    @Field() assetCode: string;
+    @Field() assetName: string;
+    @Field({ nullable: true }) serialNumber?: string;
+    @Field({ nullable: true }) category?: string;
+    @Field({ nullable: true }) condition?: string;
+    @Field({ nullable: true }) purchaseDate?: string;
+    @Field(() => Float, { nullable: true }) purchaseCost?: number;
+    @Field({ nullable: true }) currentLocation?: string;
+    @Field(() => Float, { nullable: true }) dailyRate?: number;
+    @Field(() => Float, { nullable: true }) depositAmount?: number;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+}
+
+@InputType()
+class CreateRentalContractInput {
+    @Field() contractCode: string;
+    @Field() assetId: string;
+    @Field({ nullable: true }) assetName?: string;
+    @Field() customerName: string;
+    @Field({ nullable: true }) customerEmail?: string;
+    @Field({ nullable: true }) customerPhone?: string;
+    @Field({ nullable: true }) customerIdNumber?: string;
+    @Field() checkoutDate: string;
+    @Field() expectedReturnDate: string;
+    @Field(() => Float, { nullable: true }) dailyRate?: number;
+    @Field(() => Float, { nullable: true }) depositAmount?: number;
+    @Field(() => Float, { nullable: true }) subtotal?: number;
+    @Field(() => Float, { nullable: true }) totalCharge?: number;
+    @Field({ nullable: true }) checkoutCondition?: string;
+    @Field({ nullable: true }) checkoutNotes?: string;
+}
+
+function mapRentalAsset(r: any): RentalAssetType {
+    return { id: r.id, tenantId: r.tenant_id, assetCode: r.asset_code, assetName: r.asset_name,
+        serialNumber: r.serial_number, category: r.category, condition: r.condition,
+        purchaseDate: r.purchase_date, purchaseCost: r.purchase_cost, currentLocation: r.current_location,
+        dailyRate: r.daily_rate, depositAmount: r.deposit_amount,
+        lastMaintenanceDate: r.last_maintenance_date, nextMaintenanceDate: r.next_maintenance_date,
+        totalRentals: r.total_rentals, totalRevenue: r.total_revenue,
+        notes: r.notes, status: r.status, createdAt: r.created_at, updatedAt: r.updated_at };
+}
+function mapRentalContract(r: any): RentalContractType {
+    return { id: r.id, tenantId: r.tenant_id, contractCode: r.contract_code,
+        assetId: r.asset_id, assetName: r.asset_name,
+        customerName: r.customer_name, customerEmail: r.customer_email,
+        customerPhone: r.customer_phone, customerIdNumber: r.customer_id_number,
+        checkoutDate: r.checkout_date, expectedReturnDate: r.expected_return_date,
+        actualReturnDate: r.actual_return_date, dailyRate: r.daily_rate,
+        depositAmount: r.deposit_amount, depositReturned: r.deposit_returned,
+        rentalDays: r.rental_days, subtotal: r.subtotal, lateFee: r.late_fee,
+        damageFee: r.damage_fee, totalCharge: r.total_charge,
+        checkoutCondition: r.checkout_condition, returnCondition: r.return_condition,
+        checkoutNotes: r.checkout_notes, returnNotes: r.return_notes,
+        notes: r.notes, status: r.status, createdAt: r.created_at, updatedAt: r.updated_at };
+}
 
 @Resolver()
 export class InventoryResolver {
@@ -1320,6 +1885,329 @@ export class InventoryResolver {
     @Query(() => WarehouseStats)
     async warehouseStats(@Args('tenantId') tenantId: string) {
         return this.inventoryService.getWarehouseStats(tenantId);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ─── MANUFACTURING ────────────────────────────────────
+    // ═══════════════════════════════════════════════════════
+
+    // BOMs
+    @Query(() => [MfgBomType])
+    async mfgBoms(@Args('tenantId') tenantId: string) {
+        const data = await this.inventoryService.getBoms(tenantId);
+        return data.map(mapBom);
+    }
+
+    @Mutation(() => MfgBomType)
+    async createBom(
+        @Args('tenantId') tenantId: string,
+        @Args('input') input: CreateBomInput,
+    ) {
+        const data = await this.inventoryService.createBom(tenantId, input);
+        return mapBom(data);
+    }
+
+    @Mutation(() => MfgBomType)
+    async updateBom(
+        @Args('id') id: string,
+        @Args('input') input: CreateBomInput,
+    ) {
+        const data = await this.inventoryService.updateBom(id, input);
+        return mapBom(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteBom(@Args('id') id: string) {
+        return this.inventoryService.deleteBom(id);
+    }
+
+    // BOM Lines
+    @Query(() => [MfgBomLineType])
+    async mfgBomLines(@Args('bomId') bomId: string) {
+        const data = await this.inventoryService.getBomLines(bomId);
+        return data.map(mapBomLine);
+    }
+
+    @Mutation(() => MfgBomLineType)
+    async addBomLine(
+        @Args('bomId') bomId: string,
+        @Args('input') input: CreateBomLineInput,
+    ) {
+        const data = await this.inventoryService.addBomLine(bomId, input);
+        return mapBomLine(data);
+    }
+
+    @Mutation(() => MfgBomLineType)
+    async updateBomLine(
+        @Args('id') id: string,
+        @Args('input') input: CreateBomLineInput,
+    ) {
+        const data = await this.inventoryService.updateBomLine(id, input);
+        return mapBomLine(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteBomLine(@Args('id') id: string) {
+        return this.inventoryService.deleteBomLine(id);
+    }
+
+    // Work Orders
+    @Query(() => [MfgWorkOrderType])
+    async mfgWorkOrders(
+        @Args('tenantId') tenantId: string,
+        @Args('status', { nullable: true }) status?: string,
+    ) {
+        const data = await this.inventoryService.getWorkOrders(tenantId, status);
+        return data.map(mapWorkOrder);
+    }
+
+    @Mutation(() => MfgWorkOrderType)
+    async createWorkOrder(
+        @Args('tenantId') tenantId: string,
+        @Args('input') input: CreateWorkOrderInput,
+    ) {
+        const data = await this.inventoryService.createWorkOrder(tenantId, input);
+        return mapWorkOrder(data);
+    }
+
+    @Mutation(() => MfgWorkOrderType)
+    async updateWorkOrder(
+        @Args('id') id: string,
+        @Args('input') input: CreateWorkOrderInput,
+    ) {
+        const data = await this.inventoryService.updateWorkOrder(id, input);
+        return mapWorkOrder(data);
+    }
+
+    @Mutation(() => MfgWorkOrderType)
+    async updateWorkOrderStatus(
+        @Args('id') id: string,
+        @Args('status') status: string,
+    ) {
+        const data = await this.inventoryService.updateWorkOrderStatus(id, status);
+        return mapWorkOrder(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteWorkOrder(@Args('id') id: string) {
+        return this.inventoryService.deleteWorkOrder(id);
+    }
+
+    // Manufacturing Stats
+    @Query(() => ManufacturingStats)
+    async manufacturingStats(@Args('tenantId') tenantId: string) {
+        return this.inventoryService.getManufacturingStats(tenantId);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ─── STOCK OPNAME ─────────────────────────────────────
+    // ═══════════════════════════════════════════════════════
+
+    @Query(() => [OpnameSessionType])
+    async opnameSessions(@Args('tenantId') tenantId: string) {
+        const data = await this.inventoryService.getOpnameSessions(tenantId);
+        return data.map(mapOpnameSession);
+    }
+
+    @Mutation(() => OpnameSessionType)
+    async createOpnameSession(
+        @Args('tenantId') tenantId: string,
+        @Args('input') input: CreateOpnameSessionInput,
+    ) {
+        const data = await this.inventoryService.createOpnameSession(tenantId, input);
+        return mapOpnameSession(data);
+    }
+
+    @Mutation(() => OpnameSessionType)
+    async updateOpnameSession(
+        @Args('id') id: string,
+        @Args('input') input: CreateOpnameSessionInput,
+    ) {
+        const data = await this.inventoryService.updateOpnameSession(id, input);
+        return mapOpnameSession(data);
+    }
+
+    @Mutation(() => OpnameSessionType)
+    async updateOpnameSessionStatus(
+        @Args('id') id: string,
+        @Args('status') status: string,
+    ) {
+        const data = await this.inventoryService.updateOpnameSessionStatus(id, status);
+        return mapOpnameSession(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteOpnameSession(@Args('id') id: string) {
+        return this.inventoryService.deleteOpnameSession(id);
+    }
+
+    @Query(() => [OpnameLineType])
+    async opnameLines(@Args('sessionId') sessionId: string) {
+        const data = await this.inventoryService.getOpnameLines(sessionId);
+        return data.map(mapOpnameLine);
+    }
+
+    @Mutation(() => OpnameLineType)
+    async addOpnameLine(
+        @Args('sessionId') sessionId: string,
+        @Args('input') input: CreateOpnameLineInput,
+    ) {
+        const data = await this.inventoryService.addOpnameLine(sessionId, input);
+        return mapOpnameLine(data);
+    }
+
+    @Mutation(() => OpnameLineType)
+    async updateOpnameLine(
+        @Args('id') id: string,
+        @Args('input') input: CreateOpnameLineInput,
+    ) {
+        const data = await this.inventoryService.updateOpnameLine(id, input);
+        return mapOpnameLine(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteOpnameLine(@Args('id') id: string) {
+        return this.inventoryService.deleteOpnameLine(id);
+    }
+
+    @Query(() => OpnameStats)
+    async opnameStats(@Args('tenantId') tenantId: string) {
+        return this.inventoryService.getOpnameStats(tenantId);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ─── BOOKING & TICKETING ─────────────────────────────
+    // ═══════════════════════════════════════════════════════
+
+    @Query(() => [BookingScheduleType])
+    async bookingSchedules(@Args('tenantId') tenantId: string) {
+        const data = await this.inventoryService.getSchedules(tenantId);
+        return data.map(mapSchedule);
+    }
+
+    @Mutation(() => BookingScheduleType)
+    async createSchedule(@Args('tenantId') tenantId: string, @Args('input') input: CreateScheduleInput) {
+        const data = await this.inventoryService.createSchedule(tenantId, input);
+        return mapSchedule(data);
+    }
+
+    @Mutation(() => BookingScheduleType)
+    async updateSchedule(@Args('id') id: string, @Args('input') input: CreateScheduleInput) {
+        const data = await this.inventoryService.updateSchedule(id, input);
+        return mapSchedule(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteSchedule(@Args('id') id: string) {
+        return this.inventoryService.deleteSchedule(id);
+    }
+
+    @Query(() => [BookingOccurrenceType])
+    async bookingOccurrences(@Args('scheduleId', { nullable: true }) scheduleId?: string) {
+        const data = await this.inventoryService.getOccurrences(scheduleId || undefined);
+        return data.map(mapOccurrence);
+    }
+
+    @Mutation(() => BookingOccurrenceType)
+    async createOccurrence(@Args('scheduleId') scheduleId: string, @Args('departureDate') departureDate: string) {
+        const data = await this.inventoryService.createOccurrence(scheduleId, { departureDate });
+        return mapOccurrence(data);
+    }
+
+    @Mutation(() => BookingOccurrenceType)
+    async updateOccurrenceStatus(@Args('id') id: string, @Args('status') status: string) {
+        const data = await this.inventoryService.updateOccurrenceStatus(id, status);
+        return mapOccurrence(data);
+    }
+
+    @Query(() => [BookingType])
+    async bookings(@Args('tenantId') tenantId: string, @Args('occurrenceId', { nullable: true }) occurrenceId?: string) {
+        const data = await this.inventoryService.getBookings(tenantId, occurrenceId || undefined);
+        return data.map(mapBooking);
+    }
+
+    @Mutation(() => BookingType)
+    async createBooking(@Args('tenantId') tenantId: string, @Args('input') input: CreateBookingInput) {
+        const data = await this.inventoryService.createBooking(tenantId, input);
+        return mapBooking(data);
+    }
+
+    @Mutation(() => BookingType)
+    async updateBookingStatus(@Args('id') id: string, @Args('status') status: string) {
+        const data = await this.inventoryService.updateBookingStatus(id, status);
+        return mapBooking(data);
+    }
+
+    @Query(() => [BookingPassengerType])
+    async bookingPassengers(@Args('bookingId') bookingId: string) {
+        const data = await this.inventoryService.getPassengers(bookingId);
+        return data.map(mapPassenger);
+    }
+
+    @Mutation(() => BookingPassengerType)
+    async addPassenger(@Args('bookingId') bookingId: string, @Args('name') name: string, @Args('idNumber', { nullable: true }) idNumber?: string) {
+        const data = await this.inventoryService.addPassenger(bookingId, { name, idNumber });
+        return mapPassenger(data);
+    }
+
+    @Query(() => BookingStats)
+    async bookingStats(@Args('tenantId') tenantId: string) {
+        return this.inventoryService.getBookingStats(tenantId);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ─── RENTAL ENGINE ───────────────────────────────────
+    // ═══════════════════════════════════════════════════════
+
+    @Query(() => [RentalAssetType])
+    async rentalAssets(@Args('tenantId') tenantId: string) {
+        const data = await this.inventoryService.getRentalAssets(tenantId);
+        return data.map(mapRentalAsset);
+    }
+
+    @Mutation(() => RentalAssetType)
+    async createRentalAsset(@Args('tenantId') tenantId: string, @Args('input') input: CreateRentalAssetInput) {
+        const data = await this.inventoryService.createRentalAsset(tenantId, input);
+        return mapRentalAsset(data);
+    }
+
+    @Mutation(() => RentalAssetType)
+    async updateRentalAsset(@Args('id') id: string, @Args('input') input: CreateRentalAssetInput) {
+        const data = await this.inventoryService.updateRentalAsset(id, input);
+        return mapRentalAsset(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteRentalAsset(@Args('id') id: string) {
+        return this.inventoryService.deleteRentalAsset(id);
+    }
+
+    @Query(() => [RentalContractType])
+    async rentalContracts(@Args('tenantId') tenantId: string) {
+        const data = await this.inventoryService.getRentalContracts(tenantId);
+        return data.map(mapRentalContract);
+    }
+
+    @Mutation(() => RentalContractType)
+    async createRentalContract(@Args('tenantId') tenantId: string, @Args('input') input: CreateRentalContractInput) {
+        const data = await this.inventoryService.createRentalContract(tenantId, input);
+        return mapRentalContract(data);
+    }
+
+    @Mutation(() => RentalContractType)
+    async returnRentalAsset(@Args('contractId') contractId: string, @Args('returnCondition') returnCondition: string) {
+        const data = await this.inventoryService.returnRentalAsset(contractId, { returnCondition });
+        return mapRentalContract(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteRentalContract(@Args('id') id: string) {
+        return this.inventoryService.deleteRentalContract(id);
+    }
+
+    @Query(() => RentalStats)
+    async rentalStats(@Args('tenantId') tenantId: string) {
+        return this.inventoryService.getRentalStats(tenantId);
     }
 }
 

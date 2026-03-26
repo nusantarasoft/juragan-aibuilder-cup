@@ -716,6 +716,430 @@ export const inventoryService = {
         `, { tenantId });
         return data.warehouseStats;
     },
+
+    // ═══════════════════════════════════════════════════════
+    // ─── MANUFACTURING ────────────────────────────────────
+    // ═══════════════════════════════════════════════════════
+
+    async getBoms(tenantId = 'default'): Promise<MfgBom[]> {
+        const data = await graphqlRequest<{ mfgBoms: MfgBom[] }>(`
+            query($tenantId: String!) {
+                mfgBoms(tenantId: $tenantId) {
+                    id tenantId code name version productName productSku description
+                    uom yieldQty laborHours laborCost overheadCost totalMaterialCost
+                    totalCost notes status createdAt updatedAt
+                }
+            }
+        `, { tenantId });
+        return data.mfgBoms || [];
+    },
+
+    async createBom(tenantId = 'default', input: Record<string, any>): Promise<MfgBom> {
+        const data = await graphqlRequest<{ createBom: MfgBom }>(`
+            mutation($tenantId: String!, $input: CreateBomInput!) {
+                createBom(tenantId: $tenantId, input: $input) {
+                    id code name status createdAt
+                }
+            }
+        `, { tenantId, input });
+        return data.createBom;
+    },
+
+    async updateBom(id: string, input: Record<string, any>): Promise<MfgBom> {
+        const data = await graphqlRequest<{ updateBom: MfgBom }>(`
+            mutation($id: String!, $input: CreateBomInput!) {
+                updateBom(id: $id, input: $input) { id code name status updatedAt }
+            }
+        `, { id, input });
+        return data.updateBom;
+    },
+
+    async deleteBom(id: string) {
+        await graphqlRequest(`mutation($id: String!) { deleteBom(id: $id) }`, { id });
+    },
+
+    async getBomLines(bomId: string): Promise<MfgBomLine[]> {
+        const data = await graphqlRequest<{ mfgBomLines: MfgBomLine[] }>(`
+            query($bomId: String!) {
+                mfgBomLines(bomId: $bomId) {
+                    id bomId itemId itemName itemSku quantity uom
+                    unitCost totalCost scrapPct notes sortOrder createdAt updatedAt
+                }
+            }
+        `, { bomId });
+        return data.mfgBomLines || [];
+    },
+
+    async addBomLine(bomId: string, input: Record<string, any>): Promise<MfgBomLine> {
+        const data = await graphqlRequest<{ addBomLine: MfgBomLine }>(`
+            mutation($bomId: String!, $input: CreateBomLineInput!) {
+                addBomLine(bomId: $bomId, input: $input) {
+                    id bomId itemName quantity createdAt
+                }
+            }
+        `, { bomId, input });
+        return data.addBomLine;
+    },
+
+    async updateBomLine(id: string, input: Record<string, any>): Promise<MfgBomLine> {
+        const data = await graphqlRequest<{ updateBomLine: MfgBomLine }>(`
+            mutation($id: String!, $input: CreateBomLineInput!) {
+                updateBomLine(id: $id, input: $input) { id itemName quantity updatedAt }
+            }
+        `, { id, input });
+        return data.updateBomLine;
+    },
+
+    async deleteBomLine(id: string) {
+        await graphqlRequest(`mutation($id: String!) { deleteBomLine(id: $id) }`, { id });
+    },
+
+    async getWorkOrders(tenantId = 'default', status?: string): Promise<MfgWorkOrder[]> {
+        const data = await graphqlRequest<{ mfgWorkOrders: MfgWorkOrder[] }>(`
+            query($tenantId: String!, $status: String) {
+                mfgWorkOrders(tenantId: $tenantId, status: $status) {
+                    id tenantId woNumber bomId bomName warehouseId warehouseName
+                    plannedQty completedQty uom priority assignedTo
+                    plannedStart plannedEnd actualStart actualEnd
+                    estimatedCost actualCost notes status createdAt updatedAt
+                }
+            }
+        `, { tenantId, status });
+        return data.mfgWorkOrders || [];
+    },
+
+    async createWorkOrder(tenantId = 'default', input: Record<string, any>): Promise<MfgWorkOrder> {
+        const data = await graphqlRequest<{ createWorkOrder: MfgWorkOrder }>(`
+            mutation($tenantId: String!, $input: CreateWorkOrderInput!) {
+                createWorkOrder(tenantId: $tenantId, input: $input) {
+                    id woNumber status createdAt
+                }
+            }
+        `, { tenantId, input });
+        return data.createWorkOrder;
+    },
+
+    async updateWorkOrder(id: string, input: Record<string, any>): Promise<MfgWorkOrder> {
+        const data = await graphqlRequest<{ updateWorkOrder: MfgWorkOrder }>(`
+            mutation($id: String!, $input: CreateWorkOrderInput!) {
+                updateWorkOrder(id: $id, input: $input) { id woNumber status updatedAt }
+            }
+        `, { id, input });
+        return data.updateWorkOrder;
+    },
+
+    async updateWorkOrderStatus(id: string, status: string): Promise<MfgWorkOrder> {
+        const data = await graphqlRequest<{ updateWorkOrderStatus: MfgWorkOrder }>(`
+            mutation($id: String!, $status: String!) {
+                updateWorkOrderStatus(id: $id, status: $status) {
+                    id woNumber status actualStart actualEnd updatedAt
+                }
+            }
+        `, { id, status });
+        return data.updateWorkOrderStatus;
+    },
+
+    async deleteWorkOrder(id: string) {
+        await graphqlRequest(`mutation($id: String!) { deleteWorkOrder(id: $id) }`, { id });
+    },
+
+    async getManufacturingStats(tenantId = 'default'): Promise<ManufacturingStats> {
+        const data = await graphqlRequest<{ manufacturingStats: ManufacturingStats }>(`
+            query($tenantId: String!) {
+                manufacturingStats(tenantId: $tenantId) {
+                    totalBoms totalWorkOrders draftWos plannedWos inProgressWos completedWos
+                }
+            }
+        `, { tenantId });
+        return data.manufacturingStats;
+    },
+
+    // ═════════════════════════════════════════════════════
+    // ─── STOCK OPNAME ────────────────────────────────────
+    // ═════════════════════════════════════════════════════
+
+    async getOpnameSessions(tenantId = 'default'): Promise<OpnameSession[]> {
+        const data = await graphqlRequest<{ opnameSessions: OpnameSession[] }>(`
+            query($tenantId: String!) {
+                opnameSessions(tenantId: $tenantId) {
+                    id tenantId sessionCode title warehouseId warehouseName
+                    countedBy reviewedBy scheduledDate startedAt completedAt
+                    totalItems itemsCounted totalVarianceQty totalVarianceValue
+                    notes status createdAt updatedAt
+                }
+            }
+        `, { tenantId });
+        return data.opnameSessions || [];
+    },
+
+    async createOpnameSession(tenantId = 'default', input: Record<string, any>): Promise<OpnameSession> {
+        const data = await graphqlRequest<{ createOpnameSession: OpnameSession }>(`
+            mutation($tenantId: String!, $input: CreateOpnameSessionInput!) {
+                createOpnameSession(tenantId: $tenantId, input: $input) {
+                    id sessionCode title status createdAt
+                }
+            }
+        `, { tenantId, input });
+        return data.createOpnameSession;
+    },
+
+    async updateOpnameSession(id: string, input: Record<string, any>): Promise<OpnameSession> {
+        const data = await graphqlRequest<{ updateOpnameSession: OpnameSession }>(`
+            mutation($id: String!, $input: CreateOpnameSessionInput!) {
+                updateOpnameSession(id: $id, input: $input) { id sessionCode status updatedAt }
+            }
+        `, { id, input });
+        return data.updateOpnameSession;
+    },
+
+    async updateOpnameSessionStatus(id: string, status: string): Promise<OpnameSession> {
+        const data = await graphqlRequest<{ updateOpnameSessionStatus: OpnameSession }>(`
+            mutation($id: String!, $status: String!) {
+                updateOpnameSessionStatus(id: $id, status: $status) {
+                    id sessionCode status startedAt completedAt updatedAt
+                }
+            }
+        `, { id, status });
+        return data.updateOpnameSessionStatus;
+    },
+
+    async deleteOpnameSession(id: string) {
+        await graphqlRequest(`mutation($id: String!) { deleteOpnameSession(id: $id) }`, { id });
+    },
+
+    async getOpnameLines(sessionId: string): Promise<OpnameLine[]> {
+        const data = await graphqlRequest<{ opnameLines: OpnameLine[] }>(`
+            query($sessionId: String!) {
+                opnameLines(sessionId: $sessionId) {
+                    id sessionId itemId itemName itemSku zoneName binCode uom
+                    systemQty actualQty varianceQty unitCost varianceValue
+                    countedAt countedBy notes status sortOrder createdAt updatedAt
+                }
+            }
+        `, { sessionId });
+        return data.opnameLines || [];
+    },
+
+    async addOpnameLine(sessionId: string, input: Record<string, any>): Promise<OpnameLine> {
+        const data = await graphqlRequest<{ addOpnameLine: OpnameLine }>(`
+            mutation($sessionId: String!, $input: CreateOpnameLineInput!) {
+                addOpnameLine(sessionId: $sessionId, input: $input) {
+                    id sessionId itemName systemQty createdAt
+                }
+            }
+        `, { sessionId, input });
+        return data.addOpnameLine;
+    },
+
+    async updateOpnameLine(id: string, input: Record<string, any>): Promise<OpnameLine> {
+        const data = await graphqlRequest<{ updateOpnameLine: OpnameLine }>(`
+            mutation($id: String!, $input: CreateOpnameLineInput!) {
+                updateOpnameLine(id: $id, input: $input) {
+                    id itemName actualQty varianceQty varianceValue status updatedAt
+                }
+            }
+        `, { id, input });
+        return data.updateOpnameLine;
+    },
+
+    async deleteOpnameLine(id: string) {
+        await graphqlRequest(`mutation($id: String!) { deleteOpnameLine(id: $id) }`, { id });
+    },
+
+    async getOpnameStats(tenantId = 'default'): Promise<OpnameStatsType> {
+        const data = await graphqlRequest<{ opnameStats: OpnameStatsType }>(`
+            query($tenantId: String!) {
+                opnameStats(tenantId: $tenantId) {
+                    totalSessions draft counting review completed totalVariance
+                }
+            }
+        `, { tenantId });
+        return data.opnameStats;
+    },
+
+    // ═════════════════════════════════════════════════════
+    // ─── BOOKING & TICKETING ──────────────────────────────
+    // ═════════════════════════════════════════════════════
+
+    async getSchedules(tenantId = 'default'): Promise<BookingSchedule[]> {
+        const data = await graphqlRequest<{ bookingSchedules: BookingSchedule[] }>(`
+            query($tenantId: String!) {
+                bookingSchedules(tenantId: $tenantId) {
+                    id tenantId scheduleCode routeName origin destination departureTime arrivalTime
+                    durationMinutes capacity vehicleName vesselType priceEconomy priceBusiness priceVip
+                    notes status createdAt updatedAt
+                }
+            }
+        `, { tenantId });
+        return data.bookingSchedules || [];
+    },
+
+    async createSchedule(tenantId = 'default', input: Record<string, any>): Promise<BookingSchedule> {
+        const data = await graphqlRequest<{ createSchedule: BookingSchedule }>(`
+            mutation($tenantId: String!, $input: CreateScheduleInput!) {
+                createSchedule(tenantId: $tenantId, input: $input) { id scheduleCode status createdAt }
+            }
+        `, { tenantId, input });
+        return data.createSchedule;
+    },
+
+    async deleteSchedule(id: string) {
+        await graphqlRequest(`mutation($id: String!) { deleteSchedule(id: $id) }`, { id });
+    },
+
+    async getOccurrences(scheduleId?: string): Promise<BookingOccurrence[]> {
+        const data = await graphqlRequest<{ bookingOccurrences: BookingOccurrence[] }>(`
+            query($scheduleId: String) {
+                bookingOccurrences(scheduleId: $scheduleId) {
+                    id scheduleId departureDate departureTime totalCapacity bookedCount
+                    checkedInCount actualDeparture actualArrival notes status createdAt
+                }
+            }
+        `, { scheduleId: scheduleId || null });
+        return data.bookingOccurrences || [];
+    },
+
+    async updateOccurrenceStatus(id: string, status: string): Promise<BookingOccurrence> {
+        const data = await graphqlRequest<{ updateOccurrenceStatus: BookingOccurrence }>(`
+            mutation($id: String!, $status: String!) {
+                updateOccurrenceStatus(id: $id, status: $status) { id status updatedAt }
+            }
+        `, { id, status });
+        return data.updateOccurrenceStatus;
+    },
+
+    async getBookings(tenantId = 'default', occurrenceId?: string): Promise<Booking[]> {
+        const data = await graphqlRequest<{ bookings: Booking[] }>(`
+            query($tenantId: String!, $occurrenceId: String) {
+                bookings(tenantId: $tenantId, occurrenceId: $occurrenceId) {
+                    id tenantId bookingCode scheduleId occurrenceId customerName customerEmail
+                    customerPhone passengerCount class totalAmount paidAmount qrCode checkInTime
+                    notes status createdAt updatedAt
+                }
+            }
+        `, { tenantId, occurrenceId: occurrenceId || null });
+        return data.bookings || [];
+    },
+
+    async createBooking(tenantId = 'default', input: Record<string, any>): Promise<Booking> {
+        const data = await graphqlRequest<{ createBooking: Booking }>(`
+            mutation($tenantId: String!, $input: CreateBookingInput!) {
+                createBooking(tenantId: $tenantId, input: $input) { id bookingCode status createdAt }
+            }
+        `, { tenantId, input });
+        return data.createBooking;
+    },
+
+    async updateBookingStatus(id: string, status: string): Promise<Booking> {
+        const data = await graphqlRequest<{ updateBookingStatus: Booking }>(`
+            mutation($id: String!, $status: String!) {
+                updateBookingStatus(id: $id, status: $status) { id bookingCode status checkInTime updatedAt }
+            }
+        `, { id, status });
+        return data.updateBookingStatus;
+    },
+
+    async getPassengers(bookingId: string): Promise<BookingPassenger[]> {
+        const data = await graphqlRequest<{ bookingPassengers: BookingPassenger[] }>(`
+            query($bookingId: String!) {
+                bookingPassengers(bookingId: $bookingId) { id bookingId name idNumber nationality seatLabel class notes createdAt }
+            }
+        `, { bookingId });
+        return data.bookingPassengers || [];
+    },
+
+    async getBookingStats(tenantId = 'default'): Promise<BookingStatsType> {
+        const data = await graphqlRequest<{ bookingStats: BookingStatsType }>(`
+            query($tenantId: String!) {
+                bookingStats(tenantId: $tenantId) {
+                    totalSchedules totalBookings confirmedBookings checkedInBookings
+                    totalOccurrences upcomingDepartures totalRevenue
+                }
+            }
+        `, { tenantId });
+        return data.bookingStats;
+    },
+
+    // ═════════════════════════════════════════════════════
+    // ─── RENTAL ENGINE ───────────────────────────────────
+    // ═════════════════════════════════════════════════════
+
+    async getRentalAssets(tenantId = 'default'): Promise<RentalAsset[]> {
+        const data = await graphqlRequest<{ rentalAssets: RentalAsset[] }>(`
+            query($tenantId: String!) {
+                rentalAssets(tenantId: $tenantId) {
+                    id tenantId assetCode assetName serialNumber category condition
+                    purchaseDate purchaseCost currentLocation dailyRate depositAmount
+                    lastMaintenanceDate nextMaintenanceDate totalRentals totalRevenue
+                    notes status createdAt updatedAt
+                }
+            }
+        `, { tenantId });
+        return data.rentalAssets || [];
+    },
+
+    async createRentalAsset(tenantId = 'default', input: Record<string, any>): Promise<RentalAsset> {
+        const data = await graphqlRequest<{ createRentalAsset: RentalAsset }>(`
+            mutation($tenantId: String!, $input: CreateRentalAssetInput!) {
+                createRentalAsset(tenantId: $tenantId, input: $input) { id assetCode status createdAt }
+            }
+        `, { tenantId, input });
+        return data.createRentalAsset;
+    },
+
+    async deleteRentalAsset(id: string) {
+        await graphqlRequest(`mutation($id: String!) { deleteRentalAsset(id: $id) }`, { id });
+    },
+
+    async getRentalContracts(tenantId = 'default'): Promise<RentalContract[]> {
+        const data = await graphqlRequest<{ rentalContracts: RentalContract[] }>(`
+            query($tenantId: String!) {
+                rentalContracts(tenantId: $tenantId) {
+                    id tenantId contractCode assetId assetName customerName customerEmail
+                    customerPhone customerIdNumber checkoutDate expectedReturnDate actualReturnDate
+                    dailyRate depositAmount depositReturned rentalDays subtotal lateFee damageFee
+                    totalCharge checkoutCondition returnCondition checkoutNotes returnNotes
+                    notes status createdAt updatedAt
+                }
+            }
+        `, { tenantId });
+        return data.rentalContracts || [];
+    },
+
+    async createRentalContract(tenantId = 'default', input: Record<string, any>): Promise<RentalContract> {
+        const data = await graphqlRequest<{ createRentalContract: RentalContract }>(`
+            mutation($tenantId: String!, $input: CreateRentalContractInput!) {
+                createRentalContract(tenantId: $tenantId, input: $input) { id contractCode status createdAt }
+            }
+        `, { tenantId, input });
+        return data.createRentalContract;
+    },
+
+    async returnRentalAsset(contractId: string, returnCondition: string): Promise<RentalContract> {
+        const data = await graphqlRequest<{ returnRentalAsset: RentalContract }>(`
+            mutation($contractId: String!, $returnCondition: String!) {
+                returnRentalAsset(contractId: $contractId, returnCondition: $returnCondition) {
+                    id contractCode status actualReturnDate updatedAt
+                }
+            }
+        `, { contractId, returnCondition });
+        return data.returnRentalAsset;
+    },
+
+    async deleteRentalContract(id: string) {
+        await graphqlRequest(`mutation($id: String!) { deleteRentalContract(id: $id) }`, { id });
+    },
+
+    async getRentalStats(tenantId = 'default'): Promise<RentalStatsType> {
+        const data = await graphqlRequest<{ rentalStats: RentalStatsType }>(`
+            query($tenantId: String!) {
+                rentalStats(tenantId: $tenantId) {
+                    totalAssets available rented maintenance totalContracts activeContracts overdue totalRevenue
+                }
+            }
+        `, { tenantId });
+        return data.rentalStats;
+    },
 };
 
 // ─── Warehouse Types ────────────────────────────────────
@@ -763,4 +1187,143 @@ export interface WarehouseStats {
     totalWarehouses: number; totalZones: number; totalBins: number;
     activeTransfers: number; totalTransfers: number;
     totalCapacity: number; usedCapacity: number;
+}
+
+// ─── Manufacturing Types ────────────────────────────────
+
+export interface MfgBom {
+    id: string; tenantId: string; code: string; name: string;
+    version?: string; productName?: string; productSku?: string;
+    description?: string; uom?: string; yieldQty?: number;
+    laborHours?: number; laborCost?: number; overheadCost?: number;
+    totalMaterialCost?: number; totalCost?: number;
+    notes?: string; status?: string;
+    createdAt: string; updatedAt: string;
+}
+
+export interface MfgBomLine {
+    id: string; bomId: string; itemId?: string;
+    itemName: string; itemSku?: string;
+    quantity: number; uom?: string;
+    unitCost?: number; totalCost?: number; scrapPct?: number;
+    notes?: string; sortOrder?: number;
+    createdAt: string; updatedAt: string;
+}
+
+export interface MfgWorkOrder {
+    id: string; tenantId: string; woNumber: string;
+    bomId?: string; bomName?: string;
+    warehouseId?: string; warehouseName?: string;
+    plannedQty: number; completedQty?: number;
+    uom?: string; priority?: string; assignedTo?: string;
+    plannedStart?: string; plannedEnd?: string;
+    actualStart?: string; actualEnd?: string;
+    estimatedCost?: number; actualCost?: number;
+    notes?: string; status?: string;
+    createdAt: string; updatedAt: string;
+}
+
+export interface ManufacturingStats {
+    totalBoms: number; totalWorkOrders: number;
+    draftWos: number; plannedWos: number;
+    inProgressWos: number; completedWos: number;
+}
+
+// ─── Stock Opname Types ─────────────────────────────
+
+export interface OpnameSession {
+    id: string; tenantId: string; sessionCode: string; title: string;
+    warehouseId?: string; warehouseName?: string;
+    countedBy?: string; reviewedBy?: string;
+    scheduledDate?: string; startedAt?: string; completedAt?: string;
+    totalItems?: number; itemsCounted?: number;
+    totalVarianceQty?: number; totalVarianceValue?: number;
+    notes?: string; status?: string;
+    createdAt: string; updatedAt: string;
+}
+
+export interface OpnameLine {
+    id: string; sessionId: string; itemId?: string;
+    itemName: string; itemSku?: string;
+    zoneName?: string; binCode?: string; uom?: string;
+    systemQty: number; actualQty?: number; varianceQty?: number;
+    unitCost?: number; varianceValue?: number;
+    countedAt?: string; countedBy?: string;
+    notes?: string; status?: string; sortOrder?: number;
+    createdAt: string; updatedAt: string;
+}
+
+export interface OpnameStatsType {
+    totalSessions: number; draft: number;
+    counting: number; review: number;
+    completed: number; totalVariance: number;
+}
+
+// ─── Booking Types ─────────────────────────────────
+
+export interface BookingSchedule {
+    id: string; tenantId: string; scheduleCode: string; routeName: string;
+    origin?: string; destination?: string; departureTime?: string; arrivalTime?: string;
+    durationMinutes?: number; capacity?: number; vehicleName?: string; vesselType?: string;
+    priceEconomy?: number; priceBusiness?: number; priceVip?: number;
+    notes?: string; status?: string; createdAt: string; updatedAt: string;
+}
+
+export interface BookingOccurrence {
+    id: string; scheduleId: string; departureDate: string; departureTime?: string;
+    totalCapacity?: number; bookedCount?: number; checkedInCount?: number;
+    actualDeparture?: string; actualArrival?: string;
+    notes?: string; status?: string; createdAt: string;
+}
+
+export interface Booking {
+    id: string; tenantId: string; bookingCode: string;
+    scheduleId?: string; occurrenceId?: string;
+    customerName?: string; customerEmail?: string; customerPhone?: string;
+    passengerCount?: number; class?: string; totalAmount?: number; paidAmount?: number;
+    qrCode?: string; checkInTime?: string; notes?: string; status?: string;
+    createdAt: string; updatedAt: string;
+}
+
+export interface BookingPassenger {
+    id: string; bookingId: string; name: string;
+    idNumber?: string; nationality?: string; seatLabel?: string;
+    class?: string; notes?: string; createdAt: string;
+}
+
+export interface BookingStatsType {
+    totalSchedules: number; totalBookings: number;
+    confirmedBookings: number; checkedInBookings: number;
+    totalOccurrences: number; upcomingDepartures: number;
+    totalRevenue: number;
+}
+
+// ─── Rental Types ──────────────────────────────────
+
+export interface RentalAsset {
+    id: string; tenantId: string; assetCode: string; assetName: string;
+    serialNumber?: string; category?: string; condition?: string;
+    purchaseDate?: string; purchaseCost?: number; currentLocation?: string;
+    dailyRate?: number; depositAmount?: number;
+    lastMaintenanceDate?: string; nextMaintenanceDate?: string;
+    totalRentals?: number; totalRevenue?: number;
+    notes?: string; status?: string; createdAt: string; updatedAt: string;
+}
+
+export interface RentalContract {
+    id: string; tenantId: string; contractCode: string;
+    assetId: string; assetName?: string; customerName: string;
+    customerEmail?: string; customerPhone?: string; customerIdNumber?: string;
+    checkoutDate: string; expectedReturnDate: string; actualReturnDate?: string;
+    dailyRate?: number; depositAmount?: number; depositReturned?: number;
+    rentalDays?: number; subtotal?: number; lateFee?: number;
+    damageFee?: number; totalCharge?: number;
+    checkoutCondition?: string; returnCondition?: string;
+    checkoutNotes?: string; returnNotes?: string;
+    notes?: string; status?: string; createdAt: string; updatedAt: string;
+}
+
+export interface RentalStatsType {
+    totalAssets: number; available: number; rented: number; maintenance: number;
+    totalContracts: number; activeContracts: number; overdue: number; totalRevenue: number;
 }

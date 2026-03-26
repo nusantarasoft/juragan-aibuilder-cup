@@ -1108,6 +1108,545 @@ IMPORTANT: Return ONLY valid JSON.`;
             usedCapacity,
         };
     }
+
+    // ═══════════════════════════════════════════════════════
+    // ─── MANUFACTURING ────────────────────────────────────
+    // ═══════════════════════════════════════════════════════
+
+    async getBoms(tenantId: string) {
+        const { data, error } = await this.db.from('mfg_boms')
+            .select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async createBom(tenantId: string, input: Record<string, any>) {
+        const row: any = {
+            tenant_id: tenantId, code: input.code, name: input.name,
+            version: input.version || '1.0', product_name: input.productName,
+            product_sku: input.productSku, description: input.description,
+            uom: input.uom || 'unit', yield_qty: input.yieldQty ?? 1,
+            labor_hours: input.laborHours ?? 0, labor_cost: input.laborCost ?? 0,
+            overhead_cost: input.overheadCost ?? 0, notes: input.notes,
+            status: input.status || 'draft',
+        };
+        const { data, error } = await this.db.from('mfg_boms').insert(row).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateBom(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const map: Record<string, string> = {
+            code: 'code', name: 'name', version: 'version',
+            productName: 'product_name', productSku: 'product_sku',
+            description: 'description', uom: 'uom', yieldQty: 'yield_qty',
+            laborHours: 'labor_hours', laborCost: 'labor_cost',
+            overheadCost: 'overhead_cost', totalMaterialCost: 'total_material_cost',
+            totalCost: 'total_cost', notes: 'notes', status: 'status',
+        };
+        for (const [k, col] of Object.entries(map)) {
+            if (input[k] !== undefined) updates[col] = input[k];
+        }
+        const { data, error } = await this.db.from('mfg_boms').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteBom(id: string) {
+        const { error } = await this.db.from('mfg_boms').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async getBomLines(bomId: string) {
+        const { data, error } = await this.db.from('mfg_bom_lines')
+            .select('*').eq('bom_id', bomId).order('sort_order');
+        if (error) throw error;
+        return data;
+    }
+
+    async addBomLine(bomId: string, input: Record<string, any>) {
+        const row: any = {
+            bom_id: bomId, item_id: input.itemId || null,
+            item_name: input.itemName, item_sku: input.itemSku,
+            quantity: input.quantity ?? 1, uom: input.uom || 'pcs',
+            unit_cost: input.unitCost ?? 0, total_cost: input.totalCost ?? 0,
+            scrap_pct: input.scrapPct ?? 0, notes: input.notes,
+            sort_order: input.sortOrder ?? 0,
+        };
+        const { data, error } = await this.db.from('mfg_bom_lines').insert(row).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateBomLine(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const map: Record<string, string> = {
+            itemName: 'item_name', itemSku: 'item_sku', quantity: 'quantity',
+            uom: 'uom', unitCost: 'unit_cost', totalCost: 'total_cost',
+            scrapPct: 'scrap_pct', notes: 'notes', sortOrder: 'sort_order',
+        };
+        for (const [k, col] of Object.entries(map)) {
+            if (input[k] !== undefined) updates[col] = input[k];
+        }
+        const { data, error } = await this.db.from('mfg_bom_lines').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteBomLine(id: string) {
+        const { error } = await this.db.from('mfg_bom_lines').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async getWorkOrders(tenantId: string, status?: string) {
+        let q = this.db.from('mfg_work_orders').select('*').eq('tenant_id', tenantId);
+        if (status) q = q.eq('status', status);
+        const { data, error } = await q.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async createWorkOrder(tenantId: string, input: Record<string, any>) {
+        const row: any = {
+            tenant_id: tenantId, wo_number: input.woNumber,
+            bom_id: input.bomId || null, bom_name: input.bomName,
+            warehouse_id: input.warehouseId || null, warehouse_name: input.warehouseName,
+            planned_qty: input.plannedQty ?? 1, uom: input.uom || 'unit',
+            priority: input.priority || 'normal', assigned_to: input.assignedTo,
+            planned_start: input.plannedStart || null, planned_end: input.plannedEnd || null,
+            estimated_cost: input.estimatedCost ?? 0, notes: input.notes,
+            status: input.status || 'draft',
+        };
+        const { data, error } = await this.db.from('mfg_work_orders').insert(row).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateWorkOrder(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const map: Record<string, string> = {
+            woNumber: 'wo_number', bomId: 'bom_id', bomName: 'bom_name',
+            warehouseId: 'warehouse_id', warehouseName: 'warehouse_name',
+            plannedQty: 'planned_qty', completedQty: 'completed_qty',
+            uom: 'uom', priority: 'priority', assignedTo: 'assigned_to',
+            plannedStart: 'planned_start', plannedEnd: 'planned_end',
+            actualStart: 'actual_start', actualEnd: 'actual_end',
+            estimatedCost: 'estimated_cost', actualCost: 'actual_cost',
+            notes: 'notes', status: 'status',
+        };
+        for (const [k, col] of Object.entries(map)) {
+            if (input[k] !== undefined) updates[col] = input[k];
+        }
+        const { data, error } = await this.db.from('mfg_work_orders').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateWorkOrderStatus(id: string, status: string) {
+        const updates: any = { status, updated_at: new Date().toISOString() };
+        if (status === 'in_progress') updates.actual_start = new Date().toISOString();
+        if (status === 'completed') updates.actual_end = new Date().toISOString();
+        const { data, error } = await this.db.from('mfg_work_orders').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteWorkOrder(id: string) {
+        const { error } = await this.db.from('mfg_work_orders').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async getManufacturingStats(tenantId: string) {
+        const [bomsRes, woRes] = await Promise.all([
+            this.db.from('mfg_boms').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+            this.db.from('mfg_work_orders').select('status').eq('tenant_id', tenantId),
+        ]);
+        const totalBoms = bomsRes.count || 0;
+        const wos = woRes.data || [];
+        const draftWos = wos.filter(w => w.status === 'draft').length;
+        const plannedWos = wos.filter(w => w.status === 'planned').length;
+        const inProgressWos = wos.filter(w => w.status === 'in_progress').length;
+        const completedWos = wos.filter(w => w.status === 'completed').length;
+        return { totalBoms, totalWorkOrders: wos.length, draftWos, plannedWos, inProgressWos, completedWos };
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ─── STOCK OPNAME ─────────────────────────────────────
+    // ═══════════════════════════════════════════════════════
+
+    async getOpnameSessions(tenantId: string) {
+        const { data, error } = await this.db.from('inv_opname_sessions')
+            .select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async createOpnameSession(tenantId: string, input: Record<string, any>) {
+        const row: any = {
+            tenant_id: tenantId, session_code: input.sessionCode, title: input.title,
+            warehouse_id: input.warehouseId || null, warehouse_name: input.warehouseName,
+            counted_by: input.countedBy, scheduled_date: input.scheduledDate || null,
+            notes: input.notes, status: input.status || 'draft',
+        };
+        const { data, error } = await this.db.from('inv_opname_sessions').insert(row).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateOpnameSession(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const map: Record<string, string> = {
+            sessionCode: 'session_code', title: 'title',
+            warehouseId: 'warehouse_id', warehouseName: 'warehouse_name',
+            countedBy: 'counted_by', reviewedBy: 'reviewed_by',
+            scheduledDate: 'scheduled_date', notes: 'notes', status: 'status',
+            totalItems: 'total_items', itemsCounted: 'items_counted',
+            totalVarianceQty: 'total_variance_qty', totalVarianceValue: 'total_variance_value',
+        };
+        for (const [k, col] of Object.entries(map)) {
+            if (input[k] !== undefined) updates[col] = input[k];
+        }
+        const { data, error } = await this.db.from('inv_opname_sessions').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateOpnameSessionStatus(id: string, status: string) {
+        const updates: any = { status, updated_at: new Date().toISOString() };
+        if (status === 'counting') updates.started_at = new Date().toISOString();
+        if (status === 'completed') updates.completed_at = new Date().toISOString();
+        const { data, error } = await this.db.from('inv_opname_sessions').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteOpnameSession(id: string) {
+        const { error } = await this.db.from('inv_opname_sessions').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async getOpnameLines(sessionId: string) {
+        const { data, error } = await this.db.from('inv_opname_lines')
+            .select('*').eq('session_id', sessionId).order('sort_order');
+        if (error) throw error;
+        return data;
+    }
+
+    async addOpnameLine(sessionId: string, input: Record<string, any>) {
+        const row: any = {
+            session_id: sessionId, item_id: input.itemId || null,
+            item_name: input.itemName, item_sku: input.itemSku,
+            zone_name: input.zoneName, bin_code: input.binCode,
+            uom: input.uom || 'pcs', system_qty: input.systemQty ?? 0,
+            unit_cost: input.unitCost ?? 0, notes: input.notes,
+            status: 'pending', sort_order: input.sortOrder ?? 0,
+        };
+        const { data, error } = await this.db.from('inv_opname_lines').insert(row).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateOpnameLine(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const map: Record<string, string> = {
+            itemName: 'item_name', itemSku: 'item_sku', zoneName: 'zone_name',
+            binCode: 'bin_code', uom: 'uom', systemQty: 'system_qty',
+            actualQty: 'actual_qty', unitCost: 'unit_cost',
+            countedAt: 'counted_at', countedBy: 'counted_by',
+            notes: 'notes', status: 'status', sortOrder: 'sort_order',
+        };
+        for (const [k, col] of Object.entries(map)) {
+            if (input[k] !== undefined) updates[col] = input[k];
+        }
+        const { data, error } = await this.db.from('inv_opname_lines').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteOpnameLine(id: string) {
+        const { error } = await this.db.from('inv_opname_lines').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async getOpnameStats(tenantId: string) {
+        const { data, error } = await this.db.from('inv_opname_sessions')
+            .select('status, total_variance_value').eq('tenant_id', tenantId);
+        if (error) throw error;
+        const sessions = data || [];
+        const total = sessions.length;
+        const draft = sessions.filter(s => s.status === 'draft').length;
+        const counting = sessions.filter(s => s.status === 'counting').length;
+        const review = sessions.filter(s => s.status === 'review').length;
+        const completed = sessions.filter(s => s.status === 'completed').length;
+        const totalVariance = sessions.reduce((sum, s) => sum + (Number(s.total_variance_value) || 0), 0);
+        return { totalSessions: total, draft, counting, review, completed, totalVariance };
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ─── BOOKING & TICKETING ─────────────────────────────
+    // ═══════════════════════════════════════════════════════
+
+    async getSchedules(tenantId: string) {
+        const { data, error } = await this.db.from('booking_schedules')
+            .select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async createSchedule(tenantId: string, input: Record<string, any>) {
+        const row: any = {
+            tenant_id: tenantId, schedule_code: input.scheduleCode, route_name: input.routeName,
+            origin: input.origin, destination: input.destination,
+            departure_time: input.departureTime, arrival_time: input.arrivalTime,
+            duration_minutes: input.durationMinutes, capacity: input.capacity || 100,
+            vehicle_name: input.vehicleName, vessel_type: input.vesselType,
+            price_economy: input.priceEconomy || 0, price_business: input.priceBusiness || 0,
+            price_vip: input.priceVip || 0, notes: input.notes, status: input.status || 'active',
+        };
+        const { data, error } = await this.db.from('booking_schedules').insert(row).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateSchedule(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const map: Record<string, string> = {
+            scheduleCode: 'schedule_code', routeName: 'route_name', origin: 'origin',
+            destination: 'destination', departureTime: 'departure_time', arrivalTime: 'arrival_time',
+            durationMinutes: 'duration_minutes', capacity: 'capacity',
+            vehicleName: 'vehicle_name', vesselType: 'vessel_type',
+            priceEconomy: 'price_economy', priceBusiness: 'price_business', priceVip: 'price_vip',
+            notes: 'notes', status: 'status',
+        };
+        for (const [k, col] of Object.entries(map)) { if (input[k] !== undefined) updates[col] = input[k]; }
+        const { data, error } = await this.db.from('booking_schedules').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteSchedule(id: string) {
+        const { error } = await this.db.from('booking_schedules').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async getOccurrences(scheduleId?: string) {
+        let query = this.db.from('booking_occurrences').select('*').order('departure_date');
+        if (scheduleId) query = query.eq('schedule_id', scheduleId);
+        const { data, error } = await query;
+        if (error) throw error;
+        return data;
+    }
+
+    async createOccurrence(scheduleId: string, input: Record<string, any>) {
+        const row: any = { schedule_id: scheduleId, departure_date: input.departureDate,
+            departure_time: input.departureTime, total_capacity: input.totalCapacity || 100,
+            notes: input.notes, status: input.status || 'scheduled' };
+        const { data, error } = await this.db.from('booking_occurrences').insert(row).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateOccurrenceStatus(id: string, status: string) {
+        const updates: any = { status, updated_at: new Date().toISOString() };
+        if (status === 'departed') updates.actual_departure = new Date().toISOString();
+        if (status === 'completed') updates.actual_arrival = new Date().toISOString();
+        const { data, error } = await this.db.from('booking_occurrences').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async getBookings(tenantId: string, occurrenceId?: string) {
+        let query = this.db.from('bookings').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
+        if (occurrenceId) query = query.eq('occurrence_id', occurrenceId);
+        const { data, error } = await query;
+        if (error) throw error;
+        return data;
+    }
+
+    async createBooking(tenantId: string, input: Record<string, any>) {
+        const row: any = {
+            tenant_id: tenantId, booking_code: input.bookingCode,
+            schedule_id: input.scheduleId, occurrence_id: input.occurrenceId,
+            customer_name: input.customerName, customer_email: input.customerEmail,
+            customer_phone: input.customerPhone, passenger_count: input.passengerCount || 1,
+            class: input.class || 'economy', total_amount: input.totalAmount || 0,
+            paid_amount: input.paidAmount || 0, notes: input.notes, status: input.status || 'pending',
+        };
+        const { data, error } = await this.db.from('bookings').insert(row).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateBookingStatus(id: string, status: string) {
+        const updates: any = { status, updated_at: new Date().toISOString() };
+        if (status === 'checked_in') updates.check_in_time = new Date().toISOString();
+        const { data, error } = await this.db.from('bookings').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async getPassengers(bookingId: string) {
+        const { data, error } = await this.db.from('booking_passengers')
+            .select('*').eq('booking_id', bookingId).order('created_at');
+        if (error) throw error;
+        return data;
+    }
+
+    async addPassenger(bookingId: string, input: Record<string, any>) {
+        const row: any = { booking_id: bookingId, name: input.name,
+            id_number: input.idNumber, nationality: input.nationality,
+            seat_label: input.seatLabel, class: input.class || 'economy', notes: input.notes };
+        const { data, error } = await this.db.from('booking_passengers').insert(row).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async getBookingStats(tenantId: string) {
+        const [schedRes, bookRes, occRes] = await Promise.all([
+            this.db.from('booking_schedules').select('status', { count: 'exact' }).eq('tenant_id', tenantId),
+            this.db.from('bookings').select('status, total_amount', { count: 'exact' }).eq('tenant_id', tenantId),
+            this.db.from('booking_occurrences').select('status, booked_count, checked_in_count'),
+        ]);
+        const schedules = schedRes.data || [];
+        const bookings = bookRes.data || [];
+        const occurrences = occRes.data || [];
+        const totalRevenue = bookings.reduce((s, b) => s + (Number(b.total_amount) || 0), 0);
+        const confirmed = bookings.filter(b => b.status === 'confirmed').length;
+        const checkedIn = bookings.filter(b => b.status === 'checked_in').length;
+        const upcoming = occurrences.filter(o => o.status === 'scheduled').length;
+        return {
+            totalSchedules: schedules.length, totalBookings: bookings.length,
+            confirmedBookings: confirmed, checkedInBookings: checkedIn,
+            totalOccurrences: occurrences.length, upcomingDepartures: upcoming,
+            totalRevenue,
+        };
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ─── RENTAL ENGINE ───────────────────────────────────
+    // ═══════════════════════════════════════════════════════
+
+    async getRentalAssets(tenantId: string) {
+        const { data, error } = await this.db.from('rental_assets')
+            .select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async createRentalAsset(tenantId: string, input: Record<string, any>) {
+        const row: any = {
+            tenant_id: tenantId, asset_code: input.assetCode, asset_name: input.assetName,
+            serial_number: input.serialNumber, category: input.category,
+            condition: input.condition || 'excellent',
+            purchase_date: input.purchaseDate, purchase_cost: input.purchaseCost,
+            current_location: input.currentLocation,
+            daily_rate: input.dailyRate || 0, deposit_amount: input.depositAmount || 0,
+            notes: input.notes, status: input.status || 'available',
+        };
+        const { data, error } = await this.db.from('rental_assets').insert(row).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateRentalAsset(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const map: Record<string, string> = {
+            assetCode: 'asset_code', assetName: 'asset_name', serialNumber: 'serial_number',
+            category: 'category', condition: 'condition', currentLocation: 'current_location',
+            dailyRate: 'daily_rate', depositAmount: 'deposit_amount',
+            lastMaintenanceDate: 'last_maintenance_date', nextMaintenanceDate: 'next_maintenance_date',
+            notes: 'notes', status: 'status',
+        };
+        for (const [k, col] of Object.entries(map)) { if (input[k] !== undefined) updates[col] = input[k]; }
+        const { data, error } = await this.db.from('rental_assets').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteRentalAsset(id: string) {
+        const { error } = await this.db.from('rental_assets').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async getRentalContracts(tenantId: string) {
+        const { data, error } = await this.db.from('rental_contracts')
+            .select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async createRentalContract(tenantId: string, input: Record<string, any>) {
+        const row: any = {
+            tenant_id: tenantId, contract_code: input.contractCode,
+            asset_id: input.assetId, asset_name: input.assetName,
+            customer_name: input.customerName, customer_email: input.customerEmail,
+            customer_phone: input.customerPhone, customer_id_number: input.customerIdNumber,
+            checkout_date: input.checkoutDate, expected_return_date: input.expectedReturnDate,
+            daily_rate: input.dailyRate || 0, deposit_amount: input.depositAmount || 0,
+            subtotal: input.subtotal || 0, total_charge: input.totalCharge || 0,
+            checkout_condition: input.checkoutCondition, checkout_notes: input.checkoutNotes,
+            status: 'active',
+        };
+        const { data, error } = await this.db.from('rental_contracts').insert(row).select().single();
+        if (error) throw error;
+        // Also update asset status to rented
+        await this.db.from('rental_assets').update({ status: 'rented', updated_at: new Date().toISOString() }).eq('id', input.assetId);
+        return data;
+    }
+
+    async returnRentalAsset(contractId: string, input: Record<string, any>) {
+        const updates: any = {
+            actual_return_date: input.actualReturnDate || new Date().toISOString().split('T')[0],
+            return_condition: input.returnCondition, return_notes: input.returnNotes,
+            returned_by: input.returnedBy, late_fee: input.lateFee || 0,
+            damage_fee: input.damageFee || 0, deposit_returned: input.depositReturned || 0,
+            total_charge: input.totalCharge || 0, status: 'returned',
+            updated_at: new Date().toISOString(),
+        };
+        const { data, error } = await this.db.from('rental_contracts').update(updates).eq('id', contractId).select().single();
+        if (error) throw error;
+        // Release the asset
+        if (data?.asset_id) {
+            await this.db.from('rental_assets').update({
+                status: 'available', condition: input.returnCondition || 'good',
+                updated_at: new Date().toISOString(),
+            }).eq('id', data.asset_id);
+        }
+        return data;
+    }
+
+    async deleteRentalContract(id: string) {
+        const { error } = await this.db.from('rental_contracts').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async getRentalStats(tenantId: string) {
+        const [assetRes, contractRes] = await Promise.all([
+            this.db.from('rental_assets').select('status, daily_rate, total_revenue').eq('tenant_id', tenantId),
+            this.db.from('rental_contracts').select('status, total_charge, late_fee').eq('tenant_id', tenantId),
+        ]);
+        const assets = assetRes.data || [];
+        const contracts = contractRes.data || [];
+        const available = assets.filter(a => a.status === 'available').length;
+        const rented = assets.filter(a => a.status === 'rented').length;
+        const maintenance = assets.filter(a => a.status === 'maintenance').length;
+        const totalRevenue = contracts.reduce((s, c) => s + (Number(c.total_charge) || 0), 0);
+        const activeContracts = contracts.filter(c => c.status === 'active').length;
+        const overdue = contracts.filter(c => c.status === 'overdue').length;
+        return {
+            totalAssets: assets.length, available, rented, maintenance,
+            totalContracts: contracts.length, activeContracts, overdue, totalRevenue,
+        };
+    }
 }
 
 
