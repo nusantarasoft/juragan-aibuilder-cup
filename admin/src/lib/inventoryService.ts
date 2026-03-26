@@ -1140,6 +1140,172 @@ export const inventoryService = {
         `, { tenantId });
         return data.rentalStats;
     },
+
+    // ═══════════════════════════════════════════════════════
+    // E-COMMERCE
+    // ═══════════════════════════════════════════════════════
+
+    // ─── Customers ─────────────────────────────────────────
+    async getEcomCustomers(tenantId = 'default', filters?: { search?: string; customerType?: string; status?: string }): Promise<EcomCustomer[]> {
+        const data = await graphqlRequest<{ ecomCustomers: EcomCustomer[] }>(`
+            query($tenantId: String!, $search: String, $customerType: String, $status: String) {
+                ecomCustomers(tenantId: $tenantId, search: $search, customerType: $customerType, status: $status) {
+                    id customerCode firstName lastName email phone company address city province postalCode
+                    idNumber customerType totalOrders totalSpent loyaltyPoints notes tags status createdAt
+                }
+            }
+        `, { tenantId, ...filters });
+        return data.ecomCustomers;
+    },
+
+    async createEcomCustomer(tenantId = 'default', input: Partial<EcomCustomer>): Promise<EcomCustomer> {
+        const data = await graphqlRequest<{ createEcomCustomer: EcomCustomer }>(`
+            mutation($tenantId: String!, $input: EcomCustomerInput!) {
+                createEcomCustomer(tenantId: $tenantId, input: $input) {
+                    id customerCode firstName lastName email phone company status createdAt
+                }
+            }
+        `, { tenantId, input });
+        return data.createEcomCustomer;
+    },
+
+    async updateEcomCustomer(id: string, input: Partial<EcomCustomer>): Promise<EcomCustomer> {
+        const data = await graphqlRequest<{ updateEcomCustomer: EcomCustomer }>(`
+            mutation($id: String!, $input: EcomCustomerInput!) {
+                updateEcomCustomer(id: $id, input: $input) {
+                    id customerCode firstName lastName email status
+                }
+            }
+        `, { id, input });
+        return data.updateEcomCustomer;
+    },
+
+    async deleteEcomCustomer(id: string): Promise<boolean> {
+        const data = await graphqlRequest<{ deleteEcomCustomer: boolean }>(`
+            mutation($id: String!) { deleteEcomCustomer(id: $id) }
+        `, { id });
+        return data.deleteEcomCustomer;
+    },
+
+    // ─── Orders ─────────────────────────────────────────────
+    async getEcomOrders(tenantId = 'default', filters?: { status?: string; paymentStatus?: string; search?: string }): Promise<EcomOrder[]> {
+        const data = await graphqlRequest<{ ecomOrders: EcomOrder[] }>(`
+            query($tenantId: String!, $status: String, $paymentStatus: String, $search: String) {
+                ecomOrders(tenantId: $tenantId, status: $status, paymentStatus: $paymentStatus, search: $search) {
+                    id orderNumber customerId customerName customerEmail customerPhone
+                    shippingAddress shippingCity shippingProvince shippingMethod shippingCost
+                    subtotal taxAmount discountAmount totalAmount paidAmount
+                    paymentMethod paymentStatus notes source status
+                    confirmedAt shippedAt deliveredAt completedAt cancelledAt createdAt
+                }
+            }
+        `, { tenantId, ...filters });
+        return data.ecomOrders;
+    },
+
+    async getEcomOrder(id: string): Promise<EcomOrder> {
+        const data = await graphqlRequest<{ ecomOrder: EcomOrder }>(`
+            query($id: String!) {
+                ecomOrder(id: $id) {
+                    id orderNumber customerName customerEmail totalAmount paymentStatus status createdAt
+                }
+            }
+        `, { id });
+        return data.ecomOrder;
+    },
+
+    async createEcomOrder(tenantId = 'default', input: Partial<EcomOrder>): Promise<EcomOrder> {
+        const data = await graphqlRequest<{ createEcomOrder: EcomOrder }>(`
+            mutation($tenantId: String!, $input: EcomOrderInput!) {
+                createEcomOrder(tenantId: $tenantId, input: $input) {
+                    id orderNumber customerName totalAmount status createdAt
+                }
+            }
+        `, { tenantId, input });
+        return data.createEcomOrder;
+    },
+
+    async updateEcomOrderStatus(id: string, status: string): Promise<EcomOrder> {
+        const data = await graphqlRequest<{ updateEcomOrderStatus: EcomOrder }>(`
+            mutation($id: String!, $status: String!) {
+                updateEcomOrderStatus(id: $id, status: $status) {
+                    id orderNumber status confirmedAt shippedAt deliveredAt completedAt cancelledAt
+                }
+            }
+        `, { id, status });
+        return data.updateEcomOrderStatus;
+    },
+
+    async deleteEcomOrder(id: string): Promise<boolean> {
+        const data = await graphqlRequest<{ deleteEcomOrder: boolean }>(`
+            mutation($id: String!) { deleteEcomOrder(id: $id) }
+        `, { id });
+        return data.deleteEcomOrder;
+    },
+
+    // ─── Order Items ────────────────────────────────────────
+    async getEcomOrderItems(orderId: string): Promise<EcomOrderItem[]> {
+        const data = await graphqlRequest<{ ecomOrderItems: EcomOrderItem[] }>(`
+            query($orderId: String!) {
+                ecomOrderItems(orderId: $orderId) {
+                    id orderId itemId itemName itemSku fulfillmentType fulfillmentRef
+                    quantity unitPrice discount tax subtotal variantInfo notes status createdAt
+                }
+            }
+        `, { orderId });
+        return data.ecomOrderItems;
+    },
+
+    async addEcomOrderItem(orderId: string, input: Partial<EcomOrderItem>): Promise<EcomOrderItem> {
+        const data = await graphqlRequest<{ addEcomOrderItem: EcomOrderItem }>(`
+            mutation($orderId: String!, $input: EcomOrderItemInput!) {
+                addEcomOrderItem(orderId: $orderId, input: $input) {
+                    id itemName fulfillmentType quantity unitPrice subtotal status
+                }
+            }
+        `, { orderId, input });
+        return data.addEcomOrderItem;
+    },
+
+    // ─── Store Settings ─────────────────────────────────────
+    async getStoreSettings(tenantId = 'default'): Promise<EcomStoreSettings | null> {
+        const data = await graphqlRequest<{ ecomStoreSettings: EcomStoreSettings | null }>(`
+            query($tenantId: String!) {
+                ecomStoreSettings(tenantId: $tenantId) {
+                    id tenantId storeName storeEmail storePhone storeAddress
+                    defaultCurrency taxRate taxIncluded shippingEnabled
+                    defaultShippingCost freeShippingThreshold paymentMethods
+                    fulfillmentPhysical fulfillmentTicket fulfillmentScheduled fulfillmentRental
+                    lowStockAlert orderPrefix invoicePrefix notes createdAt updatedAt
+                }
+            }
+        `, { tenantId });
+        return data.ecomStoreSettings;
+    },
+
+    async updateStoreSettings(tenantId = 'default', input: Partial<EcomStoreSettings>): Promise<EcomStoreSettings> {
+        const data = await graphqlRequest<{ updateStoreSettings: EcomStoreSettings }>(`
+            mutation($tenantId: String!, $input: EcomStoreSettingsInput!) {
+                updateStoreSettings(tenantId: $tenantId, input: $input) {
+                    id storeName storeEmail taxRate shippingEnabled updatedAt
+                }
+            }
+        `, { tenantId, input });
+        return data.updateStoreSettings;
+    },
+
+    // ─── E-Commerce Stats ───────────────────────────────────
+    async getEcomStats(tenantId = 'default'): Promise<EcomStatsType> {
+        const data = await graphqlRequest<{ ecomStats: EcomStatsType }>(`
+            query($tenantId: String!) {
+                ecomStats(tenantId: $tenantId) {
+                    totalOrders pending confirmed processing shipped delivered completed cancelled
+                    totalRevenue avgOrderValue totalCustomers activeCustomers
+                }
+            }
+        `, { tenantId });
+        return data.ecomStats;
+    },
 };
 
 // ─── Warehouse Types ────────────────────────────────────
@@ -1326,4 +1492,59 @@ export interface RentalContract {
 export interface RentalStatsType {
     totalAssets: number; available: number; rented: number; maintenance: number;
     totalContracts: number; activeContracts: number; overdue: number; totalRevenue: number;
+}
+
+// ─── E-Commerce Types ────────────────────────────────────
+
+export interface EcomCustomer {
+    id: string; customerCode: string; firstName: string; lastName?: string;
+    email?: string; phone?: string; company?: string; address?: string;
+    city?: string; province?: string; postalCode?: string;
+    idNumber?: string; customerType?: string;
+    totalOrders?: number; totalSpent?: number; loyaltyPoints?: number;
+    notes?: string; tags?: string[]; status?: string;
+    createdAt: string; updatedAt?: string;
+}
+
+export interface EcomOrder {
+    id: string; orderNumber: string; customerId?: string;
+    customerName?: string; customerEmail?: string; customerPhone?: string;
+    shippingAddress?: string; shippingCity?: string; shippingProvince?: string;
+    shippingPostalCode?: string; shippingMethod?: string; shippingCost?: number;
+    subtotal?: number; taxAmount?: number; discountAmount?: number;
+    totalAmount?: number; paidAmount?: number;
+    paymentMethod?: string; paymentStatus?: string;
+    notes?: string; internalNotes?: string; source?: string; status?: string;
+    confirmedAt?: string; shippedAt?: string; deliveredAt?: string;
+    completedAt?: string; cancelledAt?: string;
+    createdAt: string; updatedAt?: string;
+}
+
+export interface EcomOrderItem {
+    id: string; orderId: string; itemId?: string;
+    itemName: string; itemSku?: string;
+    fulfillmentType?: string; fulfillmentRef?: string;
+    quantity: number; unitPrice: number; discount?: number;
+    tax?: number; subtotal: number; variantInfo?: any;
+    notes?: string; status?: string; createdAt?: string;
+}
+
+export interface EcomStoreSettings {
+    id: string; tenantId: string; storeName?: string;
+    storeEmail?: string; storePhone?: string; storeAddress?: string;
+    defaultCurrency?: string; taxRate?: number; taxIncluded?: boolean;
+    shippingEnabled?: boolean; defaultShippingCost?: number;
+    freeShippingThreshold?: number; paymentMethods?: any;
+    fulfillmentPhysical?: any; fulfillmentTicket?: any;
+    fulfillmentScheduled?: any; fulfillmentRental?: any;
+    lowStockAlert?: boolean; orderPrefix?: string; invoicePrefix?: string;
+    notes?: string; createdAt?: string; updatedAt?: string;
+}
+
+export interface EcomStatsType {
+    totalOrders: number; pending: number; confirmed: number;
+    processing: number; shipped: number; delivered: number;
+    completed: number; cancelled: number;
+    totalRevenue: number; avgOrderValue: number;
+    totalCustomers: number; activeCustomers: number;
 }

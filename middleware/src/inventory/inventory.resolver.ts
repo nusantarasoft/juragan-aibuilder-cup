@@ -1140,6 +1140,266 @@ function mapOpnameLine(r: any): OpnameLineType {
 }
 
 // ═══════════════════════════════════════════════════════════
+// ─── E-COMMERCE Types, Inputs, Mappers ────────────────────
+// ═══════════════════════════════════════════════════════════
+
+@ObjectType()
+class EcomCustomerType {
+    @Field() id: string;
+    @Field({ nullable: true }) tenantId?: string;
+    @Field() customerCode: string;
+    @Field() firstName: string;
+    @Field({ nullable: true }) lastName?: string;
+    @Field({ nullable: true }) email?: string;
+    @Field({ nullable: true }) phone?: string;
+    @Field({ nullable: true }) company?: string;
+    @Field({ nullable: true }) address?: string;
+    @Field({ nullable: true }) city?: string;
+    @Field({ nullable: true }) province?: string;
+    @Field({ nullable: true }) postalCode?: string;
+    @Field({ nullable: true }) idNumber?: string;
+    @Field({ nullable: true }) customerType?: string;
+    @Field(() => Int, { nullable: true }) totalOrders?: number;
+    @Field(() => Float, { nullable: true }) totalSpent?: number;
+    @Field(() => Int, { nullable: true }) loyaltyPoints?: number;
+    @Field({ nullable: true }) notes?: string;
+    @Field(() => [String], { nullable: true }) tags?: string[];
+    @Field({ nullable: true }) status?: string;
+    @Field({ nullable: true }) createdAt?: string;
+    @Field({ nullable: true }) updatedAt?: string;
+}
+
+@ObjectType()
+class EcomOrderType {
+    @Field() id: string;
+    @Field({ nullable: true }) tenantId?: string;
+    @Field() orderNumber: string;
+    @Field({ nullable: true }) customerId?: string;
+    @Field({ nullable: true }) customerName?: string;
+    @Field({ nullable: true }) customerEmail?: string;
+    @Field({ nullable: true }) customerPhone?: string;
+    @Field({ nullable: true }) shippingAddress?: string;
+    @Field({ nullable: true }) shippingCity?: string;
+    @Field({ nullable: true }) shippingProvince?: string;
+    @Field({ nullable: true }) shippingPostalCode?: string;
+    @Field({ nullable: true }) shippingMethod?: string;
+    @Field(() => Float, { nullable: true }) shippingCost?: number;
+    @Field(() => Float, { nullable: true }) subtotal?: number;
+    @Field(() => Float, { nullable: true }) taxAmount?: number;
+    @Field(() => Float, { nullable: true }) discountAmount?: number;
+    @Field(() => Float, { nullable: true }) totalAmount?: number;
+    @Field(() => Float, { nullable: true }) paidAmount?: number;
+    @Field({ nullable: true }) paymentMethod?: string;
+    @Field({ nullable: true }) paymentStatus?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) internalNotes?: string;
+    @Field({ nullable: true }) source?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field({ nullable: true }) confirmedAt?: string;
+    @Field({ nullable: true }) shippedAt?: string;
+    @Field({ nullable: true }) deliveredAt?: string;
+    @Field({ nullable: true }) completedAt?: string;
+    @Field({ nullable: true }) cancelledAt?: string;
+    @Field({ nullable: true }) createdAt?: string;
+    @Field({ nullable: true }) updatedAt?: string;
+}
+
+@ObjectType()
+class EcomOrderItemType {
+    @Field() id: string;
+    @Field() orderId: string;
+    @Field({ nullable: true }) itemId?: string;
+    @Field() itemName: string;
+    @Field({ nullable: true }) itemSku?: string;
+    @Field({ nullable: true }) fulfillmentType?: string;
+    @Field({ nullable: true }) fulfillmentRef?: string;
+    @Field(() => Int) quantity: number;
+    @Field(() => Float) unitPrice: number;
+    @Field(() => Float, { nullable: true }) discount?: number;
+    @Field(() => Float, { nullable: true }) tax?: number;
+    @Field(() => Float) subtotal: number;
+    @Field(() => GraphQLJSON, { nullable: true }) variantInfo?: any;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field({ nullable: true }) createdAt?: string;
+}
+
+@ObjectType()
+class EcomStoreSettingsType {
+    @Field() id: string;
+    @Field() tenantId: string;
+    @Field({ nullable: true }) storeName?: string;
+    @Field({ nullable: true }) storeEmail?: string;
+    @Field({ nullable: true }) storePhone?: string;
+    @Field({ nullable: true }) storeAddress?: string;
+    @Field({ nullable: true }) defaultCurrency?: string;
+    @Field(() => Float, { nullable: true }) taxRate?: number;
+    @Field({ nullable: true }) taxIncluded?: boolean;
+    @Field({ nullable: true }) shippingEnabled?: boolean;
+    @Field(() => Float, { nullable: true }) defaultShippingCost?: number;
+    @Field(() => Float, { nullable: true }) freeShippingThreshold?: number;
+    @Field(() => GraphQLJSON, { nullable: true }) paymentMethods?: any;
+    @Field(() => GraphQLJSON, { nullable: true }) fulfillmentPhysical?: any;
+    @Field(() => GraphQLJSON, { nullable: true }) fulfillmentTicket?: any;
+    @Field(() => GraphQLJSON, { nullable: true }) fulfillmentScheduled?: any;
+    @Field(() => GraphQLJSON, { nullable: true }) fulfillmentRental?: any;
+    @Field({ nullable: true }) lowStockAlert?: boolean;
+    @Field({ nullable: true }) orderPrefix?: string;
+    @Field({ nullable: true }) invoicePrefix?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) createdAt?: string;
+    @Field({ nullable: true }) updatedAt?: string;
+}
+
+@ObjectType()
+class EcomStats {
+    @Field(() => Int) totalOrders: number;
+    @Field(() => Int) pending: number;
+    @Field(() => Int) confirmed: number;
+    @Field(() => Int) processing: number;
+    @Field(() => Int) shipped: number;
+    @Field(() => Int) delivered: number;
+    @Field(() => Int) completed: number;
+    @Field(() => Int) cancelled: number;
+    @Field(() => Float) totalRevenue: number;
+    @Field(() => Float) avgOrderValue: number;
+    @Field(() => Int) totalCustomers: number;
+    @Field(() => Int) activeCustomers: number;
+}
+
+@InputType()
+class EcomCustomerInput {
+    @Field() customerCode: string;
+    @Field() firstName: string;
+    @Field({ nullable: true }) lastName?: string;
+    @Field({ nullable: true }) email?: string;
+    @Field({ nullable: true }) phone?: string;
+    @Field({ nullable: true }) company?: string;
+    @Field({ nullable: true }) address?: string;
+    @Field({ nullable: true }) city?: string;
+    @Field({ nullable: true }) province?: string;
+    @Field({ nullable: true }) postalCode?: string;
+    @Field({ nullable: true }) idNumber?: string;
+    @Field({ nullable: true }) customerType?: string;
+    @Field({ nullable: true }) notes?: string;
+}
+
+@InputType()
+class EcomOrderInput {
+    @Field() orderNumber: string;
+    @Field({ nullable: true }) customerId?: string;
+    @Field({ nullable: true }) customerName?: string;
+    @Field({ nullable: true }) customerEmail?: string;
+    @Field({ nullable: true }) customerPhone?: string;
+    @Field({ nullable: true }) shippingAddress?: string;
+    @Field({ nullable: true }) shippingCity?: string;
+    @Field({ nullable: true }) shippingProvince?: string;
+    @Field({ nullable: true }) shippingPostalCode?: string;
+    @Field({ nullable: true }) shippingMethod?: string;
+    @Field(() => Float, { nullable: true }) shippingCost?: number;
+    @Field(() => Float, { nullable: true }) subtotal?: number;
+    @Field(() => Float, { nullable: true }) taxAmount?: number;
+    @Field(() => Float, { nullable: true }) discountAmount?: number;
+    @Field(() => Float, { nullable: true }) totalAmount?: number;
+    @Field({ nullable: true }) paymentMethod?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) source?: string;
+}
+
+@InputType()
+class EcomOrderItemInput {
+    @Field({ nullable: true }) itemId?: string;
+    @Field() itemName: string;
+    @Field({ nullable: true }) itemSku?: string;
+    @Field({ nullable: true }) fulfillmentType?: string;
+    @Field({ nullable: true }) fulfillmentRef?: string;
+    @Field(() => Int, { nullable: true }) quantity?: number;
+    @Field(() => Float, { nullable: true }) unitPrice?: number;
+    @Field(() => Float, { nullable: true }) discount?: number;
+    @Field(() => Float, { nullable: true }) tax?: number;
+    @Field(() => Float, { nullable: true }) subtotal?: number;
+    @Field(() => GraphQLJSON, { nullable: true }) variantInfo?: any;
+    @Field({ nullable: true }) notes?: string;
+}
+
+@InputType()
+class EcomStoreSettingsInput {
+    @Field({ nullable: true }) storeName?: string;
+    @Field({ nullable: true }) storeEmail?: string;
+    @Field({ nullable: true }) storePhone?: string;
+    @Field({ nullable: true }) storeAddress?: string;
+    @Field({ nullable: true }) defaultCurrency?: string;
+    @Field(() => Float, { nullable: true }) taxRate?: number;
+    @Field({ nullable: true }) taxIncluded?: boolean;
+    @Field({ nullable: true }) shippingEnabled?: boolean;
+    @Field(() => Float, { nullable: true }) defaultShippingCost?: number;
+    @Field(() => Float, { nullable: true }) freeShippingThreshold?: number;
+    @Field(() => GraphQLJSON, { nullable: true }) paymentMethods?: any;
+    @Field(() => GraphQLJSON, { nullable: true }) fulfillmentPhysical?: any;
+    @Field(() => GraphQLJSON, { nullable: true }) fulfillmentTicket?: any;
+    @Field(() => GraphQLJSON, { nullable: true }) fulfillmentScheduled?: any;
+    @Field(() => GraphQLJSON, { nullable: true }) fulfillmentRental?: any;
+    @Field({ nullable: true }) lowStockAlert?: boolean;
+    @Field({ nullable: true }) orderPrefix?: string;
+    @Field({ nullable: true }) invoicePrefix?: string;
+    @Field({ nullable: true }) notes?: string;
+}
+
+const mapEcomCustomer = (r: any): any => ({
+    id: r.id, tenantId: r.tenant_id, customerCode: r.customer_code,
+    firstName: r.first_name, lastName: r.last_name, email: r.email,
+    phone: r.phone, company: r.company, address: r.address,
+    city: r.city, province: r.province, postalCode: r.postal_code,
+    idNumber: r.id_number, customerType: r.customer_type,
+    totalOrders: r.total_orders, totalSpent: parseFloat(r.total_spent) || 0,
+    loyaltyPoints: r.loyalty_points, notes: r.notes, tags: r.tags,
+    status: r.status, createdAt: r.created_at, updatedAt: r.updated_at,
+});
+
+const mapEcomOrder = (r: any): any => ({
+    id: r.id, tenantId: r.tenant_id, orderNumber: r.order_number,
+    customerId: r.customer_id, customerName: r.customer_name,
+    customerEmail: r.customer_email, customerPhone: r.customer_phone,
+    shippingAddress: r.shipping_address, shippingCity: r.shipping_city,
+    shippingProvince: r.shipping_province, shippingPostalCode: r.shipping_postal_code,
+    shippingMethod: r.shipping_method, shippingCost: parseFloat(r.shipping_cost) || 0,
+    subtotal: parseFloat(r.subtotal) || 0, taxAmount: parseFloat(r.tax_amount) || 0,
+    discountAmount: parseFloat(r.discount_amount) || 0,
+    totalAmount: parseFloat(r.total_amount) || 0,
+    paidAmount: parseFloat(r.paid_amount) || 0,
+    paymentMethod: r.payment_method, paymentStatus: r.payment_status,
+    notes: r.notes, internalNotes: r.internal_notes, source: r.source,
+    status: r.status, confirmedAt: r.confirmed_at, shippedAt: r.shipped_at,
+    deliveredAt: r.delivered_at, completedAt: r.completed_at,
+    cancelledAt: r.cancelled_at, createdAt: r.created_at, updatedAt: r.updated_at,
+});
+
+const mapEcomOrderItem = (r: any): any => ({
+    id: r.id, orderId: r.order_id, itemId: r.item_id,
+    itemName: r.item_name, itemSku: r.item_sku,
+    fulfillmentType: r.fulfillment_type, fulfillmentRef: r.fulfillment_ref,
+    quantity: r.quantity, unitPrice: parseFloat(r.unit_price) || 0,
+    discount: parseFloat(r.discount) || 0, tax: parseFloat(r.tax) || 0,
+    subtotal: parseFloat(r.subtotal) || 0, variantInfo: r.variant_info,
+    notes: r.notes, status: r.status, createdAt: r.created_at,
+});
+
+const mapStoreSettings = (r: any): any => ({
+    id: r.id, tenantId: r.tenant_id, storeName: r.store_name,
+    storeEmail: r.store_email, storePhone: r.store_phone,
+    storeAddress: r.store_address, defaultCurrency: r.default_currency,
+    taxRate: parseFloat(r.tax_rate) || 0, taxIncluded: r.tax_included,
+    shippingEnabled: r.shipping_enabled,
+    defaultShippingCost: parseFloat(r.default_shipping_cost) || 0,
+    freeShippingThreshold: parseFloat(r.free_shipping_threshold) || 0,
+    paymentMethods: r.payment_methods, fulfillmentPhysical: r.fulfillment_physical,
+    fulfillmentTicket: r.fulfillment_ticket, fulfillmentScheduled: r.fulfillment_scheduled,
+    fulfillmentRental: r.fulfillment_rental, lowStockAlert: r.low_stock_alert,
+    orderPrefix: r.order_prefix, invoicePrefix: r.invoice_prefix,
+    notes: r.notes, createdAt: r.created_at, updatedAt: r.updated_at,
+});
+
+// ═══════════════════════════════════════════════════════════
 // ─── BOOKING Types, Inputs, Mappers ───────────────────────
 // ═══════════════════════════════════════════════════════════
 
@@ -2208,6 +2468,106 @@ export class InventoryResolver {
     @Query(() => RentalStats)
     async rentalStats(@Args('tenantId') tenantId: string) {
         return this.inventoryService.getRentalStats(tenantId);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // E-COMMERCE
+    // ═══════════════════════════════════════════════════════
+
+    // ─── Customers ─────────────────────────────────────────
+    @Query(() => [EcomCustomerType])
+    async ecomCustomers(
+        @Args('tenantId') tenantId: string,
+        @Args('search', { nullable: true }) search?: string,
+        @Args('customerType', { nullable: true }) customerType?: string,
+        @Args('status', { nullable: true }) status?: string,
+    ) {
+        const data = await this.inventoryService.getEcomCustomers(tenantId, { search, customerType, status });
+        return data.map(mapEcomCustomer);
+    }
+
+    @Mutation(() => EcomCustomerType)
+    async createEcomCustomer(@Args('tenantId') tenantId: string, @Args('input') input: EcomCustomerInput) {
+        const data = await this.inventoryService.createEcomCustomer(tenantId, input);
+        return mapEcomCustomer(data);
+    }
+
+    @Mutation(() => EcomCustomerType)
+    async updateEcomCustomer(@Args('id') id: string, @Args('input') input: EcomCustomerInput) {
+        const data = await this.inventoryService.updateEcomCustomer(id, input);
+        return mapEcomCustomer(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteEcomCustomer(@Args('id') id: string) {
+        return this.inventoryService.deleteEcomCustomer(id);
+    }
+
+    // ─── Orders ────────────────────────────────────────────
+    @Query(() => [EcomOrderType])
+    async ecomOrders(
+        @Args('tenantId') tenantId: string,
+        @Args('status', { nullable: true }) status?: string,
+        @Args('paymentStatus', { nullable: true }) paymentStatus?: string,
+        @Args('search', { nullable: true }) search?: string,
+    ) {
+        const data = await this.inventoryService.getEcomOrders(tenantId, { status, paymentStatus, search });
+        return data.map(mapEcomOrder);
+    }
+
+    @Query(() => EcomOrderType)
+    async ecomOrder(@Args('id') id: string) {
+        const data = await this.inventoryService.getEcomOrder(id);
+        return mapEcomOrder(data);
+    }
+
+    @Mutation(() => EcomOrderType)
+    async createEcomOrder(@Args('tenantId') tenantId: string, @Args('input') input: EcomOrderInput) {
+        const data = await this.inventoryService.createEcomOrder(tenantId, input);
+        return mapEcomOrder(data);
+    }
+
+    @Mutation(() => EcomOrderType)
+    async updateEcomOrderStatus(@Args('id') id: string, @Args('status') status: string) {
+        const data = await this.inventoryService.updateEcomOrderStatus(id, status);
+        return mapEcomOrder(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteEcomOrder(@Args('id') id: string) {
+        return this.inventoryService.deleteEcomOrder(id);
+    }
+
+    // ─── Order Items ───────────────────────────────────────
+    @Query(() => [EcomOrderItemType])
+    async ecomOrderItems(@Args('orderId') orderId: string) {
+        const data = await this.inventoryService.getEcomOrderItems(orderId);
+        return data.map(mapEcomOrderItem);
+    }
+
+    @Mutation(() => EcomOrderItemType)
+    async addEcomOrderItem(@Args('orderId') orderId: string, @Args('input') input: EcomOrderItemInput) {
+        const data = await this.inventoryService.addEcomOrderItem(orderId, input);
+        return mapEcomOrderItem(data);
+    }
+
+    // ─── Store Settings ────────────────────────────────────
+    @Query(() => EcomStoreSettingsType, { nullable: true })
+    async ecomStoreSettings(@Args('tenantId') tenantId: string) {
+        const data = await this.inventoryService.getStoreSettings(tenantId);
+        return data ? mapStoreSettings(data) : null;
+    }
+
+    @Mutation(() => EcomStoreSettingsType)
+    async updateStoreSettings(@Args('tenantId') tenantId: string, @Args('input') input: EcomStoreSettingsInput) {
+        const data = await this.inventoryService.updateStoreSettings(tenantId, input);
+        return mapStoreSettings(data);
+    }
+
+    // ─── E-Commerce Stats ──────────────────────────────────
+    @Query(() => EcomStats)
+    async ecomStats(@Args('tenantId') tenantId: string) {
+        return this.inventoryService.getEcomStats(tenantId);
     }
 }
 

@@ -1647,6 +1647,206 @@ IMPORTANT: Return ONLY valid JSON.`;
             totalContracts: contracts.length, activeContracts, overdue, totalRevenue,
         };
     }
+
+    // ═══════════════════════════════════════════════════════
+    // E-COMMERCE MODULE
+    // ═══════════════════════════════════════════════════════
+
+    // ─── Customers ─────────────────────────────────────────
+    async getEcomCustomers(tenantId: string, filters?: { search?: string; customerType?: string; status?: string }) {
+        let query = this.db.from('ecom_customers').select('*').eq('tenant_id', tenantId);
+        if (filters?.customerType) query = query.eq('customer_type', filters.customerType);
+        if (filters?.status) query = query.eq('status', filters.status);
+        if (filters?.search) query = query.or(
+            `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,customer_code.ilike.%${filters.search}%,company.ilike.%${filters.search}%`
+        );
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async createEcomCustomer(tenantId: string, input: {
+        customerCode: string; firstName: string; lastName?: string;
+        email?: string; phone?: string; company?: string; address?: string;
+        city?: string; province?: string; postalCode?: string;
+        idNumber?: string; customerType?: string; notes?: string; tags?: any;
+    }) {
+        const { data, error } = await this.db.from('ecom_customers').insert({
+            tenant_id: tenantId, customer_code: input.customerCode,
+            first_name: input.firstName, last_name: input.lastName,
+            email: input.email, phone: input.phone, company: input.company,
+            address: input.address, city: input.city, province: input.province,
+            postal_code: input.postalCode, id_number: input.idNumber,
+            customer_type: input.customerType || 'individual',
+            notes: input.notes, tags: input.tags,
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateEcomCustomer(id: string, input: Record<string, any>) {
+        const mapped: Record<string, any> = { updated_at: new Date().toISOString() };
+        const map: Record<string, string> = {
+            customerCode: 'customer_code', firstName: 'first_name', lastName: 'last_name',
+            email: 'email', phone: 'phone', company: 'company', address: 'address',
+            city: 'city', province: 'province', postalCode: 'postal_code',
+            idNumber: 'id_number', customerType: 'customer_type', status: 'status',
+            notes: 'notes', tags: 'tags',
+        };
+        for (const [k, v] of Object.entries(input)) { if (map[k] && v !== undefined) mapped[map[k]] = v; }
+        const { data, error } = await this.db.from('ecom_customers').update(mapped).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteEcomCustomer(id: string) {
+        const { error } = await this.db.from('ecom_customers').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    // ─── Orders ────────────────────────────────────────────
+    async getEcomOrders(tenantId: string, filters?: { status?: string; paymentStatus?: string; search?: string }) {
+        let query = this.db.from('ecom_orders').select('*').eq('tenant_id', tenantId);
+        if (filters?.status) query = query.eq('status', filters.status);
+        if (filters?.paymentStatus) query = query.eq('payment_status', filters.paymentStatus);
+        if (filters?.search) query = query.or(
+            `order_number.ilike.%${filters.search}%,customer_name.ilike.%${filters.search}%,customer_email.ilike.%${filters.search}%`
+        );
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async getEcomOrder(id: string) {
+        const { data, error } = await this.db.from('ecom_orders').select('*').eq('id', id).single();
+        if (error) throw error;
+        return data;
+    }
+
+    async createEcomOrder(tenantId: string, input: {
+        orderNumber: string; customerId?: string; customerName?: string;
+        customerEmail?: string; customerPhone?: string;
+        shippingAddress?: string; shippingCity?: string; shippingProvince?: string;
+        shippingPostalCode?: string; shippingMethod?: string; shippingCost?: number;
+        subtotal?: number; taxAmount?: number; discountAmount?: number;
+        totalAmount?: number; paymentMethod?: string; notes?: string; source?: string;
+    }) {
+        const { data, error } = await this.db.from('ecom_orders').insert({
+            tenant_id: tenantId, order_number: input.orderNumber,
+            customer_id: input.customerId, customer_name: input.customerName,
+            customer_email: input.customerEmail, customer_phone: input.customerPhone,
+            shipping_address: input.shippingAddress, shipping_city: input.shippingCity,
+            shipping_province: input.shippingProvince, shipping_postal_code: input.shippingPostalCode,
+            shipping_method: input.shippingMethod, shipping_cost: input.shippingCost || 0,
+            subtotal: input.subtotal || 0, tax_amount: input.taxAmount || 0,
+            discount_amount: input.discountAmount || 0, total_amount: input.totalAmount || 0,
+            payment_method: input.paymentMethod, notes: input.notes,
+            source: input.source || 'admin',
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateEcomOrderStatus(id: string, newStatus: string) {
+        const ts: Record<string, any> = { status: newStatus, updated_at: new Date().toISOString() };
+        if (newStatus === 'confirmed') ts.confirmed_at = new Date().toISOString();
+        if (newStatus === 'shipped') ts.shipped_at = new Date().toISOString();
+        if (newStatus === 'delivered') ts.delivered_at = new Date().toISOString();
+        if (newStatus === 'completed') ts.completed_at = new Date().toISOString();
+        if (newStatus === 'cancelled') ts.cancelled_at = new Date().toISOString();
+        const { data, error } = await this.db.from('ecom_orders').update(ts).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteEcomOrder(id: string) {
+        const { error } = await this.db.from('ecom_orders').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    // ─── Order Items ───────────────────────────────────────
+    async getEcomOrderItems(orderId: string) {
+        const { data, error } = await this.db.from('ecom_order_items').select('*').eq('order_id', orderId).order('created_at');
+        if (error) throw error;
+        return data;
+    }
+
+    async addEcomOrderItem(orderId: string, input: {
+        itemId?: string; itemName: string; itemSku?: string;
+        fulfillmentType?: string; fulfillmentRef?: string;
+        quantity?: number; unitPrice?: number; discount?: number;
+        tax?: number; subtotal?: number; variantInfo?: any; notes?: string;
+    }) {
+        const { data, error } = await this.db.from('ecom_order_items').insert({
+            order_id: orderId, item_id: input.itemId,
+            item_name: input.itemName, item_sku: input.itemSku,
+            fulfillment_type: input.fulfillmentType || 'physical',
+            fulfillment_ref: input.fulfillmentRef,
+            quantity: input.quantity || 1, unit_price: input.unitPrice || 0,
+            discount: input.discount || 0, tax: input.tax || 0,
+            subtotal: input.subtotal || 0, variant_info: input.variantInfo,
+            notes: input.notes,
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    // ─── Store Settings ────────────────────────────────────
+    async getStoreSettings(tenantId: string) {
+        const { data, error } = await this.db.from('ecom_store_settings').select('*').eq('tenant_id', tenantId).single();
+        if (error && error.code !== 'PGRST116') throw error;
+        return data;
+    }
+
+    async updateStoreSettings(tenantId: string, input: Record<string, any>) {
+        const mapped: Record<string, any> = { updated_at: new Date().toISOString() };
+        const map: Record<string, string> = {
+            storeName: 'store_name', storeEmail: 'store_email', storePhone: 'store_phone',
+            storeAddress: 'store_address', defaultCurrency: 'default_currency',
+            taxRate: 'tax_rate', taxIncluded: 'tax_included',
+            shippingEnabled: 'shipping_enabled', defaultShippingCost: 'default_shipping_cost',
+            freeShippingThreshold: 'free_shipping_threshold', paymentMethods: 'payment_methods',
+            fulfillmentPhysical: 'fulfillment_physical', fulfillmentTicket: 'fulfillment_ticket',
+            fulfillmentScheduled: 'fulfillment_scheduled', fulfillmentRental: 'fulfillment_rental',
+            lowStockAlert: 'low_stock_alert', orderPrefix: 'order_prefix', invoicePrefix: 'invoice_prefix',
+            notes: 'notes',
+        };
+        for (const [k, v] of Object.entries(input)) { if (map[k] && v !== undefined) mapped[map[k]] = v; }
+        const { data, error } = await this.db.from('ecom_store_settings').update(mapped).eq('tenant_id', tenantId).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    // ─── E-Commerce Stats ──────────────────────────────────
+    async getEcomStats(tenantId: string) {
+        const [ordersResult, customersResult] = await Promise.all([
+            this.db.from('ecom_orders').select('*').eq('tenant_id', tenantId),
+            this.db.from('ecom_customers').select('*').eq('tenant_id', tenantId),
+        ]);
+        if (ordersResult.error) throw ordersResult.error;
+        if (customersResult.error) throw customersResult.error;
+        const orders = ordersResult.data || [];
+        const customers = customersResult.data || [];
+
+        const totalOrders = orders.length;
+        const pending = orders.filter((o: any) => o.status === 'pending').length;
+        const confirmed = orders.filter((o: any) => o.status === 'confirmed').length;
+        const processing = orders.filter((o: any) => o.status === 'processing').length;
+        const shipped = orders.filter((o: any) => o.status === 'shipped').length;
+        const delivered = orders.filter((o: any) => o.status === 'delivered').length;
+        const completed = orders.filter((o: any) => o.status === 'completed').length;
+        const cancelled = orders.filter((o: any) => o.status === 'cancelled').length;
+        const totalRevenue = orders.filter((o: any) => o.payment_status === 'paid')
+            .reduce((s: number, o: any) => s + (parseFloat(o.total_amount) || 0), 0);
+        const avgOrderValue = totalOrders > 0 ? totalRevenue / Math.max(1, orders.filter((o: any) => o.payment_status === 'paid').length) : 0;
+        const totalCustomers = customers.length;
+        const activeCustomers = customers.filter((c: any) => c.status === 'active').length;
+
+        return {
+            totalOrders, pending, confirmed, processing, shipped, delivered, completed, cancelled,
+            totalRevenue, avgOrderValue, totalCustomers, activeCustomers,
+        };
+    }
 }
-
-
