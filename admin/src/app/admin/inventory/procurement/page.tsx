@@ -17,6 +17,7 @@ import CMSLayout from "@/components/layout/CMSLayout";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { inventoryService } from "@/lib/inventoryService";
+import { CrmAccountPicker } from "@/components/inventory/CrmPicker";
 import dayjs from "dayjs";
 
 const { TabPane } = Tabs;
@@ -411,6 +412,9 @@ export default function ProcurementPage() {
                         </Form.Item></Col>
                     </Row>
                     <Form.Item name="notes" label="Notes"><Input.TextArea rows={2} /></Form.Item>
+                    <Form.Item name="accountId" label="Link to CRM Account (optional)">
+                        <CrmAccountPicker size="small" placeholder="Search CRM accounts to link..." />
+                    </Form.Item>
                 </Form>
             </Modal>
 

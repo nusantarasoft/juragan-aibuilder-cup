@@ -77,6 +77,7 @@ services:
       - ./volumes/db/media_embeddings.sql:/docker-entrypoint-initdb.d/migrations/99-media-embeddings.sql:Z
       - ./volumes/db/media_annotations.sql:/docker-entrypoint-initdb.d/migrations/99-media-annotations.sql:Z
       - ./volumes/db/add_metadata.sql:/docker-entrypoint-initdb.d/migrations/99-add-metadata.sql:Z
+      - ./volumes/db/nusantarasoft_seed.sql:/docker-entrypoint-initdb.d/init-scripts/99-nusantarasoft-seed.sql:Z
       - ./volumes/db/data:/var/lib/postgresql/data:Z
       - db-config:/etc/postgresql-custom
     healthcheck:

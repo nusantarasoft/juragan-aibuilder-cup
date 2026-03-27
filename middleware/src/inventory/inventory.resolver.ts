@@ -339,6 +339,7 @@ class InvSupplier {
     @Field(() => GraphQLJSON, { nullable: true }) tags?: any;
     @Field({ nullable: true }) notes?: string;
     @Field({ nullable: true }) status?: string;
+    @Field({ nullable: true }) accountId?: string;
     @Field() createdAt: string;
     @Field() updatedAt: string;
 }
@@ -494,6 +495,7 @@ class CreateSupplierInput {
     @Field(() => GraphQLJSON, { nullable: true }) tags?: any;
     @Field({ nullable: true }) notes?: string;
     @Field({ nullable: true }) status?: string;
+    @Field({ nullable: true }) accountId?: string;
 }
 
 @InputType()
@@ -551,6 +553,7 @@ function mapSupplier(r: any): InvSupplier {
         taxId: r.tax_id, paymentTerms: r.payment_terms, currency: r.currency,
         rating: r.rating, leadTimeDays: r.lead_time_days, tags: r.tags,
         notes: r.notes, status: r.status,
+        accountId: r.account_id,
         createdAt: r.created_at, updatedAt: r.updated_at,
     };
 }
@@ -1165,6 +1168,8 @@ class EcomCustomerType {
     @Field({ nullable: true }) notes?: string;
     @Field(() => [String], { nullable: true }) tags?: string[];
     @Field({ nullable: true }) status?: string;
+    @Field({ nullable: true }) accountId?: string;
+    @Field({ nullable: true }) contactId?: string;
     @Field({ nullable: true }) createdAt?: string;
     @Field({ nullable: true }) updatedAt?: string;
 }
@@ -1282,6 +1287,8 @@ class EcomCustomerInput {
     @Field({ nullable: true }) idNumber?: string;
     @Field({ nullable: true }) customerType?: string;
     @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) accountId?: string;
+    @Field({ nullable: true }) contactId?: string;
 }
 
 @InputType()
@@ -1354,6 +1361,7 @@ const mapEcomCustomer = (r: any): any => ({
     totalOrders: r.total_orders, totalSpent: parseFloat(r.total_spent) || 0,
     loyaltyPoints: r.loyalty_points, notes: r.notes, tags: r.tags,
     status: r.status, createdAt: r.created_at, updatedAt: r.updated_at,
+    accountId: r.account_id, contactId: r.contact_id,
 });
 
 const mapEcomOrder = (r: any): any => ({

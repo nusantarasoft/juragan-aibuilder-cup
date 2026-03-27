@@ -8,6 +8,7 @@ import CMSLayout from "@/components/layout/CMSLayout";
 import { inventoryService, EcomCustomer, EcomStatsType } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
+import { CrmAccountPicker, CrmContactPicker } from "@/components/inventory/CrmPicker";
 
 const { Text } = Typography;
 
@@ -158,6 +159,18 @@ export default function CustomersPage() {
                     <Row gutter={16}>
                         <Col span={16}><Form.Item name="address" label="Address"><Input /></Form.Item></Col>
                         <Col span={8}><Form.Item name="city" label="City"><Input /></Form.Item></Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="accountId" label="Link to CRM Account">
+                                <CrmAccountPicker placeholder="Search CRM accounts..." />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="contactId" label="Link to CRM Contact">
+                                <CrmContactPicker placeholder="Search CRM contacts..." />
+                            </Form.Item>
+                        </Col>
                     </Row>
                 </Form>
             </Modal>

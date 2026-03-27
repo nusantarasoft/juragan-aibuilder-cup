@@ -18,6 +18,7 @@ import { AuroraText } from "@/components/magicui/aurora-text";
 import {
     inventoryService, OpnameSession, OpnameLine, OpnameStatsType, InvWarehouse
 } from "@/lib/inventoryService";
+import ItemPicker from "@/components/inventory/ItemPicker";
 
 const { Text } = Typography;
 
@@ -387,15 +388,26 @@ export default function StockOpnamePage() {
                 onCancel={() => setLineModalOpen(false)} onOk={handleAddLine} okText="Add">
                 <Form form={lineForm} layout="vertical">
                     <Row gutter={16}>
-                        <Col span={14}>
-                            <Form.Item name="itemName" label="Item Name" rules={[{ required: true }]}>
-                                <Input placeholder="Item to count" />
+                        <Col span={24}>
+                            <Form.Item name="itemId" label="Item" rules={[{ required: true, message: 'Select an item' }]}>
+                                <ItemPicker
+                                    placeholder="Search items by name or SKU..."
+                                    onItemSelect={(item) => {
+                                        if (item) {
+                                            lineForm.setFieldsValue({
+                                                itemName: item.name,
+                                                itemSku: item.sku,
+                                                unitCost: item.costPrice,
+                                                uom: item.uom || 'pcs',
+                                            });
+                                        } else {
+                                            lineForm.setFieldsValue({ itemName: undefined, itemSku: undefined, unitCost: undefined, uom: 'pcs' });
+                                        }
+                                    }}
+                                />
                             </Form.Item>
-                        </Col>
-                        <Col span={10}>
-                            <Form.Item name="itemSku" label="SKU">
-                                <Input placeholder="SKU" />
-                            </Form.Item>
+                            <Form.Item name="itemName" hidden><input /></Form.Item>
+                            <Form.Item name="itemSku" hidden><input /></Form.Item>
                         </Col>
                     </Row>
                     <Row gutter={16}>

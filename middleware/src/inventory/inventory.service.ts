@@ -451,6 +451,7 @@ IMPORTANT: Return ONLY valid JSON.`;
             tags: input.tags || [],
             notes: input.notes || null,
             status: input.status || 'active',
+            account_id: input.accountId || null,
         }).select().single();
         if (error) throw error;
         return data;
@@ -464,6 +465,7 @@ IMPORTANT: Return ONLY valid JSON.`;
             country: 'country', taxId: 'tax_id', paymentTerms: 'payment_terms',
             currency: 'currency', rating: 'rating', leadTimeDays: 'lead_time_days',
             tags: 'tags', notes: 'notes', status: 'status',
+            accountId: 'account_id',
         };
         for (const [key, col] of Object.entries(fieldMap)) {
             if (input[key] !== undefined) updates[col] = input[key];
@@ -1670,6 +1672,7 @@ IMPORTANT: Return ONLY valid JSON.`;
         email?: string; phone?: string; company?: string; address?: string;
         city?: string; province?: string; postalCode?: string;
         idNumber?: string; customerType?: string; notes?: string; tags?: any;
+        accountId?: string; contactId?: string;
     }) {
         const { data, error } = await this.db.from('ecom_customers').insert({
             tenant_id: tenantId, customer_code: input.customerCode,
@@ -1679,6 +1682,8 @@ IMPORTANT: Return ONLY valid JSON.`;
             postal_code: input.postalCode, id_number: input.idNumber,
             customer_type: input.customerType || 'individual',
             notes: input.notes, tags: input.tags,
+            account_id: input.accountId || null,
+            contact_id: input.contactId || null,
         }).select().single();
         if (error) throw error;
         return data;
@@ -1692,6 +1697,7 @@ IMPORTANT: Return ONLY valid JSON.`;
             city: 'city', province: 'province', postalCode: 'postal_code',
             idNumber: 'id_number', customerType: 'customer_type', status: 'status',
             notes: 'notes', tags: 'tags',
+            accountId: 'account_id', contactId: 'contact_id',
         };
         for (const [k, v] of Object.entries(input)) { if (map[k] && v !== undefined) mapped[map[k]] = v; }
         const { data, error } = await this.db.from('ecom_customers').update(mapped).eq('id', id).select().single();

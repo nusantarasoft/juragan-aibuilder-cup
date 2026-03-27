@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Table, Tag, Card, Typography, Input, Space, Button, Tooltip, Row, Col, Drawer, message, Modal, Select } from "antd";
-import { ShoppingCartOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, SendOutlined, EyeOutlined, CarOutlined, DeleteOutlined, InboxOutlined } from "@ant-design/icons";
+import { Table, Tag, Card, Typography, Input, Space, Button, Tooltip, Row, Col, Drawer, message, Modal, Select, Form, InputNumber, Divider } from "antd";
+import { ShoppingCartOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, SendOutlined, EyeOutlined, CarOutlined, DeleteOutlined, InboxOutlined, PlusOutlined, MinusCircleOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
-import { inventoryService, EcomOrder, EcomOrderItem, EcomStatsType } from "@/lib/inventoryService";
+import { inventoryService, EcomOrder, EcomOrderItem, EcomStatsType, EcomCustomer } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
+import ItemPicker from "@/components/inventory/ItemPicker";
 
 const { Text } = Typography;
 
@@ -27,6 +28,17 @@ const FULFILLMENT_COLORS: Record<string, string> = { physical: 'blue', ticket: '
 
 const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : '—';
 
+interface OrderLineItem {
+    key: number;
+    itemId?: string;
+    itemName: string;
+    itemSku?: string;
+    quantity: number;
+    unitPrice: number;
+    discount: number;
+    subtotal: number;
+}
+
 export default function OrdersPage() {
     const [stats, setStats] = useState<EcomStatsType | null>(null);
     const [orders, setOrders] = useState<EcomOrder[]>([]);
@@ -36,6 +48,13 @@ export default function OrdersPage() {
     const [selectedOrder, setSelectedOrder] = useState<EcomOrder | null>(null);
     const [orderItems, setOrderItems] = useState<EcomOrderItem[]>([]);
     const [drawerOpen, setDrawerOpen] = useState(false);
+
+    // New Order modal
+    const [orderModalOpen, setOrderModalOpen] = useState(false);
+    const [orderForm] = Form.useForm();
+    const [customers, setCustomers] = useState<EcomCustomer[]>([]);
+    const [lineItems, setLineItems] = useState<OrderLineItem[]>([]);
+    const [lineKeyCounter, setLineKeyCounter] = useState(0);
 
     useEffect(() => { load(); }, []);
 
@@ -74,6 +93,94 @@ export default function OrdersPage() {
             message.success("Order deleted");
             load();
         } catch { message.error("Failed to delete"); }
+    };
+
+    // ─── New Order helpers ────────────────────────────────
+    const openNewOrder = async () => {
+        orderForm.resetFields();
+        setLineItems([]);
+        setLineKeyCounter(0);
+        setOrderModalOpen(true);
+        try {
+            const c = await inventoryService.getEcomCustomers();
+            setCustomers(c);
+        } catch { setCustomers([]); }
+    };
+
+    const onCustomerChange = (customerId: string) => {
+        const c = customers.find(x => x.id === customerId);
+        if (c) {
+            orderForm.setFieldsValue({
+                customerName: `${c.firstName} ${c.lastName || ''}`.trim(),
+                customerEmail: c.email,
+                customerPhone: c.phone,
+            });
+        }
+    };
+
+    const addLineItem = () => {
+        const key = lineKeyCounter + 1;
+        setLineKeyCounter(key);
+        setLineItems(prev => [...prev, { key, itemName: '', quantity: 1, unitPrice: 0, discount: 0, subtotal: 0 }]);
+    };
+
+    const removeLineItem = (key: number) => {
+        setLineItems(prev => prev.filter(l => l.key !== key));
+    };
+
+    const updateLineItem = (key: number, updates: Partial<OrderLineItem>) => {
+        setLineItems(prev => prev.map(l => {
+            if (l.key !== key) return l;
+            const updated = { ...l, ...updates };
+            updated.subtotal = (updated.quantity * updated.unitPrice) - (updated.discount || 0);
+            return updated;
+        }));
+    };
+
+    const orderSubtotal = lineItems.reduce((sum, l) => sum + l.subtotal, 0);
+
+    const handleCreateOrder = async () => {
+        try {
+            const values = await orderForm.validateFields();
+            if (lineItems.length === 0) { message.warning('Add at least one line item'); return; }
+            const shippingCost = values.shippingCost || 0;
+            const order = await inventoryService.createEcomOrder('default', {
+                orderNumber: values.orderNumber,
+                customerId: values.customerId,
+                customerName: values.customerName,
+                customerEmail: values.customerEmail,
+                customerPhone: values.customerPhone,
+                shippingAddress: values.shippingAddress,
+                shippingCity: values.shippingCity,
+                shippingProvince: values.shippingProvince,
+                shippingPostalCode: values.shippingPostalCode,
+                shippingMethod: values.shippingMethod,
+                shippingCost,
+                subtotal: orderSubtotal,
+                totalAmount: orderSubtotal + shippingCost,
+                paymentMethod: values.paymentMethod,
+                notes: values.notes,
+                source: 'admin',
+            } as any);
+            // Add line items
+            for (const l of lineItems) {
+                await inventoryService.addEcomOrderItem(order.id, {
+                    itemId: l.itemId,
+                    itemName: l.itemName,
+                    itemSku: l.itemSku,
+                    quantity: l.quantity,
+                    unitPrice: l.unitPrice,
+                    discount: l.discount,
+                    subtotal: l.subtotal,
+                } as any);
+            }
+            message.success('Order created');
+            setOrderModalOpen(false);
+            load();
+        } catch (e: any) {
+            if (e.errorFields) return;
+            message.error(e.message || 'Failed to create order');
+        }
     };
 
     const kpiCards = [
@@ -167,7 +274,13 @@ export default function OrdersPage() {
                             <Select placeholder="Status" allowClear value={statusFilter} onChange={setStatusFilter} style={{ width: 130 }} size="small"
                                 options={Object.keys(ORDER_STATUS).map(k => ({ value: k, label: k.charAt(0).toUpperCase() + k.slice(1) }))} />
                         </div>
-                        <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
+                        <Space>
+                            <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
+                            <Button type="primary" icon={<PlusOutlined />} onClick={openNewOrder}
+                                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8 }}>
+                                New Order
+                            </Button>
+                        </Space>
                     </div>
                     <Table dataSource={filteredOrders} columns={columns} rowKey="id" loading={loading} size="small"
                         pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (t) => `${t} orders` }} scroll={{ x: 1100 }} />
@@ -209,6 +322,121 @@ export default function OrdersPage() {
                     </div>
                 )}
             </Drawer>
+
+            {/* ─── New Order Modal ──────────────────────── */}
+            <Modal title="New Order" open={orderModalOpen} onCancel={() => setOrderModalOpen(false)}
+                onOk={handleCreateOrder} okText="Create Order" width={720}>
+                <Form form={orderForm} layout="vertical">
+                    <Row gutter={16}>
+                        <Col span={8}>
+                            <Form.Item name="orderNumber" label="Order Number" rules={[{ required: true }]}>
+                                <Input placeholder="ORD-2026-XXX" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={16}>
+                            <Form.Item name="customerId" label="Customer">
+                                <Select placeholder="Select customer (optional)" showSearch allowClear
+                                    filterOption={(input, option) => (option?.label as string || '').toLowerCase().includes(input.toLowerCase())}
+                                    onChange={onCustomerChange}
+                                    options={customers.map(c => ({
+                                        value: c.id, label: `${c.customerCode} — ${c.firstName} ${c.lastName || ''}`
+                                    }))} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={8}>
+                            <Form.Item name="customerName" label="Customer Name" rules={[{ required: true }]}>
+                                <Input placeholder="Full name" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item name="customerEmail" label="Email">
+                                <Input placeholder="email@example.com" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item name="customerPhone" label="Phone">
+                                <Input placeholder="+62..." />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Divider plain style={{ margin: '8px 0' }}>Line Items</Divider>
+                    <div style={{ marginBottom: 12 }}>
+                        {lineItems.map((line) => (
+                            <div key={line.key} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                                <div style={{ flex: 3 }}>
+                                    <ItemPicker
+                                        onItemSelect={(item) => { if (item) updateLineItem(line.key, { itemId: item.id, itemName: item.name, itemSku: item.sku, unitPrice: item.sellingPrice || item.costPrice || 0 }); }}
+                                    />
+                                </div>
+                                <InputNumber min={1} value={line.quantity} onChange={v => updateLineItem(line.key, { quantity: v || 1 })} style={{ width: 70 }} placeholder="Qty" />
+                                <InputNumber min={0} value={line.unitPrice} onChange={v => updateLineItem(line.key, { unitPrice: v || 0 })} style={{ width: 120 }} prefix="Rp" placeholder="Price" />
+                                <InputNumber min={0} value={line.discount} onChange={v => updateLineItem(line.key, { discount: v || 0 })} style={{ width: 100 }} prefix="-Rp" placeholder="Disc" />
+                                <span style={{ width: 100, textAlign: 'right', fontWeight: 600, fontSize: 13 }}>
+                                    {fmtCurrency(line.subtotal)}
+                                </span>
+                                <Button size="small" type="text" danger icon={<MinusCircleOutlined />} onClick={() => removeLineItem(line.key)} />
+                            </div>
+                        ))}
+                        <Button type="dashed" onClick={addLineItem} icon={<PlusOutlined />} style={{ width: '100%' }}>
+                            Add Item
+                        </Button>
+                    </div>
+
+                    <Divider plain style={{ margin: '8px 0' }}>Shipping & Payment</Divider>
+                    <Row gutter={16}>
+                        <Col span={8}>
+                            <Form.Item name="shippingAddress" label="Address">
+                                <Input placeholder="Street address" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={5}>
+                            <Form.Item name="shippingCity" label="City">
+                                <Input placeholder="City" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={5}>
+                            <Form.Item name="shippingProvince" label="Province">
+                                <Input placeholder="Province" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                            <Form.Item name="shippingMethod" label="Shipping Method">
+                                <Select placeholder="Select" allowClear options={[
+                                    { value: 'standard', label: 'Standard' }, { value: 'express', label: 'Express' },
+                                    { value: 'same_day', label: 'Same Day' }, { value: 'pickup', label: 'Pickup' },
+                                ]} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={6}>
+                            <Form.Item name="shippingCost" label="Shipping Cost">
+                                <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                            <Form.Item name="paymentMethod" label="Payment Method">
+                                <Select placeholder="Select" allowClear options={[
+                                    { value: 'bank_transfer', label: 'Bank Transfer' }, { value: 'cash', label: 'Cash' },
+                                    { value: 'credit_card', label: 'Credit Card' }, { value: 'ewallet', label: 'E-Wallet' },
+                                ]} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="notes" label="Notes">
+                                <Input.TextArea rows={1} placeholder="Order notes..." />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <div style={{ textAlign: 'right', fontSize: 16, fontWeight: 700, color: '#6366f1' }}>
+                        Subtotal: {fmtCurrency(orderSubtotal)} | Total: {fmtCurrency(orderSubtotal + (orderForm.getFieldValue('shippingCost') || 0))}
+                    </div>
+                </Form>
+            </Modal>
         </CMSLayout>
     );
 }
+

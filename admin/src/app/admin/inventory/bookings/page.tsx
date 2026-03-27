@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Table, Tag, Button, Modal, Form, Input, InputNumber, Select, Space, message, Tabs, Progress, Drawer } from 'antd';
+import { Table, Tag, Button, Modal, Form, Input, InputNumber, Select, Space, message, Tabs, Progress, Drawer, Row, Col } from 'antd';
 import { PlusOutlined, ReloadOutlined, ScheduleOutlined, CheckCircleOutlined, ClockCircleOutlined, TeamOutlined, DollarOutlined, SearchOutlined, SendOutlined, LoginOutlined, CloseCircleOutlined, EyeOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
@@ -23,6 +23,11 @@ export default function BookingsPage() {
     const [loading, setLoading] = useState(false);
     const [tab, setTab] = useState('schedules');
     const [search, setSearch] = useState('');
+
+    // New Booking modal
+    const [bookingModalOpen, setBookingModalOpen] = useState(false);
+    const [bookingForm] = Form.useForm();
+    const [selectedScheduleId, setSelectedScheduleId] = useState<string | undefined>();
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -53,6 +58,31 @@ export default function BookingsPage() {
             message.success('Status updated');
             load();
         } catch (e: any) { message.error(e.message); }
+    };
+
+    const handleCreateBooking = async () => {
+        try {
+            const values = await bookingForm.validateFields();
+            await inventoryService.createBooking('default', values);
+            message.success('Booking created');
+            setBookingModalOpen(false);
+            bookingForm.resetFields();
+            setSelectedScheduleId(undefined);
+            load();
+        } catch (e: any) {
+            if (e.errorFields) return;
+            message.error(e.message || 'Failed to create booking');
+        }
+    };
+
+    const recalcTotal = () => {
+        const cls = bookingForm.getFieldValue('class') || 'economy';
+        const pax = bookingForm.getFieldValue('passengerCount') || 1;
+        const sid = bookingForm.getFieldValue('scheduleId');
+        const sched = schedules.find(s => s.id === sid);
+        if (!sched) return;
+        const price = cls === 'vip' ? (sched.priceVip || 0) : cls === 'business' ? (sched.priceBusiness || 0) : (sched.priceEconomy || 0);
+        bookingForm.setFieldsValue({ totalAmount: price * pax });
     };
 
     const fmt = (v: number) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
@@ -144,6 +174,10 @@ export default function BookingsPage() {
     const filteredSchedules = schedules.filter(s => !search || s.routeName.toLowerCase().includes(search.toLowerCase()) || s.scheduleCode.toLowerCase().includes(search.toLowerCase()));
     const filteredBookings = bookings.filter(b => !search || (b.customerName || '').toLowerCase().includes(search.toLowerCase()) || b.bookingCode.toLowerCase().includes(search.toLowerCase()));
 
+    const filteredOccurrences = selectedScheduleId
+        ? occurrences.filter(o => o.scheduleId === selectedScheduleId && o.status !== 'completed')
+        : [];
+
     return (
         <CMSLayout>
             <div style={{ padding: '0 4px' }}>
@@ -168,10 +202,17 @@ export default function BookingsPage() {
                     ))}
                 </div>
 
-                {/* Search + Refresh */}
+                {/* Search + Actions */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                     <Input prefix={<SearchOutlined />} placeholder="Search schedules, bookings..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 320 }} allowClear />
-                    <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Refresh</Button>
+                    <Space>
+                        <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Refresh</Button>
+                        <Button type="primary" icon={<PlusOutlined />}
+                            onClick={() => { bookingForm.resetFields(); setSelectedScheduleId(undefined); setBookingModalOpen(true); setTab('bookings'); }}
+                            style={{ background: 'linear-gradient(135deg, #7c3aed, #2563eb)', border: 'none', borderRadius: 8 }}>
+                            New Booking
+                        </Button>
+                    </Space>
                 </div>
 
                 {/* Tabs */}
@@ -212,6 +253,85 @@ export default function BookingsPage() {
                         </div>
                     )}
                 </Drawer>
+
+                {/* ─── New Booking Modal ──────────────────────── */}
+                <Modal title="New Booking" open={bookingModalOpen} onCancel={() => setBookingModalOpen(false)}
+                    onOk={handleCreateBooking} okText="Create Booking" width={620}>
+                    <Form form={bookingForm} layout="vertical" initialValues={{ passengerCount: 1, class: 'economy', status: 'pending' }}>
+                        <Row gutter={16}>
+                            <Col span={10}>
+                                <Form.Item name="bookingCode" label="Booking Code" rules={[{ required: true }]}>
+                                    <Input placeholder="BKG-2026-XXX" />
+                                </Form.Item>
+                            </Col>
+                            <Col span={14}>
+                                <Form.Item name="scheduleId" label="Schedule / Route" rules={[{ required: true, message: 'Select a schedule' }]}>
+                                    <Select placeholder="Select route" showSearch
+                                        filterOption={(input, option) => (option?.label as string || '').toLowerCase().includes(input.toLowerCase())}
+                                        onChange={(v) => { setSelectedScheduleId(v); bookingForm.setFieldsValue({ occurrenceId: undefined }); recalcTotal(); }}
+                                        options={schedules.filter(s => s.status === 'active').map(s => ({
+                                            value: s.id, label: `${s.scheduleCode} — ${s.routeName} (${s.origin} → ${s.destination || '—'})`
+                                        }))} />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                        <Row gutter={16}>
+                            <Col span={14}>
+                                <Form.Item name="occurrenceId" label="Departure">
+                                    <Select placeholder={selectedScheduleId ? 'Select departure' : 'Select a schedule first'} disabled={!selectedScheduleId}
+                                        options={filteredOccurrences.map(o => ({
+                                            value: o.id,
+                                            label: `${new Date(o.departureDate).toLocaleDateString('id-ID')} ${o.departureTime || ''} — ${o.bookedCount || 0}/${o.totalCapacity || 0} booked`
+                                        }))} />
+                                </Form.Item>
+                            </Col>
+                            <Col span={5}>
+                                <Form.Item name="class" label="Class" rules={[{ required: true }]}>
+                                    <Select onChange={() => recalcTotal()} options={[
+                                        { value: 'economy', label: 'Economy' }, { value: 'business', label: 'Business' }, { value: 'vip', label: 'VIP' },
+                                    ]} />
+                                </Form.Item>
+                            </Col>
+                            <Col span={5}>
+                                <Form.Item name="passengerCount" label="Passengers" rules={[{ required: true }]}>
+                                    <InputNumber min={1} max={50} style={{ width: '100%' }} onChange={() => recalcTotal()} />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                        <Row gutter={16}>
+                            <Col span={8}>
+                                <Form.Item name="customerName" label="Customer Name" rules={[{ required: true }]}>
+                                    <Input placeholder="Full name" />
+                                </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                                <Form.Item name="customerEmail" label="Email">
+                                    <Input placeholder="email@example.com" />
+                                </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                                <Form.Item name="customerPhone" label="Phone">
+                                    <Input placeholder="+62..." />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                        <Row gutter={16}>
+                            <Col span={8}>
+                                <Form.Item name="totalAmount" label="Total Amount">
+                                    <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" />
+                                </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                                <Form.Item name="paidAmount" label="Paid Amount">
+                                    <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                        <Form.Item name="notes" label="Notes">
+                            <Input.TextArea rows={2} placeholder="Booking notes..." />
+                        </Form.Item>
+                    </Form>
+                </Modal>
             </div>
         </CMSLayout>
     );

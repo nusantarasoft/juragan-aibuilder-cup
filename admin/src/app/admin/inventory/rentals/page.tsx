@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Table, Tag, Button, Space, message, Tabs, Progress, Drawer, Descriptions, Badge, Tooltip } from 'antd';
-import { ReloadOutlined, SearchOutlined, ToolOutlined, CheckCircleOutlined, WarningOutlined, DollarOutlined, SwapOutlined, ClockCircleOutlined, CarOutlined, EyeOutlined } from '@ant-design/icons';
-import { Input } from 'antd';
+import { Table, Tag, Button, Space, message, Tabs, Progress, Drawer, Descriptions, Badge, Tooltip, Modal, Form, Input, InputNumber, Select, DatePicker, Row, Col } from 'antd';
+import { PlusOutlined, ReloadOutlined, SearchOutlined, ToolOutlined, CheckCircleOutlined, WarningOutlined, DollarOutlined, SwapOutlined, ClockCircleOutlined, CarOutlined, EyeOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
 import { inventoryService, RentalAsset, RentalContract, RentalStatsType } from '@/lib/inventoryService';
+import dayjs from 'dayjs';
 
 const CONDITION_COLORS: Record<string, string> = { excellent: 'green', good: 'blue', fair: 'orange', poor: 'red' };
 const STATUS_COLORS: Record<string, string> = { available: 'green', rented: 'blue', maintenance: 'orange', retired: 'default', active: 'blue', returned: 'green', overdue: 'red', lost: 'volcano' };
@@ -19,6 +19,10 @@ export default function RentalsPage() {
     const [loading, setLoading] = useState(false);
     const [tab, setTab] = useState('assets');
     const [search, setSearch] = useState('');
+
+    // New Rental Contract modal
+    const [contractModalOpen, setContractModalOpen] = useState(false);
+    const [contractForm] = Form.useForm();
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -41,6 +45,60 @@ export default function RentalsPage() {
             message.success('Asset returned successfully');
             load();
         } catch (e: any) { message.error(e.message); }
+    };
+
+    const handleCreateContract = async () => {
+        try {
+            const values = await contractForm.validateFields();
+            const input: Record<string, any> = {
+                contractCode: values.contractCode,
+                assetId: values.assetId,
+                assetName: values.assetName,
+                customerName: values.customerName,
+                customerEmail: values.customerEmail,
+                customerPhone: values.customerPhone,
+                customerIdNumber: values.customerIdNumber,
+                checkoutDate: values.checkoutDate?.format('YYYY-MM-DD'),
+                expectedReturnDate: values.expectedReturnDate?.format('YYYY-MM-DD'),
+                dailyRate: values.dailyRate,
+                depositAmount: values.depositAmount,
+                subtotal: values.subtotal,
+                totalCharge: values.totalCharge,
+                checkoutCondition: values.checkoutCondition,
+                checkoutNotes: values.checkoutNotes,
+            };
+            await inventoryService.createRentalContract('default', input);
+            message.success('Rental contract created');
+            setContractModalOpen(false);
+            contractForm.resetFields();
+            load();
+        } catch (e: any) {
+            if (e.errorFields) return;
+            message.error(e.message || 'Failed to create contract');
+        }
+    };
+
+    const onAssetChange = (assetId: string) => {
+        const asset = assets.find(a => a.id === assetId);
+        if (asset) {
+            contractForm.setFieldsValue({
+                assetName: asset.assetName,
+                dailyRate: asset.dailyRate || 0,
+                depositAmount: asset.depositAmount || 0,
+            });
+            recalcRental();
+        }
+    };
+
+    const recalcRental = () => {
+        const checkout = contractForm.getFieldValue('checkoutDate');
+        const ret = contractForm.getFieldValue('expectedReturnDate');
+        const rate = contractForm.getFieldValue('dailyRate') || 0;
+        if (checkout && ret) {
+            const days = Math.max(1, ret.diff(checkout, 'day'));
+            const subtotal = days * rate;
+            contractForm.setFieldsValue({ subtotal, totalCharge: subtotal + (contractForm.getFieldValue('depositAmount') || 0) });
+        }
     };
 
     const fmt = (v: number) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
@@ -125,10 +183,17 @@ export default function RentalsPage() {
                     ))}
                 </div>
 
-                {/* Search + Refresh */}
+                {/* Search + Actions */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                     <Input prefix={<SearchOutlined />} placeholder="Search assets, contracts..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 320 }} allowClear />
-                    <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Refresh</Button>
+                    <Space>
+                        <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Refresh</Button>
+                        <Button type="primary" icon={<PlusOutlined />}
+                            onClick={() => { contractForm.resetFields(); setContractModalOpen(true); setTab('contracts'); }}
+                            style={{ background: 'linear-gradient(135deg, #d97706, #dc2626)', border: 'none', borderRadius: 8 }}>
+                            New Contract
+                        </Button>
+                    </Space>
                 </div>
 
                 {/* Tabs */}
@@ -172,7 +237,104 @@ export default function RentalsPage() {
                         </Descriptions>
                     )}
                 </Drawer>
+
+                {/* ─── New Rental Contract Modal ──────────────────────── */}
+                <Modal title="New Rental Contract" open={contractModalOpen} onCancel={() => setContractModalOpen(false)}
+                    onOk={handleCreateContract} okText="Create Contract" width={660}>
+                    <Form form={contractForm} layout="vertical" initialValues={{ checkoutCondition: 'good' }}>
+                        <Row gutter={16}>
+                            <Col span={10}>
+                                <Form.Item name="contractCode" label="Contract Code" rules={[{ required: true }]}>
+                                    <Input placeholder="RNT-2026-XXX" />
+                                </Form.Item>
+                            </Col>
+                            <Col span={14}>
+                                <Form.Item name="assetId" label="Asset" rules={[{ required: true, message: 'Select an asset' }]}>
+                                    <Select placeholder="Select asset" showSearch
+                                        filterOption={(input, option) => (option?.label as string || '').toLowerCase().includes(input.toLowerCase())}
+                                        onChange={onAssetChange}
+                                        options={assets.filter(a => a.status === 'available').map(a => ({
+                                            value: a.id, label: `${a.assetCode} — ${a.assetName} (${a.category || '—'})`
+                                        }))} />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                        <Form.Item name="assetName" hidden><Input /></Form.Item>
+                        <Row gutter={16}>
+                            <Col span={8}>
+                                <Form.Item name="customerName" label="Customer Name" rules={[{ required: true }]}>
+                                    <Input placeholder="Full name" />
+                                </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                                <Form.Item name="customerEmail" label="Email">
+                                    <Input placeholder="email@example.com" />
+                                </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                                <Form.Item name="customerPhone" label="Phone">
+                                    <Input placeholder="+62..." />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                        <Row gutter={16}>
+                            <Col span={8}>
+                                <Form.Item name="customerIdNumber" label="ID Number">
+                                    <Input placeholder="KTP / Passport" />
+                                </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                                <Form.Item name="checkoutDate" label="Checkout Date" rules={[{ required: true }]}>
+                                    <DatePicker style={{ width: '100%' }} onChange={() => recalcRental()} />
+                                </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                                <Form.Item name="expectedReturnDate" label="Expected Return" rules={[{ required: true }]}>
+                                    <DatePicker style={{ width: '100%' }} onChange={() => recalcRental()} />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                        <Row gutter={16}>
+                            <Col span={6}>
+                                <Form.Item name="dailyRate" label="Daily Rate">
+                                    <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" onChange={() => recalcRental()} />
+                                </Form.Item>
+                            </Col>
+                            <Col span={6}>
+                                <Form.Item name="depositAmount" label="Deposit">
+                                    <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" onChange={() => recalcRental()} />
+                                </Form.Item>
+                            </Col>
+                            <Col span={6}>
+                                <Form.Item name="subtotal" label="Subtotal">
+                                    <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" disabled />
+                                </Form.Item>
+                            </Col>
+                            <Col span={6}>
+                                <Form.Item name="totalCharge" label="Total Charge">
+                                    <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" disabled />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                        <Row gutter={16}>
+                            <Col span={8}>
+                                <Form.Item name="checkoutCondition" label="Checkout Condition">
+                                    <Select options={[
+                                        { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' },
+                                        { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' },
+                                    ]} />
+                                </Form.Item>
+                            </Col>
+                            <Col span={16}>
+                                <Form.Item name="checkoutNotes" label="Checkout Notes">
+                                    <Input.TextArea rows={1} placeholder="Condition notes..." />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                    </Form>
+                </Modal>
             </div>
         </CMSLayout>
     );
 }
+

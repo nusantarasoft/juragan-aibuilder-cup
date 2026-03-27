@@ -21,6 +21,7 @@ import {
     inventoryService, MfgBom, MfgBomLine, MfgWorkOrder,
     ManufacturingStats, InvWarehouse
 } from "@/lib/inventoryService";
+import ItemPicker, { MasterItem } from "@/components/inventory/ItemPicker";
 
 const { Text } = Typography;
 
@@ -538,18 +539,30 @@ export default function ManufacturingPage() {
             <Modal title="Add Component" open={lineModalOpen}
                 onCancel={() => setLineModalOpen(false)} onOk={handleAddBomLine} okText="Add">
                 <Form form={lineForm} layout="vertical">
-                    <Row gutter={16}>
-                        <Col span={16}>
-                            <Form.Item name="itemName" label="Item Name" rules={[{ required: true }]}>
-                                <Input placeholder="Component name" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={8}>
-                            <Form.Item name="itemSku" label="SKU">
-                                <Input placeholder="SKU" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
+                    <Form.Item name="itemId" label="Select Item from Master" rules={[{ required: true, message: 'Please select an item' }]}>
+                        <ItemPicker
+                            onItemSelect={(item: MasterItem | null) => {
+                                if (item) {
+                                    lineForm.setFieldsValue({
+                                        itemName: item.name,
+                                        itemSku: item.sku,
+                                        unitCost: item.costPrice || 0,
+                                        uom: item.uom || 'pcs',
+                                    });
+                                } else {
+                                    lineForm.setFieldsValue({
+                                        itemName: undefined,
+                                        itemSku: undefined,
+                                        unitCost: 0,
+                                        uom: 'pcs',
+                                    });
+                                }
+                            }}
+                            size="middle"
+                        />
+                    </Form.Item>
+                    <Form.Item name="itemName" hidden><Input /></Form.Item>
+                    <Form.Item name="itemSku" hidden><Input /></Form.Item>
                     <Row gutter={16}>
                         <Col span={6}>
                             <Form.Item name="quantity" label="Qty" rules={[{ required: true }]}>

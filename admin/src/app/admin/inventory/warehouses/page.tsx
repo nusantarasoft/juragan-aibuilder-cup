@@ -21,6 +21,7 @@ import {
     inventoryService, InvWarehouse, InvZone, InvBin,
     InvStockTransfer, WarehouseStats
 } from "@/lib/inventoryService";
+import ItemPicker from "@/components/inventory/ItemPicker";
 
 const { Title, Text } = Typography;
 
@@ -676,9 +677,19 @@ export default function WarehousesPage() {
                     </Row>
                     <Row gutter={16}>
                         <Col span={16}>
-                            <Form.Item name="itemName" label="Item Name" rules={[{ required: true }]}>
-                                <Input placeholder="Item being transferred" />
+                            <Form.Item name="itemId" label="Item" rules={[{ required: true, message: 'Select an item' }]}>
+                                <ItemPicker
+                                    placeholder="Search items by name or SKU..."
+                                    onItemSelect={(item) => {
+                                        if (item) {
+                                            trfForm.setFieldsValue({ itemName: item.name, uom: item.uom || 'pcs' });
+                                        } else {
+                                            trfForm.setFieldsValue({ itemName: undefined, uom: 'pcs' });
+                                        }
+                                    }}
+                                />
                             </Form.Item>
+                            <Form.Item name="itemName" hidden><input /></Form.Item>
                         </Col>
                         <Col span={8}>
                             <Form.Item name="quantity" label="Quantity" rules={[{ required: true }]}>

@@ -382,7 +382,7 @@ export const inventoryService = {
                 invSuppliers(tenantId: $tenantId, status: $status, search: $search) {
                     id code name contactPerson email phone address city country
                     taxId paymentTerms currency rating leadTimeDays tags notes status
-                    createdAt updatedAt
+                    accountId createdAt updatedAt
                 }
             }
         `, { tenantId, status, search });
@@ -1151,7 +1151,7 @@ export const inventoryService = {
             query($tenantId: String!, $search: String, $customerType: String, $status: String) {
                 ecomCustomers(tenantId: $tenantId, search: $search, customerType: $customerType, status: $status) {
                     id customerCode firstName lastName email phone company address city province postalCode
-                    idNumber customerType totalOrders totalSpent loyaltyPoints notes tags status createdAt
+                    idNumber customerType totalOrders totalSpent loyaltyPoints notes tags status accountId contactId createdAt
                 }
             }
         `, { tenantId, ...filters });
@@ -1503,6 +1503,7 @@ export interface EcomCustomer {
     idNumber?: string; customerType?: string;
     totalOrders?: number; totalSpent?: number; loyaltyPoints?: number;
     notes?: string; tags?: string[]; status?: string;
+    accountId?: string; contactId?: string;
     createdAt: string; updatedAt?: string;
 }
 
