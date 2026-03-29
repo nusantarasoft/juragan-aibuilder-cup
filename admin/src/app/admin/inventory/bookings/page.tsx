@@ -5,7 +5,9 @@ import { Table, Tag, Button, Modal, Form, Input, InputNumber, Select, Space, mes
 import { PlusOutlined, ReloadOutlined, ScheduleOutlined, CheckCircleOutlined, ClockCircleOutlined, TeamOutlined, DollarOutlined, SearchOutlined, SendOutlined, LoginOutlined, CloseCircleOutlined, EyeOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
-import { inventoryService, BookingSchedule, BookingOccurrence, Booking, BookingPassenger, BookingStatsType } from '@/lib/inventoryService';
+import { inventoryService, BookingSchedule, BookingOccurrence, Booking, BookingPassenger, BookingStatsType, InvItem } from '@/lib/inventoryService';
+import DecryptedText from "@/components/react-bits/DecryptedText";
+import { AuroraText } from "@/components/magicui/aurora-text";
 
 const STATUS_COLORS: Record<string, string> = {
     active: 'green', suspended: 'orange', cancelled: 'red',
@@ -23,6 +25,8 @@ export default function BookingsPage() {
     const [loading, setLoading] = useState(false);
     const [tab, setTab] = useState('schedules');
     const [search, setSearch] = useState('');
+    const [items, setItems] = useState<InvItem[]>([]);
+    const { Card } = require('antd');
 
     // New Booking modal
     const [bookingModalOpen, setBookingModalOpen] = useState(false);
@@ -32,13 +36,14 @@ export default function BookingsPage() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [s, o, b, st] = await Promise.all([
+            const [s, o, b, st, it] = await Promise.all([
                 inventoryService.getSchedules(),
                 inventoryService.getOccurrences(),
                 inventoryService.getBookings(),
                 inventoryService.getBookingStats(),
+                inventoryService.getItems(),
             ]);
-            setSchedules(s); setOccurrences(o); setBookings(b); setStats(st);
+            setSchedules(s); setOccurrences(o); setBookings(b); setStats(st); setItems(it);
         } catch (e: any) { message.error(e.message); }
         setLoading(false);
     }, []);
@@ -104,6 +109,11 @@ export default function BookingsPage() {
         { title: 'Time', render: (_: any, r: BookingSchedule) => `${r.departureTime || '—'} → ${r.arrivalTime || '—'}` },
         { title: 'Vessel', dataIndex: 'vehicleName', render: (v: string) => v || '—' },
         { title: 'Capacity', dataIndex: 'capacity', render: (v: number) => <strong>{v}</strong> },
+        { title: 'Product', dataIndex: 'itemId', width: 160, ellipsis: true, render: (v: string) => {
+            if (!v) return <Tag color="default">—</Tag>;
+            const item = items.find(i => i.id === v);
+            return <Tag color="purple" style={{ fontSize: 11, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>🎫 {item?.name || 'Linked'}</Tag>;
+        }},
         { title: 'Economy', dataIndex: 'priceEconomy', render: fmt },
         { title: 'Business', dataIndex: 'priceBusiness', render: fmt },
         { title: 'VIP', dataIndex: 'priceVip', render: (v: number) => v ? fmt(v) : '—' },
@@ -117,15 +127,29 @@ export default function BookingsPage() {
         }},
         { title: 'Date', dataIndex: 'departureDate', render: (v: string) => new Date(v).toLocaleDateString('id-ID', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) },
         { title: 'Time', dataIndex: 'departureTime', render: (v: string) => v || '—' },
-        { title: 'Capacity', render: (_: any, r: BookingOccurrence) => (
-            <Space direction="vertical" size={0} style={{ width: 120 }}>
-                <span>{r.bookedCount || 0}/{r.totalCapacity || 0} booked</span>
-                <Progress percent={Math.round(((r.bookedCount || 0) / (r.totalCapacity || 1)) * 100)} size="small"
-                    strokeColor={(r.bookedCount || 0) / (r.totalCapacity || 1) > 0.8 ? '#f5222d' : '#1890ff'} />
-            </Space>
-        )},
+        { title: 'Capacity', render: (_: any, r: BookingOccurrence) => {
+            const isFull = (r.bookedCount || 0) >= (r.totalCapacity || 1);
+            return (
+                <Space direction="vertical" size={0} style={{ width: 120 }}>
+                    <span>{r.bookedCount || 0}/{r.totalCapacity || 0} booked</span>
+                    {isFull
+                        ? <Tag color="red" style={{ fontWeight: 700, margin: '4px 0' }}>🚫 SOLD OUT</Tag>
+                        : <Progress percent={Math.round(((r.bookedCount || 0) / (r.totalCapacity || 1)) * 100)} size="small"
+                            strokeColor={(r.bookedCount || 0) / (r.totalCapacity || 1) > 0.8 ? '#f5222d' : '#1890ff'} />
+                    }
+                </Space>
+            );
+        }},
         { title: 'Check‑ins', render: (_: any, r: BookingOccurrence) => `${r.checkedInCount || 0}/${r.bookedCount || 0}` },
-        { title: 'Status', dataIndex: 'status', render: (v: string) => <Tag color={STATUS_COLORS[v] || 'default'}>{v}</Tag> },
+        { title: 'Status', dataIndex: 'status', render: (v: string, r: BookingOccurrence) => {
+            const isFull = (r.bookedCount || 0) >= (r.totalCapacity || 1);
+            return (
+                <Space>
+                    <Tag color={STATUS_COLORS[v] || 'default'}>{v}</Tag>
+                    {isFull && v === 'scheduled' && <Tag color="volcano">FULL</Tag>}
+                </Space>
+            );
+        }},
         { title: 'Actions', render: (_: any, r: BookingOccurrence) => {
             const next: Record<string, string[]> = { scheduled: ['boarding'], boarding: ['departed'], departed: ['completed'], completed: [] };
             return (
@@ -179,20 +203,17 @@ export default function BookingsPage() {
         : [];
 
     return (
-        <CMSLayout>
-            <div style={{ padding: '0 4px' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 20 }}>
-                    <h1 style={{ margin: 0, background: 'linear-gradient(135deg, #7c3aed, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: 28, fontWeight: 700 }}>
-                        Bookings & Ticketing
-                    </h1>
-                    <span style={{ color: '#888' }}>Schedule management, passenger bookings, and check-in tracking</span>
-                </div>
+        <CMSLayout
+            title={<AuroraText colors={["#7c3aed", "#2563eb", "#3b82f6", "#00ffff", "#8b5cf6"]}>Bookings & Ticketing</AuroraText>}
+            subTitle={<DecryptedText text="Schedule management, passenger bookings, and check-in tracking" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
+        >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
 
                 {/* KPI Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 14, marginBottom: 24 }}>
                     {kpis.map((k, i) => (
                         <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                            style={{ background: '#fff', borderRadius: 10, padding: '16px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
+                            style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.5)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                                 <span style={{ color: k.color, fontSize: 16 }}>{k.icon}</span>
                                 <span style={{ color: '#999', fontSize: 12 }}>{k.label}</span>
@@ -215,21 +236,23 @@ export default function BookingsPage() {
                     </Space>
                 </div>
 
-                {/* Tabs */}
-                <Tabs activeKey={tab} onChange={setTab} items={[
-                    { key: 'schedules', label: `🗓️ Schedules (${schedules.length})`, children: (
-                        <Table dataSource={filteredSchedules} columns={scheduleColumns} rowKey="id" size="middle" loading={loading}
-                            pagination={{ pageSize: 10 }} scroll={{ x: 1200 }} />
-                    )},
-                    { key: 'departures', label: `🚢 Departures (${occurrences.length})`, children: (
-                        <Table dataSource={occurrences} columns={occurrenceColumns} rowKey="id" size="middle" loading={loading}
-                            pagination={{ pageSize: 10 }} scroll={{ x: 900 }} />
-                    )},
-                    { key: 'bookings', label: `🎫 Bookings (${bookings.length})`, children: (
-                        <Table dataSource={filteredBookings} columns={bookingColumns} rowKey="id" size="middle" loading={loading}
-                            pagination={{ pageSize: 10 }} scroll={{ x: 1100 }} />
-                    )},
-                ]} />
+                <Card size="small" style={{ flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)' }}>
+                    {/* Tabs */}
+                    <Tabs activeKey={tab} onChange={setTab} items={[
+                        { key: 'schedules', label: `🗓️ Schedules (${schedules.length})`, children: (
+                            <Table dataSource={filteredSchedules} columns={scheduleColumns} rowKey="id" size="middle" loading={loading}
+                                pagination={{ pageSize: 10 }} scroll={{ x: 1200 }} />
+                        )},
+                        { key: 'departures', label: `🚢 Departures (${occurrences.length})`, children: (
+                            <Table dataSource={occurrences} columns={occurrenceColumns} rowKey="id" size="middle" loading={loading}
+                                pagination={{ pageSize: 10 }} scroll={{ x: 900 }} />
+                        )},
+                        { key: 'bookings', label: `🎫 Bookings (${bookings.length})`, children: (
+                            <Table dataSource={filteredBookings} columns={bookingColumns} rowKey="id" size="middle" loading={loading}
+                                pagination={{ pageSize: 10 }} scroll={{ x: 1100 }} />
+                        )},
+                    ]} />
+                </Card>
 
                 {/* Passenger Drawer */}
                 <Drawer title={`Passengers — ${selectedBooking?.bookingCode}`} open={!!selectedBooking} onClose={() => setSelectedBooking(null)} width={520}>

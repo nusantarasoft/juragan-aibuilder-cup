@@ -7,7 +7,7 @@ import {
     Table, Button, Space, Tag, Input, Select, Modal, Form, Card,
     Statistic, Typography, message, Empty, Spin, Tabs, Tooltip,
     Drawer, Descriptions, Segmented, Badge, Row, Col, Popconfirm,
-    InputNumber, Divider, Switch, Steps, Image
+    InputNumber, Divider, Switch, Steps, Image, Progress
 } from "antd";
 import {
     PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined,
@@ -28,12 +28,25 @@ import { inventoryService, InvItem, InvCategory, InvStockStats, AiClassification
 
 const { Title, Text, Paragraph } = Typography;
 
-const FULFILLMENT_TYPES = [
-    { value: 'physical', label: 'Physical Goods', icon: <DropboxOutlined />, color: '#7c3aed', desc: 'Tangible products with stock tracking', example: 'Laptop, T-shirt, Bolt' },
-    { value: 'ticket', label: 'Ticket / Event', icon: <TagOutlined />, color: '#f59e0b', desc: 'One-time events with capacity & seats', example: 'Concert, Museum entry' },
-    { value: 'scheduled', label: 'Scheduled Service', icon: <ScheduleOutlined />, color: '#0ea5e9', desc: 'Recurring routes with timetables', example: 'Ship route, Bus line' },
-    { value: 'rental', label: 'Rental Asset', icon: <SwapOutlined />, color: '#10b981', desc: 'Items rented out & returned', example: 'Camera, Projector, Vehicle' },
+const SELLABLE_FULFILLMENT_TYPES = [
+    { value: 'physical', label: 'Physical Goods', icon: <DropboxOutlined />, color: '#7c3aed', desc: 'Tangible products with stock tracking', example: 'Laptop, T-shirt, Bolt', sellable: true },
+    { value: 'ticket', label: 'Ticket / Event', icon: <TagOutlined />, color: '#f59e0b', desc: 'One-time events with capacity & seats', example: 'Concert, Museum entry', sellable: true },
+    { value: 'scheduled', label: 'Scheduled Service', icon: <ScheduleOutlined />, color: '#0ea5e9', desc: 'Recurring routes with timetables', example: 'Ship route, Bus line', sellable: true },
+    { value: 'rental', label: 'Rental Asset', icon: <SwapOutlined />, color: '#10b981', desc: 'Items rented out & returned', example: 'Camera, Projector, Vehicle', sellable: true },
 ];
+
+const NON_SELLABLE_TYPES = [
+    { value: 'raw_material', label: 'Raw Material', icon: <ToolOutlined />, color: '#78716c', desc: 'Input materials for manufacturing', example: 'Fiberglass resin, Steel sheet', sellable: false },
+    { value: 'consumable', label: 'Consumable', icon: <ExportOutlined />, color: '#a1a1aa', desc: 'Used internally, not for resale', example: 'Sandpaper, Cleaning solvent', sellable: false },
+    { value: 'semi_finished', label: 'Semi-Finished', icon: <BoxPlotOutlined />, color: '#92400e', desc: 'Work-in-progress or intermediate goods', example: 'Pre-cut hull panel', sellable: false },
+];
+
+const FULFILLMENT_TYPES = [...SELLABLE_FULFILLMENT_TYPES, ...NON_SELLABLE_TYPES];
+
+const ITEM_TYPE_FOR_FULFILLMENT: Record<string, string> = {
+    physical: 'finished_good', ticket: 'service', scheduled: 'service', rental: 'goods',
+    raw_material: 'raw_material', consumable: 'consumable', semi_finished: 'semi_finished',
+};
 
 const ITEM_TYPES = [
     { value: 'goods', label: 'Goods' },
@@ -43,6 +56,8 @@ const ITEM_TYPES = [
     { value: 'semi_finished', label: 'Semi-Finished' },
     { value: 'consumable', label: 'Consumable' },
 ];
+
+const isSellableType = (ft: string) => !['raw_material', 'consumable', 'semi_finished'].includes(ft);
 
 const STATUS_COLORS: Record<string, string> = {
     active: 'green', draft: 'orange', archived: 'default',
@@ -82,6 +97,13 @@ export default function ItemMasterPage() {
     // Category modal
     const [categoryModalOpen, setCategoryModalOpen] = useState(false);
     const [categoryForm] = Form.useForm();
+
+    // Make Sellable modal
+    const [sellableModalOpen, setSellableModalOpen] = useState(false);
+    const [sellableItem, setSellableItem] = useState<InvItem | null>(null);
+    const [sellableType, setSellableType] = useState('physical');
+    const [sellablePrice, setSellablePrice] = useState<number>(0);
+    const [sellableSaving, setSellableSaving] = useState(false);
 
     // Gallery media IDs (for wizard)
     const [galleryMediaIds, setGalleryMediaIds] = useState<string[]>([]);
@@ -221,6 +243,31 @@ export default function ItemMasterPage() {
         } catch { message.error("Failed to create category"); }
     };
 
+    const openMakeSellable = (item: InvItem) => {
+        setSellableItem(item);
+        setSellableType('physical');
+        setSellablePrice(0);
+        setSellableModalOpen(true);
+    };
+
+    const handleMakeSellable = async () => {
+        if (!sellableItem) return;
+        setSellableSaving(true);
+        try {
+            await inventoryService.updateItem(sellableItem.id, {
+                fulfillmentType: sellableType,
+                itemType: ITEM_TYPE_FOR_FULFILLMENT[sellableType],
+                sellingPrice: sellablePrice,
+            });
+            message.success(`"${sellableItem.name}" is now a sellable ${sellableType} product!`);
+            setSellableModalOpen(false);
+            setSellableItem(null);
+            if (detailDrawer?.id === sellableItem.id) setDetailDrawer(null);
+            loadAll();
+        } catch { message.error('Failed to convert item'); }
+        finally { setSellableSaving(false); }
+    };
+
     // ─── Table Columns ──────────────────────────────────
 
     const columns = [
@@ -311,6 +358,13 @@ export default function ItemMasterPage() {
                             className="text-gray-400 hover:text-blue-500"
                             onClick={() => handleEdit(r)} />
                     </AnimatedTooltip>
+                    {!isSellableType(r.fulfillmentType || '') && (
+                        <AnimatedTooltip content="Make Sellable">
+                            <Button type="text" size="small" icon={<ShoppingOutlined />}
+                                className="text-gray-400 hover:text-green-500"
+                                onClick={() => openMakeSellable(r)} />
+                        </AnimatedTooltip>
+                    )}
                     <Popconfirm title="Delete this item?" onConfirm={() => handleDelete(r.id)}>
                         <AnimatedTooltip content="Delete">
                             <Button type="text" size="small" icon={<DeleteOutlined />}
@@ -486,7 +540,7 @@ export default function ItemMasterPage() {
                 open={formOpen}
                 onCancel={() => setFormOpen(false)}
                 footer={null}
-                width={780}
+                width={900}
                 closable={false}
                 centered
                 styles={{ body: { padding: 0 } }}
@@ -515,39 +569,44 @@ export default function ItemMasterPage() {
                             {wizardStep === 0 && (
                                 <motion.div key="step0" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.2 }}>
                                     <Text strong className="text-base block mb-1">What kind of item are you creating?</Text>
-                                    <Text type="secondary" className="text-xs block mb-5">Choose the fulfillment model that best describes this item.</Text>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                                        {FULFILLMENT_TYPES.map((ft, i) => {
+                                    <Text type="secondary" className="text-xs block mb-4">Choose the fulfillment model that best describes this item.</Text>
+
+                                    <Text type="secondary" className="text-xs uppercase tracking-wider block mb-2" style={{ color: '#16a34a' }}>📦 Sellable — appears in product catalog</Text>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                                        {SELLABLE_FULFILLMENT_TYPES.map((ft, i) => {
                                             const isActive = selectedFulfillment === ft.value;
                                             return (
-                                                <motion.div key={ft.value} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-                                                    <Card
-                                                        hoverable
-                                                        onClick={() => { setSelectedFulfillment(ft.value); form.setFieldValue('fulfillmentType', ft.value); }}
-                                                        style={{
-                                                            borderRadius: 16, cursor: 'pointer', transition: 'all 0.25s',
-                                                            border: isActive ? `2px solid ${ft.color}` : '2px solid #f0f0f0',
-                                                            background: isActive ? `${ft.color}08` : '#fff',
-                                                            boxShadow: isActive ? `0 4px 20px ${ft.color}20` : 'none',
-                                                        }}
-                                                        styles={{ body: { padding: '20px' } }}
-                                                    >
-                                                        <div className="flex items-start gap-4">
-                                                            <div style={{
-                                                                width: 52, height: 52, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                fontSize: 22, background: `${ft.color}${isActive ? '20' : '10'}`, color: ft.color, transition: 'all 0.25s',
-                                                            }}>
-                                                                {ft.icon}
-                                                            </div>
+                                                <motion.div key={ft.value} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                                                    <Card hoverable onClick={() => { setSelectedFulfillment(ft.value); form.setFieldsValue({ fulfillmentType: ft.value, itemType: ITEM_TYPE_FOR_FULFILLMENT[ft.value] }); }}
+                                                        style={{ borderRadius: 14, cursor: 'pointer', transition: 'all 0.25s', border: isActive ? `2px solid ${ft.color}` : '2px solid #f0f0f0', background: isActive ? `${ft.color}08` : '#fff', boxShadow: isActive ? `0 4px 20px ${ft.color}20` : 'none' }}
+                                                        styles={{ body: { padding: '16px' } }}>
+                                                        <div className="flex items-start gap-3">
+                                                            <div style={{ width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, background: `${ft.color}${isActive ? '20' : '10'}`, color: ft.color }}>{ft.icon}</div>
                                                             <div className="flex-1">
-                                                                <div className="flex items-center gap-2 mb-1">
-                                                                    <Text strong className="text-sm">{ft.label}</Text>
-                                                                    {isActive && <CheckCircleOutlined style={{ color: ft.color, fontSize: 14 }} />}
-                                                                </div>
-                                                                <Text type="secondary" className="text-xs block mb-2">{ft.desc}</Text>
-                                                                <Tag className="rounded-full text-xs" style={{ color: ft.color, borderColor: `${ft.color}40`, background: `${ft.color}08` }}>
-                                                                    e.g. {ft.example}
-                                                                </Tag>
+                                                                <div className="flex items-center gap-2 mb-1"><Text strong className="text-sm">{ft.label}</Text>{isActive && <CheckCircleOutlined style={{ color: ft.color, fontSize: 14 }} />}</div>
+                                                                <Text type="secondary" className="text-xs block">{ft.desc}</Text>
+                                                            </div>
+                                                        </div>
+                                                    </Card>
+                                                </motion.div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <Divider style={{ margin: '8px 0 12px' }}><Text type="secondary" className="text-xs">Internal / Non-Sellable</Text></Divider>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                                        {NON_SELLABLE_TYPES.map((ft, i) => {
+                                            const isActive = selectedFulfillment === ft.value;
+                                            return (
+                                                <motion.div key={ft.value} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.04 }}>
+                                                    <Card hoverable onClick={() => { setSelectedFulfillment(ft.value); form.setFieldsValue({ fulfillmentType: ft.value, itemType: ITEM_TYPE_FOR_FULFILLMENT[ft.value] }); }}
+                                                        style={{ borderRadius: 12, cursor: 'pointer', transition: 'all 0.25s', border: isActive ? `2px solid ${ft.color}` : '2px solid #f0f0f0', background: isActive ? `${ft.color}08` : '#fafafa', boxShadow: isActive ? `0 3px 14px ${ft.color}20` : 'none' }}
+                                                        styles={{ body: { padding: '12px 14px' } }}>
+                                                        <div className="flex items-center gap-3">
+                                                            <div style={{ width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, background: `${ft.color}${isActive ? '20' : '10'}`, color: ft.color }}>{ft.icon}</div>
+                                                            <div>
+                                                                <div className="flex items-center gap-1"><Text strong className="text-xs">{ft.label}</Text>{isActive && <CheckCircleOutlined style={{ color: ft.color, fontSize: 12 }} />}</div>
+                                                                <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{ft.desc}</Text>
                                                             </div>
                                                         </div>
                                                     </Card>
@@ -622,6 +681,50 @@ export default function ItemMasterPage() {
                                             </Form.Item>
                                         </Col>
                                     </Row>
+
+                                    {/* Type-specific detail fields */}
+                                    {(selectedFulfillment === 'ticket') && (<>
+                                        <Divider className="my-3" /><Text strong className="text-xs text-gray-400 uppercase tracking-wider block mb-3">🎫 Event Details</Text>
+                                        <Row gutter={16}>
+                                            <Col span={12}><Form.Item name={['metadata', 'venue']} label="Venue / Location"><Input placeholder="e.g. Bali Convention Center" style={{ borderRadius: 10 }} /></Form.Item></Col>
+                                            <Col span={12}><Form.Item name={['metadata', 'eventDate']} label="Event Date"><Input type="date" style={{ borderRadius: 10 }} /></Form.Item></Col>
+                                        </Row>
+                                        <Row gutter={16}>
+                                            <Col span={12}><Form.Item name={['metadata', 'capacity']} label="Total Capacity"><InputNumber min={1} placeholder="e.g. 500" style={{ width: '100%', borderRadius: 10 }} /></Form.Item></Col>
+                                            <Col span={12}><Form.Item name={['metadata', 'seatSections']} label="Seat Sections"><Select mode="tags" placeholder="e.g. VIP, Regular, Standing" style={{ borderRadius: 10 }} /></Form.Item></Col>
+                                        </Row>
+                                    </>)}
+
+                                    {(selectedFulfillment === 'scheduled') && (<>
+                                        <Divider className="my-3" /><Text strong className="text-xs text-gray-400 uppercase tracking-wider block mb-3">🗓️ Route Details</Text>
+                                        <Row gutter={16}>
+                                            <Col span={12}><Form.Item name={['metadata', 'origin']} label="Origin"><Input placeholder="e.g. Sanur Harbor" style={{ borderRadius: 10 }} /></Form.Item></Col>
+                                            <Col span={12}><Form.Item name={['metadata', 'destination']} label="Destination"><Input placeholder="e.g. Nusa Penida" style={{ borderRadius: 10 }} /></Form.Item></Col>
+                                        </Row>
+                                        <Row gutter={16}>
+                                            <Col span={8}><Form.Item name={['metadata', 'capacity']} label="Capacity"><InputNumber min={1} placeholder="100" style={{ width: '100%', borderRadius: 10 }} /></Form.Item></Col>
+                                            <Col span={8}><Form.Item name={['metadata', 'durationMinutes']} label="Duration (min)"><InputNumber min={1} placeholder="45" style={{ width: '100%', borderRadius: 10 }} /></Form.Item></Col>
+                                            <Col span={8}><Form.Item name={['metadata', 'vehicleName']} label="Vehicle"><Input placeholder="e.g. KMP Nusa Jaya" style={{ borderRadius: 10 }} /></Form.Item></Col>
+                                        </Row>
+                                    </>)}
+
+                                    {(selectedFulfillment === 'rental') && (<>
+                                        <Divider className="my-3" /><Text strong className="text-xs text-gray-400 uppercase tracking-wider block mb-3">🔑 Rental Details</Text>
+                                        <Row gutter={16}>
+                                            <Col span={8}><Form.Item name={['metadata', 'rentalPeriod']} label="Rental Period"><Select options={[{ value: 'hourly', label: 'Hourly' }, { value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' }, { value: 'monthly', label: 'Monthly' }]} style={{ borderRadius: 10 }} /></Form.Item></Col>
+                                            <Col span={8}><Form.Item name={['metadata', 'condition']} label="Condition"><Select options={[{ value: 'excellent', label: '✨ Excellent' }, { value: 'good', label: '👍 Good' }, { value: 'fair', label: '👌 Fair' }, { value: 'needs_repair', label: '🔧 Needs Repair' }]} style={{ borderRadius: 10 }} /></Form.Item></Col>
+                                            <Col span={8}><Form.Item name={['metadata', 'depositAmount']} label="Deposit Amount"><InputNumber min={0} style={{ width: '100%', borderRadius: 10 }} formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={v => v!.replace(/,/g, '') as any} /></Form.Item></Col>
+                                        </Row>
+                                    </>)}
+
+                                    {(selectedFulfillment === 'raw_material') && (<>
+                                        <Divider className="my-3" /><Text strong className="text-xs text-gray-400 uppercase tracking-wider block mb-3">🧱 Material Details</Text>
+                                        <Row gutter={16}>
+                                            <Col span={8}><Form.Item name={['metadata', 'leadTimeDays']} label="Lead Time (days)"><InputNumber min={0} placeholder="7" style={{ width: '100%', borderRadius: 10 }} /></Form.Item></Col>
+                                            <Col span={8}><Form.Item name={['metadata', 'minOrderQty']} label="Min Order Qty"><InputNumber min={1} placeholder="1" style={{ width: '100%', borderRadius: 10 }} /></Form.Item></Col>
+                                            <Col span={8}><Form.Item name={['metadata', 'gradeSpec']} label="Grade / Spec"><Input placeholder="e.g. Marine Grade" style={{ borderRadius: 10 }} /></Form.Item></Col>
+                                        </Row>
+                                    </>)}
                                 </motion.div>
                             )}
 
@@ -646,22 +749,24 @@ export default function ItemMasterPage() {
                                 <motion.div key="step3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.2 }}>
                                     <Text strong className="text-base block mb-1">Pricing & Cost</Text>
                                     <Text type="secondary" className="text-xs block mb-5">
-                                        {selectedFulfillment === 'rental' ? 'Set the daily/period rate and deposit for this rental item.' : selectedFulfillment === 'ticket' ? 'Set ticket pricing by section or tier.' : 'Set cost and selling prices for this item.'}
+                                        {!isSellableType(selectedFulfillment) ? 'Set the cost price for this internal item.' : selectedFulfillment === 'rental' ? 'Set the daily/period rate and deposit for this rental item.' : selectedFulfillment === 'ticket' ? 'Set ticket pricing by section or tier.' : 'Set cost and selling prices for this item.'}
                                     </Text>
 
                                     <Row gutter={16}>
-                                        <Col span={12}>
+                                        <Col span={isSellableType(selectedFulfillment) ? 12 : 24}>
                                             <Form.Item name="costPrice" label={<span><DollarOutlined className="mr-1" />Cost Price</span>}>
                                                 <InputNumber min={0} style={{ width: '100%', borderRadius: 10 }} size="large" placeholder="0"
                                                     formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={v => v!.replace(/,/g, '') as any} />
                                             </Form.Item>
                                         </Col>
-                                        <Col span={12}>
-                                            <Form.Item name="sellingPrice" label={<span><DollarOutlined className="mr-1" />{selectedFulfillment === 'rental' ? 'Daily Rate' : 'Selling Price'}</span>}>
-                                                <InputNumber min={0} style={{ width: '100%', borderRadius: 10 }} size="large" placeholder="0"
-                                                    formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={v => v!.replace(/,/g, '') as any} />
-                                            </Form.Item>
-                                        </Col>
+                                        {isSellableType(selectedFulfillment) && (
+                                            <Col span={12}>
+                                                <Form.Item name="sellingPrice" label={<span><DollarOutlined className="mr-1" />{selectedFulfillment === 'rental' ? 'Daily Rate' : selectedFulfillment === 'ticket' ? 'Ticket Price' : 'Selling Price'}</span>}>
+                                                    <InputNumber min={0} style={{ width: '100%', borderRadius: 10 }} size="large" placeholder="0"
+                                                        formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={v => v!.replace(/,/g, '') as any} />
+                                                </Form.Item>
+                                            </Col>
+                                        )}
                                     </Row>
                                     <Row gutter={16}>
                                         <Col span={8}>
@@ -674,25 +779,36 @@ export default function ItemMasterPage() {
                                                 <InputNumber min={0} max={100} style={{ width: '100%', borderRadius: 10 }} size="large" placeholder="11" />
                                             </Form.Item>
                                         </Col>
-                                        <Col span={8}>
-                                            {selectedFulfillment === 'rental' && (
-                                                <Form.Item name="metadata.depositAmount" label="Deposit Amount">
-                                                    <InputNumber min={0} style={{ width: '100%', borderRadius: 10 }} size="large" placeholder="0"
-                                                        formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={v => v!.replace(/,/g, '') as any} />
-                                                </Form.Item>
-                                            )}
-                                        </Col>
+                                        <Col span={8} />
                                     </Row>
 
-                                    {/* Margin indicator */}
-                                    <Card size="small" style={{ borderRadius: 12, background: '#f9fafb', marginTop: 8 }}>
-                                        <div className="flex items-center justify-between">
-                                            <Text type="secondary" className="text-xs">💡 Profit Margin</Text>
-                                            <Text strong className="text-sm" style={{ color: '#10b981' }}>
-                                                {(() => { const c = form.getFieldValue('costPrice') || 0; const s = form.getFieldValue('sellingPrice') || 0; return c > 0 ? `${(((s - c) / c) * 100).toFixed(1)}%` : '—'; })()}
-                                            </Text>
-                                        </div>
-                                    </Card>
+                                    {!isSellableType(selectedFulfillment) && (
+                                        <Card size="small" style={{ borderRadius: 12, background: '#fafafa', border: '1px solid #e5e7eb', marginTop: 8 }}>
+                                            <Text type="secondary" className="text-xs">💡 This is an internal item (not for resale). Only cost price is tracked. To make it sellable, change the type in Step 1.</Text>
+                                        </Card>
+                                    )}
+
+                                    {/* Live Margin Calculator — only for sellable */}
+                                    {isSellableType(selectedFulfillment) && (
+                                        <Form.Item noStyle shouldUpdate={(prev, cur) => prev.costPrice !== cur.costPrice || prev.sellingPrice !== cur.sellingPrice}>
+                                            {({ getFieldValue }) => {
+                                                const cost = getFieldValue('costPrice') || 0;
+                                                const sell = getFieldValue('sellingPrice') || 0;
+                                                const profit = sell - cost;
+                                                const marginPct = cost > 0 ? ((profit / cost) * 100) : 0;
+                                                const isProfit = profit >= 0;
+                                                return (
+                                                    <Card size="small" style={{ borderRadius: 14, background: isProfit ? 'linear-gradient(135deg, #f0fdf4, #ecfdf5)' : 'linear-gradient(135deg, #fef2f2, #fff1f2)', border: `1px solid ${isProfit ? '#bbf7d0' : '#fecaca'}`, marginTop: 10 }}>
+                                                        <Row gutter={16} align="middle">
+                                                            <Col span={8}><div style={{ textAlign: 'center' }}><Text type="secondary" style={{ fontSize: 11, display: 'block' }}>Cost</Text><Text strong style={{ fontSize: 16 }}>{(cost || 0).toLocaleString()}</Text></div></Col>
+                                                            <Col span={8}><div style={{ textAlign: 'center' }}><Text type="secondary" style={{ fontSize: 11, display: 'block' }}>Profit / Unit</Text><Text strong style={{ fontSize: 18, color: isProfit ? '#16a34a' : '#dc2626' }}>{isProfit ? '+' : ''}{profit.toLocaleString()}</Text></div></Col>
+                                                            <Col span={8}><div style={{ textAlign: 'center' }}><Text type="secondary" style={{ fontSize: 11, display: 'block' }}>Margin</Text><Text strong style={{ fontSize: 18, color: isProfit ? '#16a34a' : '#dc2626' }}>{cost > 0 ? `${marginPct.toFixed(1)}%` : '—'}</Text>{cost > 0 && <Progress percent={Math.min(Math.abs(marginPct), 100)} showInfo={false} strokeColor={isProfit ? '#16a34a' : '#dc2626'} size="small" style={{ marginTop: 4 }} />}</div></Col>
+                                                        </Row>
+                                                    </Card>
+                                                );
+                                            }}
+                                        </Form.Item>
+                                    )}
                                 </motion.div>
                             )}
 
@@ -777,6 +893,8 @@ export default function ItemMasterPage() {
                                         const v = form.getFieldsValue(true);
                                         const ft = FULFILLMENT_TYPES.find(f => f.value === selectedFulfillment);
                                         const cat = categories.find(c => c.id === v.categoryId);
+                                        const profit = (v.sellingPrice || 0) - (v.costPrice || 0);
+                                        const marginPct = (v.costPrice || 0) > 0 ? ((profit / v.costPrice) * 100) : 0;
                                         return (
                                             <div className="space-y-4">
                                                 {/* Header card */}
@@ -787,33 +905,71 @@ export default function ItemMasterPage() {
                                                         </div>
                                                         <div className="flex-1">
                                                             <Title level={4} className="!m-0">{v.name || 'Untitled Item'}</Title>
-                                                            <div className="flex gap-2 mt-1">
+                                                            <div className="flex gap-2 mt-1 flex-wrap">
                                                                 <Tag color={ft?.color} className="rounded-full">{ft?.label}</Tag>
                                                                 {v.itemType && <Tag className="rounded-full">{v.itemType}</Tag>}
                                                                 {cat && <Tag className="rounded-full">{cat.name}</Tag>}
+                                                                {v.brand && <Tag className="rounded-full">🏷️ {v.brand}</Tag>}
+                                                                {(v.tags || []).map((t: string) => <Tag key={t} className="rounded-full text-xs">{t}</Tag>)}
                                                             </div>
                                                         </div>
+                                                        <Button type="link" size="small" style={{ color: '#7c3aed' }} onClick={() => setWizardStep(1)}>✏️ Edit Details</Button>
                                                     </div>
                                                     {v.description && <Paragraph className="mt-3 mb-0 text-sm text-gray-500">{v.description}</Paragraph>}
                                                 </Card>
 
+                                                {/* Media Preview */}
+                                                {galleryMediaIds.length > 0 && (
+                                                    <Card size="small" style={{ borderRadius: 12 }}>
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <Text type="secondary" className="text-xs uppercase tracking-wider">📸 Media ({galleryMediaIds.length} files)</Text>
+                                                            <Button type="link" size="small" onClick={() => setWizardStep(2)} style={{ color: '#7c3aed', padding: 0 }}>Edit Media</Button>
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
+                                                            {galleryMediaIds.slice(0, 6).map(mid => {
+                                                                const m = mediaMap[mid];
+                                                                return m ? (
+                                                                    <img key={mid} src={m.url} alt={m.filename} style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', border: '2px solid #f0f0f0' }} />
+                                                                ) : <div key={mid} style={{ width: 64, height: 64, borderRadius: 10, background: '#f5f5f5' }} />;
+                                                            })}
+                                                            {galleryMediaIds.length > 6 && (
+                                                                <div style={{ width: 64, height: 64, borderRadius: 10, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: '#999' }}>+{galleryMediaIds.length - 6}</div>
+                                                            )}
+                                                        </div>
+                                                    </Card>
+                                                )}
+
                                                 <Row gutter={16}>
                                                     <Col span={12}>
                                                         <Card size="small" style={{ borderRadius: 12 }}>
-                                                            <Text type="secondary" className="text-xs uppercase tracking-wider block mb-2">Pricing</Text>
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <Text type="secondary" className="text-xs uppercase tracking-wider">Pricing</Text>
+                                                                <Button type="link" size="small" onClick={() => setWizardStep(3)} style={{ color: '#7c3aed', padding: 0 }}>Edit</Button>
+                                                            </div>
                                                             <Descriptions column={1} size="small">
                                                                 <Descriptions.Item label="Cost">{v.currency} {(v.costPrice || 0).toLocaleString()}</Descriptions.Item>
-                                                                <Descriptions.Item label="Sell">{v.currency} {(v.sellingPrice || 0).toLocaleString()}</Descriptions.Item>
+                                                                <Descriptions.Item label="Sell">
+                                                                    <Text strong style={{ color: '#6366f1' }}>{v.currency} {(v.sellingPrice || 0).toLocaleString()}</Text>
+                                                                </Descriptions.Item>
                                                                 <Descriptions.Item label="Tax">{v.taxRate || 0}%</Descriptions.Item>
+                                                                <Descriptions.Item label="Margin">
+                                                                    <Text strong style={{ color: profit >= 0 ? '#16a34a' : '#dc2626' }}>
+                                                                        {(v.costPrice || 0) > 0 ? `${marginPct.toFixed(1)}%` : '—'}
+                                                                    </Text>
+                                                                </Descriptions.Item>
                                                             </Descriptions>
                                                         </Card>
                                                     </Col>
                                                     <Col span={12}>
                                                         <Card size="small" style={{ borderRadius: 12 }}>
-                                                            <Text type="secondary" className="text-xs uppercase tracking-wider block mb-2">Tracking</Text>
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <Text type="secondary" className="text-xs uppercase tracking-wider">Tracking</Text>
+                                                                <Button type="link" size="small" onClick={() => setWizardStep(4)} style={{ color: '#7c3aed', padding: 0 }}>Edit</Button>
+                                                            </div>
                                                             <Descriptions column={1} size="small">
-                                                                <Descriptions.Item label="SKU">{v.sku || 'Auto-generated'}</Descriptions.Item>
+                                                                <Descriptions.Item label="SKU">{v.sku || <Text type="secondary" italic>Auto-generated</Text>}</Descriptions.Item>
                                                                 <Descriptions.Item label="UOM">{v.primaryUom}</Descriptions.Item>
+                                                                <Descriptions.Item label="Barcode">{v.barcode || '—'}</Descriptions.Item>
                                                                 <Descriptions.Item label="Status"><Tag color={STATUS_COLORS[v.status]} className="rounded-full text-xs">{v.status}</Tag></Descriptions.Item>
                                                             </Descriptions>
                                                         </Card>
@@ -868,75 +1024,200 @@ export default function ItemMasterPage() {
                 </Form>
             </Modal>
 
+            {/* Make Sellable Modal */}
+            <Modal
+                title={null}
+                open={sellableModalOpen}
+                onCancel={() => { setSellableModalOpen(false); setSellableItem(null); }}
+                footer={null}
+                width={520}
+                centered
+                styles={{ body: { padding: 0 } }}
+            >
+                {sellableItem && (
+                    <>
+                        <div style={{ padding: '24px 28px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                            <div className="flex items-center gap-3">
+                                <div style={{ width: 44, height: 44, borderRadius: 12, background: '#10b98115', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                                    <ShoppingOutlined style={{ color: '#10b981' }} />
+                                </div>
+                                <div>
+                                    <Title level={4} className="!m-0" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                        Make Sellable
+                                    </Title>
+                                    <Text type="secondary" className="text-xs">Convert "{sellableItem.name}" into a sellable product</Text>
+                                </div>
+                            </div>
+                        </div>
+                        <div style={{ padding: '20px 28px' }}>
+                            <Text strong className="text-sm block mb-3">Choose product type</Text>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+                                {SELLABLE_FULFILLMENT_TYPES.map(ft => {
+                                    const isActive = sellableType === ft.value;
+                                    return (
+                                        <Card key={ft.value} hoverable onClick={() => setSellableType(ft.value)}
+                                            style={{ borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s', border: isActive ? `2px solid ${ft.color}` : '2px solid #f0f0f0', background: isActive ? `${ft.color}08` : '#fff' }}
+                                            styles={{ body: { padding: '12px 14px' } }}>
+                                            <div className="flex items-center gap-2">
+                                                <div style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, background: `${ft.color}15`, color: ft.color }}>{ft.icon}</div>
+                                                <Text strong className="text-xs" style={{ color: isActive ? ft.color : '#111' }}>{ft.label}</Text>
+                                                {isActive && <CheckCircleOutlined style={{ color: ft.color, fontSize: 12, marginLeft: 'auto' }} />}
+                                            </div>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+                            <Text strong className="text-sm block mb-2">Selling Price</Text>
+                            <InputNumber min={0} size="large" style={{ width: '100%', borderRadius: 10 }} placeholder="Enter selling price"
+                                value={sellablePrice} onChange={v => setSellablePrice(v || 0)}
+                                formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={v => v!.replace(/,/g, '') as any}
+                                addonBefore={sellableItem.currency || 'IDR'} />
+
+                            {sellablePrice > 0 && sellableItem.costPrice && sellableItem.costPrice > 0 && (() => {
+                                const profit = sellablePrice - sellableItem.costPrice;
+                                const pct = ((profit / sellableItem.costPrice) * 100);
+                                const isProfit = profit >= 0;
+                                return (
+                                    <Card size="small" style={{ borderRadius: 10, background: isProfit ? '#f0fdf4' : '#fef2f2', border: `1px solid ${isProfit ? '#bbf7d0' : '#fecaca'}`, marginTop: 12 }}>
+                                        <div className="flex items-center justify-between">
+                                            <Text type="secondary" className="text-xs">Projected margin</Text>
+                                            <Text strong style={{ color: isProfit ? '#16a34a' : '#dc2626' }}>
+                                                {isProfit ? '+' : ''}{profit.toLocaleString()} ({pct.toFixed(1)}%)
+                                            </Text>
+                                        </div>
+                                    </Card>
+                                );
+                            })()}
+                        </div>
+                        <div style={{ padding: '0 28px 20px', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                            <Button onClick={() => { setSellableModalOpen(false); setSellableItem(null); }} style={{ borderRadius: 8 }}>Cancel</Button>
+                            <Button type="primary" onClick={handleMakeSellable} loading={sellableSaving} disabled={!sellablePrice}
+                                icon={<ShoppingOutlined />}
+                                style={{ background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: 8, minWidth: 160 }}>
+                                Convert to Product
+                            </Button>
+                        </div>
+                    </>
+                )}
+            </Modal>
+
             {/* Detail Drawer */}
             <Drawer
-                title={detailDrawer?.name}
+                title={null}
                 open={!!detailDrawer}
                 onClose={() => setDetailDrawer(null)}
-                width={480}
+                width={520}
+                styles={{ body: { padding: 0 } }}
             >
-                {detailDrawer && (
-                    <div className="space-y-4">
-                        {/* Product Gallery */}
-                        <ProductGallery
-                            mediaIds={detailDrawer.mediaIds || []}
-                            mediaMap={mediaMap as Record<string, MediaInfo>}
-                        />
-
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl"
-                                style={{
-                                    background: `${FULFILLMENT_TYPES.find(f => f.value === detailDrawer.fulfillmentType)?.color || '#7c3aed'}15`,
-                                    color: FULFILLMENT_TYPES.find(f => f.value === detailDrawer.fulfillmentType)?.color || '#7c3aed',
-                                }}>
-                                {FULFILLMENT_TYPES.find(f => f.value === detailDrawer.fulfillmentType)?.icon || <DropboxOutlined />}
+                {detailDrawer && (() => {
+                    const ft = FULFILLMENT_TYPES.find(f => f.value === detailDrawer.fulfillmentType);
+                    const cat = categories.find(c => c.id === detailDrawer.categoryId);
+                    const profit = (detailDrawer.sellingPrice || 0) - (detailDrawer.costPrice || 0);
+                    const marginPct = (detailDrawer.costPrice || 0) > 0 ? ((profit / (detailDrawer.costPrice || 1)) * 100) : 0;
+                    return (
+                        <div>
+                            {/* Hero Header */}
+                            <div style={{ padding: '24px 24px 16px', background: `linear-gradient(135deg, ${ft?.color || '#7c3aed'}08, ${ft?.color || '#7c3aed'}03)`, borderBottom: '1px solid #f0f0f0' }}>
+                                <div className="flex items-center gap-4 mb-3">
+                                    <div style={{ width: 56, height: 56, borderRadius: 14, background: `${ft?.color || '#7c3aed'}15`, color: ft?.color || '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
+                                        {ft?.icon || <DropboxOutlined />}
+                                    </div>
+                                    <div className="flex-1">
+                                        <Title level={4} className="!m-0">{detailDrawer.name}</Title>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <Text type="secondary" code className="text-xs">{detailDrawer.sku || 'No SKU'}</Text>
+                                            <Tag color={STATUS_COLORS[detailDrawer.status || 'active']} className="rounded-full text-xs m-0">{detailDrawer.status}</Tag>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Tag color={ft?.color} className="rounded-full">{ft?.label}</Tag>
+                                    {detailDrawer.itemType && <Tag className="rounded-full">{detailDrawer.itemType}</Tag>}
+                                    {cat && <Tag className="rounded-full">{cat.name}</Tag>}
+                                    {detailDrawer.brand && <Tag className="rounded-full">🏷️ {detailDrawer.brand}</Tag>}
+                                </div>
                             </div>
-                            <div>
-                                <Title level={4} className="!m-0">{detailDrawer.name}</Title>
-                                <Text type="secondary">{detailDrawer.sku}</Text>
+
+                            {/* Tabbed Content */}
+                            <div style={{ padding: '0 24px 24px' }}>
+                                <Tabs defaultActiveKey="overview" size="small" style={{ marginTop: 12 }} items={[
+                                    { key: 'overview', label: '📋 Overview', children: (
+                                        <div className="space-y-4">
+                                            {/* Product Gallery */}
+                                            <ProductGallery mediaIds={detailDrawer.mediaIds || []} mediaMap={mediaMap as Record<string, MediaInfo>} />
+
+                                            {/* Price Summary Cards */}
+                                            <Row gutter={12}>
+                                                <Col span={8}>
+                                                    <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: '#f9fafb' }}>
+                                                        <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Cost</Text>
+                                                        <Text strong style={{ fontSize: 14 }}>{(detailDrawer.costPrice || 0).toLocaleString()}</Text>
+                                                    </Card>
+                                                </Col>
+                                                <Col span={8}>
+                                                    <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: '#f0fdf4' }}>
+                                                        <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Sell</Text>
+                                                        <Text strong style={{ fontSize: 14, color: '#6366f1' }}>{(detailDrawer.sellingPrice || 0).toLocaleString()}</Text>
+                                                    </Card>
+                                                </Col>
+                                                <Col span={8}>
+                                                    <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: profit >= 0 ? '#f0fdf4' : '#fef2f2' }}>
+                                                        <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Margin</Text>
+                                                        <Text strong style={{ fontSize: 14, color: profit >= 0 ? '#16a34a' : '#dc2626' }}>
+                                                            {(detailDrawer.costPrice || 0) > 0 ? `${marginPct.toFixed(0)}%` : '—'}
+                                                        </Text>
+                                                    </Card>
+                                                </Col>
+                                            </Row>
+
+                                            {detailDrawer.description && (
+                                                <Card size="small" style={{ borderRadius: 10, background: '#fafafa' }}>
+                                                    <Text type="secondary" className="text-xs uppercase tracking-wider block mb-1">Description</Text>
+                                                    <Paragraph className="!mb-0" style={{ fontSize: 13 }}>{detailDrawer.description}</Paragraph>
+                                                </Card>
+                                            )}
+                                        </div>
+                                    )},
+                                    { key: 'details', label: '📦 Details', children: (
+                                        <Descriptions column={2} size="small" bordered style={{ borderRadius: 10 }}>
+                                            <Descriptions.Item label="Currency">{detailDrawer.currency || 'IDR'}</Descriptions.Item>
+                                            <Descriptions.Item label="Tax Rate">{detailDrawer.taxRate || 0}%</Descriptions.Item>
+                                            <Descriptions.Item label="UOM">{detailDrawer.primaryUom}</Descriptions.Item>
+                                            <Descriptions.Item label="Barcode">{detailDrawer.barcode || '—'}</Descriptions.Item>
+                                            <Descriptions.Item label="Weight">{detailDrawer.weight ? `${detailDrawer.weight} ${detailDrawer.weightUnit || 'kg'}` : '—'}</Descriptions.Item>
+                                            <Descriptions.Item label="Min Stock">{detailDrawer.minStock || 0}</Descriptions.Item>
+                                            <Descriptions.Item label="Reorder Point">{detailDrawer.reorderPoint || 0}</Descriptions.Item>
+                                            <Descriptions.Item label="Reorder Qty">{detailDrawer.reorderQty || 0}</Descriptions.Item>
+                                            <Descriptions.Item label="Created" span={2}>{new Date(detailDrawer.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</Descriptions.Item>
+                                        </Descriptions>
+                                    )},
+                                ]} />
+
+                                <Divider style={{ margin: '16px 0 12px' }} />
+                                <div className="flex gap-2 flex-wrap">
+                                    <Button type="primary" icon={<EditOutlined />} onClick={() => { setDetailDrawer(null); handleEdit(detailDrawer); }}
+                                        style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', border: 'none', borderRadius: 8 }}>Edit Item</Button>
+                                    {!isSellableType(detailDrawer.fulfillmentType || '') && (
+                                        <Button icon={<ShoppingOutlined />} onClick={() => { openMakeSellable(detailDrawer); }}
+                                            style={{ borderRadius: 8, borderColor: '#10b981', color: '#10b981' }}>Make Sellable</Button>
+                                    )}
+                                    <Button icon={<DropboxOutlined />} onClick={() => {
+                                        setDetailDrawer(null);
+                                        setEditingItem(null);
+                                        setWizardStep(1);
+                                        setSelectedFulfillment(detailDrawer.fulfillmentType || 'physical');
+                                        setGalleryMediaIds([]);
+                                        form.setFieldsValue({ ...detailDrawer, name: `${detailDrawer.name} (Copy)`, sku: '', id: undefined });
+                                        setFormOpen(true);
+                                    }} style={{ borderRadius: 8 }}>Duplicate</Button>
+                                    <Popconfirm title="Delete this item permanently?" onConfirm={() => { handleDelete(detailDrawer.id); setDetailDrawer(null); }}>
+                                        <Button danger icon={<DeleteOutlined />} style={{ borderRadius: 8 }}>Delete</Button>
+                                    </Popconfirm>
+                                </div>
                             </div>
                         </div>
-
-                        <Descriptions column={2} size="small" bordered>
-                            <Descriptions.Item label="Fulfillment">
-                                <Tag color={FULFILLMENT_TYPES.find(f => f.value === detailDrawer.fulfillmentType)?.color}>
-                                    {FULFILLMENT_TYPES.find(f => f.value === detailDrawer.fulfillmentType)?.label}
-                                </Tag>
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Item Type">{detailDrawer.itemType}</Descriptions.Item>
-                            <Descriptions.Item label="Status">
-                                <Tag color={STATUS_COLORS[detailDrawer.status || 'active']}>{detailDrawer.status}</Tag>
-                            </Descriptions.Item>
-                            <Descriptions.Item label="UOM">{detailDrawer.primaryUom}</Descriptions.Item>
-                            <Descriptions.Item label="Cost Price">{detailDrawer.currency} {(detailDrawer.costPrice || 0).toLocaleString()}</Descriptions.Item>
-                            <Descriptions.Item label="Selling Price">{detailDrawer.currency} {(detailDrawer.sellingPrice || 0).toLocaleString()}</Descriptions.Item>
-                            <Descriptions.Item label="Barcode">{detailDrawer.barcode || '-'}</Descriptions.Item>
-                            <Descriptions.Item label="Brand">{detailDrawer.brand || '-'}</Descriptions.Item>
-                            <Descriptions.Item label="Category">
-                                {categories.find(c => c.id === detailDrawer.categoryId)?.name || '-'}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Tax Rate">{detailDrawer.taxRate || 0}%</Descriptions.Item>
-                            <Descriptions.Item label="Reorder Point">{detailDrawer.reorderPoint || 0}</Descriptions.Item>
-                            <Descriptions.Item label="Min Stock">{detailDrawer.minStock || 0}</Descriptions.Item>
-                        </Descriptions>
-
-                        {detailDrawer.description && (
-                            <>
-                                <Divider className="my-3" />
-                                <Text strong className="text-xs text-gray-500 uppercase tracking-wider block mb-1">Description</Text>
-                                <Paragraph>{detailDrawer.description}</Paragraph>
-                            </>
-                        )}
-
-                        <Divider className="my-3" />
-                        <div className="flex gap-2">
-                            <Button icon={<EditOutlined />} onClick={() => { setDetailDrawer(null); handleEdit(detailDrawer); }}>Edit</Button>
-                            <Popconfirm title="Delete this item?" onConfirm={() => { handleDelete(detailDrawer.id); setDetailDrawer(null); }}>
-                                <Button danger icon={<DeleteOutlined />}>Delete</Button>
-                            </Popconfirm>
-                        </div>
-                    </div>
-                )}
+                    );
+                })()}
             </Drawer>
         </CMSLayout>
     );

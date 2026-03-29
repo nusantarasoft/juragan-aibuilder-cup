@@ -7,6 +7,8 @@ import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
 import { inventoryService, RentalAsset, RentalContract, RentalStatsType } from '@/lib/inventoryService';
 import dayjs from 'dayjs';
+import DecryptedText from "@/components/react-bits/DecryptedText";
+import { AuroraText } from "@/components/magicui/aurora-text";
 
 const CONDITION_COLORS: Record<string, string> = { excellent: 'green', good: 'blue', fair: 'orange', poor: 'red' };
 const STATUS_COLORS: Record<string, string> = { available: 'green', rented: 'blue', maintenance: 'orange', retired: 'default', active: 'blue', returned: 'green', overdue: 'red', lost: 'volcano' };
@@ -19,6 +21,7 @@ export default function RentalsPage() {
     const [loading, setLoading] = useState(false);
     const [tab, setTab] = useState('assets');
     const [search, setSearch] = useState('');
+    const { Card } = require('antd');
 
     // New Rental Contract modal
     const [contractModalOpen, setContractModalOpen] = useState(false);
@@ -160,20 +163,17 @@ export default function RentalsPage() {
     const filteredContracts = contracts.filter(c => !search || c.customerName.toLowerCase().includes(search.toLowerCase()) || c.contractCode.toLowerCase().includes(search.toLowerCase()));
 
     return (
-        <CMSLayout>
-            <div style={{ padding: '0 4px' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 20 }}>
-                    <h1 style={{ margin: 0, background: 'linear-gradient(135deg, #d97706, #dc2626)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: 28, fontWeight: 700 }}>
-                        Rental Management
-                    </h1>
-                    <span style={{ color: '#888' }}>Asset tracking, rental contracts, and condition monitoring</span>
-                </div>
+        <CMSLayout
+            title={<AuroraText colors={["#d97706", "#dc2626", "#f59e0b", "#ff0000", "#ea580c"]}>Rental Management</AuroraText>}
+            subTitle={<DecryptedText text="Asset tracking, rental contracts, and condition monitoring" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
+        >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
 
                 {/* KPI Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 14, marginBottom: 24 }}>
                     {kpis.map((k, i) => (
                         <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                            style={{ background: '#fff', borderRadius: 10, padding: '16px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
+                            style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.5)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                                 <span style={{ color: k.color, fontSize: 16 }}>{k.icon}</span>
                                 <span style={{ color: '#999', fontSize: 12 }}>{k.label}</span>
@@ -196,17 +196,19 @@ export default function RentalsPage() {
                     </Space>
                 </div>
 
-                {/* Tabs */}
-                <Tabs activeKey={tab} onChange={setTab} items={[
-                    { key: 'assets', label: `🏷️ Assets (${assets.length})`, children: (
-                        <Table dataSource={filteredAssets} columns={assetColumns} rowKey="id" size="middle" loading={loading}
-                            pagination={{ pageSize: 10 }} scroll={{ x: 1400 }} />
-                    )},
-                    { key: 'contracts', label: `📋 Contracts (${contracts.length})`, children: (
-                        <Table dataSource={filteredContracts} columns={contractColumns} rowKey="id" size="middle" loading={loading}
-                            pagination={{ pageSize: 10 }} scroll={{ x: 1500 }} />
-                    )},
-                ]} />
+                <Card size="small" style={{ flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)' }}>
+                    {/* Tabs */}
+                    <Tabs activeKey={tab} onChange={setTab} items={[
+                        { key: 'assets', label: `🏷️ Assets (${assets.length})`, children: (
+                            <Table dataSource={filteredAssets} columns={assetColumns} rowKey="id" size="middle" loading={loading}
+                                pagination={{ pageSize: 10 }} scroll={{ x: 1400 }} />
+                        )},
+                        { key: 'contracts', label: `📋 Contracts (${contracts.length})`, children: (
+                            <Table dataSource={filteredContracts} columns={contractColumns} rowKey="id" size="middle" loading={loading}
+                                pagination={{ pageSize: 10 }} scroll={{ x: 1500 }} />
+                        )},
+                    ]} />
+                </Card>
 
                 {/* Contract Detail Drawer */}
                 <Drawer title={`Contract Detail — ${detailContract?.contractCode}`} open={!!detailContract} onClose={() => setDetailContract(null)} width={560}>

@@ -275,18 +275,6 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/inventory/bookings",
-                        name: "Bookings",
-                        icon: <ScheduleOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/inventory/rentals",
-                        name: "Rentals",
-                        icon: <SwapOutlined />,
-                        isLeaf: true,
-                    },
-                    {
                         path: "/admin/inventory/analytics",
                         name: "Analytics & AI",
                         icon: <NodeIndexOutlined />,
@@ -296,7 +284,7 @@ const menuConfig = {
             },
             {
                 path: "/admin/ecommerce",
-                name: "E-Commerce",
+                name: "Commerce & Sales",
                 icon: <ShopOutlined />,
                 routes: [
                     {
@@ -307,8 +295,20 @@ const menuConfig = {
                     },
                     {
                         path: "/admin/ecommerce/orders",
-                        name: "Orders",
+                        name: "Physical Orders",
                         icon: <ReconciliationOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/bookings",
+                        name: "Bookings",
+                        icon: <ScheduleOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/rentals",
+                        name: "Rentals",
+                        icon: <SwapOutlined />,
                         isLeaf: true,
                     },
                     {
