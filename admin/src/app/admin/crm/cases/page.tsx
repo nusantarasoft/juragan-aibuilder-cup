@@ -11,10 +11,12 @@ import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, CheckOutlined,
     ExclamationCircleOutlined, ClockCircleOutlined,
-    BugOutlined, QuestionCircleOutlined,
+    BugOutlined, FileTextOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
 import dayjs from "dayjs";
 
 const { Text } = Typography;
@@ -47,6 +49,15 @@ const CASE_TYPES = [
     { value: "problem", label: "Problem" },
     { value: "feature_request", label: "Feature Request" },
     { value: "incident", label: "Incident" },
+];
+
+const CASE_FIELDS: FieldDef[] = [
+    { name: "subject", label: "Subject", required: true },
+    { name: "priority", label: "Priority" },
+    { name: "origin", label: "Origin" },
+    { name: "type", label: "Type" },
+    { name: "status", label: "Status" },
+    { name: "description", label: "Description" },
 ];
 
 export default function CasesPage() {
@@ -83,13 +94,12 @@ export default function CasesPage() {
 
     useEffect(() => { loadData(); }, [loadData]);
 
-    const handleSave = async () => {
+    const handleSave = async (values: any) => {
         try {
-            const v = await form.validateFields();
             const input = {
-                subject: v.subject, description: v.description || null,
-                status: v.status || 'new', priority: v.priority || 'medium',
-                origin: v.origin || null, type: v.type || null,
+                subject: values.subject, description: values.description || null,
+                status: values.status || 'new', priority: values.priority || 'medium',
+                origin: values.origin || null, type: values.type || null,
             };
             if (editing) {
                 await gql(`mutation($id: String!, $input: UpdateCaseInput!) { updateCase(id: $id, input: $input) { id } }`, { id: editing.id, input });
@@ -102,6 +112,17 @@ export default function CasesPage() {
         } catch (err: any) { message.error(err.message); }
     };
 
+    const handleBatchCreate = async (records: any[]) => {
+        let success = 0, failed = 0; const errors: string[] = [];
+        for (const r of records) {
+            try {
+                await gql(`mutation($tenantId: String!, $input: CreateCaseInput!) { createCase(tenantId: $tenantId, input: $input) { id } }`, { tenantId: DEFAULT_TENANT_ID, input: { subject: r.subject, description: r.description || null, status: r.status || 'new', priority: r.priority || 'medium', origin: r.origin || null, type: r.type || null } });
+                success++;
+            } catch (e: any) { failed++; errors.push(`${r.subject}: ${e.message}`); }
+        }
+        loadData(); return { success, failed, errors };
+    };
+
     const handleClose = async () => {
         if (!closeTarget || !resolution.trim()) { message.warning("Resolution required"); return; }
         try {
@@ -111,10 +132,8 @@ export default function CasesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        try {
-            await gql(`mutation($id: String!) { deleteCase(id: $id) }`, { id });
-            message.success("Deleted"); loadData();
-        } catch (err: any) { message.error(err.message); }
+        try { await gql(`mutation($id: String!) { deleteCase(id: $id) }`, { id }); message.success("Deleted"); loadData(); }
+        catch (err: any) { message.error(err.message); }
     };
 
     const openCount = cases.filter(c => c.status !== 'closed').length;
@@ -123,37 +142,53 @@ export default function CasesPage() {
 
     const columns: ColumnsType<SupportCase> = [
         { title: "#", dataIndex: "caseNumber", key: "num", width: 100, render: v => <Text strong style={{ fontFamily: 'monospace' }}>{v}</Text> },
-        {
-            title: "Subject", key: "subject",
-            render: (_, r) => (
-                <div>
-                    <Text strong>{r.subject}</Text>
-                    {r.accountName && <><br /><Text type="secondary" style={{ fontSize: 12 }}>{r.accountName}</Text></>}
-                </div>
-            ),
-        },
+        { title: "Subject", key: "subject", render: (_, r) => (<div><Text strong>{r.subject}</Text>{r.accountName && <><br /><Text type="secondary" style={{ fontSize: 12 }}>{r.accountName}</Text></>}</div>) },
         { title: "Priority", key: "priority", width: 100, render: (_, r) => { const p = PRIORITIES.find(p => p.value === r.priority); return <Tag color={p?.color}>{p?.label || r.priority}</Tag>; } },
         { title: "Status", key: "status", width: 110, render: (_, r) => { const s = STATUSES.find(s => s.value === r.status); return <Tag color={s?.color}>{s?.label || r.status}</Tag>; } },
         { title: "Origin", key: "origin", width: 80, render: (_, r) => r.origin ? <Tag>{r.origin}</Tag> : '—' },
         { title: "Type", key: "type", width: 120, render: (_, r) => r.type ? <Tag>{r.type.replace('_', ' ')}</Tag> : '—' },
         { title: "Created", key: "created", width: 110, render: (_, r) => dayjs(r.createdAt).format('MMM D, YYYY') },
+        { title: "Actions", key: "actions", width: 150, render: (_, r) => (<Space>
+            <Tooltip title="View"><Button type="text" icon={<EyeOutlined />} onClick={() => { setSelected(r); setDetailOpen(true); }} /></Tooltip>
+            {r.status !== 'closed' && <Tooltip title="Close Case"><Button type="text" icon={<CheckOutlined />} style={{ color: '#52c41a' }} onClick={() => { setCloseTarget(r); setResolution(""); setCloseModal(true); }} /></Tooltip>}
+            <Tooltip title="Edit"><Button type="text" icon={<EditOutlined />} onClick={() => { setEditing(r); form.setFieldsValue({ subject: r.subject, description: r.description, status: r.status, priority: r.priority, origin: r.origin, type: r.type }); setIsModalOpen(true); }} /></Tooltip>
+            <Tooltip title="Delete"><Button type="text" danger icon={<DeleteOutlined />} onClick={() => Modal.confirm({ title: `Delete ${r.caseNumber}?`, onOk: () => handleDelete(r.id) })} /></Tooltip>
+        </Space>) },
+    ];
+
+    const formSteps = [
         {
-            title: "Actions", key: "actions", width: 150,
-            render: (_, r) => (
-                <Space>
-                    <Tooltip title="View"><Button type="text" icon={<EyeOutlined />} onClick={() => { setSelected(r); setDetailOpen(true); }} /></Tooltip>
-                    {r.status !== 'closed' && <Tooltip title="Close Case"><Button type="text" icon={<CheckOutlined />} style={{ color: '#52c41a' }}
-                        onClick={() => { setCloseTarget(r); setResolution(""); setCloseModal(true); }} /></Tooltip>}
-                    <Tooltip title="Edit"><Button type="text" icon={<EditOutlined />} onClick={() => {
-                        setEditing(r); form.setFieldsValue({
-                            subject: r.subject, description: r.description,
-                            status: r.status, priority: r.priority,
-                            origin: r.origin, type: r.type,
-                        }); setIsModalOpen(true);
-                    }} /></Tooltip>
-                    <Tooltip title="Delete"><Button type="text" danger icon={<DeleteOutlined />}
-                        onClick={() => Modal.confirm({ title: `Delete ${r.caseNumber}?`, onOk: () => handleDelete(r.id) })} /></Tooltip>
-                </Space>
+            title: "Case Info",
+            icon: <BugOutlined />,
+            fields: ["subject", "priority", "origin", "type"],
+            content: (
+                <>
+                    <Form.Item name="subject" label="Subject" rules={[{ required: true }]}>
+                        <Input placeholder="Brief issue description" />
+                    </Form.Item>
+                    <Row gutter={16}>
+                        <Col span={8}><Form.Item name="priority" label="Priority" initialValue="medium"><Select options={PRIORITIES} /></Form.Item></Col>
+                        <Col span={8}><Form.Item name="origin" label="Origin"><Select allowClear options={ORIGINS.map(o => ({ value: o, label: o.charAt(0).toUpperCase() + o.slice(1) }))} /></Form.Item></Col>
+                        <Col span={8}><Form.Item name="type" label="Type"><Select allowClear options={CASE_TYPES} /></Form.Item></Col>
+                    </Row>
+                </>
+            ),
+        },
+        {
+            title: "Details",
+            icon: <FileTextOutlined />,
+            fields: ["status", "description"],
+            content: (
+                <>
+                    {editing && (
+                        <Form.Item name="status" label="Status">
+                            <Select options={STATUSES} />
+                        </Form.Item>
+                    )}
+                    <Form.Item name="description" label="Description">
+                        <TextArea rows={4} placeholder="Detailed description of the issue..." />
+                    </Form.Item>
+                </>
             ),
         },
     ];
@@ -170,29 +205,31 @@ export default function CasesPage() {
                 <Col span={6}><Card><Statistic title="Total" value={cases.length} prefix={<BugOutlined />} /></Card></Col>
             </Row>
 
-            <Card style={{ marginBottom: 16 }}>
-                <Space wrap>
-                    <Input prefix={<SearchOutlined />} placeholder="Search cases..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />
-                    <Select placeholder="Status" value={statusFilter} onChange={setStatusFilter} allowClear style={{ width: 130 }} options={STATUSES} />
-                    <Select placeholder="Priority" value={priorityFilter} onChange={setPriorityFilter} allowClear style={{ width: 130 }} options={PRIORITIES} />
-                </Space>
-            </Card>
+            <Card style={{ marginBottom: 16 }}><Space wrap>
+                <Input prefix={<SearchOutlined />} placeholder="Search cases..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />
+                <Select placeholder="Status" value={statusFilter} onChange={setStatusFilter} allowClear style={{ width: 130 }} options={STATUSES} />
+                <Select placeholder="Priority" value={priorityFilter} onChange={setPriorityFilter} allowClear style={{ width: 130 }} options={PRIORITIES} />
+            </Space></Card>
 
             <Card><Table columns={columns} dataSource={cases.map(c => ({ ...c, key: c.id }))} loading={loading} pagination={{ pageSize: 20 }} size="middle" /></Card>
 
-            <Modal title={editing ? "Edit Case" : "New Case"} open={isModalOpen} onOk={handleSave}
-                onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} okText={editing ? "Update" : "Create"} width={600}>
-                <Form form={form} layout="vertical">
-                    <Form.Item name="subject" label="Subject" rules={[{ required: true }]}><Input placeholder="Brief issue description" /></Form.Item>
-                    <Row gutter={16}>
-                        <Col span={8}><Form.Item name="priority" label="Priority" initialValue="medium"><Select options={PRIORITIES} /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="origin" label="Origin"><Select allowClear options={ORIGINS.map(o => ({ value: o, label: o.charAt(0).toUpperCase() + o.slice(1) }))} /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="type" label="Type"><Select allowClear options={CASE_TYPES} /></Form.Item></Col>
-                    </Row>
-                    <Form.Item name="description" label="Description"><TextArea rows={3} /></Form.Item>
-                </Form>
-            </Modal>
+            {/* ─── Case SteppedFormModal ─────────────── */}
+            <SteppedFormModal
+                open={isModalOpen}
+                onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }}
+                onSubmit={handleSave}
+                form={form}
+                title={editing ? "Edit Case" : "New Case"}
+                entityName="case"
+                steps={formSteps}
+                fields={CASE_FIELDS}
+                width={600}
+                onBatchCreate={handleBatchCreate}
+                gradient={["#ef4444", "#dc2626"]}
+                editMode={!!editing}
+            />
 
+            {/* Close Case Resolution Modal — kept as separate workflow */}
             <Modal title={`Close Case: ${closeTarget?.caseNumber}`} open={closeModal} okText="Close Case"
                 okButtonProps={{ style: { background: '#52c41a', borderColor: '#52c41a' } }}
                 onOk={handleClose} onCancel={() => { setCloseModal(false); setCloseTarget(null); }}>

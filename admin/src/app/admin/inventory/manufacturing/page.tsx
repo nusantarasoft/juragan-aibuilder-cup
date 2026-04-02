@@ -13,7 +13,8 @@ import {
     FileTextOutlined, ScheduleOutlined, CheckCircleOutlined,
     ClockCircleOutlined, ExclamationCircleOutlined, DeleteOutlined,
     EditOutlined, PlayCircleOutlined, PauseCircleOutlined,
-    RocketOutlined, UnorderedListOutlined
+    RocketOutlined, UnorderedListOutlined, DollarOutlined,
+    CalendarOutlined
 } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
@@ -22,6 +23,8 @@ import {
     ManufacturingStats, InvWarehouse
 } from "@/lib/inventoryService";
 import ItemPicker, { MasterItem } from "@/components/inventory/ItemPicker";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
 
@@ -48,6 +51,33 @@ const PRIORITIES: Record<string, { color: string }> = {
 };
 
 const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : '-';
+
+const BOM_FIELDS: FieldDef[] = [
+    { name: 'code', label: 'BOM Code', required: true },
+    { name: 'name', label: 'Name', required: true },
+    { name: 'productName', label: 'Product Name' },
+    { name: 'productSku', label: 'Product SKU' },
+    { name: 'version', label: 'Version' },
+    { name: 'status', label: 'Status' },
+    { name: 'laborHours', label: 'Labor Hours', type: 'number' },
+    { name: 'laborCost', label: 'Labor Cost', type: 'number' },
+    { name: 'overheadCost', label: 'Overhead Cost', type: 'number' },
+    { name: 'description', label: 'Description' },
+];
+
+const WO_FIELDS: FieldDef[] = [
+    { name: 'woNumber', label: 'WO Number', required: true },
+    { name: 'bomId', label: 'BOM ID', required: true },
+    { name: 'bomName', label: 'BOM Name' },
+    { name: 'warehouseId', label: 'Warehouse' },
+    { name: 'warehouseName', label: 'Warehouse Name' },
+    { name: 'plannedQty', label: 'Planned Quantity', required: true, type: 'number' },
+    { name: 'priority', label: 'Priority' },
+    { name: 'assignedTo', label: 'Assigned To' },
+    { name: 'plannedStart', label: 'Start Date' },
+    { name: 'plannedEnd', label: 'End Date' },
+    { name: 'notes', label: 'Notes' },
+];
 
 export default function ManufacturingPage() {
     const [stats, setStats] = useState<ManufacturingStats | null>(null);
@@ -104,19 +134,27 @@ export default function ManufacturingPage() {
     };
 
     // ─── BOM CRUD ──────────────────────────────────
-    const handleSaveBom = async () => {
-        try {
-            const values = await bomForm.validateFields();
-            if (bomEditId) {
-                await inventoryService.updateBom(bomEditId, values);
-                message.success("BOM updated");
-            } else {
-                await inventoryService.createBom('default', values);
-                message.success("BOM created");
-            }
-            setBomModalOpen(false); bomForm.resetFields(); setBomEditId(null);
-            loadAll();
-        } catch { message.error("Failed"); }
+    const handleSaveBom = async (values: any) => {
+        if (bomEditId) {
+            await inventoryService.updateBom(bomEditId, values);
+            message.success("BOM updated");
+        } else {
+            await inventoryService.createBom('default', values);
+            message.success("BOM created");
+        }
+        setBomModalOpen(false); bomForm.resetFields(); setBomEditId(null);
+        loadAll();
+    };
+
+    const handleBatchCreateBom = async (records: any[]) => {
+        let success = 0, failed = 0;
+        const errors: string[] = [];
+        for (const r of records) {
+            try { await inventoryService.createBom('default', r); success++; }
+            catch (e: any) { failed++; errors.push(`${r.code || 'Unknown'}: ${e.message || 'Failed'}`); }
+        }
+        loadAll();
+        return { success, failed, errors };
     };
 
     const handleEditBom = (bom: MfgBom) => {
@@ -148,20 +186,32 @@ export default function ManufacturingPage() {
     };
 
     // ─── Work Order CRUD ───────────────────────────
-    const handleCreateWo = async () => {
-        try {
-            const values = await woForm.validateFields();
-            const bom = boms.find(b => b.id === values.bomId);
-            const wh = warehouses.find(w => w.id === values.warehouseId);
-            const input = {
-                ...values,
-                bomName: bom?.name || '',
-                warehouseName: wh?.name || '',
-            };
-            await inventoryService.createWorkOrder('default', input);
-            message.success("Work order created");
-            setWoModalOpen(false); woForm.resetFields(); loadAll();
-        } catch { message.error("Failed"); }
+    const handleCreateWo = async (values: any) => {
+        const bom = boms.find(b => b.id === values.bomId);
+        const wh = warehouses.find(w => w.id === values.warehouseId);
+        const input = {
+            ...values,
+            bomName: bom?.name || '',
+            warehouseName: wh?.name || '',
+        };
+        await inventoryService.createWorkOrder('default', input);
+        message.success("Work order created");
+        setWoModalOpen(false); woForm.resetFields(); loadAll();
+    };
+
+    const handleBatchCreateWo = async (records: any[]) => {
+        let success = 0, failed = 0;
+        const errors: string[] = [];
+        for (const r of records) {
+            try {
+                const bom = boms.find(b => b.id === r.bomId);
+                const wh = warehouses.find(w => w.id === r.warehouseId);
+                await inventoryService.createWorkOrder('default', { ...r, bomName: bom?.name || '', warehouseName: wh?.name || '' });
+                success++;
+            } catch (e: any) { failed++; errors.push(`${r.woNumber || 'Unknown'}: ${e.message || 'Failed'}`); }
+        }
+        loadAll();
+        return { success, failed, errors };
     };
 
     const handleWoStatusChange = async (id: string, newStatus: string) => {
@@ -286,6 +336,161 @@ export default function ManufacturingPage() {
                     </Space>
                 );
             },
+        },
+    ];
+
+    // ─── Step Definitions ────────────────────────────
+    const bomSteps = [
+        {
+            title: "Basic Info",
+            icon: <FileTextOutlined />,
+            fields: ["code", "name", "productName", "productSku", "version", "status"],
+            content: (
+                <>
+                    <Row gutter={16}>
+                        <Col span={8}>
+                            <Form.Item name="code" label="BOM Code" rules={[{ required: true }]}>
+                                <Input placeholder="BOM-XXX-001" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={16}>
+                            <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+                                <Input placeholder="BOM name" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="productName" label="Product Name">
+                                <Input placeholder="Finished product name" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                            <Form.Item name="version" label="Version" initialValue="1.0">
+                                <Input placeholder="1.0" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                            <Form.Item name="status" label="Status" initialValue="draft">
+                                <Select options={[
+                                    { value: 'draft', label: 'Draft' },
+                                    { value: 'active', label: 'Active' },
+                                    { value: 'revision', label: 'Revision' },
+                                    { value: 'obsolete', label: 'Obsolete' },
+                                ]} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                </>
+            ),
+        },
+        {
+            title: "Costs",
+            icon: <DollarOutlined />,
+            fields: ["laborHours", "laborCost", "overheadCost", "description"],
+            content: (
+                <>
+                    <Row gutter={16}>
+                        <Col span={8}>
+                            <Form.Item name="laborHours" label="Labor Hours">
+                                <InputNumber min={0} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item name="laborCost" label="Labor Cost">
+                                <InputNumber min={0} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item name="overheadCost" label="Overhead Cost">
+                                <InputNumber min={0} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Form.Item name="description" label="Description">
+                        <Input.TextArea rows={2} placeholder="BOM description" />
+                    </Form.Item>
+                </>
+            ),
+        },
+    ];
+
+    const woSteps = [
+        {
+            title: "Order Info",
+            icon: <ToolOutlined />,
+            fields: ["woNumber", "bomId", "warehouseId", "plannedQty", "priority"],
+            content: (
+                <>
+                    <Row gutter={16}>
+                        <Col span={8}>
+                            <Form.Item name="woNumber" label="WO Number" rules={[{ required: true }]}>
+                                <Input placeholder="WO-2026-XXX" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={16}>
+                            <Form.Item name="bomId" label="BOM" rules={[{ required: true }]}>
+                                <Select placeholder="Select BOM"
+                                    options={boms.filter(b => b.status === 'active').map(b => ({
+                                        value: b.id, label: `${b.code} — ${b.name}`
+                                    }))} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="warehouseId" label="Warehouse">
+                                <Select placeholder="Select warehouse"
+                                    options={warehouses.map(w => ({
+                                        value: w.id, label: `${w.code} — ${w.name}`
+                                    }))} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                            <Form.Item name="plannedQty" label="Quantity" rules={[{ required: true }]}>
+                                <InputNumber min={1} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                            <Form.Item name="priority" label="Priority" initialValue="normal">
+                                <Select options={[
+                                    { value: 'low', label: 'Low' }, { value: 'normal', label: 'Normal' },
+                                    { value: 'high', label: 'High' }, { value: 'urgent', label: 'Urgent' },
+                                ]} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                </>
+            ),
+        },
+        {
+            title: "Schedule",
+            icon: <CalendarOutlined />,
+            fields: ["assignedTo", "plannedStart", "plannedEnd", "notes"],
+            content: (
+                <>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="assignedTo" label="Assigned To">
+                                <Input placeholder="Name" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                            <Form.Item name="plannedStart" label="Start Date">
+                                <Input type="date" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                            <Form.Item name="plannedEnd" label="End Date">
+                                <Input type="date" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Form.Item name="notes" label="Notes">
+                        <Input.TextArea rows={2} placeholder="Notes" />
+                    </Form.Item>
+                </>
+            ),
         },
     ];
 
@@ -473,67 +678,22 @@ export default function ManufacturingPage() {
                 </Card>
             </div>
 
-            {/* ─── BOM Modal ───────────────────────────── */}
-            <Modal title={bomEditId ? "Edit BOM" : "Add Bill of Materials"}
-                open={bomModalOpen} onCancel={() => setBomModalOpen(false)} onOk={handleSaveBom}
-                okText={bomEditId ? "Update" : "Create"} width={600}>
-                <Form form={bomForm} layout="vertical">
-                    <Row gutter={16}>
-                        <Col span={8}>
-                            <Form.Item name="code" label="BOM Code" rules={[{ required: true }]}>
-                                <Input placeholder="BOM-XXX-001" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={16}>
-                            <Form.Item name="name" label="Name" rules={[{ required: true }]}>
-                                <Input placeholder="BOM name" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item name="productName" label="Product Name">
-                                <Input placeholder="Finished product name" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={6}>
-                            <Form.Item name="version" label="Version" initialValue="1.0">
-                                <Input placeholder="1.0" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={6}>
-                            <Form.Item name="status" label="Status" initialValue="draft">
-                                <Select options={[
-                                    { value: 'draft', label: 'Draft' },
-                                    { value: 'active', label: 'Active' },
-                                    { value: 'revision', label: 'Revision' },
-                                    { value: 'obsolete', label: 'Obsolete' },
-                                ]} />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={8}>
-                            <Form.Item name="laborHours" label="Labor Hours">
-                                <InputNumber min={0} style={{ width: '100%' }} />
-                            </Form.Item>
-                        </Col>
-                        <Col span={8}>
-                            <Form.Item name="laborCost" label="Labor Cost">
-                                <InputNumber min={0} style={{ width: '100%' }} />
-                            </Form.Item>
-                        </Col>
-                        <Col span={8}>
-                            <Form.Item name="overheadCost" label="Overhead Cost">
-                                <InputNumber min={0} style={{ width: '100%' }} />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Form.Item name="description" label="Description">
-                        <Input.TextArea rows={2} placeholder="BOM description" />
-                    </Form.Item>
-                </Form>
-            </Modal>
+            {/* ─── BOM SteppedFormModal ────────────────── */}
+            <SteppedFormModal
+                open={bomModalOpen}
+                onCancel={() => { setBomModalOpen(false); setBomEditId(null); bomForm.resetFields(); }}
+                onSubmit={handleSaveBom}
+                form={bomForm}
+                title={bomEditId ? "Edit BOM" : "Add Bill of Materials"}
+                entityName="bom"
+                steps={bomSteps}
+                fields={BOM_FIELDS}
+                width={640}
+                loading={false}
+                onBatchCreate={handleBatchCreateBom}
+                gradient={["#7c3aed", "#6366f1"]}
+                editMode={!!bomEditId}
+            />
 
             {/* ─── BOM Line Modal ──────────────────────── */}
             <Modal title="Add Component" open={lineModalOpen}
@@ -592,70 +752,21 @@ export default function ManufacturingPage() {
                 </Form>
             </Modal>
 
-            {/* ─── Work Order Modal ────────────────────── */}
-            <Modal title="New Work Order" open={woModalOpen}
-                onCancel={() => setWoModalOpen(false)} onOk={handleCreateWo} okText="Create" width={600}>
-                <Form form={woForm} layout="vertical">
-                    <Row gutter={16}>
-                        <Col span={8}>
-                            <Form.Item name="woNumber" label="WO Number" rules={[{ required: true }]}>
-                                <Input placeholder="WO-2026-XXX" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={16}>
-                            <Form.Item name="bomId" label="BOM" rules={[{ required: true }]}>
-                                <Select placeholder="Select BOM"
-                                    options={boms.filter(b => b.status === 'active').map(b => ({
-                                        value: b.id, label: `${b.code} — ${b.name}`
-                                    }))} />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item name="warehouseId" label="Warehouse">
-                                <Select placeholder="Select warehouse"
-                                    options={warehouses.map(w => ({
-                                        value: w.id, label: `${w.code} — ${w.name}`
-                                    }))} />
-                            </Form.Item>
-                        </Col>
-                        <Col span={6}>
-                            <Form.Item name="plannedQty" label="Quantity" rules={[{ required: true }]}>
-                                <InputNumber min={1} style={{ width: '100%' }} />
-                            </Form.Item>
-                        </Col>
-                        <Col span={6}>
-                            <Form.Item name="priority" label="Priority" initialValue="normal">
-                                <Select options={[
-                                    { value: 'low', label: 'Low' }, { value: 'normal', label: 'Normal' },
-                                    { value: 'high', label: 'High' }, { value: 'urgent', label: 'Urgent' },
-                                ]} />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item name="assignedTo" label="Assigned To">
-                                <Input placeholder="Name" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={6}>
-                            <Form.Item name="plannedStart" label="Start Date">
-                                <Input type="date" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={6}>
-                            <Form.Item name="plannedEnd" label="End Date">
-                                <Input type="date" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Form.Item name="notes" label="Notes">
-                        <Input.TextArea rows={2} placeholder="Notes" />
-                    </Form.Item>
-                </Form>
-            </Modal>
+            {/* ─── Work Order SteppedFormModal ─────────── */}
+            <SteppedFormModal
+                open={woModalOpen}
+                onCancel={() => { setWoModalOpen(false); woForm.resetFields(); }}
+                onSubmit={handleCreateWo}
+                form={woForm}
+                title="New Work Order"
+                entityName="work_order"
+                steps={woSteps}
+                fields={WO_FIELDS}
+                width={640}
+                loading={false}
+                onBatchCreate={handleBatchCreateWo}
+                gradient={["#7c3aed", "#6366f1"]}
+            />
         </CMSLayout>
     );
 }

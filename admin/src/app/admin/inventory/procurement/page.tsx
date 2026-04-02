@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
     Card, Table, Button, Tag, Input, Space, Tabs, Statistic, Row, Col,
-    Modal, Form, Select, Rate, message, Popconfirm, Tooltip, DatePicker,
+    Form, Select, Rate, message, Popconfirm, Tooltip, DatePicker,
     InputNumber, Drawer, Descriptions, Badge, Typography,
 } from "antd";
 import {
@@ -11,18 +11,37 @@ import {
     ShoppingCartOutlined, CheckCircleOutlined, InboxOutlined,
     TeamOutlined, DollarOutlined, ClockCircleOutlined,
     SendOutlined, EyeOutlined, DeleteOutlined, CheckOutlined, CloseOutlined,
-    ReloadOutlined,
+    ReloadOutlined, GlobalOutlined,
 } from "@ant-design/icons";
 import CMSLayout from "@/components/layout/CMSLayout";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { inventoryService } from "@/lib/inventoryService";
 import { CrmAccountPicker } from "@/components/inventory/CrmPicker";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
 import dayjs from "dayjs";
 
 const { TabPane } = Tabs;
 const { Text, Title } = Typography;
 const TENANT = "default";
+
+const SUPPLIER_FIELDS: FieldDef[] = [
+    { name: 'code', label: 'Supplier Code', required: true },
+    { name: 'name', label: 'Name', required: true },
+    { name: 'contactPerson', label: 'Contact Person' },
+    { name: 'email', label: 'Email' },
+    { name: 'phone', label: 'Phone' },
+    { name: 'city', label: 'City' },
+    { name: 'address', label: 'Address' },
+    { name: 'paymentTerms', label: 'Payment Terms' },
+    { name: 'currency', label: 'Currency' },
+    { name: 'leadTimeDays', label: 'Lead Time (days)', type: 'number' },
+    { name: 'rating', label: 'Rating', type: 'number' },
+    { name: 'taxId', label: 'Tax ID' },
+    { name: 'status', label: 'Status' },
+    { name: 'notes', label: 'Notes' },
+];
 
 // ─── Status Colors ─────────────────────────────────────
 const STATUS_COLORS: Record<string, string> = {
@@ -106,20 +125,36 @@ export default function ProcurementPage() {
         setSupplierModal(true);
     };
 
-    const saveSupplier = async () => {
-        const values = await supplierForm.validateFields();
-        try {
-            if (editingSupplier) {
-                await inventoryService.updateSupplier(editingSupplier.id, values);
-                message.success("Supplier updated");
-            } else {
-                await inventoryService.createSupplier(TENANT, values);
-                message.success("Supplier created");
+    const saveSupplier = async (values: any) => {
+        if (editingSupplier) {
+            await inventoryService.updateSupplier(editingSupplier.id, values);
+            message.success("Supplier updated");
+        } else {
+            await inventoryService.createSupplier(TENANT, values);
+            message.success("Supplier created");
+        }
+        setSupplierModal(false);
+        supplierForm.resetFields();
+        setEditingSupplier(null);
+        loadSuppliers();
+        loadStats();
+    };
+
+    const handleBatchCreateSupplier = async (records: any[]) => {
+        let success = 0, failed = 0;
+        const errors: string[] = [];
+        for (const r of records) {
+            try {
+                await inventoryService.createSupplier(TENANT, r);
+                success++;
+            } catch (e: any) {
+                failed++;
+                errors.push(`${r.code || 'Unknown'}: ${e.message || 'Failed'}`);
             }
-            setSupplierModal(false);
-            loadSuppliers();
-            loadStats();
-        } catch (e: any) { message.error(e.message); }
+        }
+        loadSuppliers();
+        loadStats();
+        return { success, failed, errors };
     };
 
     const deleteSupplier = async (id: string) => {
@@ -366,57 +401,133 @@ export default function ProcurementPage() {
                 </Tabs>
             </Card>
 
-            {/* Supplier Modal */}
-            <Modal
-                title={editingSupplier ? "Edit Supplier" : "Add Supplier"}
+            {/* ─── Supplier SteppedFormModal ──────────────── */}
+            <SteppedFormModal
                 open={supplierModal}
-                onOk={saveSupplier}
-                onCancel={() => setSupplierModal(false)}
-                width={640}
-                okText="Save"
-            >
-                <Form form={supplierForm} layout="vertical" size="small">
-                    <Row gutter={16}>
-                        <Col span={8}><Form.Item name="code" label="Code" rules={[{ required: true }]}><Input /></Form.Item></Col>
-                        <Col span={16}><Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item></Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={12}><Form.Item name="contactPerson" label="Contact Person"><Input /></Form.Item></Col>
-                        <Col span={12}><Form.Item name="email" label="Email"><Input type="email" /></Form.Item></Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={12}><Form.Item name="phone" label="Phone"><Input /></Form.Item></Col>
-                        <Col span={12}><Form.Item name="city" label="City"><Input /></Form.Item></Col>
-                    </Row>
-                    <Form.Item name="address" label="Address"><Input.TextArea rows={2} /></Form.Item>
-                    <Row gutter={16}>
-                        <Col span={8}><Form.Item name="paymentTerms" label="Payment Terms" initialValue="Net 30">
-                            <Select options={["COD", "Net 15", "Net 30", "Net 45", "Net 60"].map(v => ({ label: v, value: v }))} />
-                        </Form.Item></Col>
-                        <Col span={8}><Form.Item name="currency" label="Currency" initialValue="IDR">
-                            <Select options={["IDR", "USD", "SGD", "AUD"].map(v => ({ label: v, value: v }))} />
-                        </Form.Item></Col>
-                        <Col span={8}><Form.Item name="leadTimeDays" label="Lead Time (days)" initialValue={7}>
-                            <InputNumber min={1} max={365} style={{ width: "100%" }} />
-                        </Form.Item></Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={8}><Form.Item name="rating" label="Rating"><Rate allowHalf /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="taxId" label="Tax ID"><Input /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="status" label="Status" initialValue="active">
-                            <Select options={[
-                                { label: "Active", value: "active" },
-                                { label: "Inactive", value: "inactive" },
-                                { label: "Blacklisted", value: "blacklisted" },
-                            ]} />
-                        </Form.Item></Col>
-                    </Row>
-                    <Form.Item name="notes" label="Notes"><Input.TextArea rows={2} /></Form.Item>
-                    <Form.Item name="accountId" label="Link to CRM Account (optional)">
-                        <CrmAccountPicker size="small" placeholder="Search CRM accounts to link..." />
-                    </Form.Item>
-                </Form>
-            </Modal>
+                onCancel={() => { setSupplierModal(false); setEditingSupplier(null); supplierForm.resetFields(); }}
+                onSubmit={saveSupplier}
+                form={supplierForm}
+                title={editingSupplier ? "Edit Supplier" : "Add Supplier"}
+                entityName="supplier"
+                steps={[
+                    {
+                        title: "Basic Info",
+                        icon: <ShopOutlined />,
+                        fields: ["code", "name", "contactPerson", "email"],
+                        content: (
+                            <>
+                                <Row gutter={16}>
+                                    <Col span={8}>
+                                        <Form.Item name="code" label="Code" rules={[{ required: true }]}>
+                                            <Input placeholder="SUP-001" />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={16}>
+                                        <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+                                            <Input placeholder="Supplier name" />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                                <Row gutter={16}>
+                                    <Col span={12}>
+                                        <Form.Item name="contactPerson" label="Contact Person">
+                                            <Input placeholder="Name" />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Form.Item name="email" label="Email">
+                                            <Input type="email" placeholder="email@example.com" />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                            </>
+                        ),
+                    },
+                    {
+                        title: "Contact & Address",
+                        icon: <GlobalOutlined />,
+                        fields: ["phone", "city", "address"],
+                        content: (
+                            <>
+                                <Row gutter={16}>
+                                    <Col span={12}>
+                                        <Form.Item name="phone" label="Phone">
+                                            <Input placeholder="+62 ..." />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Form.Item name="city" label="City">
+                                            <Input placeholder="City" />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                                <Form.Item name="address" label="Address">
+                                    <Input.TextArea rows={2} placeholder="Full address" />
+                                </Form.Item>
+                            </>
+                        ),
+                    },
+                    {
+                        title: "Terms & Settings",
+                        icon: <DollarOutlined />,
+                        fields: ["paymentTerms", "currency", "leadTimeDays", "rating", "taxId", "status", "notes", "accountId"],
+                        content: (
+                            <>
+                                <Row gutter={16}>
+                                    <Col span={8}>
+                                        <Form.Item name="paymentTerms" label="Payment Terms" initialValue="Net 30">
+                                            <Select options={["COD", "Net 15", "Net 30", "Net 45", "Net 60"].map(v => ({ label: v, value: v }))} />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={8}>
+                                        <Form.Item name="currency" label="Currency" initialValue="IDR">
+                                            <Select options={["IDR", "USD", "SGD", "AUD"].map(v => ({ label: v, value: v }))} />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={8}>
+                                        <Form.Item name="leadTimeDays" label="Lead Time (days)" initialValue={7}>
+                                            <InputNumber min={1} max={365} style={{ width: "100%" }} />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                                <Row gutter={16}>
+                                    <Col span={8}>
+                                        <Form.Item name="rating" label="Rating">
+                                            <Rate allowHalf />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={8}>
+                                        <Form.Item name="taxId" label="Tax ID">
+                                            <Input placeholder="NPWP" />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={8}>
+                                        <Form.Item name="status" label="Status" initialValue="active">
+                                            <Select options={[
+                                                { label: "Active", value: "active" },
+                                                { label: "Inactive", value: "inactive" },
+                                                { label: "Blacklisted", value: "blacklisted" },
+                                            ]} />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                                <Form.Item name="notes" label="Notes">
+                                    <Input.TextArea rows={2} placeholder="Extra notes" />
+                                </Form.Item>
+                                <Form.Item name="accountId" label="Link to CRM Account (optional)">
+                                    <CrmAccountPicker size="small" placeholder="Search CRM accounts to link..." />
+                                </Form.Item>
+                            </>
+                        ),
+                    },
+                ]}
+                fields={SUPPLIER_FIELDS}
+                width={680}
+                loading={false}
+                onBatchCreate={handleBatchCreateSupplier}
+                gradient={["#1890ff", "#722ed1"]}
+                editMode={!!editingSupplier}
+            />
 
             {/* Detail Drawer */}
             <Drawer

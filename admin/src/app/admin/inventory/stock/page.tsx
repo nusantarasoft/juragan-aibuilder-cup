@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import {
     Table, Button, Space, Tag, Card, Typography, message,
-    Row, Col, Statistic, Empty, Spin, Select, Input, Modal,
+    Row, Col, Statistic, Empty, Spin, Select, Input,
     Form, InputNumber, Descriptions, Divider, Tooltip, Badge
 } from "antd";
 import {
@@ -13,7 +13,8 @@ import {
     WarningOutlined, ReloadOutlined, PlusOutlined,
     SearchOutlined, ThunderboltOutlined, BarChartOutlined,
     RobotOutlined, DashboardOutlined, CheckCircleOutlined,
-    ClockCircleOutlined, ExclamationCircleOutlined
+    ClockCircleOutlined, ExclamationCircleOutlined,
+    FileTextOutlined, UnorderedListOutlined
 } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
@@ -22,8 +23,21 @@ import {
     inventoryService, InvItem, StockLedgerEntry, StockMovement,
     InvStockStats
 } from "@/lib/inventoryService";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Title, Text, Paragraph } = Typography;
+
+const MOVEMENT_FIELDS: FieldDef[] = [
+    { name: 'itemId', label: 'Item ID', required: true },
+    { name: 'movementType', label: 'Movement Type', required: true },
+    { name: 'quantity', label: 'Quantity', required: true, type: 'number' },
+    { name: 'unitCost', label: 'Unit Cost', type: 'number' },
+    { name: 'reference', label: 'Reference' },
+    { name: 'batchNumber', label: 'Batch Number' },
+    { name: 'serialNumber', label: 'Serial Number' },
+    { name: 'notes', label: 'Notes' },
+];
 
 const MOVEMENT_COLORS: Record<string, string> = {
     IN: 'green', OUT: 'red', TRANSFER: 'blue',
@@ -78,15 +92,28 @@ export default function StockDashboardPage() {
 
     const itemMap = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
 
-    const handleAddMovement = async () => {
-        try {
-            const values = await movementForm.validateFields();
-            await inventoryService.createStockMovement('default', values);
-            message.success("Stock movement recorded");
-            setMovementModalOpen(false);
-            movementForm.resetFields();
-            loadAll();
-        } catch { message.error("Failed"); }
+    const handleAddMovement = async (values: any) => {
+        await inventoryService.createStockMovement('default', values);
+        message.success("Stock movement recorded");
+        setMovementModalOpen(false);
+        movementForm.resetFields();
+        loadAll();
+    };
+
+    const handleBatchCreateMovement = async (records: any[]) => {
+        let success = 0, failed = 0;
+        const errors: string[] = [];
+        for (const r of records) {
+            try {
+                await inventoryService.createStockMovement('default', r);
+                success++;
+            } catch (e: any) {
+                failed++;
+                errors.push(`${r.reference || 'Unknown'}: ${e.message || 'Failed'}`);
+            }
+        }
+        loadAll();
+        return { success, failed, errors };
     };
 
     const handleAnomalyDetection = async () => {
@@ -361,69 +388,92 @@ export default function StockDashboardPage() {
                 </Row>
             </div>
 
-            {/* Record Movement Modal */}
-            <Modal
-                title="Record Stock Movement"
+            {/* ─── Record Movement SteppedFormModal ──────── */}
+            <SteppedFormModal
                 open={movementModalOpen}
-                onCancel={() => setMovementModalOpen(false)}
-                onOk={handleAddMovement}
-                okText="Record"
-            >
-                <Form form={movementForm} layout="vertical">
-                    <Form.Item name="itemId" label="Item" rules={[{ required: true }]}>
-                        <Select showSearch optionFilterProp="label" placeholder="Select item"
-                            options={items.map(i => ({ value: i.id, label: `${i.name} (${i.sku})` }))} />
-                    </Form.Item>
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item name="movementType" label="Movement Type" rules={[{ required: true }]}>
-                                <Select options={[
-                                    { value: 'IN', label: '📥 Stock In' },
-                                    { value: 'OUT', label: '📤 Stock Out' },
-                                    { value: 'ADJUST_IN', label: '🔼 Adjust In' },
-                                    { value: 'ADJUST_OUT', label: '🔽 Adjust Out' },
-                                    { value: 'TRANSFER', label: '🔄 Transfer' },
-                                    { value: 'RETURN_IN', label: '↩️ Return In' },
-                                    { value: 'PRODUCTION', label: '🏭 Production' },
-                                    { value: 'CONSUMPTION', label: '🔧 Consumption' },
-                                ]} />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="quantity" label="Quantity" rules={[{ required: true }]}>
-                                <InputNumber min={0.001} style={{ width: '100%' }} placeholder="0" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item name="unitCost" label="Unit Cost">
-                                <InputNumber min={0} style={{ width: '100%' }} placeholder="0" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="reference" label="Reference">
-                                <Input placeholder="PO-001, SO-001" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item name="batchNumber" label="Batch Number">
-                                <Input placeholder="Optional" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="serialNumber" label="Serial Number">
-                                <Input placeholder="Optional" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Form.Item name="notes" label="Notes">
-                        <Input.TextArea rows={2} placeholder="Reason or additional notes" />
-                    </Form.Item>
-                </Form>
-            </Modal>
+                onCancel={() => { setMovementModalOpen(false); movementForm.resetFields(); }}
+                onSubmit={handleAddMovement}
+                form={movementForm}
+                title="Record Stock Movement"
+                entityName="stock_movement"
+                steps={[
+                    {
+                        title: "Movement Info",
+                        icon: <SwapOutlined />,
+                        fields: ["itemId", "movementType", "quantity"],
+                        content: (
+                            <>
+                                <Form.Item name="itemId" label="Item" rules={[{ required: true }]}>
+                                    <Select showSearch optionFilterProp="label" placeholder="Select item"
+                                        options={items.map(i => ({ value: i.id, label: `${i.name} (${i.sku})` }))} />
+                                </Form.Item>
+                                <Row gutter={16}>
+                                    <Col span={12}>
+                                        <Form.Item name="movementType" label="Movement Type" rules={[{ required: true }]}>
+                                            <Select options={[
+                                                { value: 'IN', label: '📥 Stock In' },
+                                                { value: 'OUT', label: '📤 Stock Out' },
+                                                { value: 'ADJUST_IN', label: '🔼 Adjust In' },
+                                                { value: 'ADJUST_OUT', label: '🔽 Adjust Out' },
+                                                { value: 'TRANSFER', label: '🔄 Transfer' },
+                                                { value: 'RETURN_IN', label: '↩️ Return In' },
+                                                { value: 'PRODUCTION', label: '🏭 Production' },
+                                                { value: 'CONSUMPTION', label: '🔧 Consumption' },
+                                            ]} />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Form.Item name="quantity" label="Quantity" rules={[{ required: true }]}>
+                                            <InputNumber min={0.001} style={{ width: '100%' }} placeholder="0" />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                            </>
+                        ),
+                    },
+                    {
+                        title: "Details",
+                        icon: <FileTextOutlined />,
+                        fields: ["unitCost", "reference", "batchNumber", "serialNumber", "notes"],
+                        content: (
+                            <>
+                                <Row gutter={16}>
+                                    <Col span={12}>
+                                        <Form.Item name="unitCost" label="Unit Cost">
+                                            <InputNumber min={0} style={{ width: '100%' }} placeholder="0" />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Form.Item name="reference" label="Reference">
+                                            <Input placeholder="PO-001, SO-001" />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                                <Row gutter={16}>
+                                    <Col span={12}>
+                                        <Form.Item name="batchNumber" label="Batch Number">
+                                            <Input placeholder="Optional" />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Form.Item name="serialNumber" label="Serial Number">
+                                            <Input placeholder="Optional" />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                                <Form.Item name="notes" label="Notes">
+                                    <Input.TextArea rows={2} placeholder="Reason or additional notes" />
+                                </Form.Item>
+                            </>
+                        ),
+                    },
+                ]}
+                fields={MOVEMENT_FIELDS}
+                width={640}
+                loading={false}
+                onBatchCreate={handleBatchCreateMovement}
+                gradient={["#7c3aed", "#6366f1"]}
+            />
         </CMSLayout>
     );
 }

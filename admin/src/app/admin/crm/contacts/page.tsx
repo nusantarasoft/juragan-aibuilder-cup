@@ -9,9 +9,12 @@ import {
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, UserOutlined, BankOutlined,
+    PhoneOutlined, MailOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
 
@@ -46,6 +49,20 @@ const ROLES = [
     { value: "end_user", label: "End User" },
     { value: "gatekeeper", label: "Gatekeeper" },
     { value: "champion", label: "Champion" },
+];
+
+const CONTACT_FIELDS: FieldDef[] = [
+    { name: "individualId", label: "Individual ID", required: true },
+    { name: "accountId", label: "Account ID" },
+    { name: "title", label: "Title" },
+    { name: "department", label: "Department" },
+    { name: "role", label: "Role" },
+    { name: "email", label: "Email" },
+    { name: "phone", label: "Phone" },
+    { name: "mobilePhone", label: "Mobile Phone" },
+    { name: "isPrimary", label: "Primary Contact" },
+    { name: "doNotCall", label: "Do Not Call" },
+    { name: "doNotEmail", label: "Do Not Email" },
 ];
 
 export default function ContactsPage() {
@@ -96,18 +113,17 @@ export default function ContactsPage() {
 
     useEffect(() => { loadData(); loadDropdowns(); }, [loadData, loadDropdowns]);
 
-    const handleSave = async () => {
+    const handleSave = async (values: any) => {
         try {
-            const v = await form.validateFields();
             const input = {
-                individualId: v.individualId,
-                accountId: v.accountId || null,
-                title: v.title || null, department: v.department || null,
-                role: v.role || null, email: v.email || null,
-                phone: v.phone || null, mobilePhone: v.mobilePhone || null,
-                isPrimary: v.isPrimary ?? false,
-                doNotCall: v.doNotCall ?? false,
-                doNotEmail: v.doNotEmail ?? false,
+                individualId: values.individualId,
+                accountId: values.accountId || null,
+                title: values.title || null, department: values.department || null,
+                role: values.role || null, email: values.email || null,
+                phone: values.phone || null, mobilePhone: values.mobilePhone || null,
+                isPrimary: values.isPrimary ?? false,
+                doNotCall: values.doNotCall ?? false,
+                doNotEmail: values.doNotEmail ?? false,
             };
             if (editing) {
                 await gql(`mutation($id: String!, $input: UpdateContactInput!) { updateContact(id: $id, input: $input) { id } }`,
@@ -125,6 +141,20 @@ export default function ContactsPage() {
         } catch (err: any) {
             message.error(err.message);
         }
+    };
+
+    const handleBatchCreate = async (records: any[]) => {
+        let success = 0, failed = 0;
+        const errors: string[] = [];
+        for (const r of records) {
+            try {
+                const input = { individualId: r.individualId, accountId: r.accountId || null, title: r.title || null, department: r.department || null, role: r.role || null, email: r.email || null, phone: r.phone || null, mobilePhone: r.mobilePhone || null, isPrimary: r.isPrimary ?? false, doNotCall: r.doNotCall ?? false, doNotEmail: r.doNotEmail ?? false };
+                await gql(`mutation($tenantId: String!, $input: CreateContactInput!) { createContact(tenantId: $tenantId, input: $input) { id } }`, { tenantId: DEFAULT_TENANT_ID, input });
+                success++;
+            } catch (e: any) { failed++; errors.push(`Row: ${e.message}`); }
+        }
+        loadData();
+        return { success, failed, errors };
     };
 
     const handleDelete = async (id: string) => {
@@ -220,38 +250,67 @@ export default function ContactsPage() {
                     loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" />
             </Card>
 
-            <Modal title={editing ? "Edit Contact" : "Add Contact"} open={isModalOpen} onOk={handleSave}
-                onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} okText={editing ? "Update" : "Create"} width={650}>
-                <Form form={form} layout="vertical">
-                    <Row gutter={16}>
-                        <Col span={12}><Form.Item name="individualId" label="Individual" rules={[{ required: true }]}>
-                            <Select showSearch optionFilterProp="label" placeholder="Select person"
-                                options={individuals.map(i => ({ value: i.id, label: `${i.firstName} ${i.lastName}` }))} />
-                        </Form.Item></Col>
-                        <Col span={12}><Form.Item name="accountId" label="Account (optional)">
-                            <Select showSearch optionFilterProp="label" placeholder="Select account" allowClear
-                                options={accounts.map(a => ({ value: a.id, label: a.name }))} />
-                        </Form.Item></Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={8}><Form.Item name="title" label="Title"><Input placeholder="e.g., VP Sales" /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="department" label="Department"><Input /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="role" label="Role">
-                            <Select allowClear options={ROLES} />
-                        </Form.Item></Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={8}><Form.Item name="email" label="Email"><Input type="email" /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="phone" label="Phone"><Input /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="mobilePhone" label="Mobile"><Input /></Form.Item></Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={8}><Form.Item name="isPrimary" label="Primary Contact" valuePropName="checked"><Switch /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="doNotCall" label="Do Not Call" valuePropName="checked"><Switch /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="doNotEmail" label="Do Not Email" valuePropName="checked"><Switch /></Form.Item></Col>
-                    </Row>
-                </Form>
-            </Modal>
+            {/* ─── Contact SteppedFormModal ─────────────── */}
+            <SteppedFormModal
+                open={isModalOpen}
+                onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }}
+                onSubmit={handleSave}
+                form={form}
+                title={editing ? "Edit Contact" : "Add Contact"}
+                entityName="contact"
+                steps={[
+                    {
+                        title: "Person & Account",
+                        icon: <UserOutlined />,
+                        fields: ["individualId", "accountId", "title", "department", "role"],
+                        content: (
+                            <>
+                                <Row gutter={16}>
+                                    <Col span={12}><Form.Item name="individualId" label="Individual" rules={[{ required: true }]}>
+                                        <Select showSearch optionFilterProp="label" placeholder="Select person"
+                                            options={individuals.map(i => ({ value: i.id, label: `${i.firstName} ${i.lastName}` }))} />
+                                    </Form.Item></Col>
+                                    <Col span={12}><Form.Item name="accountId" label="Account (optional)">
+                                        <Select showSearch optionFilterProp="label" placeholder="Select account" allowClear
+                                            options={accounts.map(a => ({ value: a.id, label: a.name }))} />
+                                    </Form.Item></Col>
+                                </Row>
+                                <Row gutter={16}>
+                                    <Col span={8}><Form.Item name="title" label="Title"><Input placeholder="e.g., VP Sales" /></Form.Item></Col>
+                                    <Col span={8}><Form.Item name="department" label="Department"><Input /></Form.Item></Col>
+                                    <Col span={8}><Form.Item name="role" label="Role">
+                                        <Select allowClear options={ROLES} />
+                                    </Form.Item></Col>
+                                </Row>
+                            </>
+                        ),
+                    },
+                    {
+                        title: "Contact Details",
+                        icon: <PhoneOutlined />,
+                        fields: ["email", "phone", "mobilePhone", "isPrimary", "doNotCall", "doNotEmail"],
+                        content: (
+                            <>
+                                <Row gutter={16}>
+                                    <Col span={8}><Form.Item name="email" label="Email"><Input type="email" /></Form.Item></Col>
+                                    <Col span={8}><Form.Item name="phone" label="Phone"><Input /></Form.Item></Col>
+                                    <Col span={8}><Form.Item name="mobilePhone" label="Mobile"><Input /></Form.Item></Col>
+                                </Row>
+                                <Row gutter={16}>
+                                    <Col span={8}><Form.Item name="isPrimary" label="Primary Contact" valuePropName="checked"><Switch /></Form.Item></Col>
+                                    <Col span={8}><Form.Item name="doNotCall" label="Do Not Call" valuePropName="checked"><Switch /></Form.Item></Col>
+                                    <Col span={8}><Form.Item name="doNotEmail" label="Do Not Email" valuePropName="checked"><Switch /></Form.Item></Col>
+                                </Row>
+                            </>
+                        ),
+                    },
+                ]}
+                fields={CONTACT_FIELDS}
+                width={700}
+                onBatchCreate={handleBatchCreate}
+                gradient={["#1677ff", "#0ea5e9"]}
+                editMode={!!editing}
+            />
 
             <Drawer title="Contact Details" open={detailOpen} onClose={() => setDetailOpen(false)} width={500}>
                 {selected && (
