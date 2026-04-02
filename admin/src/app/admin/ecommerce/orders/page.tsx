@@ -200,6 +200,8 @@ export default function OrdersPage() {
         delivered: { label: 'Complete', color: '#059669', next: 'completed' },
     };
 
+    const CANCELLABLE = new Set(['pending', 'confirmed', 'processing', 'shipped']);
+
     const filteredOrders = orders.filter(o => {
         if (statusFilter && o.status !== statusFilter) return false;
         if (search && !o.orderNumber?.toLowerCase().includes(search.toLowerCase()) && !o.customerName?.toLowerCase().includes(search.toLowerCase())) return false;
@@ -220,15 +222,27 @@ export default function OrdersPage() {
                 return <Tag icon={s.icon} color={s.color} className="rounded-full text-xs capitalize">{v}</Tag>;
             },
         },
-        { title: '', key: 'actions', width: 180,
+        { title: '', key: 'actions', width: 220,
             render: (_: any, r: EcomOrder) => {
                 const action = TRANSITIONS[r.status || ''];
+                const canCancel = CANCELLABLE.has(r.status || '');
                 return (
                     <Space size="small">
                         <Button size="small" icon={<EyeOutlined />} onClick={() => viewOrder(r)} />
                         {action && (
                             <Button size="small" type="primary" onClick={() => handleStatusChange(r.id, action.next)}
                                 style={{ background: action.color, border: 'none', fontSize: 11 }}>{action.label}</Button>
+                        )}
+                        {canCancel && (
+                            <Button size="small" danger onClick={() => Modal.confirm({
+                                title: 'Cancel this order?',
+                                content: ['processing', 'shipped'].includes(r.status || '')
+                                    ? 'Stock will be automatically restored for physical items.'
+                                    : 'This order has not been processed yet.',
+                                okText: 'Cancel Order',
+                                okButtonProps: { danger: true },
+                                onOk: () => handleStatusChange(r.id, 'cancelled'),
+                            })} style={{ fontSize: 11 }}>Cancel</Button>
                         )}
                         <Button size="small" danger icon={<DeleteOutlined />}
                             onClick={() => Modal.confirm({ title: 'Delete order?', onOk: () => handleDelete(r.id) })} />

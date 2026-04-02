@@ -1,17 +1,38 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Table, Tag, Button, Space, message, Tabs, Progress, Drawer, Descriptions, Badge, Tooltip, Modal, Form, Input, InputNumber, Select, DatePicker, Row, Col } from 'antd';
-import { PlusOutlined, ReloadOutlined, SearchOutlined, ToolOutlined, CheckCircleOutlined, WarningOutlined, DollarOutlined, SwapOutlined, ClockCircleOutlined, CarOutlined, EyeOutlined } from '@ant-design/icons';
+import { Table, Tag, Button, Space, message, Tabs, Progress, Drawer, Descriptions, Badge, Tooltip, Modal, Form, Input, InputNumber, Select, DatePicker, Row, Col, Card, Typography } from 'antd';
+import { PlusOutlined, ReloadOutlined, SearchOutlined, ToolOutlined, CheckCircleOutlined, WarningOutlined, DollarOutlined, SwapOutlined, ClockCircleOutlined, CarOutlined, EyeOutlined, UserOutlined, CalendarOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
 import { inventoryService, RentalAsset, RentalContract, RentalStatsType } from '@/lib/inventoryService';
 import dayjs from 'dayjs';
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
+
+const { Text } = Typography;
 
 const CONDITION_COLORS: Record<string, string> = { excellent: 'green', good: 'blue', fair: 'orange', poor: 'red' };
-const STATUS_COLORS: Record<string, string> = { available: 'green', rented: 'blue', maintenance: 'orange', retired: 'default', active: 'blue', returned: 'green', overdue: 'red', lost: 'volcano' };
+const STATUS_COLORS: Record<string, string> = { available: 'green', rented: 'blue', maintenance: 'orange', retired: 'default', active: 'blue', returned: 'green', overdue: 'red', lost: 'volcano', cancelled: 'default' };
+
+const CONTRACT_FIELDS: FieldDef[] = [
+    { name: 'contractCode', label: 'Contract Code', required: true },
+    { name: 'assetId', label: 'Asset', required: true },
+    { name: 'customerName', label: 'Customer Name', required: true },
+    { name: 'customerEmail', label: 'Customer Email' },
+    { name: 'customerPhone', label: 'Customer Phone' },
+    { name: 'customerIdNumber', label: 'ID Number' },
+    { name: 'checkoutDate', label: 'Checkout Date', required: true },
+    { name: 'expectedReturnDate', label: 'Expected Return', required: true },
+    { name: 'dailyRate', label: 'Daily Rate', type: 'number' },
+    { name: 'depositAmount', label: 'Deposit', type: 'number' },
+    { name: 'subtotal', label: 'Subtotal', type: 'number' },
+    { name: 'totalCharge', label: 'Total Charge', type: 'number' },
+    { name: 'checkoutCondition', label: 'Checkout Condition' },
+    { name: 'checkoutNotes', label: 'Checkout Notes' },
+];
 
 export default function RentalsPage() {
     const [assets, setAssets] = useState<RentalAsset[]>([]);
@@ -21,7 +42,6 @@ export default function RentalsPage() {
     const [loading, setLoading] = useState(false);
     const [tab, setTab] = useState('assets');
     const [search, setSearch] = useState('');
-    const { Card } = require('antd');
 
     // New Rental Contract modal
     const [contractModalOpen, setContractModalOpen] = useState(false);
@@ -50,35 +70,48 @@ export default function RentalsPage() {
         } catch (e: any) { message.error(e.message); }
     };
 
-    const handleCreateContract = async () => {
+    const handleCancelContract = async (contractId: string) => {
         try {
-            const values = await contractForm.validateFields();
-            const input: Record<string, any> = {
-                contractCode: values.contractCode,
-                assetId: values.assetId,
-                assetName: values.assetName,
-                customerName: values.customerName,
-                customerEmail: values.customerEmail,
-                customerPhone: values.customerPhone,
-                customerIdNumber: values.customerIdNumber,
-                checkoutDate: values.checkoutDate?.format('YYYY-MM-DD'),
-                expectedReturnDate: values.expectedReturnDate?.format('YYYY-MM-DD'),
-                dailyRate: values.dailyRate,
-                depositAmount: values.depositAmount,
-                subtotal: values.subtotal,
-                totalCharge: values.totalCharge,
-                checkoutCondition: values.checkoutCondition,
-                checkoutNotes: values.checkoutNotes,
-            };
-            await inventoryService.createRentalContract('default', input);
-            message.success('Rental contract created');
-            setContractModalOpen(false);
-            contractForm.resetFields();
+            await inventoryService.cancelRentalContract(contractId);
+            message.success('Contract cancelled — asset released');
             load();
-        } catch (e: any) {
-            if (e.errorFields) return;
-            message.error(e.message || 'Failed to create contract');
+        } catch (e: any) { message.error(e.message); }
+    };
+
+    const handleCreateContract = async (values: any) => {
+        const input: Record<string, any> = {
+            contractCode: values.contractCode,
+            assetId: values.assetId,
+            assetName: values.assetName,
+            customerName: values.customerName,
+            customerEmail: values.customerEmail,
+            customerPhone: values.customerPhone,
+            customerIdNumber: values.customerIdNumber,
+            checkoutDate: values.checkoutDate?.format ? values.checkoutDate.format('YYYY-MM-DD') : values.checkoutDate,
+            expectedReturnDate: values.expectedReturnDate?.format ? values.expectedReturnDate.format('YYYY-MM-DD') : values.expectedReturnDate,
+            dailyRate: values.dailyRate,
+            depositAmount: values.depositAmount,
+            subtotal: values.subtotal,
+            totalCharge: values.totalCharge,
+            checkoutCondition: values.checkoutCondition,
+            checkoutNotes: values.checkoutNotes,
+        };
+        await inventoryService.createRentalContract('default', input);
+        message.success('Rental contract created');
+        setContractModalOpen(false);
+        contractForm.resetFields();
+        load();
+    };
+
+    const handleBatchCreateContract = async (records: any[]) => {
+        let success = 0, failed = 0;
+        const errors: string[] = [];
+        for (const r of records) {
+            try { await inventoryService.createRentalContract('default', r); success++; }
+            catch (e: any) { failed++; errors.push(`${r.contractCode || 'Unknown'}: ${e.message || 'Failed'}`); }
         }
+        load();
+        return { success, failed, errors };
     };
 
     const onAssetChange = (assetId: string) => {
@@ -153,7 +186,16 @@ export default function RentalsPage() {
             <Space>
                 <Button size="small" icon={<EyeOutlined />} onClick={() => setDetailContract(r)}>Detail</Button>
                 {r.status === 'active' && (
-                    <Button size="small" type="primary" onClick={() => handleReturn(r.id)}>Return</Button>
+                    <>
+                        <Button size="small" type="primary" onClick={() => handleReturn(r.id)}>Return</Button>
+                        <Button size="small" danger onClick={() => Modal.confirm({
+                            title: 'Cancel this rental contract?',
+                            content: 'The asset will be released back to available status.',
+                            okText: 'Cancel Contract',
+                            okButtonProps: { danger: true },
+                            onOk: () => handleCancelContract(r.id),
+                        })} style={{ fontSize: 11 }}>Cancel</Button>
+                    </>
                 )}
             </Space>
         )},
@@ -161,6 +203,127 @@ export default function RentalsPage() {
 
     const filteredAssets = assets.filter(a => !search || a.assetName.toLowerCase().includes(search.toLowerCase()) || a.assetCode.toLowerCase().includes(search.toLowerCase()));
     const filteredContracts = contracts.filter(c => !search || c.customerName.toLowerCase().includes(search.toLowerCase()) || c.contractCode.toLowerCase().includes(search.toLowerCase()));
+
+    const contractSteps = [
+        {
+            title: "Asset & Contract",
+            icon: <CarOutlined />,
+            fields: ["contractCode", "assetId"],
+            content: (
+                <>
+                    <Row gutter={16}>
+                        <Col span={10}>
+                            <Form.Item name="contractCode" label="Contract Code" rules={[{ required: true }]}>
+                                <Input placeholder="RNT-2026-XXX" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={14}>
+                            <Form.Item name="assetId" label="Asset" rules={[{ required: true, message: 'Select an asset' }]}>
+                                <Select placeholder="Select asset" showSearch
+                                    filterOption={(input, option) => (option?.label as string || '').toLowerCase().includes(input.toLowerCase())}
+                                    onChange={onAssetChange}
+                                    options={assets.filter(a => a.status === 'available').map(a => ({
+                                        value: a.id, label: `${a.assetCode} — ${a.assetName} (${a.category || '—'})`
+                                    }))} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Form.Item name="assetName" hidden><Input /></Form.Item>
+                </>
+            ),
+        },
+        {
+            title: "Customer",
+            icon: <UserOutlined />,
+            fields: ["customerName", "customerEmail", "customerPhone", "customerIdNumber"],
+            content: (
+                <>
+                    <Row gutter={16}>
+                        <Col span={8}>
+                            <Form.Item name="customerName" label="Customer Name" rules={[{ required: true }]}>
+                                <Input placeholder="Full name" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item name="customerEmail" label="Email">
+                                <Input placeholder="email@example.com" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item name="customerPhone" label="Phone">
+                                <Input placeholder="+62..." />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="customerIdNumber" label="ID Number">
+                                <Input placeholder="KTP / Passport" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                </>
+            ),
+        },
+        {
+            title: "Pricing & Schedule",
+            icon: <DollarOutlined />,
+            fields: ["checkoutDate", "expectedReturnDate", "dailyRate", "depositAmount", "subtotal", "totalCharge", "checkoutCondition", "checkoutNotes"],
+            content: (
+                <>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="checkoutDate" label="Checkout Date" rules={[{ required: true }]}>
+                                <DatePicker style={{ width: '100%' }} onChange={() => recalcRental()} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="expectedReturnDate" label="Expected Return" rules={[{ required: true }]}>
+                                <DatePicker style={{ width: '100%' }} onChange={() => recalcRental()} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={6}>
+                            <Form.Item name="dailyRate" label="Daily Rate">
+                                <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" onChange={() => recalcRental()} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                            <Form.Item name="depositAmount" label="Deposit">
+                                <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" onChange={() => recalcRental()} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                            <Form.Item name="subtotal" label="Subtotal">
+                                <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" disabled />
+                            </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                            <Form.Item name="totalCharge" label="Total Charge">
+                                <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" disabled />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={8}>
+                            <Form.Item name="checkoutCondition" label="Checkout Condition" initialValue="good">
+                                <Select options={[
+                                    { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' },
+                                    { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' },
+                                ]} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={16}>
+                            <Form.Item name="checkoutNotes" label="Checkout Notes">
+                                <Input.TextArea rows={1} placeholder="Condition notes..." />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                </>
+            ),
+        },
+    ];
 
     return (
         <CMSLayout
@@ -240,103 +403,22 @@ export default function RentalsPage() {
                     )}
                 </Drawer>
 
-                {/* ─── New Rental Contract Modal ──────────────────────── */}
-                <Modal title="New Rental Contract" open={contractModalOpen} onCancel={() => setContractModalOpen(false)}
-                    onOk={handleCreateContract} okText="Create Contract" width={660}>
-                    <Form form={contractForm} layout="vertical" initialValues={{ checkoutCondition: 'good' }}>
-                        <Row gutter={16}>
-                            <Col span={10}>
-                                <Form.Item name="contractCode" label="Contract Code" rules={[{ required: true }]}>
-                                    <Input placeholder="RNT-2026-XXX" />
-                                </Form.Item>
-                            </Col>
-                            <Col span={14}>
-                                <Form.Item name="assetId" label="Asset" rules={[{ required: true, message: 'Select an asset' }]}>
-                                    <Select placeholder="Select asset" showSearch
-                                        filterOption={(input, option) => (option?.label as string || '').toLowerCase().includes(input.toLowerCase())}
-                                        onChange={onAssetChange}
-                                        options={assets.filter(a => a.status === 'available').map(a => ({
-                                            value: a.id, label: `${a.assetCode} — ${a.assetName} (${a.category || '—'})`
-                                        }))} />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Form.Item name="assetName" hidden><Input /></Form.Item>
-                        <Row gutter={16}>
-                            <Col span={8}>
-                                <Form.Item name="customerName" label="Customer Name" rules={[{ required: true }]}>
-                                    <Input placeholder="Full name" />
-                                </Form.Item>
-                            </Col>
-                            <Col span={8}>
-                                <Form.Item name="customerEmail" label="Email">
-                                    <Input placeholder="email@example.com" />
-                                </Form.Item>
-                            </Col>
-                            <Col span={8}>
-                                <Form.Item name="customerPhone" label="Phone">
-                                    <Input placeholder="+62..." />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={8}>
-                                <Form.Item name="customerIdNumber" label="ID Number">
-                                    <Input placeholder="KTP / Passport" />
-                                </Form.Item>
-                            </Col>
-                            <Col span={8}>
-                                <Form.Item name="checkoutDate" label="Checkout Date" rules={[{ required: true }]}>
-                                    <DatePicker style={{ width: '100%' }} onChange={() => recalcRental()} />
-                                </Form.Item>
-                            </Col>
-                            <Col span={8}>
-                                <Form.Item name="expectedReturnDate" label="Expected Return" rules={[{ required: true }]}>
-                                    <DatePicker style={{ width: '100%' }} onChange={() => recalcRental()} />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={6}>
-                                <Form.Item name="dailyRate" label="Daily Rate">
-                                    <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" onChange={() => recalcRental()} />
-                                </Form.Item>
-                            </Col>
-                            <Col span={6}>
-                                <Form.Item name="depositAmount" label="Deposit">
-                                    <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" onChange={() => recalcRental()} />
-                                </Form.Item>
-                            </Col>
-                            <Col span={6}>
-                                <Form.Item name="subtotal" label="Subtotal">
-                                    <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" disabled />
-                                </Form.Item>
-                            </Col>
-                            <Col span={6}>
-                                <Form.Item name="totalCharge" label="Total Charge">
-                                    <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" disabled />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={8}>
-                                <Form.Item name="checkoutCondition" label="Checkout Condition">
-                                    <Select options={[
-                                        { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' },
-                                        { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' },
-                                    ]} />
-                                </Form.Item>
-                            </Col>
-                            <Col span={16}>
-                                <Form.Item name="checkoutNotes" label="Checkout Notes">
-                                    <Input.TextArea rows={1} placeholder="Condition notes..." />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                    </Form>
-                </Modal>
+                {/* ─── Rental Contract SteppedFormModal ─────────── */}
+                <SteppedFormModal
+                    open={contractModalOpen}
+                    onCancel={() => { setContractModalOpen(false); contractForm.resetFields(); }}
+                    onSubmit={handleCreateContract}
+                    form={contractForm}
+                    title="New Rental Contract"
+                    entityName="rental_contract"
+                    steps={contractSteps}
+                    fields={CONTRACT_FIELDS}
+                    width={680}
+                    loading={false}
+                    onBatchCreate={handleBatchCreateContract}
+                    gradient={["#d97706", "#dc2626"]}
+                />
             </div>
         </CMSLayout>
     );
 }
-

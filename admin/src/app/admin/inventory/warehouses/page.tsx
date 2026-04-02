@@ -22,6 +22,8 @@ import {
     InvStockTransfer, WarehouseStats
 } from "@/lib/inventoryService";
 import ItemPicker from "@/components/inventory/ItemPicker";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Title, Text } = Typography;
 
@@ -57,6 +59,20 @@ const TRANSFER_STATUSES: Record<string, { color: string; icon: React.ReactNode }
     completed: { color: 'green', icon: <CheckCircleOutlined /> },
     cancelled: { color: 'default', icon: <ExclamationCircleOutlined /> },
 };
+
+const WAREHOUSE_FIELDS: FieldDef[] = [
+    { name: 'code', label: 'Code', required: true },
+    { name: 'name', label: 'Name', required: true },
+    { name: 'warehouseType', label: 'Type' },
+    { name: 'address', label: 'Address' },
+    { name: 'city', label: 'City' },
+    { name: 'country', label: 'Country' },
+    { name: 'totalCapacity', label: 'Capacity', type: 'number' },
+    { name: 'manager', label: 'Manager' },
+    { name: 'phone', label: 'Phone' },
+    { name: 'email', label: 'Email' },
+    { name: 'status', label: 'Status' },
+];
 
 export default function WarehousesPage() {
     const [stats, setStats] = useState<WarehouseStats | null>(null);
@@ -125,19 +141,27 @@ export default function WarehousesPage() {
     );
 
     // ─── Warehouse CRUD ────────────────────────────
-    const handleSaveWarehouse = async () => {
-        try {
-            const values = await whForm.validateFields();
-            if (whEditId) {
-                await inventoryService.updateWarehouse(whEditId, values);
-                message.success("Warehouse updated");
-            } else {
-                await inventoryService.createWarehouse('default', values);
-                message.success("Warehouse created");
-            }
-            setWhModalOpen(false); whForm.resetFields(); setWhEditId(null);
-            loadAll();
-        } catch { message.error("Failed"); }
+    const handleSaveWarehouse = async (values: any) => {
+        if (whEditId) {
+            await inventoryService.updateWarehouse(whEditId, values);
+            message.success("Warehouse updated");
+        } else {
+            await inventoryService.createWarehouse('default', values);
+            message.success("Warehouse created");
+        }
+        setWhModalOpen(false); whForm.resetFields(); setWhEditId(null);
+        loadAll();
+    };
+
+    const handleBatchCreateWarehouse = async (records: any[]) => {
+        let success = 0, failed = 0;
+        const errors: string[] = [];
+        for (const r of records) {
+            try { await inventoryService.createWarehouse('default', r); success++; }
+            catch (e: any) { failed++; errors.push(`${r.code || 'Unknown'}: ${e.message || 'Failed'}`); }
+        }
+        loadAll();
+        return { success, failed, errors };
     };
 
     const handleEditWarehouse = (wh: InvWarehouse) => {
@@ -361,6 +385,80 @@ export default function WarehousesPage() {
         },
     ];
 
+    const warehouseSteps = [
+        {
+            title: "Basic Info",
+            icon: <HomeOutlined />,
+            fields: ["code", "name", "warehouseType", "totalCapacity"],
+            content: (
+                <>
+                    <Row gutter={16}>
+                        <Col span={8}>
+                            <Form.Item name="code" label="Code" rules={[{ required: true }]}>
+                                <Input placeholder="WH-XXX-01" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={16}>
+                            <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+                                <Input placeholder="Warehouse name" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={8}>
+                            <Form.Item name="warehouseType" label="Type" initialValue="general">
+                                <Select options={Object.entries(WAREHOUSE_TYPES).map(([k, v]) => ({ value: k, label: v.label }))} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item name="city" label="City"><Input placeholder="City" /></Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item name="totalCapacity" label="Capacity">
+                                <InputNumber min={0} style={{ width: '100%' }} placeholder="0" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Form.Item name="address" label="Address"><Input placeholder="Full address" /></Form.Item>
+                </>
+            ),
+        },
+        {
+            title: "Contact & Status",
+            icon: <EnvironmentOutlined />,
+            fields: ["manager", "phone", "email", "status", "country"],
+            content: (
+                <>
+                    <Row gutter={16}>
+                        <Col span={8}>
+                            <Form.Item name="manager" label="Manager"><Input placeholder="Name" /></Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item name="phone" label="Phone"><Input placeholder="+62..." /></Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item name="email" label="Email"><Input placeholder="email@..." /></Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="country" label="Country"><Input placeholder="Country" /></Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="status" label="Status" initialValue="active">
+                                <Select options={[
+                                    { value: 'active', label: 'Active' },
+                                    { value: 'inactive', label: 'Inactive' },
+                                    { value: 'maintenance', label: 'Maintenance' },
+                                ]} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                </>
+            ),
+        },
+    ];
+
     return (
         <CMSLayout
             title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>Warehouses</AuroraText>}
@@ -523,58 +621,22 @@ export default function WarehousesPage() {
                 </Card>
             </div>
 
-            {/* ─── Warehouse Modal ──────────────────────── */}
-            <Modal title={whEditId ? "Edit Warehouse" : "Add Warehouse"}
-                open={whModalOpen} onCancel={() => setWhModalOpen(false)} onOk={handleSaveWarehouse}
-                okText={whEditId ? "Update" : "Create"} width={600}>
-                <Form form={whForm} layout="vertical">
-                    <Row gutter={16}>
-                        <Col span={8}>
-                            <Form.Item name="code" label="Code" rules={[{ required: true }]}>
-                                <Input placeholder="WH-XXX-01" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={16}>
-                            <Form.Item name="name" label="Name" rules={[{ required: true }]}>
-                                <Input placeholder="Warehouse name" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={8}>
-                            <Form.Item name="warehouseType" label="Type" initialValue="general">
-                                <Select options={Object.entries(WAREHOUSE_TYPES).map(([k, v]) => ({ value: k, label: v.label }))} />
-                            </Form.Item>
-                        </Col>
-                        <Col span={8}>
-                            <Form.Item name="city" label="City"><Input placeholder="City" /></Form.Item>
-                        </Col>
-                        <Col span={8}>
-                            <Form.Item name="totalCapacity" label="Capacity">
-                                <InputNumber min={0} style={{ width: '100%' }} placeholder="0" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Form.Item name="address" label="Address"><Input placeholder="Full address" /></Form.Item>
-                    <Row gutter={16}>
-                        <Col span={8}>
-                            <Form.Item name="manager" label="Manager"><Input placeholder="Name" /></Form.Item>
-                        </Col>
-                        <Col span={8}>
-                            <Form.Item name="phone" label="Phone"><Input placeholder="+62..." /></Form.Item>
-                        </Col>
-                        <Col span={8}>
-                            <Form.Item name="status" label="Status" initialValue="active">
-                                <Select options={[
-                                    { value: 'active', label: 'Active' },
-                                    { value: 'inactive', label: 'Inactive' },
-                                    { value: 'maintenance', label: 'Maintenance' },
-                                ]} />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                </Form>
-            </Modal>
+            {/* ─── Warehouse SteppedFormModal ─────────────── */}
+            <SteppedFormModal
+                open={whModalOpen}
+                onCancel={() => { setWhModalOpen(false); setWhEditId(null); whForm.resetFields(); }}
+                onSubmit={handleSaveWarehouse}
+                form={whForm}
+                title={whEditId ? "Edit Warehouse" : "Add Warehouse"}
+                entityName="warehouse"
+                steps={warehouseSteps}
+                fields={WAREHOUSE_FIELDS}
+                width={600}
+                loading={false}
+                onBatchCreate={handleBatchCreateWarehouse}
+                gradient={["#7c3aed", "#6366f1"]}
+                editMode={!!whEditId}
+            />
 
             {/* ─── Zone Modal ──────────────────────────── */}
             <Modal title="Add Zone" open={zoneModalOpen} onCancel={() => setZoneModalOpen(false)}

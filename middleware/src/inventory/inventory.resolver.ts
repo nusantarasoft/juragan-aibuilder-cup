@@ -48,6 +48,14 @@ class InvItem {
     @Field(() => Int, { nullable: true }) maxStock?: number;
     @Field(() => Int, { nullable: true }) reorderPoint?: number;
     @Field(() => Int, { nullable: true }) reorderQty?: number;
+    @Field({ nullable: true }) hasExpiry?: boolean;
+    @Field(() => Int, { nullable: true }) defaultShelfLifeDays?: number;
+    @Field({ nullable: true }) hasDepreciation?: boolean;
+    @Field({ nullable: true }) depreciationMethod?: string;
+    @Field(() => Int, { nullable: true }) usefulLifeMonths?: number;
+    @Field(() => Float, { nullable: true }) salvageValue?: number;
+    @Field({ nullable: true }) isFixedAsset?: boolean;
+    @Field({ nullable: true }) assetCategory?: string;
     @Field(() => GraphQLJSON, { nullable: true }) metadata?: any;
     @Field({ nullable: true }) status?: string;
     @Field() createdAt: string;
@@ -190,6 +198,14 @@ class CreateItemInput {
     @Field(() => Int, { nullable: true }) maxStock?: number;
     @Field(() => Int, { nullable: true }) reorderPoint?: number;
     @Field(() => Int, { nullable: true }) reorderQty?: number;
+    @Field({ nullable: true }) hasExpiry?: boolean;
+    @Field(() => Int, { nullable: true }) defaultShelfLifeDays?: number;
+    @Field({ nullable: true }) hasDepreciation?: boolean;
+    @Field({ nullable: true }) depreciationMethod?: string;
+    @Field(() => Int, { nullable: true }) usefulLifeMonths?: number;
+    @Field(() => Float, { nullable: true }) salvageValue?: number;
+    @Field({ nullable: true }) isFixedAsset?: boolean;
+    @Field({ nullable: true }) assetCategory?: string;
     @Field(() => GraphQLJSON, { nullable: true }) metadata?: any;
     @Field({ nullable: true }) status?: string;
 }
@@ -219,6 +235,14 @@ class UpdateItemInput {
     @Field(() => Int, { nullable: true }) maxStock?: number;
     @Field(() => Int, { nullable: true }) reorderPoint?: number;
     @Field(() => Int, { nullable: true }) reorderQty?: number;
+    @Field({ nullable: true }) hasExpiry?: boolean;
+    @Field(() => Int, { nullable: true }) defaultShelfLifeDays?: number;
+    @Field({ nullable: true }) hasDepreciation?: boolean;
+    @Field({ nullable: true }) depreciationMethod?: string;
+    @Field(() => Int, { nullable: true }) usefulLifeMonths?: number;
+    @Field(() => Float, { nullable: true }) salvageValue?: number;
+    @Field({ nullable: true }) isFixedAsset?: boolean;
+    @Field({ nullable: true }) assetCategory?: string;
     @Field(() => GraphQLJSON, { nullable: true }) metadata?: any;
     @Field({ nullable: true }) status?: string;
 }
@@ -276,6 +300,10 @@ function mapItem(r: any): InvItem {
         dimensions: r.dimensions,
         minStock: r.min_stock, maxStock: r.max_stock,
         reorderPoint: r.reorder_point, reorderQty: r.reorder_qty,
+        hasExpiry: r.has_expiry, defaultShelfLifeDays: r.default_shelf_life_days,
+        hasDepreciation: r.has_depreciation, depreciationMethod: r.depreciation_method,
+        usefulLifeMonths: r.useful_life_months, salvageValue: r.salvage_value,
+        isFixedAsset: r.is_fixed_asset, assetCategory: r.asset_category,
         metadata: r.metadata, status: r.status,
         createdAt: r.created_at, updatedAt: r.updated_at,
     };
@@ -1695,6 +1723,558 @@ function mapRentalContract(r: any): RentalContractType {
         notes: r.notes, status: r.status, createdAt: r.created_at, updatedAt: r.updated_at };
 }
 
+// ═══════════════════════════════════════════════════════════
+// ─── RETURNS Types, Inputs, Mappers ───────────────────────
+// ═══════════════════════════════════════════════════════════
+
+@ObjectType()
+class EcomReturnType {
+    @Field(() => ID) id: string;
+    @Field() tenantId: string;
+    @Field() returnNumber: string;
+    @Field({ nullable: true }) orderId?: string;
+    @Field({ nullable: true }) orderNumber?: string;
+    @Field({ nullable: true }) customerName?: string;
+    @Field({ nullable: true }) customerEmail?: string;
+    @Field({ nullable: true }) reason?: string;
+    @Field({ nullable: true }) resolution?: string;
+    @Field(() => Float, { nullable: true }) subtotal?: number;
+    @Field(() => Float, { nullable: true }) refundAmount?: number;
+    @Field(() => Float, { nullable: true }) restockingFee?: number;
+    @Field({ nullable: true }) refundMethod?: string;
+    @Field({ nullable: true }) refundStatus?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) internalNotes?: string;
+    @Field({ nullable: true }) processedBy?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field({ nullable: true }) requestedAt?: string;
+    @Field({ nullable: true }) approvedAt?: string;
+    @Field({ nullable: true }) receivedAt?: string;
+    @Field({ nullable: true }) completedAt?: string;
+    @Field() createdAt: string;
+    @Field({ nullable: true }) updatedAt?: string;
+}
+
+@ObjectType()
+class EcomReturnItemType {
+    @Field(() => ID) id: string;
+    @Field() returnId: string;
+    @Field({ nullable: true }) orderItemId?: string;
+    @Field({ nullable: true }) itemId?: string;
+    @Field() itemName: string;
+    @Field({ nullable: true }) itemSku?: string;
+    @Field(() => Int) quantity: number;
+    @Field(() => Float) unitPrice: number;
+    @Field(() => Float) subtotal: number;
+    @Field({ nullable: true }) condition?: string;
+    @Field({ nullable: true }) restock?: boolean;
+    @Field({ nullable: true }) reason?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field() createdAt: string;
+}
+
+@ObjectType()
+class EcomReturnStats {
+    @Field(() => Int) totalReturns: number;
+    @Field(() => Int) requested: number;
+    @Field(() => Int) approved: number;
+    @Field(() => Int) received: number;
+    @Field(() => Int) completed: number;
+    @Field(() => Int) rejected: number;
+    @Field(() => Float) totalRefunded: number;
+}
+
+@InputType()
+class CreateReturnInput {
+    @Field() orderId: string;
+    @Field({ nullable: true }) orderNumber?: string;
+    @Field({ nullable: true }) customerName?: string;
+    @Field({ nullable: true }) customerEmail?: string;
+    @Field({ nullable: true }) reason?: string;
+    @Field({ nullable: true }) resolution?: string;
+    @Field(() => Float, { nullable: true }) subtotal?: number;
+    @Field(() => Float, { nullable: true }) refundAmount?: number;
+    @Field(() => Float, { nullable: true }) restockingFee?: number;
+    @Field({ nullable: true }) refundMethod?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) internalNotes?: string;
+    @Field(() => GraphQLJSON, { nullable: true }) items?: any;
+}
+
+function mapReturn(r: any): EcomReturnType {
+    return {
+        id: r.id, tenantId: r.tenant_id, returnNumber: r.return_number,
+        orderId: r.order_id, orderNumber: r.order_number,
+        customerName: r.customer_name, customerEmail: r.customer_email,
+        reason: r.reason, resolution: r.resolution,
+        subtotal: r.subtotal, refundAmount: r.refund_amount,
+        restockingFee: r.restocking_fee, refundMethod: r.refund_method,
+        refundStatus: r.refund_status, notes: r.notes,
+        internalNotes: r.internal_notes, processedBy: r.processed_by,
+        status: r.status, requestedAt: r.requested_at,
+        approvedAt: r.approved_at, receivedAt: r.received_at,
+        completedAt: r.completed_at,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+}
+
+function mapReturnItem(r: any): EcomReturnItemType {
+    return {
+        id: r.id, returnId: r.return_id, orderItemId: r.order_item_id,
+        itemId: r.item_id, itemName: r.item_name, itemSku: r.item_sku,
+        quantity: r.quantity, unitPrice: r.unit_price, subtotal: r.subtotal,
+        condition: r.condition, restock: r.restock,
+        reason: r.reason, notes: r.notes, createdAt: r.created_at,
+    };
+}
+
+// ═══════════════════════════════════════════════════════════
+// ─── PACKAGES Types, Inputs, Mappers ──────────────────────
+// ═══════════════════════════════════════════════════════════
+
+@ObjectType()
+class EcomPackageType {
+    @Field(() => ID) id: string;
+    @Field() tenantId: string;
+    @Field() name: string;
+    @Field({ nullable: true }) sku?: string;
+    @Field({ nullable: true }) description?: string;
+    @Field(() => Float) packagePrice: number;
+    @Field(() => Float) regularPrice: number;
+    @Field(() => Float) savings: number;
+    @Field({ nullable: true }) currency?: string;
+    @Field(() => GraphQLJSON, { nullable: true }) mediaIds?: any;
+    @Field(() => GraphQLJSON, { nullable: true }) tags?: any;
+    @Field(() => Int, { nullable: true }) maxQuantity?: number;
+    @Field(() => Int, { nullable: true }) timesSold?: number;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field() createdAt: string;
+    @Field({ nullable: true }) updatedAt?: string;
+}
+
+@ObjectType()
+class EcomPackageItemType {
+    @Field(() => ID) id: string;
+    @Field() packageId: string;
+    @Field({ nullable: true }) itemId?: string;
+    @Field() itemName: string;
+    @Field({ nullable: true }) itemSku?: string;
+    @Field(() => Int) quantity: number;
+    @Field(() => Float) unitPrice: number;
+    @Field(() => Int, { nullable: true }) sortOrder?: number;
+    @Field() createdAt: string;
+}
+
+@ObjectType()
+class EcomPackageStats {
+    @Field(() => Int) totalPackages: number;
+    @Field(() => Int) active: number;
+    @Field(() => Int) inactive: number;
+    @Field(() => Int) totalSold: number;
+    @Field(() => Float) totalSavings: number;
+}
+
+@InputType()
+class CreatePackageInput {
+    @Field() name: string;
+    @Field({ nullable: true }) sku?: string;
+    @Field({ nullable: true }) description?: string;
+    @Field(() => Float, { nullable: true }) packagePrice?: number;
+    @Field(() => Float, { nullable: true }) regularPrice?: number;
+    @Field(() => Float, { nullable: true }) savings?: number;
+    @Field(() => GraphQLJSON, { nullable: true }) mediaIds?: any;
+    @Field(() => GraphQLJSON, { nullable: true }) tags?: any;
+    @Field(() => Int, { nullable: true }) maxQuantity?: number;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field(() => GraphQLJSON, { nullable: true }) items?: any;
+}
+
+@InputType()
+class CreatePackageItemInput {
+    @Field({ nullable: true }) itemId?: string;
+    @Field() itemName: string;
+    @Field({ nullable: true }) itemSku?: string;
+    @Field(() => Int, { nullable: true }) quantity?: number;
+    @Field(() => Float, { nullable: true }) unitPrice?: number;
+    @Field(() => Int, { nullable: true }) sortOrder?: number;
+}
+
+function mapPackage(r: any): EcomPackageType {
+    return {
+        id: r.id, tenantId: r.tenant_id, name: r.name, sku: r.sku,
+        description: r.description, packagePrice: r.package_price,
+        regularPrice: r.regular_price, savings: r.savings,
+        currency: r.currency, mediaIds: r.media_ids, tags: r.tags,
+        maxQuantity: r.max_quantity, timesSold: r.times_sold,
+        notes: r.notes, status: r.status,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+}
+
+function mapPackageItem(r: any): EcomPackageItemType {
+    return {
+        id: r.id, packageId: r.package_id, itemId: r.item_id,
+        itemName: r.item_name, itemSku: r.item_sku,
+        quantity: r.quantity, unitPrice: r.unit_price,
+        sortOrder: r.sort_order, createdAt: r.created_at,
+    };
+}
+
+// ═══════════════════════════════════════════════════════════
+// ─── OFFERS Types, Inputs, Mappers ────────────────────────
+// ═══════════════════════════════════════════════════════════
+
+@ObjectType()
+class EcomOfferType {
+    @Field(() => ID) id: string;
+    @Field() tenantId: string;
+    @Field() name: string;
+    @Field({ nullable: true }) description?: string;
+    @Field({ nullable: true }) offerType?: string;
+    @Field({ nullable: true }) discountType?: string;
+    @Field(() => Float, { nullable: true }) discountValue?: number;
+    @Field(() => Float, { nullable: true }) minOrderAmount?: number;
+    @Field(() => Int, { nullable: true }) maxUses?: number;
+    @Field(() => Int, { nullable: true }) currentUses?: number;
+    @Field({ nullable: true }) startDate?: string;
+    @Field({ nullable: true }) endDate?: string;
+    @Field({ nullable: true }) appliesTo?: string;
+    @Field(() => GraphQLJSON, { nullable: true }) targetIds?: any;
+    @Field({ nullable: true }) bannerText?: string;
+    @Field({ nullable: true }) badgeText?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field() createdAt: string;
+    @Field({ nullable: true }) updatedAt?: string;
+}
+
+@ObjectType()
+class EcomOfferStats {
+    @Field(() => Int) totalOffers: number;
+    @Field(() => Int) active: number;
+    @Field(() => Int) draft: number;
+    @Field(() => Int) expired: number;
+    @Field(() => Int) totalUses: number;
+}
+
+@InputType()
+class CreateOfferInput {
+    @Field() name: string;
+    @Field({ nullable: true }) description?: string;
+    @Field({ nullable: true }) offerType?: string;
+    @Field({ nullable: true }) discountType?: string;
+    @Field(() => Float, { nullable: true }) discountValue?: number;
+    @Field(() => Float, { nullable: true }) minOrderAmount?: number;
+    @Field(() => Int, { nullable: true }) maxUses?: number;
+    @Field({ nullable: true }) startDate?: string;
+    @Field({ nullable: true }) endDate?: string;
+    @Field({ nullable: true }) appliesTo?: string;
+    @Field(() => GraphQLJSON, { nullable: true }) targetIds?: any;
+    @Field({ nullable: true }) bannerText?: string;
+    @Field({ nullable: true }) badgeText?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+}
+
+function mapOffer(r: any): EcomOfferType {
+    return {
+        id: r.id, tenantId: r.tenant_id, name: r.name,
+        description: r.description, offerType: r.offer_type,
+        discountType: r.discount_type, discountValue: r.discount_value,
+        minOrderAmount: r.min_order_amount, maxUses: r.max_uses,
+        currentUses: r.current_uses, startDate: r.start_date,
+        endDate: r.end_date, appliesTo: r.applies_to,
+        targetIds: r.target_ids, bannerText: r.banner_text,
+        badgeText: r.badge_text, notes: r.notes, status: r.status,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+}
+
+// ═══════════════════════════════════════════════════════════
+// ─── DISCOUNTS Types, Inputs, Mappers ─────────────────────
+// ═══════════════════════════════════════════════════════════
+
+@ObjectType()
+class EcomDiscountType {
+    @Field(() => ID) id: string;
+    @Field() tenantId: string;
+    @Field({ nullable: true }) code?: string;
+    @Field() name: string;
+    @Field({ nullable: true }) description?: string;
+    @Field({ nullable: true }) discountType?: string;
+    @Field(() => Float, { nullable: true }) discountValue?: number;
+    @Field(() => Float, { nullable: true }) minOrderAmount?: number;
+    @Field(() => Float, { nullable: true }) maxDiscountAmount?: number;
+    @Field(() => Int, { nullable: true }) usageLimit?: number;
+    @Field(() => Int, { nullable: true }) timesUsed?: number;
+    @Field({ nullable: true }) validFrom?: string;
+    @Field({ nullable: true }) validUntil?: string;
+    @Field({ nullable: true }) autoApply?: boolean;
+    @Field({ nullable: true }) appliesTo?: string;
+    @Field(() => GraphQLJSON, { nullable: true }) targetIds?: any;
+    @Field({ nullable: true }) stackable?: boolean;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field() createdAt: string;
+    @Field({ nullable: true }) updatedAt?: string;
+}
+
+@ObjectType()
+class EcomDiscountStats {
+    @Field(() => Int) totalDiscounts: number;
+    @Field(() => Int) active: number;
+    @Field(() => Int) expired: number;
+    @Field(() => Int) coupons: number;
+    @Field(() => Int) autoApply: number;
+    @Field(() => Int) totalUsed: number;
+}
+
+@InputType()
+class CreateDiscountInput {
+    @Field({ nullable: true }) code?: string;
+    @Field() name: string;
+    @Field({ nullable: true }) description?: string;
+    @Field({ nullable: true }) discountType?: string;
+    @Field(() => Float, { nullable: true }) discountValue?: number;
+    @Field(() => Float, { nullable: true }) minOrderAmount?: number;
+    @Field(() => Float, { nullable: true }) maxDiscountAmount?: number;
+    @Field(() => Int, { nullable: true }) usageLimit?: number;
+    @Field({ nullable: true }) validFrom?: string;
+    @Field({ nullable: true }) validUntil?: string;
+    @Field({ nullable: true }) autoApply?: boolean;
+    @Field({ nullable: true }) appliesTo?: string;
+    @Field(() => GraphQLJSON, { nullable: true }) targetIds?: any;
+    @Field({ nullable: true }) stackable?: boolean;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+}
+
+function mapDiscount(r: any): EcomDiscountType {
+    return {
+        id: r.id, tenantId: r.tenant_id, code: r.code, name: r.name,
+        description: r.description, discountType: r.discount_type,
+        discountValue: r.discount_value, minOrderAmount: r.min_order_amount,
+        maxDiscountAmount: r.max_discount_amount, usageLimit: r.usage_limit,
+        timesUsed: r.times_used, validFrom: r.valid_from,
+        validUntil: r.valid_until, autoApply: r.auto_apply,
+        appliesTo: r.applies_to, targetIds: r.target_ids,
+        stackable: r.stackable, notes: r.notes, status: r.status,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+}
+
+// ═══════════════════════════════════════════════════════════
+// ─── STOCK OPERATIONS Types, Inputs, Mappers ──────────────
+// ═══════════════════════════════════════════════════════════
+
+@ObjectType()
+class InvStockOperationType {
+    @Field(() => ID) id: string;
+    @Field() tenantId: string;
+    @Field() operationNumber: string;
+    @Field() operationType: string;
+    @Field() itemId: string;
+    @Field({ nullable: true }) itemName?: string;
+    @Field({ nullable: true }) warehouseId?: string;
+    @Field(() => Float) quantity: number;
+    @Field(() => Float, { nullable: true }) unitCost?: number;
+    @Field({ nullable: true }) reason?: string;
+    @Field({ nullable: true }) reference?: string;
+    @Field({ nullable: true }) batchNumber?: string;
+    @Field({ nullable: true }) expiryDate?: string;
+    @Field({ nullable: true }) approvedBy?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field({ nullable: true }) createdBy?: string;
+    @Field() createdAt: string;
+    @Field({ nullable: true }) updatedAt?: string;
+}
+
+@ObjectType()
+class StockOperationStats {
+    @Field(() => Int) totalOperations: number;
+    @Field(() => Int) receives: number;
+    @Field(() => Int) releases: number;
+    @Field(() => Int) adjustments: number;
+    @Field(() => Int) writeOffs: number;
+    @Field(() => Int) donations: number;
+}
+
+@InputType()
+class CreateStockOperationInput {
+    @Field() operationType: string;
+    @Field() itemId: string;
+    @Field({ nullable: true }) itemName?: string;
+    @Field({ nullable: true }) warehouseId?: string;
+    @Field(() => Float) quantity: number;
+    @Field(() => Float, { nullable: true }) unitCost?: number;
+    @Field({ nullable: true }) reason?: string;
+    @Field({ nullable: true }) reference?: string;
+    @Field({ nullable: true }) batchNumber?: string;
+    @Field({ nullable: true }) expiryDate?: string;
+    @Field({ nullable: true }) approvedBy?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) createdBy?: string;
+}
+
+function mapStockOperation(r: any): InvStockOperationType {
+    return {
+        id: r.id, tenantId: r.tenant_id,
+        operationNumber: r.operation_number, operationType: r.operation_type,
+        itemId: r.item_id, itemName: r.item_name,
+        warehouseId: r.warehouse_id, quantity: r.quantity,
+        unitCost: r.unit_cost, reason: r.reason,
+        reference: r.reference, batchNumber: r.batch_number,
+        expiryDate: r.expiry_date, approvedBy: r.approved_by,
+        notes: r.notes, status: r.status,
+        createdBy: r.created_by,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+}
+
+// ═══════════════════════════════════════════════════════════
+// ─── FIXED ASSETS Types, Inputs, Mappers ──────────────────
+// ═══════════════════════════════════════════════════════════
+
+@ObjectType()
+class InvFixedAssetType {
+    @Field(() => ID) id: string;
+    @Field() tenantId: string;
+    @Field({ nullable: true }) itemId?: string;
+    @Field() assetNumber: string;
+    @Field() assetName: string;
+    @Field({ nullable: true }) assetCategory?: string;
+    @Field({ nullable: true }) serialNumber?: string;
+    @Field({ nullable: true }) purchaseDate?: string;
+    @Field(() => Float, { nullable: true }) purchasePrice?: number;
+    @Field(() => Float, { nullable: true }) currentValue?: number;
+    @Field(() => Float, { nullable: true }) salvageValue?: number;
+    @Field({ nullable: true }) depreciationMethod?: string;
+    @Field(() => Int, { nullable: true }) usefulLifeMonths?: number;
+    @Field(() => Float, { nullable: true }) accumulatedDepreciation?: number;
+    @Field({ nullable: true }) lastDepreciationDate?: string;
+    @Field({ nullable: true }) warrantyExpiry?: string;
+    @Field({ nullable: true }) location?: string;
+    @Field({ nullable: true }) warehouseId?: string;
+    @Field({ nullable: true }) assignedTo?: string;
+    @Field({ nullable: true }) condition?: string;
+    @Field({ nullable: true }) insurancePolicy?: string;
+    @Field({ nullable: true }) insuranceExpiry?: string;
+    @Field({ nullable: true }) maintenanceSchedule?: string;
+    @Field({ nullable: true }) lastMaintenanceDate?: string;
+    @Field({ nullable: true }) nextMaintenanceDate?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field({ nullable: true }) disposedDate?: string;
+    @Field({ nullable: true }) disposalMethod?: string;
+    @Field(() => Float, { nullable: true }) disposalValue?: number;
+    @Field() createdAt: string;
+    @Field({ nullable: true }) updatedAt?: string;
+}
+
+@ObjectType()
+class FixedAssetStats {
+    @Field(() => Int) totalAssets: number;
+    @Field(() => Int) active: number;
+    @Field(() => Int) maintenance: number;
+    @Field(() => Int) disposed: number;
+    @Field(() => Float) totalPurchaseValue: number;
+    @Field(() => Float) totalCurrentValue: number;
+    @Field(() => Float) totalAccumulatedDep: number;
+}
+
+@ObjectType()
+class ExpiryAlertType {
+    @Field() itemId: string;
+    @Field() itemName: string;
+    @Field({ nullable: true }) itemSku?: string;
+    @Field({ nullable: true }) batchNumber?: string;
+    @Field() expiryDate: string;
+    @Field(() => Float) quantity: number;
+    @Field({ nullable: true }) warehouseId?: string;
+    @Field() isExpired: boolean;
+    @Field(() => Int) daysUntilExpiry: number;
+}
+
+@InputType()
+class CreateFixedAssetInput {
+    @Field({ nullable: true }) itemId?: string;
+    @Field() assetName: string;
+    @Field({ nullable: true }) assetCategory?: string;
+    @Field({ nullable: true }) serialNumber?: string;
+    @Field({ nullable: true }) purchaseDate?: string;
+    @Field(() => Float, { nullable: true }) purchasePrice?: number;
+    @Field(() => Float, { nullable: true }) currentValue?: number;
+    @Field(() => Float, { nullable: true }) salvageValue?: number;
+    @Field({ nullable: true }) depreciationMethod?: string;
+    @Field(() => Int, { nullable: true }) usefulLifeMonths?: number;
+    @Field({ nullable: true }) warrantyExpiry?: string;
+    @Field({ nullable: true }) location?: string;
+    @Field({ nullable: true }) warehouseId?: string;
+    @Field({ nullable: true }) assignedTo?: string;
+    @Field({ nullable: true }) condition?: string;
+    @Field({ nullable: true }) insurancePolicy?: string;
+    @Field({ nullable: true }) insuranceExpiry?: string;
+    @Field({ nullable: true }) maintenanceSchedule?: string;
+    @Field({ nullable: true }) lastMaintenanceDate?: string;
+    @Field({ nullable: true }) nextMaintenanceDate?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+}
+
+@InputType()
+class UpdateFixedAssetInput {
+    @Field({ nullable: true }) itemId?: string;
+    @Field({ nullable: true }) assetName?: string;
+    @Field({ nullable: true }) assetCategory?: string;
+    @Field({ nullable: true }) serialNumber?: string;
+    @Field({ nullable: true }) purchaseDate?: string;
+    @Field(() => Float, { nullable: true }) purchasePrice?: number;
+    @Field(() => Float, { nullable: true }) currentValue?: number;
+    @Field(() => Float, { nullable: true }) salvageValue?: number;
+    @Field({ nullable: true }) depreciationMethod?: string;
+    @Field(() => Int, { nullable: true }) usefulLifeMonths?: number;
+    @Field({ nullable: true }) warrantyExpiry?: string;
+    @Field({ nullable: true }) location?: string;
+    @Field({ nullable: true }) warehouseId?: string;
+    @Field({ nullable: true }) assignedTo?: string;
+    @Field({ nullable: true }) condition?: string;
+    @Field({ nullable: true }) insurancePolicy?: string;
+    @Field({ nullable: true }) insuranceExpiry?: string;
+    @Field({ nullable: true }) maintenanceSchedule?: string;
+    @Field({ nullable: true }) lastMaintenanceDate?: string;
+    @Field({ nullable: true }) nextMaintenanceDate?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) status?: string;
+}
+
+function mapFixedAsset(r: any): InvFixedAssetType {
+    return {
+        id: r.id, tenantId: r.tenant_id, itemId: r.item_id,
+        assetNumber: r.asset_number, assetName: r.asset_name,
+        assetCategory: r.asset_category, serialNumber: r.serial_number,
+        purchaseDate: r.purchase_date, purchasePrice: r.purchase_price,
+        currentValue: r.current_value, salvageValue: r.salvage_value,
+        depreciationMethod: r.depreciation_method,
+        usefulLifeMonths: r.useful_life_months,
+        accumulatedDepreciation: r.accumulated_depreciation,
+        lastDepreciationDate: r.last_depreciation_date,
+        warrantyExpiry: r.warranty_expiry, location: r.location,
+        warehouseId: r.warehouse_id, assignedTo: r.assigned_to,
+        condition: r.condition, insurancePolicy: r.insurance_policy,
+        insuranceExpiry: r.insurance_expiry,
+        maintenanceSchedule: r.maintenance_schedule,
+        lastMaintenanceDate: r.last_maintenance_date,
+        nextMaintenanceDate: r.next_maintenance_date,
+        notes: r.notes, status: r.status,
+        disposedDate: r.disposed_date, disposalMethod: r.disposal_method,
+        disposalValue: r.disposal_value,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+}
+
 @Resolver()
 export class InventoryResolver {
     constructor(private inventoryService: InventoryService) { }
@@ -2483,6 +3063,12 @@ export class InventoryResolver {
         return this.inventoryService.deleteRentalContract(id);
     }
 
+    @Mutation(() => RentalContractType)
+    async cancelRentalContract(@Args('contractId') contractId: string) {
+        const data = await this.inventoryService.cancelRentalContract(contractId);
+        return mapRentalContract(data);
+    }
+
     @Query(() => RentalStats)
     async rentalStats(@Args('tenantId') tenantId: string) {
         return this.inventoryService.getRentalStats(tenantId);
@@ -2586,6 +3172,276 @@ export class InventoryResolver {
     @Query(() => EcomStats)
     async ecomStats(@Args('tenantId') tenantId: string) {
         return this.inventoryService.getEcomStats(tenantId);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ─── RETURNS RESOLVERS ────────────────────────────────
+    // ═══════════════════════════════════════════════════════
+
+    @Query(() => [EcomReturnType])
+    async ecomReturns(
+        @Args('tenantId') tenantId: string,
+        @Args('status', { nullable: true }) status?: string,
+        @Args('search', { nullable: true }) search?: string,
+    ) {
+        const data = await this.inventoryService.getReturns(tenantId, { status, search });
+        return data.map(mapReturn);
+    }
+
+    @Query(() => EcomReturnType)
+    async ecomReturn(@Args('id') id: string) {
+        const data = await this.inventoryService.getReturn(id);
+        return mapReturn(data);
+    }
+
+    @Query(() => [EcomReturnItemType])
+    async ecomReturnItems(@Args('returnId') returnId: string) {
+        const data = await this.inventoryService.getReturnItems(returnId);
+        return data.map(mapReturnItem);
+    }
+
+    @Query(() => EcomReturnStats)
+    async ecomReturnStats(@Args('tenantId') tenantId: string) {
+        return this.inventoryService.getReturnStats(tenantId);
+    }
+
+    @Mutation(() => EcomReturnType)
+    async createEcomReturn(@Args('tenantId') tenantId: string, @Args('input') input: CreateReturnInput) {
+        const data = await this.inventoryService.createReturn(tenantId, input);
+        return mapReturn(data);
+    }
+
+    @Mutation(() => EcomReturnType)
+    async updateEcomReturnStatus(@Args('id') id: string, @Args('status') status: string) {
+        const data = await this.inventoryService.updateReturnStatus(id, status);
+        return mapReturn(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteEcomReturn(@Args('id') id: string) {
+        return this.inventoryService.deleteReturn(id);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ─── PACKAGES RESOLVERS ──────────────────────────────
+    // ═══════════════════════════════════════════════════════
+
+    @Query(() => [EcomPackageType])
+    async ecomPackages(
+        @Args('tenantId') tenantId: string,
+        @Args('status', { nullable: true }) status?: string,
+        @Args('search', { nullable: true }) search?: string,
+    ) {
+        const data = await this.inventoryService.getPackages(tenantId, { status, search });
+        return data.map(mapPackage);
+    }
+
+    @Query(() => [EcomPackageItemType])
+    async ecomPackageItems(@Args('packageId') packageId: string) {
+        const data = await this.inventoryService.getPackageItems(packageId);
+        return data.map(mapPackageItem);
+    }
+
+    @Query(() => EcomPackageStats)
+    async ecomPackageStats(@Args('tenantId') tenantId: string) {
+        return this.inventoryService.getPackageStats(tenantId);
+    }
+
+    @Mutation(() => EcomPackageType)
+    async createEcomPackage(@Args('tenantId') tenantId: string, @Args('input') input: CreatePackageInput) {
+        const data = await this.inventoryService.createPackage(tenantId, input);
+        return mapPackage(data);
+    }
+
+    @Mutation(() => EcomPackageType)
+    async updateEcomPackage(@Args('id') id: string, @Args('input') input: CreatePackageInput) {
+        const data = await this.inventoryService.updatePackage(id, input);
+        return mapPackage(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteEcomPackage(@Args('id') id: string) {
+        return this.inventoryService.deletePackage(id);
+    }
+
+    @Mutation(() => EcomPackageItemType)
+    async addEcomPackageItem(@Args('packageId') packageId: string, @Args('input') input: CreatePackageItemInput) {
+        const data = await this.inventoryService.addPackageItem(packageId, input);
+        return mapPackageItem(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteEcomPackageItem(@Args('id') id: string) {
+        return this.inventoryService.deletePackageItem(id);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ─── OFFERS RESOLVERS ────────────────────────────────
+    // ═══════════════════════════════════════════════════════
+
+    @Query(() => [EcomOfferType])
+    async ecomOffers(
+        @Args('tenantId') tenantId: string,
+        @Args('status', { nullable: true }) status?: string,
+        @Args('search', { nullable: true }) search?: string,
+    ) {
+        const data = await this.inventoryService.getOffers(tenantId, { status, search });
+        return data.map(mapOffer);
+    }
+
+    @Query(() => EcomOfferStats)
+    async ecomOfferStats(@Args('tenantId') tenantId: string) {
+        return this.inventoryService.getOfferStats(tenantId);
+    }
+
+    @Mutation(() => EcomOfferType)
+    async createEcomOffer(@Args('tenantId') tenantId: string, @Args('input') input: CreateOfferInput) {
+        const data = await this.inventoryService.createOffer(tenantId, input);
+        return mapOffer(data);
+    }
+
+    @Mutation(() => EcomOfferType)
+    async updateEcomOffer(@Args('id') id: string, @Args('input') input: CreateOfferInput) {
+        const data = await this.inventoryService.updateOffer(id, input);
+        return mapOffer(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteEcomOffer(@Args('id') id: string) {
+        return this.inventoryService.deleteOffer(id);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ─── DISCOUNTS RESOLVERS ─────────────────────────────
+    // ═══════════════════════════════════════════════════════
+
+    @Query(() => [EcomDiscountType])
+    async ecomDiscounts(
+        @Args('tenantId') tenantId: string,
+        @Args('status', { nullable: true }) status?: string,
+        @Args('search', { nullable: true }) search?: string,
+    ) {
+        const data = await this.inventoryService.getDiscounts(tenantId, { status, search });
+        return data.map(mapDiscount);
+    }
+
+    @Query(() => EcomDiscountStats)
+    async ecomDiscountStats(@Args('tenantId') tenantId: string) {
+        return this.inventoryService.getDiscountStats(tenantId);
+    }
+
+    @Mutation(() => EcomDiscountType)
+    async createEcomDiscount(@Args('tenantId') tenantId: string, @Args('input') input: CreateDiscountInput) {
+        const data = await this.inventoryService.createDiscount(tenantId, input);
+        return mapDiscount(data);
+    }
+
+    @Mutation(() => EcomDiscountType)
+    async updateEcomDiscount(@Args('id') id: string, @Args('input') input: CreateDiscountInput) {
+        const data = await this.inventoryService.updateDiscount(id, input);
+        return mapDiscount(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteEcomDiscount(@Args('id') id: string) {
+        return this.inventoryService.deleteDiscount(id);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ─── STOCK OPERATIONS Resolvers ───────────────────────────
+    // ═══════════════════════════════════════════════════════════
+
+    @Query(() => [InvStockOperationType])
+    async stockOperations(
+        @Args('tenantId') tenantId: string,
+        @Args('operationType', { nullable: true }) operationType?: string,
+        @Args('status', { nullable: true }) status?: string,
+        @Args('search', { nullable: true }) search?: string,
+    ) {
+        const data = await this.inventoryService.getStockOperations(tenantId, { operationType, status, search });
+        return (data || []).map(mapStockOperation);
+    }
+
+    @Query(() => StockOperationStats)
+    async stockOperationStats(@Args('tenantId') tenantId: string) {
+        return this.inventoryService.getStockOperationStats(tenantId);
+    }
+
+    @Mutation(() => InvStockOperationType)
+    async createStockOperation(@Args('tenantId') tenantId: string, @Args('input') input: CreateStockOperationInput) {
+        const data = await this.inventoryService.createStockOperation(tenantId, input);
+        return mapStockOperation(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteStockOperation(@Args('id') id: string) {
+        return this.inventoryService.deleteStockOperation(id);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ─── FIXED ASSETS Resolvers ───────────────────────────────
+    // ═══════════════════════════════════════════════════════════
+
+    @Query(() => [InvFixedAssetType])
+    async fixedAssets(
+        @Args('tenantId') tenantId: string,
+        @Args('assetCategory', { nullable: true }) assetCategory?: string,
+        @Args('status', { nullable: true }) status?: string,
+        @Args('search', { nullable: true }) search?: string,
+    ) {
+        const data = await this.inventoryService.getFixedAssets(tenantId, { assetCategory, status, search });
+        return (data || []).map(mapFixedAsset);
+    }
+
+    @Query(() => InvFixedAssetType)
+    async fixedAsset(@Args('id') id: string) {
+        const data = await this.inventoryService.getFixedAsset(id);
+        return mapFixedAsset(data);
+    }
+
+    @Query(() => FixedAssetStats)
+    async fixedAssetStats(@Args('tenantId') tenantId: string) {
+        return this.inventoryService.getFixedAssetStats(tenantId);
+    }
+
+    @Query(() => [ExpiryAlertType])
+    async expiryAlerts(
+        @Args('tenantId') tenantId: string,
+        @Args('daysAhead', { type: () => Int, nullable: true }) daysAhead?: number,
+    ) {
+        return this.inventoryService.getExpiryAlerts(tenantId, daysAhead ?? 30);
+    }
+
+    @Mutation(() => InvFixedAssetType)
+    async createFixedAsset(@Args('tenantId') tenantId: string, @Args('input') input: CreateFixedAssetInput) {
+        const data = await this.inventoryService.createFixedAsset(tenantId, input);
+        return mapFixedAsset(data);
+    }
+
+    @Mutation(() => InvFixedAssetType)
+    async updateFixedAsset(@Args('id') id: string, @Args('input') input: UpdateFixedAssetInput) {
+        const data = await this.inventoryService.updateFixedAsset(id, input);
+        return mapFixedAsset(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteFixedAsset(@Args('id') id: string) {
+        return this.inventoryService.deleteFixedAsset(id);
+    }
+
+    @Mutation(() => InvFixedAssetType)
+    async disposeFixedAsset(
+        @Args('id') id: string,
+        @Args('disposalMethod') disposalMethod: string,
+        @Args('disposalValue', { type: () => Float, nullable: true }) disposalValue?: number,
+    ) {
+        const data = await this.inventoryService.disposeFixedAsset(id, { disposalMethod, disposalValue });
+        return mapFixedAsset(data);
+    }
+
+    @Mutation(() => GraphQLJSON)
+    async runDepreciation(@Args('tenantId') tenantId: string) {
+        return this.inventoryService.runDepreciation(tenantId);
     }
 }
 

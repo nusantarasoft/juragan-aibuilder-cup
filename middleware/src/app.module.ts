@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { SupabaseModule } from './supabase/supabase.module';
 import { AuthModule } from './auth/auth.module';
@@ -30,6 +31,7 @@ import { InventoryModule } from './inventory/inventory.module';
             isGlobal: true,
             envFilePath: ['.env', '../.env'],
         }),
+        ScheduleModule.forRoot(),
 
         // GraphQL configuration (Code-First)
         GraphQLModule.forRoot<ApolloDriverConfig>({

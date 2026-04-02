@@ -57,6 +57,14 @@ export interface InvItem {
     maxStock?: number;
     reorderPoint?: number;
     reorderQty?: number;
+    hasExpiry?: boolean;
+    defaultShelfLifeDays?: number;
+    hasDepreciation?: boolean;
+    depreciationMethod?: string;
+    usefulLifeMonths?: number;
+    salvageValue?: number;
+    isFixedAsset?: boolean;
+    assetCategory?: string;
     metadata?: any;
     status?: string;
     createdAt: string;
@@ -137,8 +145,10 @@ const ITEM_FIELDS = `
     id tenantId name sku description itemType fulfillmentType
     categoryId brand tags costPrice sellingPrice currency taxRate
     barcode qrCode mediaIds primaryUom weight weightUnit dimensions
-    minStock maxStock reorderPoint reorderQty metadata status
-    createdAt updatedAt
+    minStock maxStock reorderPoint reorderQty
+    hasExpiry defaultShelfLifeDays hasDepreciation depreciationMethod
+    usefulLifeMonths salvageValue isFixedAsset assetCategory
+    metadata status createdAt updatedAt
 `;
 
 const CATEGORY_FIELDS = `id tenantId name parentId description icon color sortOrder createdAt updatedAt`;
@@ -1130,6 +1140,17 @@ export const inventoryService = {
         await graphqlRequest(`mutation($id: String!) { deleteRentalContract(id: $id) }`, { id });
     },
 
+    async cancelRentalContract(contractId: string): Promise<RentalContract> {
+        const data = await graphqlRequest<{ cancelRentalContract: RentalContract }>(`
+            mutation($contractId: String!) {
+                cancelRentalContract(contractId: $contractId) {
+                    id contractCode status updatedAt
+                }
+            }
+        `, { contractId });
+        return data.cancelRentalContract;
+    },
+
     async getRentalStats(tenantId = 'default'): Promise<RentalStatsType> {
         const data = await graphqlRequest<{ rentalStats: RentalStatsType }>(`
             query($tenantId: String!) {
@@ -1305,6 +1326,437 @@ export const inventoryService = {
             }
         `, { tenantId });
         return data.ecomStats;
+    },
+
+    // ═══════════════════════════════════════════════════════
+    // RETURNS & REFUNDS
+    // ═══════════════════════════════════════════════════════
+
+    async getEcomReturns(tenantId = 'default', filters?: { status?: string; search?: string }): Promise<EcomReturn[]> {
+        const data = await graphqlRequest<{ ecomReturns: EcomReturn[] }>(`
+            query($tenantId: String!, $status: String, $search: String) {
+                ecomReturns(tenantId: $tenantId, status: $status, search: $search) {
+                    id returnNumber orderId orderNumber customerName customerEmail
+                    reason resolution subtotal refundAmount restockingFee
+                    refundMethod refundStatus notes internalNotes processedBy
+                    status requestedAt approvedAt receivedAt completedAt createdAt
+                }
+            }
+        `, { tenantId, ...filters });
+        return data.ecomReturns;
+    },
+
+    async createEcomReturn(tenantId = 'default', input: Partial<EcomReturn> & { items?: any[] }): Promise<EcomReturn> {
+        const data = await graphqlRequest<{ createEcomReturn: EcomReturn }>(`
+            mutation($tenantId: String!, $input: CreateReturnInput!) {
+                createEcomReturn(tenantId: $tenantId, input: $input) {
+                    id returnNumber orderNumber customerName status createdAt
+                }
+            }
+        `, { tenantId, input });
+        return data.createEcomReturn;
+    },
+
+    async updateEcomReturnStatus(id: string, status: string): Promise<EcomReturn> {
+        const data = await graphqlRequest<{ updateEcomReturnStatus: EcomReturn }>(`
+            mutation($id: String!, $status: String!) {
+                updateEcomReturnStatus(id: $id, status: $status) {
+                    id returnNumber status approvedAt receivedAt completedAt
+                }
+            }
+        `, { id, status });
+        return data.updateEcomReturnStatus;
+    },
+
+    async deleteEcomReturn(id: string): Promise<boolean> {
+        const data = await graphqlRequest<{ deleteEcomReturn: boolean }>(`
+            mutation($id: String!) { deleteEcomReturn(id: $id) }
+        `, { id });
+        return data.deleteEcomReturn;
+    },
+
+    async getEcomReturnItems(returnId: string): Promise<EcomReturnItem[]> {
+        const data = await graphqlRequest<{ ecomReturnItems: EcomReturnItem[] }>(`
+            query($returnId: String!) {
+                ecomReturnItems(returnId: $returnId) {
+                    id returnId orderItemId itemId itemName itemSku
+                    quantity unitPrice subtotal condition restock reason notes createdAt
+                }
+            }
+        `, { returnId });
+        return data.ecomReturnItems;
+    },
+
+    async getEcomReturnStats(tenantId = 'default'): Promise<EcomReturnStatsType> {
+        const data = await graphqlRequest<{ ecomReturnStats: EcomReturnStatsType }>(`
+            query($tenantId: String!) {
+                ecomReturnStats(tenantId: $tenantId) {
+                    totalReturns requested approved received completed rejected totalRefunded
+                }
+            }
+        `, { tenantId });
+        return data.ecomReturnStats;
+    },
+
+    // ═══════════════════════════════════════════════════════
+    // PRODUCT PACKAGES
+    // ═══════════════════════════════════════════════════════
+
+    async getEcomPackages(tenantId = 'default', filters?: { status?: string; search?: string }): Promise<EcomPackage[]> {
+        const data = await graphqlRequest<{ ecomPackages: EcomPackage[] }>(`
+            query($tenantId: String!, $status: String, $search: String) {
+                ecomPackages(tenantId: $tenantId, status: $status, search: $search) {
+                    id name sku description packagePrice regularPrice savings
+                    currency mediaIds tags maxQuantity timesSold notes status createdAt
+                }
+            }
+        `, { tenantId, ...filters });
+        return data.ecomPackages;
+    },
+
+    async createEcomPackage(tenantId = 'default', input: Partial<EcomPackage> & { items?: any[] }): Promise<EcomPackage> {
+        const data = await graphqlRequest<{ createEcomPackage: EcomPackage }>(`
+            mutation($tenantId: String!, $input: CreatePackageInput!) {
+                createEcomPackage(tenantId: $tenantId, input: $input) {
+                    id name sku packagePrice status createdAt
+                }
+            }
+        `, { tenantId, input });
+        return data.createEcomPackage;
+    },
+
+    async updateEcomPackage(id: string, input: Partial<EcomPackage>): Promise<EcomPackage> {
+        const data = await graphqlRequest<{ updateEcomPackage: EcomPackage }>(`
+            mutation($id: String!, $input: CreatePackageInput!) {
+                updateEcomPackage(id: $id, input: $input) {
+                    id name sku packagePrice status updatedAt
+                }
+            }
+        `, { id, input });
+        return data.updateEcomPackage;
+    },
+
+    async deleteEcomPackage(id: string): Promise<boolean> {
+        const data = await graphqlRequest<{ deleteEcomPackage: boolean }>(`
+            mutation($id: String!) { deleteEcomPackage(id: $id) }
+        `, { id });
+        return data.deleteEcomPackage;
+    },
+
+    async getEcomPackageItems(packageId: string): Promise<EcomPackageItem[]> {
+        const data = await graphqlRequest<{ ecomPackageItems: EcomPackageItem[] }>(`
+            query($packageId: String!) {
+                ecomPackageItems(packageId: $packageId) {
+                    id packageId itemId itemName itemSku quantity unitPrice sortOrder createdAt
+                }
+            }
+        `, { packageId });
+        return data.ecomPackageItems;
+    },
+
+    async addEcomPackageItem(packageId: string, input: Partial<EcomPackageItem>): Promise<EcomPackageItem> {
+        const data = await graphqlRequest<{ addEcomPackageItem: EcomPackageItem }>(`
+            mutation($packageId: String!, $input: CreatePackageItemInput!) {
+                addEcomPackageItem(packageId: $packageId, input: $input) {
+                    id itemName quantity unitPrice sortOrder
+                }
+            }
+        `, { packageId, input });
+        return data.addEcomPackageItem;
+    },
+
+    async deleteEcomPackageItem(id: string): Promise<boolean> {
+        const data = await graphqlRequest<{ deleteEcomPackageItem: boolean }>(`
+            mutation($id: String!) { deleteEcomPackageItem(id: $id) }
+        `, { id });
+        return data.deleteEcomPackageItem;
+    },
+
+    async getEcomPackageStats(tenantId = 'default'): Promise<EcomPackageStatsType> {
+        const data = await graphqlRequest<{ ecomPackageStats: EcomPackageStatsType }>(`
+            query($tenantId: String!) {
+                ecomPackageStats(tenantId: $tenantId) {
+                    totalPackages active inactive totalSold totalSavings
+                }
+            }
+        `, { tenantId });
+        return data.ecomPackageStats;
+    },
+
+    // ═══════════════════════════════════════════════════════
+    // OFFERS & PROMOTIONS
+    // ═══════════════════════════════════════════════════════
+
+    async getEcomOffers(tenantId = 'default', filters?: { status?: string; search?: string }): Promise<EcomOffer[]> {
+        const data = await graphqlRequest<{ ecomOffers: EcomOffer[] }>(`
+            query($tenantId: String!, $status: String, $search: String) {
+                ecomOffers(tenantId: $tenantId, status: $status, search: $search) {
+                    id name description offerType discountType discountValue
+                    minOrderAmount maxUses currentUses startDate endDate
+                    appliesTo targetIds bannerText badgeText notes status createdAt
+                }
+            }
+        `, { tenantId, ...filters });
+        return data.ecomOffers;
+    },
+
+    async createEcomOffer(tenantId = 'default', input: Partial<EcomOffer>): Promise<EcomOffer> {
+        const data = await graphqlRequest<{ createEcomOffer: EcomOffer }>(`
+            mutation($tenantId: String!, $input: CreateOfferInput!) {
+                createEcomOffer(tenantId: $tenantId, input: $input) {
+                    id name offerType discountType discountValue status createdAt
+                }
+            }
+        `, { tenantId, input });
+        return data.createEcomOffer;
+    },
+
+    async updateEcomOffer(id: string, input: Partial<EcomOffer>): Promise<EcomOffer> {
+        const data = await graphqlRequest<{ updateEcomOffer: EcomOffer }>(`
+            mutation($id: String!, $input: CreateOfferInput!) {
+                updateEcomOffer(id: $id, input: $input) {
+                    id name status updatedAt
+                }
+            }
+        `, { id, input });
+        return data.updateEcomOffer;
+    },
+
+    async deleteEcomOffer(id: string): Promise<boolean> {
+        const data = await graphqlRequest<{ deleteEcomOffer: boolean }>(`
+            mutation($id: String!) { deleteEcomOffer(id: $id) }
+        `, { id });
+        return data.deleteEcomOffer;
+    },
+
+    async getEcomOfferStats(tenantId = 'default'): Promise<EcomOfferStatsType> {
+        const data = await graphqlRequest<{ ecomOfferStats: EcomOfferStatsType }>(`
+            query($tenantId: String!) {
+                ecomOfferStats(tenantId: $tenantId) {
+                    totalOffers active draft expired totalUses
+                }
+            }
+        `, { tenantId });
+        return data.ecomOfferStats;
+    },
+
+    // ═══════════════════════════════════════════════════════
+    // DISCOUNT SYSTEM
+    // ═══════════════════════════════════════════════════════
+
+    async getEcomDiscounts(tenantId = 'default', filters?: { status?: string; search?: string }): Promise<EcomDiscount[]> {
+        const data = await graphqlRequest<{ ecomDiscounts: EcomDiscount[] }>(`
+            query($tenantId: String!, $status: String, $search: String) {
+                ecomDiscounts(tenantId: $tenantId, status: $status, search: $search) {
+                    id code name description discountType discountValue
+                    minOrderAmount maxDiscountAmount usageLimit timesUsed
+                    validFrom validUntil autoApply appliesTo targetIds
+                    stackable notes status createdAt
+                }
+            }
+        `, { tenantId, ...filters });
+        return data.ecomDiscounts;
+    },
+
+    async createEcomDiscount(tenantId = 'default', input: Partial<EcomDiscount>): Promise<EcomDiscount> {
+        const data = await graphqlRequest<{ createEcomDiscount: EcomDiscount }>(`
+            mutation($tenantId: String!, $input: CreateDiscountInput!) {
+                createEcomDiscount(tenantId: $tenantId, input: $input) {
+                    id code name discountType discountValue status createdAt
+                }
+            }
+        `, { tenantId, input });
+        return data.createEcomDiscount;
+    },
+
+    async updateEcomDiscount(id: string, input: Partial<EcomDiscount>): Promise<EcomDiscount> {
+        const data = await graphqlRequest<{ updateEcomDiscount: EcomDiscount }>(`
+            mutation($id: String!, $input: CreateDiscountInput!) {
+                updateEcomDiscount(id: $id, input: $input) {
+                    id code name status updatedAt
+                }
+            }
+        `, { id, input });
+        return data.updateEcomDiscount;
+    },
+
+    async deleteEcomDiscount(id: string): Promise<boolean> {
+        const data = await graphqlRequest<{ deleteEcomDiscount: boolean }>(`
+            mutation($id: String!) { deleteEcomDiscount(id: $id) }
+        `, { id });
+        return data.deleteEcomDiscount;
+    },
+
+    async getEcomDiscountStats(tenantId = 'default'): Promise<EcomDiscountStatsType> {
+        const data = await graphqlRequest<{ ecomDiscountStats: EcomDiscountStatsType }>(`
+            query($tenantId: String!) {
+                ecomDiscountStats(tenantId: $tenantId) {
+                    totalDiscounts active expired coupons autoApply totalUsed
+                }
+            }
+        `, { tenantId });
+        return data.ecomDiscountStats;
+    },
+
+    // \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+    // \u2500\u2500\u2500 STOCK OPERATIONS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+
+    async getStockOperations(tenantId = 'default', filters?: {
+        operationType?: string; status?: string; search?: string;
+    }): Promise<StockOperation[]> {
+        const data = await graphqlRequest<{ stockOperations: StockOperation[] }>(`
+            query($tenantId: String!, $operationType: String, $status: String, $search: String) {
+                stockOperations(tenantId: $tenantId, operationType: $operationType, status: $status, search: $search) {
+                    id tenantId operationNumber operationType itemId itemName
+                    warehouseId quantity unitCost reason reference batchNumber
+                    expiryDate approvedBy notes status createdBy createdAt updatedAt
+                }
+            }
+        `, { tenantId, ...filters });
+        return data.stockOperations || [];
+    },
+
+    async createStockOperation(tenantId = 'default', input: Partial<StockOperation>): Promise<StockOperation> {
+        const data = await graphqlRequest<{ createStockOperation: StockOperation }>(`
+            mutation($tenantId: String!, $input: CreateStockOperationInput!) {
+                createStockOperation(tenantId: $tenantId, input: $input) {
+                    id operationNumber operationType itemName quantity status createdAt
+                }
+            }
+        `, { tenantId, input });
+        return data.createStockOperation;
+    },
+
+    async deleteStockOperation(id: string): Promise<boolean> {
+        const data = await graphqlRequest<{ deleteStockOperation: boolean }>(`
+            mutation($id: String!) { deleteStockOperation(id: $id) }
+        `, { id });
+        return data.deleteStockOperation;
+    },
+
+    async getStockOperationStats(tenantId = 'default'): Promise<StockOperationStatsType> {
+        const data = await graphqlRequest<{ stockOperationStats: StockOperationStatsType }>(`
+            query($tenantId: String!) {
+                stockOperationStats(tenantId: $tenantId) {
+                    totalOperations receives releases adjustments writeOffs donations
+                }
+            }
+        `, { tenantId });
+        return data.stockOperationStats;
+    },
+
+    // \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+    // \u2500\u2500\u2500 FIXED ASSETS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+
+    async getFixedAssets(tenantId = 'default', filters?: {
+        assetCategory?: string; status?: string; search?: string;
+    }): Promise<FixedAsset[]> {
+        const data = await graphqlRequest<{ fixedAssets: FixedAsset[] }>(`
+            query($tenantId: String!, $assetCategory: String, $status: String, $search: String) {
+                fixedAssets(tenantId: $tenantId, assetCategory: $assetCategory, status: $status, search: $search) {
+                    id tenantId itemId assetNumber assetName assetCategory serialNumber
+                    purchaseDate purchasePrice currentValue salvageValue
+                    depreciationMethod usefulLifeMonths accumulatedDepreciation
+                    lastDepreciationDate warrantyExpiry location warehouseId assignedTo
+                    condition insurancePolicy insuranceExpiry maintenanceSchedule
+                    lastMaintenanceDate nextMaintenanceDate notes status
+                    disposedDate disposalMethod disposalValue createdAt updatedAt
+                }
+            }
+        `, { tenantId, ...filters });
+        return data.fixedAssets || [];
+    },
+
+    async getFixedAsset(id: string): Promise<FixedAsset> {
+        const data = await graphqlRequest<{ fixedAsset: FixedAsset }>(`
+            query($id: String!) {
+                fixedAsset(id: $id) {
+                    id tenantId itemId assetNumber assetName assetCategory serialNumber
+                    purchaseDate purchasePrice currentValue salvageValue
+                    depreciationMethod usefulLifeMonths accumulatedDepreciation
+                    lastDepreciationDate warrantyExpiry location warehouseId assignedTo
+                    condition insurancePolicy insuranceExpiry maintenanceSchedule
+                    lastMaintenanceDate nextMaintenanceDate notes status
+                    disposedDate disposalMethod disposalValue createdAt updatedAt
+                }
+            }
+        `, { id });
+        return data.fixedAsset;
+    },
+
+    async createFixedAsset(tenantId = 'default', input: Partial<FixedAsset>): Promise<FixedAsset> {
+        const data = await graphqlRequest<{ createFixedAsset: FixedAsset }>(`
+            mutation($tenantId: String!, $input: CreateFixedAssetInput!) {
+                createFixedAsset(tenantId: $tenantId, input: $input) {
+                    id assetNumber assetName assetCategory status createdAt
+                }
+            }
+        `, { tenantId, input });
+        return data.createFixedAsset;
+    },
+
+    async updateFixedAsset(id: string, input: Partial<FixedAsset>): Promise<FixedAsset> {
+        const data = await graphqlRequest<{ updateFixedAsset: FixedAsset }>(`
+            mutation($id: String!, $input: UpdateFixedAssetInput!) {
+                updateFixedAsset(id: $id, input: $input) {
+                    id assetNumber assetName status updatedAt
+                }
+            }
+        `, { id, input });
+        return data.updateFixedAsset;
+    },
+
+    async deleteFixedAsset(id: string): Promise<boolean> {
+        const data = await graphqlRequest<{ deleteFixedAsset: boolean }>(`
+            mutation($id: String!) { deleteFixedAsset(id: $id) }
+        `, { id });
+        return data.deleteFixedAsset;
+    },
+
+    async disposeFixedAsset(id: string, disposalMethod: string, disposalValue?: number): Promise<FixedAsset> {
+        const data = await graphqlRequest<{ disposeFixedAsset: FixedAsset }>(`
+            mutation($id: String!, $disposalMethod: String!, $disposalValue: Float) {
+                disposeFixedAsset(id: $id, disposalMethod: $disposalMethod, disposalValue: $disposalValue) {
+                    id assetNumber status disposedDate disposalMethod disposalValue
+                }
+            }
+        `, { id, disposalMethod, disposalValue });
+        return data.disposeFixedAsset;
+    },
+
+    async runDepreciation(tenantId = 'default'): Promise<{ processed: number; totalDepreciation: number }> {
+        const data = await graphqlRequest<{ runDepreciation: { processed: number; totalDepreciation: number } }>(`
+            mutation($tenantId: String!) { runDepreciation(tenantId: $tenantId) }
+        `, { tenantId });
+        return data.runDepreciation;
+    },
+
+    async getFixedAssetStats(tenantId = 'default'): Promise<FixedAssetStatsType> {
+        const data = await graphqlRequest<{ fixedAssetStats: FixedAssetStatsType }>(`
+            query($tenantId: String!) {
+                fixedAssetStats(tenantId: $tenantId) {
+                    totalAssets active maintenance disposed
+                    totalPurchaseValue totalCurrentValue totalAccumulatedDep
+                }
+            }
+        `, { tenantId });
+        return data.fixedAssetStats;
+    },
+
+    // \u2500\u2500\u2500 EXPIRY ALERTS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
+    async getExpiryAlerts(tenantId = 'default', daysAhead = 30): Promise<ExpiryAlert[]> {
+        const data = await graphqlRequest<{ expiryAlerts: ExpiryAlert[] }>(`
+            query($tenantId: String!, $daysAhead: Int) {
+                expiryAlerts(tenantId: $tenantId, daysAhead: $daysAhead) {
+                    itemId itemName itemSku batchNumber expiryDate quantity
+                    warehouseId isExpired daysUntilExpiry
+                }
+            }
+        `, { tenantId, daysAhead });
+        return data.expiryAlerts || [];
     },
 };
 
@@ -1549,4 +2001,163 @@ export interface EcomStatsType {
     completed: number; cancelled: number;
     totalRevenue: number; avgOrderValue: number;
     totalCustomers: number; activeCustomers: number;
+}
+
+// ─── Returns Types ──────────────────────────────────────
+
+export interface EcomReturn {
+    id: string; returnNumber: string; orderId?: string;
+    orderNumber?: string; customerName?: string; customerEmail?: string;
+    reason?: string; resolution?: string;
+    subtotal?: number; refundAmount?: number; restockingFee?: number;
+    refundMethod?: string; refundStatus?: string;
+    notes?: string; internalNotes?: string; processedBy?: string;
+    status?: string; requestedAt?: string; approvedAt?: string;
+    receivedAt?: string; completedAt?: string;
+    createdAt: string; updatedAt?: string;
+}
+
+export interface EcomReturnItem {
+    id: string; returnId: string; orderItemId?: string;
+    itemId?: string; itemName: string; itemSku?: string;
+    quantity: number; unitPrice: number; subtotal: number;
+    condition?: string; restock?: boolean;
+    reason?: string; notes?: string; createdAt?: string;
+}
+
+export interface EcomReturnStatsType {
+    totalReturns: number; requested: number;
+    approved: number; received: number;
+    completed: number; rejected: number;
+    totalRefunded: number;
+}
+
+// ─── Package Types ──────────────────────────────────────
+
+export interface EcomPackage {
+    id: string; name: string; sku?: string;
+    description?: string; packagePrice?: number;
+    regularPrice?: number; savings?: number;
+    currency?: string; mediaIds?: any; tags?: any;
+    maxQuantity?: number; timesSold?: number;
+    notes?: string; status?: string;
+    createdAt: string; updatedAt?: string;
+}
+
+export interface EcomPackageItem {
+    id: string; packageId: string; itemId?: string;
+    itemName: string; itemSku?: string;
+    quantity: number; unitPrice: number;
+    sortOrder?: number; createdAt?: string;
+}
+
+export interface EcomPackageStatsType {
+    totalPackages: number; active: number;
+    inactive: number; totalSold: number;
+    totalSavings: number;
+}
+
+// ─── Offer Types ────────────────────────────────────────
+
+export interface EcomOffer {
+    id: string; name: string; description?: string;
+    offerType?: string; discountType?: string;
+    discountValue?: number; minOrderAmount?: number;
+    maxUses?: number; currentUses?: number;
+    startDate?: string; endDate?: string;
+    appliesTo?: string; targetIds?: any;
+    bannerText?: string; badgeText?: string;
+    notes?: string; status?: string;
+    createdAt: string; updatedAt?: string;
+}
+
+export interface EcomOfferStatsType {
+    totalOffers: number; active: number;
+    draft: number; expired: number;
+    totalUses: number;
+}
+
+// ─── Discount Types ─────────────────────────────────────
+
+export interface EcomDiscount {
+    id: string; code?: string; name: string;
+    description?: string; discountType?: string;
+    discountValue?: number; minOrderAmount?: number;
+    maxDiscountAmount?: number; usageLimit?: number;
+    timesUsed?: number; validFrom?: string;
+    validUntil?: string; autoApply?: boolean;
+    appliesTo?: string; targetIds?: any;
+    stackable?: boolean; notes?: string;
+    status?: string; createdAt: string; updatedAt?: string;
+}
+
+export interface EcomDiscountStatsType {
+    totalDiscounts: number; active: number;
+    expired: number; coupons: number;
+    autoApply: number; totalUsed: number;
+}
+
+// ═══════════════════════════════════════════════════════════
+// ─── STOCK OPERATIONS Types ──────────────────────────────
+// ═══════════════════════════════════════════════════════════
+
+export interface StockOperation {
+    id: string; tenantId: string;
+    operationNumber: string; operationType: string;
+    itemId: string; itemName?: string;
+    warehouseId?: string; quantity: number;
+    unitCost?: number; reason?: string;
+    reference?: string; batchNumber?: string;
+    expiryDate?: string; approvedBy?: string;
+    notes?: string; status?: string;
+    createdBy?: string;
+    createdAt: string; updatedAt?: string;
+}
+
+export interface StockOperationStatsType {
+    totalOperations: number; receives: number;
+    releases: number; adjustments: number;
+    writeOffs: number; donations: number;
+}
+
+// ═══════════════════════════════════════════════════════════
+// ─── FIXED ASSETS Types ──────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+
+export interface FixedAsset {
+    id: string; tenantId: string;
+    itemId?: string; assetNumber: string;
+    assetName: string; assetCategory?: string;
+    serialNumber?: string; purchaseDate?: string;
+    purchasePrice?: number; currentValue?: number;
+    salvageValue?: number; depreciationMethod?: string;
+    usefulLifeMonths?: number;
+    accumulatedDepreciation?: number;
+    lastDepreciationDate?: string;
+    warrantyExpiry?: string; location?: string;
+    warehouseId?: string; assignedTo?: string;
+    condition?: string; insurancePolicy?: string;
+    insuranceExpiry?: string;
+    maintenanceSchedule?: string;
+    lastMaintenanceDate?: string;
+    nextMaintenanceDate?: string;
+    notes?: string; status?: string;
+    disposedDate?: string; disposalMethod?: string;
+    disposalValue?: number;
+    createdAt: string; updatedAt?: string;
+}
+
+export interface FixedAssetStatsType {
+    totalAssets: number; active: number;
+    maintenance: number; disposed: number;
+    totalPurchaseValue: number; totalCurrentValue: number;
+    totalAccumulatedDep: number;
+}
+
+export interface ExpiryAlert {
+    itemId: string; itemName: string;
+    itemSku?: string; batchNumber?: string;
+    expiryDate: string; quantity: number;
+    warehouseId?: string; isExpired: boolean;
+    daysUntilExpiry: number;
 }

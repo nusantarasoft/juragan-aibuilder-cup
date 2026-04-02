@@ -96,6 +96,10 @@ export class InventoryService {
         primaryUom?: string; weight?: number; weightUnit?: string;
         dimensions?: any; minStock?: number; maxStock?: number;
         reorderPoint?: number; reorderQty?: number;
+        hasExpiry?: boolean; defaultShelfLifeDays?: number;
+        hasDepreciation?: boolean; depreciationMethod?: string;
+        usefulLifeMonths?: number; salvageValue?: number;
+        isFixedAsset?: boolean; assetCategory?: string;
         metadata?: any; status?: string;
     }) {
         const skuVal = input.sku || await this.generateSku(tenantId, input.fulfillmentType || 'physical');
@@ -125,6 +129,14 @@ export class InventoryService {
             max_stock: input.maxStock ?? 0,
             reorder_point: input.reorderPoint ?? 0,
             reorder_qty: input.reorderQty ?? 0,
+            has_expiry: input.hasExpiry ?? false,
+            default_shelf_life_days: input.defaultShelfLifeDays || null,
+            has_depreciation: input.hasDepreciation ?? false,
+            depreciation_method: input.depreciationMethod || 'none',
+            useful_life_months: input.usefulLifeMonths || null,
+            salvage_value: input.salvageValue ?? 0,
+            is_fixed_asset: input.isFixedAsset ?? false,
+            asset_category: input.assetCategory || null,
             metadata: input.metadata || {},
             status: input.status || 'active',
         }).select().single();
@@ -144,6 +156,10 @@ export class InventoryService {
             primaryUom: 'primary_uom', weight: 'weight', weightUnit: 'weight_unit',
             dimensions: 'dimensions', minStock: 'min_stock', maxStock: 'max_stock',
             reorderPoint: 'reorder_point', reorderQty: 'reorder_qty',
+            hasExpiry: 'has_expiry', defaultShelfLifeDays: 'default_shelf_life_days',
+            hasDepreciation: 'has_depreciation', depreciationMethod: 'depreciation_method',
+            usefulLifeMonths: 'useful_life_months', salvageValue: 'salvage_value',
+            isFixedAsset: 'is_fixed_asset', assetCategory: 'asset_category',
             metadata: 'metadata', status: 'status',
         };
         for (const [key, col] of Object.entries(fieldMap)) {
@@ -262,7 +278,7 @@ export class InventoryService {
             .eq('warehouse_id', input.warehouseId || 'default')
             .maybeSingle();
 
-        const qtyDelta = ['IN', 'RETURN_IN', 'ADJUST_IN', 'PRODUCTION'].includes(input.movementType)
+        const qtyDelta = ['IN', 'RETURN_IN', 'ADJUST_IN', 'PRODUCTION', 'MANUAL_IN'].includes(input.movementType)
             ? Math.abs(input.quantity)
             : -Math.abs(input.quantity);
 
@@ -1546,15 +1562,13 @@ IMPORTANT: Return ONLY valid JSON.`;
 
         // ── Increment booked_count on occurrence ──
         if (input.occurrenceId) {
-            await this.db.rpc('increment_booked_count', { occ_id: input.occurrenceId, delta: passengerCount }).then(() => {}).catch(async () => {
-                // Fallback if RPC doesn't exist: manual update
-                const { data: cur } = await this.db.from('booking_occurrences')
-                    .select('booked_count').eq('id', input.occurrenceId).single();
-                await this.db.from('booking_occurrences').update({
-                    booked_count: (cur?.booked_count || 0) + passengerCount,
-                    updated_at: new Date().toISOString(),
-                }).eq('id', input.occurrenceId);
-            });
+            const { data: cur } = await this.db.from('booking_occurrences')
+                .select('booked_count').eq('id', input.occurrenceId).single();
+            const newCount = (cur?.booked_count || 0) + passengerCount;
+            await this.db.from('booking_occurrences').update({
+                booked_count: newCount,
+                updated_at: new Date().toISOString(),
+            }).eq('id', input.occurrenceId);
         }
 
         return data;
@@ -1729,6 +1743,26 @@ IMPORTANT: Return ONLY valid JSON.`;
         return true;
     }
 
+    async cancelRentalContract(contractId: string) {
+        const { data: contract, error: fetchErr } = await this.db.from('rental_contracts')
+            .select('asset_id, status').eq('id', contractId).single();
+        if (fetchErr) throw fetchErr;
+        if (contract.status === 'returned' || contract.status === 'cancelled') {
+            throw new Error(`Contract is already ${contract.status}`);
+        }
+        const { data, error } = await this.db.from('rental_contracts').update({
+            status: 'cancelled', updated_at: new Date().toISOString(),
+        }).eq('id', contractId).select().single();
+        if (error) throw error;
+        // Release the asset back to available
+        if (contract.asset_id) {
+            await this.db.from('rental_assets').update({
+                status: 'available', updated_at: new Date().toISOString(),
+            }).eq('id', contract.asset_id);
+        }
+        return data;
+    }
+
     async getRentalStats(tenantId: string) {
         const [assetRes, contractRes] = await Promise.all([
             this.db.from('rental_assets').select('status, daily_rate, total_revenue').eq('tenant_id', tenantId),
@@ -1853,6 +1887,10 @@ IMPORTANT: Return ONLY valid JSON.`;
     }
 
     async updateEcomOrderStatus(id: string, newStatus: string) {
+        // Capture previous status BEFORE updating
+        const { data: prev } = await this.db.from('ecom_orders').select('status').eq('id', id).single();
+        const oldStatus = prev?.status || '';
+
         const ts: Record<string, any> = { status: newStatus, updated_at: new Date().toISOString() };
         if (newStatus === 'confirmed') ts.confirmed_at = new Date().toISOString();
         if (newStatus === 'shipped') ts.shipped_at = new Date().toISOString();
@@ -1861,6 +1899,58 @@ IMPORTANT: Return ONLY valid JSON.`;
         if (newStatus === 'cancelled') ts.cancelled_at = new Date().toISOString();
         const { data, error } = await this.db.from('ecom_orders').update(ts).eq('id', id).select().single();
         if (error) throw error;
+
+        // ─── Fulfillment: deduct stock on processing ───
+        if (newStatus === 'processing') {
+            try {
+                const { data: items } = await this.db.from('ecom_order_items').select('*').eq('order_id', id);
+                if (items) {
+                    for (const item of items as any[]) {
+                        if (item.item_id && ['physical', 'consumable'].includes(item.fulfillment_type || 'physical')) {
+                            await this.createStockMovement(data.tenant_id, {
+                                itemId: item.item_id,
+                                movementType: 'SALE_OUT',
+                                quantity: item.quantity || 1,
+                                unitCost: item.unit_price || 0,
+                                reference: data.order_number,
+                                referenceType: 'ecom_order',
+                                referenceId: id,
+                                notes: `Order ${data.order_number}: Released ${item.quantity} × ${item.item_name}`,
+                            });
+                        }
+                    }
+                }
+            } catch (e) {
+                this.logger.warn(`Failed to create stock movements for order ${id}`, e);
+            }
+        }
+
+        // ─── Stock restoration on cancel (if stock was already deducted) ───
+        if (newStatus === 'cancelled' && ['processing', 'shipped'].includes(oldStatus)) {
+            try {
+                const { data: items } = await this.db.from('ecom_order_items').select('*').eq('order_id', id);
+                if (items) {
+                    for (const item of items as any[]) {
+                        if (item.item_id && ['physical', 'consumable'].includes(item.fulfillment_type || 'physical')) {
+                            await this.createStockMovement(data.tenant_id, {
+                                itemId: item.item_id,
+                                movementType: 'RETURN_IN',
+                                quantity: item.quantity || 1,
+                                unitCost: item.unit_price || 0,
+                                reference: data.order_number,
+                                referenceType: 'ecom_order_cancel',
+                                referenceId: id,
+                                notes: `Order ${data.order_number} CANCELLED: Restored ${item.quantity} × ${item.item_name}`,
+                            });
+                        }
+                    }
+                }
+                this.logger.log(`Stock restored for cancelled order ${data.order_number}`);
+            } catch (e) {
+                this.logger.warn(`Failed to restore stock for cancelled order ${id}`, e);
+            }
+        }
+
         return data;
     }
 
@@ -1952,5 +2042,689 @@ IMPORTANT: Return ONLY valid JSON.`;
             totalOrders, pending, confirmed, processing, shipped, delivered, completed, cancelled,
             totalRevenue, avgOrderValue, totalCustomers, activeCustomers,
         };
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ─── RETURNS & REFUNDS ────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════
+
+    async getReturns(tenantId: string, filters?: { status?: string; search?: string }) {
+        let query = this.db.from('ecom_returns').select('*').eq('tenant_id', tenantId);
+        if (filters?.status) query = query.eq('status', filters.status);
+        if (filters?.search) query = query.or(
+            `return_number.ilike.%${filters.search}%,customer_name.ilike.%${filters.search}%,order_number.ilike.%${filters.search}%`
+        );
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async getReturn(id: string) {
+        const { data, error } = await this.db.from('ecom_returns').select('*').eq('id', id).single();
+        if (error) throw error;
+        return data;
+    }
+
+    async createReturn(tenantId: string, input: Record<string, any>) {
+        const returnNumber = await this.generateReturnNumber(tenantId);
+        const { data, error } = await this.db.from('ecom_returns').insert({
+            tenant_id: tenantId,
+            return_number: returnNumber,
+            order_id: input.orderId,
+            order_number: input.orderNumber,
+            customer_name: input.customerName,
+            customer_email: input.customerEmail,
+            reason: input.reason || 'changed_mind',
+            resolution: input.resolution || 'refund',
+            subtotal: input.subtotal || 0,
+            refund_amount: input.refundAmount || 0,
+            restocking_fee: input.restockingFee || 0,
+            refund_method: input.refundMethod || 'original_payment',
+            notes: input.notes,
+            internal_notes: input.internalNotes,
+        }).select().single();
+        if (error) throw error;
+
+        if (input.items?.length) {
+            const items = input.items.map((item: any) => ({
+                return_id: data.id,
+                order_item_id: item.orderItemId || null,
+                item_id: item.itemId || null,
+                item_name: item.itemName,
+                item_sku: item.itemSku || null,
+                quantity: item.quantity || 1,
+                unit_price: item.unitPrice || 0,
+                subtotal: (item.quantity || 1) * (item.unitPrice || 0),
+                condition: item.condition || 'unopened',
+                restock: item.restock !== false,
+                reason: item.reason || null,
+                notes: item.notes || null,
+            }));
+            await this.db.from('ecom_return_items').insert(items);
+        }
+        return data;
+    }
+
+    async updateReturnStatus(id: string, status: string) {
+        const updates: any = { status, updated_at: new Date().toISOString() };
+        if (status === 'approved') updates.approved_at = new Date().toISOString();
+        if (status === 'received') updates.received_at = new Date().toISOString();
+        if (status === 'completed') updates.completed_at = new Date().toISOString();
+
+        const { data, error } = await this.db.from('ecom_returns').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+
+        // On completion: restock items and update refund status
+        if (status === 'completed') {
+            try {
+                const { data: items } = await this.db.from('ecom_return_items').select('*').eq('return_id', id);
+                if (items) {
+                    for (const item of items as any[]) {
+                        if (item.item_id && item.restock) {
+                            await this.createStockMovement(data.tenant_id, {
+                                itemId: item.item_id,
+                                movementType: 'RETURN_IN',
+                                quantity: item.quantity || 1,
+                                unitCost: item.unit_price || 0,
+                                reference: data.return_number,
+                                referenceType: 'ecom_return',
+                                referenceId: id,
+                                notes: `Return ${data.return_number}: Restocked ${item.quantity} × ${item.item_name}`,
+                            });
+                        }
+                    }
+                }
+                // Mark refund as processed
+                await this.db.from('ecom_returns').update({
+                    refund_status: 'refunded',
+                    updated_at: new Date().toISOString(),
+                }).eq('id', id);
+            } catch (e) {
+                this.logger.warn(`Failed to process return restock for ${id}`, e);
+            }
+        }
+        return data;
+    }
+
+    async deleteReturn(id: string) {
+        const { error } = await this.db.from('ecom_returns').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async getReturnItems(returnId: string) {
+        const { data, error } = await this.db.from('ecom_return_items').select('*').eq('return_id', returnId).order('created_at');
+        if (error) throw error;
+        return data;
+    }
+
+    async getReturnStats(tenantId: string) {
+        const { data: returns } = await this.db.from('ecom_returns').select('*').eq('tenant_id', tenantId);
+        const all = returns || [];
+        return {
+            totalReturns: all.length,
+            requested: all.filter((r: any) => r.status === 'requested').length,
+            approved: all.filter((r: any) => r.status === 'approved').length,
+            received: all.filter((r: any) => r.status === 'received').length,
+            completed: all.filter((r: any) => r.status === 'completed').length,
+            rejected: all.filter((r: any) => r.status === 'rejected').length,
+            totalRefunded: all.filter((r: any) => r.refund_status === 'refunded')
+                .reduce((s: number, r: any) => s + (parseFloat(r.refund_amount) || 0), 0),
+        };
+    }
+
+    private async generateReturnNumber(tenantId: string) {
+        const year = new Date().getFullYear();
+        const { count } = await this.db.from('ecom_returns')
+            .select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId);
+        return `RET-${year}-${String((count || 0) + 1).padStart(3, '0')}`;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ─── PRODUCT PACKAGES ─────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════
+
+    async getPackages(tenantId: string, filters?: { status?: string; search?: string }) {
+        let query = this.db.from('ecom_packages').select('*').eq('tenant_id', tenantId);
+        if (filters?.status) query = query.eq('status', filters.status);
+        if (filters?.search) query = query.or(
+            `name.ilike.%${filters.search}%,sku.ilike.%${filters.search}%`
+        );
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async createPackage(tenantId: string, input: Record<string, any>) {
+        const { data, error } = await this.db.from('ecom_packages').insert({
+            tenant_id: tenantId,
+            name: input.name,
+            sku: input.sku || null,
+            description: input.description || null,
+            package_price: input.packagePrice || 0,
+            regular_price: input.regularPrice || 0,
+            savings: input.savings || 0,
+            media_ids: input.mediaIds || [],
+            tags: input.tags || [],
+            max_quantity: input.maxQuantity || 0,
+            notes: input.notes || null,
+            status: input.status || 'active',
+        }).select().single();
+        if (error) throw error;
+
+        if (input.items?.length) {
+            const items = input.items.map((item: any, i: number) => ({
+                package_id: data.id,
+                item_id: item.itemId || null,
+                item_name: item.itemName,
+                item_sku: item.itemSku || null,
+                quantity: item.quantity || 1,
+                unit_price: item.unitPrice || 0,
+                sort_order: i,
+            }));
+            await this.db.from('ecom_package_items').insert(items);
+        }
+        return data;
+    }
+
+    async updatePackage(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const map: Record<string, string> = {
+            name: 'name', sku: 'sku', description: 'description',
+            packagePrice: 'package_price', regularPrice: 'regular_price', savings: 'savings',
+            mediaIds: 'media_ids', tags: 'tags', maxQuantity: 'max_quantity',
+            notes: 'notes', status: 'status',
+        };
+        for (const [k, v] of Object.entries(map)) {
+            if (input[k] !== undefined) updates[v] = input[k];
+        }
+        const { data, error } = await this.db.from('ecom_packages').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deletePackage(id: string) {
+        const { error } = await this.db.from('ecom_packages').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async getPackageItems(packageId: string) {
+        const { data, error } = await this.db.from('ecom_package_items').select('*').eq('package_id', packageId).order('sort_order');
+        if (error) throw error;
+        return data;
+    }
+
+    async addPackageItem(packageId: string, input: Record<string, any>) {
+        const { data, error } = await this.db.from('ecom_package_items').insert({
+            package_id: packageId,
+            item_id: input.itemId || null,
+            item_name: input.itemName,
+            item_sku: input.itemSku || null,
+            quantity: input.quantity || 1,
+            unit_price: input.unitPrice || 0,
+            sort_order: input.sortOrder || 0,
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deletePackageItem(id: string) {
+        const { error } = await this.db.from('ecom_package_items').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async getPackageStats(tenantId: string) {
+        const { data } = await this.db.from('ecom_packages').select('*').eq('tenant_id', tenantId);
+        const all = data || [];
+        return {
+            totalPackages: all.length,
+            active: all.filter((p: any) => p.status === 'active').length,
+            inactive: all.filter((p: any) => p.status === 'inactive').length,
+            totalSold: all.reduce((s: number, p: any) => s + (p.times_sold || 0), 0),
+            totalSavings: all.reduce((s: number, p: any) => s + (parseFloat(p.savings) || 0), 0),
+        };
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ─── OFFERS & PROMOTIONS ──────────────────────────────────
+    // ═══════════════════════════════════════════════════════════
+
+    async getOffers(tenantId: string, filters?: { status?: string; search?: string }) {
+        let query = this.db.from('ecom_offers').select('*').eq('tenant_id', tenantId);
+        if (filters?.status) query = query.eq('status', filters.status);
+        if (filters?.search) query = query.or(
+            `name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`
+        );
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async createOffer(tenantId: string, input: Record<string, any>) {
+        const { data, error } = await this.db.from('ecom_offers').insert({
+            tenant_id: tenantId,
+            name: input.name,
+            description: input.description || null,
+            offer_type: input.offerType || 'flash_sale',
+            discount_type: input.discountType || 'percentage',
+            discount_value: input.discountValue || 0,
+            min_order_amount: input.minOrderAmount || 0,
+            max_uses: input.maxUses || 0,
+            start_date: input.startDate || null,
+            end_date: input.endDate || null,
+            applies_to: input.appliesTo || 'all_products',
+            target_ids: input.targetIds || [],
+            banner_text: input.bannerText || null,
+            badge_text: input.badgeText || null,
+            notes: input.notes || null,
+            status: input.status || 'draft',
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateOffer(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const map: Record<string, string> = {
+            name: 'name', description: 'description', offerType: 'offer_type',
+            discountType: 'discount_type', discountValue: 'discount_value',
+            minOrderAmount: 'min_order_amount', maxUses: 'max_uses',
+            startDate: 'start_date', endDate: 'end_date',
+            appliesTo: 'applies_to', targetIds: 'target_ids',
+            bannerText: 'banner_text', badgeText: 'badge_text',
+            notes: 'notes', status: 'status',
+        };
+        for (const [k, v] of Object.entries(map)) {
+            if (input[k] !== undefined) updates[v] = input[k];
+        }
+        const { data, error } = await this.db.from('ecom_offers').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteOffer(id: string) {
+        const { error } = await this.db.from('ecom_offers').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async getOfferStats(tenantId: string) {
+        const { data } = await this.db.from('ecom_offers').select('*').eq('tenant_id', tenantId);
+        const all = data || [];
+        const now = new Date();
+        return {
+            totalOffers: all.length,
+            active: all.filter((o: any) => o.status === 'active').length,
+            draft: all.filter((o: any) => o.status === 'draft').length,
+            expired: all.filter((o: any) => o.end_date && new Date(o.end_date) < now).length,
+            totalUses: all.reduce((s: number, o: any) => s + (o.current_uses || 0), 0),
+        };
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ─── DISCOUNT SYSTEM ──────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════
+
+    async getDiscounts(tenantId: string, filters?: { status?: string; search?: string }) {
+        let query = this.db.from('ecom_discounts').select('*').eq('tenant_id', tenantId);
+        if (filters?.status) query = query.eq('status', filters.status);
+        if (filters?.search) query = query.or(
+            `name.ilike.%${filters.search}%,code.ilike.%${filters.search}%`
+        );
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async createDiscount(tenantId: string, input: Record<string, any>) {
+        const { data, error } = await this.db.from('ecom_discounts').insert({
+            tenant_id: tenantId,
+            code: input.code || null,
+            name: input.name,
+            description: input.description || null,
+            discount_type: input.discountType || 'percentage',
+            discount_value: input.discountValue || 0,
+            min_order_amount: input.minOrderAmount || 0,
+            max_discount_amount: input.maxDiscountAmount || 0,
+            usage_limit: input.usageLimit || 0,
+            valid_from: input.validFrom || null,
+            valid_until: input.validUntil || null,
+            auto_apply: input.autoApply || false,
+            applies_to: input.appliesTo || 'order',
+            target_ids: input.targetIds || [],
+            stackable: input.stackable || false,
+            notes: input.notes || null,
+            status: input.status || 'active',
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateDiscount(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const map: Record<string, string> = {
+            code: 'code', name: 'name', description: 'description',
+            discountType: 'discount_type', discountValue: 'discount_value',
+            minOrderAmount: 'min_order_amount', maxDiscountAmount: 'max_discount_amount',
+            usageLimit: 'usage_limit', validFrom: 'valid_from', validUntil: 'valid_until',
+            autoApply: 'auto_apply', appliesTo: 'applies_to', targetIds: 'target_ids',
+            stackable: 'stackable', notes: 'notes', status: 'status',
+        };
+        for (const [k, v] of Object.entries(map)) {
+            if (input[k] !== undefined) updates[v] = input[k];
+        }
+        const { data, error } = await this.db.from('ecom_discounts').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteDiscount(id: string) {
+        const { error } = await this.db.from('ecom_discounts').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async getDiscountStats(tenantId: string) {
+        const { data } = await this.db.from('ecom_discounts').select('*').eq('tenant_id', tenantId);
+        const all = data || [];
+        const now = new Date();
+        return {
+            totalDiscounts: all.length,
+            active: all.filter((d: any) => d.status === 'active').length,
+            expired: all.filter((d: any) => d.valid_until && new Date(d.valid_until) < now).length,
+            coupons: all.filter((d: any) => d.code).length,
+            autoApply: all.filter((d: any) => d.auto_apply).length,
+            totalUsed: all.reduce((s: number, d: any) => s + (d.times_used || 0), 0),
+        };
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ─── STOCK OPERATIONS (Manual Release/Receive) ────────────
+    // ═══════════════════════════════════════════════════════════
+
+    async getStockOperations(tenantId: string, filters?: {
+        operationType?: string; status?: string; search?: string;
+    }) {
+        let query = this.db.from('inv_stock_operations').select('*').eq('tenant_id', tenantId);
+        if (filters?.operationType) query = query.eq('operation_type', filters.operationType);
+        if (filters?.status) query = query.eq('status', filters.status);
+        if (filters?.search) query = query.or(
+            `operation_number.ilike.%${filters.search}%,item_name.ilike.%${filters.search}%,reason.ilike.%${filters.search}%`
+        );
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async createStockOperation(tenantId: string, input: Record<string, any>) {
+        const opNumber = await this.generateStockOpNumber(tenantId);
+        // Look up item name if not provided
+        let itemName = input.itemName;
+        if (!itemName && input.itemId) {
+            const { data: item } = await this.db.from('inv_items').select('name').eq('id', input.itemId).single();
+            itemName = item?.name || 'Unknown';
+        }
+
+        const { data, error } = await this.db.from('inv_stock_operations').insert({
+            tenant_id: tenantId,
+            operation_number: opNumber,
+            operation_type: input.operationType,
+            item_id: input.itemId,
+            item_name: itemName,
+            warehouse_id: input.warehouseId || 'default',
+            quantity: input.quantity,
+            unit_cost: input.unitCost ?? 0,
+            reason: input.reason || null,
+            reference: input.reference || null,
+            batch_number: input.batchNumber || null,
+            expiry_date: input.expiryDate || null,
+            approved_by: input.approvedBy || null,
+            notes: input.notes || null,
+            status: 'completed',
+            created_by: input.createdBy || null,
+        }).select().single();
+        if (error) throw error;
+
+        // Auto-create stock movement
+        const movementType = ['receive', 'adjust_in'].includes(input.operationType)
+            ? 'MANUAL_IN' : 'MANUAL_OUT';
+        await this.createStockMovement(tenantId, {
+            itemId: input.itemId,
+            warehouseId: input.warehouseId || 'default',
+            movementType,
+            quantity: input.quantity,
+            unitCost: input.unitCost ?? 0,
+            reference: opNumber,
+            referenceType: 'stock_operation',
+            referenceId: data.id,
+            batchNumber: input.batchNumber,
+            expiryDate: input.expiryDate,
+            notes: `${input.operationType}: ${input.reason || ''} ${input.notes || ''}`.trim(),
+        });
+
+        return data;
+    }
+
+    async deleteStockOperation(id: string): Promise<boolean> {
+        const { error } = await this.db.from('inv_stock_operations').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async getStockOperationStats(tenantId: string) {
+        const { data: all } = await this.db.from('inv_stock_operations')
+            .select('*').eq('tenant_id', tenantId);
+        const ops = all || [];
+        return {
+            totalOperations: ops.length,
+            receives: ops.filter((o: any) => o.operation_type === 'receive').length,
+            releases: ops.filter((o: any) => o.operation_type === 'release').length,
+            adjustments: ops.filter((o: any) => ['adjust_in', 'adjust_out'].includes(o.operation_type)).length,
+            writeOffs: ops.filter((o: any) => o.operation_type === 'write_off').length,
+            donations: ops.filter((o: any) => o.operation_type === 'donate').length,
+        };
+    }
+
+    private async generateStockOpNumber(tenantId: string) {
+        const year = new Date().getFullYear();
+        const { count } = await this.db.from('inv_stock_operations')
+            .select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId);
+        return `SOP-${year}-${String((count || 0) + 1).padStart(3, '0')}`;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ─── FIXED ASSETS ─────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════
+
+    async getFixedAssets(tenantId: string, filters?: {
+        assetCategory?: string; status?: string; search?: string;
+    }) {
+        let query = this.db.from('inv_fixed_assets').select('*').eq('tenant_id', tenantId);
+        if (filters?.assetCategory) query = query.eq('asset_category', filters.assetCategory);
+        if (filters?.status) query = query.eq('status', filters.status);
+        if (filters?.search) query = query.or(
+            `asset_number.ilike.%${filters.search}%,asset_name.ilike.%${filters.search}%,serial_number.ilike.%${filters.search}%`
+        );
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async getFixedAsset(id: string) {
+        const { data, error } = await this.db.from('inv_fixed_assets').select('*').eq('id', id).single();
+        if (error) throw error;
+        return data;
+    }
+
+    async createFixedAsset(tenantId: string, input: Record<string, any>) {
+        const assetNumber = await this.generateAssetNumber(tenantId);
+        const purchasePrice = input.purchasePrice ?? 0;
+        const { data, error } = await this.db.from('inv_fixed_assets').insert({
+            tenant_id: tenantId,
+            item_id: input.itemId || null,
+            asset_number: assetNumber,
+            asset_name: input.assetName,
+            asset_category: input.assetCategory || null,
+            serial_number: input.serialNumber || null,
+            purchase_date: input.purchaseDate || null,
+            purchase_price: purchasePrice,
+            current_value: input.currentValue ?? purchasePrice,
+            salvage_value: input.salvageValue ?? 0,
+            depreciation_method: input.depreciationMethod || 'straight_line',
+            useful_life_months: input.usefulLifeMonths ?? 60,
+            accumulated_depreciation: 0,
+            warranty_expiry: input.warrantyExpiry || null,
+            location: input.location || null,
+            warehouse_id: input.warehouseId || null,
+            assigned_to: input.assignedTo || null,
+            condition: input.condition || 'good',
+            insurance_policy: input.insurancePolicy || null,
+            insurance_expiry: input.insuranceExpiry || null,
+            maintenance_schedule: input.maintenanceSchedule || null,
+            last_maintenance_date: input.lastMaintenanceDate || null,
+            next_maintenance_date: input.nextMaintenanceDate || null,
+            notes: input.notes || null,
+            status: input.status || 'active',
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateFixedAsset(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        const fieldMap: Record<string, string> = {
+            itemId: 'item_id', assetName: 'asset_name', assetCategory: 'asset_category',
+            serialNumber: 'serial_number', purchaseDate: 'purchase_date',
+            purchasePrice: 'purchase_price', currentValue: 'current_value',
+            salvageValue: 'salvage_value', depreciationMethod: 'depreciation_method',
+            usefulLifeMonths: 'useful_life_months',
+            warrantyExpiry: 'warranty_expiry', location: 'location',
+            warehouseId: 'warehouse_id', assignedTo: 'assigned_to',
+            condition: 'condition', insurancePolicy: 'insurance_policy',
+            insuranceExpiry: 'insurance_expiry',
+            maintenanceSchedule: 'maintenance_schedule',
+            lastMaintenanceDate: 'last_maintenance_date',
+            nextMaintenanceDate: 'next_maintenance_date',
+            notes: 'notes', status: 'status',
+        };
+        for (const [key, col] of Object.entries(fieldMap)) {
+            if (input[key] !== undefined) updates[col] = input[key];
+        }
+        const { data, error } = await this.db.from('inv_fixed_assets').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteFixedAsset(id: string): Promise<boolean> {
+        const { error } = await this.db.from('inv_fixed_assets').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async disposeFixedAsset(id: string, input: { disposalMethod: string; disposalValue?: number }) {
+        const { data, error } = await this.db.from('inv_fixed_assets').update({
+            status: 'disposed',
+            disposed_date: new Date().toISOString().slice(0, 10),
+            disposal_method: input.disposalMethod,
+            disposal_value: input.disposalValue ?? 0,
+            updated_at: new Date().toISOString(),
+        }).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async runDepreciation(tenantId: string) {
+        const { data: assets } = await this.db.from('inv_fixed_assets')
+            .select('*').eq('tenant_id', tenantId).eq('status', 'active');
+        if (!assets || assets.length === 0) return { processed: 0, totalDepreciation: 0 };
+
+        let processed = 0;
+        let totalDep = 0;
+        const today = new Date();
+
+        for (const asset of assets as any[]) {
+            if (asset.depreciation_method === 'none' || !asset.purchase_date) continue;
+
+            const purchasePrice = asset.purchase_price || 0;
+            const salvageValue = asset.salvage_value || 0;
+            const usefulMonths = asset.useful_life_months || 60;
+            const depreciableAmount = purchasePrice - salvageValue;
+            if (depreciableAmount <= 0) continue;
+
+            let monthlyDep = 0;
+            if (asset.depreciation_method === 'straight_line') {
+                monthlyDep = depreciableAmount / usefulMonths;
+            } else if (asset.depreciation_method === 'declining_balance') {
+                const rate = 2 / usefulMonths;
+                const currentVal = asset.current_value || purchasePrice;
+                monthlyDep = Math.max(0, (currentVal - salvageValue) * rate);
+            }
+
+            if (monthlyDep <= 0) continue;
+
+            const accumulatedDep = (asset.accumulated_depreciation || 0) + monthlyDep;
+            const currentValue = Math.max(salvageValue, purchasePrice - accumulatedDep);
+
+            await this.db.from('inv_fixed_assets').update({
+                accumulated_depreciation: accumulatedDep,
+                current_value: currentValue,
+                last_depreciation_date: today.toISOString().slice(0, 10),
+                updated_at: today.toISOString(),
+            }).eq('id', asset.id);
+
+            processed++;
+            totalDep += monthlyDep;
+        }
+
+        return { processed, totalDepreciation: totalDep };
+    }
+
+    async getFixedAssetStats(tenantId: string) {
+        const { data: all } = await this.db.from('inv_fixed_assets')
+            .select('*').eq('tenant_id', tenantId);
+        const assets = all || [];
+        return {
+            totalAssets: assets.length,
+            active: assets.filter((a: any) => a.status === 'active').length,
+            maintenance: assets.filter((a: any) => a.status === 'maintenance').length,
+            disposed: assets.filter((a: any) => a.status === 'disposed').length,
+            totalPurchaseValue: assets.reduce((s: number, a: any) => s + (a.purchase_price || 0), 0),
+            totalCurrentValue: assets.reduce((s: number, a: any) => s + (a.current_value || 0), 0),
+            totalAccumulatedDep: assets.reduce((s: number, a: any) => s + (a.accumulated_depreciation || 0), 0),
+        };
+    }
+
+    // ─── EXPIRY ALERTS ─────────────────────────────────────────
+
+    async getExpiryAlerts(tenantId: string, daysAhead: number = 30) {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() + daysAhead);
+        const { data, error } = await this.db.from('inv_stock_movements')
+            .select('*, inv_items(name, sku)')
+            .eq('tenant_id', tenantId)
+            .not('expiry_date', 'is', null)
+            .lte('expiry_date', cutoff.toISOString().slice(0, 10))
+            .order('expiry_date');
+        if (error) throw error;
+        return (data || []).map((m: any) => ({
+            itemId: m.item_id,
+            itemName: m.inv_items?.name || 'Unknown',
+            itemSku: m.inv_items?.sku,
+            batchNumber: m.batch_number,
+            expiryDate: m.expiry_date,
+            quantity: m.quantity,
+            warehouseId: m.warehouse_id,
+            isExpired: new Date(m.expiry_date) < new Date(),
+            daysUntilExpiry: Math.ceil((new Date(m.expiry_date).getTime() - Date.now()) / 86400000),
+        }));
+    }
+
+    private async generateAssetNumber(tenantId: string) {
+        const year = new Date().getFullYear();
+        const { count } = await this.db.from('inv_fixed_assets')
+            .select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId);
+        return `AST-${year}-${String((count || 0) + 1).padStart(3, '0')}`;
     }
 }

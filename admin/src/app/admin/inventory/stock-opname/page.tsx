@@ -11,7 +11,8 @@ import {
     AuditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
     FileTextOutlined, CheckCircleOutlined, ClockCircleOutlined,
     ExclamationCircleOutlined, DeleteOutlined, EditOutlined,
-    EyeOutlined, WarningOutlined, ArrowRightOutlined
+    EyeOutlined, WarningOutlined, ArrowRightOutlined,
+    CalendarOutlined, TeamOutlined
 } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
@@ -19,6 +20,8 @@ import {
     inventoryService, OpnameSession, OpnameLine, OpnameStatsType, InvWarehouse
 } from "@/lib/inventoryService";
 import ItemPicker from "@/components/inventory/ItemPicker";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
 
@@ -38,6 +41,15 @@ const LINE_STATUSES: Record<string, { color: string }> = {
 };
 
 const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : '-';
+
+const SESSION_FIELDS: FieldDef[] = [
+    { name: 'sessionCode', label: 'Session Code', required: true },
+    { name: 'title', label: 'Title', required: true },
+    { name: 'warehouseId', label: 'Warehouse', required: true },
+    { name: 'countedBy', label: 'Counted By' },
+    { name: 'scheduledDate', label: 'Scheduled Date' },
+    { name: 'notes', label: 'Notes' },
+];
 
 export default function StockOpnamePage() {
     const [stats, setStats] = useState<OpnameStatsType | null>(null);
@@ -85,15 +97,26 @@ export default function StockOpnamePage() {
     };
 
     // ─── Session CRUD ──────────────────────────────
-    const handleCreateSession = async () => {
-        try {
-            const values = await sessionForm.validateFields();
-            const wh = warehouses.find(w => w.id === values.warehouseId);
-            const input = { ...values, warehouseName: wh?.name || '' };
-            await inventoryService.createOpnameSession('default', input);
-            message.success("Session created");
-            setSessionModalOpen(false); sessionForm.resetFields(); loadAll();
-        } catch { message.error("Failed to create session"); }
+    const handleCreateSession = async (values: any) => {
+        const wh = warehouses.find(w => w.id === values.warehouseId);
+        const input = { ...values, warehouseName: wh?.name || '' };
+        await inventoryService.createOpnameSession('default', input);
+        message.success("Session created");
+        setSessionModalOpen(false); sessionForm.resetFields(); loadAll();
+    };
+
+    const handleBatchCreateSession = async (records: any[]) => {
+        let success = 0, failed = 0;
+        const errors: string[] = [];
+        for (const r of records) {
+            try {
+                const wh = warehouses.find(w => w.id === r.warehouseId);
+                await inventoryService.createOpnameSession('default', { ...r, warehouseName: wh?.name || '' });
+                success++;
+            } catch (e: any) { failed++; errors.push(`${r.sessionCode || 'Unknown'}: ${e.message || 'Failed'}`); }
+        }
+        loadAll();
+        return { success, failed, errors };
     };
 
     const handleStatusChange = async (id: string, newStatus: string) => {
@@ -238,6 +261,58 @@ export default function StockOpnamePage() {
         s.sessionCode.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const sessionSteps = [
+        {
+            title: "Session Info",
+            icon: <AuditOutlined />,
+            fields: ["sessionCode", "title", "warehouseId"],
+            content: (
+                <>
+                    <Row gutter={16}>
+                        <Col span={10}>
+                            <Form.Item name="sessionCode" label="Session Code" rules={[{ required: true }]}>
+                                <Input placeholder="OPN-2026-XXX" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={14}>
+                            <Form.Item name="title" label="Title" rules={[{ required: true }]}>
+                                <Input placeholder="Session title" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Form.Item name="warehouseId" label="Warehouse" rules={[{ required: true }]}>
+                        <Select placeholder="Select warehouse"
+                            options={warehouses.map(w => ({ value: w.id, label: `${w.code} — ${w.name}` }))} />
+                    </Form.Item>
+                </>
+            ),
+        },
+        {
+            title: "Schedule & Notes",
+            icon: <CalendarOutlined />,
+            fields: ["countedBy", "scheduledDate", "notes"],
+            content: (
+                <>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="countedBy" label="Counted By">
+                                <Input placeholder="Person name" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="scheduledDate" label="Scheduled Date">
+                                <Input type="date" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Form.Item name="notes" label="Notes">
+                        <Input.TextArea rows={2} placeholder="Session notes" />
+                    </Form.Item>
+                </>
+            ),
+        },
+    ];
+
     return (
         <CMSLayout
             title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>Stock Opname</AuroraText>}
@@ -341,47 +416,21 @@ export default function StockOpnamePage() {
                 </Card>
             </div>
 
-            {/* ─── Session Modal ────────────────────────── */}
-            <Modal title="New Counting Session" open={sessionModalOpen}
-                onCancel={() => setSessionModalOpen(false)} onOk={handleCreateSession} okText="Create" width={550}>
-                <Form form={sessionForm} layout="vertical">
-                    <Row gutter={16}>
-                        <Col span={10}>
-                            <Form.Item name="sessionCode" label="Session Code" rules={[{ required: true }]}>
-                                <Input placeholder="OPN-2026-XXX" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={14}>
-                            <Form.Item name="title" label="Title" rules={[{ required: true }]}>
-                                <Input placeholder="Session title" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item name="warehouseId" label="Warehouse" rules={[{ required: true }]}>
-                                <Select placeholder="Select warehouse"
-                                    options={warehouses.map(w => ({ value: w.id, label: `${w.code} — ${w.name}` }))} />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="countedBy" label="Counted By">
-                                <Input placeholder="Person name" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item name="scheduledDate" label="Scheduled Date">
-                                <Input type="date" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Form.Item name="notes" label="Notes">
-                        <Input.TextArea rows={2} placeholder="Session notes" />
-                    </Form.Item>
-                </Form>
-            </Modal>
+            {/* ─── Session SteppedFormModal ───────────────── */}
+            <SteppedFormModal
+                open={sessionModalOpen}
+                onCancel={() => { setSessionModalOpen(false); sessionForm.resetFields(); }}
+                onSubmit={handleCreateSession}
+                form={sessionForm}
+                title="New Counting Session"
+                entityName="opname_session"
+                steps={sessionSteps}
+                fields={SESSION_FIELDS}
+                width={580}
+                loading={false}
+                onBatchCreate={handleBatchCreateSession}
+                gradient={["#7c3aed", "#6366f1"]}
+            />
 
             {/* ─── Add Line Item Modal ──────────────────── */}
             <Modal title="Add Count Item" open={lineModalOpen}

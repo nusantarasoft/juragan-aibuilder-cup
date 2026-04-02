@@ -9,6 +9,8 @@ import { inventoryService, EcomCustomer, EcomStatsType } from "@/lib/inventorySe
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { CrmAccountPicker, CrmContactPicker } from "@/components/inventory/CrmPicker";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
 
@@ -16,12 +18,27 @@ const TYPE_COLORS: Record<string, string> = { individual: 'blue', company: 'purp
 const STATUS_COLORS: Record<string, string> = { active: 'green', inactive: 'default', blocked: 'red' };
 const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : '—';
 
+const CUSTOMER_FIELDS: FieldDef[] = [
+    { name: 'customerCode', label: 'Customer Code', required: true },
+    { name: 'firstName', label: 'First Name', required: true },
+    { name: 'lastName', label: 'Last Name' },
+    { name: 'email', label: 'Email' },
+    { name: 'phone', label: 'Phone' },
+    { name: 'company', label: 'Company' },
+    { name: 'customerType', label: 'Type' },
+    { name: 'address', label: 'Address' },
+    { name: 'city', label: 'City' },
+    { name: 'accountId', label: 'CRM Account' },
+    { name: 'contactId', label: 'CRM Contact' },
+];
+
 export default function CustomersPage() {
     const [stats, setStats] = useState<EcomStatsType | null>(null);
     const [customers, setCustomers] = useState<EcomCustomer[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [form] = Form.useForm();
 
     useEffect(() => { load(); }, []);
@@ -38,15 +55,31 @@ export default function CustomersPage() {
         } catch (err) { console.error(err); message.error("Failed to load customers"); } finally { setLoading(false); }
     };
 
-    const handleCreate = async () => {
+    const handleCreate = async (values: any) => {
+        setSaving(true);
         try {
-            const values = await form.validateFields();
             await inventoryService.createEcomCustomer('default', values);
             message.success("Customer created");
             setModalOpen(false);
             form.resetFields();
             load();
-        } catch { message.error("Failed to create customer"); }
+        } catch { message.error("Failed to create customer"); } finally { setSaving(false); }
+    };
+
+    const handleBatchCreate = async (records: any[]) => {
+        let success = 0, failed = 0;
+        const errors: string[] = [];
+        for (const record of records) {
+            try {
+                await inventoryService.createEcomCustomer('default', record);
+                success++;
+            } catch (e: any) {
+                failed++;
+                errors.push(`${record.customerCode || record.firstName || 'Unknown'}: ${e.message || 'Failed'}`);
+            }
+        }
+        load();
+        return { success, failed, errors };
     };
 
     const handleDelete = async (id: string) => {
@@ -89,6 +122,56 @@ export default function CustomersPage() {
             render: (_: any, r: EcomCustomer) => (
                 <Button size="small" danger icon={<DeleteOutlined />}
                     onClick={() => Modal.confirm({ title: 'Delete customer?', onOk: () => handleDelete(r.id) })} />
+            ),
+        },
+    ];
+
+    const customerSteps = [
+        {
+            title: "Identity",
+            fields: ["customerCode", "firstName", "lastName", "customerType"],
+            content: (
+                <>
+                    <Row gutter={16}>
+                        <Col span={8}><Form.Item name="customerCode" label="Code" rules={[{ required: true }]}><Input placeholder="CUST-XXX" /></Form.Item></Col>
+                        <Col span={8}><Form.Item name="firstName" label="First Name" rules={[{ required: true }]}><Input /></Form.Item></Col>
+                        <Col span={8}><Form.Item name="lastName" label="Last Name"><Input /></Form.Item></Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={12}><Form.Item name="company" label="Company"><Input /></Form.Item></Col>
+                        <Col span={12}><Form.Item name="customerType" label="Type" initialValue="individual">
+                            <Select options={[{ value: 'individual', label: 'Individual' }, { value: 'company', label: 'Company' }, { value: 'reseller', label: 'Reseller' }]} />
+                        </Form.Item></Col>
+                    </Row>
+                </>
+            ),
+        },
+        {
+            title: "Contact & Address",
+            fields: ["email", "phone", "address", "city"],
+            content: (
+                <>
+                    <Row gutter={16}>
+                        <Col span={12}><Form.Item name="email" label="Email"><Input /></Form.Item></Col>
+                        <Col span={12}><Form.Item name="phone" label="Phone"><Input /></Form.Item></Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={16}><Form.Item name="address" label="Address"><Input /></Form.Item></Col>
+                        <Col span={8}><Form.Item name="city" label="City"><Input /></Form.Item></Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="accountId" label="Link to CRM Account">
+                                <CrmAccountPicker placeholder="Search CRM accounts..." />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="contactId" label="Link to CRM Contact">
+                                <CrmContactPicker placeholder="Search CRM contacts..." />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                </>
             ),
         },
     ];
@@ -139,41 +222,19 @@ export default function CustomersPage() {
                 </Card>
             </div>
 
-            <Modal title="New Customer" open={modalOpen} onCancel={() => setModalOpen(false)} onOk={handleCreate} okText="Create" width={550}>
-                <Form form={form} layout="vertical">
-                    <Row gutter={16}>
-                        <Col span={8}><Form.Item name="customerCode" label="Code" rules={[{ required: true }]}><Input placeholder="CUST-XXX" /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="firstName" label="First Name" rules={[{ required: true }]}><Input /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="lastName" label="Last Name"><Input /></Form.Item></Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={12}><Form.Item name="email" label="Email"><Input /></Form.Item></Col>
-                        <Col span={12}><Form.Item name="phone" label="Phone"><Input /></Form.Item></Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={12}><Form.Item name="company" label="Company"><Input /></Form.Item></Col>
-                        <Col span={12}><Form.Item name="customerType" label="Type" initialValue="individual">
-                            <Select options={[{ value: 'individual', label: 'Individual' }, { value: 'company', label: 'Company' }, { value: 'reseller', label: 'Reseller' }]} />
-                        </Form.Item></Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={16}><Form.Item name="address" label="Address"><Input /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="city" label="City"><Input /></Form.Item></Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item name="accountId" label="Link to CRM Account">
-                                <CrmAccountPicker placeholder="Search CRM accounts..." />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="contactId" label="Link to CRM Contact">
-                                <CrmContactPicker placeholder="Search CRM contacts..." />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                </Form>
-            </Modal>
+            <SteppedFormModal
+                open={modalOpen}
+                onCancel={() => { setModalOpen(false); form.resetFields(); }}
+                onSubmit={handleCreate}
+                form={form}
+                title="New Customer"
+                entityName="customer"
+                steps={customerSteps}
+                fields={CUSTOMER_FIELDS}
+                loading={saving}
+                onBatchCreate={handleBatchCreate}
+                gradient={["#6366f1", "#8b5cf6"]}
+            />
         </CMSLayout>
     );
 }

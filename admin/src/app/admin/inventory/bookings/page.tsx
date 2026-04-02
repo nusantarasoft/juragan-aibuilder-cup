@@ -1,19 +1,37 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Table, Tag, Button, Modal, Form, Input, InputNumber, Select, Space, message, Tabs, Progress, Drawer, Row, Col } from 'antd';
-import { PlusOutlined, ReloadOutlined, ScheduleOutlined, CheckCircleOutlined, ClockCircleOutlined, TeamOutlined, DollarOutlined, SearchOutlined, SendOutlined, LoginOutlined, CloseCircleOutlined, EyeOutlined } from '@ant-design/icons';
+import { Table, Tag, Button, Modal, Form, Input, InputNumber, Select, Space, message, Tabs, Progress, Drawer, Row, Col, Card, Typography } from 'antd';
+import { PlusOutlined, ReloadOutlined, ScheduleOutlined, CheckCircleOutlined, ClockCircleOutlined, TeamOutlined, DollarOutlined, SearchOutlined, SendOutlined, LoginOutlined, CloseCircleOutlined, EyeOutlined, UserOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
 import { inventoryService, BookingSchedule, BookingOccurrence, Booking, BookingPassenger, BookingStatsType, InvItem } from '@/lib/inventoryService';
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
+
+const { Text } = Typography;
 
 const STATUS_COLORS: Record<string, string> = {
     active: 'green', suspended: 'orange', cancelled: 'red',
     scheduled: 'blue', boarding: 'cyan', departed: 'geekblue', completed: 'green',
     pending: 'gold', confirmed: 'blue', checked_in: 'green', no_show: 'red',
 };
+
+const BOOKING_FIELDS: FieldDef[] = [
+    { name: 'bookingCode', label: 'Booking Code', required: true },
+    { name: 'scheduleId', label: 'Schedule / Route', required: true },
+    { name: 'occurrenceId', label: 'Departure' },
+    { name: 'class', label: 'Class', required: true },
+    { name: 'passengerCount', label: 'Passengers', type: 'number', required: true },
+    { name: 'customerName', label: 'Customer Name', required: true },
+    { name: 'customerEmail', label: 'Customer Email' },
+    { name: 'customerPhone', label: 'Customer Phone' },
+    { name: 'totalAmount', label: 'Total Amount', type: 'number' },
+    { name: 'paidAmount', label: 'Paid Amount', type: 'number' },
+    { name: 'notes', label: 'Notes' },
+];
 
 export default function BookingsPage() {
     const [schedules, setSchedules] = useState<BookingSchedule[]>([]);
@@ -26,7 +44,6 @@ export default function BookingsPage() {
     const [tab, setTab] = useState('schedules');
     const [search, setSearch] = useState('');
     const [items, setItems] = useState<InvItem[]>([]);
-    const { Card } = require('antd');
 
     // New Booking modal
     const [bookingModalOpen, setBookingModalOpen] = useState(false);
@@ -65,19 +82,24 @@ export default function BookingsPage() {
         } catch (e: any) { message.error(e.message); }
     };
 
-    const handleCreateBooking = async () => {
-        try {
-            const values = await bookingForm.validateFields();
-            await inventoryService.createBooking('default', values);
-            message.success('Booking created');
-            setBookingModalOpen(false);
-            bookingForm.resetFields();
-            setSelectedScheduleId(undefined);
-            load();
-        } catch (e: any) {
-            if (e.errorFields) return;
-            message.error(e.message || 'Failed to create booking');
+    const handleCreateBooking = async (values: any) => {
+        await inventoryService.createBooking('default', values);
+        message.success('Booking created');
+        setBookingModalOpen(false);
+        bookingForm.resetFields();
+        setSelectedScheduleId(undefined);
+        load();
+    };
+
+    const handleBatchCreateBooking = async (records: any[]) => {
+        let success = 0, failed = 0;
+        const errors: string[] = [];
+        for (const r of records) {
+            try { await inventoryService.createBooking('default', r); success++; }
+            catch (e: any) { failed++; errors.push(`${r.bookingCode || 'Unknown'}: ${e.message || 'Failed'}`); }
         }
+        load();
+        return { success, failed, errors };
     };
 
     const recalcTotal = () => {
@@ -202,6 +224,99 @@ export default function BookingsPage() {
         ? occurrences.filter(o => o.scheduleId === selectedScheduleId && o.status !== 'completed')
         : [];
 
+    const bookingSteps = [
+        {
+            title: "Route & Schedule",
+            icon: <ScheduleOutlined />,
+            fields: ["bookingCode", "scheduleId", "occurrenceId", "class", "passengerCount"],
+            content: (
+                <>
+                    <Row gutter={16}>
+                        <Col span={10}>
+                            <Form.Item name="bookingCode" label="Booking Code" rules={[{ required: true }]}>
+                                <Input placeholder="BKG-2026-XXX" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={14}>
+                            <Form.Item name="scheduleId" label="Schedule / Route" rules={[{ required: true, message: 'Select a schedule' }]}>
+                                <Select placeholder="Select route" showSearch
+                                    filterOption={(input, option) => (option?.label as string || '').toLowerCase().includes(input.toLowerCase())}
+                                    onChange={(v) => { setSelectedScheduleId(v); bookingForm.setFieldsValue({ occurrenceId: undefined }); recalcTotal(); }}
+                                    options={schedules.filter(s => s.status === 'active').map(s => ({
+                                        value: s.id, label: `${s.scheduleCode} — ${s.routeName} (${s.origin} → ${s.destination || '—'})`
+                                    }))} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={14}>
+                            <Form.Item name="occurrenceId" label="Departure">
+                                <Select placeholder={selectedScheduleId ? 'Select departure' : 'Select a schedule first'} disabled={!selectedScheduleId}
+                                    options={filteredOccurrences.map(o => ({
+                                        value: o.id,
+                                        label: `${new Date(o.departureDate).toLocaleDateString('id-ID')} ${o.departureTime || ''} — ${o.bookedCount || 0}/${o.totalCapacity || 0} booked`
+                                    }))} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={5}>
+                            <Form.Item name="class" label="Class" rules={[{ required: true }]} initialValue="economy">
+                                <Select onChange={() => recalcTotal()} options={[
+                                    { value: 'economy', label: 'Economy' }, { value: 'business', label: 'Business' }, { value: 'vip', label: 'VIP' },
+                                ]} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={5}>
+                            <Form.Item name="passengerCount" label="Passengers" rules={[{ required: true }]} initialValue={1}>
+                                <InputNumber min={1} max={50} style={{ width: '100%' }} onChange={() => recalcTotal()} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                </>
+            ),
+        },
+        {
+            title: "Customer & Payment",
+            icon: <UserOutlined />,
+            fields: ["customerName", "customerEmail", "customerPhone", "totalAmount", "paidAmount", "notes"],
+            content: (
+                <>
+                    <Row gutter={16}>
+                        <Col span={8}>
+                            <Form.Item name="customerName" label="Customer Name" rules={[{ required: true }]}>
+                                <Input placeholder="Full name" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item name="customerEmail" label="Email">
+                                <Input placeholder="email@example.com" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item name="customerPhone" label="Phone">
+                                <Input placeholder="+62..." />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
+                        <Col span={8}>
+                            <Form.Item name="totalAmount" label="Total Amount">
+                                <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item name="paidAmount" label="Paid Amount">
+                                <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Form.Item name="notes" label="Notes">
+                        <Input.TextArea rows={2} placeholder="Booking notes..." />
+                    </Form.Item>
+                </>
+            ),
+        },
+    ];
+
     return (
         <CMSLayout
             title={<AuroraText colors={["#7c3aed", "#2563eb", "#3b82f6", "#00ffff", "#8b5cf6"]}>Bookings & Ticketing</AuroraText>}
@@ -277,84 +392,21 @@ export default function BookingsPage() {
                     )}
                 </Drawer>
 
-                {/* ─── New Booking Modal ──────────────────────── */}
-                <Modal title="New Booking" open={bookingModalOpen} onCancel={() => setBookingModalOpen(false)}
-                    onOk={handleCreateBooking} okText="Create Booking" width={620}>
-                    <Form form={bookingForm} layout="vertical" initialValues={{ passengerCount: 1, class: 'economy', status: 'pending' }}>
-                        <Row gutter={16}>
-                            <Col span={10}>
-                                <Form.Item name="bookingCode" label="Booking Code" rules={[{ required: true }]}>
-                                    <Input placeholder="BKG-2026-XXX" />
-                                </Form.Item>
-                            </Col>
-                            <Col span={14}>
-                                <Form.Item name="scheduleId" label="Schedule / Route" rules={[{ required: true, message: 'Select a schedule' }]}>
-                                    <Select placeholder="Select route" showSearch
-                                        filterOption={(input, option) => (option?.label as string || '').toLowerCase().includes(input.toLowerCase())}
-                                        onChange={(v) => { setSelectedScheduleId(v); bookingForm.setFieldsValue({ occurrenceId: undefined }); recalcTotal(); }}
-                                        options={schedules.filter(s => s.status === 'active').map(s => ({
-                                            value: s.id, label: `${s.scheduleCode} — ${s.routeName} (${s.origin} → ${s.destination || '—'})`
-                                        }))} />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={14}>
-                                <Form.Item name="occurrenceId" label="Departure">
-                                    <Select placeholder={selectedScheduleId ? 'Select departure' : 'Select a schedule first'} disabled={!selectedScheduleId}
-                                        options={filteredOccurrences.map(o => ({
-                                            value: o.id,
-                                            label: `${new Date(o.departureDate).toLocaleDateString('id-ID')} ${o.departureTime || ''} — ${o.bookedCount || 0}/${o.totalCapacity || 0} booked`
-                                        }))} />
-                                </Form.Item>
-                            </Col>
-                            <Col span={5}>
-                                <Form.Item name="class" label="Class" rules={[{ required: true }]}>
-                                    <Select onChange={() => recalcTotal()} options={[
-                                        { value: 'economy', label: 'Economy' }, { value: 'business', label: 'Business' }, { value: 'vip', label: 'VIP' },
-                                    ]} />
-                                </Form.Item>
-                            </Col>
-                            <Col span={5}>
-                                <Form.Item name="passengerCount" label="Passengers" rules={[{ required: true }]}>
-                                    <InputNumber min={1} max={50} style={{ width: '100%' }} onChange={() => recalcTotal()} />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={8}>
-                                <Form.Item name="customerName" label="Customer Name" rules={[{ required: true }]}>
-                                    <Input placeholder="Full name" />
-                                </Form.Item>
-                            </Col>
-                            <Col span={8}>
-                                <Form.Item name="customerEmail" label="Email">
-                                    <Input placeholder="email@example.com" />
-                                </Form.Item>
-                            </Col>
-                            <Col span={8}>
-                                <Form.Item name="customerPhone" label="Phone">
-                                    <Input placeholder="+62..." />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={8}>
-                                <Form.Item name="totalAmount" label="Total Amount">
-                                    <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" />
-                                </Form.Item>
-                            </Col>
-                            <Col span={8}>
-                                <Form.Item name="paidAmount" label="Paid Amount">
-                                    <InputNumber min={0} style={{ width: '100%' }} prefix="Rp" />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Form.Item name="notes" label="Notes">
-                            <Input.TextArea rows={2} placeholder="Booking notes..." />
-                        </Form.Item>
-                    </Form>
-                </Modal>
+                {/* ─── Booking SteppedFormModal ──────────────────────── */}
+                <SteppedFormModal
+                    open={bookingModalOpen}
+                    onCancel={() => { setBookingModalOpen(false); bookingForm.resetFields(); setSelectedScheduleId(undefined); }}
+                    onSubmit={handleCreateBooking}
+                    form={bookingForm}
+                    title="New Booking"
+                    entityName="booking"
+                    steps={bookingSteps}
+                    fields={BOOKING_FIELDS}
+                    width={650}
+                    loading={false}
+                    onBatchCreate={handleBatchCreateBooking}
+                    gradient={["#7c3aed", "#2563eb"]}
+                />
             </div>
         </CMSLayout>
     );

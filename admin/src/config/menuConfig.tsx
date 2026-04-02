@@ -50,6 +50,12 @@ import {
     ShopOutlined,
     ScheduleOutlined,
     SwapOutlined,
+    RollbackOutlined,
+    GiftOutlined,
+    TagOutlined,
+    PercentageOutlined,
+    ContainerOutlined,
+    CarOutlined,
 } from "@ant-design/icons";
 
 // CMS Menu Configuration
@@ -275,6 +281,18 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
+                        path: "/admin/inventory/stock-operations",
+                        name: "Stock Operations",
+                        icon: <ContainerOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/fixed-assets",
+                        name: "Fixed Assets",
+                        icon: <CarOutlined />,
+                        isLeaf: true,
+                    },
+                    {
                         path: "/admin/inventory/analytics",
                         name: "Analytics & AI",
                         icon: <NodeIndexOutlined />,
@@ -321,6 +339,30 @@ const menuConfig = {
                         path: "/admin/ecommerce/settings",
                         name: "Settings",
                         icon: <SettingOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ecommerce/returns",
+                        name: "Returns",
+                        icon: <RollbackOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ecommerce/packages",
+                        name: "Packages",
+                        icon: <GiftOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ecommerce/offers",
+                        name: "Offers",
+                        icon: <TagOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ecommerce/discounts",
+                        name: "Discounts",
+                        icon: <PercentageOutlined />,
                         isLeaf: true,
                     },
                 ],
