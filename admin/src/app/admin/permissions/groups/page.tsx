@@ -12,6 +12,8 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
 
@@ -26,6 +28,16 @@ interface PublicGroup {
     name: string;
     description: string;
 }
+
+const TEAM_FIELDS: FieldDef[] = [
+    { name: "name", label: "Team Name", required: true },
+    { name: "description", label: "Description" },
+];
+
+const GROUP_FIELDS: FieldDef[] = [
+    { name: "name", label: "Group Name", required: true },
+    { name: "description", label: "Description" },
+];
 
 export default function GroupsTeamsPage() {
     const [teams, setTeams] = useState<Team[]>([]);
@@ -72,9 +84,8 @@ export default function GroupsTeamsPage() {
 
     useEffect(() => { loadTeams(); loadGroups(); }, [loadTeams, loadGroups]);
 
-    const handleCreateTeam = async () => {
+    const handleCreateTeam = async (values: any) => {
         try {
-            const values = await teamForm.validateFields();
             await gql(`
                 mutation($tenantId: String!, $name: String!, $description: String) {
                     createTeam(tenantId: $tenantId, name: $name, description: $description) { id }
@@ -89,6 +100,19 @@ export default function GroupsTeamsPage() {
         }
     };
 
+    const handleBatchCreateTeams = async (records: any[]) => {
+        let success = 0, failed = 0; const errors: string[] = [];
+        for (const r of records) {
+            try {
+                await gql(`mutation($tenantId: String!, $name: String!, $description: String) {
+                    createTeam(tenantId: $tenantId, name: $name, description: $description) { id }
+                }`, { tenantId: DEFAULT_TENANT_ID, name: r.name, description: r.description || null });
+                success++;
+            } catch (e: any) { failed++; errors.push(`${r.name}: ${e.message}`); }
+        }
+        loadTeams(); return { success, failed, errors };
+    };
+
     const handleDeleteTeam = async (id: string) => {
         try {
             await gql(`mutation($id: String!) { deleteTeam(id: $id) }`, { id });
@@ -99,9 +123,8 @@ export default function GroupsTeamsPage() {
         }
     };
 
-    const handleCreateGroup = async () => {
+    const handleCreateGroup = async (values: any) => {
         try {
-            const values = await groupForm.validateFields();
             await gql(`
                 mutation($tenantId: String!, $name: String!, $description: String) {
                     createPublicGroup(tenantId: $tenantId, name: $name, description: $description) { id }
@@ -114,6 +137,19 @@ export default function GroupsTeamsPage() {
         } catch (err: any) {
             message.error(err.message);
         }
+    };
+
+    const handleBatchCreateGroups = async (records: any[]) => {
+        let success = 0, failed = 0; const errors: string[] = [];
+        for (const r of records) {
+            try {
+                await gql(`mutation($tenantId: String!, $name: String!, $description: String) {
+                    createPublicGroup(tenantId: $tenantId, name: $name, description: $description) { id }
+                }`, { tenantId: DEFAULT_TENANT_ID, name: r.name, description: r.description || null });
+                success++;
+            } catch (e: any) { failed++; errors.push(`${r.name}: ${e.message}`); }
+        }
+        loadGroups(); return { success, failed, errors };
     };
 
     const handleDeleteGroup = async (id: string) => {
@@ -174,6 +210,42 @@ export default function GroupsTeamsPage() {
         },
     ];
 
+    const teamFormSteps = [
+        {
+            title: "Team Info",
+            icon: <TeamOutlined />,
+            fields: ["name", "description"],
+            content: (
+                <>
+                    <Form.Item name="name" label="Team Name" rules={[{ required: true }]}>
+                        <Input placeholder="e.g., West Region Sales" />
+                    </Form.Item>
+                    <Form.Item name="description" label="Description">
+                        <Input.TextArea placeholder="Purpose of this team" rows={2} />
+                    </Form.Item>
+                </>
+            ),
+        },
+    ];
+
+    const groupFormSteps = [
+        {
+            title: "Group Info",
+            icon: <UsergroupAddOutlined />,
+            fields: ["name", "description"],
+            content: (
+                <>
+                    <Form.Item name="name" label="Group Name" rules={[{ required: true }]}>
+                        <Input placeholder="e.g., All Sales Managers" />
+                    </Form.Item>
+                    <Form.Item name="description" label="Description">
+                        <Input.TextArea placeholder="Purpose of this group" rows={2} />
+                    </Form.Item>
+                </>
+            ),
+        },
+    ];
+
     const tabItems = [
         {
             key: "teams",
@@ -215,29 +287,33 @@ export default function GroupsTeamsPage() {
         >
             <Card><Tabs items={tabItems} /></Card>
 
-            <Modal title="Create Team" open={teamModalOpen} onOk={handleCreateTeam}
-                onCancel={() => { setTeamModalOpen(false); teamForm.resetFields(); }} okText="Create">
-                <Form form={teamForm} layout="vertical">
-                    <Form.Item name="name" label="Team Name" rules={[{ required: true }]}>
-                        <Input placeholder="e.g., West Region Sales" />
-                    </Form.Item>
-                    <Form.Item name="description" label="Description">
-                        <Input.TextArea placeholder="Purpose of this team" rows={2} />
-                    </Form.Item>
-                </Form>
-            </Modal>
+            <SteppedFormModal
+                open={teamModalOpen}
+                onCancel={() => { setTeamModalOpen(false); teamForm.resetFields(); }}
+                onSubmit={handleCreateTeam}
+                form={teamForm}
+                title="Create Team"
+                entityName="team"
+                steps={teamFormSteps}
+                fields={TEAM_FIELDS}
+                width={500}
+                onBatchCreate={handleBatchCreateTeams}
+                gradient={["#1677ff", "#0ea5e9"]}
+            />
 
-            <Modal title="Create Public Group" open={groupModalOpen} onOk={handleCreateGroup}
-                onCancel={() => { setGroupModalOpen(false); groupForm.resetFields(); }} okText="Create">
-                <Form form={groupForm} layout="vertical">
-                    <Form.Item name="name" label="Group Name" rules={[{ required: true }]}>
-                        <Input placeholder="e.g., All Sales Managers" />
-                    </Form.Item>
-                    <Form.Item name="description" label="Description">
-                        <Input.TextArea placeholder="Purpose of this group" rows={2} />
-                    </Form.Item>
-                </Form>
-            </Modal>
+            <SteppedFormModal
+                open={groupModalOpen}
+                onCancel={() => { setGroupModalOpen(false); groupForm.resetFields(); }}
+                onSubmit={handleCreateGroup}
+                form={groupForm}
+                title="Create Public Group"
+                entityName="public-group"
+                steps={groupFormSteps}
+                fields={GROUP_FIELDS}
+                width={500}
+                onBatchCreate={handleBatchCreateGroups}
+                gradient={["#52c41a", "#10b981"]}
+            />
         </CMSLayout>
     );
 }

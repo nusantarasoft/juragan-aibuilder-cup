@@ -468,7 +468,7 @@ export class CrmService {
         stage?: string; status?: string; accountId?: string; search?: string;
     }) {
         let query = this.db.from('deals')
-            .select('*, accounts(name), contacts(individual_id, individuals(first_name, last_name)), quotes(*)')
+            .select('*, accounts(name), contacts(individual_id, individuals(first_name, last_name))')
             .eq('tenant_id', tenantId);
         if (filters?.stage) query = query.eq('stage', filters.stage);
         if (filters?.status) query = query.eq('status', filters.status);
@@ -481,7 +481,7 @@ export class CrmService {
 
     async getDeal(id: string) {
         const { data, error } = await this.db.from('deals')
-            .select('*, accounts(name), contacts(individual_id, individuals(first_name, last_name)), quotes(*)')
+            .select('*, accounts(name), contacts(individual_id, individuals(first_name, last_name))')
             .eq('id', id).single();
         if (error) throw error;
         return data;

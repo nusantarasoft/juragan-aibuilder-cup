@@ -56,6 +56,10 @@ import {
     PercentageOutlined,
     ContainerOutlined,
     CarOutlined,
+    BookOutlined,
+    CustomerServiceOutlined,
+    AlertOutlined,
+    FlagOutlined,
 } from "@ant-design/icons";
 
 // CMS Menu Configuration
@@ -148,6 +152,37 @@ const menuConfig = {
                 isTopLevel: true,
             },
             {
+                path: "/admin/itsm",
+                name: "ITSM",
+                icon: <CustomerServiceOutlined />,
+                routes: [
+                    {
+                        path: "/admin/itsm/dashboard",
+                        name: "Dashboard",
+                        icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/itsm/tickets",
+                        name: "Tickets",
+                        icon: <AlertOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/itsm/categories",
+                        name: "Categories",
+                        icon: <AppstoreOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/itsm/sla",
+                        name: "SLA Policies",
+                        icon: <FlagOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
                 path: "/admin/crm",
                 name: "CRM",
                 icon: <SolutionOutlined />,
@@ -226,15 +261,39 @@ const menuConfig = {
                 icon: <ProjectOutlined />,
                 routes: [
                     {
-                        path: "/admin/pm/dashboard",
-                        name: "Dashboard",
-                        icon: <DashboardOutlined />,
+                        path: "/admin/pm/portfolio",
+                        name: "Portfolio Overview",
+                        icon: <BarChartOutlined />,
                         isLeaf: true,
                     },
                     {
                         path: "/admin/pm/projects",
                         name: "Projects",
                         icon: <ProjectOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/pm/backlog",
+                        name: "Backlog",
+                        icon: <UnorderedListOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/pm/timeline",
+                        name: "Timeline",
+                        icon: <CalendarOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/pm/reports",
+                        name: "Reports",
+                        icon: <BarChartOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/pm/knowledge-base",
+                        name: "Knowledge Base",
+                        icon: <BookOutlined />,
                         isLeaf: true,
                     },
                 ],

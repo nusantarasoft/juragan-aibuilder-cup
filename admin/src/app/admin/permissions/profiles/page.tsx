@@ -12,6 +12,8 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
 
@@ -39,6 +41,11 @@ const SYSTEM_OBJECTS = [
     "pages", "media", "blocks", "users", "settings", "datasets",
     "individuals", "accounts", "contacts", "leads", "opportunities",
     "cases", "activities", "projects", "tasks", "teams",
+];
+
+const PROFILE_FIELDS: FieldDef[] = [
+    { name: "name", label: "Profile Name", required: true },
+    { name: "description", label: "Description" },
 ];
 
 export default function ProfilesPage() {
@@ -91,9 +98,8 @@ export default function ProfilesPage() {
         }
     };
 
-    const handleCreateOrUpdate = async () => {
+    const handleSave = async (values: any) => {
         try {
-            const values = await form.validateFields();
             if (editingProfile) {
                 await gql(`
                     mutation($id: String!, $name: String, $description: String) {
@@ -116,6 +122,19 @@ export default function ProfilesPage() {
         } catch (err: any) {
             message.error(err.message);
         }
+    };
+
+    const handleBatchCreate = async (records: any[]) => {
+        let success = 0, failed = 0; const errors: string[] = [];
+        for (const r of records) {
+            try {
+                await gql(`mutation($tenantId: String!, $name: String!, $description: String) {
+                    createProfile(tenantId: $tenantId, name: $name, description: $description) { id }
+                }`, { tenantId: DEFAULT_TENANT_ID, name: r.name, description: r.description || null });
+                success++;
+            } catch (e: any) { failed++; errors.push(`${r.name}: ${e.message}`); }
+        }
+        loadProfiles(); return { success, failed, errors };
     };
 
     const handleDelete = async (id: string) => {
@@ -244,6 +263,24 @@ export default function ProfilesPage() {
 
     const permData = SYSTEM_OBJECTS.map(obj => ({ key: obj, object: obj }));
 
+    const formSteps = [
+        {
+            title: "Profile Info",
+            icon: <IdcardOutlined />,
+            fields: ["name", "description"],
+            content: (
+                <>
+                    <Form.Item name="name" label="Profile Name" rules={[{ required: true }]}>
+                        <Input placeholder="e.g., Sales Manager" />
+                    </Form.Item>
+                    <Form.Item name="description" label="Description">
+                        <Input.TextArea placeholder="Description of this profile's purpose" rows={3} />
+                    </Form.Item>
+                </>
+            ),
+        },
+    ];
+
     return (
         <CMSLayout
             title="Profiles"
@@ -274,23 +311,22 @@ export default function ProfilesPage() {
                 />
             </Card>
 
-            <Modal
-                title={editingProfile ? "Edit Profile" : "Create Profile"}
+            <SteppedFormModal
                 open={isModalOpen}
-                onOk={handleCreateOrUpdate}
                 onCancel={() => { setIsModalOpen(false); setEditingProfile(null); form.resetFields(); }}
-                okText={editingProfile ? "Update" : "Create"}
-            >
-                <Form form={form} layout="vertical">
-                    <Form.Item name="name" label="Profile Name" rules={[{ required: true }]}>
-                        <Input placeholder="e.g., Sales Manager" />
-                    </Form.Item>
-                    <Form.Item name="description" label="Description">
-                        <Input.TextArea placeholder="Description of this profile's purpose" rows={3} />
-                    </Form.Item>
-                </Form>
-            </Modal>
+                onSubmit={handleSave}
+                form={form}
+                title={editingProfile ? "Edit Profile" : "Create Profile"}
+                entityName="profile"
+                steps={formSteps}
+                fields={PROFILE_FIELDS}
+                width={520}
+                onBatchCreate={handleBatchCreate}
+                gradient={["#6366f1", "#8b5cf6"]}
+                editMode={!!editingProfile}
+            />
 
+            {/* Object Permissions Modal — kept as separate specialized workflow */}
             <Modal
                 title={<Space><SafetyOutlined /><span>Object Permissions — {selectedProfile?.name}</span></Space>}
                 open={permsDrawerOpen}

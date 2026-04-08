@@ -93,7 +93,7 @@ services:
 
   studio:
     container_name: supabase-studio
-    image: supabase/studio:2025.12.09-sha-434634f
+    image: supabase/studio:2026.03.16-sha-5528817
     restart: unless-stopped
     deploy:
       resources:
@@ -171,7 +171,7 @@ services:
 
   auth:
     container_name: supabase-auth
-    image: supabase/gotrue:v2.183.0
+    image: supabase/gotrue:v2.186.0
     restart: unless-stopped
     deploy:
       resources:
@@ -223,7 +223,7 @@ services:
 
   rest:
     container_name: supabase-rest
-    image: postgrest/postgrest:v14.1
+    image: postgrest/postgrest:v14.6
     restart: unless-stopped
     deploy:
       resources:
@@ -365,7 +365,7 @@ services:
 
   meta:
     container_name: supabase-meta
-    image: supabase/postgres-meta:v0.93.1
+    image: supabase/postgres-meta:v0.95.2
     restart: unless-stopped
     deploy:
       resources:
@@ -391,7 +391,7 @@ services:
 
   functions:
     container_name: supabase-edge-functions
-    image: supabase/edge-runtime:v1.69.28
+    image: supabase/edge-runtime:v1.71.2
     restart: unless-stopped
     deploy:
       resources:
@@ -838,7 +838,6 @@ services:
       - SUPABASE_URL=http://kong:8000
       - SUPABASE_ANON_KEY=${ANON_KEY}
       - SUPABASE_SERVICE_KEY=${SERVICE_ROLE_KEY}
-      - SUPABASE_DB_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - GOOGLE_CLOUD_PROJECT=${GOOGLE_PROJECT_ID}
       - GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION:-us-central1}
@@ -859,7 +858,7 @@ services:
     networks:
       - management-network
     depends_on:
-      - postgres
+      - kong
       - minio
     volumes:
       - ./volumes/google-credentials.json:/gcp/key.json:ro

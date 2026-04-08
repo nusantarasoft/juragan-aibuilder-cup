@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import {
     Card, Tabs, Table, Button, Space, Modal, Form, Input, Select, Tag,
-    message, Typography, Spin,
+    message, Typography, Spin, Row, Col,
 } from "antd";
 import {
     PlusOutlined, DeleteOutlined, ReloadOutlined,
@@ -12,6 +12,8 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
 
@@ -49,6 +51,13 @@ const ACCESS_OPTIONS = [
     { value: "private", label: "Private" },
     { value: "public_read", label: "Public Read Only" },
     { value: "public_rw", label: "Public Read/Write" },
+];
+
+const RULE_FIELDS: FieldDef[] = [
+    { name: "name", label: "Rule Name", required: true },
+    { name: "objectName", label: "Object", required: true },
+    { name: "ruleType", label: "Rule Type", required: true },
+    { name: "accessLevel", label: "Access Level" },
 ];
 
 export default function SharingPage() {
@@ -135,9 +144,8 @@ export default function SharingPage() {
         }
     };
 
-    const handleCreateRule = async () => {
+    const handleCreateRule = async (values: any) => {
         try {
-            const values = await ruleForm.validateFields();
             await gql(`
                 mutation($tenantId: String!, $name: String!, $objectName: String!, $ruleType: String!, $accessLevel: String) {
                     createSharingRule(tenantId: $tenantId, name: $name, objectName: $objectName, ruleType: $ruleType, accessLevel: $accessLevel) { id }
@@ -150,6 +158,19 @@ export default function SharingPage() {
         } catch (err: any) {
             message.error(err.message);
         }
+    };
+
+    const handleBatchCreateRules = async (records: any[]) => {
+        let success = 0, failed = 0; const errors: string[] = [];
+        for (const r of records) {
+            try {
+                await gql(`mutation($tenantId: String!, $name: String!, $objectName: String!, $ruleType: String!, $accessLevel: String) {
+                    createSharingRule(tenantId: $tenantId, name: $name, objectName: $objectName, ruleType: $ruleType, accessLevel: $accessLevel) { id }
+                }`, { tenantId: DEFAULT_TENANT_ID, name: r.name, objectName: r.objectName, ruleType: r.ruleType, accessLevel: r.accessLevel || 'read' });
+                success++;
+            } catch (e: any) { failed++; errors.push(`${r.name}: ${e.message}`); }
+        }
+        loadRules(); return { success, failed, errors };
     };
 
     const handleDeleteRule = async (id: string) => {
@@ -250,6 +271,42 @@ export default function SharingPage() {
         },
     ];
 
+    const ruleFormSteps = [
+        {
+            title: "Rule Setup",
+            icon: <ShareAltOutlined />,
+            fields: ["name", "objectName", "ruleType", "accessLevel"],
+            content: (
+                <>
+                    <Form.Item name="name" label="Rule Name" rules={[{ required: true }]}>
+                        <Input placeholder="e.g., Share Leads with Marketing" />
+                    </Form.Item>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="objectName" label="Object" rules={[{ required: true }]}>
+                                <Select options={SYSTEM_OBJECTS.map(o => ({ value: o, label: o.charAt(0).toUpperCase() + o.slice(1) }))} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="ruleType" label="Rule Type" rules={[{ required: true }]}>
+                                <Select options={[
+                                    { value: "owner_based", label: "Owner-Based" },
+                                    { value: "criteria_based", label: "Criteria-Based" },
+                                ]} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Form.Item name="accessLevel" label="Access Level" initialValue="read">
+                        <Select options={[
+                            { value: "read", label: "Read Only" },
+                            { value: "read_write", label: "Read/Write" },
+                        ]} />
+                    </Form.Item>
+                </>
+            ),
+        },
+    ];
+
     const tabItems = [
         {
             key: "owd",
@@ -307,29 +364,19 @@ export default function SharingPage() {
         >
             <Card><Tabs items={tabItems} /></Card>
 
-            <Modal title="Create Sharing Rule" open={ruleModalOpen} onOk={handleCreateRule}
-                onCancel={() => { setRuleModalOpen(false); ruleForm.resetFields(); }} okText="Create">
-                <Form form={ruleForm} layout="vertical">
-                    <Form.Item name="name" label="Rule Name" rules={[{ required: true }]}>
-                        <Input placeholder="e.g., Share Leads with Marketing" />
-                    </Form.Item>
-                    <Form.Item name="objectName" label="Object" rules={[{ required: true }]}>
-                        <Select options={SYSTEM_OBJECTS.map(o => ({ value: o, label: o.charAt(0).toUpperCase() + o.slice(1) }))} />
-                    </Form.Item>
-                    <Form.Item name="ruleType" label="Rule Type" rules={[{ required: true }]}>
-                        <Select options={[
-                            { value: "owner_based", label: "Owner-Based" },
-                            { value: "criteria_based", label: "Criteria-Based" },
-                        ]} />
-                    </Form.Item>
-                    <Form.Item name="accessLevel" label="Access Level" initialValue="read">
-                        <Select options={[
-                            { value: "read", label: "Read Only" },
-                            { value: "read_write", label: "Read/Write" },
-                        ]} />
-                    </Form.Item>
-                </Form>
-            </Modal>
+            <SteppedFormModal
+                open={ruleModalOpen}
+                onCancel={() => { setRuleModalOpen(false); ruleForm.resetFields(); }}
+                onSubmit={handleCreateRule}
+                form={ruleForm}
+                title="Create Sharing Rule"
+                entityName="sharing-rule"
+                steps={ruleFormSteps}
+                fields={RULE_FIELDS}
+                width={580}
+                onBatchCreate={handleBatchCreateRules}
+                gradient={["#ec4899", "#a855f7"]}
+            />
         </CMSLayout>
     );
 }

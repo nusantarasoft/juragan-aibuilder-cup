@@ -23,6 +23,7 @@ import { AiModule } from './ai/ai.module';
 import { PmModule } from './pm/pm.module';
 import { StarsModule } from './stars/stars.module';
 import { InventoryModule } from './inventory/inventory.module';
+import { ItsmModule } from './itsm/itsm.module';
 
 @Module({
     imports: [
@@ -63,6 +64,7 @@ import { InventoryModule } from './inventory/inventory.module';
         PmModule,
         StarsModule,
         InventoryModule,
+        ItsmModule,
     ],
 })
 export class AppModule { }

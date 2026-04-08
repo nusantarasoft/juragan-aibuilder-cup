@@ -72,7 +72,10 @@ export default function RiskRegisterTab({ projectId }: { projectId: string }) {
         setAiLoading(true);
         try {
             const data = await gql(AI_GENERATE_RISKS, { projectId });
-            const generatedRisks = data.generateRiskRegister || [];
+            const raw = data.generateRiskRegister;
+            // AI returns { risks: [...] } or a JSON string
+            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            const generatedRisks = Array.isArray(parsed) ? parsed : (parsed?.risks || parsed?.items || []);
 
             // Insert each generated risk
             for (const r of generatedRisks) {

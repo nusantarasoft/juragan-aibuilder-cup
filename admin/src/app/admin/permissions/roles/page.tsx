@@ -8,10 +8,12 @@ import {
 } from "antd";
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
-    ApartmentOutlined, CrownOutlined,
+    ApartmentOutlined, CrownOutlined, FileTextOutlined,
 } from "@ant-design/icons";
 import type { DataNode } from "antd/es/tree";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
 
@@ -23,6 +25,12 @@ interface Role {
     parentRoleId: string | null;
     tenantId: string;
 }
+
+const ROLE_FIELDS: FieldDef[] = [
+    { name: "name", label: "Role Name", required: true },
+    { name: "description", label: "Description" },
+    { name: "parentRoleId", label: "Parent Role" },
+];
 
 export default function RolesPage() {
     const [roles, setRoles] = useState<Role[]>([]);
@@ -53,9 +61,8 @@ export default function RolesPage() {
 
     useEffect(() => { loadRoles(); }, [loadRoles]);
 
-    const handleCreateOrUpdate = async () => {
+    const handleSave = async (values: any) => {
         try {
-            const values = await form.validateFields();
             if (editingRole) {
                 await gql(`
                     mutation($id: String!, $name: String, $description: String, $parentRoleId: String) {
@@ -78,6 +85,19 @@ export default function RolesPage() {
         } catch (err: any) {
             message.error(err.message);
         }
+    };
+
+    const handleBatchCreate = async (records: any[]) => {
+        let success = 0, failed = 0; const errors: string[] = [];
+        for (const r of records) {
+            try {
+                await gql(`mutation($tenantId: String!, $name: String!, $description: String, $parentRoleId: String) {
+                    createRole(tenantId: $tenantId, name: $name, description: $description, parentRoleId: $parentRoleId) { id }
+                }`, { tenantId: DEFAULT_TENANT_ID, name: r.name, description: r.description || null, parentRoleId: r.parentRoleId || null });
+                success++;
+            } catch (e: any) { failed++; errors.push(`${r.name}: ${e.message}`); }
+        }
+        loadRoles(); return { success, failed, errors };
     };
 
     const handleDelete = async (id: string) => {
@@ -128,6 +148,33 @@ export default function RolesPage() {
             setSelectedRole(null);
         }
     };
+
+    const formSteps = [
+        {
+            title: "Role Info",
+            icon: <ApartmentOutlined />,
+            fields: ["name", "description", "parentRoleId"],
+            content: (
+                <>
+                    <Form.Item name="name" label="Role Name" rules={[{ required: true }]}>
+                        <Input placeholder="e.g., VP Sales" />
+                    </Form.Item>
+                    <Form.Item name="description" label="Description">
+                        <Input.TextArea placeholder="Description of this role" rows={2} />
+                    </Form.Item>
+                    <Form.Item name="parentRoleId" label="Parent Role">
+                        <Select
+                            allowClear
+                            placeholder="Select parent role (leave empty for top-level)"
+                            options={roles
+                                .filter(r => editingRole ? r.id !== editingRole.id : true)
+                                .map(r => ({ value: r.id, label: `${r.name} (L${r.level})` }))}
+                        />
+                    </Form.Item>
+                </>
+            ),
+        },
+    ];
 
     return (
         <CMSLayout
@@ -230,31 +277,20 @@ export default function RolesPage() {
                 </Card>
             </div>
 
-            <Modal
-                title={editingRole ? "Edit Role" : "Create Role"}
+            <SteppedFormModal
                 open={isModalOpen}
-                onOk={handleCreateOrUpdate}
                 onCancel={() => { setIsModalOpen(false); setEditingRole(null); form.resetFields(); }}
-                okText={editingRole ? "Update" : "Create"}
-            >
-                <Form form={form} layout="vertical">
-                    <Form.Item name="name" label="Role Name" rules={[{ required: true }]}>
-                        <Input placeholder="e.g., VP Sales" />
-                    </Form.Item>
-                    <Form.Item name="description" label="Description">
-                        <Input.TextArea placeholder="Description of this role" rows={2} />
-                    </Form.Item>
-                    <Form.Item name="parentRoleId" label="Parent Role">
-                        <Select
-                            allowClear
-                            placeholder="Select parent role (leave empty for top-level)"
-                            options={roles
-                                .filter(r => editingRole ? r.id !== editingRole.id : true)
-                                .map(r => ({ value: r.id, label: `${r.name} (L${r.level})` }))}
-                        />
-                    </Form.Item>
-                </Form>
-            </Modal>
+                onSubmit={handleSave}
+                form={form}
+                title={editingRole ? "Edit Role" : "Create Role"}
+                entityName="role"
+                steps={formSteps}
+                fields={ROLE_FIELDS}
+                width={550}
+                onBatchCreate={handleBatchCreate}
+                gradient={["#f59e0b", "#d97706"]}
+                editMode={!!editingRole}
+            />
         </CMSLayout>
     );
 }
