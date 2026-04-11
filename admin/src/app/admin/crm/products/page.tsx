@@ -10,10 +10,12 @@ import {
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, ShoppingOutlined,
-    DollarOutlined, CheckCircleOutlined,
+    DollarOutlined, CheckCircleOutlined, AppstoreOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -25,6 +27,15 @@ interface Product {
 }
 
 const CATEGORIES = ["Software", "Hardware", "Service", "Subscription", "Consulting", "Support", "Other"];
+
+const PRODUCT_FIELDS: FieldDef[] = [
+    { name: "name", label: "Name", required: true },
+    { name: "code", label: "Product Code" },
+    { name: "unitPrice", label: "Unit Price", required: true },
+    { name: "category", label: "Category" },
+    { name: "isActive", label: "Active" },
+    { name: "description", label: "Description" },
+];
 
 export default function ProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
@@ -41,13 +52,7 @@ export default function ProductsPage() {
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await gql(`
-                query($tenantId: String!, $search: String) {
-                    products(tenantId: $tenantId, search: $search) {
-                        id name code description unitPrice currency category isActive createdAt
-                    }
-                }
-            `, { tenantId: DEFAULT_TENANT_ID, search: search || null });
+            const data = await gql(`query($tenantId: String!, $search: String) { products(tenantId: $tenantId, search: $search) { id name code description unitPrice currency category isActive createdAt } }`, { tenantId: DEFAULT_TENANT_ID, search: search || null });
             setProducts(data.products || []);
         } catch (err: any) { message.error("Failed: " + err.message); }
         finally { setLoading(false); }
@@ -55,17 +60,11 @@ export default function ProductsPage() {
 
     useEffect(() => { loadData(); }, [loadData]);
 
-    const handleSave = async () => {
+    const handleSave = async (values: any) => {
         try {
-            const v = await form.validateFields();
-            const input = {
-                name: v.name, code: v.code || null,
-                description: v.description || null,
-                unitPrice: v.unitPrice, currency: v.currency || 'USD',
-                category: v.category || null,
-            };
+            const input = { name: values.name, code: values.code || null, description: values.description || null, unitPrice: values.unitPrice, currency: values.currency || 'USD', category: values.category || null };
             if (editing) {
-                await gql(`mutation($id: String!, $input: UpdateProductInput!) { updateProduct(id: $id, input: $input) { id } }`, { id: editing.id, input: { ...input, isActive: v.isActive } });
+                await gql(`mutation($id: String!, $input: UpdateProductInput!) { updateProduct(id: $id, input: $input) { id } }`, { id: editing.id, input: { ...input, isActive: values.isActive } });
                 message.success("Updated");
             } else {
                 await gql(`mutation($tenantId: String!, $input: CreateProductInput!) { createProduct(tenantId: $tenantId, input: $input) { id } }`, { tenantId: DEFAULT_TENANT_ID, input });
@@ -75,10 +74,16 @@ export default function ProductsPage() {
         } catch (err: any) { message.error(err.message); }
     };
 
-    const handleDelete = async (id: string) => {
-        await gql(`mutation($id: String!) { deleteProduct(id: $id) }`, { id });
-        message.success("Deleted"); loadData();
+    const handleBatchCreate = async (records: any[]) => {
+        let success = 0, failed = 0; const errors: string[] = [];
+        for (const r of records) {
+            try { await gql(`mutation($tenantId: String!, $input: CreateProductInput!) { createProduct(tenantId: $tenantId, input: $input) { id } }`, { tenantId: DEFAULT_TENANT_ID, input: { name: r.name, code: r.code || null, description: r.description || null, unitPrice: r.unitPrice || 0, currency: r.currency || 'USD', category: r.category || null } }); success++; }
+            catch (e: any) { failed++; errors.push(`${r.name}: ${e.message}`); }
+        }
+        loadData(); return { success, failed, errors };
     };
+
+    const handleDelete = async (id: string) => { await gql(`mutation($id: String!) { deleteProduct(id: $id) }`, { id }); message.success("Deleted"); loadData(); };
 
     const activeProducts = products.filter(p => p.isActive);
     const avgPrice = activeProducts.length ? activeProducts.reduce((s, p) => s + p.unitPrice, 0) / activeProducts.length : 0;
@@ -88,18 +93,16 @@ export default function ProductsPage() {
         { title: "Price", key: "price", width: 120, align: "right", render: (_, r) => <Text strong>{fmt(r.unitPrice)}</Text>, sorter: (a, b) => a.unitPrice - b.unitPrice },
         { title: "Category", key: "cat", width: 120, render: (_, r) => r.category ? <Tag>{r.category}</Tag> : '—' },
         { title: "Status", key: "active", width: 90, render: (_, r) => <Tag color={r.isActive ? 'green' : 'default'}>{r.isActive ? 'Active' : 'Inactive'}</Tag> },
-        {
-            title: "Actions", key: "actions", width: 130,
-            render: (_, r) => (
-                <Space>
-                    <Tooltip title="View"><Button type="text" icon={<EyeOutlined />} onClick={() => { setSelected(r); setDetailOpen(true); }} /></Tooltip>
-                    <Tooltip title="Edit"><Button type="text" icon={<EditOutlined />} onClick={() => {
-                        setEditing(r); form.setFieldsValue({ name: r.name, code: r.code, description: r.description, unitPrice: r.unitPrice, category: r.category, isActive: r.isActive }); setIsModalOpen(true);
-                    }} /></Tooltip>
-                    <Tooltip title="Delete"><Button type="text" danger icon={<DeleteOutlined />} onClick={() => Modal.confirm({ title: `Delete "${r.name}"?`, onOk: () => handleDelete(r.id) })} /></Tooltip>
-                </Space>
-            ),
-        },
+        { title: "Actions", key: "actions", width: 130, render: (_, r) => (<Space>
+            <Tooltip title="View"><Button type="text" icon={<EyeOutlined />} onClick={() => { setSelected(r); setDetailOpen(true); }} /></Tooltip>
+            <Tooltip title="Edit"><Button type="text" icon={<EditOutlined />} onClick={() => { setEditing(r); form.setFieldsValue({ name: r.name, code: r.code, description: r.description, unitPrice: r.unitPrice, category: r.category, isActive: r.isActive }); setIsModalOpen(true); }} /></Tooltip>
+            <Tooltip title="Delete"><Button type="text" danger icon={<DeleteOutlined />} onClick={() => Modal.confirm({ title: `Delete "${r.name}"?`, onOk: () => handleDelete(r.id) })} /></Tooltip>
+        </Space>) },
+    ];
+
+    const formSteps = [
+        { title: "Product Info", icon: <ShoppingOutlined />, fields: ["name", "code", "unitPrice", "category"], content: (<><Row gutter={16}><Col span={16}><Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item></Col><Col span={8}><Form.Item name="code" label="Product Code"><Input placeholder="e.g., SKU-001" /></Form.Item></Col></Row><Row gutter={16}><Col span={8}><Form.Item name="unitPrice" label="Unit Price" rules={[{ required: true }]}><InputNumber style={{ width: '100%' }} prefix="$" min={0} /></Form.Item></Col><Col span={8}><Form.Item name="category" label="Category"><Select allowClear options={CATEGORIES.map(c => ({ value: c, label: c }))} /></Form.Item></Col>{editing && <Col span={8}><Form.Item name="isActive" label="Active" valuePropName="checked"><Switch /></Form.Item></Col>}</Row></>) },
+        { title: "Description", icon: <AppstoreOutlined />, fields: ["description", "isActive"], content: (<Form.Item name="description" label="Description"><TextArea rows={4} /></Form.Item>) },
     ];
 
     return (
@@ -112,40 +115,20 @@ export default function ProductsPage() {
                 <Col span={8}><Card><Statistic title="Active" value={activeProducts.length} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#52c41a' }} /></Card></Col>
                 <Col span={8}><Card><Statistic title="Avg Price" value={avgPrice} prefix={<DollarOutlined />} precision={2} formatter={v => fmt(Number(v))} /></Card></Col>
             </Row>
-
-            <Card style={{ marginBottom: 16 }}>
-                <Input prefix={<SearchOutlined />} placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 300 }} allowClear />
-            </Card>
-
+            <Card style={{ marginBottom: 16 }}><Input prefix={<SearchOutlined />} placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 300 }} allowClear /></Card>
             <Card><Table columns={columns} dataSource={products.map(p => ({ ...p, key: p.id }))} loading={loading} pagination={{ pageSize: 20 }} size="middle" /></Card>
 
-            <Modal title={editing ? "Edit Product" : "Add Product"} open={isModalOpen} onOk={handleSave}
-                onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} okText={editing ? "Update" : "Create"} width={600}>
-                <Form form={form} layout="vertical">
-                    <Row gutter={16}>
-                        <Col span={16}><Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="code" label="Product Code"><Input placeholder="e.g., SKU-001" /></Form.Item></Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={8}><Form.Item name="unitPrice" label="Unit Price" rules={[{ required: true }]}><InputNumber style={{ width: '100%' }} prefix="$" min={0} /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="category" label="Category"><Select allowClear options={CATEGORIES.map(c => ({ value: c, label: c }))} /></Form.Item></Col>
-                        {editing && <Col span={8}><Form.Item name="isActive" label="Active" valuePropName="checked"><Switch /></Form.Item></Col>}
-                    </Row>
-                    <Form.Item name="description" label="Description"><TextArea rows={2} /></Form.Item>
-                </Form>
-            </Modal>
+            <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Product" : "Add Product"} entityName="product" steps={formSteps} fields={PRODUCT_FIELDS} width={600} onBatchCreate={handleBatchCreate} gradient={["#ec4899", "#f43f5e"]} editMode={!!editing} />
 
             <Drawer title="Product Details" open={detailOpen} onClose={() => setDetailOpen(false)} width={450}>
-                {selected && (
-                    <Descriptions column={1} bordered size="small">
-                        <Descriptions.Item label="Name">{selected.name}</Descriptions.Item>
-                        <Descriptions.Item label="Code">{selected.code || '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Price"><Text strong>{fmt(selected.unitPrice)}</Text></Descriptions.Item>
-                        <Descriptions.Item label="Category">{selected.category || '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Status"><Tag color={selected.isActive ? 'green' : 'default'}>{selected.isActive ? 'Active' : 'Inactive'}</Tag></Descriptions.Item>
-                        <Descriptions.Item label="Description">{selected.description || '—'}</Descriptions.Item>
-                    </Descriptions>
-                )}
+                {selected && (<Descriptions column={1} bordered size="small">
+                    <Descriptions.Item label="Name">{selected.name}</Descriptions.Item>
+                    <Descriptions.Item label="Code">{selected.code || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Price"><Text strong>{fmt(selected.unitPrice)}</Text></Descriptions.Item>
+                    <Descriptions.Item label="Category">{selected.category || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Status"><Tag color={selected.isActive ? 'green' : 'default'}>{selected.isActive ? 'Active' : 'Inactive'}</Tag></Descriptions.Item>
+                    <Descriptions.Item label="Description">{selected.description || '—'}</Descriptions.Item>
+                </Descriptions>)}
             </Drawer>
         </CMSLayout>
     );

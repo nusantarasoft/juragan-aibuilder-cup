@@ -1,0 +1,50 @@
+[
+  {
+    "code": "SUP-TEST-001",
+    "name": "PT Maju Bersama",
+    "contactPerson": "Budi Santoso",
+    "email": "budi@majubersama.co.id",
+    "phone": "+62-21-5551234",
+    "city": "Jakarta",
+    "address": "Jl. Sudirman No. 100",
+    "paymentTerms": "Net 30",
+    "currency": "IDR",
+    "leadTimeDays": 14,
+    "rating": 4,
+    "taxId": "01.234.567.8-012.000",
+    "status": "active",
+    "notes": "Preferred supplier for raw materials"
+  },
+  {
+    "code": "SUP-TEST-002",
+    "name": "CV Sejahtera Abadi",
+    "contactPerson": "Siti Rahayu",
+    "email": "siti@sejahteraabadi.com",
+    "phone": "+62-31-7778899",
+    "city": "Surabaya",
+    "address": "Jl. Basuki Rahmat No. 50",
+    "paymentTerms": "Net 15",
+    "currency": "IDR",
+    "leadTimeDays": 7,
+    "rating": 5,
+    "taxId": "02.345.678.9-023.000",
+    "status": "active",
+    "notes": "Fast delivery, premium quality"
+  },
+  {
+    "code": "SUP-TEST-003",
+    "name": "PT Global Teknik",
+    "contactPerson": "Ahmad Yusuf",
+    "email": "ahmad@globalteknik.co.id",
+    "phone": "+62-22-6665544",
+    "city": "Bandung",
+    "address": "Jl. Asia Afrika No. 75",
+    "paymentTerms": "COD",
+    "currency": "IDR",
+    "leadTimeDays": 3,
+    "rating": 3.5,
+    "taxId": "03.456.789.0-034.000",
+    "status": "active",
+    "notes": "Specializes in electronic components"
+  }
+]

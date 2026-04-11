@@ -13,6 +13,8 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
 
@@ -55,6 +57,22 @@ const RATINGS = [
     { value: "cold", label: "Cold", color: "blue" },
 ];
 
+const ACCOUNT_FIELDS: FieldDef[] = [
+    { name: "name", label: "Account Name", required: true },
+    { name: "type", label: "Type" },
+    { name: "rating", label: "Rating" },
+    { name: "industry", label: "Industry" },
+    { name: "accountNumber", label: "Account Number" },
+    { name: "phone", label: "Phone" },
+    { name: "email", label: "Email" },
+    { name: "website", label: "Website" },
+    { name: "annualRevenue", label: "Annual Revenue" },
+    { name: "employeeCount", label: "Employees" },
+    { name: "ownership", label: "Ownership" },
+    { name: "parentAccountId", label: "Parent Account" },
+    { name: "description", label: "Description" },
+];
+
 export default function AccountsPage() {
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [loading, setLoading] = useState(true);
@@ -88,16 +106,15 @@ export default function AccountsPage() {
 
     useEffect(() => { loadData(); }, [loadData]);
 
-    const handleSave = async () => {
+    const handleSave = async (values: any) => {
         try {
-            const v = await form.validateFields();
             const input = {
-                name: v.name, accountNumber: v.accountNumber || null,
-                type: v.type || 'prospect', industry: v.industry || null,
-                website: v.website || null, phone: v.phone || null, email: v.email || null,
-                annualRevenue: v.annualRevenue || null, employeeCount: v.employeeCount || null,
-                ownership: v.ownership || null, description: v.description || null,
-                rating: v.rating || null, parentAccountId: v.parentAccountId || null,
+                name: values.name, accountNumber: values.accountNumber || null,
+                type: values.type || 'prospect', industry: values.industry || null,
+                website: values.website || null, phone: values.phone || null, email: values.email || null,
+                annualRevenue: values.annualRevenue || null, employeeCount: values.employeeCount || null,
+                ownership: values.ownership || null, description: values.description || null,
+                rating: values.rating || null, parentAccountId: values.parentAccountId || null,
             };
             if (editing) {
                 await gql(`mutation($id: String!, $input: UpdateAccountInput!) { updateAccount(id: $id, input: $input) { id } }`,
@@ -115,6 +132,20 @@ export default function AccountsPage() {
         } catch (err: any) {
             message.error(err.message);
         }
+    };
+
+    const handleBatchCreate = async (records: any[]) => {
+        let success = 0, failed = 0;
+        const errors: string[] = [];
+        for (const r of records) {
+            try {
+                const input = { name: r.name, type: r.type || 'prospect', industry: r.industry || null, phone: r.phone || null, email: r.email || null, website: r.website || null, annualRevenue: r.annualRevenue || null, employeeCount: r.employeeCount || null, ownership: r.ownership || null, description: r.description || null, rating: r.rating || null, accountNumber: r.accountNumber || null };
+                await gql(`mutation($tenantId: String!, $input: CreateAccountInput!) { createAccount(tenantId: $tenantId, input: $input) { id } }`, { tenantId: DEFAULT_TENANT_ID, input });
+                success++;
+            } catch (e: any) { failed++; errors.push(`${r.name || 'Unknown'}: ${e.message}`); }
+        }
+        loadData();
+        return { success, failed, errors };
     };
 
     const handleDelete = async (id: string) => {
@@ -225,53 +256,82 @@ export default function AccountsPage() {
                     loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" />
             </Card>
 
-            <Modal title={editing ? "Edit Account" : "Add Account"} open={isModalOpen} onOk={handleSave}
-                onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} okText={editing ? "Update" : "Create"} width={700}>
-                <Form form={form} layout="vertical">
-                    <Row gutter={16}>
-                        <Col span={12}><Form.Item name="name" label="Account Name" rules={[{ required: true }]}>
-                            <Input placeholder="e.g., Acme Corp" />
-                        </Form.Item></Col>
-                        <Col span={6}><Form.Item name="type" label="Type" initialValue="prospect">
-                            <Select options={TYPES} />
-                        </Form.Item></Col>
-                        <Col span={6}><Form.Item name="rating" label="Rating">
-                            <Select allowClear options={RATINGS} />
-                        </Form.Item></Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={12}><Form.Item name="industry" label="Industry">
-                            <Select allowClear showSearch options={INDUSTRIES.map(i => ({ value: i, label: i }))} />
-                        </Form.Item></Col>
-                        <Col span={12}><Form.Item name="accountNumber" label="Account Number"><Input /></Form.Item></Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={8}><Form.Item name="phone" label="Phone"><Input /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="email" label="Email"><Input type="email" /></Form.Item></Col>
-                        <Col span={8}><Form.Item name="website" label="Website"><Input /></Form.Item></Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={8}><Form.Item name="annualRevenue" label="Annual Revenue">
-                            <InputNumber style={{ width: '100%' }} prefix="$" formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
-                        </Form.Item></Col>
-                        <Col span={8}><Form.Item name="employeeCount" label="Employees">
-                            <InputNumber style={{ width: '100%' }} min={0} />
-                        </Form.Item></Col>
-                        <Col span={8}><Form.Item name="ownership" label="Ownership">
-                            <Select allowClear options={['Public', 'Private', 'Subsidiary', 'Government', 'Other'].map(v => ({ value: v.toLowerCase(), label: v }))} />
-                        </Form.Item></Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={12}><Form.Item name="parentAccountId" label="Parent Account">
-                            <Select allowClear showSearch optionFilterProp="label" placeholder="Select parent"
-                                options={accounts.filter(a => editing ? a.id !== editing.id : true).map(a => ({ value: a.id, label: a.name }))} />
-                        </Form.Item></Col>
-                    </Row>
-                    <Form.Item name="description" label="Description">
-                        <Input.TextArea rows={2} />
-                    </Form.Item>
-                </Form>
-            </Modal>
+            {/* ─── Account SteppedFormModal ─────────────── */}
+            <SteppedFormModal
+                open={isModalOpen}
+                onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }}
+                onSubmit={handleSave}
+                form={form}
+                title={editing ? "Edit Account" : "Add Account"}
+                entityName="account"
+                steps={[
+                    {
+                        title: "Company Info",
+                        icon: <BankOutlined />,
+                        fields: ["name", "type", "rating", "industry", "accountNumber"],
+                        content: (
+                            <>
+                                <Row gutter={16}>
+                                    <Col span={12}><Form.Item name="name" label="Account Name" rules={[{ required: true }]}>
+                                        <Input placeholder="e.g., Acme Corp" />
+                                    </Form.Item></Col>
+                                    <Col span={6}><Form.Item name="type" label="Type" initialValue="prospect">
+                                        <Select options={TYPES} />
+                                    </Form.Item></Col>
+                                    <Col span={6}><Form.Item name="rating" label="Rating">
+                                        <Select allowClear options={RATINGS} />
+                                    </Form.Item></Col>
+                                </Row>
+                                <Row gutter={16}>
+                                    <Col span={12}><Form.Item name="industry" label="Industry">
+                                        <Select allowClear showSearch options={INDUSTRIES.map(i => ({ value: i, label: i }))} />
+                                    </Form.Item></Col>
+                                    <Col span={12}><Form.Item name="accountNumber" label="Account Number"><Input /></Form.Item></Col>
+                                </Row>
+                            </>
+                        ),
+                    },
+                    {
+                        title: "Contact & Financial",
+                        icon: <DollarOutlined />,
+                        fields: ["phone", "email", "website", "annualRevenue", "employeeCount", "ownership", "parentAccountId", "description"],
+                        content: (
+                            <>
+                                <Row gutter={16}>
+                                    <Col span={8}><Form.Item name="phone" label="Phone"><Input /></Form.Item></Col>
+                                    <Col span={8}><Form.Item name="email" label="Email"><Input type="email" /></Form.Item></Col>
+                                    <Col span={8}><Form.Item name="website" label="Website"><Input /></Form.Item></Col>
+                                </Row>
+                                <Row gutter={16}>
+                                    <Col span={8}><Form.Item name="annualRevenue" label="Annual Revenue">
+                                        <InputNumber style={{ width: '100%' }} prefix="$" formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
+                                    </Form.Item></Col>
+                                    <Col span={8}><Form.Item name="employeeCount" label="Employees">
+                                        <InputNumber style={{ width: '100%' }} min={0} />
+                                    </Form.Item></Col>
+                                    <Col span={8}><Form.Item name="ownership" label="Ownership">
+                                        <Select allowClear options={['Public', 'Private', 'Subsidiary', 'Government', 'Other'].map(v => ({ value: v.toLowerCase(), label: v }))} />
+                                    </Form.Item></Col>
+                                </Row>
+                                <Row gutter={16}>
+                                    <Col span={12}><Form.Item name="parentAccountId" label="Parent Account">
+                                        <Select allowClear showSearch optionFilterProp="label" placeholder="Select parent"
+                                            options={accounts.filter(a => editing ? a.id !== editing.id : true).map(a => ({ value: a.id, label: a.name }))} />
+                                    </Form.Item></Col>
+                                </Row>
+                                <Form.Item name="description" label="Description">
+                                    <Input.TextArea rows={2} />
+                                </Form.Item>
+                            </>
+                        ),
+                    },
+                ]}
+                fields={ACCOUNT_FIELDS}
+                width={700}
+                onBatchCreate={handleBatchCreate}
+                gradient={["#1677ff", "#722ed1"]}
+                editMode={!!editing}
+            />
 
             <Drawer title="Account Details" open={detailOpen} onClose={() => setDetailOpen(false)} width={500}>
                 {selected && (

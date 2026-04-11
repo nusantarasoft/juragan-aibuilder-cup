@@ -12,6 +12,8 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
 
@@ -38,6 +40,11 @@ const SYSTEM_OBJECTS = [
     "pages", "media", "blocks", "users", "settings", "datasets",
     "individuals", "accounts", "contacts", "leads", "opportunities",
     "cases", "activities", "projects", "tasks", "teams",
+];
+
+const PS_FIELDS: FieldDef[] = [
+    { name: "name", label: "Name", required: true },
+    { name: "description", label: "Description" },
 ];
 
 export default function PermissionSetsPage() {
@@ -89,9 +96,8 @@ export default function PermissionSetsPage() {
         }
     };
 
-    const handleCreate = async () => {
+    const handleSave = async (values: any) => {
         try {
-            const values = await form.validateFields();
             await gql(`
                 mutation($tenantId: String!, $name: String!, $description: String) {
                     createPermissionSet(tenantId: $tenantId, name: $name, description: $description) { id }
@@ -104,6 +110,19 @@ export default function PermissionSetsPage() {
         } catch (err: any) {
             message.error(err.message);
         }
+    };
+
+    const handleBatchCreate = async (records: any[]) => {
+        let success = 0, failed = 0; const errors: string[] = [];
+        for (const r of records) {
+            try {
+                await gql(`mutation($tenantId: String!, $name: String!, $description: String) {
+                    createPermissionSet(tenantId: $tenantId, name: $name, description: $description) { id }
+                }`, { tenantId: DEFAULT_TENANT_ID, name: r.name, description: r.description || null });
+                success++;
+            } catch (e: any) { failed++; errors.push(`${r.name}: ${e.message}`); }
+        }
+        loadSets(); return { success, failed, errors };
     };
 
     const handleDelete = async (id: string) => {
@@ -193,6 +212,24 @@ export default function PermissionSetsPage() {
         })),
     ];
 
+    const formSteps = [
+        {
+            title: "Permission Set",
+            icon: <KeyOutlined />,
+            fields: ["name", "description"],
+            content: (
+                <>
+                    <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+                        <Input placeholder="e.g., Marketing Tools Access" />
+                    </Form.Item>
+                    <Form.Item name="description" label="Description">
+                        <Input.TextArea placeholder="What does this permission set grant?" rows={2} />
+                    </Form.Item>
+                </>
+            ),
+        },
+    ];
+
     return (
         <CMSLayout
             title="Permission Sets"
@@ -208,18 +245,21 @@ export default function PermissionSetsPage() {
                 <Table columns={columns} dataSource={sets.map(s => ({ ...s, key: s.id }))} loading={loading} pagination={false} size="middle" />
             </Card>
 
-            <Modal title="Create Permission Set" open={isModalOpen} onOk={handleCreate}
-                onCancel={() => { setIsModalOpen(false); form.resetFields(); }} okText="Create">
-                <Form form={form} layout="vertical">
-                    <Form.Item name="name" label="Name" rules={[{ required: true }]}>
-                        <Input placeholder="e.g., Marketing Tools Access" />
-                    </Form.Item>
-                    <Form.Item name="description" label="Description">
-                        <Input.TextArea placeholder="What does this permission set grant?" rows={2} />
-                    </Form.Item>
-                </Form>
-            </Modal>
+            <SteppedFormModal
+                open={isModalOpen}
+                onCancel={() => { setIsModalOpen(false); form.resetFields(); }}
+                onSubmit={handleSave}
+                form={form}
+                title="Create Permission Set"
+                entityName="permission-set"
+                steps={formSteps}
+                fields={PS_FIELDS}
+                width={520}
+                onBatchCreate={handleBatchCreate}
+                gradient={["#0ea5e9", "#6366f1"]}
+            />
 
+            {/* Permissions Configuration Modal — kept as separate specialized workflow */}
             <Modal title={<Space><KeyOutlined /> Permissions — {selectedPS?.name}</Space>}
                 open={permsOpen} onCancel={() => setPermsOpen(false)} footer={null} width={900}>
                 <Spin spinning={permsLoading}>

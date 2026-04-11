@@ -1,6 +1,7 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Pool } from 'pg';
+import { SupabaseService } from '../supabase/supabase.service';
+import { SupabaseClient } from '@supabase/supabase-js';
 import * as crypto from 'crypto';
 
 interface AnnotationPayload {
@@ -33,28 +34,18 @@ interface AnnotationPayload {
 }
 
 @Injectable()
-export class WebhooksService implements OnModuleInit, OnModuleDestroy {
+export class WebhooksService implements OnModuleInit {
     private readonly logger = new Logger(WebhooksService.name);
-    private pgPool: Pool;
+    private supabaseAdmin: SupabaseClient;
 
-    constructor(private configService: ConfigService) {
-        this.pgPool = new Pool({
-            connectionString: this.configService.get('SUPABASE_DB_URL'),
-        });
-    }
+    constructor(
+        private configService: ConfigService,
+        private supabaseService: SupabaseService,
+    ) {}
 
     async onModuleInit() {
-        try {
-            const client = await this.pgPool.connect();
-            this.logger.log('WebhooksService: Connected to PostgreSQL pool successfully');
-            client.release();
-        } catch (error) {
-            this.logger.error('WebhooksService: Failed to connect to PostgreSQL pool', error);
-        }
-    }
-
-    async onModuleDestroy() {
-        await this.pgPool.end();
+        this.supabaseAdmin = this.supabaseService.getAdminClient();
+        this.logger.log('WebhooksService: Using Supabase admin client (no direct PG access)');
     }
 
     /**
@@ -65,8 +56,6 @@ export class WebhooksService implements OnModuleInit, OnModuleDestroy {
 
         // If no secret configured, skip validation (development mode)
         if (!secret) {
-            // Only log this once or on debug to avoid spam
-            // this.logger.debug('LABELSTUDIO_WEBHOOK_SECRET not configured, skipping signature validation');
             return true;
         }
 
@@ -124,32 +113,25 @@ export class WebhooksService implements OnModuleInit, OnModuleDestroy {
 
             this.logger.debug(`Found media_id: ${mediaId} for task ${task.id}`);
 
-            // Upsert into media_annotations table
-            const upsertQuery = `
-                INSERT INTO media_annotations (
-                    media_id,
-                    ls_task_id,
-                    ls_project_id,
-                    annotations,
-                    status,
-                    annotated_by,
-                    updated_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
-                ON CONFLICT (media_id, ls_task_id) DO UPDATE SET
-                    annotations = $4,
-                    status = $5,
-                    annotated_by = $6,
-                    updated_at = NOW()
-            `;
+            // Upsert into media_annotations table via Supabase
+            const { error } = await this.supabaseAdmin
+                .from('media_annotations')
+                .upsert(
+                    {
+                        media_id: mediaId,
+                        ls_task_id: task.id,
+                        ls_project_id: project.id,
+                        annotations: annotation.result,
+                        status: 'annotated',
+                        annotated_by: annotatedBy,
+                        updated_at: new Date().toISOString(),
+                    },
+                    { onConflict: 'media_id,ls_task_id' }
+                );
 
-            await this.pgPool.query(upsertQuery, [
-                mediaId,
-                task.id,
-                project.id,
-                JSON.stringify(annotation.result),
-                'annotated',
-                annotatedBy
-            ]);
+            if (error) {
+                throw new Error(`Supabase upsert failed: ${error.message}`);
+            }
 
             this.logger.log(`Annotation synced for media ${mediaId}`);
 
@@ -178,12 +160,19 @@ export class WebhooksService implements OnModuleInit, OnModuleDestroy {
 
         try {
             // Update status back to pending
-            const updateQuery = `
-                UPDATE media_annotations 
-                SET status = 'pending', annotations = '[]', updated_at = NOW()
-                WHERE ls_task_id = $1 AND ls_project_id = $2
-            `;
-            await this.pgPool.query(updateQuery, [task.id, project.id]);
+            const { error } = await this.supabaseAdmin
+                .from('media_annotations')
+                .update({
+                    status: 'pending',
+                    annotations: [],
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('ls_task_id', task.id)
+                .eq('ls_project_id', project.id);
+
+            if (error) {
+                throw new Error(`Supabase update failed: ${error.message}`);
+            }
         } catch (error) {
             this.logger.error('Failed to handle annotation deletion', error);
         }
@@ -202,11 +191,15 @@ export class WebhooksService implements OnModuleInit, OnModuleDestroy {
         this.logger.log(`Task ${task.id} deleted from project ${project.id}`);
 
         try {
-            const deleteQuery = `
-                DELETE FROM media_annotations 
-                WHERE ls_task_id = $1 AND ls_project_id = $2
-            `;
-            await this.pgPool.query(deleteQuery, [task.id, project.id]);
+            const { error } = await this.supabaseAdmin
+                .from('media_annotations')
+                .delete()
+                .eq('ls_task_id', task.id)
+                .eq('ls_project_id', project.id);
+
+            if (error) {
+                throw new Error(`Supabase delete failed: ${error.message}`);
+            }
         } catch (error) {
             this.logger.error('Failed to handle task deletion', error);
         }
@@ -241,11 +234,17 @@ export class WebhooksService implements OnModuleInit, OnModuleDestroy {
      */
     private async findMediaIdByTaskId(taskId: number): Promise<string | null> {
         try {
-            const result = await this.pgPool.query(
-                'SELECT media_id FROM media_annotations WHERE ls_task_id = $1 LIMIT 1',
-                [taskId]
-            );
-            return result.rows[0]?.media_id || null;
+            const { data, error } = await this.supabaseAdmin
+                .from('media_annotations')
+                .select('media_id')
+                .eq('ls_task_id', taskId)
+                .limit(1)
+                .single();
+
+            if (error || !data) {
+                return null;
+            }
+            return data.media_id;
         } catch (error) {
             this.logger.error('Failed to find media_id by task_id', error);
             return null;
@@ -257,18 +256,19 @@ export class WebhooksService implements OnModuleInit, OnModuleDestroy {
      */
     private async updateMediaTags(mediaId: string, labels: string[]): Promise<void> {
         try {
-            // Merge with existing tags
-            const existingResult = await this.pgPool.query(
-                'SELECT metadata FROM media WHERE id = $1',
-                [mediaId]
-            );
+            // Fetch existing metadata
+            const { data: mediaRow, error: fetchError } = await this.supabaseAdmin
+                .from('media')
+                .select('metadata')
+                .eq('id', mediaId)
+                .single();
 
-            if (existingResult.rows.length === 0) {
+            if (fetchError || !mediaRow) {
                 this.logger.warn(`Media ${mediaId} not found when updating tags`);
                 return;
             }
 
-            const existingMetadata = existingResult.rows[0]?.metadata || {};
+            const existingMetadata = mediaRow.metadata || {};
             const existingTags = existingMetadata.tags || [];
 
             // Create Set for unique tags
@@ -280,13 +280,17 @@ export class WebhooksService implements OnModuleInit, OnModuleDestroy {
                 ...existingMetadata,
                 tags: mergedTags,
                 annotation_synced: true,
-                annotation_synced_at: new Date().toISOString()
+                annotation_synced_at: new Date().toISOString(),
             };
 
-            await this.pgPool.query(
-                'UPDATE media SET metadata = $1 WHERE id = $2',
-                [updatedMetadata, mediaId]
-            );
+            const { error: updateError } = await this.supabaseAdmin
+                .from('media')
+                .update({ metadata: updatedMetadata })
+                .eq('id', mediaId);
+
+            if (updateError) {
+                throw new Error(`Failed to update media metadata: ${updateError.message}`);
+            }
 
             this.logger.log(`Updated media ${mediaId} with ${labels.length} annotation labels`);
         } catch (error) {
@@ -300,28 +304,23 @@ export class WebhooksService implements OnModuleInit, OnModuleDestroy {
      */
     async storeTaskMapping(mediaId: string, taskId: number, projectId: number, predictions: any[]): Promise<void> {
         try {
-            // Explicitly verify media exists first to avoid FK error if something is wrong
-            // (Though media_id comes from RagService which should be valid)
+            const { error } = await this.supabaseAdmin
+                .from('media_annotations')
+                .upsert(
+                    {
+                        media_id: mediaId,
+                        ls_task_id: taskId,
+                        ls_project_id: projectId,
+                        predictions: predictions,
+                        status: 'pending',
+                        updated_at: new Date().toISOString(),
+                    },
+                    { onConflict: 'media_id,ls_task_id' }
+                );
 
-            const query = `
-                INSERT INTO media_annotations (
-                    media_id,
-                    ls_task_id,
-                    ls_project_id,
-                    predictions,
-                    status
-                ) VALUES ($1, $2, $3, $4, 'pending')
-                ON CONFLICT (media_id, ls_task_id) DO UPDATE SET
-                    predictions = $4,
-                    updated_at = NOW()
-            `;
-
-            await this.pgPool.query(query, [
-                mediaId,
-                taskId,
-                projectId,
-                JSON.stringify(predictions)
-            ]);
+            if (error) {
+                throw new Error(`Supabase upsert failed: ${error.message}`);
+            }
 
             this.logger.log(`Stored task mapping: media ${mediaId} -> task ${taskId}`);
         } catch (error) {

@@ -336,6 +336,21 @@ export default function CMSLayout({
     const [showBackground, setShowBackground] = useState(true);
     const [aiStudioVisible, setAIStudioVisible] = useState(false);
 
+    // Controlled openKeys to prevent submenu collapse on navigation
+    const [openKeys, setOpenKeys] = useState<string[]>(() => {
+        // Compute initial open keys from current path
+        const path = currentPath || '/admin/dashboard';
+        const keys: string[] = [];
+        if (menuConfig?.route?.routes) {
+            for (const route of menuConfig.route.routes) {
+                if (route.routes && route.routes.some((r: any) => path.startsWith(r.path))) {
+                    keys.push(route.path);
+                }
+            }
+        }
+        return keys;
+    });
+
     // Starrring logic
     const GRAPHQL_URL = "http://127.0.0.1:4001/graphql";
 
@@ -719,6 +734,10 @@ export default function CMSLayout({
                             margin: 0,
                         }}
                         menuHeaderRender={false}
+                        menuProps={{
+                            openKeys,
+                            onOpenChange: (keys) => setOpenKeys(keys as string[]),
+                        }}
                         menuExtraRender={() => (
                             <div style={{
                                 display: "flex",
@@ -865,7 +884,26 @@ export default function CMSLayout({
                                     setPathname(targetPath);
                                     router.push(targetPath);
                                 }}
+                                onClickCapture={(e) => {
+                                    // Intercept <a> tag clicks before they cause navigation
+                                    const target = e.target as HTMLElement;
+                                    if (target.tagName === 'A' || target.closest('a')) {
+                                        e.preventDefault();
+                                    }
+                                }}
                                 style={{ cursor: "pointer" }}
+                            >
+                                {dom}
+                            </div>
+                        )}
+                        subMenuItemRender={(item, dom) => (
+                            <div
+                                onClickCapture={(e) => {
+                                    const target = e.target as HTMLElement;
+                                    if (target.tagName === 'A' || target.closest('a')) {
+                                        e.preventDefault();
+                                    }
+                                }}
                             >
                                 {dom}
                             </div>
@@ -925,17 +963,25 @@ export default function CMSLayout({
                                 
                                 return (
                                     <div style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
-                                        <a
-                                            onClick={() => {
+                                        <div
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
                                                 setPathname(item.path || "/admin/dashboard");
                                                 if (item.path) {
                                                     router.push(item.path);
                                                 }
                                             }}
+                                            onClickCapture={(e) => {
+                                                const target = e.target as HTMLElement;
+                                                if (target.tagName === 'A' || target.closest('a')) {
+                                                    e.preventDefault();
+                                                }
+                                            }}
                                             style={{ cursor: "pointer", flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                                         >
                                             {dom}
-                                        </a>
+                                        </div>
                                         {isPinnedOrStarred && !innerCollapsed && (
                                             <Popconfirm
                                                 title={`Remove from ${selectedSegment}?`}

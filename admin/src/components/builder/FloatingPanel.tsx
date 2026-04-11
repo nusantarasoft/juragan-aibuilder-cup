@@ -28,6 +28,7 @@ interface FloatingPanelProps {
     minHeight?: number;
     maxHeight?: number;
     showHeader?: boolean;
+    dragConstraintsRef?: any;
 }
 
 export function FloatingPanel({
@@ -39,17 +40,16 @@ export function FloatingPanel({
     onDockChange,
     minimized,
     onMinimizedChange,
-    defaultWidth = 320,
+    defaultWidth = 280,
     minWidth = 240,
     maxWidth = 480,
     minHeight = 200,
     maxHeight = 600,
     showHeader = true,
+    dragConstraintsRef,
 }: FloatingPanelProps) {
     const { token } = theme.useToken();
-    const [width, setWidth] = useState(defaultWidth);
     const [height, setHeight] = useState(400);
-    const [isResizing, setIsResizing] = useState(false);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const panelRef = useRef<HTMLDivElement>(null);
     const dragControls = useDragControls();
@@ -57,36 +57,7 @@ export function FloatingPanel({
     // Detect dark mode
     const isDarkMode = token.colorBgContainer === '#141414' || token.colorBgBase === '#000';
 
-    // Handle resize for docked mode
-    const handleMouseDown = (e: React.MouseEvent) => {
-        e.preventDefault();
-        setIsResizing(true);
-    };
-
-    useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
-            if (!isResizing || !panelRef.current) return;
-            const rect = panelRef.current.getBoundingClientRect();
-            let newWidth: number;
-            if (dockPosition === "right") {
-                newWidth = rect.right - e.clientX;
-            } else {
-                newWidth = e.clientX - rect.left;
-            }
-            setWidth(Math.max(minWidth, Math.min(maxWidth, newWidth)));
-        };
-
-        const handleMouseUp = () => setIsResizing(false);
-
-        if (isResizing) {
-            document.addEventListener("mousemove", handleMouseMove);
-            document.addEventListener("mouseup", handleMouseUp);
-        }
-        return () => {
-            document.removeEventListener("mousemove", handleMouseMove);
-            document.removeEventListener("mouseup", handleMouseUp);
-        };
-    }, [isResizing, dockPosition, minWidth, maxWidth]);
+    const effectiveDockPosition = minimized ? "float" : dockPosition;
 
     // Handle drag end to detect dock zones
     const handleDragEnd = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
@@ -112,36 +83,33 @@ export function FloatingPanel({
         WebkitBackdropFilter: "blur(12px)",
     };
 
-    // Header gradient (works in both modes)
-    const headerGradient = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
-
     // Get position styles based on dock mode
     const getPositionStyles = (): React.CSSProperties => {
-        if (dockPosition === "left") {
+        if (effectiveDockPosition === "left") {
             return {
-                position: "fixed",
+                position: "absolute",
                 left: 0,
-                top: 64,
+                top: 0,
                 bottom: 0,
-                width: minimized ? 48 : width,
+                width: minimized ? 48 : defaultWidth,
                 zIndex: 1000,
             };
         }
-        if (dockPosition === "right") {
+        if (effectiveDockPosition === "right") {
             return {
-                position: "fixed",
+                position: "absolute",
                 right: 0,
-                top: 64,
+                top: 0,
                 bottom: 0,
-                width: minimized ? 48 : width,
+                width: minimized ? 48 : defaultWidth,
                 zIndex: 1000,
             };
         }
         // Float mode
         return {
-            position: "fixed",
+            position: "absolute",
             zIndex: 1001,
-            width: minimized ? 48 : width,
+            width: minimized ? 48 : defaultWidth,
             height: minimized ? 48 : height,
             maxHeight: maxHeight,
             minHeight: minHeight,
@@ -159,49 +127,58 @@ export function FloatingPanel({
             style={{
                 ...getPositionStyles(),
                 ...glassStyle,
-                borderRadius: dockPosition === "float" ? 12 : 0,
-                boxShadow: dockPosition === "float"
+                borderRadius: effectiveDockPosition === "float" ? 12 : 8,
+                boxShadow: effectiveDockPosition === "float"
                     ? "0 8px 32px rgba(0,0,0,0.15)"
-                    : isDarkMode ? "2px 0 12px rgba(0,0,0,0.3)" : "2px 0 8px rgba(0,0,0,0.06)",
+                    : "0 1px 2px 0 rgba(0, 0, 0, 0.04)",
                 border: `1px solid ${isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"}`,
                 display: "flex",
                 flexDirection: "column",
                 overflow: "hidden",
-                transition: isResizing ? "none" : "width 0.2s ease, height 0.2s ease",
+                transition: "width 0.2s ease, height 0.2s ease",
             }}
         >
             {/* Header - Always shows with glassmorphism */}
             {showHeader && (
                 <div
                     style={{
-                        padding: minimized ? "12px 8px" : "12px 16px",
-                        background: headerGradient,
-                        color: "#fff",
+                        padding: minimized ? "0 8px" : "0 12px",
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+                        height: 40,
+                        minHeight: 40,
+                        color: isDarkMode ? '#e5e7eb' : '#374151',
                         display: "flex",
                         alignItems: "center",
                         justifyContent: minimized ? "center" : "space-between",
                         gap: 8,
-                        cursor: dockPosition === "float" ? "move" : "default",
+                        cursor: effectiveDockPosition === "float" ? "move" : "default",
                         userSelect: "none",
                         flexShrink: 0,
                     }}
-                    onPointerDown={(e) => dockPosition === "float" && dragControls.start(e)}
+                    onPointerDown={(e) => effectiveDockPosition === "float" && dragControls.start(e)}
                 >
                     {minimized ? (
-                        <Tooltip title={`${title} (Click to expand)`} placement={dockPosition === "left" ? "right" : "left"}>
+                        <Tooltip title={`${title} (Click to expand)`} placement={effectiveDockPosition === "left" ? "right" : "left"}>
                             <Button
                                 type="text"
                                 size="small"
                                 icon={icon}
                                 onClick={handleMinimizeToggle}
-                                style={{ color: "#fff", fontSize: 16 }}
+                                className="text-gray-400 hover:text-violet-500 w-7 h-7 flex items-center justify-center p-0"
                             />
                         </Tooltip>
                     ) : (
                         <>
                             <Space size={8}>
-                                <span style={{ fontSize: 14 }}>{icon}</span>
-                                <span style={{ fontWeight: 600, fontSize: 13 }}>{title}</span>
+                                <span style={{ fontSize: 14 }} className="text-violet-500">{icon}</span>
+                                <span style={{
+                                    background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    fontWeight: 600,
+                                    fontSize: '14px'
+                                }}>{title}</span>
                             </Space>
                             <Space size={2}>
                                 {/* Dock Left */}
@@ -211,10 +188,7 @@ export function FloatingPanel({
                                         size="small"
                                         icon={<VerticalRightOutlined />}
                                         onClick={() => onDockChange("left")}
-                                        style={{
-                                            color: dockPosition === "left" ? "#fff" : "rgba(255,255,255,0.6)",
-                                            background: dockPosition === "left" ? "rgba(255,255,255,0.2)" : "transparent",
-                                        }}
+                                        className={dockPosition === "left" ? "text-violet-500 bg-violet-50 dark:bg-violet-900/20 w-6 h-6 flex items-center justify-center p-0" : "text-gray-400 hover:text-violet-500 w-6 h-6 flex items-center justify-center p-0"}
                                     />
                                 </Tooltip>
                                 {/* Float */}
@@ -224,10 +198,7 @@ export function FloatingPanel({
                                         size="small"
                                         icon={<DragOutlined />}
                                         onClick={() => onDockChange("float")}
-                                        style={{
-                                            color: dockPosition === "float" ? "#fff" : "rgba(255,255,255,0.6)",
-                                            background: dockPosition === "float" ? "rgba(255,255,255,0.2)" : "transparent",
-                                        }}
+                                        className={dockPosition === "float" ? "text-violet-500 bg-violet-50 dark:bg-violet-900/20 w-6 h-6 flex items-center justify-center p-0" : "text-gray-400 hover:text-violet-500 w-6 h-6 flex items-center justify-center p-0"}
                                     />
                                 </Tooltip>
                                 {/* Dock Right */}
@@ -237,10 +208,7 @@ export function FloatingPanel({
                                         size="small"
                                         icon={<VerticalLeftOutlined />}
                                         onClick={() => onDockChange("right")}
-                                        style={{
-                                            color: dockPosition === "right" ? "#fff" : "rgba(255,255,255,0.6)",
-                                            background: dockPosition === "right" ? "rgba(255,255,255,0.2)" : "transparent",
-                                        }}
+                                        className={dockPosition === "right" ? "text-violet-500 bg-violet-50 dark:bg-violet-900/20 w-6 h-6 flex items-center justify-center p-0" : "text-gray-400 hover:text-violet-500 w-6 h-6 flex items-center justify-center p-0"}
                                     />
                                 </Tooltip>
                                 {/* Minimize/Expand */}
@@ -250,7 +218,7 @@ export function FloatingPanel({
                                         size="small"
                                         icon={minimized ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                                         onClick={handleMinimizeToggle}
-                                        style={{ color: "#fff" }}
+                                        className="text-gray-400 hover:text-violet-500 w-6 h-6 flex items-center justify-center p-0"
                                     />
                                 </Tooltip>
                             </Space>
@@ -272,51 +240,30 @@ export function FloatingPanel({
                     {children}
                 </div>
             )}
-
-            {/* Resize Handle - only for docked mode */}
-            {!minimized && dockPosition !== "float" && (
-                <div
-                    onMouseDown={handleMouseDown}
-                    style={{
-                        position: "absolute",
-                        top: 0,
-                        bottom: 0,
-                        width: 6,
-                        cursor: "col-resize",
-                        background: isResizing ? "rgba(102, 126, 234, 0.3)" : "transparent",
-                        ...(dockPosition === "left" ? { right: 0 } : { left: 0 }),
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(102, 126, 234, 0.2)")}
-                    onMouseLeave={(e) => {
-                        if (!isResizing) e.currentTarget.style.background = "transparent";
-                    }}
-                />
-            )}
         </div>
     );
 
     // Float mode with drag constraints
-    if (dockPosition === "float") {
+    if (effectiveDockPosition === "float") {
         return (
             <motion.div
                 drag
                 dragControls={dragControls}
                 dragMomentum={false}
-                dragConstraints={{
-                    left: 20,
-                    right: window.innerWidth - width - 20,
-                    top: 80,
-                    bottom: window.innerHeight - height - 20,
+                dragConstraints={dragConstraintsRef || {
+                    left: 0,
+                    right: typeof window !== 'undefined' ? window.innerWidth - defaultWidth - 300 : 800,
+                    top: 0,
+                    bottom: typeof window !== 'undefined' ? window.innerHeight - height - 120 : 600,
                 }}
                 onDragEnd={handleDragEnd}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 style={{
-                    position: "fixed",
-                    bottom: id === "structure" ? 20 : undefined,
-                    top: id === "library" ? 80 : undefined,
-                    left: id === "library" ? 20 : undefined,
-                    right: id === "structure" ? 20 : undefined,
+                    position: "absolute",
+                    top: 20,
+                    left: id === "library" ? 20 : 'calc(100% - 300px)',
+                    right: undefined,
                 }}
             >
                 {panelContent}

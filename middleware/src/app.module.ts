@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { SupabaseModule } from './supabase/supabase.module';
 import { AuthModule } from './auth/auth.module';
@@ -21,6 +22,8 @@ import { CrmModule } from './crm/crm.module';
 import { AiModule } from './ai/ai.module';
 import { PmModule } from './pm/pm.module';
 import { StarsModule } from './stars/stars.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { ItsmModule } from './itsm/itsm.module';
 
 @Module({
     imports: [
@@ -29,6 +32,7 @@ import { StarsModule } from './stars/stars.module';
             isGlobal: true,
             envFilePath: ['.env', '../.env'],
         }),
+        ScheduleModule.forRoot(),
 
         // GraphQL configuration (Code-First)
         GraphQLModule.forRoot<ApolloDriverConfig>({
@@ -59,6 +63,8 @@ import { StarsModule } from './stars/stars.module';
         AiModule,
         PmModule,
         StarsModule,
+        InventoryModule,
+        ItsmModule,
     ],
 })
 export class AppModule { }

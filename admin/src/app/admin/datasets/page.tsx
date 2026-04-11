@@ -127,18 +127,7 @@ export default function DatasetsPage() {
 
     return (
         <CMSLayout
-            title={
-                <div className="flex items-center gap-3">
-                    <span style={{
-                        background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        fontWeight: 700
-                    }}>
-                        Datasets
-                    </span>
-                </div>
-            }
+            title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>Datasets</AuroraText>}
             subTitle={
                 <DecryptedText
                     text="Manage your data sources and datasets"
