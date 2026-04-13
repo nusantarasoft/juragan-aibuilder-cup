@@ -375,7 +375,7 @@ export default function SharingPage() {
                 fields={RULE_FIELDS}
                 width={580}
                 onBatchCreate={handleBatchCreateRules}
-                gradient={["#ec4899", "#a855f7"]}
+                gradient={["#ec4899", "var(--theme-accent, #a855f7)"]}
             />
         </CMSLayout>
     );

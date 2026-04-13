@@ -98,7 +98,7 @@ export default function DataImportExport({
   form, entityName, fields, onBatchCreate, onAfterImport, gradient,
 }: DataImportExportProps) {
   const g1 = gradient?.[0] || "#6366f1";
-  const g2 = gradient?.[1] || "#8b5cf6";
+  const g2 = gradient?.[1] || "var(--theme-color, #8b5cf6)";
 
   // Import modal
   const [importOpen, setImportOpen] = useState(false);

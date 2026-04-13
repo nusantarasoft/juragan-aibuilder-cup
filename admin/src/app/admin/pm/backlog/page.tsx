@@ -17,6 +17,7 @@ import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
 
@@ -52,7 +53,7 @@ const GET_PROJECTS = `
 const STATUS_CONFIG: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
     todo: { color: '#64748b', icon: <UnorderedListOutlined />, label: 'To Do' },
     in_progress: { color: '#3b82f6', icon: <ClockCircleOutlined />, label: 'In Progress' },
-    in_review: { color: '#8b5cf6', icon: <ThunderboltOutlined />, label: 'In Review' },
+    in_review: { color: 'var(--theme-color, #8b5cf6)', icon: <ThunderboltOutlined />, label: 'In Review' },
     done: { color: '#10b981', icon: <CheckCircleOutlined />, label: 'Done' },
     blocked: { color: '#ef4444', icon: <ExclamationCircleOutlined />, label: 'Blocked' },
 };
@@ -67,6 +68,7 @@ const PRIORITY_CONFIG: Record<string, { color: string; icon: React.ReactNode }> 
 export default function BacklogPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
+    const { themeColor } = usePreferencesStore();
     const [tasks, setTasks] = useState<any[]>([]);
     const [projects, setProjects] = useState<any[]>([]);
     const [search, setSearch] = useState("");
@@ -214,7 +216,7 @@ export default function BacklogPage() {
             width: 130,
             render: (_: any, record: any) => record.assignee ? (
                 <Space size={4}>
-                    <UserOutlined style={{ color: '#8b5cf6' }} />
+                    <UserOutlined style={{ color: themeColor }} />
                     <Text style={{ fontSize: 12 }}>{record.assignee.firstName} {record.assignee.lastName}</Text>
                 </Space>
             ) : <Text type="secondary" style={{ fontSize: 11 }}>Unassigned</Text>,
@@ -285,7 +287,7 @@ export default function BacklogPage() {
                         <Statistic
                             title={<span style={{ fontSize: 12 }}>Total Tasks</span>}
                             value={totalTasks}
-                            prefix={<UnorderedListOutlined style={{ color: '#6366f1' }} />}
+                            prefix={<UnorderedListOutlined style={{ color: themeColor }} />}
                             valueStyle={{ fontSize: 24, fontWeight: 700 }}
                         />
                     </Card>
@@ -353,7 +355,7 @@ export default function BacklogPage() {
                         <Progress
                             percent={totalEstimated > 0 ? Math.round((totalLogged / totalEstimated) * 100) : 0}
                             size="small"
-                            strokeColor={{ '0%': '#8b5cf6', '100%': '#6366f1' }}
+                            strokeColor={{ '0%': 'var(--theme-color, #8b5cf6)', '100%': 'var(--theme-secondary, #6366f1)' }}
                             trailColor={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}
                         />
                     </Col>
@@ -426,7 +428,7 @@ export default function BacklogPage() {
             <Card
                 title={
                     <Space>
-                        <UnorderedListOutlined style={{ color: '#8b5cf6' }} />
+                        <UnorderedListOutlined style={{ color: themeColor }} />
                         <span style={{ fontWeight: 600 }}>All Tasks</span>
                         <Tag color="purple">{filtered.length}</Tag>
                     </Space>
@@ -461,7 +463,7 @@ export default function BacklogPage() {
             <Drawer
                 title={
                     <Space>
-                        <UnorderedListOutlined style={{ color: '#8b5cf6' }} />
+                        <UnorderedListOutlined style={{ color: themeColor }} />
                         <span>Task Details</span>
                     </Space>
                 }
@@ -526,7 +528,7 @@ export default function BacklogPage() {
                         </Descriptions>
 
                         {viewingTask.description && (
-                            <Card size="small" title="Description" style={{ marginTop: 16, borderLeft: '3px solid #8b5cf6' }}>
+                            <Card size="small" title="Description" style={{ marginTop: 16, borderLeft: `3px solid ${themeColor}` }}>
                                 <div style={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>{viewingTask.description}</div>
                             </Card>
                         )}

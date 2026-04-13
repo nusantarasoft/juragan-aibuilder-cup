@@ -97,6 +97,7 @@ import {
 import { MagicButton } from "@/components/custom/MagicButton";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import Hyperspeed from "@/components/react-bits/Hyperspeed";
 import { hyperspeedPresets } from "@/components/react-bits/HyperSpeedPresets";
 import MetaBalls from "@/components/react-bits/MetaBalls";
@@ -112,11 +113,11 @@ const PremiumButton = ({ children, onClick, icon, className, style, ...props }: 
             whileTap={{ scale: 0.98 }}
             className={`
                 px-4 py-1.5 
-                bg-gradient-to-r from-violet-600 to-indigo-600 
-                hover:from-violet-500 hover:to-indigo-500
+                bg-gradient-to-r from-[var(--theme-color, #7c3aed)] to-[var(--theme-secondary, #6366f1)] 
+                hover:opacity-90
                 text-white 
                 rounded-lg 
-                shadow-md hover:shadow-lg hover:shadow-indigo-500/30
+                shadow-md hover:shadow-lg hover:shadow-black/10
                 transition-all duration-200
                 flex items-center gap-2 
                 text-xs font-medium
@@ -158,6 +159,7 @@ export default function MediaLibraryPage() {
     // Theme state - use resolvedTheme which gives the actual resolved value
     const { resolvedTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
+    const { themeColor } = usePreferencesStore();
     useEffect(() => setMounted(true), []);
 
     // Theme detection: only evaluate after mount when resolvedTheme is available
@@ -211,7 +213,7 @@ export default function MediaLibraryPage() {
 
     const glassHeaderStyle = {
         background: 'rgba(255, 255, 255, 0.1)',
-        borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+        borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
     };
     const [newFolderModalVisible, setNewFolderModalVisible] = useState(false);
     const [newFolderName, setNewFolderName] = useState("");
@@ -1148,7 +1150,7 @@ export default function MediaLibraryPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>Media Library</AuroraText>}
+            title={<AuroraText colors={[themeColor, 'var(--theme-secondary, #6366f1)', 'var(--theme-accent, #a78bfa)']}>Media Library</AuroraText>}
             subTitle={
                 <DecryptedText
                     text="Manage your media files and folders"
@@ -1171,7 +1173,7 @@ export default function MediaLibraryPage() {
                                     title={
                                         <div className="flex items-center gap-2">
                                             <span style={{
-                                                background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                                background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                                 WebkitBackgroundClip: 'text',
                                                 WebkitTextFillColor: 'transparent',
                                                 fontWeight: 600,
@@ -1189,7 +1191,7 @@ export default function MediaLibraryPage() {
                                                     icon={<ExpandAltOutlined style={{ fontSize: 14 }} />}
                                                     onClick={() => folderTreeRef.current?.expandAll()}
                                                     size="small"
-                                                    className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                                                    className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] flex items-center justify-center w-7 h-7"
                                                 />
                                             </AnimatedTooltip>
                                             <AnimatedTooltip content="Collapse All">
@@ -1198,7 +1200,7 @@ export default function MediaLibraryPage() {
                                                     icon={<CompressOutlined style={{ fontSize: 14 }} />}
                                                     onClick={() => folderTreeRef.current?.collapseAll()}
                                                     size="small"
-                                                    className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                                                    className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] flex items-center justify-center w-7 h-7"
                                                 />
                                             </AnimatedTooltip>
 
@@ -1210,7 +1212,7 @@ export default function MediaLibraryPage() {
                                                     icon={<FolderAddOutlined style={{ fontSize: 14 }} />}
                                                     onClick={() => setNewFolderModalVisible(true)}
                                                     size="small"
-                                                    className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                                                    className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] flex items-center justify-center w-7 h-7"
                                                 />
                                             </AnimatedTooltip>
                                             <AnimatedTooltip content="New Bucket">
@@ -1219,7 +1221,7 @@ export default function MediaLibraryPage() {
                                                     icon={<PlusOutlined style={{ fontSize: 14 }} />}
                                                     onClick={() => setNewBucketModalVisible(true)}
                                                     size="small"
-                                                    className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                                                    className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] flex items-center justify-center w-7 h-7"
                                                 />
                                             </AnimatedTooltip>
                                         </div>
@@ -1238,7 +1240,7 @@ export default function MediaLibraryPage() {
                                     styles={{
                                         header: {
                                             background: 'transparent',
-                                            borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+                                            borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
                                             minHeight: 40,
                                             padding: '0 12px'
                                         },
@@ -1252,7 +1254,7 @@ export default function MediaLibraryPage() {
                                     <div className="px-3 mb-4 flex items-center gap-2">
                                         <Input
                                             placeholder="Search tree..."
-                                            prefix={<SearchOutlined style={{ color: '#8b5cf6', fontSize: 13 }} />}
+                                            prefix={<SearchOutlined style={{ color: themeColor, fontSize: 13 }} />}
                                             size="small"
                                             className="flex-1 rounded-md border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 h-8 hover:bg-white dark:hover:bg-gray-800 focus:bg-white dark:focus:bg-gray-800 transition-all text-xs"
                                             allowClear
@@ -1263,7 +1265,7 @@ export default function MediaLibraryPage() {
                                                 icon={<ReloadOutlined style={{ fontSize: 13 }} />}
                                                 onClick={loadAllData} // Original handler
                                                 size="small"
-                                                className="text-gray-400 hover:text-violet-500"
+                                                className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)]"
                                             />
                                         </AnimatedTooltip>
                                     </div>
@@ -1303,7 +1305,7 @@ export default function MediaLibraryPage() {
                             <Card
                                 size="small"
                                 style={glassCardStyle}
-                                className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-purple-500/20 shadow-sm"
+                                className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)] shadow-sm"
                                 styles={{ header: glassHeaderStyle }}
                                 title={
                                     <div className="flex items-center gap-3">
@@ -1312,10 +1314,10 @@ export default function MediaLibraryPage() {
                                             size="small"
                                             icon={showExplorer ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
                                             onClick={() => setShowExplorer(!showExplorer)}
-                                            className="text-gray-500 hover:text-violet-600"
+                                            className="text-gray-500 hover:text-[color:var(--theme-color, #7c3aed)]"
                                         />
                                         <span style={{
-                                            background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                            background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                             WebkitBackgroundClip: 'text',
                                             WebkitTextFillColor: 'transparent',
                                             fontWeight: 600,
@@ -1327,12 +1329,12 @@ export default function MediaLibraryPage() {
                                 }
                                 extra={
                                     <Space size={8}>
-                                        <Tag icon={<CloudServerOutlined />} color="purple" bordered={false} className="px-2 py-0.5 text-[11px] bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 rounded-md m-0">
+                                        <Tag icon={<CloudServerOutlined />} bordered={false} className="px-2 py-0.5 text-[11px] rounded-md m-0" style={{ background: `rgba(var(--theme-color-rgb, 139, 92, 246), 0.08)`, color: 'var(--theme-color, #7c3aed)', border: 'none' }}>
                                             {currentBucket || 'S3'}
                                         </Tag>
 
                                         <Input
-                                            prefix={<SearchOutlined style={{ color: '#8b5cf6' }} />}
+                                            prefix={<SearchOutlined style={{ color: themeColor }} />}
                                             placeholder="Search files..."
                                             value={searchQuery}
                                             onChange={e => setSearchQuery(e.target.value)}
@@ -1350,7 +1352,7 @@ export default function MediaLibraryPage() {
                                                     }
                                                 }
                                             }}
-                                            className="w-32 md:w-48 !bg-transparent border-b !border-0 focus:border-b-violet-500 transition-colors text-xs"
+                                            className="w-32 md:w-48 !bg-transparent border-b !border-0 transition-colors text-xs"
                                             bordered={false}
                                             size="small"
                                             suffix={aiSearchLoading ? <LoadingOutlined spin /> : null}
@@ -1378,7 +1380,7 @@ export default function MediaLibraryPage() {
                                                     type="text"
                                                     size="small"
                                                     icon={<AppstoreOutlined style={{ fontSize: 12 }} />}
-                                                    className={viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-violet-600' : 'text-gray-400 hover:text-violet-400'}
+                                                    className={viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-[color:var(--theme-color, #7c3aed)]' : 'text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)]'}
                                                     onClick={() => setViewMode('grid')}
                                                     style={{ width: 24, height: 24, minWidth: 24 }}
                                                 />
@@ -1388,7 +1390,7 @@ export default function MediaLibraryPage() {
                                                     type="text"
                                                     size="small"
                                                     icon={<UnorderedListOutlined style={{ fontSize: 12 }} />}
-                                                    className={viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-violet-600' : 'text-gray-400 hover:text-violet-400'}
+                                                    className={viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-[color:var(--theme-color, #7c3aed)]' : 'text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)]'}
                                                     onClick={() => setViewMode('list')}
                                                     style={{ width: 24, height: 24, minWidth: 24 }}
                                                 />
@@ -1398,7 +1400,7 @@ export default function MediaLibraryPage() {
                                                     type="text"
                                                     size="small"
                                                     icon={<BarsOutlined style={{ fontSize: 12 }} />}
-                                                    className={viewMode === 'detail' ? 'bg-white dark:bg-gray-700 shadow-sm text-violet-600' : 'text-gray-400 hover:text-violet-400'}
+                                                    className={viewMode === 'detail' ? 'bg-white dark:bg-gray-700 shadow-sm text-[color:var(--theme-color, #7c3aed)]' : 'text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)]'}
                                                     onClick={() => setViewMode('detail')}
                                                     style={{ width: 24, height: 24, minWidth: 24 }}
                                                 />
@@ -1409,7 +1411,7 @@ export default function MediaLibraryPage() {
 
                                         {/* Refresh */}
                                         <Tooltip title="Refresh">
-                                            <Button type="text" size="small" icon={<ReloadOutlined style={{ fontSize: 13 }} />} onClick={loadAllData} className="text-gray-400 hover:text-violet-500" />
+                                            <Button type="text" size="small" icon={<ReloadOutlined style={{ fontSize: 13 }} />} onClick={loadAllData} className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)]" />
                                         </Tooltip>
 
                                         {/* Upload */}
@@ -1457,7 +1459,7 @@ export default function MediaLibraryPage() {
                                 <Card
                                     size="small"
                                     style={glassCardStyle}
-                                    className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-purple-500/20 shadow-sm transition-all hover:shadow-md"
+                                    className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)] shadow-sm transition-all hover:shadow-md"
                                     bodyStyle={{ padding: '10px 16px' }}
                                 >
                                     <Row gutter={32} align="middle" justify="start">
@@ -1465,7 +1467,7 @@ export default function MediaLibraryPage() {
                                             <Statistic
                                                 title={<span className="text-[10px] text-gray-500 uppercase tracking-wider">Files</span>}
                                                 value={storageStats.totalFiles}
-                                                valueStyle={{ color: '#8b5cf6', fontWeight: 600, fontSize: 16 }}
+                                                valueStyle={{ color: themeColor, fontWeight: 600, fontSize: 16 }}
                                                 suffix={<span className="text-xs text-gray-400">items</span>}
                                             />
                                         </Col>
@@ -1477,7 +1479,7 @@ export default function MediaLibraryPage() {
                                                 title={<span className="text-[10px] text-gray-500 uppercase tracking-wider">Storage</span>}
                                                 value={formatFileSize(storageStats.totalSizeBytes).split(' ')[0]}
                                                 suffix={<span className="text-xs text-gray-400">{formatFileSize(storageStats.totalSizeBytes).split(' ')[1]}</span>}
-                                                valueStyle={{ color: '#6366f1', fontWeight: 600, fontSize: 16 }}
+                                                valueStyle={{ color: themeColor, fontWeight: 600, fontSize: 16 }}
                                             />
                                         </Col>
                                         <Col>
@@ -1652,7 +1654,7 @@ export default function MediaLibraryPage() {
             <Modal
                 title={
                     <div className="flex items-center gap-2">
-                        <FolderAddOutlined className="text-violet-500" />
+                        <FolderAddOutlined className="text-[color:var(--theme-color, #7c3aed)]" />
                         <span>Create New Folder</span>
                     </div>
                 }
@@ -1665,7 +1667,7 @@ export default function MediaLibraryPage() {
                 okText="Create Folder"
                 okButtonProps={{
                     style: {
-                        background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+                        background: 'linear-gradient(135deg, var(--theme-color, #7c3aed) 0%, var(--theme-secondary, #6366f1) 100%)',
                         borderColor: 'transparent'
                     }
                 }}
@@ -1691,7 +1693,7 @@ export default function MediaLibraryPage() {
             <Modal
                 title={
                     <div className="flex items-center gap-2">
-                        <DatabaseOutlined className="text-violet-500" />
+                        <DatabaseOutlined className="text-[color:var(--theme-color, #7c3aed)]" />
                         <span>Create New Bucket</span>
                     </div>
                 }
@@ -1704,7 +1706,7 @@ export default function MediaLibraryPage() {
                 okText="Create Bucket"
                 okButtonProps={{
                     style: {
-                        background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+                        background: 'linear-gradient(135deg, var(--theme-color, #7c3aed) 0%, var(--theme-secondary, #6366f1) 100%)',
                         borderColor: 'transparent'
                     }
                 }}
@@ -1745,7 +1747,7 @@ export default function MediaLibraryPage() {
                 okText={isCopyMode ? "Copy" : "Move"}
                 okButtonProps={{
                     style: {
-                        background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+                        background: 'linear-gradient(135deg, var(--theme-color, #7c3aed) 0%, var(--theme-secondary, #6366f1) 100%)',
                         borderColor: 'transparent'
                     }
                 }}
@@ -1753,10 +1755,10 @@ export default function MediaLibraryPage() {
             >
                 <div className="flex flex-col gap-4 py-2">
                     {/* File Info */}
-                    <div className="p-3 rounded-lg bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20">
+                    <div className="p-3 rounded-lg" style={{ background: `linear-gradient(to right, rgba(var(--theme-color-rgb, 139, 92, 246), 0.06), rgba(var(--theme-color-rgb, 139, 92, 246), 0.02))` }}>
                         <Text type="secondary" className="text-xs uppercase tracking-wide">Selected File</Text>
                         <div className="flex items-center gap-2 mt-1">
-                            <FileOutlined className="text-violet-500" />
+                            <FileOutlined className="text-[color:var(--theme-color, #7c3aed)]" />
                             <Text strong>{selectedFileForMove?.filename}</Text>
                         </div>
                         {selectedFileForMove?.s3_key && (

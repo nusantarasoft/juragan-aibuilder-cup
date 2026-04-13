@@ -17,6 +17,7 @@ import {
     FileTextOutlined, UnorderedListOutlined
 } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { TooltipWrapper as AnimatedTooltip } from "@/components/mvpblocks/AnimatedTooltip";
 import {
@@ -54,6 +55,7 @@ const MOVEMENT_ICONS: Record<string, React.ReactNode> = {
 
 export default function StockDashboardPage() {
     const [stats, setStats] = useState<InvStockStats | null>(null);
+    const { themeColor } = usePreferencesStore();
     const [ledger, setLedger] = useState<StockLedgerEntry[]>([]);
     const [movements, setMovements] = useState<StockMovement[]>([]);
     const [items, setItems] = useState<InvItem[]>([]);
@@ -240,17 +242,17 @@ export default function StockDashboardPage() {
     ];
 
     const kpiCards = [
-        { title: 'Total Items', value: stats?.totalItems || 0, icon: <DashboardOutlined />, color: '#7c3aed' },
+        { title: 'Total Items', value: stats?.totalItems || 0, icon: <DashboardOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { title: 'Total On-Hand', value: stats?.totalOnHand || 0, icon: <BarChartOutlined />, color: '#0ea5e9' },
         { title: 'Total Reserved', value: stats?.totalReserved || 0, icon: <ClockCircleOutlined />, color: '#f59e0b' },
         { title: 'Low Stock', value: stats?.lowStockCount || 0, icon: <WarningOutlined />, color: '#ef4444' },
         { title: 'Movements', value: stats?.totalMovements || 0, icon: <SwapOutlined />, color: '#10b981' },
-        { title: 'Active Items', value: stats?.activeItems || 0, icon: <CheckCircleOutlined />, color: '#6366f1' },
+        { title: 'Active Items', value: stats?.activeItems || 0, icon: <CheckCircleOutlined />, color: themeColor },
     ];
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>Stock Dashboard</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Stock Dashboard</AuroraText>}
             subTitle={
                 <DecryptedText
                     text="Real-time inventory levels, stock movements, and AI-powered anomaly detection"
@@ -302,7 +304,7 @@ export default function StockDashboardPage() {
                         <div className="flex items-center gap-2">
                             <Button icon={<RobotOutlined />} onClick={handleAnomalyDetection}
                                 loading={anomalyLoading}
-                                style={{ borderColor: '#7c3aed', color: '#7c3aed' }}>
+                                style={{ borderColor: 'var(--theme-color, #7c3aed)', color: 'var(--theme-color, #7c3aed)' }}>
                                 AI Anomaly Detection
                             </Button>
                             <AnimatedTooltip content="Reload">
@@ -310,7 +312,7 @@ export default function StockDashboardPage() {
                             </AnimatedTooltip>
                             <Button type="primary" icon={<PlusOutlined />}
                                 onClick={() => { movementForm.resetFields(); setMovementModalOpen(true); }}
-                                style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', borderRadius: 8, border: 'none' }}>
+                                style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', borderRadius: 8, border: 'none' }}>
                                 Record Movement
                             </Button>
                         </div>
@@ -326,7 +328,7 @@ export default function StockDashboardPage() {
                             borderRadius: 12,
                         }}>
                             <div className="flex items-start gap-3">
-                                <RobotOutlined style={{ fontSize: 20, color: '#7c3aed' }} />
+                                <RobotOutlined style={{ fontSize: 20, color: 'var(--theme-color, #7c3aed)' }} />
                                 <div className="flex-1">
                                     <Text strong className="text-sm block mb-1">AI Anomaly Analysis</Text>
                                     <Text className="text-xs">{anomalyResult.summary || anomalyResult.message}</Text>
@@ -353,7 +355,7 @@ export default function StockDashboardPage() {
                 <Row gutter={16} style={{ flex: 1, minHeight: 0 }}>
                     <Col xs={24} lg={14}>
                         <Card size="small" title={
-                            <span style={{ background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600, fontSize: 14 }}>
+                            <span style={{ background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600, fontSize: 14 }}>
                                 Stock Levels
                             </span>
                         } style={{ height: '100%', borderRadius: 12, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)' }}>
@@ -370,7 +372,7 @@ export default function StockDashboardPage() {
                     </Col>
                     <Col xs={24} lg={10}>
                         <Card size="small" title={
-                            <span style={{ background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600, fontSize: 14 }}>
+                            <span style={{ background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600, fontSize: 14 }}>
                                 Recent Movements
                             </span>
                         } style={{ height: '100%', borderRadius: 12, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)' }}>
@@ -472,7 +474,7 @@ export default function StockDashboardPage() {
                 width={640}
                 loading={false}
                 onBatchCreate={handleBatchCreateMovement}
-                gradient={["#7c3aed", "#6366f1"]}
+                gradient={["var(--theme-color, #7c3aed)", "#6366f1"]}
             />
         </CMSLayout>
     );

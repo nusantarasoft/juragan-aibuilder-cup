@@ -92,7 +92,7 @@ export const LensImage = ({
 export const PointerHighlight = ({
     children,
     className,
-    highlightColor = "#8b5cf6",
+    highlightColor = "var(--theme-color, #8b5cf6)",
 }: {
     children: React.ReactNode;
     className?: string;

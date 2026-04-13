@@ -27,7 +27,7 @@ export const getTypeIcon = (type: string, sourceType?: string) => {
         return <FolderOutlined style={{ fontSize: 16, color: '#fb8c00' }} />; // Orange for folders
     }
     if (['DATASET', 'PHYSICAL_DATASET', 'VIRTUAL_DATASET', 'DATASET_TABLE', 'DATASET_VIRTUAL', 'FILE'].includes(type)) {
-        return <TableOutlined style={{ fontSize: 16, color: '#8b5cf6' }} />; // Violet for tables/files
+        return <TableOutlined style={{ fontSize: 16, color: 'var(--theme-color, #8b5cf6)' }} />; // Violet for tables/files
     }
     return <FileOutlined style={{ fontSize: 16, color: '#9e9e9e' }} />;
 };

@@ -1,15 +1,17 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import CMSLayout from "@/components/layout/CMSLayout";
 import { ProCard } from "@ant-design/pro-components";
 import { Button, message, Tag, Space, Typography, Descriptions, Timeline, Input, Switch, Divider, Row, Col, Tooltip, Badge } from "antd";
 import {
     ArrowLeftOutlined, ClockCircleOutlined, UserOutlined, SendOutlined,
     TeamOutlined, LinkOutlined, ExclamationCircleOutlined, CheckCircleOutlined,
-    CustomerServiceOutlined,
+    CustomerServiceOutlined, RobotOutlined, BulbOutlined, ThunderboltOutlined,
 } from "@ant-design/icons";
 import { gql } from "@/lib/graphql";
 import { useRouter, useParams } from "next/navigation";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -51,9 +53,16 @@ export default function TicketDetailPage() {
     const [comments, setComments] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { themeColor } = usePreferencesStore();
     const [commentText, setCommentText] = useState('');
     const [isInternal, setIsInternal] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+
+    // AI states
+    const [aiLoading, setAiLoading] = useState<string | null>(null);
+    const [aiCategorize, setAiCategorize] = useState<any>(null);
+    const [aiResolution, setAiResolution] = useState<any>(null);
+    const [aiSlaRisk, setAiSlaRisk] = useState<any>(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -92,12 +101,42 @@ export default function TicketDetailPage() {
         } catch (err: any) { messageApi.error(err.message); }
     };
 
+    // AI Handlers
+    const handleAiCategorize = async () => {
+        if (!ticket) return;
+        setAiLoading('categorize');
+        try {
+            const raw = await gql(`query($title: String!, $description: String) { itsmAiCategorize(title: $title, description: $description) }`, { title: ticket.title, description: ticket.description });
+            setAiCategorize(JSON.parse(raw.itsmAiCategorize));
+        } catch (err: any) { messageApi.error('AI categorization failed: ' + err.message); }
+        finally { setAiLoading(null); }
+    };
+
+    const handleAiResolution = async () => {
+        setAiLoading('resolution');
+        try {
+            const raw = await gql(`query($ticketId: String!) { itsmAiSuggestResolution(ticketId: $ticketId) }`, { ticketId });
+            setAiResolution(JSON.parse(raw.itsmAiSuggestResolution));
+        } catch (err: any) { messageApi.error('AI suggestion failed: ' + err.message); }
+        finally { setAiLoading(null); }
+    };
+
+    const handleAiSlaRisk = async () => {
+        setAiLoading('sla');
+        try {
+            const raw = await gql(`query($ticketId: String!) { itsmAiSlaRisk(ticketId: $ticketId) }`, { ticketId });
+            setAiSlaRisk(JSON.parse(raw.itsmAiSlaRisk));
+        } catch (err: any) { messageApi.error('AI risk analysis failed: ' + err.message); }
+        finally { setAiLoading(null); }
+    };
+
     const categoryName = categories.find(c => c.id === ticket?.categoryId)?.name || '-';
 
-    if (loading) return <div style={{ padding: 24 }}><ProCard loading bordered /></div>;
-    if (!ticket) return <div style={{ padding: 24 }}><Text>Ticket not found.</Text></div>;
+    if (loading) return <CMSLayout title="Loading..."><div style={{ padding: 24 }}><ProCard loading bordered /></div></CMSLayout>;
+    if (!ticket) return <CMSLayout title="Not Found"><div style={{ padding: 24 }}><Text>Ticket not found.</Text></div></CMSLayout>;
 
     return (
+        <CMSLayout title={`Ticket ${ticket.ticketNumber}`} subTitle={ticket.title}>
         <div style={{ padding: 24 }}>
             {contextHolder}
             <Space style={{ marginBottom: 16 }}>
@@ -245,7 +284,7 @@ export default function TicketDetailPage() {
                     </ProCard>
 
                     {/* Quick Actions */}
-                    <ProCard title="Quick Actions" bordered>
+                    <ProCard title="Quick Actions" bordered style={{ marginBottom: 16 }}>
                         <Space direction="vertical" style={{ width: '100%' }}>
                             {ticket.status === 'new' && <Button block onClick={() => handleStatusChange('open')}>Open Ticket</Button>}
                             {(ticket.status === 'new' || ticket.status === 'open') && <Button block type="primary" onClick={() => handleStatusChange('in_progress')}>Start Working</Button>}
@@ -254,8 +293,82 @@ export default function TicketDetailPage() {
                             {ticket.status === 'resolved' && <Button block onClick={() => handleStatusChange('closed')}>Close Ticket</Button>}
                         </Space>
                     </ProCard>
+
+                    {/* AI Assist Panel */}
+                    <ProCard
+                        title={<Space><RobotOutlined style={{ color: themeColor }} /> AI Assist</Space>}
+                        bordered
+                        style={{ marginBottom: 16, background: 'linear-gradient(135deg, #f5f0ff 0%, #e8f4fd 100%)' }}
+                        headerBordered
+                    >
+                        <Space direction="vertical" style={{ width: '100%' }} size={10}>
+                            {/* Categorize Button */}
+                            <Button
+                                block
+                                icon={<BulbOutlined />}
+                                loading={aiLoading === 'categorize'}
+                                onClick={handleAiCategorize}
+                                style={{ background: aiCategorize ? '#f6ffed' : undefined, borderColor: aiCategorize ? '#b7eb8f' : undefined }}
+                            >
+                                🏷️ Auto-Categorize
+                            </Button>
+                            {aiCategorize && (
+                                <div style={{ padding: '8px 12px', background: '#fff', borderRadius: 8, border: '1px solid #d9d9d9', fontSize: 12 }}>
+                                    <div><Text strong>Category:</Text> <Tag color="purple">{aiCategorize.suggestedCategory}</Tag></div>
+                                    <div><Text strong>Priority:</Text> <Tag color={aiCategorize.suggestedPriority === 'critical' ? 'red' : aiCategorize.suggestedPriority === 'high' ? 'orange' : 'blue'}>{(aiCategorize.suggestedPriority || '').toUpperCase()}</Tag></div>
+                                    <div><Text strong>Group:</Text> {aiCategorize.suggestedAssignmentGroup}</div>
+                                    <div style={{ marginTop: 4 }}><Text type="secondary">{aiCategorize.reasoning}</Text></div>
+                                    <div style={{ marginTop: 4 }}><Text type="secondary">Confidence: {Math.round((aiCategorize.confidence || 0) * 100)}%</Text></div>
+                                </div>
+                            )}
+
+                            {/* Suggest Resolution Button */}
+                            <Button
+                                block
+                                icon={<ThunderboltOutlined />}
+                                loading={aiLoading === 'resolution'}
+                                onClick={handleAiResolution}
+                                style={{ background: aiResolution ? '#f6ffed' : undefined, borderColor: aiResolution ? '#b7eb8f' : undefined }}
+                            >
+                                🔧 Suggest Resolution
+                            </Button>
+                            {aiResolution && (
+                                <div style={{ padding: '8px 12px', background: '#fff', borderRadius: 8, border: '1px solid #d9d9d9', fontSize: 12 }}>
+                                    <div style={{ marginBottom: 4 }}><Text strong>Steps:</Text></div>
+                                    <ol style={{ margin: 0, paddingLeft: 16 }}>
+                                        {(aiResolution.suggestedSteps || []).map((s: string, i: number) => (
+                                            <li key={i} style={{ marginBottom: 2 }}>{s}</li>
+                                        ))}
+                                    </ol>
+                                    <div style={{ marginTop: 6 }}><Text strong>Est. Time:</Text> {aiResolution.estimatedResolutionTime}</div>
+                                    <div><Text type="secondary">Confidence: {Math.round((aiResolution.confidence || 0) * 100)}%</Text></div>
+                                </div>
+                            )}
+
+                            {/* SLA Risk Button */}
+                            <Button
+                                block
+                                icon={<ExclamationCircleOutlined />}
+                                loading={aiLoading === 'sla'}
+                                onClick={handleAiSlaRisk}
+                                style={{ background: aiSlaRisk ? '#f6ffed' : undefined, borderColor: aiSlaRisk ? '#b7eb8f' : undefined }}
+                            >
+                                📊 SLA Risk Analysis
+                            </Button>
+                            {aiSlaRisk && (
+                                <div style={{ padding: '8px 12px', background: '#fff', borderRadius: 8, border: '1px solid #d9d9d9', fontSize: 12 }}>
+                                    <div><Text strong>Risk Level:</Text> <Tag color={aiSlaRisk.riskLevel === 'high' || aiSlaRisk.riskLevel === 'critical' ? 'red' : aiSlaRisk.riskLevel === 'medium' ? 'orange' : 'green'}>{(aiSlaRisk.riskLevel || '').toUpperCase()}</Tag></div>
+                                    <div><Text strong>SLA Status:</Text> <Tag color={aiSlaRisk.slaStatus === 'breached' ? 'red' : aiSlaRisk.slaStatus === 'at_risk' ? 'orange' : 'green'}>{(aiSlaRisk.slaStatus || '').replace('_', ' ').toUpperCase()}</Tag></div>
+                                    <div><Text strong>Remaining:</Text> {aiSlaRisk.remainingTime}</div>
+                                    <div style={{ marginTop: 4 }}><Text type="secondary">{aiSlaRisk.recommendation}</Text></div>
+                                    {aiSlaRisk.suggestedEscalation && <Tag color="red" style={{ marginTop: 4 }}>⚠️ Escalation Recommended</Tag>}
+                                </div>
+                            )}
+                        </Space>
+                    </ProCard>
                 </Col>
             </Row>
         </div>
+        </CMSLayout>
     );
 }

@@ -44,6 +44,7 @@ import {
 } from "@ant-design/icons";
 import ReactMarkdown from 'react-markdown';
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { TooltipWrapper as AnimatedTooltip } from '@/components/mvpblocks/AnimatedTooltip';
 import { motion, AnimatePresence } from "framer-motion";
@@ -71,6 +72,7 @@ interface PodcastLine {
 export default function AIStudioPage() {
     // Media Source State
     const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
+    const { themeColor } = usePreferencesStore();
     const [loadingMedia, setLoadingMedia] = useState(true);
     const [selectedMediaIds, setSelectedMediaIds] = useState<Set<string>>(new Set());
 
@@ -323,7 +325,7 @@ export default function AIStudioPage() {
                                 transition: 'all 0.2s',
                                 width: '100%'
                             }}
-                            className="hover:bg-violet-500/5 group"
+                            className="hover:bg-[rgba(var(--theme-color-rgb,139,92,246),0.05)] group"
                         >
                             <Space>
                                 <Checkbox checked={selectedMediaIds.has(item.id)} />
@@ -356,7 +358,7 @@ export default function AIStudioPage() {
                             maxWidth: '85%',
                             padding: '12px 16px',
                             borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                            background: msg.role === 'user' ? '#7c3aed' : '#f0f0f0',
+                            background: msg.role === 'user' ? 'var(--theme-color, #7c3aed)' : '#f0f0f0',
                             color: msg.role === 'user' ? '#fff' : '#000',
                             wordBreak: 'break-word',
                             boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
@@ -374,7 +376,7 @@ export default function AIStudioPage() {
                 )}
                 <div ref={messagesEndRef} />
             </div>
-            <div style={{ padding: '16px', borderTop: '1px solid rgba(139, 92, 246, 0.1)', background: 'transparent' }}>
+            <div style={{ padding: '16px', borderTop: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.1)', background: 'transparent' }}>
                 <Space.Compact style={{ width: '100%', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', borderRadius: 8 }}>
                     <Input
                         size="large"
@@ -391,7 +393,7 @@ export default function AIStudioPage() {
                         icon={<SendOutlined />} 
                         onClick={handleChatSend} 
                         loading={isChatting}
-                        style={{ borderBottomRightRadius: 8, borderTopRightRadius: 8, backgroundColor: '#7c3aed' }}
+                        style={{ borderBottomRightRadius: 8, borderTopRightRadius: 8, backgroundColor: 'var(--theme-color, #7c3aed)' }}
                     />
                 </Space.Compact>
             </div>
@@ -400,7 +402,7 @@ export default function AIStudioPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>AI Studio</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>AI Studio</AuroraText>}
             subTitle={
                 <DecryptedText
                     text="Harness AI models to generate deep insights, multi-host audio, rich presentations, and custom imagery directly from your sources"
@@ -440,7 +442,7 @@ export default function AIStudioPage() {
                                     title={
                                         <div className="flex items-center gap-2">
                                             <span style={{
-                                                background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                                background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                                 WebkitBackgroundClip: 'text',
                                                 WebkitTextFillColor: 'transparent',
                                                 fontWeight: 600,
@@ -457,7 +459,7 @@ export default function AIStudioPage() {
                                                     type="text"
                                                     icon={<ExpandAltOutlined style={{ fontSize: 14 }} />}
                                                     size="small"
-                                                    className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                                                    className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] flex items-center justify-center w-7 h-7"
                                                 />
                                             </AnimatedTooltip>
                                             <AnimatedTooltip content="Collapse All">
@@ -465,7 +467,7 @@ export default function AIStudioPage() {
                                                     type="text"
                                                     icon={<CompressOutlined style={{ fontSize: 14 }} />}
                                                     size="small"
-                                                    className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                                                    className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] flex items-center justify-center w-7 h-7"
                                                 />
                                             </AnimatedTooltip>
 
@@ -476,7 +478,7 @@ export default function AIStudioPage() {
                                                     type="text"
                                                     icon={<FolderAddOutlined style={{ fontSize: 14 }} />}
                                                     size="small"
-                                                    className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                                                    className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] flex items-center justify-center w-7 h-7"
                                                 />
                                             </AnimatedTooltip>
                                             <AnimatedTooltip content="New Source">
@@ -484,7 +486,7 @@ export default function AIStudioPage() {
                                                     type="text"
                                                     icon={<PlusOutlined style={{ fontSize: 14 }} />}
                                                     size="small"
-                                                    className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                                                    className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] flex items-center justify-center w-7 h-7"
                                                 />
                                             </AnimatedTooltip>
                                         </div>
@@ -503,7 +505,7 @@ export default function AIStudioPage() {
                                     styles={{
                                         header: {
                                             background: 'transparent',
-                                            borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+                                            borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
                                             minHeight: 40,
                                             padding: '0 12px'
                                         },
@@ -534,11 +536,11 @@ export default function AIStudioPage() {
                                 boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.04)',
                                 border: '1px solid rgba(255, 255, 255, 0.5)',
                             }}
-                            className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-purple-500/20"
+                            className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)]"
                             styles={{ 
                                 header: {
                                     background: 'rgba(255, 255, 255, 0.1)',
-                                    borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+                                    borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
                                 }
                             }}
                             title={
@@ -549,11 +551,11 @@ export default function AIStudioPage() {
                                             icon={showSources ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />} 
                                             onClick={() => setShowSources(!showSources)} 
                                             size="small"
-                                            className="text-gray-400 hover:text-violet-500 w-7 h-7 flex items-center justify-center -ml-2"
+                                            className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] w-7 h-7 flex items-center justify-center -ml-2"
                                         />
                                     </AnimatedTooltip>
                                     <span style={{
-                                        background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                        background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                         WebkitBackgroundClip: 'text',
                                         WebkitTextFillColor: 'transparent',
                                         fontWeight: 600,
@@ -571,7 +573,7 @@ export default function AIStudioPage() {
                                             icon={showChat ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} 
                                             onClick={() => setShowChat(!showChat)} 
                                             size="small"
-                                            className="text-gray-400 hover:text-violet-500 w-7 h-7 flex items-center justify-center"
+                                            className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] w-7 h-7 flex items-center justify-center"
                                         />
                                     </AnimatedTooltip>
                                 </div>
@@ -732,7 +734,7 @@ export default function AIStudioPage() {
                                     title={
                                         <div className="flex items-center gap-2">
                                             <span style={{
-                                                background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                                background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                                 WebkitBackgroundClip: 'text',
                                                 WebkitTextFillColor: 'transparent',
                                                 fontWeight: 600,
@@ -757,7 +759,7 @@ export default function AIStudioPage() {
                                     styles={{
                                         header: {
                                             background: 'transparent',
-                                            borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+                                            borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
                                             minHeight: 40,
                                             padding: '0 12px'
                                         },
@@ -780,7 +782,7 @@ export default function AIStudioPage() {
                                     title={
                                         <div className="flex items-center gap-2">
                                             <span style={{
-                                                background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                                background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                                 WebkitBackgroundClip: 'text',
                                                 WebkitTextFillColor: 'transparent',
                                                 fontWeight: 600,
@@ -804,7 +806,7 @@ export default function AIStudioPage() {
                                     styles={{
                                         header: {
                                             background: 'transparent',
-                                            borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+                                            borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
                                             minHeight: 40,
                                             padding: '0 12px'
                                         },

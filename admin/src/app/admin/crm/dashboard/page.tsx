@@ -11,6 +11,7 @@ import {
 } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useRouter } from "next/navigation";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Title, Text } = Typography;
 
@@ -26,6 +27,7 @@ interface DashboardStats {
 
 export default function CrmDashboardPage() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
+    const { themeColor } = usePreferencesStore();
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
@@ -90,7 +92,7 @@ export default function CrmDashboardPage() {
                 </Col>
                 <Col xs={24} sm={12} md={6}>
                     {navCard("View Quotes", "/admin/crm/quotes", <FileTextOutlined />, "#722ed1",
-                        <Statistic title="Quotes Value" value={stats.quotesValue} formatter={() => fmt(stats.quotesValue)} valueStyle={{ color: '#722ed1', fontSize: 22 }} />
+                        <Statistic title="Quotes Value" value={stats.quotesValue} formatter={() => fmt(stats.quotesValue)} valueStyle={{ color: themeColor, fontSize: 22 }} />
                     )}
                 </Col>
                 <Col xs={24} sm={12} md={6}>
@@ -142,7 +144,7 @@ export default function CrmDashboardPage() {
                 </Col>
                 <Col xs={24} sm={12} md={6}>
                     {navCard("Products", "/admin/crm/products", <ShoppingOutlined />, "#722ed1",
-                        <Statistic title="Active Products" value={stats.activeProducts} suffix={`/ ${stats.totalProducts}`} valueStyle={{ color: '#722ed1' }} />
+                        <Statistic title="Active Products" value={stats.activeProducts} suffix={`/ ${stats.totalProducts}`} valueStyle={{ color: themeColor }} />
                     )}
                 </Col>
             </Row>

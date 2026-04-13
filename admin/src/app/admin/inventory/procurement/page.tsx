@@ -15,6 +15,7 @@ import {
 } from "@ant-design/icons";
 import CMSLayout from "@/components/layout/CMSLayout";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { inventoryService } from "@/lib/inventoryService";
 import { CrmAccountPicker } from "@/components/inventory/CrmPicker";
@@ -60,6 +61,7 @@ const PRIORITY_ICONS: Record<string, string> = {
 
 export default function ProcurementPage() {
     const [activeTab, setActiveTab] = useState("suppliers");
+    const { themeColor } = usePreferencesStore();
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState("");
     const [stats, setStats] = useState<any>(null);
@@ -334,7 +336,7 @@ export default function ProcurementPage() {
                 </Col>
                 <Col xs={12} sm={8} md={4}>
                     <Card size="small" style={{ borderRadius: 12 }}>
-                        <Statistic title="Total PRs" value={stats?.totalPRs || 0} prefix={<FileTextOutlined style={{ color: "#722ed1" }} />} />
+                        <Statistic title="Total PRs" value={stats?.totalPRs || 0} prefix={<FileTextOutlined style={{ color: themeColor }} />} />
                     </Card>
                 </Col>
                 <Col xs={12} sm={8} md={4}>

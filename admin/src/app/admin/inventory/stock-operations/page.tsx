@@ -14,6 +14,7 @@ import {
     CheckCircleOutlined, InboxOutlined
 } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import {
     inventoryService, StockOperation, StockOperationStatsType
@@ -68,6 +69,7 @@ const STOCK_OP_FIELDS: FieldDef[] = [
 
 export default function StockOperationsPage() {
     const [stats, setStats] = useState<StockOperationStatsType | null>(null);
+    const { themeColor } = usePreferencesStore();
     const [operations, setOperations] = useState<StockOperation[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -127,12 +129,12 @@ export default function StockOperationsPage() {
 
     // ─── KPI Cards ─────────────────────────────────
     const kpiCards = [
-        { title: 'Total Operations', value: stats?.totalOperations || 0, icon: <ContainerOutlined />, color: '#7c3aed' },
+        { title: 'Total Operations', value: stats?.totalOperations || 0, icon: <ContainerOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { title: 'Receives', value: stats?.receives || 0, icon: <DownloadOutlined />, color: '#10b981' },
         { title: 'Releases', value: stats?.releases || 0, icon: <UploadOutlined />, color: '#3b82f6' },
         { title: 'Adjustments', value: stats?.adjustments || 0, icon: <SwapOutlined />, color: '#f59e0b' },
         { title: 'Write-offs', value: stats?.writeOffs || 0, icon: <WarningOutlined />, color: '#ef4444' },
-        { title: 'Donations', value: stats?.donations || 0, icon: <GiftOutlined />, color: '#8b5cf6' },
+        { title: 'Donations', value: stats?.donations || 0, icon: <GiftOutlined />, color: themeColor },
     ];
 
     // ─── Columns ───────────────────────────────────

@@ -16,7 +16,7 @@ const BlockThumbnails: Record<string, React.FC> = {
         </div>
     ),
     hero: () => (
-        <div className="w-full h-20 bg-gradient-to-br from-violet-600 to-indigo-600 rounded flex flex-col items-center justify-center gap-1">
+        <div className="w-full h-20 bg-gradient-to-br from-[var(--theme-color,#7c3aed)] to-[var(--theme-secondary,#4f46e5)] rounded flex flex-col items-center justify-center gap-1">
             <div className="w-16 h-2 bg-white/90 rounded" />
             <div className="w-12 h-1.5 bg-white/50 rounded" />
             <div className="w-8 h-3 bg-white rounded mt-1" />
@@ -132,9 +132,9 @@ const LayoutThumbnails: Record<string, React.FC> = {
         </div>
     ),
     "4 Columns": () => (
-        <div className="w-full h-14 border-2 border-purple-400 rounded p-1 grid grid-cols-4 gap-0.5">
+        <div className="w-full h-14 border-2 border-[rgba(var(--theme-color-rgb,139,92,246),0.6)] rounded p-1 grid grid-cols-4 gap-0.5">
             {[1, 2, 3, 4].map(i => (
-                <div key={i} className="bg-purple-100 dark:bg-purple-900 border border-purple-300 rounded"></div>
+                <div key={i} className="bg-[rgba(var(--theme-color-rgb,139,92,246),0.1)] dark:bg-[rgba(var(--theme-color-rgb,139,92,246),0.3)] border border-[rgba(var(--theme-color-rgb,139,92,246),0.4)] rounded"></div>
             ))}
         </div>
     ),

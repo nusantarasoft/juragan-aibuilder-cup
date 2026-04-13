@@ -30,7 +30,7 @@ const UPSERT_PRINCIPLE = `
 
 // PMBOK 7 — 12 Project Management Principles
 const PRINCIPLES = [
-    { key: "stewardship", name: "Stewardship", description: "Be a diligent, respectful, and caring steward.", color: "#8b5cf6" },
+    { key: "stewardship", name: "Stewardship", description: "Be a diligent, respectful, and caring steward.", color: "var(--theme-color, #8b5cf6)" },
     { key: "team", name: "Team", description: "Create a collaborative project team environment.", color: "#6366f1" },
     { key: "stakeholders", name: "Stakeholders", description: "Effectively engage with stakeholders.", color: "#3b82f6" },
     { key: "value", name: "Value", description: "Focus on value.", color: "#0ea5e9" },
@@ -156,7 +156,7 @@ export default function PrinciplesTab({ projectId }: { projectId: string }) {
             <ProCard
                 title={
                     <Space>
-                        <RadarChartOutlined style={{ color: '#8b5cf6' }} />
+                        <RadarChartOutlined style={{ color: 'var(--theme-color, #8b5cf6)' }} />
                         <span>PMBOK 7 — Project Management Principles Assessment</span>
                     </Space>
                 }
@@ -171,7 +171,7 @@ export default function PrinciplesTab({ projectId }: { projectId: string }) {
                             icon={<SaveOutlined />}
                             onClick={handleSaveAll}
                             loading={saving}
-                            style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', border: 'none', borderRadius: 8 }}
+                            style={{ background: 'linear-gradient(135deg, var(--theme-color, #8b5cf6), var(--theme-secondary, #6366f1))', border: 'none', borderRadius: 8 }}
                         >
                             Save All
                         </Button>

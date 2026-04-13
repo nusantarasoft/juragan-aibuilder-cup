@@ -134,7 +134,7 @@ const InfoTab = ({ activeMedia, embeddingDim, embeddingVector, versions, getRela
                 </div>
                 <div className="col-span-2 flex flex-col pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
                     <span className="text-gray-400 text-xs uppercase tracking-wider font-semibold">S3 Key</span>
-                    <Text copyable className="font-mono text-[10px] text-gray-500 break-all hover:text-violet-500 transition-colors cursor-pointer mt-1">
+                    <Text copyable className="font-mono text-[10px] text-gray-500 break-all hover:text-[color:var(--theme-color, #7c3aed)] transition-colors cursor-pointer mt-1">
                         {activeMedia.s3_key}
                     </Text>
                 </div>
@@ -148,7 +148,7 @@ const InfoTab = ({ activeMedia, embeddingDim, embeddingVector, versions, getRela
                                     size="small"
                                     icon={<EditOutlined />}
                                     onClick={() => setIsEditingDesc(true)}
-                                    className="text-gray-400 hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20"
+                                    className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] hover:bg-[rgba(var(--theme-color-rgb,139,92,246),0.05)] dark:hover:bg-[rgba(var(--theme-color-rgb,139,92,246),0.2)]"
                                 />
                             </Tooltip>
                         )}
@@ -159,7 +159,7 @@ const InfoTab = ({ activeMedia, embeddingDim, embeddingVector, versions, getRela
                                 value={descValue}
                                 onChange={(e) => setDescValue(e.target.value)}
                                 rows={3}
-                                className="text-xs custom-scrollbar rounded-md border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1A1A1A] hover:border-violet-400 focus:border-violet-500 transition-colors shadow-sm w-full"
+                                className="text-xs custom-scrollbar rounded-md border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1A1A1A] hover:border-[rgba(var(--theme-color-rgb,139,92,246),0.6)] focus:border-violet-500 transition-colors shadow-sm w-full"
                                 placeholder="Add a description..."
                             />
                             <div className="flex justify-end gap-2 mt-2">
@@ -201,13 +201,13 @@ const InfoTab = ({ activeMedia, embeddingDim, embeddingVector, versions, getRela
                 </div>
             </div>
 
-            <div className="bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-900/10 dark:to-indigo-900/10 rounded-xl p-3 border border-violet-100 dark:border-violet-500/20">
+            <div className="bg-gradient-to-br from-[rgba(var(--theme-color-rgb,139,92,246),0.05)] to-[rgba(var(--theme-color-rgb,139,92,246),0.02)] dark:from-violet-900/10 dark:to-indigo-900/10 rounded-xl p-3 border border-violet-100 dark:border-violet-500/20">
                 <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-xs font-bold text-violet-700 dark:text-violet-300 flex items-center gap-1.5">
+                    <h3 className="text-xs font-bold text-[color:var(--theme-color,#7c3aed)] dark:text-[color:var(--theme-color,#c4b5fd)] flex items-center gap-1.5">
                         <RobotOutlined /> VECTOR INTEL
                     </h3>
                     {embeddingDim > 0 ? (
-                        <Tag color="purple" bordered={false} className="m-0 text-[9px] font-bold px-1">{embeddingDim} DIM</Tag>
+                        <Tag  bordered={false} className="m-0 text-[9px] font-bold px-1">{embeddingDim} DIM</Tag>
                     ) : (
                         <Tag color="default" bordered={false} className="m-0 text-[9px] px-1">No Vector</Tag>
                     )}
@@ -276,20 +276,20 @@ interface AIIntelTabProps {
 
 const AIIntelTab = ({ embeddingDim, embeddingVector, isLoading, isGeneratingEmbed, handleGenerateEmbeddings, handleRemoveEmbeddings, copyToClipboard }: AIIntelTabProps) => (
     <div className="space-y-4 pr-1">
-        <div className="bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-900/10 dark:to-indigo-900/10 rounded-xl p-4 border border-violet-100 dark:border-violet-500/20">
+        <div className="bg-gradient-to-br from-[rgba(var(--theme-color-rgb,139,92,246),0.05)] to-[rgba(var(--theme-color-rgb,139,92,246),0.02)] dark:from-violet-900/10 dark:to-indigo-900/10 rounded-xl p-4 border border-violet-100 dark:border-violet-500/20">
             <div className="flex justify-between items-center mb-3">
-                <h3 className="text-sm font-bold text-violet-700 dark:text-violet-300 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-[color:var(--theme-color,#7c3aed)] dark:text-[color:var(--theme-color,#c4b5fd)] flex items-center gap-2">
                     <RobotOutlined /> Vector Embeddings
                 </h3>
-                {embeddingDim > 0 && <Tag color="purple" bordered={false} className="m-0 text-[10px] font-bold px-2">{embeddingDim} Dimensions</Tag>}
+                {embeddingDim > 0 && <Tag  bordered={false} className="m-0 text-[10px] font-bold px-2">{embeddingDim} Dimensions</Tag>}
             </div>
 
-            <div className="bg-white/60 dark:bg-black/30 rounded-lg p-3 border border-violet-100/50 dark:border-violet-500/10 mb-4">
-                <Spin spinning={isLoading || isGeneratingEmbed} indicator={<LoadingOutlined className="text-violet-500" spin />} tip={isGeneratingEmbed ? "Generating embeddings..." : undefined}>
+            <div className="bg-white/60 dark:bg-black/30 rounded-lg p-3 border border-[rgba(var(--theme-color-rgb,139,92,246),0.15)] dark:border-[rgba(var(--theme-color-rgb,139,92,246),0.1)] mb-4">
+                <Spin spinning={isLoading || isGeneratingEmbed} indicator={<LoadingOutlined className="text-[color:var(--theme-color, #7c3aed)]" spin />} tip={isGeneratingEmbed ? "Generating embeddings..." : undefined}>
                     {embeddingDim > 0 ? (
                         <div className="flex flex-col gap-2">
                             <div className="font-mono text-[10px] text-gray-500 dark:text-gray-400 break-all leading-relaxed max-h-28 overflow-y-auto custom-scrollbar bg-gray-50 dark:bg-black/20 p-2 rounded">
-                                <span className="text-violet-500 font-bold">Vector: </span>
+                                <span className="text-[color:var(--theme-color, #7c3aed)] font-bold">Vector: </span>
                                 [{embeddingVector.slice(0, 30).join(', ')}
                                 {embeddingVector.length > 30 && <span className="text-gray-400 italic"> ... +{embeddingVector.length - 30} more</span>}]
                             </div>
@@ -297,7 +297,7 @@ const AIIntelTab = ({ embeddingDim, embeddingVector, isLoading, isGeneratingEmbe
                                 size="small"
                                 type="text"
                                 icon={<CopyOutlined />}
-                                className="self-end text-[10px] text-violet-600 hover:text-violet-700"
+                                className="self-end text-[10px] text-[color:var(--theme-color, #7c3aed)] hover:text-[color:var(--theme-color,#7c3aed)]"
                                 onClick={() => copyToClipboard(JSON.stringify(embeddingVector), "Full embedding vector copied")}
                             >
                                 Copy Full Vector
@@ -305,7 +305,7 @@ const AIIntelTab = ({ embeddingDim, embeddingVector, isLoading, isGeneratingEmbe
                         </div>
                     ) : (
                         <div className="text-center py-6">
-                            <RobotOutlined className="text-4xl text-violet-300 mb-2" />
+                            <RobotOutlined className="text-4xl text-[color:var(--theme-color,#c4b5fd)] mb-2" />
                             <div className="text-sm text-gray-500">No embeddings generated yet</div>
                             <div className="text-xs text-gray-400 mt-1">Click the button below to generate</div>
                         </div>
@@ -316,7 +316,7 @@ const AIIntelTab = ({ embeddingDim, embeddingVector, isLoading, isGeneratingEmbe
             <div className="flex gap-2">
                 <Button
                     type="primary" size="small"
-                    className="flex-1 text-xs bg-violet-600 hover:!bg-violet-700 border-violet-600 hover:!border-violet-700"
+                    className="flex-1 text-xs bg-[var(--theme-color,#7c3aed)] hover:!bg-[var(--theme-color,#6d28d9)] border-[var(--theme-color,#7c3aed)] hover:!border-[var(--theme-color,#6d28d9)]"
                     onClick={handleGenerateEmbeddings}
                     loading={isGeneratingEmbed}
                     disabled={isGeneratingEmbed || isLoading}
@@ -481,11 +481,11 @@ const VersionsTab = ({
                 dataSource={versions}
                 renderItem={(version, index) => (
                     <List.Item
-                        className={`group hover:bg-gray-50 dark:hover:bg-white/5 rounded-lg px-2 transition-colors border-b border-gray-50 dark:border-white/5 last:border-0 cursor-pointer ${previewUrl?.includes(version.versionId) ? 'bg-violet-50 dark:bg-violet-900/10 border-violet-100' : ''}`}
+                        className={`group hover:bg-gray-50 dark:hover:bg-white/5 rounded-lg px-2 transition-colors border-b border-gray-50 dark:border-white/5 last:border-0 cursor-pointer ${previewUrl?.includes(version.versionId) ? 'bg-[rgba(var(--theme-color-rgb,139,92,246),0.05)] dark:bg-violet-900/10 border-violet-100' : ''}`}
                         onClick={() => handlePreviewVersion(version)}
                         actions={[
                             <Tooltip key="download" title="Download">
-                                <Button type="text" size="small" className="text-gray-400 hover:text-violet-600" icon={<DownloadOutlined />} onClick={(e) => { e.stopPropagation(); handleDownloadVersion(version.versionId); }} />
+                                <Button type="text" size="small" className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)]" icon={<DownloadOutlined />} onClick={(e) => { e.stopPropagation(); handleDownloadVersion(version.versionId); }} />
                             </Tooltip>,
                             !version.isLatest && (
                                 <Tooltip key="restore" title="Restore as Default">
@@ -502,7 +502,7 @@ const VersionsTab = ({
                             }
                             title={
                                 <div className="flex items-center gap-2">
-                                    <Text className={`text-xs font-mono ${previewUrl?.includes(version.versionId) ? 'text-violet-600 font-bold' : 'text-gray-600 dark:text-gray-300'}`}>
+                                    <Text className={`text-xs font-mono ${previewUrl?.includes(version.versionId) ? 'text-[color:var(--theme-color, #7c3aed)] font-bold' : 'text-gray-600 dark:text-gray-300'}`}>
                                         {version.versionId?.substring(0, 8) || 'unknown'}...
                                     </Text>
                                     {version.isLatest && <Tag color="success" className="mx-0 text-[10px] h-4 leading-4 px-1">Current</Tag>}
@@ -575,7 +575,7 @@ const MediaPreviewContent = ({
                 )}
 
                 {showGenerated && (
-                    <div className="absolute top-3 left-3 z-10 bg-violet-600/90 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm">
+                    <div className="absolute top-3 left-3 z-10 bg-[var(--theme-color,#7c3aed)]/90 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm">
                         System Preview
                     </div>
                 )}
@@ -646,7 +646,7 @@ const MediaPreviewContent = ({
                     <Space size="small">
                         <Tag color="success" icon={<CheckCircleOutlined />}>Latest Version</Tag>
                         {activeMedia.metadata?.label_studio_task_id ? (
-                            <Tag color="purple" icon={<ExperimentOutlined />}>Labeled</Tag>
+                            <Tag  icon={<ExperimentOutlined />}>Labeled</Tag>
                         ) : (
                             <Tag color="default" icon={<InfoCircleOutlined />}>Not Labeled</Tag>
                         )}
@@ -1092,7 +1092,7 @@ export default function MediaPreviewModal({
                         : 'rgba(255, 255, 255, 0.8)',
                     backdropFilter: 'blur(20px)',
                     WebkitBackdropFilter: 'blur(20px)',
-                    border: `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255, 255, 255, 0.2)'}`,
+                    border: `1px solid ${isDarkMode ? 'rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)' : 'rgba(255, 255, 255, 0.2)'}`,
                     boxShadow: '0 20px 50px rgba(0,0,0,0.1)'
                 }
             }}

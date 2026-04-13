@@ -29,12 +29,14 @@ import { MagicButton } from "@/components/custom/MagicButton";
 import CatalogTree from "@/app/admin/datasets/CatalogTreeStyled";
 import SQLEditor from "@/app/admin/datasets/SQLEditor";
 import { dremioService } from "@/lib/dremioService";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Content, Sider } = Layout;
 const { Text } = Typography;
 
 export default function SQLRunnerPage() {
     const [showExplorer, setShowExplorer] = useState(true);
+    const { themeColor } = usePreferencesStore();
     const [selectedPath, setSelectedPath] = useState<string[]>([]);
     const [queryContext, setQueryContext] = useState<string[]>([]);
     const [initialSQL, setInitialSQL] = useState("");
@@ -61,7 +63,7 @@ export default function SQLRunnerPage() {
             title={
                 <div className="flex items-center gap-3">
                     <span style={{
-                        background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                        background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         fontWeight: 700

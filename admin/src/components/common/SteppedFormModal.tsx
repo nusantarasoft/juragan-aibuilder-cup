@@ -10,8 +10,8 @@ import {
   EditOutlined, FileTextOutlined,
 } from "@ant-design/icons";
 import type { FormInstance } from "antd";
-import { motion, AnimatePresence } from "framer-motion";
 import DataImportExport, { FieldDef } from "./DataImportExport";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text, Title } = Typography;
 
@@ -60,8 +60,9 @@ export default function SteppedFormModal({
   onBatchCreate, gradient, editMode = false, initialValues,
 }: SteppedFormModalProps) {
   const [currentStep, setCurrentStep] = useState(0);
-  const g1 = gradient?.[0] || "#6366f1";
-  const g2 = gradient?.[1] || "#8b5cf6";
+  const { themeColor } = usePreferencesStore();
+  const g1 = gradient?.[0] || themeColor || "#6366f1";
+  const g2 = gradient?.[1] || `${themeColor}dd` || "var(--theme-color, #8b5cf6)";
 
   const totalSteps = steps.length + 1; // +1 for review step
   const isReviewStep = currentStep === steps.length;
@@ -180,31 +181,18 @@ export default function SteppedFormModal({
           />
         )}
 
-        <AnimatePresence mode="wait">
-          {/* Form Steps */}
-          {!isReviewStep && (
-            <motion.div
-              key={`step-${currentStep}`}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.15 }}
-            >
-              <Form form={form} layout="vertical" size="middle" initialValues={initialValues}>
-                {steps[currentStep]?.content}
-              </Form>
-            </motion.div>
-          )}
+        <Form form={form} layout="vertical" size="middle" initialValues={initialValues}>
+          {/* Render ALL form steps — hide non-active with display:none to preserve field state */}
+          {steps.map((step, idx) => (
+            <div key={`step-${idx}`} style={{ display: currentStep === idx ? 'block' : 'none' }}>
+              {step.content}
+            </div>
+          ))}
+        </Form>
 
-          {/* Review Step */}
+          {/* Review Step — rendered separately (no form fields) */}
           {isReviewStep && (
-            <motion.div
-              key="review"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.15 }}
-            >
+            <div>
               <div className="flex items-center gap-2 mb-3">
                 <FileTextOutlined style={{ color: g1 }} />
                 <Text strong className="text-sm">Review Before Submitting</Text>
@@ -257,9 +245,8 @@ export default function SteppedFormModal({
                 showIcon
                 style={{ borderRadius: 8, marginTop: 8 }}
               />
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
       </div>
 
       {/* Footer Navigation */}

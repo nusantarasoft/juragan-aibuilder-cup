@@ -349,7 +349,7 @@ export default function Web3LandingPage() {
                   height="24"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="#a855f7"
+                  stroke="var(--theme-accent, #a855f7)"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -689,7 +689,7 @@ export default function Web3LandingPage() {
           color: #ffff;
           gap: 10px;
           font-weight: 600;
-          border: 3px solid #a855f7;
+          border: 3px solid var(--theme-accent, #a855f7);
           outline: none;
           overflow: hidden;
           font-size: 15px;
@@ -750,7 +750,7 @@ export default function Web3LandingPage() {
           color: #d8b4fe;
           gap: 10px;
           font-weight: 600;
-          border: 3px solid #a855f7;
+          border: 3px solid var(--theme-accent, #a855f7);
           outline: none;
           font-size: 15px;
         }
@@ -758,7 +758,7 @@ export default function Web3LandingPage() {
           width: 22px;
           height: 22px;
           transition: all 0.2s;
-          stroke: #a855f7 !important;
+          stroke: var(--theme-accent, #a855f7) !important;
         }
         .button-secondary:hover {
           background-color: rgba(232, 121, 249, 0.08);

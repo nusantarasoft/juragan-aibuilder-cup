@@ -251,7 +251,7 @@ export default function GovernanceTab({ projectId }: { projectId: string }) {
             <ProTable
                 headerTitle={
                     <Space>
-                        <BankOutlined style={{ color: '#8b5cf6' }} />
+                        <BankOutlined style={{ color: 'var(--theme-color, #8b5cf6)' }} />
                         <span>Governance Decision Log</span>
                     </Space>
                 }
@@ -263,7 +263,7 @@ export default function GovernanceTab({ projectId }: { projectId: string }) {
                 toolBarRender={() => [
                     <Button key="add" type="primary" icon={<PlusOutlined />}
                         onClick={() => { setEditing(null); setIsModalOpen(true); }}
-                        style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', border: 'none', borderRadius: 8 }}
+                        style={{ background: 'linear-gradient(135deg, var(--theme-color, #8b5cf6), var(--theme-secondary, #6366f1))', border: 'none', borderRadius: 8 }}
                     >
                         Log Decision
                     </Button>

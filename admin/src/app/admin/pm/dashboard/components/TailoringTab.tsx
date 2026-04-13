@@ -226,7 +226,7 @@ export default function TailoringTab({ projectId }: { projectId: string }) {
             <ProTable
                 headerTitle={
                     <Space>
-                        <ToolOutlined style={{ color: '#8b5cf6' }} />
+                        <ToolOutlined style={{ color: 'var(--theme-color, #8b5cf6)' }} />
                         <span>Tailoring Decisions</span>
                     </Space>
                 }
@@ -242,7 +242,7 @@ export default function TailoringTab({ projectId }: { projectId: string }) {
                     </Button>,
                     <Button key="add" type="primary" icon={<PlusOutlined />}
                         onClick={() => { setEditing(null); setIsModalOpen(true); }}
-                        style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', border: 'none', borderRadius: 8 }}
+                        style={{ background: 'linear-gradient(135deg, var(--theme-color, #8b5cf6), var(--theme-secondary, #6366f1))', border: 'none', borderRadius: 8 }}
                     >
                         Add Entry
                     </Button>

@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { inventoryService, EcomPackage, EcomPackageItem, EcomPackageStatsType } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import ItemPicker from "@/components/inventory/ItemPicker";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
@@ -27,6 +28,7 @@ const PACKAGE_FIELDS: FieldDef[] = [
 
 export default function PackagesPage() {
     const [stats, setStats] = useState<EcomPackageStatsType | null>(null);
+    const { themeColor } = usePreferencesStore();
     const [packages, setPackages] = useState<EcomPackage[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -123,7 +125,7 @@ export default function PackagesPage() {
     };
 
     const kpiCards = [
-        { title: 'Total Packages', value: stats?.totalPackages || 0, icon: <GiftOutlined />, color: '#8b5cf6' },
+        { title: 'Total Packages', value: stats?.totalPackages || 0, icon: <GiftOutlined />, color: themeColor },
         { title: 'Active', value: stats?.active || 0, icon: <CheckCircleOutlined />, color: '#10b981' },
         { title: 'Inactive', value: stats?.inactive || 0, icon: <GiftOutlined />, color: '#94a3b8' },
         { title: 'Total Sold', value: stats?.totalSold || 0, icon: <ShoppingOutlined />, color: '#3b82f6' },
@@ -138,7 +140,7 @@ export default function PackagesPage() {
 
     const columns = [
         { title: 'Package', dataIndex: 'name', render: (v: string, r: EcomPackage) => (<div><Text strong className="text-sm">{v}</Text>{r.sku && <Text type="secondary" className="text-xs block">{r.sku}</Text>}</div>) },
-        { title: 'Package Price', dataIndex: 'packagePrice', width: 140, render: (v: number) => <Text strong style={{ color: '#8b5cf6' }}>{fmtCurrency(v)}</Text> },
+        { title: 'Package Price', dataIndex: 'packagePrice', width: 140, render: (v: number) => <Text strong style={{ color: themeColor }}>{fmtCurrency(v)}</Text> },
         { title: 'Regular Price', dataIndex: 'regularPrice', width: 140, render: (v: number) => <Text type="secondary" style={{ textDecoration: 'line-through' }}>{fmtCurrency(v)}</Text> },
         { title: 'Savings', dataIndex: 'savings', width: 120, render: (v: number) => <Tag color="green" className="rounded-full">{fmtCurrency(v)}</Tag> },
         { title: 'Sold', dataIndex: 'timesSold', width: 70, render: (v: number) => v || 0 },
@@ -200,7 +202,7 @@ export default function PackagesPage() {
                             ))}
                             <Button type="dashed" onClick={addLine} icon={<PlusOutlined />} style={{ width: '100%' }}>Add Item</Button>
                             {lineItems.length > 0 && (
-                                <div style={{ textAlign: 'right', marginTop: 8, fontWeight: 700, color: '#8b5cf6' }}>
+                                <div style={{ textAlign: 'right', marginTop: 8, fontWeight: 700, color: themeColor }}>
                                     Regular Total: {fmtCurrency(calcRegular())}
                                 </div>
                             )}
@@ -214,7 +216,7 @@ export default function PackagesPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#8b5cf6", "#a78bfa", "#6366f1", "#c084fc", "#ff00ff"]}>Packages</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Packages</AuroraText>}
             subTitle={<DecryptedText text="Bundle products into packages with special pricing" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
@@ -251,7 +253,7 @@ export default function PackagesPage() {
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
                             <Button type="primary" icon={<PlusOutlined />} onClick={openNew}
-                                style={{ background: 'linear-gradient(135deg, #8b5cf6, #a78bfa)', border: 'none', borderRadius: 8 }}>
+                                style={{ background: 'linear-gradient(135deg, var(--theme-color, #8b5cf6), #a78bfa)', border: 'none', borderRadius: 8 }}>
                                 New Package
                             </Button>
                         </Space>
@@ -268,7 +270,7 @@ export default function PackagesPage() {
                     <div className="space-y-4">
                         <Card size="small" style={{ borderRadius: 10 }}>
                             <Row gutter={16}>
-                                <Col span={8}><Text type="secondary" className="text-xs block">Package Price</Text><Text strong style={{ color: '#8b5cf6', fontSize: 18 }}>{fmtCurrency(selected.packagePrice)}</Text></Col>
+                                <Col span={8}><Text type="secondary" className="text-xs block">Package Price</Text><Text strong style={{ color: themeColor, fontSize: 18 }}>{fmtCurrency(selected.packagePrice)}</Text></Col>
                                 <Col span={8}><Text type="secondary" className="text-xs block">Regular Price</Text><Text style={{ textDecoration: 'line-through' }}>{fmtCurrency(selected.regularPrice)}</Text></Col>
                                 <Col span={8}><Text type="secondary" className="text-xs block">Savings</Text><Tag color="green">{fmtCurrency(selected.savings)}</Tag></Col>
                             </Row>
@@ -299,7 +301,7 @@ export default function PackagesPage() {
                 fields={PACKAGE_FIELDS}
                 loading={saving}
                 onBatchCreate={handleBatchCreate}
-                gradient={["#8b5cf6", "#a78bfa"]}
+                gradient={["var(--theme-color, #8b5cf6)", "#a78bfa"]}
                 editMode={editMode}
             />
         </CMSLayout>

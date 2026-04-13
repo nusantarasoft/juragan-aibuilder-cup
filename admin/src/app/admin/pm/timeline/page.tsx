@@ -15,6 +15,7 @@ import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text, Title } = Typography;
 
@@ -50,6 +51,7 @@ const PRIORITY_COLOR: Record<string, string> = {
 export default function TimelinePage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
+    const { themeColor } = usePreferencesStore();
     const [projects, setProjects] = useState<any[]>([]);
     const [portfolio, setPortfolio] = useState<any[]>([]);
     const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -158,13 +160,13 @@ export default function TimelinePage() {
             {/* ── Stats ── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={6}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #8b5cf6' }} size="small">
+                    <Card style={{ ...glassCard, borderTop: `3px solid ${themeColor}` }} size="small">
                         <Statistic
                             title={<span style={{ fontSize: 12 }}>Projects with Timeline</span>}
                             value={withDates.length}
                             suffix={<Text type="secondary" style={{ fontSize: 12 }}>/ {projects.length}</Text>}
-                            prefix={<CalendarOutlined style={{ color: '#8b5cf6' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 700, color: '#8b5cf6' }}
+                            prefix={<CalendarOutlined style={{ color: themeColor }} />}
+                            valueStyle={{ fontSize: 24, fontWeight: 700, color: themeColor }}
                         />
                     </Card>
                 </Col>
@@ -227,7 +229,7 @@ export default function TimelinePage() {
             <Card
                 title={
                     <Space>
-                        <FieldTimeOutlined style={{ color: '#8b5cf6' }} />
+                        <FieldTimeOutlined style={{ color: themeColor }} />
                         <span style={{ fontWeight: 600 }}>Project Timeline</span>
                         <Tag color="purple">{enrichedProjects.length}</Tag>
                     </Space>

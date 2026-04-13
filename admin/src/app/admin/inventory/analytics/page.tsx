@@ -42,7 +42,7 @@ export default function AnalyticsPage() {
     if (loading) return <CMSLayout><div style={{ textAlign: 'center', padding: 100 }}><Spin size="large" /></div></CMSLayout>;
 
     const topCards = [
-        { label: 'Total Items', value: invStats?.totalItems || 0, icon: <DatabaseOutlined />, color: '#7c3aed' },
+        { label: 'Total Items', value: invStats?.totalItems || 0, icon: <DatabaseOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { label: 'Physical', value: invStats?.physicalCount || 0, icon: <InboxOutlined />, color: '#2563eb' },
         { label: 'Tickets', value: invStats?.ticketCount || 0, icon: <ScheduleOutlined />, color: '#0891b2' },
         { label: 'Scheduled', value: invStats?.scheduledCount || 0, icon: <ScheduleOutlined />, color: '#059669' },
@@ -64,7 +64,7 @@ export default function AnalyticsPage() {
         ? Math.round(((mfgStats.completedWo || 0) / mfgStats.totalWorkOrders) * 100) : 0;
 
     const analyticModules = [
-        { title: 'Procurement', icon: <ShoppingCartOutlined style={{ color: '#7c3aed' }} />, stats: [
+        { title: 'Procurement', icon: <ShoppingCartOutlined style={{ color: 'var(--theme-color, #7c3aed)' }} />, stats: [
             { label: 'Total POs', value: procStats?.totalPos || 0 },
             { label: 'Approved POs', value: procStats?.approvedPos || 0 },
             { label: 'Total PO Value', value: fmt(totalProcSpend) },
@@ -103,7 +103,7 @@ export default function AnalyticsPage() {
     ];
 
     const fulfillmentBreakdown = [
-        { type: 'Physical Goods', count: invStats?.physicalCount || 0, color: '#7c3aed' },
+        { type: 'Physical Goods', count: invStats?.physicalCount || 0, color: 'var(--theme-color, #7c3aed)' },
         { type: 'Tickets & Events', count: invStats?.ticketCount || 0, color: '#2563eb' },
         { type: 'Scheduled Services', count: invStats?.scheduledCount || 0, color: '#059669' },
         { type: 'Rental Items', count: invStats?.rentalCount || 0, color: '#d97706' },
@@ -114,7 +114,7 @@ export default function AnalyticsPage() {
         <CMSLayout>
             <div style={{ padding: '0 4px' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 20 }}>
-                    <h1 style={{ margin: 0, background: 'linear-gradient(135deg, #0891b2, #7c3aed)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: 28, fontWeight: 700 }}>
+                    <h1 style={{ margin: 0, background: 'linear-gradient(135deg, #0891b2, var(--theme-color, #7c3aed))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: 28, fontWeight: 700 }}>
                         Analytics & AI
                     </h1>
                     <span style={{ color: '#888' }}>Cross-module analytics, performance metrics, and intelligence hub</span>

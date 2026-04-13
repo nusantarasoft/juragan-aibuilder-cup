@@ -12,7 +12,7 @@ import {
 const data = [
   { name: 'Food & Dining', value: 320, color: '#3b82f6' },
   { name: 'Transportation', value: 180, color: '#10b981' },
-  { name: 'Entertainment', value: 120, color: '#8b5cf6' },
+  { name: 'Entertainment', value: 120, color: 'var(--theme-color, #8b5cf6)' },
   { name: 'Shopping', value: 450, color: '#ef4444' },
   { name: 'Utilities', value: 220, color: '#f59e0b' },
   { name: 'Healthcare', value: 150, color: '#ec4899' },

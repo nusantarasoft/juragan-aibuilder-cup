@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { inventoryService, EcomCustomer, EcomStatsType } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { CrmAccountPicker, CrmContactPicker } from "@/components/inventory/CrmPicker";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
@@ -34,6 +35,7 @@ const CUSTOMER_FIELDS: FieldDef[] = [
 
 export default function CustomersPage() {
     const [stats, setStats] = useState<EcomStatsType | null>(null);
+    const { themeColor } = usePreferencesStore();
     const [customers, setCustomers] = useState<EcomCustomer[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -91,7 +93,7 @@ export default function CustomersPage() {
     };
 
     const kpiCards = [
-        { title: 'Total Customers', value: stats?.totalCustomers || 0, icon: <TeamOutlined />, color: '#6366f1' },
+        { title: 'Total Customers', value: stats?.totalCustomers || 0, icon: <TeamOutlined />, color: themeColor },
         { title: 'Active', value: stats?.activeCustomers || 0, icon: <UserOutlined />, color: '#10b981' },
         { title: 'Total Orders', value: stats?.totalOrders || 0, icon: <ShoppingCartOutlined />, color: '#3b82f6' },
         { title: 'Revenue', value: fmtCurrency(stats?.totalRevenue), icon: <DollarOutlined />, color: '#f59e0b' },
@@ -114,7 +116,7 @@ export default function CustomersPage() {
             render: (v: string) => <Tag color={TYPE_COLORS[v] || 'default'} className="rounded-full text-xs capitalize">{v}</Tag> },
         { title: 'Orders', dataIndex: 'totalOrders', width: 70, sorter: (a: any, b: any) => (a.totalOrders || 0) - (b.totalOrders || 0) },
         { title: 'Total Spent', dataIndex: 'totalSpent', width: 140, sorter: (a: any, b: any) => (a.totalSpent || 0) - (b.totalSpent || 0),
-            render: (v: number) => <Text strong style={{ color: '#6366f1' }}>{fmtCurrency(v)}</Text> },
+            render: (v: number) => <Text strong style={{ color: themeColor }}>{fmtCurrency(v)}</Text> },
         { title: 'City', dataIndex: 'city', width: 120, render: (v: string) => v || '—' },
         { title: 'Status', dataIndex: 'status', width: 90,
             render: (v: string) => <Tag color={STATUS_COLORS[v] || 'default'} className="rounded-full text-xs capitalize">{v}</Tag> },
@@ -178,7 +180,7 @@ export default function CustomersPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#6366f1", "#8b5cf6", "#a78bfa", "#00ffff", "#ff00ff"]}>Customers</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Customers</AuroraText>}
             subTitle={<DecryptedText text="Customer registry and purchase history" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
@@ -212,7 +214,7 @@ export default function CustomersPage() {
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
                             <Button type="primary" icon={<PlusOutlined />}
                                 onClick={() => { form.resetFields(); setModalOpen(true); }}
-                                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: 8, border: 'none' }}>
+                                style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, borderRadius: 8, border: 'none' }}>
                                 New Customer
                             </Button>
                         </Space>
@@ -233,7 +235,7 @@ export default function CustomersPage() {
                 fields={CUSTOMER_FIELDS}
                 loading={saving}
                 onBatchCreate={handleBatchCreate}
-                gradient={["#6366f1", "#8b5cf6"]}
+                gradient={["#6366f1", "var(--theme-color, #8b5cf6)"]}
             />
         </CMSLayout>
     );

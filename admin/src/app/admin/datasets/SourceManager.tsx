@@ -201,7 +201,7 @@ export default function SourceManager() {
                     <Button icon={<ReloadOutlined />} onClick={loadSources}>Refresh</Button>
                     <Button icon={<PlusOutlined />} type="primary" onClick={() => setAddModalVisible(true)}
                         style={{
-                            background: "linear-gradient(135deg, #7c3aed, #6366f1)",
+                            background: "linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))",
                             border: "none",
                             boxShadow: "0 4px 10px rgba(124, 58, 237, 0.3)"
                         }}>

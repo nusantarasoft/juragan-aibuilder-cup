@@ -16,13 +16,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { inventoryService } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 
 const { Text, Title, Paragraph } = Typography;
 
 const SELLABLE_TYPES = [
     { value: 'physical', label: 'Physical Product', icon: '📦', desc: 'Tangible item tracked in stock (e-commerce, retail)', color: '#3b82f6' },
-    { value: 'ticket', label: 'Ticket / Event', icon: '🎫', desc: 'One-time event entry with seat capacity', color: '#8b5cf6' },
+    { value: 'ticket', label: 'Ticket / Event', icon: '🎫', desc: 'One-time event entry with seat capacity', color: 'var(--theme-color, #8b5cf6)' },
     { value: 'scheduled', label: 'Scheduled Service', icon: '🗓️', desc: 'Recurring route or time-based service', color: '#06b6d4' },
     { value: 'rental', label: 'Rental Asset', icon: '🔑', desc: 'Item rented out and returned', color: '#f59e0b' },
 ];
@@ -44,6 +45,7 @@ const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : '—';
 export default function ProductsPage() {
     const router = useRouter();
     const [items, setItems] = useState<any[]>([]);
+    const { themeColor } = usePreferencesStore();
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [fulfillmentFilter, setFulfillmentFilter] = useState<string | undefined>();
@@ -170,9 +172,9 @@ export default function ProductsPage() {
     const countByType = (type: string) => sellableItems.filter(i => i.fulfillmentType === type).length;
 
     const kpiCards = [
-        { title: 'Total Products', value: sellableItems.length, icon: <ShoppingOutlined />, color: '#6366f1' },
+        { title: 'Total Products', value: sellableItems.length, icon: <ShoppingOutlined />, color: themeColor },
         { title: 'Physical', value: countByType('physical'), icon: <InboxOutlined />, color: '#3b82f6' },
-        { title: 'Tickets', value: countByType('ticket'), icon: <TagOutlined />, color: '#8b5cf6' },
+        { title: 'Tickets', value: countByType('ticket'), icon: <TagOutlined />, color: themeColor },
         { title: 'Scheduled', value: countByType('scheduled'), icon: <FilterOutlined />, color: '#06b6d4' },
         { title: 'Rental', value: countByType('rental'), icon: <DollarOutlined />, color: '#f59e0b' },
         { title: 'Active', value: sellableItems.filter(i => i.status === 'active').length, icon: <ShoppingOutlined />, color: '#10b981' },
@@ -182,14 +184,14 @@ export default function ProductsPage() {
         { title: 'SKU', dataIndex: 'sku', width: 120, render: (v: string) => <Text code className="text-xs">{v || '—'}</Text> },
         { title: 'Product Name', dataIndex: 'name', ellipsis: true,
             render: (v: string, r: any) => (
-                <Text strong className="text-sm cursor-pointer hover:text-violet-500" onClick={() => setDetailDrawer(r)}>{v}</Text>
+                <Text strong className="text-sm cursor-pointer hover:text-[color:var(--theme-color, #7c3aed)]" onClick={() => setDetailDrawer(r)}>{v}</Text>
             ),
         },
         { title: 'Type', dataIndex: 'fulfillmentType', width: 110,
             render: (v: string) => <Tag color={FULFILLMENT_COLORS[v] || 'default'} className="rounded-full text-xs capitalize">{v}</Tag> },
         { title: 'Cost Price', dataIndex: 'costPrice', width: 120, render: (v: number) => <Text className="text-xs">{fmtCurrency(v)}</Text> },
         { title: 'Selling Price', dataIndex: 'sellingPrice', width: 120,
-            render: (v: number) => <Text strong style={{ color: '#6366f1' }} className="text-xs">{fmtCurrency(v)}</Text> },
+            render: (v: number) => <Text strong style={{ color: themeColor }} className="text-xs">{fmtCurrency(v)}</Text> },
         { title: 'Margin', key: 'margin', width: 90,
             render: (_: any, r: any) => {
                 const cost = r.costPrice || 0;
@@ -204,7 +206,7 @@ export default function ProductsPage() {
         { title: '', key: 'actions', width: 120, fixed: 'right' as const,
             render: (_: any, r: any) => (
                 <Space size={2}>
-                    <Tooltip title="View"><Button type="text" size="small" icon={<EyeOutlined />} className="text-gray-400 hover:text-violet-500" onClick={() => setDetailDrawer(r)} /></Tooltip>
+                    <Tooltip title="View"><Button type="text" size="small" icon={<EyeOutlined />} className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)]" onClick={() => setDetailDrawer(r)} /></Tooltip>
                     <Tooltip title="Edit"><Button type="text" size="small" icon={<EditOutlined />} className="text-gray-400 hover:text-blue-500" onClick={() => openEditModal(r)} /></Tooltip>
                     <Popconfirm title="Delete this product?" onConfirm={() => handleDelete(r.id)}>
                         <Tooltip title="Delete"><Button type="text" size="small" icon={<DeleteOutlined />} className="text-gray-400 hover:text-red-500" /></Tooltip>
@@ -216,7 +218,7 @@ export default function ProductsPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#6366f1", "#8b5cf6", "#a78bfa", "#00ffff", "#ff00ff"]}>Products</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Products</AuroraText>}
             subTitle={<DecryptedText text="Catalog from Inventory — all fulfillment types" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
@@ -254,7 +256,7 @@ export default function ProductsPage() {
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
                             <Button type="primary" icon={<PlusOutlined />}
-                                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8 }}
+                                style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, border: 'none', borderRadius: 8 }}
                                 onClick={() => setAddModalOpen(true)}>Add Product</Button>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} style={{ borderRadius: 8 }} /></Tooltip>
                         </div>
@@ -281,7 +283,7 @@ export default function ProductsPage() {
                 styles={{ body: { padding: 0 } }}
             >
                 <div style={{ padding: '24px 28px 0', borderBottom: addStep === 1 ? 'none' : '1px solid #f0f0f0', paddingBottom: 20 }}>
-                    <Title level={4} className="!m-0" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                    <Title level={4} className="!m-0" style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                         ✨ Add New Product
                     </Title>
                     <Text type="secondary" className="text-xs">Step {addStep + 1} of 2 — {addStep === 0 ? 'Choose fulfillment type' : 'Enter product details'}</Text>
@@ -450,7 +452,7 @@ export default function ProductsPage() {
                     ) : <div />}
                     {addStep === 0 ? (
                         <Button type="primary" disabled={!selectedType} onClick={() => setAddStep(1)}
-                            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8, minWidth: 120 }}>
+                            style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, border: 'none', borderRadius: 8, minWidth: 120 }}>
                             Continue →
                         </Button>
                     ) : (
@@ -482,7 +484,7 @@ export default function ProductsPage() {
                                     {SELLABLE_TYPES.find(t => t.value === editingProduct.fulfillmentType)?.icon || '📦'}
                                 </div>
                                 <div>
-                                    <Title level={4} className="!m-0" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                    <Title level={4} className="!m-0" style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                                         Edit Product
                                     </Title>
                                     <Text type="secondary" className="text-xs">{editingProduct.sku || 'No SKU'} · {editingProduct.fulfillmentType}</Text>
@@ -612,7 +614,7 @@ export default function ProductsPage() {
                         <div style={{ padding: '0 28px 20px', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                             <Button onClick={() => { setEditModalOpen(false); editForm.resetFields(); }} style={{ borderRadius: 8 }}>Cancel</Button>
                             <Button type="primary" onClick={handleEditProduct} loading={editSaving}
-                                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8, minWidth: 140 }}
+                                style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, border: 'none', borderRadius: 8, minWidth: 140 }}
                                 icon={<EditOutlined />}>
                                 Save Changes
                             </Button>
@@ -668,7 +670,7 @@ export default function ProductsPage() {
                                     <Col span={8}>
                                         <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: '#f0f0ff' }}>
                                             <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Sell</Text>
-                                            <Text strong style={{ fontSize: 14, color: '#6366f1' }}>{fmtCurrency(detailDrawer.sellingPrice)}</Text>
+                                            <Text strong style={{ fontSize: 14, color: themeColor }}>{fmtCurrency(detailDrawer.sellingPrice)}</Text>
                                         </Card>
                                     </Col>
                                     <Col span={8}>
@@ -720,7 +722,7 @@ export default function ProductsPage() {
                                 <Divider style={{ margin: '12px 0' }} />
                                 <div className="flex gap-2 flex-wrap">
                                     <Button type="primary" icon={<EditOutlined />} onClick={() => { setDetailDrawer(null); openEditModal(detailDrawer); }}
-                                        style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8 }}>Edit Product</Button>
+                                        style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, border: 'none', borderRadius: 8 }}>Edit Product</Button>
                                     <Button icon={<CopyOutlined />} onClick={() => { handleDuplicate(detailDrawer); setDetailDrawer(null); }}
                                         style={{ borderRadius: 8 }}>Duplicate</Button>
                                     <Button onClick={() => { setDetailDrawer(null); router.push('/admin/inventory/items'); }}

@@ -48,10 +48,11 @@ import {
     Divider,
 } from "antd";
 import AIStudioDrawer from "./AIStudioDrawer";
+import ThemeDrawer from "./ThemeDrawer";
 import { useRouter, usePathname } from "next/navigation";
 import menuConfig from "@/config/menuConfig";
 import GlitchText from "@/components/react-bits/GlitchText";
-import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { usePreferencesStore, hexToRgb } from "@/store/usePreferencesStore";
 // Dynamic import for MetaBalls to prevent SSR crash (ogl WebGL library requires browser)
 const MetaBalls = dynamic(
     () => import("@/components/react-bits/MetaBalls"),
@@ -335,6 +336,9 @@ export default function CMSLayout({
     const [appListOpen, setAppListOpen] = useState(false);
     const [showBackground, setShowBackground] = useState(true);
     const [aiStudioVisible, setAIStudioVisible] = useState(false);
+    const [themeDrawerVisible, setThemeDrawerVisible] = useState(false);
+    const { themePalette } = usePreferencesStore();
+    const themeColor = themePalette.primary;
 
     // Controlled openKeys to prevent submenu collapse on navigation
     const [openKeys, setOpenKeys] = useState<string[]>(() => {
@@ -515,7 +519,7 @@ export default function CMSLayout({
                         icon={
                             <ShareAltOutlined 
                                 style={{ 
-                                    color: "#8b5cf6", // Purple color
+                                    color: themeColor, // Theme color
                                     fontSize: 18 
                                 }} 
                             />
@@ -632,7 +636,7 @@ export default function CMSLayout({
         }, 500);
     };
 
-    // Sync dark class on initial hydration
+    // Sync dark class and theme color CSS variable on initial hydration
     React.useEffect(() => {
         if (darkMode) {
             document.documentElement.classList.add("dark");
@@ -640,6 +644,23 @@ export default function CMSLayout({
             document.documentElement.classList.remove("dark");
         }
     }, [darkMode]);
+
+    // Sync full theme palette as CSS variables on documentElement
+    React.useEffect(() => {
+        const root = document.documentElement;
+        root.style.setProperty('--theme-color', themePalette.primary);
+        root.style.setProperty('--theme-secondary', themePalette.secondary);
+        root.style.setProperty('--theme-accent', themePalette.accent);
+        root.style.setProperty('--theme-sidebar-bg', themePalette.sidebarBg);
+        root.style.setProperty('--theme-header-bg', themePalette.headerBg);
+        // RGB variants for rgba() usage
+        const pRgb = hexToRgb(themePalette.primary);
+        root.style.setProperty('--theme-color-rgb', `${pRgb.r}, ${pRgb.g}, ${pRgb.b}`);
+        const sRgb = hexToRgb(themePalette.secondary);
+        root.style.setProperty('--theme-secondary-rgb', `${sRgb.r}, ${sRgb.g}, ${sRgb.b}`);
+        const aRgb = hexToRgb(themePalette.accent);
+        root.style.setProperty('--theme-accent-rgb', `${aRgb.r}, ${aRgb.g}, ${aRgb.b}`);
+    }, [themePalette]);
 
     // Force sticky sidebar for inner layout
     React.useEffect(() => {
@@ -711,6 +732,11 @@ export default function CMSLayout({
                     }}
                     theme={{
                         algorithm: darkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
+                        token: {
+                            colorPrimary: themePalette.primary,
+                            colorLink: themePalette.accent,
+                            colorInfo: themePalette.secondary,
+                        },
                     }}
                 >
                     {/* OUTER PROLAYOUT - Main section navigation */}
@@ -728,6 +754,7 @@ export default function CMSLayout({
                         headerRender={false}
                         siderWidth={260}
                         navTheme={darkMode ? "realDark" : "light"}
+                        token={{ sider: { colorMenuBackground: darkMode ? themePalette.sidebarBg : undefined, colorTextMenu: darkMode ? 'rgba(255,255,255,0.75)' : undefined, colorTextMenuSelected: darkMode ? '#fff' : themePalette.primary, colorBgMenuItemSelected: `${themePalette.primary}${darkMode ? '40' : '15'}`, colorTextMenuItemHover: darkMode ? '#fff' : themePalette.primary, colorBgMenuItemHover: `${themePalette.primary}${darkMode ? '20' : '08'}` } }}
                         layout="side"
                         contentStyle={{
                             padding: 0,
@@ -771,8 +798,8 @@ export default function CMSLayout({
                                                 speed={0.5}
                                                 enableShadows={true}
                                                 color={darkMode ? '#ffffff' : '#333333'}
-                                                glitchColor1="#00ffff"
-                                                glitchColor2="#ff00ff"
+                                                glitchColor1={themePalette.accent}
+                                                glitchColor2={themePalette.secondary}
                                             >
                                                 NS
                                             </GlitchText>
@@ -853,8 +880,8 @@ export default function CMSLayout({
                                                     speed={0.5}
                                                     enableShadows={true}
                                                     color={darkMode ? '#ffffff' : '#333333'}
-                                                    glitchColor1="#00ffff"
-                                                    glitchColor2="#ff00ff"
+                                                    glitchColor1={themePalette.accent}
+                                                    glitchColor2={themePalette.secondary}
                                                 >
                                                     NS
                                                 </GlitchText>
@@ -926,6 +953,7 @@ export default function CMSLayout({
                             onCollapse={handleInnerCollapse}
                             siderWidth={240}
                             navTheme={darkMode ? "realDark" : "light"}
+                            token={{ sider: { colorMenuBackground: darkMode ? 'rgba(0,0,0,0.2)' : '#fff', colorTextMenuSelected: themePalette.primary, colorBgMenuItemSelected: `${themePalette.primary}15`, colorTextMenuItemHover: themePalette.primary, colorBgMenuItemHover: `${themePalette.primary}08` } }}
                             layout="side"
                             contentStyle={{
                                 padding: 0,
@@ -950,8 +978,8 @@ export default function CMSLayout({
                                         vertical={innerCollapsed}
                                         options={segmentedOptions}
                                         style={{
-                                            background: darkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.08)',
-                                            border: darkMode ? '1px solid rgba(139, 92, 246, 0.3)' : '1px solid rgba(139, 92, 246, 0.2)',
+                                            background: darkMode ? `rgba(var(--theme-color-rgb, 139, 92, 246), 0.15)` : `rgba(var(--theme-color-rgb, 139, 92, 246), 0.08)`,
+                                            border: darkMode ? `1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.3)` : `1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)`,
                                         }}
                                     />
                                 </div>
@@ -1041,14 +1069,17 @@ export default function CMSLayout({
             {/* AI Studio Drawer */}
             <AIStudioDrawer visible={aiStudioVisible} onClose={() => setAIStudioVisible(false)} />
 
+            {/* Theme Customizer Drawer */}
+            <ThemeDrawer visible={themeDrawerVisible} onClose={() => setThemeDrawerVisible(false)} darkMode={darkMode} />
+
             {/* SpeedDial Quarter Circle with MetaBalls - Bottom Right */}
             <div className="fixed bottom-0 right-0 z-50 w-48 h-48 hidden md:block">
                 {/* MetaBalls animation - purely decorative, non-interactive */}
                 {showBackground && (
                     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', zIndex: 1 }}>
                         <MetaBalls
-                            color={darkMode ? "#ffffff" : "#8b5cf6"}
-                            cursorBallColor={darkMode ? "#e0e7ff" : "#6366f1"}
+                            color={themeColor}
+                            cursorBallColor={themeColor}
                             enableTransparency={true}
                             enableMouseInteraction={true}
                             hoverSmoothness={0.05}
@@ -1069,6 +1100,11 @@ export default function CMSLayout({
                                     label: 'AI Studio',
                                     icon: 'pi pi-sparkles',
                                     command: () => setAIStudioVisible(true),
+                                },
+                                {
+                                    label: 'Theme',
+                                    icon: 'pi pi-palette',
+                                    command: () => setThemeDrawerVisible(true),
                                 },
                                 {
                                     label: showBackground ? 'Disable Background' : 'Enable Background',
@@ -1186,15 +1222,15 @@ export default function CMSLayout({
                 .speeddial-metaballs-btn {
                     width: 2.5rem !important;
                     height: 2.5rem !important;
-                    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%) !important;
+                    background: linear-gradient(135deg, ${themeColor} 0%, ${themeColor}dd 100%) !important;
                     border: none !important;
-                    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4) !important;
+                    box-shadow: 0 4px 15px ${themeColor}66 !important;
                     transition: all 0.3s ease !important;
                 }
                 
                 .speeddial-metaballs-btn:hover {
                     transform: scale(1.1) !important;
-                    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.6) !important;
+                    box-shadow: 0 6px 20px ${themeColor}99 !important;
                 }
                 
                 .speeddial-metaballs-btn .pi {
@@ -1206,13 +1242,13 @@ export default function CMSLayout({
                 .p-speeddial-action {
                     width: 2.25rem !important;
                     height: 2.25rem !important;
-                    background: linear-gradient(135deg, #a78bfa 0%, #818cf8 100%) !important;
+                    background: linear-gradient(135deg, ${themeColor}cc 0%, ${themeColor}99 100%) !important;
                     border: none !important;
-                    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3) !important;
+                    box-shadow: 0 2px 8px ${themeColor}4d !important;
                 }
                 
                 .p-speeddial-action:hover {
-                    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%) !important;
+                    background: linear-gradient(135deg, ${themeColor} 0%, ${themeColor}dd 100%) !important;
                     transform: scale(1.15) !important;
                 }
                 

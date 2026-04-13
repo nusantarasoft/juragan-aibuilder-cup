@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { inventoryService, EcomDiscount, EcomDiscountStatsType } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
@@ -35,6 +36,7 @@ const DISCOUNT_FIELDS: FieldDef[] = [
 
 export default function DiscountsPage() {
     const [stats, setStats] = useState<EcomDiscountStatsType | null>(null);
+    const { themeColor } = usePreferencesStore();
     const [discounts, setDiscounts] = useState<EcomDiscount[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -124,7 +126,7 @@ export default function DiscountsPage() {
     const kpiCards = [
         { title: 'Total Discounts', value: stats?.totalDiscounts || 0, icon: <PercentageOutlined />, color: '#10b981' },
         { title: 'Active', value: stats?.active || 0, icon: <CheckCircleOutlined />, color: '#3b82f6' },
-        { title: 'Coupons', value: stats?.coupons || 0, icon: <CopyOutlined />, color: '#8b5cf6' },
+        { title: 'Coupons', value: stats?.coupons || 0, icon: <CopyOutlined />, color: themeColor },
         { title: 'Auto-Apply', value: stats?.autoApply || 0, icon: <ThunderboltOutlined />, color: '#f59e0b' },
         { title: 'Expired', value: stats?.expired || 0, icon: <ClockCircleOutlined />, color: '#94a3b8' },
         { title: 'Total Used', value: stats?.totalUsed || 0, icon: <DollarOutlined />, color: '#ef4444' },

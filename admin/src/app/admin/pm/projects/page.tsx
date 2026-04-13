@@ -31,6 +31,7 @@ import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text, Title } = Typography;
 
@@ -143,8 +144,8 @@ const PRIORITY_CONFIG: Record<string, { color: string; icon: React.ReactNode }> 
 
 const METHODOLOGY_LABELS: Record<string, { label: string; color: string }> = {
     agile: { label: 'Agile', color: '#06b6d4' },
-    pmbok: { label: 'Predictive', color: '#8b5cf6' },
-    hybrid: { label: 'Hybrid', color: '#6366f1' },
+    pmbok: { label: 'Predictive', color: '#6366f1' },
+    hybrid: { label: 'Hybrid', color: 'var(--theme-color, #8b5cf6)' },
 };
 
 export default function ProjectsPage() {
@@ -152,6 +153,7 @@ export default function ProjectsPage() {
     const { token } = theme.useToken();
     const { resolvedTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
+    const { themeColor } = usePreferencesStore();
     useEffect(() => setMounted(true), []);
     const isDark = mounted && resolvedTheme === 'dark';
 
@@ -302,7 +304,7 @@ export default function ProjectsPage() {
             width: "30%",
             render: (_, record) => (
                 <Space>
-                    <FolderOpenOutlined style={{ fontSize: 20, color: '#8b5cf6' }} />
+                    <FolderOpenOutlined style={{ fontSize: 20, color: themeColor }} />
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <a onClick={() => handleOpenDashboard(record.id)} style={{ fontWeight: 600, fontSize: 15 }}>
                             {record.name}
@@ -628,7 +630,7 @@ export default function ProjectsPage() {
                         title="Total Projects"
                         value={stats.total}
                         icon={<ProjectOutlined />}
-                        gradient="linear-gradient(135deg, #6366f1, #8b5cf6)"
+                        gradient={`linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`}
                         extra={
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                                 {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
@@ -721,7 +723,7 @@ export default function ProjectsPage() {
                 projects.length === 0 ? (
                     <Card style={{ ...glassCard, padding: 48, textAlign: 'center' }}>
                         <div style={{ marginBottom: 16 }}>
-                            <ProjectOutlined style={{ fontSize: 64, color: isDark ? '#6366f1' : '#8b5cf6', opacity: 0.6 }} />
+                            <ProjectOutlined style={{ fontSize: 64, color: isDark ? '#6366f1' : 'var(--theme-color, #8b5cf6)', opacity: 0.6 }} />
                         </div>
                         <Title level={4} style={{ marginBottom: 8 }}>No projects yet</Title>
                         <Text type="secondary" style={{ display: 'block', marginBottom: 24, maxWidth: 400, margin: '0 auto 24px' }}>
@@ -830,7 +832,7 @@ export default function ProjectsPage() {
                     border: isDark ? '1px solid rgba(99, 102, 241, 0.2)' : '1px solid rgba(99, 102, 241, 0.1)',
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                        <ExperimentOutlined style={{ color: '#6366f1', fontSize: 16 }} />
+                        <ExperimentOutlined style={{ color: themeColor, fontSize: 16 }} />
                         <Text strong style={{ fontSize: 14 }}>PMBOK Framework Preset</Text>
                     </div>
                     <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>

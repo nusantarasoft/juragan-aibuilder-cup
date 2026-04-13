@@ -15,6 +15,7 @@ import {
     CalendarOutlined, TeamOutlined
 } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import {
     inventoryService, OpnameSession, OpnameLine, OpnameStatsType, InvWarehouse
@@ -53,6 +54,7 @@ const SESSION_FIELDS: FieldDef[] = [
 
 export default function StockOpnamePage() {
     const [stats, setStats] = useState<OpnameStatsType | null>(null);
+    const { themeColor } = usePreferencesStore();
     const [sessions, setSessions] = useState<OpnameSession[]>([]);
     const [warehouses, setWarehouses] = useState<InvWarehouse[]>([]);
     const [opnameLines, setOpnameLines] = useState<Record<string, OpnameLine[]>>({});
@@ -147,7 +149,7 @@ export default function StockOpnamePage() {
 
     // ─── KPI Cards ─────────────────────────────────
     const kpiCards = [
-        { title: 'Total Sessions', value: stats?.totalSessions || 0, icon: <AuditOutlined />, color: '#7c3aed' },
+        { title: 'Total Sessions', value: stats?.totalSessions || 0, icon: <AuditOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { title: 'Draft', value: stats?.draft || 0, icon: <FileTextOutlined />, color: '#94a3b8' },
         { title: 'Counting', value: stats?.counting || 0, icon: <ClockCircleOutlined />, color: '#3b82f6' },
         { title: 'In Review', value: stats?.review || 0, icon: <EyeOutlined />, color: '#f59e0b' },
@@ -315,7 +317,7 @@ export default function StockOpnamePage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>Stock Opname</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Stock Opname</AuroraText>}
             subTitle={
                 <DecryptedText
                     text="Physical stock counting, auditing, and variance tracking"
@@ -357,7 +359,7 @@ export default function StockOpnamePage() {
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
                             <Text strong style={{
-                                background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                 WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: 15,
                             }}>
                                 <AuditOutlined /> Counting Sessions ({sessions.length})
@@ -371,7 +373,7 @@ export default function StockOpnamePage() {
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
                             <Button type="primary" icon={<PlusOutlined />}
                                 onClick={() => { sessionForm.resetFields(); setSessionModalOpen(true); }}
-                                style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', borderRadius: 8, border: 'none' }}>
+                                style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', borderRadius: 8, border: 'none' }}>
                                 New Session
                             </Button>
                         </Space>
@@ -392,13 +394,13 @@ export default function StockOpnamePage() {
                                 <div className="p-2">
                                     <div className="flex items-center justify-between mb-2">
                                         <Text strong style={{
-                                            background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                            background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                                         }}>Count Items — {record.title}</Text>
                                         <Button size="small" icon={<PlusOutlined />}
                                             onClick={() => { setLineSessionId(record.id); lineForm.resetFields(); setLineModalOpen(true); }}
                                             disabled={record.status === 'completed' || record.status === 'cancelled'}
-                                            style={{ borderColor: '#7c3aed', color: '#7c3aed' }}>
+                                            style={{ borderColor: 'var(--theme-color, #7c3aed)', color: 'var(--theme-color, #7c3aed)' }}>
                                             Add Item
                                         </Button>
                                     </div>
@@ -429,7 +431,7 @@ export default function StockOpnamePage() {
                 width={580}
                 loading={false}
                 onBatchCreate={handleBatchCreateSession}
-                gradient={["#7c3aed", "#6366f1"]}
+                gradient={["var(--theme-color, #7c3aed)", "#6366f1"]}
             />
 
             {/* ─── Add Line Item Modal ──────────────────── */}

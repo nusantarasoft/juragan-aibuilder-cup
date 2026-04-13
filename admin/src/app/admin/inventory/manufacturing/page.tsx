@@ -17,6 +17,7 @@ import {
     CalendarOutlined
 } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import {
     inventoryService, MfgBom, MfgBomLine, MfgWorkOrder,
@@ -81,6 +82,7 @@ const WO_FIELDS: FieldDef[] = [
 
 export default function ManufacturingPage() {
     const [stats, setStats] = useState<ManufacturingStats | null>(null);
+    const { themeColor } = usePreferencesStore();
     const [boms, setBoms] = useState<MfgBom[]>([]);
     const [workOrders, setWorkOrders] = useState<MfgWorkOrder[]>([]);
     const [warehouses, setWarehouses] = useState<InvWarehouse[]>([]);
@@ -224,7 +226,7 @@ export default function ManufacturingPage() {
 
     // ─── KPI Cards ─────────────────────────────────
     const kpiCards = [
-        { title: 'Total BOMs', value: stats?.totalBoms || 0, icon: <FileTextOutlined />, color: '#7c3aed' },
+        { title: 'Total BOMs', value: stats?.totalBoms || 0, icon: <FileTextOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { title: 'Work Orders', value: stats?.totalWorkOrders || 0, icon: <ToolOutlined />, color: '#0ea5e9' },
         { title: 'Draft', value: stats?.draftWos || 0, icon: <FileTextOutlined />, color: '#94a3b8' },
         { title: 'Planned', value: stats?.plannedWos || 0, icon: <ScheduleOutlined />, color: '#3b82f6' },
@@ -496,7 +498,7 @@ export default function ManufacturingPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>Manufacturing</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Manufacturing</AuroraText>}
             subTitle={
                 <DecryptedText
                     text="Bill of Materials, work orders, and production tracking"
@@ -550,7 +552,7 @@ export default function ManufacturingPage() {
                                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
                                             <Button type="primary" icon={<PlusOutlined />}
                                                 onClick={() => { bomForm.resetFields(); setBomEditId(null); setBomModalOpen(true); }}
-                                                style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', borderRadius: 8, border: 'none' }}>
+                                                style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', borderRadius: 8, border: 'none' }}>
                                                 Add BOM
                                             </Button>
                                         </Space>
@@ -573,12 +575,12 @@ export default function ManufacturingPage() {
                                                 <div className="p-2">
                                                     <div className="flex items-center justify-between mb-2">
                                                         <Text strong style={{
-                                                            background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                                            background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                                             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                                                         }}>Components — {record.name}</Text>
                                                         <Button size="small" icon={<PlusOutlined />}
                                                             onClick={() => { setLineBomId(record.id); lineForm.resetFields(); setLineModalOpen(true); }}
-                                                            style={{ borderColor: '#7c3aed', color: '#7c3aed' }}>
+                                                            style={{ borderColor: 'var(--theme-color, #7c3aed)', color: 'var(--theme-color, #7c3aed)' }}>
                                                             Add Component
                                                         </Button>
                                                     </div>
@@ -602,7 +604,7 @@ export default function ManufacturingPage() {
                                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
                                             <Button type="primary" icon={<PlusOutlined />}
                                                 onClick={() => { woForm.resetFields(); setWoModalOpen(true); }}
-                                                style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', borderRadius: 8, border: 'none' }}>
+                                                style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', borderRadius: 8, border: 'none' }}>
                                                 New Work Order
                                             </Button>
                                         </Space>
@@ -691,7 +693,7 @@ export default function ManufacturingPage() {
                 width={640}
                 loading={false}
                 onBatchCreate={handleBatchCreateBom}
-                gradient={["#7c3aed", "#6366f1"]}
+                gradient={["var(--theme-color, #7c3aed)", "#6366f1"]}
                 editMode={!!bomEditId}
             />
 
@@ -765,7 +767,7 @@ export default function ManufacturingPage() {
                 width={640}
                 loading={false}
                 onBatchCreate={handleBatchCreateWo}
-                gradient={["#7c3aed", "#6366f1"]}
+                gradient={["var(--theme-color, #7c3aed)", "#6366f1"]}
             />
         </CMSLayout>
     );

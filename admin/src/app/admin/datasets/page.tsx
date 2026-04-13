@@ -43,6 +43,7 @@ import Hyperspeed from "@/components/react-bits/Hyperspeed";
 import { hyperspeedPresets } from "@/components/react-bits/HyperSpeedPresets";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { MagicButton } from "@/components/custom/MagicButton"; // Added
 import { TooltipWrapper as AnimatedTooltip } from '@/components/mvpblocks/AnimatedTooltip';
 import CatalogTree from "./CatalogTreeStyled";
@@ -56,6 +57,7 @@ const { Title, Text } = Typography;
 
 export default function DatasetsPage() {
     const { resolvedTheme } = useTheme();
+    const { themeColor } = usePreferencesStore();
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
     const isDark = mounted && resolvedTheme === "dark";
@@ -124,7 +126,7 @@ export default function DatasetsPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>Datasets</AuroraText>}
+            title={<AuroraText colors={[themeColor, 'var(--theme-secondary, #6366f1)', 'var(--theme-accent, #a78bfa)']}>Datasets</AuroraText>}
             subTitle={
                 <DecryptedText
                     text="Manage your data sources and datasets"

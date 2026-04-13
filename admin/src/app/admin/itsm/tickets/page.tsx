@@ -1,11 +1,24 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { ProTable, ProColumns, ModalForm, ProFormText, ProFormTextArea, ProFormSelect, ProForm } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Typography, Tooltip, Badge } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, EyeOutlined, SearchOutlined, CustomerServiceOutlined } from "@ant-design/icons";
+import CMSLayout from "@/components/layout/CMSLayout";
+import { ProTable, ProColumns } from "@ant-design/pro-components";
+import {
+    Button, message, Tag, Popconfirm, Space, Select, Typography, Tooltip, Badge,
+    Form, Input, Row, Col, Switch,
+} from "antd";
+import {
+    PlusOutlined, DeleteOutlined, EditOutlined, EyeOutlined, SearchOutlined,
+    CustomerServiceOutlined, RobotOutlined, AlertOutlined, UserOutlined,
+    TeamOutlined, PhoneOutlined, SettingOutlined,
+} from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useRouter } from "next/navigation";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
+import { AuroraText } from "@/components/magicui/aurora-text";
+import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
 
@@ -21,19 +34,37 @@ const statusColors: Record<string, string> = { new: 'blue', open: 'cyan', in_pro
 const channelLabels: Record<string, string> = { portal: '🌐 Portal', email: '📧 Email', phone: '📞 Phone', chat: '💬 Chat' };
 const typeLabels: Record<string, string> = { contact: '📇 Contact', individual: '👤 Individual', account: '🏢 Account', pm_stakeholder: '📋 PM Stakeholder' };
 
+const TICKET_FIELDS: FieldDef[] = [
+    { name: "title", label: "Title", required: true },
+    { name: "description", label: "Description" },
+    { name: "categoryId", label: "Category" },
+    { name: "channel", label: "Channel" },
+    { name: "priority", label: "Priority" },
+    { name: "impact", label: "Impact" },
+    { name: "urgency", label: "Urgency" },
+    { name: "reporterName", label: "Reporter Name" },
+    { name: "reporterEmail", label: "Reporter Email" },
+    { name: "assignedTo", label: "Assigned To" },
+    { name: "assignedGroup", label: "Support Group" },
+];
+
 export default function ItsmTicketsPage() {
     const router = useRouter();
     const [messageApi, contextHolder] = message.useMessage();
     const [tickets, setTickets] = useState<any[]>([]);
+    const { themeColor } = usePreferencesStore();
     const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<any>(null);
+    const [form] = Form.useForm();
     const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
     const [filterPriority, setFilterPriority] = useState<string | undefined>(undefined);
     const [searchText, setSearchText] = useState('');
     const [reporterResults, setReporterResults] = useState<any[]>([]);
     const [selectedReporter, setSelectedReporter] = useState<any>(null);
+    const [aiSuggesting, setAiSuggesting] = useState(false);
+    const [aiSuggestion, setAiSuggestion] = useState<any>(null);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -58,6 +89,20 @@ export default function ItsmTicketsPage() {
         } catch { /* ignore */ }
     };
 
+    const handleAiCategorize = async () => {
+        const title = form.getFieldValue('title');
+        const desc = form.getFieldValue('description');
+        if (!title) { messageApi.warning('Please enter a title first'); return; }
+        setAiSuggesting(true);
+        try {
+            const raw = await gql(`query($title: String!, $description: String) { itsmAiCategorize(title: $title, description: $description) }`, { title, description: desc });
+            const result = JSON.parse(raw.itsmAiCategorize);
+            setAiSuggestion(result);
+            messageApi.success('AI suggestion ready — review below');
+        } catch (err: any) { messageApi.error('AI failed: ' + err.message); }
+        finally { setAiSuggesting(false); }
+    };
+
     const handleSave = async (values: any) => {
         try {
             const input: any = {
@@ -74,7 +119,6 @@ export default function ItsmTicketsPage() {
                 reporterEmail: values.reporterEmail,
             };
 
-            // Link reporter from cross-module search
             if (selectedReporter) {
                 input.reporterName = selectedReporter.name;
                 input.reporterEmail = selectedReporter.email;
@@ -95,9 +139,11 @@ export default function ItsmTicketsPage() {
             }
             setModalOpen(false);
             setSelectedReporter(null);
+            setAiSuggestion(null);
+            form.resetFields();
+            setEditing(null);
             loadData();
-            return true;
-        } catch (err: any) { messageApi.error(`Failed: ${err.message}`); return false; }
+        } catch (err: any) { messageApi.error(`Failed: ${err.message}`); }
     };
 
     const handleDelete = async (id: string) => {
@@ -128,9 +174,9 @@ export default function ItsmTicketsPage() {
         },
         {
             title: 'Assigned To', dataIndex: 'assignedTo', width: 130, ellipsis: true,
-            render: (v: string) => v || <Text type="secondary" italic>Unassigned</Text>
+            render: (_, r: any) => r.assignedTo || <Text type="secondary" italic>Unassigned</Text>
         },
-        { title: 'Channel', dataIndex: 'channel', width: 90, render: (v: string) => channelLabels[v] || v },
+        { title: 'Channel', dataIndex: 'channel', width: 90, render: (_: any, r: any) => channelLabels[r.channel] || r.channel },
         {
             title: 'SLA', dataIndex: 'slaResolutionDue', width: 80,
             render: (_, r) => {
@@ -143,13 +189,26 @@ export default function ItsmTicketsPage() {
             title: 'Actions', valueType: 'option', width: 120,
             render: (_, record) => [
                 <Tooltip key="view" title="View Details"><Button type="text" icon={<EyeOutlined />} onClick={() => router.push(`/admin/itsm/tickets/${record.id}`)} /></Tooltip>,
-                <Button key="edit" type="text" icon={<EditOutlined />} onClick={() => { setEditing(record); setModalOpen(true); }} />,
+                <Button key="edit" type="text" icon={<EditOutlined />} onClick={() => {
+                    setEditing(record);
+                    form.setFieldsValue({
+                        title: record.title, description: record.description,
+                        categoryId: record.categoryId, channel: record.channel,
+                        priority: record.priority, impact: record.impact, urgency: record.urgency,
+                        reporterName: record.reporterName, reporterEmail: record.reporterEmail,
+                        assignedTo: record.assignedTo, assignedGroup: record.assignedGroup,
+                        status: record.status, resolutionNotes: record.resolutionNotes,
+                    });
+                    setModalOpen(true);
+                }} />,
                 <Popconfirm key="del" title="Delete this ticket?" onConfirm={() => handleDelete(record.id)}><Button type="text" danger icon={<DeleteOutlined />} /></Popconfirm>,
             ]
         }
     ];
 
     return (
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Helpdesk Tickets</AuroraText>}
+            subTitle={<DecryptedText text="Manage IT support tickets" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
             <ProTable
@@ -176,114 +235,203 @@ export default function ItsmTicketsPage() {
                             { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' },
                         ]}
                     />,
-                    <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setSelectedReporter(null); setModalOpen(true); }}>
+                    <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setSelectedReporter(null); setAiSuggestion(null); form.resetFields(); setModalOpen(true); }}>
                         New Ticket
                     </Button>,
                 ]}
             />
 
-            <ModalForm
-                title={editing ? `Edit ${editing.ticketNumber}` : "New Ticket"}
+            {/* ─── Ticket SteppedFormModal ─────────────── */}
+            <SteppedFormModal
                 open={modalOpen}
-                onOpenChange={setModalOpen}
-                onFinish={handleSave}
-                initialValues={editing || { priority: 'medium', impact: 'medium', urgency: 'medium', channel: 'portal' }}
-                modalProps={{ destroyOnClose: true, width: 750 }}
-            >
-                <ProFormText name="title" label="Title" rules={[{ required: true }]} placeholder="Brief description of the issue" />
-                <ProFormTextArea name="description" label="Description" placeholder="Detailed description of the issue, steps to reproduce, etc." fieldProps={{ rows: 4 }} />
+                onCancel={() => { setModalOpen(false); setEditing(null); form.resetFields(); setAiSuggestion(null); }}
+                onSubmit={handleSave}
+                form={form}
+                title={editing ? `Edit ${editing.ticketNumber}` : "New Ticket"}
+                entityName="ticket"
+                steps={[
+                    {
+                        title: "Issue Details",
+                        icon: <AlertOutlined />,
+                        fields: ["title", "description"],
+                        content: (
+                            <>
+                                <Form.Item name="title" label="Title" rules={[{ required: true }]}>
+                                    <Input placeholder="Brief description of the issue" />
+                                </Form.Item>
+                                <Form.Item name="description" label="Description">
+                                    <Input.TextArea rows={4} placeholder="Detailed description, steps to reproduce, etc." />
+                                </Form.Item>
 
-                <ProForm.Group>
-                    <ProFormSelect name="categoryId" label="Category" width="md"
-                        options={categories.map(c => ({ value: c.id, label: c.name }))}
-                    />
-                    <ProFormSelect name="channel" label="Channel" width="sm"
-                        options={[
-                            { value: 'portal', label: '🌐 Portal' }, { value: 'email', label: '📧 Email' },
-                            { value: 'phone', label: '📞 Phone' }, { value: 'chat', label: '💬 Chat' },
-                        ]}
-                    />
-                </ProForm.Group>
-
-                <ProForm.Group>
-                    <ProFormSelect name="priority" label="Priority" width="sm"
-                        options={[
-                            { value: 'critical', label: '🔴 Critical' }, { value: 'high', label: '🟠 High' },
-                            { value: 'medium', label: '🔵 Medium' }, { value: 'low', label: '🟢 Low' },
-                        ]}
-                    />
-                    <ProFormSelect name="impact" label="Impact" width="sm"
-                        options={[{ value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }]}
-                    />
-                    <ProFormSelect name="urgency" label="Urgency" width="sm"
-                        options={[{ value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }]}
-                    />
-                </ProForm.Group>
-
-                {/* Reporter Section — Cross-module search */}
-                <ProForm.Group title="Reporter">
-                    <div style={{ marginBottom: 16 }}>
-                        <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Search CRM Contacts, Individuals, Accounts, or PM Stakeholders:</Text>
-                        <Select
-                            showSearch
-                            placeholder="Search reporter..."
-                            filterOption={false}
-                            onSearch={handleSearchReporter}
-                            onChange={(_, opt: any) => {
-                                const r = reporterResults.find(rr => rr.id === opt?.value);
-                                setSelectedReporter(r || null);
-                            }}
-                            style={{ width: '100%' }}
-                            suffixIcon={<SearchOutlined />}
-                            value={selectedReporter?.id}
-                            allowClear
-                            onClear={() => setSelectedReporter(null)}
-                            notFoundContent={null}
-                        >
-                            {reporterResults.map(r => (
-                                <Select.Option key={r.id} value={r.id}>
-                                    <Space>
-                                        <Tag color={r.type === 'contact' ? 'blue' : r.type === 'individual' ? 'green' : r.type === 'account' ? 'gold' : 'purple'}>
-                                            {typeLabels[r.type] || r.type}
-                                        </Tag>
-                                        <span><strong>{r.name}</strong>{r.email ? ` — ${r.email}` : ''}{r.extra ? ` (${r.extra})` : ''}</span>
-                                    </Space>
-                                </Select.Option>
-                            ))}
-                        </Select>
-                        {selectedReporter && (
-                            <div style={{ marginTop: 8, padding: '8px 12px', background: '#f6ffed', borderRadius: 6, border: '1px solid #b7eb8f' }}>
-                                <Text strong>Linked: </Text>
-                                <Tag color="green">{typeLabels[selectedReporter.type]}</Tag>
-                                <Text>{selectedReporter.name}</Text>
-                            </div>
-                        )}
-                    </div>
-                </ProForm.Group>
-
-                <ProForm.Group>
-                    <ProFormText name="reporterName" label="Reporter Name" width="md" placeholder="Or enter manually" />
-                    <ProFormText name="reporterEmail" label="Reporter Email" width="md" placeholder="reporter@company.com" />
-                </ProForm.Group>
-
-                <ProForm.Group title="Assignment">
-                    <ProFormText name="assignedTo" label="Assigned To" width="md" placeholder="Agent name" />
-                    <ProFormText name="assignedGroup" label="Support Group" width="md" placeholder="e.g., L1 Support, Network Team" />
-                </ProForm.Group>
-
-                {editing && (
-                    <>
-                        <ProFormSelect name="status" label="Status"
-                            options={[
-                                { value: 'new', label: 'New' }, { value: 'open', label: 'Open' },
-                                { value: 'in_progress', label: 'In Progress' }, { value: 'pending', label: 'Pending' },
-                                { value: 'resolved', label: 'Resolved' }, { value: 'closed', label: 'Closed' },
-                            ]}
-                        />
-                        <ProFormTextArea name="resolutionNotes" label="Resolution Notes" />
-                    </>
-                )}
-            </ModalForm>
+                                {/* AI Auto-Categorize */}
+                                {!editing && (
+                                    <div style={{ padding: '10px 14px', background: 'linear-gradient(135deg, #f5f0ff 0%, #e8f4fd 100%)', borderRadius: 8, border: '1px solid #d9d9d9' }}>
+                                        <Space>
+                                            <Button icon={<RobotOutlined />} loading={aiSuggesting} onClick={handleAiCategorize}
+                                                style={{ background: '#722ed1', color: '#fff', border: 'none' }}>
+                                                🤖 AI Auto-Categorize
+                                            </Button>
+                                            {aiSuggestion && (
+                                                <Space size={4}>
+                                                    <Tag color="purple">{aiSuggestion.suggestedCategory}</Tag>
+                                                    <Tag color={aiSuggestion.suggestedPriority === 'critical' ? 'red' : aiSuggestion.suggestedPriority === 'high' ? 'orange' : 'blue'}>{(aiSuggestion.suggestedPriority || '').toUpperCase()}</Tag>
+                                                    <Tag color="green">{Math.round((aiSuggestion.confidence || 0) * 100)}%</Tag>
+                                                </Space>
+                                            )}
+                                        </Space>
+                                        {aiSuggestion && <div style={{ marginTop: 6, fontSize: 12, color: '#666' }}>{aiSuggestion.reasoning}</div>}
+                                    </div>
+                                )}
+                            </>
+                        ),
+                    },
+                    {
+                        title: "Classification",
+                        icon: <SettingOutlined />,
+                        fields: ["categoryId", "channel", "priority", "impact", "urgency"],
+                        content: (
+                            <>
+                                <Row gutter={16}>
+                                    <Col span={12}>
+                                        <Form.Item name="categoryId" label="Category">
+                                            <Select placeholder="Select category" allowClear
+                                                options={categories.map(c => ({ value: c.id, label: c.name }))} />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Form.Item name="channel" label="Channel">
+                                            <Select options={[
+                                                { value: 'portal', label: '🌐 Portal' }, { value: 'email', label: '📧 Email' },
+                                                { value: 'phone', label: '📞 Phone' }, { value: 'chat', label: '💬 Chat' },
+                                            ]} />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                                <Row gutter={16}>
+                                    <Col span={8}>
+                                        <Form.Item name="priority" label="Priority">
+                                            <Select options={[
+                                                { value: 'critical', label: '🔴 Critical' }, { value: 'high', label: '🟠 High' },
+                                                { value: 'medium', label: '🔵 Medium' }, { value: 'low', label: '🟢 Low' },
+                                            ]} />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={8}>
+                                        <Form.Item name="impact" label="Impact">
+                                            <Select options={[
+                                                { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' },
+                                            ]} />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={8}>
+                                        <Form.Item name="urgency" label="Urgency">
+                                            <Select options={[
+                                                { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' },
+                                            ]} />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                                {editing && (
+                                    <Row gutter={16}>
+                                        <Col span={12}>
+                                            <Form.Item name="status" label="Status">
+                                                <Select options={[
+                                                    { value: 'new', label: 'New' }, { value: 'open', label: 'Open' },
+                                                    { value: 'in_progress', label: 'In Progress' }, { value: 'pending', label: 'Pending' },
+                                                    { value: 'resolved', label: 'Resolved' }, { value: 'closed', label: 'Closed' },
+                                                ]} />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={12}>
+                                            <Form.Item name="resolutionNotes" label="Resolution Notes">
+                                                <Input.TextArea rows={2} />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+                                )}
+                            </>
+                        ),
+                    },
+                    {
+                        title: "Reporter",
+                        icon: <UserOutlined />,
+                        fields: ["reporterName", "reporterEmail"],
+                        content: (
+                            <>
+                                <div style={{ marginBottom: 16 }}>
+                                    <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Search CRM Contacts, Individuals, Accounts, or PM Stakeholders:</Text>
+                                    <Select
+                                        showSearch placeholder="Search reporter..." filterOption={false}
+                                        onSearch={handleSearchReporter}
+                                        onChange={(_, opt: any) => {
+                                            const r = reporterResults.find(rr => rr.id === opt?.value);
+                                            setSelectedReporter(r || null);
+                                        }}
+                                        style={{ width: '100%' }} suffixIcon={<SearchOutlined />}
+                                        value={selectedReporter?.id} allowClear onClear={() => setSelectedReporter(null)}
+                                        notFoundContent={null}
+                                    >
+                                        {reporterResults.map(r => (
+                                            <Select.Option key={r.id} value={r.id}>
+                                                <Space>
+                                                    <Tag color={r.type === 'contact' ? 'blue' : r.type === 'individual' ? 'green' : r.type === 'account' ? 'gold' : 'purple'}>
+                                                        {typeLabels[r.type] || r.type}
+                                                    </Tag>
+                                                    <span><strong>{r.name}</strong>{r.email ? ` — ${r.email}` : ''}{r.extra ? ` (${r.extra})` : ''}</span>
+                                                </Space>
+                                            </Select.Option>
+                                        ))}
+                                    </Select>
+                                    {selectedReporter && (
+                                        <div style={{ marginTop: 8, padding: '8px 12px', background: '#f6ffed', borderRadius: 6, border: '1px solid #b7eb8f' }}>
+                                            <Text strong>Linked: </Text>
+                                            <Tag color="green">{typeLabels[selectedReporter.type]}</Tag>
+                                            <Text>{selectedReporter.name}</Text>
+                                        </div>
+                                    )}
+                                </div>
+                                <Row gutter={16}>
+                                    <Col span={12}>
+                                        <Form.Item name="reporterName" label="Reporter Name">
+                                            <Input placeholder="Or enter manually" />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Form.Item name="reporterEmail" label="Reporter Email">
+                                            <Input placeholder="reporter@company.com" />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                            </>
+                        ),
+                    },
+                    {
+                        title: "Assignment",
+                        icon: <TeamOutlined />,
+                        fields: ["assignedTo", "assignedGroup"],
+                        content: (
+                            <Row gutter={16}>
+                                <Col span={12}>
+                                    <Form.Item name="assignedTo" label="Assigned To">
+                                        <Input placeholder="Agent name" />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item name="assignedGroup" label="Support Group">
+                                        <Input placeholder="e.g., L1 Support, Network Team" />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                        ),
+                    },
+                ]}
+                fields={TICKET_FIELDS}
+                width={750}
+                gradient={["#722ed1", "#9254de"]}
+                editMode={!!editing}
+                initialValues={{ priority: 'medium', impact: 'medium', urgency: 'medium', channel: 'portal' }}
+            />
         </div>
+        </CMSLayout>
     );
 }

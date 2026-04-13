@@ -7,12 +7,14 @@ import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { inventoryService, EcomStoreSettings } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 
 const { Text, Title } = Typography;
 
 export default function SettingsPage() {
     const [settings, setSettings] = useState<EcomStoreSettings | null>(null);
+    const { themeColor } = usePreferencesStore();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [form] = Form.useForm();
@@ -55,7 +57,7 @@ export default function SettingsPage() {
             <Card size="small" style={{ borderRadius: 12, background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.5)' }}>
                 <div className="flex items-center gap-2 mb-3">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${color}15`, color, fontSize: 16 }}>{icon}</div>
-                    <Text strong style={{ background: `linear-gradient(to right, ${color}, #6366f1)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: 14 }}>{title}</Text>
+                    <Text strong style={{ background: `linear-gradient(to right, ${color}, var(--theme-secondary, #6366f1))`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: 14 }}>{title}</Text>
                 </div>
                 {children}
             </Card>
@@ -66,7 +68,7 @@ export default function SettingsPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#6366f1", "#8b5cf6", "#a78bfa", "#00ffff", "#ff00ff"]}>Store Settings</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Store Settings</AuroraText>}
             subTitle={<DecryptedText text="Configure your store, payments, and fulfillment rules" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 900 }}>
@@ -108,7 +110,7 @@ export default function SettingsPage() {
                     ))}
 
                     {/* Payment Methods */}
-                    {sectionCard('Payment Methods', <CreditCardOutlined />, '#8b5cf6', (
+                    {sectionCard('Payment Methods', <CreditCardOutlined />, 'var(--theme-color, #8b5cf6)', (
                         <div className="flex gap-2 flex-wrap">
                             {Array.isArray(paymentMethods) && paymentMethods.map((m: string) => (
                                 <Tag key={m} color="purple" className="rounded-full capitalize text-sm px-3 py-1">{m.replace('_', ' ')}</Tag>
@@ -127,8 +129,8 @@ export default function SettingsPage() {
                                 </Card>
                             </Col>
                             <Col span={12}>
-                                <Card size="small" style={{ borderRadius: 8, borderLeft: '3px solid #8b5cf6' }}>
-                                    <div className="flex items-center gap-2 mb-1"><TagOutlined style={{ color: '#8b5cf6' }} /><Text strong className="text-xs">Ticket</Text></div>
+                                <Card size="small" style={{ borderRadius: 8, borderLeft: `3px solid ${themeColor}` }}>
+                                    <div className="flex items-center gap-2 mb-1"><TagOutlined style={{ color: themeColor }} /><Text strong className="text-xs">Ticket</Text></div>
                                     <Text type="secondary" className="text-xs">Auto QR generation, send email</Text>
                                 </Card>
                             </Col>
@@ -158,7 +160,7 @@ export default function SettingsPage() {
                     {/* Save Button */}
                     <div className="flex justify-end">
                         <Button type="primary" icon={<SaveOutlined />} size="large" loading={saving} onClick={handleSave}
-                            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: 10, border: 'none', paddingInline: 32 }}>
+                            style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, borderRadius: 10, border: 'none', paddingInline: 32 }}>
                             Save Settings
                         </Button>
                     </div>

@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { inventoryService, EcomOffer, EcomOfferStatsType } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
@@ -48,6 +49,7 @@ const OFFER_FIELDS: FieldDef[] = [
 
 export default function OffersPage() {
     const [stats, setStats] = useState<EcomOfferStatsType | null>(null);
+    const { themeColor } = usePreferencesStore();
     const [offers, setOffers] = useState<EcomOffer[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -133,7 +135,7 @@ export default function OffersPage() {
         { title: 'Active', value: stats?.active || 0, icon: <ThunderboltOutlined />, color: '#10b981' },
         { title: 'Draft', value: stats?.draft || 0, icon: <ClockCircleOutlined />, color: '#94a3b8' },
         { title: 'Expired', value: stats?.expired || 0, icon: <ClockCircleOutlined />, color: '#f59e0b' },
-        { title: 'Total Uses', value: stats?.totalUses || 0, icon: <FireOutlined />, color: '#8b5cf6' },
+        { title: 'Total Uses', value: stats?.totalUses || 0, icon: <FireOutlined />, color: themeColor },
     ];
 
     const filtered = offers.filter(o => {

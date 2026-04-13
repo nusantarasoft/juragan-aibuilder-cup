@@ -1,10 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { ProTable, ProColumns, ModalForm, ProFormText, ProFormSelect, ProFormDigit, ProForm } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Typography } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, FlagOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import CMSLayout from "@/components/layout/CMSLayout";
+import { ProTable, ProColumns } from "@ant-design/pro-components";
+import { Button, message, Tag, Popconfirm, Space, Typography, Form, Input, Select, InputNumber, Row, Col } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, FlagOutlined, ClockCircleOutlined, SettingOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
+import { AuroraText } from "@/components/magicui/aurora-text";
+import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
 
@@ -25,12 +31,23 @@ function formatMinutes(m: number): string {
     return rh > 0 ? `${d}d ${rh}h` : `${d}d`;
 }
 
+const SLA_FIELDS: FieldDef[] = [
+    { name: "name", label: "Policy Name", required: true },
+    { name: "priority", label: "Priority", required: true },
+    { name: "responseTimeMinutes", label: "Response Time (min)", required: true },
+    { name: "resolutionTimeMinutes", label: "Resolution Time (min)", required: true },
+    { name: "escalationAfterMinutes", label: "Escalation After (min)" },
+    { name: "status", label: "Status" },
+];
+
 export default function ItsmSlaPage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [policies, setPolicies] = useState<any[]>([]);
+    const { themeColor } = usePreferencesStore();
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<any>(null);
+    const [form] = Form.useForm();
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -53,9 +70,10 @@ export default function ItsmSlaPage() {
                 messageApi.success("SLA Policy created.");
             }
             setModalOpen(false);
+            form.resetFields();
+            setEditing(null);
             loadData();
-            return true;
-        } catch (err: any) { messageApi.error(err.message); return false; }
+        } catch (err: any) { messageApi.error(err.message); }
     };
 
     const handleDelete = async (id: string) => {
@@ -89,18 +107,30 @@ export default function ItsmSlaPage() {
         },
         {
             title: 'Status', dataIndex: 'status', width: 100,
-            render: (v: string) => <Tag color={v === 'active' ? 'green' : 'default'}>{(v || '').toUpperCase()}</Tag>
+            render: (_, r) => <Tag color={r.status === 'active' ? 'green' : 'default'}>{(r.status || '').toUpperCase()}</Tag>
         },
         {
             title: 'Actions', valueType: 'option', width: 100,
             render: (_, record) => [
-                <Button key="edit" type="text" icon={<EditOutlined />} onClick={() => { setEditing(record); setModalOpen(true); }} />,
+                <Button key="edit" type="text" icon={<EditOutlined />} onClick={() => {
+                    setEditing(record);
+                    form.setFieldsValue({
+                        name: record.name, priority: record.priority,
+                        responseTimeMinutes: record.responseTimeMinutes,
+                        resolutionTimeMinutes: record.resolutionTimeMinutes,
+                        escalationAfterMinutes: record.escalationAfterMinutes,
+                        status: record.status,
+                    });
+                    setModalOpen(true);
+                }} />,
                 <Popconfirm key="del" title="Delete this SLA policy?" onConfirm={() => handleDelete(record.id)}><Button type="text" danger icon={<DeleteOutlined />} /></Popconfirm>,
             ]
         }
     ];
 
     return (
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>SLA Policies</AuroraText>}
+            subTitle={<DecryptedText text="Service Level Agreement configuration" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
             <ProTable
@@ -111,40 +141,82 @@ export default function ItsmSlaPage() {
                 columns={columns}
                 search={false}
                 toolBarRender={() => [
-                    <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setModalOpen(true); }}>
+                    <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>
                         New SLA Policy
                     </Button>,
                 ]}
             />
 
-            <ModalForm
-                title={editing ? "Edit SLA Policy" : "New SLA Policy"}
+            {/* ─── SLA SteppedFormModal ─────────────── */}
+            <SteppedFormModal
                 open={modalOpen}
-                onOpenChange={setModalOpen}
-                onFinish={handleSave}
-                initialValues={editing || { priority: 'medium', responseTimeMinutes: 120, resolutionTimeMinutes: 480, escalationAfterMinutes: 240, status: 'active' }}
-                modalProps={{ destroyOnClose: true, width: 550 }}
-            >
-                <ProFormText name="name" label="Policy Name" rules={[{ required: true }]} placeholder="e.g., P1 - Critical" />
-                <ProFormSelect name="priority" label="Priority" rules={[{ required: true }]}
-                    options={[
-                        { value: 'critical', label: '🔴 Critical' },
-                        { value: 'high', label: '🟠 High' },
-                        { value: 'medium', label: '🔵 Medium' },
-                        { value: 'low', label: '🟢 Low' },
-                    ]}
-                />
-                <ProForm.Group>
-                    <ProFormDigit name="responseTimeMinutes" label="Response Time (min)" rules={[{ required: true }]} width="sm" min={1} fieldProps={{ addonAfter: 'min' }} />
-                    <ProFormDigit name="resolutionTimeMinutes" label="Resolution Time (min)" rules={[{ required: true }]} width="sm" min={1} fieldProps={{ addonAfter: 'min' }} />
-                </ProForm.Group>
-                <ProForm.Group>
-                    <ProFormDigit name="escalationAfterMinutes" label="Escalation After (min)" width="sm" min={1} fieldProps={{ addonAfter: 'min' }} />
-                    <ProFormSelect name="status" label="Status"
-                        options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]}
-                    />
-                </ProForm.Group>
-            </ModalForm>
+                onCancel={() => { setModalOpen(false); setEditing(null); form.resetFields(); }}
+                onSubmit={handleSave}
+                form={form}
+                title={editing ? "Edit SLA Policy" : "New SLA Policy"}
+                entityName="sla_policy"
+                steps={[
+                    {
+                        title: "Policy Info",
+                        icon: <FlagOutlined />,
+                        fields: ["name", "priority"],
+                        content: (
+                            <>
+                                <Form.Item name="name" label="Policy Name" rules={[{ required: true }]}>
+                                    <Input placeholder="e.g., P1 - Critical" />
+                                </Form.Item>
+                                <Form.Item name="priority" label="Priority" rules={[{ required: true }]}>
+                                    <Select options={[
+                                        { value: 'critical', label: '🔴 Critical' },
+                                        { value: 'high', label: '🟠 High' },
+                                        { value: 'medium', label: '🔵 Medium' },
+                                        { value: 'low', label: '🟢 Low' },
+                                    ]} />
+                                </Form.Item>
+                            </>
+                        ),
+                    },
+                    {
+                        title: "Time Targets",
+                        icon: <ClockCircleOutlined />,
+                        fields: ["responseTimeMinutes", "resolutionTimeMinutes", "escalationAfterMinutes", "status"],
+                        content: (
+                            <>
+                                <Row gutter={16}>
+                                    <Col span={12}>
+                                        <Form.Item name="responseTimeMinutes" label="Response Time (minutes)" rules={[{ required: true }]}>
+                                            <InputNumber min={1} style={{ width: '100%' }} addonAfter="min" />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Form.Item name="resolutionTimeMinutes" label="Resolution Time (minutes)" rules={[{ required: true }]}>
+                                            <InputNumber min={1} style={{ width: '100%' }} addonAfter="min" />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                                <Row gutter={16}>
+                                    <Col span={12}>
+                                        <Form.Item name="escalationAfterMinutes" label="Escalation After (minutes)">
+                                            <InputNumber min={1} style={{ width: '100%' }} addonAfter="min" />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Form.Item name="status" label="Status">
+                                            <Select options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                            </>
+                        ),
+                    },
+                ]}
+                fields={SLA_FIELDS}
+                width={600}
+                gradient={["#fa8c16", "#faad14"]}
+                editMode={!!editing}
+                initialValues={{ priority: 'medium', responseTimeMinutes: 120, resolutionTimeMinutes: 480, escalationAfterMinutes: 240, status: 'active' }}
+            />
         </div>
+        </CMSLayout>
     );
 }

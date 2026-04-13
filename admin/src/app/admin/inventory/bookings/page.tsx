@@ -8,6 +8,7 @@ import CMSLayout from '@/components/layout/CMSLayout';
 import { inventoryService, BookingSchedule, BookingOccurrence, Booking, BookingPassenger, BookingStatsType, InvItem } from '@/lib/inventoryService';
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
@@ -34,6 +35,7 @@ const BOOKING_FIELDS: FieldDef[] = [
 ];
 
 export default function BookingsPage() {
+    const { themeColor } = usePreferencesStore();
     const [schedules, setSchedules] = useState<BookingSchedule[]>([]);
     const [occurrences, setOccurrences] = useState<BookingOccurrence[]>([]);
     const [bookings, setBookings] = useState<Booking[]>([]);
@@ -115,7 +117,7 @@ export default function BookingsPage() {
     const fmt = (v: number) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 
     const kpis = [
-        { label: 'Total Schedules', value: stats?.totalSchedules || 0, icon: <ScheduleOutlined />, color: '#7c3aed' },
+        { label: 'Total Schedules', value: stats?.totalSchedules || 0, icon: <ScheduleOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { label: 'Upcoming Departures', value: stats?.upcomingDepartures || 0, icon: <ClockCircleOutlined />, color: '#2563eb' },
         { label: 'Total Bookings', value: stats?.totalBookings || 0, icon: <TeamOutlined />, color: '#0891b2' },
         { label: 'Confirmed', value: stats?.confirmedBookings || 0, icon: <CheckCircleOutlined />, color: '#16a34a' },
@@ -319,7 +321,7 @@ export default function BookingsPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#7c3aed", "#2563eb", "#3b82f6", "#00ffff", "#8b5cf6"]}>Bookings & Ticketing</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Bookings & Ticketing</AuroraText>}
             subTitle={<DecryptedText text="Schedule management, passenger bookings, and check-in tracking" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
@@ -345,7 +347,7 @@ export default function BookingsPage() {
                         <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Refresh</Button>
                         <Button type="primary" icon={<PlusOutlined />}
                             onClick={() => { bookingForm.resetFields(); setSelectedScheduleId(undefined); setBookingModalOpen(true); setTab('bookings'); }}
-                            style={{ background: 'linear-gradient(135deg, #7c3aed, #2563eb)', border: 'none', borderRadius: 8 }}>
+                            style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), #2563eb)', border: 'none', borderRadius: 8 }}>
                             New Booking
                         </Button>
                     </Space>
@@ -405,7 +407,7 @@ export default function BookingsPage() {
                     width={650}
                     loading={false}
                     onBatchCreate={handleBatchCreateBooking}
-                    gradient={["#7c3aed", "#2563eb"]}
+                    gradient={["var(--theme-color, #7c3aed)", "#2563eb"]}
                 />
             </div>
         </CMSLayout>

@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { inventoryService, EcomOrder, EcomOrderItem, EcomStatsType, EcomCustomer } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import ItemPicker from "@/components/inventory/ItemPicker";
 
@@ -41,6 +42,7 @@ interface OrderLineItem {
 
 export default function OrdersPage() {
     const [stats, setStats] = useState<EcomStatsType | null>(null);
+    const { themeColor } = usePreferencesStore();
     const [orders, setOrders] = useState<EcomOrder[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -184,7 +186,7 @@ export default function OrdersPage() {
     };
 
     const kpiCards = [
-        { title: 'Total Orders', value: stats?.totalOrders || 0, icon: <ShoppingCartOutlined />, color: '#6366f1' },
+        { title: 'Total Orders', value: stats?.totalOrders || 0, icon: <ShoppingCartOutlined />, color: themeColor },
         { title: 'Pending', value: stats?.pending || 0, icon: <ClockCircleOutlined />, color: '#94a3b8' },
         { title: 'Processing', value: stats?.processing || 0, icon: <InboxOutlined />, color: '#3b82f6' },
         { title: 'Shipped', value: stats?.shipped || 0, icon: <SendOutlined />, color: '#06b6d4' },
@@ -194,7 +196,7 @@ export default function OrdersPage() {
 
     const TRANSITIONS: Record<string, { label: string; color: string; next: string }> = {
         pending: { label: 'Confirm', color: '#3b82f6', next: 'confirmed' },
-        confirmed: { label: 'Process', color: '#8b5cf6', next: 'processing' },
+        confirmed: { label: 'Process', color: themeColor, next: 'processing' },
         processing: { label: 'Ship', color: '#06b6d4', next: 'shipped' },
         shipped: { label: 'Delivered', color: '#10b981', next: 'delivered' },
         delivered: { label: 'Complete', color: '#059669', next: 'completed' },
@@ -211,7 +213,7 @@ export default function OrdersPage() {
     const columns = [
         { title: 'Order #', dataIndex: 'orderNumber', width: 140, render: (v: string) => <Text code className="text-xs">{v}</Text> },
         { title: 'Customer', dataIndex: 'customerName', ellipsis: true, render: (v: string) => <Text strong className="text-sm">{v || '—'}</Text> },
-        { title: 'Total', dataIndex: 'totalAmount', width: 140, render: (v: number) => <Text strong style={{ color: '#6366f1' }}>{fmtCurrency(v)}</Text> },
+        { title: 'Total', dataIndex: 'totalAmount', width: 140, render: (v: number) => <Text strong style={{ color: themeColor }}>{fmtCurrency(v)}</Text> },
         { title: 'Payment', dataIndex: 'paymentStatus', width: 100,
             render: (v: string) => <Tag color={PAYMENT_COLORS[v] || 'default'} className="rounded-full text-xs capitalize">{v}</Tag> },
         { title: 'Source', dataIndex: 'source', width: 80, render: (v: string) => <Tag className="rounded-full text-xs capitalize">{v}</Tag> },
@@ -254,7 +256,7 @@ export default function OrdersPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#6366f1", "#8b5cf6", "#a78bfa", "#00ffff", "#ff00ff"]}>Orders</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Orders</AuroraText>}
             subTitle={<DecryptedText text="Order management across all fulfillment types" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
@@ -291,7 +293,7 @@ export default function OrdersPage() {
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
                             <Button type="primary" icon={<PlusOutlined />} onClick={openNewOrder}
-                                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8 }}>
+                                style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, border: 'none', borderRadius: 8 }}>
                                 New Order
                             </Button>
                         </Space>
@@ -312,7 +314,7 @@ export default function OrdersPage() {
                                 <Col span={12}><Text type="secondary" className="text-xs block">Email</Text><Text>{selectedOrder.customerEmail || '—'}</Text></Col>
                             </Row>
                             <Row gutter={16} className="mt-2">
-                                <Col span={12}><Text type="secondary" className="text-xs block">Total</Text><Text strong style={{ color: '#6366f1', fontSize: 16 }}>{fmtCurrency(selectedOrder.totalAmount)}</Text></Col>
+                                <Col span={12}><Text type="secondary" className="text-xs block">Total</Text><Text strong style={{ color: themeColor, fontSize: 16 }}>{fmtCurrency(selectedOrder.totalAmount)}</Text></Col>
                                 <Col span={12}><Text type="secondary" className="text-xs block">Payment</Text><Tag color={PAYMENT_COLORS[selectedOrder.paymentStatus || ''] || 'default'}>{selectedOrder.paymentStatus} ({selectedOrder.paymentMethod || '—'})</Tag></Col>
                             </Row>
                             <Row gutter={16} className="mt-2">
@@ -445,7 +447,7 @@ export default function OrdersPage() {
                             </Form.Item>
                         </Col>
                     </Row>
-                    <div style={{ textAlign: 'right', fontSize: 16, fontWeight: 700, color: '#6366f1' }}>
+                    <div style={{ textAlign: 'right', fontSize: 16, fontWeight: 700, color: themeColor }}>
                         Subtotal: {fmtCurrency(orderSubtotal)} | Total: {fmtCurrency(orderSubtotal + (orderForm.getFieldValue('shippingCost') || 0))}
                     </div>
                 </Form>

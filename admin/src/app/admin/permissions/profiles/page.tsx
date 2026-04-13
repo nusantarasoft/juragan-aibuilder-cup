@@ -322,7 +322,7 @@ export default function ProfilesPage() {
                 fields={PROFILE_FIELDS}
                 width={520}
                 onBatchCreate={handleBatchCreate}
-                gradient={["#6366f1", "#8b5cf6"]}
+                gradient={["#6366f1", "var(--theme-color, #8b5cf6)"]}
                 editMode={!!editingProfile}
             />
 

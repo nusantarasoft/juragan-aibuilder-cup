@@ -63,7 +63,7 @@ const DEFAULT_ITEMS: MenuItem[] = [
     href: '#',
     ariaLabel: 'Contact',
     rotation: -8,
-    hoverStyles: { bgColor: '#8b5cf6', textColor: '#ffffff' }
+    hoverStyles: { bgcolor: 'var(--theme-color, #8b5cf6)', textColor: '#ffffff' }
   }
 ];
 

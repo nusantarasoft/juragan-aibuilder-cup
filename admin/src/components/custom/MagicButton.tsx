@@ -34,7 +34,7 @@ export const MagicButton: React.FC<MagicButtonProps> = ({
     // Muted gradient for disabled state
     const borderGradient = disabled
         ? "conic-gradient(from 0deg at 50% 50%, transparent 0deg, transparent 270deg, #9ca3af 300deg, #6b7280 330deg, #4b5563 345deg, #9ca3af 360deg)"
-        : "conic-gradient(from 0deg at 50% 50%, transparent 0deg, transparent 270deg, #00ffff 300deg, #ff00ff 330deg, #9333ea 345deg, #00ffff 360deg)";
+        : "conic-gradient(from 0deg at 50% 50%, transparent 0deg, transparent 270deg, var(--theme-accent, #00ffff) 300deg, var(--theme-secondary, #ff00ff) 330deg, var(--theme-color, #9333ea) 345deg, var(--theme-accent, #00ffff) 360deg)";
 
     return (
         <div className={`relative inline-block ${disabled ? "opacity-60" : ""}`}>
@@ -69,8 +69,8 @@ export const MagicButton: React.FC<MagicButtonProps> = ({
                     rounded-full ${padding} ${isSmall ? 'text-[11px]' : 'text-xs'} font-medium
                     ${disabled ? "cursor-not-allowed" : "cursor-pointer"} overflow-hidden
                     bg-white dark:bg-[#1a1b23]
-                    shadow-[0_4px_14px_rgba(147,51,234,0.15),0_2px_6px_rgba(0,0,0,0.08)]
-                    dark:shadow-[0_4px_14px_rgba(147,51,234,0.4),0_2px_6px_rgba(0,0,0,0.2)]
+                    shadow-[0_4px_14px_rgba(var(--theme-color-rgb,147,51,234),0.15),0_2px_6px_rgba(0,0,0,0.08)]
+                    dark:shadow-[0_4px_14px_rgba(var(--theme-color-rgb,147,51,234),0.4),0_2px_6px_rgba(0,0,0,0.2)]
                     ${className}
                 `}
                 {...props as any}
@@ -79,7 +79,7 @@ export const MagicButton: React.FC<MagicButtonProps> = ({
                 <motion.span
                     className="absolute rounded-full"
                     style={{
-                        background: "linear-gradient(135deg, #9333ea 0%, #7c3aed 30%, #6366f1 60%, #00ffff 100%)",
+                        background: "linear-gradient(135deg, var(--theme-color, #9333ea) 0%, var(--theme-color, #7c3aed) 30%, var(--theme-secondary, #6366f1) 60%, var(--theme-accent, #00ffff) 100%)",
                         zIndex: 1,
                     }}
                     initial={{
@@ -158,7 +158,7 @@ export const MagicButton: React.FC<MagicButtonProps> = ({
                 <span className="relative flex items-center justify-center" style={{ width: contentWidth, zIndex: 10 }}>
                     <motion.span
                         className="font-semibold whitespace-nowrap"
-                        animate={isHovered ? { x: -8, color: "#ffffff" } : { x: textOffset, color: "#7c3aed" }}
+                        animate={isHovered ? { x: -8, color: "#ffffff" } : { x: textOffset, color: "var(--theme-color, #7c3aed)" }}
                         transition={{ duration: 0.3, delay: 0.1 }}
                     >
                         {children}

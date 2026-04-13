@@ -140,7 +140,7 @@ export default function RentalsPage() {
     const fmt = (v: number) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 
     const kpis = [
-        { label: 'Total Assets', value: stats?.totalAssets || 0, icon: <CarOutlined />, color: '#7c3aed' },
+        { label: 'Total Assets', value: stats?.totalAssets || 0, icon: <CarOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { label: 'Available', value: stats?.available || 0, icon: <CheckCircleOutlined />, color: '#16a34a' },
         { label: 'Rented', value: stats?.rented || 0, icon: <SwapOutlined />, color: '#2563eb' },
         { label: 'Maintenance', value: stats?.maintenance || 0, icon: <ToolOutlined />, color: '#d97706' },

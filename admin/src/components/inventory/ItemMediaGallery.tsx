@@ -144,18 +144,18 @@ export default function ItemMediaGallery({
                     >
                         {uploading ? (
                             <div style={{ padding: '12px 0' }}>
-                                <LoadingOutlined style={{ fontSize: 28, color: '#7c3aed', marginBottom: 8 }} />
+                                <LoadingOutlined style={{ fontSize: 28, color: 'var(--theme-color, #7c3aed)', marginBottom: 8 }} />
                                 <p style={{ margin: '8px 0 4px', fontWeight: 600, color: '#374151' }}>Uploading...</p>
                                 <Progress
                                     percent={uploadProgress}
-                                    strokeColor={{ from: '#7c3aed', to: '#6366f1' }}
+                                    strokeColor={{ from: 'var(--theme-color, #7c3aed)', to: '#6366f1' }}
                                     size="small"
                                     style={{ maxWidth: 240, margin: '0 auto' }}
                                 />
                             </div>
                         ) : (
                             <div style={{ padding: '12px 0' }}>
-                                <CloudUploadOutlined style={{ fontSize: 32, color: '#7c3aed', marginBottom: 8 }} />
+                                <CloudUploadOutlined style={{ fontSize: 32, color: 'var(--theme-color, #7c3aed)', marginBottom: 8 }} />
                                 <p style={{ margin: '8px 0 4px', fontWeight: 600, color: '#374151', fontSize: 14 }}>
                                     Drop photos & videos here
                                 </p>
@@ -191,7 +191,7 @@ export default function ItemMediaGallery({
                                         aspectRatio: '1',
                                         borderRadius: 12,
                                         overflow: 'hidden',
-                                        border: isPrimary ? '3px solid #7c3aed' : '2px solid #f0f0f0',
+                                        border: isPrimary ? '3px solid var(--theme-color, #7c3aed)' : '2px solid #f0f0f0',
                                         boxShadow: isPrimary ? '0 4px 16px rgba(124,58,237,0.2)' : '0 1px 4px rgba(0,0,0,0.06)',
                                         cursor: 'pointer',
                                     }}
@@ -200,7 +200,7 @@ export default function ItemMediaGallery({
                                     {isPrimary && (
                                         <div style={{
                                             position: 'absolute', top: 6, left: 6, zIndex: 10,
-                                            background: '#7c3aed', color: '#fff', borderRadius: 6,
+                                            background: 'var(--theme-color, #7c3aed)', color: '#fff', borderRadius: 6,
                                             padding: '2px 8px', fontSize: 10, fontWeight: 700,
                                             letterSpacing: '0.5px',
                                         }}>
@@ -296,7 +296,7 @@ export default function ItemMediaGallery({
                             multiple
                         >
                             <motion.div
-                                whileHover={{ scale: 1.02, borderColor: '#7c3aed' }}
+                                whileHover={{ scale: 1.02, borderColor: 'var(--theme-color, #7c3aed)' }}
                                 style={{
                                     aspectRatio: '1', borderRadius: 12, border: '2px dashed #d9d9d9',
                                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -422,7 +422,7 @@ export function ProductGallery({
                                 style={{
                                     width: 56, height: 56, flexShrink: 0, borderRadius: 8,
                                     overflow: 'hidden', cursor: 'pointer', position: 'relative',
-                                    border: isActive ? '2px solid #7c3aed' : '2px solid transparent',
+                                    border: isActive ? '2px solid var(--theme-color, #7c3aed)' : '2px solid transparent',
                                     opacity: isActive ? 1 : 0.7,
                                     transition: 'all 0.2s',
                                 }}

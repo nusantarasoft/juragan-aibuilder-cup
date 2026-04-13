@@ -16,6 +16,7 @@ import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text, Paragraph } = Typography;
 
@@ -26,9 +27,9 @@ const GET_ALL_LESSONS = `
 `;
 
 const CATEGORY_CONFIG: Record<string, { color: string; icon: React.ReactNode }> = {
-    process: { color: '#6366f1', icon: <BookOutlined /> },
+    process: { color: 'var(--theme-color, #8b5cf6)', icon: <BookOutlined /> },
     technical: { color: '#3b82f6', icon: <BulbOutlined /> },
-    management: { color: '#8b5cf6', icon: <FolderOpenOutlined /> },
+    management: { color: '#6366f1', icon: <FolderOpenOutlined /> },
     communication: { color: '#10b981', icon: <InfoCircleOutlined /> },
     risk: { color: '#f59e0b', icon: <WarningOutlined /> },
     quality: { color: '#22c55e', icon: <CheckCircleOutlined /> },
@@ -38,6 +39,7 @@ const CATEGORY_CONFIG: Record<string, { color: string; icon: React.ReactNode }> 
 export default function KnowledgeBasePage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
+    const { themeColor } = usePreferencesStore();
     const [lessons, setLessons] = useState<any[]>([]);
     const [search, setSearch] = useState("");
     const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
@@ -233,12 +235,12 @@ export default function KnowledgeBasePage() {
             {/* ── Stats Row ── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={8} lg={6}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #8b5cf6' }} size="small">
+                    <Card style={{ ...glassCard, borderTop: `3px solid ${themeColor}` }} size="small">
                         <Statistic
                             title={<span style={{ fontSize: 12 }}>Total Lessons</span>}
                             value={lessons.length}
-                            prefix={<BookOutlined style={{ color: '#8b5cf6' }} />}
-                            valueStyle={{ fontSize: 28, fontWeight: 700, color: '#8b5cf6' }}
+                            prefix={<BookOutlined style={{ color: themeColor }} />}
+                            valueStyle={{ fontSize: 28, fontWeight: 700, color: themeColor }}
                         />
                     </Card>
                 </Col>
@@ -277,7 +279,7 @@ export default function KnowledgeBasePage() {
             {/* ── Category Distribution ── */}
             {categoryDistribution.length > 0 && (
                 <Card
-                    title={<Space><TagOutlined style={{ color: '#8b5cf6' }} /> Category Distribution</Space>}
+                    title={<Space><TagOutlined style={{ color: themeColor }} /> Category Distribution</Space>}
                     size="small"
                     style={{ ...glassCard, marginBottom: 24 }}
                 >
@@ -347,7 +349,7 @@ export default function KnowledgeBasePage() {
             <Card
                 title={
                     <Space>
-                        <BookOutlined style={{ color: '#8b5cf6' }} />
+                        <BookOutlined style={{ color: themeColor }} />
                         <span style={{ fontWeight: 600 }}>Lessons Learned</span>
                         <Tag color="purple">{filtered.length}</Tag>
                     </Space>
@@ -454,9 +456,9 @@ export default function KnowledgeBasePage() {
                         </Card>
 
                         <Card
-                            title={<Space><BulbOutlined style={{ color: '#8b5cf6' }} /> Lesson</Space>}
+                            title={<Space><BulbOutlined style={{ color: themeColor }} /> Lesson</Space>}
                             size="small"
-                            style={{ marginTop: 12, borderLeft: '3px solid #8b5cf6' }}
+                            style={{ marginTop: 12, borderLeft: `3px solid ${themeColor}` }}
                         >
                             <Paragraph style={{ margin: 0 }}>
                                 {viewingLesson.lesson || 'No lesson documented.'}

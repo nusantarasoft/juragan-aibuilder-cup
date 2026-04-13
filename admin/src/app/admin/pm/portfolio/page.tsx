@@ -18,6 +18,7 @@ import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text, Title } = Typography;
 
@@ -51,6 +52,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 export default function PortfolioOverviewPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
+    const { themeColor } = usePreferencesStore();
     const [projects, setProjects] = useState<any[]>([]);
     const [aiAnalysis, setAiAnalysis] = useState<any>(null);
     const [aiLoading, setAiLoading] = useState(false);
@@ -349,7 +351,7 @@ export default function PortfolioOverviewPage() {
                     <StatCard
                         title="Total Projects" value={totalProjects}
                         icon={<ProjectOutlined />}
-                        gradient="linear-gradient(135deg, #6366f1, #8b5cf6)"
+                        gradient={`linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`}
                         extra={
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                                 {statusBuckets.filter(s => s.count > 0).map(s => (
@@ -404,7 +406,7 @@ export default function PortfolioOverviewPage() {
                     <StatCard
                         title="Active Projects" value={activeProjects}
                         icon={<FundProjectionScreenOutlined />}
-                        gradient="linear-gradient(135deg, #8b5cf6, #a78bfa)"
+                        gradient="linear-gradient(135deg, var(--theme-color, #8b5cf6), #a78bfa)"
                         extra={
                             <Text type="secondary" style={{ fontSize: 11 }}>
                                 {completedProjects} completed • {projects.filter(p => p.status === 'paused').length} paused
@@ -431,7 +433,7 @@ export default function PortfolioOverviewPage() {
                                     background: isDark ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.05)',
                                     border: '1px solid rgba(99,102,241,0.15)',
                                 }}>
-                                    <div style={{ fontSize: 24, fontWeight: 800, color: '#6366f1' }}>
+                                    <div style={{ fontSize: 24, fontWeight: 800, color: themeColor }}>
                                         {sprintSummary.inProgressTasks}
                                     </div>
                                     <Text type="secondary" style={{ fontSize: 10 }}>In Progress</Text>
@@ -512,7 +514,7 @@ export default function PortfolioOverviewPage() {
                             border: '1px solid rgba(139,92,246,0.12)',
                         }}>
                             <Text style={{ fontSize: 11 }}>Avg. tasks completed per project</Text>
-                            <Text strong style={{ fontSize: 14, color: '#8b5cf6' }}>{sprintSummary.velocity}</Text>
+                            <Text strong style={{ fontSize: 14, color: themeColor }}>{sprintSummary.velocity}</Text>
                         </div>
                     </Card>
                 </Col>
@@ -616,7 +618,7 @@ export default function PortfolioOverviewPage() {
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} lg={14}>
                     <Card
-                        title={<Space><BarChartOutlined style={{ color: '#8b5cf6' }} /> Status Distribution</Space>}
+                        title={<Space><BarChartOutlined style={{ color: themeColor }} /> Status Distribution</Space>}
                         size="small"
                         style={glassCard}
                     >
@@ -784,7 +786,7 @@ export default function PortfolioOverviewPage() {
             <Card
                 title={
                     <Space>
-                        <ProjectOutlined style={{ color: '#8b5cf6' }} />
+                        <ProjectOutlined style={{ color: themeColor }} />
                         <span style={{ fontWeight: 600 }}>All Projects</span>
                         <Tag color="blue">{totalProjects}</Tag>
                     </Space>

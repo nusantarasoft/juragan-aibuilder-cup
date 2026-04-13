@@ -18,8 +18,8 @@ export function MagicTrail({
     containerRef,
     className,
     trailLength = 10,
-    trailColor = '#8b5cf6',
-    colors = ['#f59e0b', '#ec4899', '#8b5cf6', '#3b82f6', '#10b981'],
+    trailColor = 'var(--theme-color, #8b5cf6)',
+    colors = ['#f59e0b', '#ec4899', 'var(--theme-color, #8b5cf6)', '#3b82f6', '#10b981'],
     particleCount = 50,
     decay = 0.03,
     smoothing = 0.65

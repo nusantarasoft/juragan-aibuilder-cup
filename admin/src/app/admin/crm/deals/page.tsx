@@ -18,6 +18,7 @@ import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import dayjs from "dayjs";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -33,7 +34,7 @@ interface Deal {
 
 const STAGES = [
     { value: "prospecting", label: "Prospecting", color: "#1677ff", prob: 10 },
-    { value: "qualification", label: "Qualification", color: "#722ed1", prob: 25 },
+    { value: "qualification", label: "Qualification", color: "var(--theme-color, #8b5cf6)", prob: 25 },
     { value: "proposal", label: "Proposal", color: "#eb2f96", prob: 50 },
     { value: "negotiation", label: "Negotiation", color: "#fa8c16", prob: 75 },
     { value: "closed_won", label: "Closed Won", color: "#52c41a", prob: 100 },
@@ -52,6 +53,7 @@ const DEAL_FIELDS: FieldDef[] = [
 
 export default function DealsPage() {
     const [deals, setDeals] = useState<Deal[]>([]);
+    const { themeColor } = usePreferencesStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Deal | null>(null);

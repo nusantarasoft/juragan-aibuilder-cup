@@ -80,8 +80,8 @@ const ChromaGrid: React.FC<ChromaGridProps> = ({
       title: 'Sam Kim',
       subtitle: 'Mobile Developer',
       handle: '@thesamkim',
-      borderColor: '#8B5CF6',
-      gradient: 'linear-gradient(225deg,#8B5CF6,#000)',
+      borderColor: 'var(--theme-color, #8b5cf6)',
+      gradient: 'linear-gradient(225deg,var(--theme-color, #8b5cf6),#000)',
       url: 'https://github.com/'
     },
     {

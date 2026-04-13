@@ -31,7 +31,7 @@ const UPSERT_FOCUS_AREA = `
 // PMBOK 8 Focus Areas (draft standards)
 const FOCUS_AREAS = [
     { key: "predictive", name: "Predictive Planning", icon: "📋", color: "#3b82f6", description: "Structured planning with defined scope, schedules, and cost baselines." },
-    { key: "adaptive", name: "Adaptive Execution", icon: "🔄", color: "#8b5cf6", description: "Iterative and incremental delivery with frequent feedback loops." },
+    { key: "adaptive", name: "Adaptive Execution", icon: "🔄", color: "var(--theme-color, #8b5cf6)", description: "Iterative and incremental delivery with frequent feedback loops." },
     { key: "risk_mgmt", name: "Risk Management", icon: "⚠️", color: "#f59e0b", description: "Identification, analysis, and response planning for project risks." },
     { key: "quality_mgmt", name: "Quality Management", icon: "✅", color: "#10b981", description: "Ensuring deliverables meet defined quality standards." },
     { key: "resource_mgmt", name: "Resource Management", icon: "👥", color: "#6366f1", description: "Optimizing people, equipment, and materials needed for the project." },
@@ -45,7 +45,7 @@ const STATUS_OPTIONS = [
     { value: "in_progress", label: "In Progress", color: "#3b82f6" },
     { value: "on_track", label: "On Track", color: "#10b981" },
     { value: "at_risk", label: "At Risk", color: "#f59e0b" },
-    { value: "completed", label: "Completed", color: "#8b5cf6" },
+    { value: "completed", label: "Completed", color: "var(--theme-color, #8b5cf6)" },
 ];
 
 export default function FocusAreasTab({ projectId }: { projectId: string }) {
@@ -121,7 +121,7 @@ export default function FocusAreasTab({ projectId }: { projectId: string }) {
             <ProCard
                 title={
                     <Space>
-                        <FlagOutlined style={{ color: '#8b5cf6' }} />
+                        <FlagOutlined style={{ color: 'var(--theme-color, #8b5cf6)' }} />
                         <span>PMBOK 8 — Focus Areas</span>
                     </Space>
                 }
@@ -133,7 +133,7 @@ export default function FocusAreasTab({ projectId }: { projectId: string }) {
                         <Button
                             type="primary" icon={<SaveOutlined />}
                             onClick={handleSaveAll} loading={saving}
-                            style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', border: 'none', borderRadius: 8 }}
+                            style={{ background: 'linear-gradient(135deg, var(--theme-color, #8b5cf6), var(--theme-secondary, #6366f1))', border: 'none', borderRadius: 8 }}
                         >
                             Save All
                         </Button>
@@ -157,7 +157,7 @@ export default function FocusAreasTab({ projectId }: { projectId: string }) {
                         type="dashboard"
                         percent={avgProgress}
                         size={80}
-                        strokeColor={{ '0%': '#8b5cf6', '100%': '#6366f1' }}
+                        strokeColor={{ '0%': 'var(--theme-color, #8b5cf6)', '100%': 'var(--theme-secondary, #6366f1)' }}
                         trailColor={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}
                     />
                     <div>

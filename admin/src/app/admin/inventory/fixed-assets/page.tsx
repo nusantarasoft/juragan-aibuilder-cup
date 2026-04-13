@@ -16,6 +16,7 @@ import {
     ThunderboltOutlined, CalendarOutlined
 } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import {
     inventoryService, FixedAsset, FixedAssetStatsType
@@ -77,6 +78,7 @@ const ASSET_FIELDS: FieldDef[] = [
 
 export default function FixedAssetsPage() {
     const [stats, setStats] = useState<FixedAssetStatsType | null>(null);
+    const { themeColor } = usePreferencesStore();
     const [assets, setAssets] = useState<FixedAsset[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -189,7 +191,7 @@ export default function FixedAssetsPage() {
 
     // ─── KPI Cards ─────────────────────────────────
     const kpiCards = [
-        { title: 'Total Assets', value: stats?.totalAssets || 0, icon: <CarOutlined />, color: '#7c3aed' },
+        { title: 'Total Assets', value: stats?.totalAssets || 0, icon: <CarOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { title: 'Active', value: stats?.active || 0, icon: <CheckCircleOutlined />, color: '#10b981' },
         { title: 'Maintenance', value: stats?.maintenance || 0, icon: <ToolOutlined />, color: '#f59e0b' },
         { title: 'Disposed', value: stats?.disposed || 0, icon: <CloseCircleOutlined />, color: '#94a3b8' },
@@ -212,7 +214,7 @@ export default function FixedAssetsPage() {
             title: 'Name', dataIndex: 'assetName', ellipsis: true,
             render: (v: string, r: FixedAsset) => (
                 <a onClick={() => openDetail(r)} className="cursor-pointer">
-                    <Text strong className="text-sm" style={{ color: '#6366f1' }}>{v}</Text>
+                    <Text strong className="text-sm" style={{ color: themeColor }}>{v}</Text>
                 </a>
             ),
         },
@@ -407,7 +409,7 @@ export default function FixedAssetsPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#6366f1", "#7c3aed", "#8b5cf6", "#00ffff", "#ff00ff"]}>Fixed Assets</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Fixed Assets</AuroraText>}
             subTitle={
                 <DecryptedText
                     text="Track, depreciate, and manage company-owned assets and equipment"
@@ -451,7 +453,7 @@ export default function FixedAssetsPage() {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                                        style={{ background: 'rgba(99,102,241,0.12)', color: '#6366f1', fontSize: 20 }}>
+                                        style={{ background: 'rgba(99,102,241,0.12)', color: themeColor, fontSize: 20 }}>
                                         <ThunderboltOutlined />
                                     </div>
                                     <div>
@@ -471,7 +473,7 @@ export default function FixedAssetsPage() {
                                         content: 'This will calculate and apply depreciation for all active assets.',
                                         onOk: handleRunDepreciation,
                                     })}
-                                    style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)', border: 'none', borderRadius: 8 }}>
+                                    style={{ background: 'linear-gradient(135deg, #6366f1, var(--theme-color, #7c3aed))', border: 'none', borderRadius: 8 }}>
                                     Run Depreciation
                                 </Button>
                             </div>
@@ -487,7 +489,7 @@ export default function FixedAssetsPage() {
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
                             <Text strong style={{
-                                background: 'linear-gradient(to right, #6366f1, #7c3aed)',
+                                background: 'linear-gradient(to right, #6366f1, var(--theme-color, #7c3aed))',
                                 WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: 15,
                             }}>
                                 <CarOutlined /> Assets ({filteredAssets.length})
@@ -511,7 +513,7 @@ export default function FixedAssetsPage() {
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
                             <Button type="primary" icon={<PlusOutlined />}
                                 onClick={() => { setEditingAsset(null); form.resetFields(); setModalOpen(true); }}
-                                style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)', borderRadius: 8, border: 'none' }}>
+                                style={{ background: 'linear-gradient(135deg, #6366f1, var(--theme-color, #7c3aed))', borderRadius: 8, border: 'none' }}>
                                 New Asset
                             </Button>
                         </Space>
@@ -539,7 +541,7 @@ export default function FixedAssetsPage() {
                 width={700}
                 loading={false}
                 onBatchCreate={handleBatchCreate}
-                gradient={["#6366f1", "#7c3aed"]}
+                gradient={["#6366f1", "var(--theme-color, #7c3aed)"]}
                 editMode={!!editingAsset}
                 initialValues={editingAsset || undefined}
             />

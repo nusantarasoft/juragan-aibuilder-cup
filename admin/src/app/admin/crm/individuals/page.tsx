@@ -165,7 +165,7 @@ export default function IndividualsPage() {
             </Space></Card>
             <Card><Table columns={columns} dataSource={individuals.map(i => ({ ...i, key: i.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>
 
-            <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Individual" : "Add Individual"} entityName="individual" steps={formSteps} fields={INDIVIDUAL_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["#8b5cf6", "#a855f7"]} editMode={!!editing} />
+            <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Individual" : "Add Individual"} entityName="individual" steps={formSteps} fields={INDIVIDUAL_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["var(--theme-color, #8b5cf6)", "var(--theme-accent, #a855f7)"]} editMode={!!editing} />
 
             <Drawer title="Individual Details" open={detailOpen} onClose={() => setDetailOpen(false)} width={500}>
                 {selected && (<Descriptions column={1} bordered size="small">
