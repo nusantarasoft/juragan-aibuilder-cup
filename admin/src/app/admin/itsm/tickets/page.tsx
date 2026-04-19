@@ -265,10 +265,10 @@ export default function ItsmTicketsPage() {
 
                                 {/* AI Auto-Categorize */}
                                 {!editing && (
-                                    <div style={{ padding: '10px 14px', background: 'linear-gradient(135deg, #f5f0ff 0%, #e8f4fd 100%)', borderRadius: 8, border: '1px solid #d9d9d9' }}>
+                                    <div style={{ padding: '10px 14px', background: `linear-gradient(135deg, ${themeColor}10 0%, ${themeColor}06 100%)`, borderRadius: 8, border: `1px solid ${themeColor}20` }}>
                                         <Space>
                                             <Button icon={<RobotOutlined />} loading={aiSuggesting} onClick={handleAiCategorize}
-                                                style={{ background: '#722ed1', color: '#fff', border: 'none' }}>
+                                                style={{ background: themeColor, color: '#fff', border: 'none' }}>
                                                 🤖 AI Auto-Categorize
                                             </Button>
                                             {aiSuggestion && (
@@ -427,7 +427,7 @@ export default function ItsmTicketsPage() {
                 ]}
                 fields={TICKET_FIELDS}
                 width={750}
-                gradient={["#722ed1", "#9254de"]}
+                gradient={[themeColor, `${themeColor}dd`]}
                 editMode={!!editing}
                 initialValues={{ priority: 'medium', impact: 'medium', urgency: 'medium', channel: 'portal' }}
             />

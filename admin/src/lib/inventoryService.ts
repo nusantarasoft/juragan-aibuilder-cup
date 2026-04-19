@@ -3,6 +3,7 @@
  */
 
 const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
+const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000010';
 
 async function graphqlRequest<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
     const response = await fetch(GRAPHQL_URL, {
@@ -157,14 +158,14 @@ const CATEGORY_FIELDS = `id tenantId name parentId description icon color sortOr
 
 export const inventoryService = {
     // ─── Categories ─────────────────────────────────────
-    async getCategories(tenantId = 'default'): Promise<InvCategory[]> {
+    async getCategories(tenantId = DEFAULT_TENANT_ID): Promise<InvCategory[]> {
         const data = await graphqlRequest<{ invCategories: InvCategory[] }>(`
             query($tenantId: String!) { invCategories(tenantId: $tenantId) { ${CATEGORY_FIELDS} } }
         `, { tenantId });
         return data.invCategories || [];
     },
 
-    async createCategory(tenantId = 'default', input: Partial<InvCategory>): Promise<InvCategory> {
+    async createCategory(tenantId = DEFAULT_TENANT_ID, input: Partial<InvCategory>): Promise<InvCategory> {
         const data = await graphqlRequest<{ createInvCategory: InvCategory }>(`
             mutation($tenantId: String!, $input: CreateCategoryInput!) {
                 createInvCategory(tenantId: $tenantId, input: $input) { ${CATEGORY_FIELDS} }
@@ -190,7 +191,7 @@ export const inventoryService = {
     },
 
     // ─── Items ──────────────────────────────────────────
-    async getItems(tenantId = 'default', filters?: {
+    async getItems(tenantId = DEFAULT_TENANT_ID, filters?: {
         fulfillmentType?: string; itemType?: string; categoryId?: string;
         status?: string; search?: string;
     }): Promise<InvItem[]> {
@@ -209,7 +210,7 @@ export const inventoryService = {
         return data.invItem;
     },
 
-    async createItem(tenantId = 'default', input: Partial<InvItem>): Promise<InvItem> {
+    async createItem(tenantId = DEFAULT_TENANT_ID, input: Partial<InvItem>): Promise<InvItem> {
         const data = await graphqlRequest<{ createInvItem: InvItem }>(`
             mutation($tenantId: String!, $input: CreateItemInput!) {
                 createInvItem(tenantId: $tenantId, input: $input) { ${ITEM_FIELDS} }
@@ -261,7 +262,7 @@ export const inventoryService = {
     },
 
     // ─── Stock ──────────────────────────────────────────
-    async getStockLedger(tenantId = 'default', filters?: {
+    async getStockLedger(tenantId = DEFAULT_TENANT_ID, filters?: {
         itemId?: string; warehouseId?: string;
     }): Promise<StockLedgerEntry[]> {
         const data = await graphqlRequest<{ invStockLedger: StockLedgerEntry[] }>(`
@@ -274,7 +275,7 @@ export const inventoryService = {
         return data.invStockLedger || [];
     },
 
-    async getStockMovements(tenantId = 'default', filters?: {
+    async getStockMovements(tenantId = DEFAULT_TENANT_ID, filters?: {
         itemId?: string; movementType?: string; limit?: number;
     }): Promise<StockMovement[]> {
         const data = await graphqlRequest<{ invStockMovements: StockMovement[] }>(`
@@ -288,7 +289,7 @@ export const inventoryService = {
         return data.invStockMovements || [];
     },
 
-    async createStockMovement(tenantId = 'default', input: {
+    async createStockMovement(tenantId = DEFAULT_TENANT_ID, input: {
         itemId: string; movementType: string; quantity: number;
         variantId?: string; warehouseId?: string; unitCost?: number;
         reference?: string; referenceType?: string; referenceId?: string;
@@ -305,7 +306,7 @@ export const inventoryService = {
         return data.createStockMovement;
     },
 
-    async getStockStats(tenantId = 'default'): Promise<InvStockStats> {
+    async getStockStats(tenantId = DEFAULT_TENANT_ID): Promise<InvStockStats> {
         const data = await graphqlRequest<{ invStockStats: InvStockStats }>(`
             query($tenantId: String!) {
                 invStockStats(tenantId: $tenantId) {
@@ -329,7 +330,7 @@ export const inventoryService = {
         return data.aiClassifyItem;
     },
 
-    async aiDetectAnomalies(tenantId = 'default'): Promise<{ anomalies: any[]; summary?: string; message?: string }> {
+    async aiDetectAnomalies(tenantId = DEFAULT_TENANT_ID): Promise<{ anomalies: any[]; summary?: string; message?: string }> {
         const data = await graphqlRequest<{ aiDetectStockAnomalies: any }>(`
             query($tenantId: String!) {
                 aiDetectStockAnomalies(tenantId: $tenantId) {
@@ -546,7 +547,7 @@ export const inventoryService = {
     // ─── WAREHOUSE MANAGEMENT ─────────────────────────────
     // ═══════════════════════════════════════════════════════
 
-    async getWarehouses(tenantId = 'default', status?: string, search?: string): Promise<InvWarehouse[]> {
+    async getWarehouses(tenantId = DEFAULT_TENANT_ID, status?: string, search?: string): Promise<InvWarehouse[]> {
         const data = await graphqlRequest<{ invWarehouses: InvWarehouse[] }>(`
             query($tenantId: String!, $status: String, $search: String) {
                 invWarehouses(tenantId: $tenantId, status: $status, search: $search) {
@@ -560,7 +561,7 @@ export const inventoryService = {
         return data.invWarehouses || [];
     },
 
-    async createWarehouse(tenantId = 'default', input: Record<string, any>): Promise<InvWarehouse> {
+    async createWarehouse(tenantId = DEFAULT_TENANT_ID, input: Record<string, any>): Promise<InvWarehouse> {
         const data = await graphqlRequest<{ createWarehouse: InvWarehouse }>(`
             mutation($tenantId: String!, $input: CreateWarehouseInput!) {
                 createWarehouse(tenantId: $tenantId, input: $input) {
@@ -664,7 +665,7 @@ export const inventoryService = {
         await graphqlRequest(`mutation($id: String!) { deleteBin(id: $id) }`, { id });
     },
 
-    async getStockTransfers(tenantId = 'default', status?: string): Promise<InvStockTransfer[]> {
+    async getStockTransfers(tenantId = DEFAULT_TENANT_ID, status?: string): Promise<InvStockTransfer[]> {
         const data = await graphqlRequest<{ invStockTransfers: InvStockTransfer[] }>(`
             query($tenantId: String!, $status: String) {
                 invStockTransfers(tenantId: $tenantId, status: $status) {
@@ -678,7 +679,7 @@ export const inventoryService = {
         return data.invStockTransfers || [];
     },
 
-    async createStockTransfer(tenantId = 'default', input: Record<string, any>): Promise<InvStockTransfer> {
+    async createStockTransfer(tenantId = DEFAULT_TENANT_ID, input: Record<string, any>): Promise<InvStockTransfer> {
         const data = await graphqlRequest<{ createStockTransfer: InvStockTransfer }>(`
             mutation($tenantId: String!, $input: CreateStockTransferInput!) {
                 createStockTransfer(tenantId: $tenantId, input: $input) {
@@ -689,7 +690,7 @@ export const inventoryService = {
         return data.createStockTransfer;
     },
 
-    async approveStockTransfer(id: string, tenantId = 'default', approvedBy?: string): Promise<InvStockTransfer> {
+    async approveStockTransfer(id: string, tenantId = DEFAULT_TENANT_ID, approvedBy?: string): Promise<InvStockTransfer> {
         const data = await graphqlRequest<{ approveStockTransfer: InvStockTransfer }>(`
             mutation($id: String!, $tenantId: String!, $approvedBy: String) {
                 approveStockTransfer(id: $id, tenantId: $tenantId, approvedBy: $approvedBy) {
@@ -715,7 +716,7 @@ export const inventoryService = {
         await graphqlRequest(`mutation($id: String!) { deleteStockTransfer(id: $id) }`, { id });
     },
 
-    async getWarehouseStats(tenantId = 'default'): Promise<WarehouseStats> {
+    async getWarehouseStats(tenantId = DEFAULT_TENANT_ID): Promise<WarehouseStats> {
         const data = await graphqlRequest<{ warehouseStats: WarehouseStats }>(`
             query($tenantId: String!) {
                 warehouseStats(tenantId: $tenantId) {
@@ -731,7 +732,7 @@ export const inventoryService = {
     // ─── MANUFACTURING ────────────────────────────────────
     // ═══════════════════════════════════════════════════════
 
-    async getBoms(tenantId = 'default'): Promise<MfgBom[]> {
+    async getBoms(tenantId = DEFAULT_TENANT_ID): Promise<MfgBom[]> {
         const data = await graphqlRequest<{ mfgBoms: MfgBom[] }>(`
             query($tenantId: String!) {
                 mfgBoms(tenantId: $tenantId) {
@@ -744,7 +745,7 @@ export const inventoryService = {
         return data.mfgBoms || [];
     },
 
-    async createBom(tenantId = 'default', input: Record<string, any>): Promise<MfgBom> {
+    async createBom(tenantId = DEFAULT_TENANT_ID, input: Record<string, any>): Promise<MfgBom> {
         const data = await graphqlRequest<{ createBom: MfgBom }>(`
             mutation($tenantId: String!, $input: CreateBomInput!) {
                 createBom(tenantId: $tenantId, input: $input) {
@@ -804,7 +805,7 @@ export const inventoryService = {
         await graphqlRequest(`mutation($id: String!) { deleteBomLine(id: $id) }`, { id });
     },
 
-    async getWorkOrders(tenantId = 'default', status?: string): Promise<MfgWorkOrder[]> {
+    async getWorkOrders(tenantId = DEFAULT_TENANT_ID, status?: string): Promise<MfgWorkOrder[]> {
         const data = await graphqlRequest<{ mfgWorkOrders: MfgWorkOrder[] }>(`
             query($tenantId: String!, $status: String) {
                 mfgWorkOrders(tenantId: $tenantId, status: $status) {
@@ -818,7 +819,7 @@ export const inventoryService = {
         return data.mfgWorkOrders || [];
     },
 
-    async createWorkOrder(tenantId = 'default', input: Record<string, any>): Promise<MfgWorkOrder> {
+    async createWorkOrder(tenantId = DEFAULT_TENANT_ID, input: Record<string, any>): Promise<MfgWorkOrder> {
         const data = await graphqlRequest<{ createWorkOrder: MfgWorkOrder }>(`
             mutation($tenantId: String!, $input: CreateWorkOrderInput!) {
                 createWorkOrder(tenantId: $tenantId, input: $input) {
@@ -853,7 +854,7 @@ export const inventoryService = {
         await graphqlRequest(`mutation($id: String!) { deleteWorkOrder(id: $id) }`, { id });
     },
 
-    async getManufacturingStats(tenantId = 'default'): Promise<ManufacturingStats> {
+    async getManufacturingStats(tenantId = DEFAULT_TENANT_ID): Promise<ManufacturingStats> {
         const data = await graphqlRequest<{ manufacturingStats: ManufacturingStats }>(`
             query($tenantId: String!) {
                 manufacturingStats(tenantId: $tenantId) {
@@ -868,7 +869,7 @@ export const inventoryService = {
     // ─── STOCK OPNAME ────────────────────────────────────
     // ═════════════════════════════════════════════════════
 
-    async getOpnameSessions(tenantId = 'default'): Promise<OpnameSession[]> {
+    async getOpnameSessions(tenantId = DEFAULT_TENANT_ID): Promise<OpnameSession[]> {
         const data = await graphqlRequest<{ opnameSessions: OpnameSession[] }>(`
             query($tenantId: String!) {
                 opnameSessions(tenantId: $tenantId) {
@@ -882,7 +883,7 @@ export const inventoryService = {
         return data.opnameSessions || [];
     },
 
-    async createOpnameSession(tenantId = 'default', input: Record<string, any>): Promise<OpnameSession> {
+    async createOpnameSession(tenantId = DEFAULT_TENANT_ID, input: Record<string, any>): Promise<OpnameSession> {
         const data = await graphqlRequest<{ createOpnameSession: OpnameSession }>(`
             mutation($tenantId: String!, $input: CreateOpnameSessionInput!) {
                 createOpnameSession(tenantId: $tenantId, input: $input) {
@@ -956,7 +957,7 @@ export const inventoryService = {
         await graphqlRequest(`mutation($id: String!) { deleteOpnameLine(id: $id) }`, { id });
     },
 
-    async getOpnameStats(tenantId = 'default'): Promise<OpnameStatsType> {
+    async getOpnameStats(tenantId = DEFAULT_TENANT_ID): Promise<OpnameStatsType> {
         const data = await graphqlRequest<{ opnameStats: OpnameStatsType }>(`
             query($tenantId: String!) {
                 opnameStats(tenantId: $tenantId) {
@@ -971,7 +972,7 @@ export const inventoryService = {
     // ─── BOOKING & TICKETING ──────────────────────────────
     // ═════════════════════════════════════════════════════
 
-    async getSchedules(tenantId = 'default'): Promise<BookingSchedule[]> {
+    async getSchedules(tenantId = DEFAULT_TENANT_ID): Promise<BookingSchedule[]> {
         const data = await graphqlRequest<{ bookingSchedules: BookingSchedule[] }>(`
             query($tenantId: String!) {
                 bookingSchedules(tenantId: $tenantId) {
@@ -984,7 +985,7 @@ export const inventoryService = {
         return data.bookingSchedules || [];
     },
 
-    async createSchedule(tenantId = 'default', input: Record<string, any>): Promise<BookingSchedule> {
+    async createSchedule(tenantId = DEFAULT_TENANT_ID, input: Record<string, any>): Promise<BookingSchedule> {
         const data = await graphqlRequest<{ createSchedule: BookingSchedule }>(`
             mutation($tenantId: String!, $input: CreateScheduleInput!) {
                 createSchedule(tenantId: $tenantId, input: $input) { id scheduleCode status createdAt }
@@ -997,7 +998,7 @@ export const inventoryService = {
         await graphqlRequest(`mutation($id: String!) { deleteSchedule(id: $id) }`, { id });
     },
 
-    async getOccurrences(scheduleId?: string, tenantId = 'default'): Promise<BookingOccurrence[]> {
+    async getOccurrences(scheduleId?: string, tenantId = DEFAULT_TENANT_ID): Promise<BookingOccurrence[]> {
         const data = await graphqlRequest<{ bookingOccurrences: BookingOccurrence[] }>(`
             query($scheduleId: String, $tenantId: String) {
                 bookingOccurrences(scheduleId: $scheduleId, tenantId: $tenantId) {
@@ -1018,7 +1019,7 @@ export const inventoryService = {
         return data.updateOccurrenceStatus;
     },
 
-    async getBookings(tenantId = 'default', occurrenceId?: string): Promise<Booking[]> {
+    async getBookings(tenantId = DEFAULT_TENANT_ID, occurrenceId?: string): Promise<Booking[]> {
         const data = await graphqlRequest<{ bookings: Booking[] }>(`
             query($tenantId: String!, $occurrenceId: String) {
                 bookings(tenantId: $tenantId, occurrenceId: $occurrenceId) {
@@ -1031,7 +1032,7 @@ export const inventoryService = {
         return data.bookings || [];
     },
 
-    async createBooking(tenantId = 'default', input: Record<string, any>): Promise<Booking> {
+    async createBooking(tenantId = DEFAULT_TENANT_ID, input: Record<string, any>): Promise<Booking> {
         const data = await graphqlRequest<{ createBooking: Booking }>(`
             mutation($tenantId: String!, $input: CreateBookingInput!) {
                 createBooking(tenantId: $tenantId, input: $input) { id bookingCode status createdAt }
@@ -1058,7 +1059,7 @@ export const inventoryService = {
         return data.bookingPassengers || [];
     },
 
-    async getBookingStats(tenantId = 'default'): Promise<BookingStatsType> {
+    async getBookingStats(tenantId = DEFAULT_TENANT_ID): Promise<BookingStatsType> {
         const data = await graphqlRequest<{ bookingStats: BookingStatsType }>(`
             query($tenantId: String!) {
                 bookingStats(tenantId: $tenantId) {
@@ -1074,7 +1075,7 @@ export const inventoryService = {
     // ─── RENTAL ENGINE ───────────────────────────────────
     // ═════════════════════════════════════════════════════
 
-    async getRentalAssets(tenantId = 'default'): Promise<RentalAsset[]> {
+    async getRentalAssets(tenantId = DEFAULT_TENANT_ID): Promise<RentalAsset[]> {
         const data = await graphqlRequest<{ rentalAssets: RentalAsset[] }>(`
             query($tenantId: String!) {
                 rentalAssets(tenantId: $tenantId) {
@@ -1088,7 +1089,7 @@ export const inventoryService = {
         return data.rentalAssets || [];
     },
 
-    async createRentalAsset(tenantId = 'default', input: Record<string, any>): Promise<RentalAsset> {
+    async createRentalAsset(tenantId = DEFAULT_TENANT_ID, input: Record<string, any>): Promise<RentalAsset> {
         const data = await graphqlRequest<{ createRentalAsset: RentalAsset }>(`
             mutation($tenantId: String!, $input: CreateRentalAssetInput!) {
                 createRentalAsset(tenantId: $tenantId, input: $input) { id assetCode status createdAt }
@@ -1101,7 +1102,7 @@ export const inventoryService = {
         await graphqlRequest(`mutation($id: String!) { deleteRentalAsset(id: $id) }`, { id });
     },
 
-    async getRentalContracts(tenantId = 'default'): Promise<RentalContract[]> {
+    async getRentalContracts(tenantId = DEFAULT_TENANT_ID): Promise<RentalContract[]> {
         const data = await graphqlRequest<{ rentalContracts: RentalContract[] }>(`
             query($tenantId: String!) {
                 rentalContracts(tenantId: $tenantId) {
@@ -1116,7 +1117,7 @@ export const inventoryService = {
         return data.rentalContracts || [];
     },
 
-    async createRentalContract(tenantId = 'default', input: Record<string, any>): Promise<RentalContract> {
+    async createRentalContract(tenantId = DEFAULT_TENANT_ID, input: Record<string, any>): Promise<RentalContract> {
         const data = await graphqlRequest<{ createRentalContract: RentalContract }>(`
             mutation($tenantId: String!, $input: CreateRentalContractInput!) {
                 createRentalContract(tenantId: $tenantId, input: $input) { id contractCode status createdAt }
@@ -1151,7 +1152,7 @@ export const inventoryService = {
         return data.cancelRentalContract;
     },
 
-    async getRentalStats(tenantId = 'default'): Promise<RentalStatsType> {
+    async getRentalStats(tenantId = DEFAULT_TENANT_ID): Promise<RentalStatsType> {
         const data = await graphqlRequest<{ rentalStats: RentalStatsType }>(`
             query($tenantId: String!) {
                 rentalStats(tenantId: $tenantId) {
@@ -1167,7 +1168,7 @@ export const inventoryService = {
     // ═══════════════════════════════════════════════════════
 
     // ─── Customers ─────────────────────────────────────────
-    async getEcomCustomers(tenantId = 'default', filters?: { search?: string; customerType?: string; status?: string }): Promise<EcomCustomer[]> {
+    async getEcomCustomers(tenantId = DEFAULT_TENANT_ID, filters?: { search?: string; customerType?: string; status?: string }): Promise<EcomCustomer[]> {
         const data = await graphqlRequest<{ ecomCustomers: EcomCustomer[] }>(`
             query($tenantId: String!, $search: String, $customerType: String, $status: String) {
                 ecomCustomers(tenantId: $tenantId, search: $search, customerType: $customerType, status: $status) {
@@ -1179,7 +1180,7 @@ export const inventoryService = {
         return data.ecomCustomers;
     },
 
-    async createEcomCustomer(tenantId = 'default', input: Partial<EcomCustomer>): Promise<EcomCustomer> {
+    async createEcomCustomer(tenantId = DEFAULT_TENANT_ID, input: Partial<EcomCustomer>): Promise<EcomCustomer> {
         const data = await graphqlRequest<{ createEcomCustomer: EcomCustomer }>(`
             mutation($tenantId: String!, $input: EcomCustomerInput!) {
                 createEcomCustomer(tenantId: $tenantId, input: $input) {
@@ -1209,7 +1210,7 @@ export const inventoryService = {
     },
 
     // ─── Orders ─────────────────────────────────────────────
-    async getEcomOrders(tenantId = 'default', filters?: { status?: string; paymentStatus?: string; search?: string }): Promise<EcomOrder[]> {
+    async getEcomOrders(tenantId = DEFAULT_TENANT_ID, filters?: { status?: string; paymentStatus?: string; search?: string }): Promise<EcomOrder[]> {
         const data = await graphqlRequest<{ ecomOrders: EcomOrder[] }>(`
             query($tenantId: String!, $status: String, $paymentStatus: String, $search: String) {
                 ecomOrders(tenantId: $tenantId, status: $status, paymentStatus: $paymentStatus, search: $search) {
@@ -1235,7 +1236,7 @@ export const inventoryService = {
         return data.ecomOrder;
     },
 
-    async createEcomOrder(tenantId = 'default', input: Partial<EcomOrder>): Promise<EcomOrder> {
+    async createEcomOrder(tenantId = DEFAULT_TENANT_ID, input: Partial<EcomOrder>): Promise<EcomOrder> {
         const data = await graphqlRequest<{ createEcomOrder: EcomOrder }>(`
             mutation($tenantId: String!, $input: EcomOrderInput!) {
                 createEcomOrder(tenantId: $tenantId, input: $input) {
@@ -1289,7 +1290,7 @@ export const inventoryService = {
     },
 
     // ─── Store Settings ─────────────────────────────────────
-    async getStoreSettings(tenantId = 'default'): Promise<EcomStoreSettings | null> {
+    async getStoreSettings(tenantId = DEFAULT_TENANT_ID): Promise<EcomStoreSettings | null> {
         const data = await graphqlRequest<{ ecomStoreSettings: EcomStoreSettings | null }>(`
             query($tenantId: String!) {
                 ecomStoreSettings(tenantId: $tenantId) {
@@ -1304,7 +1305,7 @@ export const inventoryService = {
         return data.ecomStoreSettings;
     },
 
-    async updateStoreSettings(tenantId = 'default', input: Partial<EcomStoreSettings>): Promise<EcomStoreSettings> {
+    async updateStoreSettings(tenantId = DEFAULT_TENANT_ID, input: Partial<EcomStoreSettings>): Promise<EcomStoreSettings> {
         const data = await graphqlRequest<{ updateStoreSettings: EcomStoreSettings }>(`
             mutation($tenantId: String!, $input: EcomStoreSettingsInput!) {
                 updateStoreSettings(tenantId: $tenantId, input: $input) {
@@ -1316,7 +1317,7 @@ export const inventoryService = {
     },
 
     // ─── E-Commerce Stats ───────────────────────────────────
-    async getEcomStats(tenantId = 'default'): Promise<EcomStatsType> {
+    async getEcomStats(tenantId = DEFAULT_TENANT_ID): Promise<EcomStatsType> {
         const data = await graphqlRequest<{ ecomStats: EcomStatsType }>(`
             query($tenantId: String!) {
                 ecomStats(tenantId: $tenantId) {
@@ -1332,7 +1333,7 @@ export const inventoryService = {
     // RETURNS & REFUNDS
     // ═══════════════════════════════════════════════════════
 
-    async getEcomReturns(tenantId = 'default', filters?: { status?: string; search?: string }): Promise<EcomReturn[]> {
+    async getEcomReturns(tenantId = DEFAULT_TENANT_ID, filters?: { status?: string; search?: string }): Promise<EcomReturn[]> {
         const data = await graphqlRequest<{ ecomReturns: EcomReturn[] }>(`
             query($tenantId: String!, $status: String, $search: String) {
                 ecomReturns(tenantId: $tenantId, status: $status, search: $search) {
@@ -1346,7 +1347,7 @@ export const inventoryService = {
         return data.ecomReturns;
     },
 
-    async createEcomReturn(tenantId = 'default', input: Partial<EcomReturn> & { items?: any[] }): Promise<EcomReturn> {
+    async createEcomReturn(tenantId = DEFAULT_TENANT_ID, input: Partial<EcomReturn> & { items?: any[] }): Promise<EcomReturn> {
         const data = await graphqlRequest<{ createEcomReturn: EcomReturn }>(`
             mutation($tenantId: String!, $input: CreateReturnInput!) {
                 createEcomReturn(tenantId: $tenantId, input: $input) {
@@ -1387,7 +1388,7 @@ export const inventoryService = {
         return data.ecomReturnItems;
     },
 
-    async getEcomReturnStats(tenantId = 'default'): Promise<EcomReturnStatsType> {
+    async getEcomReturnStats(tenantId = DEFAULT_TENANT_ID): Promise<EcomReturnStatsType> {
         const data = await graphqlRequest<{ ecomReturnStats: EcomReturnStatsType }>(`
             query($tenantId: String!) {
                 ecomReturnStats(tenantId: $tenantId) {
@@ -1402,7 +1403,7 @@ export const inventoryService = {
     // PRODUCT PACKAGES
     // ═══════════════════════════════════════════════════════
 
-    async getEcomPackages(tenantId = 'default', filters?: { status?: string; search?: string }): Promise<EcomPackage[]> {
+    async getEcomPackages(tenantId = DEFAULT_TENANT_ID, filters?: { status?: string; search?: string }): Promise<EcomPackage[]> {
         const data = await graphqlRequest<{ ecomPackages: EcomPackage[] }>(`
             query($tenantId: String!, $status: String, $search: String) {
                 ecomPackages(tenantId: $tenantId, status: $status, search: $search) {
@@ -1414,7 +1415,7 @@ export const inventoryService = {
         return data.ecomPackages;
     },
 
-    async createEcomPackage(tenantId = 'default', input: Partial<EcomPackage> & { items?: any[] }): Promise<EcomPackage> {
+    async createEcomPackage(tenantId = DEFAULT_TENANT_ID, input: Partial<EcomPackage> & { items?: any[] }): Promise<EcomPackage> {
         const data = await graphqlRequest<{ createEcomPackage: EcomPackage }>(`
             mutation($tenantId: String!, $input: CreatePackageInput!) {
                 createEcomPackage(tenantId: $tenantId, input: $input) {
@@ -1472,7 +1473,7 @@ export const inventoryService = {
         return data.deleteEcomPackageItem;
     },
 
-    async getEcomPackageStats(tenantId = 'default'): Promise<EcomPackageStatsType> {
+    async getEcomPackageStats(tenantId = DEFAULT_TENANT_ID): Promise<EcomPackageStatsType> {
         const data = await graphqlRequest<{ ecomPackageStats: EcomPackageStatsType }>(`
             query($tenantId: String!) {
                 ecomPackageStats(tenantId: $tenantId) {
@@ -1487,7 +1488,7 @@ export const inventoryService = {
     // OFFERS & PROMOTIONS
     // ═══════════════════════════════════════════════════════
 
-    async getEcomOffers(tenantId = 'default', filters?: { status?: string; search?: string }): Promise<EcomOffer[]> {
+    async getEcomOffers(tenantId = DEFAULT_TENANT_ID, filters?: { status?: string; search?: string }): Promise<EcomOffer[]> {
         const data = await graphqlRequest<{ ecomOffers: EcomOffer[] }>(`
             query($tenantId: String!, $status: String, $search: String) {
                 ecomOffers(tenantId: $tenantId, status: $status, search: $search) {
@@ -1500,7 +1501,7 @@ export const inventoryService = {
         return data.ecomOffers;
     },
 
-    async createEcomOffer(tenantId = 'default', input: Partial<EcomOffer>): Promise<EcomOffer> {
+    async createEcomOffer(tenantId = DEFAULT_TENANT_ID, input: Partial<EcomOffer>): Promise<EcomOffer> {
         const data = await graphqlRequest<{ createEcomOffer: EcomOffer }>(`
             mutation($tenantId: String!, $input: CreateOfferInput!) {
                 createEcomOffer(tenantId: $tenantId, input: $input) {
@@ -1529,7 +1530,7 @@ export const inventoryService = {
         return data.deleteEcomOffer;
     },
 
-    async getEcomOfferStats(tenantId = 'default'): Promise<EcomOfferStatsType> {
+    async getEcomOfferStats(tenantId = DEFAULT_TENANT_ID): Promise<EcomOfferStatsType> {
         const data = await graphqlRequest<{ ecomOfferStats: EcomOfferStatsType }>(`
             query($tenantId: String!) {
                 ecomOfferStats(tenantId: $tenantId) {
@@ -1544,7 +1545,7 @@ export const inventoryService = {
     // DISCOUNT SYSTEM
     // ═══════════════════════════════════════════════════════
 
-    async getEcomDiscounts(tenantId = 'default', filters?: { status?: string; search?: string }): Promise<EcomDiscount[]> {
+    async getEcomDiscounts(tenantId = DEFAULT_TENANT_ID, filters?: { status?: string; search?: string }): Promise<EcomDiscount[]> {
         const data = await graphqlRequest<{ ecomDiscounts: EcomDiscount[] }>(`
             query($tenantId: String!, $status: String, $search: String) {
                 ecomDiscounts(tenantId: $tenantId, status: $status, search: $search) {
@@ -1558,7 +1559,7 @@ export const inventoryService = {
         return data.ecomDiscounts;
     },
 
-    async createEcomDiscount(tenantId = 'default', input: Partial<EcomDiscount>): Promise<EcomDiscount> {
+    async createEcomDiscount(tenantId = DEFAULT_TENANT_ID, input: Partial<EcomDiscount>): Promise<EcomDiscount> {
         const data = await graphqlRequest<{ createEcomDiscount: EcomDiscount }>(`
             mutation($tenantId: String!, $input: CreateDiscountInput!) {
                 createEcomDiscount(tenantId: $tenantId, input: $input) {
@@ -1587,7 +1588,7 @@ export const inventoryService = {
         return data.deleteEcomDiscount;
     },
 
-    async getEcomDiscountStats(tenantId = 'default'): Promise<EcomDiscountStatsType> {
+    async getEcomDiscountStats(tenantId = DEFAULT_TENANT_ID): Promise<EcomDiscountStatsType> {
         const data = await graphqlRequest<{ ecomDiscountStats: EcomDiscountStatsType }>(`
             query($tenantId: String!) {
                 ecomDiscountStats(tenantId: $tenantId) {
@@ -1602,7 +1603,7 @@ export const inventoryService = {
     // \u2500\u2500\u2500 STOCK OPERATIONS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
     // \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 
-    async getStockOperations(tenantId = 'default', filters?: {
+    async getStockOperations(tenantId = DEFAULT_TENANT_ID, filters?: {
         operationType?: string; status?: string; search?: string;
     }): Promise<StockOperation[]> {
         const data = await graphqlRequest<{ stockOperations: StockOperation[] }>(`
@@ -1617,7 +1618,7 @@ export const inventoryService = {
         return data.stockOperations || [];
     },
 
-    async createStockOperation(tenantId = 'default', input: Partial<StockOperation>): Promise<StockOperation> {
+    async createStockOperation(tenantId = DEFAULT_TENANT_ID, input: Partial<StockOperation>): Promise<StockOperation> {
         const data = await graphqlRequest<{ createStockOperation: StockOperation }>(`
             mutation($tenantId: String!, $input: CreateStockOperationInput!) {
                 createStockOperation(tenantId: $tenantId, input: $input) {
@@ -1635,7 +1636,7 @@ export const inventoryService = {
         return data.deleteStockOperation;
     },
 
-    async getStockOperationStats(tenantId = 'default'): Promise<StockOperationStatsType> {
+    async getStockOperationStats(tenantId = DEFAULT_TENANT_ID): Promise<StockOperationStatsType> {
         const data = await graphqlRequest<{ stockOperationStats: StockOperationStatsType }>(`
             query($tenantId: String!) {
                 stockOperationStats(tenantId: $tenantId) {
@@ -1650,7 +1651,7 @@ export const inventoryService = {
     // \u2500\u2500\u2500 FIXED ASSETS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
     // \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 
-    async getFixedAssets(tenantId = 'default', filters?: {
+    async getFixedAssets(tenantId = DEFAULT_TENANT_ID, filters?: {
         assetCategory?: string; status?: string; search?: string;
     }): Promise<FixedAsset[]> {
         const data = await graphqlRequest<{ fixedAssets: FixedAsset[] }>(`
@@ -1686,7 +1687,7 @@ export const inventoryService = {
         return data.fixedAsset;
     },
 
-    async createFixedAsset(tenantId = 'default', input: Partial<FixedAsset>): Promise<FixedAsset> {
+    async createFixedAsset(tenantId = DEFAULT_TENANT_ID, input: Partial<FixedAsset>): Promise<FixedAsset> {
         const data = await graphqlRequest<{ createFixedAsset: FixedAsset }>(`
             mutation($tenantId: String!, $input: CreateFixedAssetInput!) {
                 createFixedAsset(tenantId: $tenantId, input: $input) {
@@ -1726,14 +1727,14 @@ export const inventoryService = {
         return data.disposeFixedAsset;
     },
 
-    async runDepreciation(tenantId = 'default'): Promise<{ processed: number; totalDepreciation: number }> {
+    async runDepreciation(tenantId = DEFAULT_TENANT_ID): Promise<{ processed: number; totalDepreciation: number }> {
         const data = await graphqlRequest<{ runDepreciation: { processed: number; totalDepreciation: number } }>(`
             mutation($tenantId: String!) { runDepreciation(tenantId: $tenantId) }
         `, { tenantId });
         return data.runDepreciation;
     },
 
-    async getFixedAssetStats(tenantId = 'default'): Promise<FixedAssetStatsType> {
+    async getFixedAssetStats(tenantId = DEFAULT_TENANT_ID): Promise<FixedAssetStatsType> {
         const data = await graphqlRequest<{ fixedAssetStats: FixedAssetStatsType }>(`
             query($tenantId: String!) {
                 fixedAssetStats(tenantId: $tenantId) {
@@ -1747,7 +1748,7 @@ export const inventoryService = {
 
     // \u2500\u2500\u2500 EXPIRY ALERTS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
-    async getExpiryAlerts(tenantId = 'default', daysAhead = 30): Promise<ExpiryAlert[]> {
+    async getExpiryAlerts(tenantId = DEFAULT_TENANT_ID, daysAhead = 30): Promise<ExpiryAlert[]> {
         const data = await graphqlRequest<{ expiryAlerts: ExpiryAlert[] }>(`
             query($tenantId: String!, $daysAhead: Int) {
                 expiryAlerts(tenantId: $tenantId, daysAhead: $daysAhead) {

@@ -793,30 +793,6 @@ services:
     networks:
       management-network:
 
-        # MindsDB - AI/ML Database Platform
-  mindsdb:
-    build:
-      context: ./volumes/mindsdb
-      dockerfile: Dockerfile
-    container_name: mindsdb
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 4g
-        reservations:
-          memory: 2g
-    ports:
-      - "47334:47334"
-      - "47335:47335"
-    environment:
-      - MINDSDB_STORAGE_DIR=/mindsdb/var
-    volumes:
-      - mindsdb-data:/mindsdb/var
-      - ./volumes/google-credentials.json:/tmp/gcp-key.json:ro
-    networks:
-      management-network:
-
 
   middleware:
     build:
@@ -966,5 +942,4 @@ volumes:
   portainer-data:
   socketio-data:
 
-  mindsdb-data:
   dremio-data:

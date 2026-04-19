@@ -761,6 +761,7 @@ export default function CMSLayout({
                             margin: 0,
                         }}
                         menuHeaderRender={false}
+
                         menuProps={{
                             openKeys,
                             onOpenChange: (keys) => setOpenKeys(keys as string[]),
@@ -902,39 +903,70 @@ export default function CMSLayout({
                                 )}
                             </div>
                         )}
-                        menuItemRender={(item, dom) => (
-                            <div
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    const targetPath = item.path || "/admin/dashboard";
-                                    setPathname(targetPath);
-                                    router.push(targetPath);
-                                }}
-                                onClickCapture={(e) => {
-                                    // Intercept <a> tag clicks before they cause navigation
-                                    const target = e.target as HTMLElement;
-                                    if (target.tagName === 'A' || target.closest('a')) {
+                        menuItemRender={(item, dom) => {
+                            // ProLayout strips icons from submenu children by default.
+                            // This custom renderer re-adds them from the menuConfig.
+                            const route = findMenuItemByPath(menuConfig.route.routes, item.path || '');
+                            const icon = route?.icon;
+
+                            if (outerCollapsed) {
+                                // When collapsed, let ProLayout handle rendering natively.
+                                // Custom wrapper divs break ProLayout's CSS for collapsed icon display.
+                                return dom;
+                            }
+
+                            // When expanded, render icon + name explicitly
+                            return (
+                                <div
+                                    onClick={(e) => {
                                         e.preventDefault();
-                                    }
-                                }}
-                                style={{ cursor: "pointer" }}
-                            >
-                                {dom}
-                            </div>
-                        )}
-                        subMenuItemRender={(item, dom) => (
-                            <div
-                                onClickCapture={(e) => {
-                                    const target = e.target as HTMLElement;
-                                    if (target.tagName === 'A' || target.closest('a')) {
-                                        e.preventDefault();
-                                    }
-                                }}
-                            >
-                                {dom}
-                            </div>
-                        )}
+                                        e.stopPropagation();
+                                        const targetPath = item.path || "/admin/dashboard";
+                                        setPathname(targetPath);
+                                        router.push(targetPath);
+                                    }}
+                                    onClickCapture={(e) => {
+                                        const target = e.target as HTMLElement;
+                                        if (target.tagName === 'A' || target.closest('a')) {
+                                            e.preventDefault();
+                                        }
+                                    }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+                                >
+                                    {icon && <span style={{ display: 'inline-flex', fontSize: 16 }}>{icon}</span>}
+                                    <span>{item.name}</span>
+                                </div>
+                            );
+                        }}
+                        subMenuItemRender={(item, dom) => {
+                            const route = findMenuItemByPath(menuConfig.route.routes, item.path || '');
+                            const icon = route?.icon;
+
+                            if (outerCollapsed && icon) {
+                                // Ant Menu collapsed mode shows .ant-menu-item-icon, hides .ant-menu-title-content
+                                return (
+                                    <>
+                                        <span className="ant-menu-item-icon" style={{ display: 'inline-flex' }}>{icon}</span>
+                                        <span className="ant-menu-title-content">{item.name}</span>
+                                    </>
+                                );
+                            }
+
+                            // When expanded, just wrap with click capture
+                            return (
+                                <div
+                                    onClickCapture={(e) => {
+                                        const target = e.target as HTMLElement;
+                                        if (target.tagName === 'A' || target.closest('a')) {
+                                            e.preventDefault();
+                                        }
+                                    }}
+                                >
+                                    {dom}
+                                </div>
+                            );
+                        }}
+
 
                     >
                         {/* INNER PROLAYOUT - Sub-navigation with segmented header */}

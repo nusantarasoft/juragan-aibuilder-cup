@@ -179,7 +179,7 @@ export default function CmdbPage() {
                         <Form.Item name="notes" label="Notes"><Input.TextArea rows={3} /></Form.Item>
                     </>),
                 },
-            ]} fields={FIELDS} width={800} gradient={["#722ed1", "#531dab"]} editMode={!!editing} initialValues={{ ci_class: 'hardware', status: 'active', environment: 'production', criticality: 'medium' }} />
+            ]} fields={FIELDS} width={800} editMode={!!editing} initialValues={{ ci_class: 'hardware', status: 'active', environment: 'production', criticality: 'medium' }} />
         </div>
         </CMSLayout>
     );

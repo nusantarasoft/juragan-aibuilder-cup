@@ -775,45 +775,165 @@
 
 /* Light mode glassmorphism cards */
 .ant-card {
-  background: rgba(255, 255, 255, 0.4) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
   border: 1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.12) !important;
-  box-shadow: 0 8px 32px rgba(var(--theme-color-rgb, 139, 92, 246), 0.08), 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: 
+    0 8px 32px rgba(var(--theme-color-rgb, 139, 92, 246), 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 12px !important;
 }
 
 .ant-card:hover {
-  border-color: rgba(var(--theme-color-rgb, 139, 92, 246), 0.25) !important;
-  box-shadow: 0 12px 40px rgba(var(--theme-color-rgb, 139, 92, 246), 0.12), 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+  border-color: rgba(var(--theme-color-rgb, 139, 92, 246), 0.22) !important;
+  box-shadow: 
+    0 16px 48px rgba(var(--theme-color-rgb, 139, 92, 246), 0.1),
+    0 4px 16px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+  transform: translateY(-1px);
 }
 
 /* Dark mode glassmorphism cards */
 .dark .ant-card {
-  background: rgba(15, 15, 23, 0.4) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 16px rgba(var(--theme-color-rgb, 139, 92, 246), 0.1) !important;
+  background: rgba(15, 15, 23, 0.55);
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.18) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 0 16px rgba(var(--theme-color-rgb, 139, 92, 246), 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 12px !important;
 }
 
 .dark .ant-card:hover {
-  border-color: rgba(var(--theme-color-rgb, 139, 92, 246), 0.4) !important;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 24px rgba(var(--theme-color-rgb, 139, 92, 246), 0.15) !important;
+  border-color: rgba(var(--theme-color-rgb, 139, 92, 246), 0.35) !important;
+  box-shadow: 
+    0 16px 48px rgba(0, 0, 0, 0.4),
+    0 0 24px rgba(var(--theme-color-rgb, 139, 92, 246), 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  transform: translateY(-1px);
 }
 
 /* Cyberpunk Pro Card styling */
 .ant-pro-card {
-  background: rgba(255, 255, 255, 0.4) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
   border: 1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.1) !important;
+  box-shadow: 
+    0 4px 24px rgba(var(--theme-color-rgb, 139, 92, 246), 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 12px !important;
+}
+
+.ant-pro-card:hover {
+  box-shadow: 
+    0 8px 32px rgba(var(--theme-color-rgb, 139, 92, 246), 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  transform: translateY(-1px);
 }
 
 .dark .ant-pro-card {
-  background: rgba(15, 15, 23, 0.4) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
+  background: rgba(15, 15, 23, 0.55);
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
   border: 1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.15) !important;
+  box-shadow: 
+    0 4px 24px rgba(0, 0, 0, 0.25),
+    0 0 12px rgba(var(--theme-color-rgb, 139, 92, 246), 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 12px !important;
+}
+
+.dark .ant-pro-card:hover {
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    0 0 20px rgba(var(--theme-color-rgb, 139, 92, 246), 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  transform: translateY(-1px);
+}
+
+/* ========================================
+   Glassmorphism Tabs (Card Style)
+   ======================================== */
+
+/* Light mode tab items */
+.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab {
+  background: rgba(255, 255, 255, 0.5) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.08) !important;
+  border-radius: 10px 10px 0 0 !important;
+  transition: all 0.25s ease !important;
+}
+
+.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab:hover {
+  background: rgba(var(--theme-color-rgb, 139, 92, 246), 0.06) !important;
+  border-color: rgba(var(--theme-color-rgb, 139, 92, 246), 0.15) !important;
+}
+
+.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-active {
+  background: rgba(255, 255, 255, 0.75) !important;
+  border-color: rgba(var(--theme-color-rgb, 139, 92, 246), 0.2) !important;
+  box-shadow: 0 -2px 8px rgba(var(--theme-color-rgb, 139, 92, 246), 0.08) !important;
+}
+
+/* Dark mode tab items */
+.dark .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab {
+  background: rgba(15, 15, 23, 0.5) !important;
+  border-color: rgba(var(--theme-color-rgb, 139, 92, 246), 0.12) !important;
+}
+
+.dark .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab:hover {
+  background: rgba(var(--theme-color-rgb, 139, 92, 246), 0.1) !important;
+}
+
+.dark .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-active {
+  background: rgba(15, 15, 23, 0.75) !important;
+  border-color: rgba(var(--theme-color-rgb, 139, 92, 246), 0.3) !important;
+  box-shadow: 0 -2px 12px rgba(var(--theme-color-rgb, 139, 92, 246), 0.12) !important;
+}
+
+/* ========================================
+   Glassmorphism Tables
+   ======================================== */
+
+.ant-table {
+  background: transparent !important;
+}
+
+.ant-table-thead > tr > th {
+  background: rgba(var(--theme-color-rgb, 139, 92, 246), 0.04) !important;
+  border-bottom: 1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.08) !important;
+}
+
+.dark .ant-table-thead > tr > th {
+  background: rgba(var(--theme-color-rgb, 139, 92, 246), 0.08) !important;
+  border-bottom: 1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.15) !important;
+}
+
+.ant-table-tbody > tr > td {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
+  transition: background 0.2s ease !important;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: rgba(var(--theme-color-rgb, 139, 92, 246), 0.04) !important;
+}
+
+.dark .ant-table-tbody > tr > td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+.dark .ant-table-tbody > tr:hover > td {
+  background: rgba(var(--theme-color-rgb, 139, 92, 246), 0.06) !important;
 }
 
 /* ========================================
@@ -941,4 +1061,25 @@ ul.ant-pagination li.ant-pagination-prev.ant-pagination-disabled > button,
 ul.ant-pagination li.ant-pagination-next.ant-pagination-disabled > button {
   background-color: rgba(0, 0, 0, 0.04) !important;
   color: rgba(0, 0, 0, 0.25) !important;
+}
+
+/* ========================================
+   Collapsed Sidebar - Force Submenu Icons
+   ======================================== */
+
+/* When the outer menu is collapsed, submenu titles use overflow:hidden.
+   Our custom subMenuItemRender injects .ant-menu-item-icon + .ant-menu-title-content.
+   Force the icon to show and text to hide in collapsed mode. */
+.ant-menu-inline-collapsed .ant-menu-submenu > .ant-menu-submenu-title .ant-menu-item-icon {
+  display: inline-flex !important;
+  font-size: 16px !important;
+  min-width: 16px !important;
+  margin: 0 !important;
+}
+
+.ant-menu-inline-collapsed .ant-menu-submenu > .ant-menu-submenu-title .ant-menu-title-content {
+  display: inline-block !important;
+  max-width: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
 }

@@ -127,45 +127,91 @@ export default function SteppedFormModal({
 
   return (
     <Modal
-      title={null}
+      title={
+        <span
+          style={{ fontSize: 16, fontWeight: 600, background: `linear-gradient(135deg, ${g1}, ${g2})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+        >
+          {editMode ? `✏️ ${title}` : `✨ ${title}`}
+        </span>
+      }
       open={open}
       onCancel={handleCancel}
       footer={null}
       width={width}
       centered
       destroyOnClose={false}
-      styles={{ body: { padding: 0 } }}
+      styles={{
+        header: { padding: "14px 24px", background: `linear-gradient(135deg, ${g1}06, ${g2}03)`, borderBottom: "1px solid #f0f0f0" },
+        body: { padding: 0 },
+      }}
     >
-      {/* Header */}
-      <div style={{
-        padding: "20px 28px 16px",
-        borderBottom: "1px solid #f0f0f0",
-        background: `linear-gradient(135deg, ${g1}06, ${g2}03)`,
-      }}>
-        <Title
-          level={4}
-          className="!m-0 !mb-2"
-          style={{ background: `linear-gradient(135deg, ${g1}, ${g2})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
-        >
-          {editMode ? `✏️ ${title}` : `✨ ${title}`}
-        </Title>
-
-        {/* Steps indicator */}
-        <Steps
-          size="small"
-          current={currentStep}
-          items={[
-            ...steps.map((s, i) => ({
-              title: <Text className="text-xs">{s.title}</Text>,
-              icon: s.icon,
-            })),
-            {
-              title: <Text className="text-xs">Review</Text>,
-              icon: <FileTextOutlined />,
-            },
-          ]}
-          style={{ maxWidth: "100%" }}
-        />
+      {/* Steps indicator */}
+      <div style={{ padding: "12px 24px 8px", borderBottom: "1px solid #f5f5f5", background: `linear-gradient(135deg, ${g1}04, ${g2}02)` }}>
+        <div className="themed-steps" style={{ '--step-theme-color': g1, '--step-theme-color-light': `${g1}18` } as React.CSSProperties}>
+          <style>{`
+            .themed-steps .ant-steps-item .ant-steps-item-icon {
+              width: 28px !important;
+              height: 28px !important;
+              line-height: 28px !important;
+              font-size: 14px !important;
+              overflow: visible !important;
+            }
+            .themed-steps .ant-steps-item .ant-steps-item-icon .ant-steps-icon {
+              font-size: 14px !important;
+            }
+            .themed-steps .ant-steps-item .ant-steps-item-icon .anticon {
+              font-size: 14px !important;
+            }
+            .themed-steps .ant-steps-item-process .ant-steps-item-icon {
+              background: var(--step-theme-color) !important;
+              border-color: var(--step-theme-color) !important;
+            }
+            .themed-steps .ant-steps-item-process .ant-steps-item-icon > .ant-steps-icon,
+            .themed-steps .ant-steps-item-process .ant-steps-item-icon .anticon {
+              color: #fff !important;
+            }
+            .themed-steps .ant-steps-item-process .ant-steps-item-icon .anticon svg {
+              fill: #fff !important;
+            }
+            .themed-steps .ant-steps-item-finish .ant-steps-item-icon {
+              background: var(--step-theme-color-light) !important;
+              border-color: var(--step-theme-color) !important;
+            }
+            .themed-steps .ant-steps-item-finish .ant-steps-item-icon > .ant-steps-icon,
+            .themed-steps .ant-steps-item-finish .ant-steps-item-icon .anticon {
+              color: var(--step-theme-color) !important;
+            }
+            .themed-steps .ant-steps-item-finish .ant-steps-item-icon .anticon svg {
+              fill: var(--step-theme-color) !important;
+            }
+            .themed-steps .ant-steps-item-finish > .ant-steps-item-container > .ant-steps-item-tail::after {
+              background-color: var(--step-theme-color) !important;
+            }
+            .themed-steps .ant-steps-item-wait .ant-steps-item-icon {
+              border-color: #d9d9d9 !important;
+              background: transparent !important;
+            }
+            .themed-steps .ant-steps-item-wait .ant-steps-item-icon > .ant-steps-icon,
+            .themed-steps .ant-steps-item-wait .ant-steps-item-icon .anticon {
+              color: rgba(0,0,0,0.25) !important;
+            }
+          `}</style>
+          <Steps
+            size="small"
+            current={currentStep}
+            items={[
+              ...steps.map((s, i) => ({
+                title: <Text className="text-xs" style={{ whiteSpace: 'nowrap' }}>{s.title}</Text>,
+                icon: s.icon,
+              })),
+              {
+                title: <Text className="text-xs" style={{ whiteSpace: 'nowrap' }}>Review</Text>,
+                icon: <FileTextOutlined />,
+              },
+            ]}
+            style={{ maxWidth: "100%" }}
+          />
+        </div>
       </div>
 
       {/* Content */}

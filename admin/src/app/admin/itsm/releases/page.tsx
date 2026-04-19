@@ -135,7 +135,7 @@ export default function ReleasesPage() {
                         <Form.Item name="rollback_plan" label="Rollback Plan"><Input.TextArea rows={3} placeholder="How to revert if deployment fails" /></Form.Item>
                     </>),
                 },
-            ]} fields={FIELDS} width={800} gradient={["#722ed1", "#9254de"]} editMode={!!editing} initialValues={{ release_type: 'minor', priority: 'medium', risk_level: 'medium' }} />
+            ]} fields={FIELDS} width={800} editMode={!!editing} initialValues={{ release_type: 'minor', priority: 'medium', risk_level: 'medium' }} />
         </div>
         </CMSLayout>
     );

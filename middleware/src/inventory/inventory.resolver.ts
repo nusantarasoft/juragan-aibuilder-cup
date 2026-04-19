@@ -1178,7 +1178,7 @@ function mapOpnameLine(r: any): OpnameLineType {
 class EcomCustomerType {
     @Field() id: string;
     @Field({ nullable: true }) tenantId?: string;
-    @Field() customerCode: string;
+    @Field({ nullable: true }) customerCode?: string;
     @Field() firstName: string;
     @Field({ nullable: true }) lastName?: string;
     @Field({ nullable: true }) email?: string;

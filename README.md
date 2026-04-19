@@ -282,7 +282,7 @@ docker compose up -d openldap phpldapadmin nginx-proxy-manager traefik portainer
 ### Start by Stack
 ```bash
 # 1. Data & Analytics
-docker compose up -d minio postgres pgadmin dremio superset nessie mindsdb anythingllm
+docker compose up -d minio postgres pgadmin dremio superset nessie anythingllm
 
 # 2. Supabase (Backend)
 docker compose up -d supabase-db supabase-studio kong supabase-auth supabase-rest supabase-realtime supabase-storage
@@ -339,7 +339,6 @@ docker compose up -d
 | Minio | http://localhost:9001 | `supa-storage` | `secret1234` |
 | Dremio | http://localhost:9047 | *(setup)* / `admin` | `secret1234` |
 | Superset | http://localhost:8080 | `admin` | `admin` |
-| MindsDB | http://localhost:47334 | - | - |
 | AnythingLLM | http://localhost:3001 | *(setup)* | - |
 | PgAdmin | http://localhost:8888 | `spygunsoft@gmail.com` | `password` |
 

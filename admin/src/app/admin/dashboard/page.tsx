@@ -117,7 +117,6 @@ export default function DashboardPage() {
                     </div>
                 </Space>
                 <Space>
-                    <Tag color="purple">ITIL v4</Tag>
                     <Tag color="blue">128 Tables</Tag>
                     <Tag color="green">All Systems Operational</Tag>
                 </Space>

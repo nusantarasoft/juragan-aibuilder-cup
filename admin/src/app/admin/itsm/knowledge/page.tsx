@@ -183,7 +183,7 @@ export default function ItsmKnowledgePage() {
                 ]}
                 fields={FIELDS}
                 width={800}
-                gradient={["#722ed1", "#531dab"]}
+                
                 editMode={!!editing}
                 initialValues={{ articleType: 'solution' }}
             />
