@@ -42,3 +42,8 @@ services:
   studio:
     environment:
       - SUPABASE_PUBLIC_URL=https://api.nusantarasoft.com
+
+  # OpenClaw with production config
+  openclaw:
+    environment:
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}

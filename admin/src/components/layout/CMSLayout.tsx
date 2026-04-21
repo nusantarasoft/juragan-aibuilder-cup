@@ -664,7 +664,6 @@ export default function CMSLayout({
 
     // Force sticky sidebar for inner layout
     React.useEffect(() => {
-        // Function to apply sticky styles with !important
         const applySticky = () => {
             const sider = document.querySelector(".cms-inner-sider");
             if (sider instanceof HTMLElement) {
@@ -676,15 +675,17 @@ export default function CMSLayout({
             }
         };
 
-        // Apply immediately
-        console.log("Run Stick Fix - Attempting to apply sticky styles...");
         applySticky();
 
-        // Re-apply periodically to fight against AntD re-renders
-        const intervalId = setInterval(applySticky, 500);
+        // Re-apply periodically (less aggressively)
+        const intervalId = setInterval(applySticky, 2000);
 
-        // And observe for changes
-        const observer = new MutationObserver(applySticky);
+        // Debounced observer to reduce DOM thrashing  
+        let debounceTimer: ReturnType<typeof setTimeout>;
+        const observer = new MutationObserver(() => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(applySticky, 100);
+        });
         const container = document.querySelector(".cms-inner-layout");
         if (container) {
             observer.observe(container, { childList: true, subtree: true });
@@ -692,9 +693,142 @@ export default function CMSLayout({
 
         return () => {
             clearInterval(intervalId);
+            clearTimeout(debounceTimer);
             observer.disconnect();
         };
     }, [pathname, innerCollapsed]);
+    // Force menu icons visible in collapsed mode for OUTER sidebar.
+    // Ant's CSS-in-JS hides .ant-menu-title-content (opacity:0, max-width:0px, overflow:hidden)
+    // for collapsed menus. We override with element.style.setProperty which beats all CSS.
+    const collapsedFixProps = ['overflow', 'display', 'align-items', 'justify-content', 'padding-inline', 'opacity', 'max-width', 'gap'];
+    React.useEffect(() => {
+        if (!outerCollapsed) {
+            // Clean up only the properties we added, not React inline styles
+            document.querySelectorAll('[data-collapsed-fix]').forEach(el => {
+                const s = (el as HTMLElement).style;
+                collapsedFixProps.forEach(p => s.removeProperty(p));
+                (el as HTMLElement).removeAttribute('data-collapsed-fix');
+            });
+            // Also clean up child elements
+            document.querySelectorAll('[data-collapsed-child-fix]').forEach(el => {
+                const s = (el as HTMLElement).style;
+                collapsedFixProps.forEach(p => s.removeProperty(p));
+                s.removeProperty('width');
+                (el as HTMLElement).removeAttribute('data-collapsed-child-fix');
+            });
+            return;
+        }
+
+        const fixTitleContent = (tc: HTMLElement) => {
+            tc.style.setProperty('opacity', '1', 'important');
+            tc.style.setProperty('max-width', 'none', 'important');
+            tc.style.setProperty('overflow', 'visible', 'important');
+            tc.style.setProperty('display', 'inline-flex', 'important');
+            tc.style.setProperty('align-items', 'center', 'important');
+            tc.style.setProperty('justify-content', 'center', 'important');
+            tc.dataset.collapsedChildFix = '1';
+        };
+
+        const fix = () => {
+            const root = document.getElementById('cms-pro-layout');
+            if (!root) return;
+
+            // Fix SUBMENU items (parents with children)
+            root.querySelectorAll('.ant-menu-submenu > .ant-menu-submenu-title').forEach(title => {
+                const t = title as HTMLElement;
+                if (t.closest('.cms-inner-sider')) return;
+                t.style.setProperty('overflow', 'visible', 'important');
+                t.style.setProperty('display', 'flex', 'important');
+                t.style.setProperty('align-items', 'center', 'important');
+                t.style.setProperty('justify-content', 'center', 'important');
+                t.style.setProperty('padding-inline', 'calc(50% - 8px)', 'important');
+                t.dataset.collapsedFix = '1';
+
+                t.querySelectorAll('.ant-menu-title-content').forEach(tc => fixTitleContent(tc as HTMLElement));
+                t.querySelectorAll('.submenu-text-el').forEach(txt => {
+                    (txt as HTMLElement).style.setProperty('display', 'none', 'important');
+                    (txt as HTMLElement).dataset.collapsedChildFix = '1';
+                });
+                t.querySelectorAll('.submenu-item-wrapper').forEach(w => {
+                    const s = (w as HTMLElement).style;
+                    s.setProperty('justify-content', 'center', 'important');
+                    s.setProperty('gap', '0', 'important');
+                    (w as HTMLElement).dataset.collapsedChildFix = '1';
+                });
+                t.querySelectorAll('.ant-menu-submenu-arrow').forEach(a => {
+                    (a as HTMLElement).style.setProperty('display', 'none', 'important');
+                    (a as HTMLElement).dataset.collapsedChildFix = '1';
+                });
+            });
+
+            // Fix LEAF menu items (no children, e.g. Dashboard, Media Library, AI Studio)
+            root.querySelectorAll('.cms-outer-sider .ant-menu-item').forEach(menuItem => {
+                const mi = menuItem as HTMLElement;
+                if (mi.closest('.cms-inner-sider')) return;
+                mi.style.setProperty('overflow', 'visible', 'important');
+                mi.style.setProperty('display', 'flex', 'important');
+                mi.style.setProperty('align-items', 'center', 'important');
+                mi.style.setProperty('justify-content', 'center', 'important');
+                mi.style.setProperty('padding-inline', 'calc(50% - 8px)', 'important');
+                mi.dataset.collapsedFix = '1';
+
+                mi.querySelectorAll('.ant-menu-title-content').forEach(tc => fixTitleContent(tc as HTMLElement));
+                mi.querySelectorAll('.menuitem-text-el').forEach(txt => {
+                    (txt as HTMLElement).style.setProperty('display', 'none', 'important');
+                    (txt as HTMLElement).dataset.collapsedChildFix = '1';
+                });
+                mi.querySelectorAll('.menuitem-wrapper').forEach(w => {
+                    const s = (w as HTMLElement).style;
+                    s.setProperty('justify-content', 'center', 'important');
+                    s.setProperty('gap', '0', 'important');
+                    (w as HTMLElement).dataset.collapsedChildFix = '1';
+                });
+            });
+        };
+
+        const id = setInterval(fix, 300);
+        fix();
+        return () => clearInterval(id);
+    }, [outerCollapsed]);
+
+    // Force inner sidebar icons visible in collapsed mode
+    React.useEffect(() => {
+        if (!innerCollapsed) {
+            document.querySelectorAll('[data-inner-collapsed-fix]').forEach(el => {
+                const s = (el as HTMLElement).style;
+                collapsedFixProps.forEach(p => s.removeProperty(p));
+                (el as HTMLElement).removeAttribute('data-inner-collapsed-fix');
+            });
+            return;
+        }
+
+        const fixInner = () => {
+            const innerSider = document.querySelector('.cms-inner-sider');
+            if (!innerSider) return;
+            innerSider.querySelectorAll('.ant-menu-item').forEach(menuItem => {
+                const mi = menuItem as HTMLElement;
+                mi.style.setProperty('overflow', 'visible', 'important');
+                mi.style.setProperty('display', 'flex', 'important');
+                mi.style.setProperty('align-items', 'center', 'important');
+                mi.style.setProperty('justify-content', 'center', 'important');
+                mi.dataset.innerCollapsedFix = '1';
+                mi.querySelectorAll('.ant-menu-title-content').forEach(tc => {
+                    const s = (tc as HTMLElement).style;
+                    s.setProperty('opacity', '1', 'important');
+                    s.setProperty('max-width', 'none', 'important');
+                    s.setProperty('overflow', 'visible', 'important');
+                    s.setProperty('display', 'inline-flex', 'important');
+                    s.setProperty('align-items', 'center', 'important');
+                    s.setProperty('justify-content', 'center', 'important');
+                    (tc as HTMLElement).dataset.innerCollapsedFix = '1';
+                });
+            });
+        };
+
+        const id = setInterval(fixInner, 300);
+        fixInner();
+        return () => clearInterval(id);
+    }, [innerCollapsed]);
 
     // Auto-generate breadcrumb if not provided
     const breadcrumbItems = breadcrumb || generateBreadcrumb(currentPath || "/admin/dashboard");
@@ -732,6 +866,8 @@ export default function CMSLayout({
                     }}
                     theme={{
                         algorithm: darkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
+                        cssVar: { prefix: 'cms' },
+                        hashed: false,
                         token: {
                             colorPrimary: themePalette.primary,
                             colorLink: themePalette.accent,
@@ -762,6 +898,27 @@ export default function CMSLayout({
                         }}
                         menuHeaderRender={false}
 
+                        menuDataRender={(menuData) => {
+                            // Ensure icons from menuConfig are preserved on all items
+                            // ProLayout may strip icons from submenu parents during transformation
+                            const attachIcons = (items: any[]): any[] => {
+                                return items.map(item => {
+                                    const route = findMenuItemByPath(menuConfig.route.routes, item.path || '');
+                                    const result = { ...item };
+                                    if (route?.icon && !result.icon) {
+                                        result.icon = route.icon;
+                                    }
+                                    if (result.children) {
+                                        result.children = attachIcons(result.children);
+                                    }
+                                    if (result.routes) {
+                                        result.routes = attachIcons(result.routes);
+                                    }
+                                    return result;
+                                });
+                            };
+                            return attachIcons(menuData);
+                        }}
                         menuProps={{
                             openKeys,
                             onOpenChange: (keys) => setOpenKeys(keys as string[]),
@@ -904,18 +1061,36 @@ export default function CMSLayout({
                             </div>
                         )}
                         menuItemRender={(item, dom) => {
-                            // ProLayout strips icons from submenu children by default.
-                            // This custom renderer re-adds them from the menuConfig.
+                            // Unified rendering for both collapsed and expanded modes.
+                            // Uses classes so the useEffect can target elements precisely.
                             const route = findMenuItemByPath(menuConfig.route.routes, item.path || '');
                             const icon = route?.icon;
 
-                            if (outerCollapsed) {
-                                // When collapsed, let ProLayout handle rendering natively.
-                                // Custom wrapper divs break ProLayout's CSS for collapsed icon display.
-                                return dom;
+                            if (icon) {
+                                return (
+                                    <div
+                                        className="menuitem-wrapper"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            const targetPath = item.path || "/admin/dashboard";
+                                            setPathname(targetPath);
+                                            router.push(targetPath);
+                                        }}
+                                        onClickCapture={(e) => {
+                                            const target = e.target as HTMLElement;
+                                            if (target.tagName === 'A' || target.closest('a')) {
+                                                e.preventDefault();
+                                            }
+                                        }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+                                    >
+                                        <span className="anticon menuitem-icon-el" style={{ display: 'inline-flex', fontSize: 16, flexShrink: 0 }}>{icon}</span>
+                                        <span className="menuitem-text-el">{item.name}</span>
+                                    </div>
+                                );
                             }
 
-                            // When expanded, render icon + name explicitly
                             return (
                                 <div
                                     onClick={(e) => {
@@ -931,10 +1106,9 @@ export default function CMSLayout({
                                             e.preventDefault();
                                         }
                                     }}
-                                    style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+                                    style={{ cursor: 'pointer' }}
                                 >
-                                    {icon && <span style={{ display: 'inline-flex', fontSize: 16 }}>{icon}</span>}
-                                    <span>{item.name}</span>
+                                    {dom}
                                 </div>
                             );
                         }}
@@ -942,17 +1116,26 @@ export default function CMSLayout({
                             const route = findMenuItemByPath(menuConfig.route.routes, item.path || '');
                             const icon = route?.icon;
 
-                            if (outerCollapsed && icon) {
-                                // Ant Menu collapsed mode shows .ant-menu-item-icon, hides .ant-menu-title-content
+                            // Render a consistent structure for both collapsed and expanded modes.
+                            // The useEffect handles hiding text in collapsed mode via inline styles.
+                            if (icon) {
                                 return (
-                                    <>
-                                        <span className="ant-menu-item-icon" style={{ display: 'inline-flex' }}>{icon}</span>
-                                        <span className="ant-menu-title-content">{item.name}</span>
-                                    </>
+                                    <div
+                                        className="submenu-item-wrapper"
+                                        onClickCapture={(e) => {
+                                            const target = e.target as HTMLElement;
+                                            if (target.tagName === 'A' || target.closest('a')) {
+                                                e.preventDefault();
+                                            }
+                                        }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                                    >
+                                        <span className="anticon submenu-icon-el" style={{ display: 'inline-flex', fontSize: 16, flexShrink: 0 }}>{icon}</span>
+                                        <span className="submenu-text-el">{item.name}</span>
+                                    </div>
                                 );
                             }
 
-                            // When expanded, just wrap with click capture
                             return (
                                 <div
                                     onClickCapture={(e) => {

@@ -1067,19 +1067,48 @@ ul.ant-pagination li.ant-pagination-next.ant-pagination-disabled > button {
    Collapsed Sidebar - Force Submenu Icons
    ======================================== */
 
-/* When the outer menu is collapsed, submenu titles use overflow:hidden.
-   Our custom subMenuItemRender injects .ant-menu-item-icon + .ant-menu-title-content.
-   Force the icon to show and text to hide in collapsed mode. */
-.ant-menu-inline-collapsed .ant-menu-submenu > .ant-menu-submenu-title .ant-menu-item-icon {
+/* In collapsed mode, ProLayout uses .ant-menu-vertical (NOT .ant-menu-inline-collapsed).
+   Ant Menu wraps subMenuItemRender output inside .ant-menu-title-content
+   which gets opacity:0, max-width:0px, overflow:hidden.
+   We override these on the outer sidebar to show submenu icons. */
+
+/* 1. Make submenu title-content visible so icons show through */
+.cms-outer-sider .ant-menu-vertical .ant-menu-submenu > .ant-menu-submenu-title > .ant-menu-title-content {
+  opacity: 1 !important;
+  max-width: none !important;
+  overflow: visible !important;
   display: inline-flex !important;
-  font-size: 16px !important;
-  min-width: 16px !important;
-  margin: 0 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
 }
 
-.ant-menu-inline-collapsed .ant-menu-submenu > .ant-menu-submenu-title .ant-menu-title-content {
-  display: inline-block !important;
-  max-width: 0 !important;
-  overflow: hidden !important;
-  opacity: 0 !important;
+/* 2. Make the submenu title allow overflow and center content */
+.cms-outer-sider .ant-menu-vertical .ant-menu-submenu > .ant-menu-submenu-title {
+  overflow: visible !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  padding-inline: 0 !important;
+}
+
+/* 3. Force the injected icon to display */
+.cms-outer-sider .ant-menu-vertical .ant-menu-submenu > .ant-menu-submenu-title .ant-menu-item-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 16px !important;
+  min-width: 16px !important;
+  opacity: 1 !important;
+}
+
+/* 4. Hide the text label next to the icon in collapsed mode */
+.cms-outer-sider .ant-menu-vertical .ant-menu-submenu > .ant-menu-submenu-title .ant-menu-title-content > .ant-menu-title-content {
+  display: none !important;
+}
+
+/* 5. Hide the submenu expand arrow in collapsed mode */
+.cms-outer-sider .ant-menu-vertical .ant-menu-submenu > .ant-menu-submenu-title > .ant-menu-submenu-arrow {
+  display: none !important;
 }
