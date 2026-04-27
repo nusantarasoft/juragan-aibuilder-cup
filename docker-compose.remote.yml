@@ -1,0 +1,229 @@
+name: nusantarasoft-remote
+
+services:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DATA LAKEHOUSE (Nessie + Dremio)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  nessie:
+    image: projectnessie/nessie:latest
+    container_name: nessie
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
+    restart: unless-stopped
+    networks:
+      remote-network:
+    ports:
+      - 19120:19120
+
+  dremio:
+    platform: linux/x86_64
+    image: dremio/dremio-oss:latest
+    container_name: dremio
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 10g
+        reservations:
+          memory: 6g
+    ports:
+      - 9047:9047
+      - 31010:31010
+      - 32010:32010
+      - 45678:45678
+    environment:
+      - DREMIO_JAVA_SERVER_EXTRA_OPTS=-Dpaths.dist=file:///opt/dremio/data/dist
+    volumes:
+      - dremio-data:/opt/dremio/data
+    networks:
+      remote-network:
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # RAGFLOW - RAG Pipeline (Retrieval Augmented Generation)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  ragflow-es:
+    image: elasticsearch:8.11.3
+    container_name: ragflow-es
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 6g
+        reservations:
+          memory: 3g
+    environment:
+      - node.name=ragflow-es
+      - ELASTIC_PASSWORD=${RAGFLOW_ELASTIC_PASSWORD:-infini_rag_flow}
+      - bootstrap.memory_lock=false
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - cluster.routing.allocation.disk.watermark.low=5gb
+      - cluster.routing.allocation.disk.watermark.high=3gb
+      - cluster.routing.allocation.disk.watermark.flood_stage=2gb
+    volumes:
+      - ragflow-esdata:/usr/share/elasticsearch/data
+    ports:
+      - "1200:9200"
+    networks:
+      - remote-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+
+  ragflow-mysql:
+    image: mysql:8.0.39
+    container_name: ragflow-mysql
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+        reservations:
+          memory: 1g
+    environment:
+      - MYSQL_ROOT_PASSWORD=${RAGFLOW_MYSQL_PASSWORD:-infini_rag_flow}
+    command:
+      --max_connections=1000
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+      --tls_version="TLSv1.2,TLSv1.3"
+      --init-file /data/application/init.sql
+      --binlog_expire_logs_seconds=604800
+    ports:
+      - "13306:3306"
+    volumes:
+      - ragflow-mysql-data:/var/lib/mysql
+      - ./ragflow/init.sql:/data/application/init.sql
+    networks:
+      - remote-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-uroot", "-p${RAGFLOW_MYSQL_PASSWORD:-infini_rag_flow}"]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+
+  ragflow-redis:
+    image: valkey/valkey:8
+    container_name: ragflow-redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
+    command: ["redis-server", "--requirepass", "${RAGFLOW_REDIS_PASSWORD:-infini_rag_flow}", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - ragflow-redis-data:/data
+    networks:
+      - remote-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${RAGFLOW_REDIS_PASSWORD:-infini_rag_flow}", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+
+  ragflow:
+    image: infiniflow/ragflow:latest
+    container_name: ragflow
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 6g
+        reservations:
+          memory: 3g
+    depends_on:
+      ragflow-mysql:
+        condition: service_healthy
+      ragflow-es:
+        condition: service_healthy
+      ragflow-redis:
+        condition: service_healthy
+    command:
+      - --enable-adminserver
+    ports:
+      - "18080:80"
+      - "9380:9380"
+      - "9381:9381"
+    environment:
+      - DOC_ENGINE=elasticsearch
+      - ES_HOST=ragflow-es
+      - ELASTIC_PASSWORD=${RAGFLOW_ELASTIC_PASSWORD:-infini_rag_flow}
+      - MYSQL_HOST=ragflow-mysql
+      - MYSQL_PASSWORD=${RAGFLOW_MYSQL_PASSWORD:-infini_rag_flow}
+      - MYSQL_DBNAME=rag_flow
+      - MYSQL_PORT=3306
+      # MinIO runs on the LOCAL device - use LOCAL_HOST_IP
+      - MINIO_HOST=${LOCAL_HOST_IP}
+      - MINIO_USER=${MINIO_ROOT_USER}
+      - MINIO_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - REDIS_HOST=ragflow-redis
+      - REDIS_PASSWORD=${RAGFLOW_REDIS_PASSWORD:-infini_rag_flow}
+      - API_PROXY_SCHEME=python
+      - REGISTER_ENABLED=1
+      - TZ=${TZ:-Asia/Jakarta}
+    volumes:
+      - ragflow-logs:/ragflow/logs
+      - ./ragflow/service_conf.yaml.template:/ragflow/conf/service_conf.yaml.template
+    networks:
+      - remote-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9380/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # OPENCLAW - WhatsApp AI Gateway
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  openclaw:
+    image: ghcr.io/openclaw/openclaw:latest
+    container_name: openclaw
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+        reservations:
+          memory: 1g
+    ports:
+      - "18789:18789"
+    environment:
+      - NODE_ENV=production
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
+    volumes:
+      - openclaw-config:/home/node/.openclaw
+    networks:
+      - remote-network
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:18789/healthz', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+networks:
+  remote-network:
+    driver: bridge
+
+volumes:
+  dremio-data:
+  ragflow-esdata:
+  ragflow-mysql-data:
+  ragflow-redis-data:
+  ragflow-logs:
+  openclaw-config:

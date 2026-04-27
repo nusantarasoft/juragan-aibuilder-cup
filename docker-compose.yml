@@ -78,6 +78,7 @@ services:
       - ./volumes/db/media_annotations.sql:/docker-entrypoint-initdb.d/migrations/99-media-annotations.sql:Z
       - ./volumes/db/add_metadata.sql:/docker-entrypoint-initdb.d/migrations/99-add-metadata.sql:Z
       - ./volumes/db/nusantarasoft_seed.sql:/docker-entrypoint-initdb.d/init-scripts/99-nusantarasoft-seed.sql:Z
+      - ./volumes/db/studio_tables.sql:/docker-entrypoint-initdb.d/migrations/99-studio-tables.sql:Z
       - ./volumes/db/data:/var/lib/postgresql/data:Z
       - db-config:/etc/postgresql-custom
     healthcheck:
@@ -522,276 +523,10 @@ services:
     networks:
       - management-network
 
-  # ═══════════════════════════════════════════════════════════════════════════
-  # 3. INFRASTRUCTURE Services
-  # ═══════════════════════════════════════════════════════════════════════════
-
-  traefik:
-    image: traefik:latest
-    container_name: traefik
-    restart: always
-    deploy:
-      resources:
-        limits:
-          memory: 256m
-        reservations:
-          memory: 128m
-    command:
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.mytlschallenge.acme.tlschallenge=true"
-      - "--certificatesresolvers.mytlschallenge.acme.email=${SSL_EMAIL}"
-      - "--certificatesresolvers.mytlschallenge.acme.storage=/letsencrypt/acme.json"
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - traefik_data:/letsencrypt
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-
-  nginxproxymanager:
-    image: 'jc21/nginx-proxy-manager:latest'
-    container_name: nginxproxymanager
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 512m
-        reservations:
-          memory: 256m
-    ports:
-      - '81:80' # HTTP (alternate)
-      - '444:443' # HTTPS (alternate)
-      - '8081:81' # Admin Panel
-    environment:
-      - TZ=${TZ}
-      - DB_POSTGRES_HOST=postgres
-      - DB_POSTGRES_PORT=5432
-      - DB_POSTGRES_USER=${POSTGRES_USER}
-      - DB_POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_POSTGRES_NAME=npm
-    volumes:
-      - npm-data:/data
-      - npm-letsencrypt:/etc/letsencrypt
-
-  pihole:
-    image: pihole/pihole:latest
-    container_name: pihole
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 256m
-        reservations:
-          memory: 128m
-    ports:
-      - "5380:53/tcp"
-      - "5380:53/udp"
-      - "8053:80/tcp"
-    environment:
-      - TZ=${TZ}
-      - FTLCONF_webserver_api_password=${PIHOLE_PASSWORD}
-      - FTLCONF_dns_listeningMode=ALL
-      - FTLCONF_dns_upstreams=${IP_BIND9}#5354;8.8.8.8;8.8.4.4
-    volumes:
-      - pihole-data:/etc/pihole
-      - pihole-dnsmasq:/etc/dnsmasq.d
-    cap_add:
-      - NET_ADMIN
-    networks:
-      - management-network
-
-  bind9:
-    image: sameersbn/bind:latest
-    container_name: bind9
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 256m
-        reservations:
-          memory: 128m
-    ports:
-      - "5354:53/tcp"
-      - "5354:53/udp"
-      - "10000:10000/tcp"
-    environment:
-      - WEBMIN_ENABLED=true
-      - WEBMIN_INIT_SSL_ENABLED=false
-      - ROOT_PASSWORD=${BIND9_ROOT_PASSWORD}
-      - TZ=${TZ}
-    volumes:
-      - bind9-data:/data
-      - ./volumes/bind9/etc/named.conf.local:/data/bind/etc/named.conf.local
-      - ./volumes/bind9/zones:/data/bind/zones
-    networks:
-      - management-network
-
-  mailserver:
-    image: ghcr.io/docker-mailserver/docker-mailserver:latest
-    container_name: mailserver
-    hostname: mail
-    domainname: ${MAIL_DOMAIN:-nusantarasoft.local}
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 1g
-        reservations:
-          memory: 512m
-    ports:
-      - "25:25"
-      - "465:465"
-      - "587:587"
-      - "993:993"
-    environment:
-      - ENABLE_SPAMASSASSIN=1
-      - ENABLE_CLAMAV=0
-      - ENABLE_FAIL2BAN=0
-      - ENABLE_POSTGREY=0
-      - ONE_DIR=1
-      - TZ=${TZ}
-      - PERMIT_DOCKER=network
-    volumes:
-      - mailserver-data:/var/mail
-      - mailserver-state:/var/mail-state
-      - mailserver-logs:/var/log/mail
-      - mailserver-config:/tmp/docker-mailserver
-    cap_add:
-      - NET_ADMIN
-    networks:
-      - management-network
-
-  roundcube:
-    image: roundcube/roundcubemail:latest
-    container_name: roundcube
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 256m
-        reservations:
-          memory: 128m
-    ports:
-      - "8082:80"
-    environment:
-      - ROUNDCUBEMAIL_DEFAULT_HOST=mailserver
-      - ROUNDCUBEMAIL_SMTP_SERVER=mailserver
-      - ROUNDCUBEMAIL_DEFAULT_PORT=143
-      - ROUNDCUBEMAIL_SMTP_PORT=25
-    volumes:
-      - roundcube-data:/var/www/html
-      - ./volumes/roundcube/custom.inc.php:/var/roundcube/config/custom.inc.php:ro
-    depends_on:
-      - mailserver
-    networks:
-      - management-network
-
-  portainer:
-    image: portainer/portainer-ce:latest
-    container_name: portainer
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 512m
-        reservations:
-          memory: 256m
-    ports:
-      - "9090:9000"
-      - "9444:9443"
-    volumes:
-      - portainer-data:/data
-      - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - management-network
-
-  socketio:
-    image: node:20-alpine
-    container_name: socketio-server
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 256m
-        reservations:
-          memory: 128m
-    ports:
-      - "3002:3000"
-    working_dir: /app
-    command: >
-      sh -c "npm init -y && npm install socket.io express @socket.io/admin-ui && node -e \"const app = require('express')(); const http = require('http').createServer(app); const { instrument } = require('@socket.io/admin-ui'); const io = require('socket.io')(http, {cors:{origin:['https://admin.socket.io', 'http://localhost:8088'], credentials:true}}); instrument(io, {auth: false}); io.on('connection', s => console.log('client connected')); http.listen(3000, () => console.log('Socket.IO server running on port 3000'));\""
-    volumes:
-      - socketio-data:/app
-    networks:
-      - management-network
-
-  socketio-admin:
-    image: node:20-alpine
-    container_name: socketio-admin
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 128m
-        reservations:
-          memory: 64m
-    ports:
-      - "8088:8080"
-    working_dir: /app
-    command: >
-      sh -c "npm install -g serve @socket.io/admin-ui && serve -s node_modules/@socket.io/admin-ui/ui/dist -p 8080"
-    networks:
-      - management-network
 
   # ═══════════════════════════════════════════════════════════════════════════
   # 4. CMS & AI STACK
   # ═══════════════════════════════════════════════════════════════════════════
-
-  # Nessie Catalog Server Using In-Memory Store
-  nessie:
-    image: projectnessie/nessie:latest
-    container_name: nessie
-    deploy:
-      resources:
-        limits:
-          memory: 1g
-        reservations:
-          memory: 512m
-    restart: unless-stopped
-    networks:
-      management-network:
-    ports:
-      - 19120:19120
-
-  # Dremio - Data Lakehouse Query Engine
-  dremio:
-    platform: linux/x86_64
-    image: dremio/dremio-oss:latest
-    container_name: dremio
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 8g
-        reservations:
-          memory: 4g
-    ports:
-      - 9047:9047
-      - 31010:31010
-      - 32010:32010
-      - 45678:45678
-    environment:
-      - DREMIO_JAVA_SERVER_EXTRA_OPTS=-Dpaths.dist=file:///opt/dremio/data/dist
-    volumes:
-      - dremio-data:/opt/dremio/data
-    networks:
-      management-network:
 
 
   middleware:
@@ -824,13 +559,15 @@ services:
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - S3_REGION=us-east-1
       - S3_BUCKET=${S3_BUCKET}
-      # Dremio Config
-      - DREMIO_URL=http://dremio:9047
+
       # LabelStudio Config
       - LABELSTUDIO_URL=http://labelstudio:8080
       - LABELSTUDIO_API_TOKEN=${LABELSTUDIO_API_TOKEN}
       - LABELSTUDIO_PROJECT_ID=${LABELSTUDIO_PROJECT_ID}
       - LABELSTUDIO_WEBHOOK_SECRET=${LABELSTUDIO_WEBHOOK_SECRET:-}
+      # RAGFlow Config
+      - RAGFLOW_API_KEY=${RAGFLOW_API_KEY}
+      - RAGFLOW_API_URL=http://ragflow:9380
     networks:
       - management-network
     depends_on:
@@ -911,6 +648,153 @@ services:
       retries: 5
       start_period: 30s
 
+  # ═══════════════════════════════════════════════════════════════════════════
+  # RAGFLOW - RAG Pipeline (Retrieval Augmented Generation)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  ragflow-es:
+    image: elasticsearch:8.11.3
+    container_name: ragflow-es
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+        reservations:
+          memory: 2g
+    environment:
+      - node.name=ragflow-es
+      - ELASTIC_PASSWORD=${RAGFLOW_ELASTIC_PASSWORD:-infini_rag_flow}
+      - bootstrap.memory_lock=false
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - cluster.routing.allocation.disk.watermark.low=5gb
+      - cluster.routing.allocation.disk.watermark.high=3gb
+      - cluster.routing.allocation.disk.watermark.flood_stage=2gb
+    volumes:
+      - ragflow-esdata:/usr/share/elasticsearch/data
+    ports:
+      - "1200:9200"
+    networks:
+      - management-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+
+  ragflow-mysql:
+    image: mysql:8.0.39
+    container_name: ragflow-mysql
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+        reservations:
+          memory: 1g
+    environment:
+      - MYSQL_ROOT_PASSWORD=${RAGFLOW_MYSQL_PASSWORD:-infini_rag_flow}
+    command:
+      --max_connections=1000
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+      --tls_version="TLSv1.2,TLSv1.3"
+      --init-file /data/application/init.sql
+      --binlog_expire_logs_seconds=604800
+    ports:
+      - "13306:3306"
+    volumes:
+      - ragflow-mysql-data:/var/lib/mysql
+      - ./ragflow/init.sql:/data/application/init.sql
+    networks:
+      - management-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-uroot", "-p${RAGFLOW_MYSQL_PASSWORD:-infini_rag_flow}"]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+
+  ragflow-redis:
+    image: valkey/valkey:8
+    container_name: ragflow-redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+        reservations:
+          memory: 128m
+    command: ["redis-server", "--requirepass", "${RAGFLOW_REDIS_PASSWORD:-infini_rag_flow}", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - ragflow-redis-data:/data
+    networks:
+      - management-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${RAGFLOW_REDIS_PASSWORD:-infini_rag_flow}", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+
+
+  ragflow:
+    image: infiniflow/ragflow:latest
+    container_name: ragflow
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+        reservations:
+          memory: 2g
+    depends_on:
+      ragflow-mysql:
+        condition: service_healthy
+      ragflow-es:
+        condition: service_healthy
+      ragflow-redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    command:
+      - --enable-adminserver
+    ports:
+      - "18080:80"
+      - "9380:9380"
+      - "9381:9381"
+    environment:
+      - DOC_ENGINE=elasticsearch
+      - ES_HOST=ragflow-es
+      - ELASTIC_PASSWORD=${RAGFLOW_ELASTIC_PASSWORD:-infini_rag_flow}
+      - MYSQL_HOST=ragflow-mysql
+      - MYSQL_PASSWORD=${RAGFLOW_MYSQL_PASSWORD:-infini_rag_flow}
+      - MYSQL_DBNAME=rag_flow
+      - MYSQL_PORT=3306
+      - MINIO_HOST=minio
+      - MINIO_USER=${MINIO_ROOT_USER}
+      - MINIO_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - REDIS_HOST=ragflow-redis
+      - REDIS_PASSWORD=${RAGFLOW_REDIS_PASSWORD:-infini_rag_flow}
+      - API_PROXY_SCHEME=python
+      - REGISTER_ENABLED=1
+      - TZ=${TZ:-Asia/Jakarta}
+    volumes:
+      - ragflow-logs:/ragflow/logs
+      - ./ragflow/service_conf.yaml.template:/ragflow/conf/service_conf.yaml.template
+    networks:
+      - management-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9380/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
   landing-page:
     build:
       context: ./landing-page
@@ -952,22 +836,13 @@ volumes:
   supabase-db-data:
   supabase-storage:
   db-config:
-  postgres-config: # Infrastructure Volumes
+  postgres-config:
 
-  traefik_data:
-  npm-data:
-  npm-letsencrypt:
-  pihole-data:
-  pihole-dnsmasq:
-  bind9-data:
-  mailserver-data:
-  mailserver-state:
-  mailserver-logs:
-  mailserver-config:
-  roundcube-data:
-  portainer-data:
-  socketio-data:
-
-  dremio-data:
 
   openclaw-config:
+
+  ragflow-esdata:
+  ragflow-mysql-data:
+  ragflow-redis-data:
+
+  ragflow-logs:

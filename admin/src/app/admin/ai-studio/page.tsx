@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { mediaService, MediaFile } from "@/lib/mediaService";
+import { studioService, StudioNotebook, StudioSource, ChatResponse } from "@/lib/studioService";
 import {
     Card,
     Row,
     Col,
     List,
-    Checkbox,
     Typography,
     Input,
     Button,
@@ -16,16 +16,23 @@ import {
     Space,
     Spin,
     message,
-    Image as AntImage,
     Modal,
     Empty,
     Divider,
-    Breadcrumb
+    Breadcrumb,
+    Tag,
+    Progress,
+    Upload,
+    Tabs,
+    Badge,
+    Popconfirm,
+    Tooltip,
+    Dropdown
 } from "antd";
+import type { UploadProps } from "antd";
 import {
     RobotOutlined,
     SendOutlined,
-    FileImageOutlined,
     FileOutlined,
     LoadingOutlined,
     FileTextOutlined,
@@ -37,10 +44,22 @@ import {
     PauseCircleOutlined,
     MenuFoldOutlined,
     MenuUnfoldOutlined,
-    ExpandAltOutlined,
-    CompressOutlined,
-    FolderAddOutlined,
-    PlusOutlined
+    PlusOutlined,
+    DeleteOutlined,
+    BookOutlined,
+    CloudUploadOutlined,
+    CheckCircleFilled,
+    ClockCircleOutlined,
+    SyncOutlined,
+    ExclamationCircleOutlined,
+    FileAddOutlined,
+    AppstoreAddOutlined,
+    InboxOutlined,
+    MessageOutlined,
+    HistoryOutlined,
+    ArrowLeftOutlined,
+    EditOutlined,
+    MoreOutlined
 } from "@ant-design/icons";
 import ReactMarkdown from 'react-markdown';
 import DecryptedText from "@/components/react-bits/DecryptedText";
@@ -51,361 +70,635 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
+const { Dragger } = Upload;
+
+// ── Types ────────────────────────────────────────────────────────────
 
 interface ChatMessage {
-    role: 'user' | 'ai';
+    role: 'user' | 'assistant';
     content: string;
+    references?: { content: string; docName: string; score: number }[];
     timestamp: number;
 }
 
-interface PresentationSlide {
-    title: string;
-    bullets: string[];
-    speakerNotes?: string;
-}
+// Dummy user ID for now (in production, get from auth context)
+const CURRENT_USER_ID = "00000000-0000-0000-0000-000000000001";
 
-interface PodcastLine {
-    speaker: string;
-    text: string;
-}
+// ── Main Component ───────────────────────────────────────────────────
 
 export default function AIStudioPage() {
-    // Media Source State
-    const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
     const { themeColor } = usePreferencesStore();
-    const [loadingMedia, setLoadingMedia] = useState(true);
-    const [selectedMediaIds, setSelectedMediaIds] = useState<Set<string>>(new Set());
 
-    // Modal States
-    const [reportModalOpen, setReportModalOpen] = useState(false);
-    const [slidesModalOpen, setSlidesModalOpen] = useState(false);
-    const [imageModalOpen, setImageModalOpen] = useState(false);
+    // ── Notebook State ──
+    const [notebooks, setNotebooks] = useState<StudioNotebook[]>([]);
+    const [activeNotebook, setActiveNotebook] = useState<StudioNotebook | null>(null);
+    const [loadingNotebooks, setLoadingNotebooks] = useState(true);
+    const [creatingNotebook, setCreatingNotebook] = useState(false);
+    const [newNotebookName, setNewNotebookName] = useState("");
+    const [newNotebookDesc, setNewNotebookDesc] = useState("");
+    const [showCreateModal, setShowCreateModal] = useState(false);
 
-    // Layout States
-    const [showSources, setShowSources] = useState(true);
-    const [showChat, setShowChat] = useState(true);
+    // ── Source State ──
+    const [sources, setSources] = useState<StudioSource[]>([]);
+    const [loadingSources, setLoadingSources] = useState(false);
+    const [showAddMediaModal, setShowAddMediaModal] = useState(false);
+    const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
+    const [loadingMedia, setLoadingMedia] = useState(false);
+    const [addingMedia, setAddingMedia] = useState<Set<string>>(new Set());
 
-    // Chat State
+    // ── Chat State ──
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [chatInput, setChatInput] = useState("");
     const [isChatting, setIsChatting] = useState(false);
+    const [conversationId, setConversationId] = useState<string | undefined>();
+    const [showReferences, setShowReferences] = useState<number | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // Report State
+    // ── Layout State ──
+    const [showSources, setShowSources] = useState(true);
+    const [showChat, setShowChat] = useState(true);
+
+    // ── Report State ──
+    const [reportModalOpen, setReportModalOpen] = useState(false);
     const [reportQuery, setReportQuery] = useState("");
     const [generatedReport, setGeneratedReport] = useState("");
     const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
-    // Slides State
-    const [slidesQuery, setSlidesQuery] = useState("");
-    const [generatedSlides, setGeneratedSlides] = useState<PresentationSlide[]>([]);
-    const [isGeneratingSlides, setIsGeneratingSlides] = useState(false);
-    const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+    // ── Poll timer ──
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    // Image State
-    const [imagePrompt, setImagePrompt] = useState("");
-    const [generatedImage, setGeneratedImage] = useState("");
-    const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-
-    // Audio (Podcast) State
-    const [podcastScript, setPodcastScript] = useState<PodcastLine[]>([]);
-    const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [currentLineIndex, setCurrentLineIndex] = useState(-1);
-    const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
-
-    // Initial Load
+    // ── Load Notebooks ──
     useEffect(() => {
-        loadMedia();
-        // Cleanup speech on unmount
-        return () => {
-            window.speechSynthesis.cancel();
-        };
+        loadNotebooks();
+        return () => { if (pollRef.current) clearInterval(pollRef.current); };
     }, []);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [chatHistory]);
 
-    const loadMedia = async () => {
+    const loadNotebooks = async () => {
+        setLoadingNotebooks(true);
+        try {
+            const list = await studioService.getNotebooks(CURRENT_USER_ID);
+            setNotebooks(list);
+        } catch (e) {
+            console.error("Failed to load notebooks:", e);
+        } finally {
+            setLoadingNotebooks(false);
+        }
+    };
+
+    const selectNotebook = async (notebook: StudioNotebook) => {
+        setActiveNotebook(notebook);
+        setChatHistory([]);
+        setConversationId(undefined);
+        setShowReferences(null);
+        loadSourceStatus(notebook.id);
+    };
+
+    const loadSourceStatus = async (notebookId: string) => {
+        setLoadingSources(true);
+        try {
+            const list = await studioService.getSourceStatus(notebookId);
+            setSources(list);
+
+            // Start polling if any sources are still parsing
+            if (list.some((s: StudioSource) => s.parse_status === 'parsing')) {
+                startPolling(notebookId);
+            }
+        } catch (e) {
+            console.error("Failed to load sources:", e);
+        } finally {
+            setLoadingSources(false);
+        }
+    };
+
+    const startPolling = (notebookId: string) => {
+        if (pollRef.current) clearInterval(pollRef.current);
+        pollRef.current = setInterval(async () => {
+            try {
+                const list = await studioService.getSourceStatus(notebookId);
+                setSources(list);
+                if (!list.some((s: StudioSource) => s.parse_status === 'parsing')) {
+                    if (pollRef.current) clearInterval(pollRef.current);
+                }
+            } catch { /* ignore */ }
+        }, 5000);
+    };
+
+    // ── Actions ──
+
+    const handleCreateNotebook = async () => {
+        if (!newNotebookName.trim()) return;
+        setCreatingNotebook(true);
+        try {
+            const notebook = await studioService.createNotebook(newNotebookName, newNotebookDesc, CURRENT_USER_ID);
+            message.success(`Notebook "${newNotebookName}" created`);
+            setNewNotebookName("");
+            setNewNotebookDesc("");
+            setShowCreateModal(false);
+            await loadNotebooks();
+            selectNotebook(notebook);
+        } catch (e: any) {
+            message.error(e.message || "Failed to create notebook");
+        } finally {
+            setCreatingNotebook(false);
+        }
+    };
+
+    const handleDeleteNotebook = async (notebookId: string) => {
+        try {
+            await studioService.deleteNotebook(notebookId);
+            message.success("Notebook deleted");
+            if (activeNotebook?.id === notebookId) {
+                setActiveNotebook(null);
+                setSources([]);
+                setChatHistory([]);
+            }
+            loadNotebooks();
+        } catch (e: any) {
+            message.error(e.message || "Failed to delete");
+        }
+    };
+
+    const handleAddMediaFromLibrary = async (mediaId: string) => {
+        if (!activeNotebook) return;
+        setAddingMedia(prev => new Set(prev).add(mediaId));
+        try {
+            await studioService.addMediaToNotebook(activeNotebook.id, mediaId);
+            message.success("Source added to notebook");
+            loadSourceStatus(activeNotebook.id);
+        } catch (e: any) {
+            message.error(e.message || "Failed to add source");
+        } finally {
+            setAddingMedia(prev => { const s = new Set(prev); s.delete(mediaId); return s; });
+        }
+    };
+
+    const openMediaModal = async () => {
+        setShowAddMediaModal(true);
         setLoadingMedia(true);
         try {
             const files = await mediaService.getMedia({ limit: 50 });
             setMediaFiles(files);
-        } catch (error) {
-            message.error("Failed to load media.");
+        } catch {
+            message.error("Failed to load media library");
         } finally {
             setLoadingMedia(false);
         }
     };
 
-    const toggleMedia = (id: string) => {
-        const newSet = new Set(selectedMediaIds);
-        if (newSet.has(id)) {
-            newSet.delete(id);
-        } else {
-            newSet.add(id);
+    const handleUploadFile: UploadProps['customRequest'] = async (options) => {
+        if (!activeNotebook) return;
+        const { file, onSuccess, onError } = options as any;
+        try {
+            await studioService.uploadFileToNotebook(activeNotebook.id, file);
+            onSuccess?.({}, file);
+            message.success(`"${(file as File).name}" uploaded`);
+            loadSourceStatus(activeNotebook.id);
+        } catch (e: any) {
+            onError?.(e);
+            message.error(e.message || "Upload failed");
         }
-        setSelectedMediaIds(newSet);
     };
 
-    // --- ACTIONS ---
+    const handleRemoveSource = async (sourceId: string) => {
+        if (!activeNotebook) return;
+        try {
+            await studioService.removeSource(activeNotebook.id, sourceId);
+            message.success("Source removed");
+            loadSourceStatus(activeNotebook.id);
+        } catch (e: any) {
+            message.error(e.message || "Failed to remove source");
+        }
+    };
 
     const handleChatSend = async () => {
-        if (!chatInput.trim()) return;
-        if (selectedMediaIds.size === 0) {
-            message.warning("Select media sources first.");
+        if (!chatInput.trim() || !activeNotebook) return;
+        const readySources = sources.filter(s => s.parse_status === 'done');
+        if (readySources.length === 0) {
+            message.warning("No parsed sources yet. Wait for parsing to complete.");
             return;
         }
 
         const userMsg: ChatMessage = { role: 'user', content: chatInput, timestamp: Date.now() };
         setChatHistory(prev => [...prev, userMsg]);
+        const q = chatInput;
         setChatInput("");
         setIsChatting(true);
 
         try {
-            const response = await mediaService.chatWithSources(userMsg.content, Array.from(selectedMediaIds));
-            setChatHistory(prev => [...prev, { role: 'ai', content: response, timestamp: Date.now() }]);
-        } catch (e) {
-            message.error("Failed to chat.");
+            const result: ChatResponse = await studioService.chat(activeNotebook.id, q, conversationId, CURRENT_USER_ID);
+            setConversationId(result.conversationId);
+            setChatHistory(prev => [...prev, {
+                role: 'assistant',
+                content: result.answer,
+                references: result.references,
+                timestamp: Date.now()
+            }]);
+        } catch (e: any) {
+            message.error(e.message || "Chat failed");
         } finally {
             setIsChatting(false);
         }
     };
 
     const handleGenerateReport = async () => {
-        if (!reportQuery.trim()) return;
-        if (selectedMediaIds.size === 0) {
-            message.warning("Select media sources first.");
-            return;
-        }
+        if (!reportQuery.trim() || !activeNotebook) return;
         setIsGeneratingReport(true);
         try {
-            const response = await mediaService.generateReport(reportQuery, Array.from(selectedMediaIds));
-            setGeneratedReport(response);
-        } catch (e) {
-            message.error("Failed to generate report.");
+            const report = await studioService.generateReport(activeNotebook.id, reportQuery);
+            setGeneratedReport(report);
+        } catch (e: any) {
+            message.error(e.message || "Failed to generate report");
         } finally {
             setIsGeneratingReport(false);
         }
     };
 
-    const handleGenerateSlides = async () => {
-        if (!slidesQuery.trim()) return;
-        if (selectedMediaIds.size === 0) {
-            message.warning("Select media sources first.");
-            return;
-        }
-        setIsGeneratingSlides(true);
-        try {
-            const response = await mediaService.generatePresentation(slidesQuery, Array.from(selectedMediaIds));
-            const cleanJson = response.replace(/```json|```/g, '').trim();
-            const slides = JSON.parse(cleanJson);
-            if (Array.isArray(slides)) {
-                setGeneratedSlides(slides);
-                setCurrentSlideIndex(0);
-            } else {
-                message.error("Invalid slide format returned.");
-            }
-        } catch (e) {
-            console.error(e);
-            message.error("Failed to generate slides.");
-        } finally {
-            setIsGeneratingSlides(false);
+    // ── Parse Status Helpers ──
+
+    const getStatusIcon = (status: string) => {
+        switch (status) {
+            case 'done': return <CheckCircleFilled style={{ color: '#52c41a', fontSize: 14 }} />;
+            case 'parsing': return <SyncOutlined spin style={{ color: themeColor, fontSize: 14 }} />;
+            case 'error': return <ExclamationCircleOutlined style={{ color: '#ff4d4f', fontSize: 14 }} />;
+            default: return <ClockCircleOutlined style={{ color: '#8c8c8c', fontSize: 14 }} />;
         }
     };
 
-    const handleGenerateImage = async () => {
-        if (!imagePrompt.trim()) return;
-        setIsGeneratingImage(true);
-        try {
-            const b64 = await mediaService.generateImage(imagePrompt);
-            if (b64) {
-                setGeneratedImage(b64);
-            } else {
-                message.error("No image returned.");
-            }
-        } catch (e) {
-            message.error("Failed to generate image.");
-        } finally {
-            setIsGeneratingImage(false);
+    const getStatusTag = (status: string) => {
+        switch (status) {
+            case 'done': return <Tag color="success" className="text-[10px] m-0 leading-tight px-1.5">Ready</Tag>;
+            case 'parsing': return <Tag color="processing" className="text-[10px] m-0 leading-tight px-1.5">Parsing</Tag>;
+            case 'error': return <Tag color="error" className="text-[10px] m-0 leading-tight px-1.5">Error</Tag>;
+            default: return <Tag className="text-[10px] m-0 leading-tight px-1.5">Pending</Tag>;
         }
     };
 
-    const handleGeneratePodcast = async () => {
-        if (selectedMediaIds.size === 0) {
-            message.warning("Select media sources first.");
-            return;
-        }
-        setIsGeneratingPodcast(true);
-        try {
-            const response = await mediaService.generatePodcastScript(Array.from(selectedMediaIds));
-            const cleanJson = response.replace(/```json|```/g, '').trim();
-            const script = JSON.parse(cleanJson);
-            if (Array.isArray(script)) {
-                setPodcastScript(script);
-                setCurrentLineIndex(-1);
-                setIsPlaying(false);
-                message.success("Audio Overview Generated!");
-            } else {
-                message.error("Invalid script format.");
-            }
-        } catch (e) {
-            console.error(e);
-            message.error("Failed to generate podcast.");
-        } finally {
-            setIsGeneratingPodcast(false);
-        }
+    const formatBytes = (bytes: number) => {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     };
 
-    const speakLine = (index: number) => {
-        if (index >= podcastScript.length) {
-            setIsPlaying(false);
-            setCurrentLineIndex(-1);
-            return;
-        }
+    // ── Renderers ──
 
-        const line = podcastScript[index];
-        setCurrentLineIndex(index);
-
-        const utterance = new SpeechSynthesisUtterance(line.text);
-
-        const voices = window.speechSynthesis.getVoices();
-        if (voices.length > 0) {
-            if (line.speaker.includes("A")) {
-                utterance.voice = voices.find(v => v.name.includes("Female") || v.name.includes("Microsoft Zira")) || voices[0];
-                utterance.pitch = 1.1;
-            } else {
-                utterance.voice = voices.find(v => v.name.includes("Male") || v.name.includes("Microsoft David")) || voices[1] || voices[0];
-                utterance.pitch = 0.9;
-            }
-        }
-
-        utterance.onend = () => {
-            if (isPlaying) {
-                speakLine(index + 1);
-            }
-        };
-
-        speechRef.current = utterance;
-        window.speechSynthesis.speak(utterance);
-    };
-
-    const togglePlayback = () => {
-        if (isPlaying) {
-            window.speechSynthesis.cancel();
-            setIsPlaying(false);
-        } else {
-            setIsPlaying(true);
-            if (currentLineIndex === -1 || currentLineIndex >= podcastScript.length) {
-                speakLine(0);
-            } else {
-                speakLine(currentLineIndex);
-            }
-        }
-    };
-
-    // --- RENDERERS ---
-
-    const renderSidebar = () => (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px' }}>
-            {loadingMedia ? <Spin style={{ display: 'block', margin: '20px auto' }} /> : (
-                <List
-                    dataSource={mediaFiles}
-                    renderItem={item => (
-                        <List.Item
-                            onClick={() => toggleMedia(item.id)}
-                            style={{
-                                cursor: 'pointer',
-                                backgroundColor: selectedMediaIds.has(item.id) ? 'rgba(124, 58, 237, 0.08)' : 'transparent',
-                                borderRadius: '4px',
-                                padding: '4px 8px',
-                                marginBottom: '2px',
-                                border: 'none',
-                                transition: 'all 0.2s',
-                                width: '100%'
-                            }}
-                            className="hover:bg-[rgba(var(--theme-color-rgb,139,92,246),0.05)] group"
-                        >
-                            <Space>
-                                <Checkbox checked={selectedMediaIds.has(item.id)} />
-                                {item.mime_type?.startsWith('image/') ? (
-                                    <AntImage src={item.url} width={32} height={32} preview={false} style={{ objectFit: 'cover', borderRadius: '4px' }} />
-                                ) : <Avatar size={32} icon={<FileOutlined />} shape="square" />}
-                                <div style={{ maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    <Text className={selectedMediaIds.has(item.id) ? 'font-semibold' : ''} style={{ fontSize: '13px' }}>{item.filename}</Text>
-                                    <div style={{ fontSize: '10px', color: '#8b929e' }}>{item.mime_type}</div>
-                                </div>
-                            </Space>
-                        </List.Item>
-                    )}
+    const renderNotebookList = () => (
+        <div className="flex flex-col gap-1 p-2">
+            {loadingNotebooks ? (
+                <div className="flex justify-center py-8"><Spin /></div>
+            ) : notebooks.length === 0 ? (
+                <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={<span className="text-xs text-gray-400">No notebooks yet</span>}
+                    className="my-8"
                 />
+            ) : (
+                notebooks.map(nb => (
+                    <motion.div
+                        key={nb.id}
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`group cursor-pointer rounded-lg p-2.5 transition-all duration-200 ${activeNotebook?.id === nb.id
+                            ? 'bg-[rgba(var(--theme-color-rgb,139,92,246),0.1)] border border-[rgba(var(--theme-color-rgb,139,92,246),0.3)]'
+                            : 'hover:bg-[rgba(var(--theme-color-rgb,139,92,246),0.05)] border border-transparent'
+                            }`}
+                        onClick={() => selectNotebook(nb)}
+                    >
+                        <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                                <span className="text-lg mt-0.5">{nb.icon || '📓'}</span>
+                                <div className="min-w-0 flex-1">
+                                    <Text strong className="text-[13px] block truncate">{nb.name}</Text>
+                                    <Text className="text-[10px] text-gray-400 block truncate">{nb.description || 'No description'}</Text>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <Tag className="text-[9px] m-0 leading-tight px-1 py-0 border-0 bg-gray-100 dark:bg-gray-800 text-gray-500">
+                                            {nb.source_count || 0} sources
+                                        </Tag>
+                                    </div>
+                                </div>
+                            </div>
+                            <Popconfirm
+                                title="Delete this notebook?"
+                                description="All sources and conversations will be lost."
+                                onConfirm={(e) => { e?.stopPropagation(); handleDeleteNotebook(nb.id); }}
+                                onCancel={(e) => e?.stopPropagation()}
+                            >
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<DeleteOutlined />}
+                                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:!text-red-500 flex items-center justify-center w-6 h-6"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            </Popconfirm>
+                        </div>
+                    </motion.div>
+                ))
             )}
         </div>
     );
 
-    const renderChatMode = () => (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+    const renderSourceList = () => (
+        <div className="flex flex-col gap-1 px-2 pb-2">
+            {loadingSources ? (
+                <div className="flex justify-center py-4"><Spin size="small" /></div>
+            ) : sources.length === 0 ? (
+                <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={<span className="text-[11px] text-gray-400">Add sources to this notebook</span>}
+                    className="my-4"
+                />
+            ) : (
+                sources.map((source: StudioSource) => (
+                    <div
+                        key={source.id}
+                        className="group flex items-center justify-between gap-2 rounded-md p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
+                    >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                            {getStatusIcon(source.parse_status)}
+                            <div className="min-w-0 flex-1">
+                                <Text className="text-[12px] block truncate">{source.filename}</Text>
+                                <div className="flex items-center gap-1.5">
+                                    <Text className="text-[10px] text-gray-400">{formatBytes(source.file_size)}</Text>
+                                    {source.chunk_count > 0 && (
+                                        <Text className="text-[10px] text-gray-400">· {source.chunk_count} chunks</Text>
+                                    )}
+                                    {getStatusTag(source.parse_status)}
+                                </div>
+                                {source.parse_status === 'parsing' && (
+                                    <Progress
+                                        percent={Math.round(source.parse_progress * 100)}
+                                        size="small"
+                                        strokeColor={themeColor}
+                                        className="mt-1 !mb-0"
+                                    />
+                                )}
+                            </div>
+                        </div>
+                        <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center"
+                            onClick={() => handleRemoveSource(source.id)}
+                        />
+                    </div>
+                ))
+            )}
+        </div>
+    );
+
+    const renderChatPanel = () => (
+        <div className="flex flex-col h-full">
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                 {chatHistory.length === 0 && (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Empty description="Select sources and ask questions." image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-4 opacity-60">
+                        <RobotOutlined style={{ fontSize: 48, color: themeColor }} />
+                        <div className="text-center">
+                            <Text strong className="block text-sm mb-1">Ask about your sources</Text>
+                            <Text className="text-xs text-gray-400 block max-w-[250px]">
+                                Chat with your notebook's knowledge base. AI will reference the parsed documents to answer your questions.
+                            </Text>
+                        </div>
                     </div>
                 )}
                 {chatHistory.map((msg, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 16 }}>
-                        <div style={{
-                            maxWidth: '85%',
-                            padding: '12px 16px',
-                            borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                            background: msg.role === 'user' ? 'var(--theme-color, #7c3aed)' : '#f0f0f0',
-                            color: msg.role === 'user' ? '#fff' : '#000',
-                            wordBreak: 'break-word',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                        }}>
-                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}>
+                        <div className="max-w-[85%]">
+                            <div style={{
+                                padding: '12px 16px',
+                                borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                                background: msg.role === 'user' ? `${themeColor}` : 'rgba(var(--theme-color-rgb, 139, 92, 246), 0.06)',
+                                color: msg.role === 'user' ? '#fff' : 'inherit',
+                                wordBreak: 'break-word',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                            }}>
+                                <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:m-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0">
+                                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                </div>
+                            </div>
+                            {/* References */}
+                            {msg.references && msg.references.length > 0 && (
+                                <div className="mt-1.5">
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        className="text-[10px] text-gray-400 hover:!text-[color:var(--theme-color)] p-0 h-auto"
+                                        onClick={() => setShowReferences(showReferences === i ? null : i)}
+                                    >
+                                        📄 {msg.references.length} source{msg.references.length > 1 ? 's' : ''} cited
+                                    </Button>
+                                    <AnimatePresence>
+                                        {showReferences === i && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                className="overflow-hidden"
+                                            >
+                                                <div className="mt-1 space-y-1">
+                                                    {msg.references.map((ref, ri) => (
+                                                        <div key={ri} className="bg-gray-50 dark:bg-gray-800/50 rounded-md p-2 text-[11px]">
+                                                            <Text strong className="text-[10px] block mb-0.5" style={{ color: themeColor }}>{ref.docName}</Text>
+                                                            <Text className="text-gray-500 text-[10px] line-clamp-2">{ref.content}</Text>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}
                 {isChatting && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 16 }}>
-                        <div style={{ padding: '12px 16px', borderRadius: '16px 16px 16px 4px', background: '#f0f0f0' }}>
+                    <div className="flex justify-start mb-4">
+                        <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/50">
                             <Spin indicator={<LoadingOutlined spin />} size="small" />
                         </div>
                     </div>
                 )}
                 <div ref={messagesEndRef} />
             </div>
-            <div style={{ padding: '16px', borderTop: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.1)', background: 'transparent' }}>
-                <Space.Compact style={{ width: '100%', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', borderRadius: 8 }}>
+            {/* Chat Input */}
+            <div className="p-3 border-t border-[rgba(var(--theme-color-rgb,139,92,246),0.1)]">
+                <Space.Compact className="w-full" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.05)', borderRadius: 10 }}>
                     <Input
                         size="large"
                         value={chatInput}
                         onChange={e => setChatInput(e.target.value)}
                         onPressEnter={handleChatSend}
-                        placeholder="Chat explicitly with sources..."
-                        disabled={isChatting}
-                        style={{ borderBottomLeftRadius: 8, borderTopLeftRadius: 8 }}
+                        placeholder={activeNotebook ? "Ask about your sources..." : "Select a notebook first"}
+                        disabled={isChatting || !activeNotebook}
+                        style={{ borderBottomLeftRadius: 10, borderTopLeftRadius: 10 }}
                     />
-                    <Button 
-                        size="large" 
-                        type="primary" 
-                        icon={<SendOutlined />} 
-                        onClick={handleChatSend} 
+                    <Button
+                        size="large"
+                        type="primary"
+                        icon={<SendOutlined />}
+                        onClick={handleChatSend}
                         loading={isChatting}
-                        style={{ borderBottomRightRadius: 8, borderTopRightRadius: 8, backgroundColor: 'var(--theme-color, #7c3aed)' }}
+                        disabled={!activeNotebook}
+                        style={{ borderBottomRightRadius: 10, borderTopRightRadius: 10, backgroundColor: themeColor }}
                     />
                 </Space.Compact>
             </div>
         </div>
     );
 
+    const renderStudioGuide = () => (
+        <div className="flex-1 overflow-auto custom-scrollbar px-4 pb-4 pt-2">
+            {!activeNotebook ? (
+                /* No notebook selected — show welcome */
+                <div className="flex flex-col items-center justify-center h-full gap-6 opacity-80">
+                    <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.5, type: 'spring' }}
+                    >
+                        <div className="w-24 h-24 rounded-3xl flex items-center justify-center" style={{
+                            background: `linear-gradient(135deg, ${themeColor}22, ${themeColor}08)`,
+                            border: `2px dashed ${themeColor}44`
+                        }}>
+                            <BookOutlined style={{ fontSize: 40, color: themeColor }} />
+                        </div>
+                    </motion.div>
+                    <div className="text-center max-w-md">
+                        <Title level={3} className="!mb-2">
+                            <AuroraText colors={[themeColor, `${themeColor}cc`, `${themeColor}88`]}>Welcome to AI Studio</AuroraText>
+                        </Title>
+                        <Text className="text-gray-400 text-sm block mb-6">
+                            Create a notebook, add your documents, and let AI help you understand, analyze, and generate insights from your knowledge base.
+                        </Text>
+                        <Button
+                            type="primary"
+                            size="large"
+                            icon={<PlusOutlined />}
+                            onClick={() => setShowCreateModal(true)}
+                            style={{ backgroundColor: themeColor, borderColor: themeColor, borderRadius: 12, height: 44, paddingInline: 32 }}
+                        >
+                            Create Your First Notebook
+                        </Button>
+                    </div>
+                </div>
+            ) : (
+                /* Active notebook — show guide + generators */
+                <>
+                    <div className="mb-8">
+                        <div className="flex items-center gap-3 mb-2">
+                            <span className="text-2xl">{activeNotebook.icon || '📓'}</span>
+                            <div>
+                                <Title level={4} className="!mb-0">
+                                    <AuroraText colors={[themeColor, `${themeColor}cc`, `${themeColor}88`]}>{activeNotebook.name}</AuroraText>
+                                </Title>
+                                <Text className="text-gray-400 text-xs">{activeNotebook.description || 'No description'}</Text>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                            <Tag style={{ color: themeColor, borderColor: `${themeColor}44`, backgroundColor: `${themeColor}11` }}>{sources.length} source{sources.length !== 1 ? 's' : ''}</Tag>
+                            <Tag style={{ color: themeColor, borderColor: `${themeColor}44`, backgroundColor: `${themeColor}11` }}>{sources.filter(s => s.parse_status === 'done').length} ready</Tag>
+                            {sources.some(s => s.parse_status === 'parsing') && (
+                                <Tag color="processing" icon={<SyncOutlined spin />}>Parsing...</Tag>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Quick Actions */}
+                    <Title level={5} className="!text-gray-400 uppercase tracking-wider !text-xs !mb-3">Add Knowledge</Title>
+                    <Row gutter={[12, 12]} className="mb-8">
+                        <Col span={12}>
+                            <Card
+                                hoverable
+                                size="small"
+                                className="!rounded-xl cursor-pointer group"
+                                style={{ borderColor: 'rgba(var(--theme-color-rgb,139,92,246),0.15)' }}
+                                onClick={openMediaModal}
+                            >
+                                <Space align="center" size={12}>
+                                    <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${themeColor}15` }}>
+                                        <AppstoreAddOutlined style={{ fontSize: 18, color: themeColor }} />
+                                    </div>
+                                    <div>
+                                        <Text strong className="text-[13px] block">Media Library</Text>
+                                        <Text className="text-[10px] text-gray-400">Add from existing files</Text>
+                                    </div>
+                                </Space>
+                            </Card>
+                        </Col>
+                        <Col span={12}>
+                            <Upload
+                                customRequest={handleUploadFile}
+                                showUploadList={false}
+                                multiple
+                            >
+                                <Card
+                                    hoverable
+                                    size="small"
+                                    className="!rounded-xl cursor-pointer"
+                                    style={{ borderColor: 'rgba(var(--theme-color-rgb,139,92,246),0.15)', width: '100%' }}
+                                >
+                                    <Space align="center" size={12}>
+                                        <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${themeColor}15` }}>
+                                            <CloudUploadOutlined style={{ fontSize: 18, color: themeColor }} />
+                                        </div>
+                                        <div>
+                                            <Text strong className="text-[13px] block">Upload Files</Text>
+                                            <Text className="text-[10px] text-gray-400">PDF, DOCX, TXT, etc.</Text>
+                                        </div>
+                                    </Space>
+                                </Card>
+                            </Upload>
+                        </Col>
+                    </Row>
+
+                    {/* Generate Tools */}
+                    <Title level={5} className="!text-gray-400 uppercase tracking-wider !text-xs !mb-3">Generate</Title>
+                    <Row gutter={[12, 12]}>
+                        <Col span={24}>
+                            <Card
+                                hoverable
+                                size="small"
+                                className="!rounded-xl cursor-pointer"
+                                onClick={() => {
+                                    if (sources.filter(s => s.parse_status === 'done').length === 0) {
+                                        message.warning("No parsed sources yet.");
+                                        return;
+                                    }
+                                    setReportModalOpen(true);
+                                }}
+                            >
+                                <Space align="center" size={12}>
+                                    <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${themeColor}15` }}>
+                                        <FileTextOutlined style={{ fontSize: 18, color: themeColor }} />
+                                    </div>
+                                    <div>
+                                        <Text strong className="text-[13px] block">Executive Report</Text>
+                                        <Text className="text-[10px] text-gray-400">Generate a comprehensive analysis from your sources</Text>
+                                    </div>
+                                </Space>
+                            </Card>
+                        </Col>
+                    </Row>
+                </>
+            )}
+        </div>
+    );
+
+    // ── MAIN RENDER ──
+
     return (
         <CMSLayout
             title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>AI Studio</AuroraText>}
             subTitle={
                 <DecryptedText
-                    text="Harness AI models to generate deep insights, multi-host audio, rich presentations, and custom imagery directly from your sources"
+                    text="Notebook-powered AI knowledge base — upload sources, parse, and chat with your documents"
                     animateOn="view"
                     revealDirection="center"
                     speed={40}
@@ -414,15 +707,10 @@ export default function AIStudioPage() {
                 />
             }
         >
-            <div style={{ display: "flex", flexDirection: "column", gap: 16, height: '100%' }}>
-                <div style={{
-                    display: "flex",
-                    gap: 16,
-                    flex: 1,
-                    minHeight: 600,
-                    alignItems: 'stretch'
-                }}>
-                    {/* LEFT SIDEBAR: Sources */}
+            <div className="flex flex-col gap-4 h-full">
+                <div className="flex gap-4 flex-1" style={{ minHeight: 600, alignItems: 'stretch' }}>
+
+                    {/* ── LEFT SIDEBAR: Notebooks + Sources ── */}
                     <AnimatePresence mode="wait">
                         {showSources && (
                             <motion.div
@@ -430,17 +718,56 @@ export default function AIStudioPage() {
                                 animate={{ width: 280, opacity: 1, x: 0 }}
                                 exit={{ width: 0, opacity: 0, x: -20 }}
                                 transition={{ duration: 0.3, type: 'spring', stiffness: 100, damping: 20 }}
-                                style={{
-                                    width: 280,
-                                    minWidth: 280,
-                                    display: "flex",
-                                    flexDirection: "column",
-                                }}
+                                className="flex flex-col"
+                                style={{ width: 280, minWidth: 280 }}
                             >
-                                <Card 
+                                <Card
                                     size="small"
                                     title={
-                                        <div className="flex items-center gap-2">
+                                        <span style={{
+                                            background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
+                                            WebkitBackgroundClip: 'text',
+                                            WebkitTextFillColor: 'transparent',
+                                            fontWeight: 600,
+                                            fontSize: '14px'
+                                        }}>
+                                            Notebooks
+                                        </span>
+                                    }
+                                    extra={
+                                        <AnimatedTooltip content="New Notebook">
+                                            <Button
+                                                type="text"
+                                                icon={<PlusOutlined style={{ fontSize: 14 }} />}
+                                                size="small"
+                                                className="text-gray-400 hover:text-[color:var(--theme-color,#7c3aed)] flex items-center justify-center w-7 h-7"
+                                                onClick={() => setShowCreateModal(true)}
+                                            />
+                                        </AnimatedTooltip>
+                                    }
+                                    style={{
+                                        display: 'flex', flexDirection: 'column',
+                                        background: 'transparent', boxShadow: 'none', border: 'none',
+                                        ...(activeNotebook ? { height: '40%', minHeight: 200 } : { height: '100%' })
+                                    }}
+                                    className="dark:!bg-transparent"
+                                    styles={{
+                                        header: {
+                                            background: 'transparent',
+                                            borderBottom: '1px solid rgba(var(--theme-color-rgb,139,92,246),0.2)',
+                                            minHeight: 40, padding: '0 12px'
+                                        },
+                                        body: { padding: 0, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }
+                                    }}
+                                >
+                                    {renderNotebookList()}
+                                </Card>
+
+                                {/* Sources Panel (only when notebook selected) */}
+                                {activeNotebook && (
+                                    <Card
+                                        size="small"
+                                        title={
                                             <span style={{
                                                 background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                                 WebkitBackgroundClip: 'text',
@@ -448,378 +775,144 @@ export default function AIStudioPage() {
                                                 fontWeight: 600,
                                                 fontSize: '14px'
                                             }}>
-                                                Sources ({selectedMediaIds.size})
+                                                Sources
                                             </span>
-                                        </div>
-                                    }
-                                    extra={
-                                        <div className="flex items-center gap-0.5">
-                                            <AnimatedTooltip content="Expand All">
-                                                <Button
-                                                    type="text"
-                                                    icon={<ExpandAltOutlined style={{ fontSize: 14 }} />}
-                                                    size="small"
-                                                    className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] flex items-center justify-center w-7 h-7"
-                                                />
-                                            </AnimatedTooltip>
-                                            <AnimatedTooltip content="Collapse All">
-                                                <Button
-                                                    type="text"
-                                                    icon={<CompressOutlined style={{ fontSize: 14 }} />}
-                                                    size="small"
-                                                    className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] flex items-center justify-center w-7 h-7"
-                                                />
-                                            </AnimatedTooltip>
-
-                                            <div className="w-[1px] h-3 bg-gray-200 dark:bg-gray-700 mx-1" />
-
-                                            <AnimatedTooltip content="New Folder">
-                                                <Button
-                                                    type="text"
-                                                    icon={<FolderAddOutlined style={{ fontSize: 14 }} />}
-                                                    size="small"
-                                                    className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] flex items-center justify-center w-7 h-7"
-                                                />
-                                            </AnimatedTooltip>
-                                            <AnimatedTooltip content="New Source">
-                                                <Button
-                                                    type="text"
-                                                    icon={<PlusOutlined style={{ fontSize: 14 }} />}
-                                                    size="small"
-                                                    className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] flex items-center justify-center w-7 h-7"
-                                                />
-                                            </AnimatedTooltip>
-                                        </div>
-                                    }
-                                    style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        height: '100%',
-                                        background: 'transparent',
-                                        backdropFilter: 'none',
-                                        WebkitBackdropFilter: 'none',
-                                        boxShadow: 'none',
-                                        border: 'none',
-                                    }}
-                                    className="dark:!bg-transparent dark:!border-none"
-                                    styles={{
-                                        header: {
-                                            background: 'transparent',
-                                            borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
-                                            minHeight: 40,
-                                            padding: '0 12px'
-                                        },
-                                        body: {
-                                            padding: '8px 0',
-                                            flex: 1,
-                                            overflow: 'auto',
-                                            display: 'flex',
-                                            flexDirection: 'column'
                                         }
-                                    }}
-                                >
-                                    {renderSidebar()}
-                                </Card>
+                                        extra={
+                                            <Space size={2}>
+                                                <AnimatedTooltip content="From Library">
+                                                    <Button type="text" icon={<AppstoreAddOutlined style={{ fontSize: 13 }} />} size="small"
+                                                        className="text-gray-400 hover:text-[color:var(--theme-color)] w-6 h-6 flex items-center justify-center"
+                                                        onClick={openMediaModal}
+                                                    />
+                                                </AnimatedTooltip>
+                                                <Upload customRequest={handleUploadFile} showUploadList={false} multiple>
+                                                    <AnimatedTooltip content="Upload File">
+                                                        <Button type="text" icon={<CloudUploadOutlined style={{ fontSize: 13 }} />} size="small"
+                                                            className="text-gray-400 hover:text-[color:var(--theme-color)] w-6 h-6 flex items-center justify-center"
+                                                        />
+                                                    </AnimatedTooltip>
+                                                </Upload>
+                                            </Space>
+                                        }
+                                        style={{
+                                            display: 'flex', flexDirection: 'column', flex: 1,
+                                            background: 'transparent', boxShadow: 'none', border: 'none', marginTop: 4
+                                        }}
+                                        className="dark:!bg-transparent"
+                                        styles={{
+                                            header: {
+                                                background: 'transparent',
+                                                borderBottom: '1px solid rgba(var(--theme-color-rgb,139,92,246),0.2)',
+                                                minHeight: 40, padding: '0 12px'
+                                            },
+                                            body: { padding: 0, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }
+                                        }}
+                                    >
+                                        {renderSourceList()}
+                                    </Card>
+                                )}
                             </motion.div>
                         )}
                     </AnimatePresence>
 
-                    {/* MIDDLE COLUMN: Studio Overview & Generators (Inside 1 Card) */}
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        {/* Header Card */}
-                        <Card 
+                    {/* ── MIDDLE: Studio Guide / Generators ── */}
+                    <div className="flex-1 min-w-0 flex flex-col gap-4">
+                        {/* Header */}
+                        <Card
                             size="small"
                             style={{
-                                background: 'rgba(255, 255, 255, 0.6)',
-                                backdropFilter: 'blur(12px)',
-                                WebkitBackdropFilter: 'blur(12px)',
-                                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.04)',
-                                border: '1px solid rgba(255, 255, 255, 0.5)',
+                                background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.04)', border: '1px solid rgba(255,255,255,0.5)'
                             }}
                             className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)]"
-                            styles={{ 
-                                header: {
-                                    background: 'rgba(255, 255, 255, 0.1)',
-                                    borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
-                                }
+                            styles={{
+                                header: { background: 'rgba(255,255,255,0.1)', borderBottom: '1px solid rgba(var(--theme-color-rgb,139,92,246),0.2)' }
                             }}
                             title={
                                 <div className="flex items-center gap-3">
-                                    <AnimatedTooltip content={showSources ? "Hide Sources" : "Show Sources"}>
-                                        <Button 
-                                            type="text" 
-                                            icon={showSources ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />} 
-                                            onClick={() => setShowSources(!showSources)} 
-                                            size="small"
-                                            className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] w-7 h-7 flex items-center justify-center -ml-2"
+                                    <AnimatedTooltip content={showSources ? "Hide Sidebar" : "Show Sidebar"}>
+                                        <Button type="text" icon={showSources ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
+                                            onClick={() => setShowSources(!showSources)} size="small"
+                                            className="text-gray-400 hover:text-[color:var(--theme-color)] w-7 h-7 flex items-center justify-center -ml-2"
                                         />
                                     </AnimatedTooltip>
                                     <span style={{
                                         background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
-                                        WebkitBackgroundClip: 'text',
-                                        WebkitTextFillColor: 'transparent',
-                                        fontWeight: 600,
-                                        fontSize: '14px'
+                                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                                        fontWeight: 600, fontSize: '14px'
                                     }}>
-                                        Generative Guide
+                                        {activeNotebook ? activeNotebook.name : 'Studio Guide'}
                                     </span>
                                 </div>
                             }
                             extra={
-                                <div className="flex items-center gap-1">
-                                    <AnimatedTooltip content={showChat ? "Hide Assistant" : "Show Assistant"}>
-                                        <Button 
-                                            type="text" 
-                                            icon={showChat ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} 
-                                            onClick={() => setShowChat(!showChat)} 
-                                            size="small"
-                                            className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] w-7 h-7 flex items-center justify-center"
-                                        />
-                                    </AnimatedTooltip>
-                                </div>
+                                <AnimatedTooltip content={showChat ? "Hide Chat" : "Show Chat"}>
+                                    <Button type="text" icon={showChat ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                                        onClick={() => setShowChat(!showChat)} size="small"
+                                        className="text-gray-400 hover:text-[color:var(--theme-color)] w-7 h-7 flex items-center justify-center"
+                                    />
+                                </AnimatedTooltip>
                             }
                         >
-                            <Breadcrumb 
+                            <Breadcrumb
                                 items={[
                                     { title: <><RobotOutlined className="mr-1" /> AI Studio</> },
-                                    { title: "Generative Guide" }
-                                ]} 
-                                className="text-xs" 
+                                    { title: activeNotebook ? activeNotebook.name : "Guide" }
+                                ]}
+                                className="text-xs"
                             />
                         </Card>
-
-                        <div className="flex-1 overflow-auto custom-scrollbar px-2 pb-4 pt-2">
-                            <div style={{ marginBottom: 32 }}>
-                                <Title level={3} style={{ marginBottom: 8, fontWeight: 800 }}>
-                                    <AuroraText>Studio Guide</AuroraText>
-                                </Title>
-                                <Text type="secondary">Explore various AI tools to deeply analyze and creatively transform your notes and documents.</Text>
-                            </div>
-
-                            <Title level={5} style={{ color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 }}>Audio Overview</Title>
-                            <Card 
-                                hoverable 
-                                style={{ borderRadius: 16, borderColor: '#bae0ff', boxShadow: '0 4px 12px rgba(24, 144, 255, 0.1)', marginBottom: 32 }}
-                                bodyStyle={{ padding: 24 }}
-                                onClick={handleGeneratePodcast}
-                            >
-                                <Space align="center" size={16}>
-                                    <div style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: '#e6f7ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        {isGeneratingPodcast ? <LoadingOutlined style={{ fontSize: 24, color: '#1890ff' }} spin /> : <AudioOutlined style={{ fontSize: 24, color: '#1890ff' }} />}
-                                    </div>
-                                    <div>
-                                        <Text strong style={{ fontSize: 16, display: 'block', marginBottom: 4 }}>Deep Dive Discussion</Text>
-                                        <Text type="secondary" style={{ fontSize: 13 }}>Two hosts analyze your notes and sources in an engaging podcast format.</Text>
-                                    </div>
-                                </Space>
-                            </Card>
-
-                            <Title level={5} style={{ color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 }}>Generate Artifacts</Title>
-                            <Row gutter={[16, 16]}>
-                                <Col span={12}>
-                                    <Card 
-                                        hoverable 
-                                        style={{ borderRadius: 16 }}
-                                        onClick={() => setReportModalOpen(true)}
-                                    >
-                                        <Space align="center">
-                                            <div style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: '#f6ffed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                <FileTextOutlined style={{ fontSize: 20, color: '#52c41a' }} />
-                                            </div>
-                                            <Text strong>Executive Report</Text>
-                                        </Space>
-                                    </Card>
-                                </Col>
-                                <Col span={12}>
-                                    <Card 
-                                        hoverable 
-                                        style={{ borderRadius: 16 }}
-                                        onClick={() => setSlidesModalOpen(true)}
-                                    >
-                                        <Space align="center">
-                                            <div style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: '#fffbe6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                <FundProjectionScreenOutlined style={{ fontSize: 20, color: '#faad14' }} />
-                                            </div>
-                                            <Text strong>Presentation</Text>
-                                        </Space>
-                                    </Card>
-                                </Col>
-                                <Col span={24}>
-                                    <Card 
-                                        hoverable 
-                                        style={{ borderRadius: 16 }}
-                                        onClick={() => setImageModalOpen(true)}
-                                    >
-                                        <Space align="center">
-                                            <div style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: '#fff0f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                <PictureOutlined style={{ fontSize: 20, color: '#eb2f96' }} />
-                                            </div>
-                                            <div>
-                                                <Text strong style={{ display: 'block' }}>Vision Generate</Text>
-                                                <Text type="secondary" style={{ fontSize: 12 }}>Create an illustration based on sources</Text>
-                                            </div>
-                                        </Space>
-                                    </Card>
-                                </Col>
-                            </Row>
-
-                            {/* Audio Player Inline Display if Podcast Exists */}
-                            {podcastScript.length > 0 && (
-                                <div style={{ marginTop: 40, padding: 24, backgroundColor: '#fff', borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                                    <Title level={4} style={{ marginBottom: 16 }}>Your Deep Dive Audio</Title>
-                                    <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
-                                        <Button
-                                            type="primary"
-                                            shape="circle"
-                                            icon={isPlaying ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
-                                            size="large"
-                                            style={{ width: 64, height: 64, fontSize: 32 }}
-                                            onClick={togglePlayback}
-                                        />
-                                        <div>
-                                            <Text strong style={{ fontSize: 16 }}>{isPlaying ? 'Playing...' : 'Paused'}</Text>
-                                            <br />
-                                            <Text type="secondary">Generated AI Podcast</Text>
-                                        </div>
-                                    </div>
-                                    
-                                    <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-                                        <List
-                                            itemLayout="horizontal"
-                                            dataSource={podcastScript}
-                                            renderItem={(item, index) => (
-                                                <List.Item style={{
-                                                    background: index === currentLineIndex ? '#e6f7ff' : 'transparent',
-                                                    transition: 'background 0.3s',
-                                                    borderRadius: 8,
-                                                    padding: '8px 12px',
-                                                    border: 'none'
-                                                }}>
-                                                    <List.Item.Meta
-                                                        avatar={<Avatar style={{ backgroundColor: item.speaker.includes('A') ? '#f56a00' : '#7265e6' }}>{item.speaker.charAt(item.speaker.length - 1)}</Avatar>}
-                                                        title={<Text strong>{item.speaker}</Text>}
-                                                        description={<Text style={{ fontSize: '14px', color: '#333' }}>{item.text}</Text>}
-                                                    />
-                                                </List.Item>
-                                            )}
-                                        />
-                                    </div>
-                                    <div style={{ marginTop: 16, textAlign: 'right' }}>
-                                        <Button danger type="text" onClick={() => { window.speechSynthesis.cancel(); setPodcastScript([]); setIsPlaying(false); }}>Close Player</Button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                        {renderStudioGuide()}
                     </div>
 
-                    {/* RIGHT SIDEBAR: Chat & Artifacts */}
+                    {/* ── RIGHT SIDEBAR: Chat ── */}
                     <AnimatePresence mode="wait">
                         {showChat && (
                             <motion.div
                                 initial={{ width: 0, opacity: 0, x: 20 }}
-                                animate={{ width: 340, opacity: 1, x: 0 }}
+                                animate={{ width: 380, opacity: 1, x: 0 }}
                                 exit={{ width: 0, opacity: 0, x: 20 }}
                                 transition={{ duration: 0.3, type: 'spring', stiffness: 100, damping: 20 }}
-                                style={{
-                                    width: 340,
-                                    minWidth: 340,
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: 16
-                                }}
+                                className="flex flex-col"
+                                style={{ width: 380, minWidth: 380 }}
                             >
-                                {/* NEW CARD: Generated Artifact */}
-                                <Card 
+                                <Card
                                     size="small"
                                     title={
-                                        <div className="flex items-center gap-2">
-                                            <span style={{
-                                                background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
-                                                WebkitBackgroundClip: 'text',
-                                                WebkitTextFillColor: 'transparent',
-                                                fontWeight: 600,
-                                                fontSize: '14px'
-                                            }}>
-                                                Generated Artifact
-                                            </span>
-                                        </div>
+                                        <span style={{
+                                            background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
+                                            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                                            fontWeight: 600, fontSize: '14px'
+                                        }}>
+                                            AI Assistant
+                                        </span>
+                                    }
+                                    extra={
+                                        conversationId ? (
+                                            <Button type="text" size="small"
+                                                className="text-[10px] text-gray-400 hover:!text-[color:var(--theme-color)]"
+                                                onClick={() => { setChatHistory([]); setConversationId(undefined); }}
+                                            >
+                                                New Chat
+                                            </Button>
+                                        ) : null
                                     }
                                     style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        minHeight: 250,
-                                        background: 'transparent',
-                                        backdropFilter: 'none',
-                                        WebkitBackdropFilter: 'none',
-                                        boxShadow: 'none',
-                                        border: 'none',
-                                        flexShrink: 0
+                                        display: 'flex', flexDirection: 'column', height: '100%',
+                                        background: 'transparent', boxShadow: 'none', border: 'none'
                                     }}
-                                    className="dark:!bg-transparent dark:!border-none"
+                                    className="dark:!bg-transparent"
                                     styles={{
                                         header: {
                                             background: 'transparent',
-                                            borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
-                                            minHeight: 40,
-                                            padding: '0 12px'
+                                            borderBottom: '1px solid rgba(var(--theme-color-rgb,139,92,246),0.2)',
+                                            minHeight: 40, padding: '0 12px'
                                         },
-                                        body: {
-                                            padding: '16px',
-                                            flex: 1,
-                                            overflow: 'auto',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            justifyContent: 'center',
-                                            alignItems: 'center'
-                                        }
+                                        body: { padding: 0, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }
                                     }}
                                 >
-                                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span className="text-xs text-gray-400">No artifacts generated yet.</span>} />
-                                </Card>
-
-                                <Card 
-                                    size="small"
-                                    title={
-                                        <div className="flex items-center gap-2">
-                                            <span style={{
-                                                background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
-                                                WebkitBackgroundClip: 'text',
-                                                WebkitTextFillColor: 'transparent',
-                                                fontWeight: 600,
-                                                fontSize: '14px'
-                                            }}>
-                                                AI Assistant
-                                            </span>
-                                        </div>
-                                    }
-                                    style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        height: '100%',
-                                        background: 'transparent',
-                                        backdropFilter: 'none',
-                                        WebkitBackdropFilter: 'none',
-                                        boxShadow: 'none',
-                                        border: 'none',
-                                    }}
-                                    className="dark:!bg-transparent dark:!border-none"
-                                    styles={{
-                                        header: {
-                                            background: 'transparent',
-                                            borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
-                                            minHeight: 40,
-                                            padding: '0 12px'
-                                        },
-                                        body: {
-                                            padding: '0',
-                                            flex: 1,
-                                            overflow: 'auto',
-                                            display: 'flex',
-                                            flexDirection: 'column'
-                                        }
-                                    }}
-                                >
-                                    {renderChatMode()}
+                                    {renderChatPanel()}
                                 </Card>
                             </motion.div>
                         )}
@@ -827,11 +920,94 @@ export default function AIStudioPage() {
                 </div>
             </div>
 
-            {/* --- MODALS --- */}
+            {/* ── MODALS ── */}
+
+            {/* Create Notebook Modal */}
+            <Modal
+                title={<span><BookOutlined style={{ color: themeColor, marginRight: 8 }} />Create Notebook</span>}
+                open={showCreateModal}
+                onCancel={() => setShowCreateModal(false)}
+                onOk={handleCreateNotebook}
+                confirmLoading={creatingNotebook}
+                okText="Create"
+                okButtonProps={{ style: { backgroundColor: themeColor } }}
+                centered
+            >
+                <div className="py-4 space-y-4">
+                    <div>
+                        <Text strong className="text-xs block mb-1.5">Notebook Name</Text>
+                        <Input
+                            size="large"
+                            value={newNotebookName}
+                            onChange={e => setNewNotebookName(e.target.value)}
+                            placeholder="e.g. Q4 Research Analysis"
+                            onPressEnter={handleCreateNotebook}
+                        />
+                    </div>
+                    <div>
+                        <Text strong className="text-xs block mb-1.5">Description (optional)</Text>
+                        <TextArea
+                            rows={3}
+                            value={newNotebookDesc}
+                            onChange={e => setNewNotebookDesc(e.target.value)}
+                            placeholder="What is this notebook about?"
+                        />
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Add from Media Library Modal */}
+            <Modal
+                title={<span><AppstoreAddOutlined style={{ color: themeColor, marginRight: 8 }} />Add from Media Library</span>}
+                open={showAddMediaModal}
+                onCancel={() => setShowAddMediaModal(false)}
+                footer={null}
+                width={600}
+                centered
+            >
+                {loadingMedia ? (
+                    <div className="flex justify-center py-12"><Spin size="large" /></div>
+                ) : (
+                    <List
+                        className="max-h-[400px] overflow-y-auto"
+                        dataSource={mediaFiles}
+                        renderItem={item => {
+                            const alreadyAdded = sources.some(s => s.media_id === item.id);
+                            return (
+                                <List.Item
+                                    actions={[
+                                        alreadyAdded ? (
+                                            <Tag key="added" color="success">Added</Tag>
+                                        ) : (
+                                            <Button
+                                                key="add"
+                                                type="primary"
+                                                size="small"
+                                                icon={<PlusOutlined />}
+                                                loading={addingMedia.has(item.id)}
+                                                onClick={() => handleAddMediaFromLibrary(item.id)}
+                                                style={{ backgroundColor: themeColor }}
+                                            >
+                                                Add
+                                            </Button>
+                                        )
+                                    ]}
+                                >
+                                    <List.Item.Meta
+                                        avatar={<Avatar icon={<FileOutlined />} shape="square" style={{ backgroundColor: `${themeColor}22`, color: themeColor }} />}
+                                        title={<Text className="text-[13px]">{item.filename}</Text>}
+                                        description={<Text className="text-[11px] text-gray-400">{item.mime_type}</Text>}
+                                    />
+                                </List.Item>
+                            );
+                        }}
+                    />
+                )}
+            </Modal>
 
             {/* Report Modal */}
             <Modal
-                title={<span><FileTextOutlined style={{ color: '#52c41a', marginRight: 8 }} /> Generate Executive Report</span>}
+                title={<span><FileTextOutlined style={{ color: themeColor, marginRight: 8 }} />Generate Executive Report</span>}
                 open={reportModalOpen}
                 onCancel={() => setReportModalOpen(false)}
                 footer={null}
@@ -839,100 +1015,36 @@ export default function AIStudioPage() {
                 centered
             >
                 {!generatedReport ? (
-                    <div style={{ paddingTop: 16 }}>
-                        <Paragraph type="secondary">Describe what you want the report to focus on based on your selected sources.</Paragraph>
+                    <div className="pt-4">
+                        <Paragraph type="secondary">Describe what you want the report to focus on based on your notebook sources.</Paragraph>
                         <TextArea
                             rows={4}
                             value={reportQuery}
                             onChange={e => setReportQuery(e.target.value)}
                             placeholder="E.g. Analyze the Q3 growth based on the provided logs..."
-                            style={{ marginBottom: 16 }}
+                            className="mb-4"
                         />
-                        <Button type="primary" size="large" onClick={handleGenerateReport} loading={isGeneratingReport} style={{ width: '100%' }}>Generate Report</Button>
+                        <Button type="primary" size="large" onClick={handleGenerateReport} loading={isGeneratingReport}
+                            style={{ width: '100%', backgroundColor: themeColor }}>
+                            Generate Report
+                        </Button>
                     </div>
                 ) : (
                     <div>
-                        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                        <div className="mb-4 flex justify-end">
                             <Space>
                                 <Button onClick={() => setGeneratedReport("")}>Reset</Button>
-                                <Button type="primary" icon={<DownloadOutlined />}>Export PDF</Button>
+                                <Button type="primary" icon={<DownloadOutlined />} style={{ backgroundColor: themeColor }}>Export</Button>
                             </Space>
                         </div>
-                        <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: 16, background: '#f5f5f5', borderRadius: 8 }}>
-                            <ReactMarkdown>{generatedReport}</ReactMarkdown>
+                        <div className="max-h-[60vh] overflow-y-auto p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                            <div className="prose prose-sm dark:prose-invert max-w-none">
+                                <ReactMarkdown>{generatedReport}</ReactMarkdown>
+                            </div>
                         </div>
                     </div>
                 )}
-            </Modal>
-
-            {/* Slides Modal */}
-            <Modal
-                title={<span><FundProjectionScreenOutlined style={{ color: '#faad14', marginRight: 8 }} /> Generate Presentation</span>}
-                open={slidesModalOpen}
-                onCancel={() => setSlidesModalOpen(false)}
-                footer={null}
-                width={800}
-                centered
-            >
-                {generatedSlides.length === 0 ? (
-                    <div style={{ paddingTop: 16 }}>
-                        <Paragraph type="secondary">What topic should this presentation cover from the sources?</Paragraph>
-                        <TextArea
-                            rows={4}
-                            value={slidesQuery}
-                            onChange={e => setSlidesQuery(e.target.value)}
-                            placeholder="Provide details about the presentation..."
-                            style={{ marginBottom: 16 }}
-                        />
-                        <Button type="primary" size="large" onClick={handleGenerateSlides} loading={isGeneratingSlides} style={{ width: '100%' }}>Create Presentation</Button>
-                    </div>
-                ) : (
-                    <div>
-                        <div style={{ marginBottom: 16, width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Button onClick={() => setGeneratedSlides([])}>Reset</Button>
-                            <Space>
-                                <Button disabled={currentSlideIndex === 0} onClick={() => setCurrentSlideIndex(c => c - 1)}>Prev</Button>
-                                <Text strong>Slide {currentSlideIndex + 1} of {generatedSlides.length}</Text>
-                                <Button disabled={currentSlideIndex === generatedSlides.length - 1} onClick={() => setCurrentSlideIndex(c => c + 1)}>Next</Button>
-                            </Space>
-                        </div>
-                        <div style={{ aspectRatio: '16/9', background: '#2f54eb', color: '#fff', borderRadius: 12, padding: 40, display: 'flex', flexDirection: 'column', justifyContent: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}>
-                            <Title level={2} style={{ color: '#fff', marginBottom: 24, borderBottom: '2px solid rgba(255,255,255,0.2)', paddingBottom: 16 }}>
-                                {generatedSlides[currentSlideIndex].title}
-                            </Title>
-                            <ul style={{ paddingLeft: 20 }}>
-                                {generatedSlides[currentSlideIndex].bullets.map((b, i) => (
-                                    <li key={i} style={{ fontSize: '20px', marginBottom: 12, lineHeight: 1.5 }}>{b}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    </div>
-                )}
-            </Modal>
-
-            {/* Image Modal */}
-            <Modal
-                title={<span><PictureOutlined style={{ color: '#eb2f96', marginRight: 8 }} /> Visual Generation</span>}
-                open={imageModalOpen}
-                onCancel={() => setImageModalOpen(false)}
-                footer={null}
-                centered
-            >
-                <div style={{ paddingTop: 16 }}>
-                    <Paragraph type="secondary">Provide a prompt specifically describing the image you want regarding these sources.</Paragraph>
-                    <Space.Compact style={{ width: '100%', marginBottom: 24 }}>
-                        <Input size="large" value={imagePrompt} onChange={e => setImagePrompt(e.target.value)} placeholder="A vivid illustration of..." />
-                        <Button size="large" type="primary" onClick={handleGenerateImage} loading={isGeneratingImage}>Generate</Button>
-                    </Space.Compact>
-                    {generatedImage && (
-                        <div>
-                            <img src={generatedImage} alt="Generated" style={{ width: '100%', borderRadius: 8, marginBottom: 16 }} />
-                            <Button block href={generatedImage} download="ai_image.png" icon={<DownloadOutlined />}>Download Image</Button>
-                        </div>
-                    )}
-                </div>
             </Modal>
         </CMSLayout>
     );
 }
-
