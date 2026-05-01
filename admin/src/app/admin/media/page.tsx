@@ -148,7 +148,8 @@ import BucketSettingsDrawer from "./BucketSettingsDrawer";
 import VersionHistoryModal from "./VersionHistoryModal";
 import UploadModal from './UploadModal';
 
-import MediaDetailDrawer from './MediaDetailDrawer';
+
+
 import MediaPreviewModal from './MediaPreviewModal';
 import AIStudioDrawer from './AIStudioDrawer';
 

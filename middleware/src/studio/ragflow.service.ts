@@ -194,4 +194,75 @@ If you cannot find the answer in the provided documents, say so honestly.`,
         });
         return result.data?.chunks || [];
     }
+
+    // ── Media Library Embedding (Dedicated Dataset) ─────────────────
+
+    private mediaDatasetId: string | null = null;
+    private readonly MEDIA_DATASET_NAME = 'ns-media-library';
+
+    /**
+     * Lazily creates or retrieves the dedicated media library dataset.
+     * All media files are uploaded to this single shared dataset for
+     * cross-bucket searchability and simpler maintenance.
+     */
+    async getOrCreateMediaDataset(): Promise<string> {
+        if (this.mediaDatasetId) return this.mediaDatasetId;
+
+        // Check if dataset already exists
+        const datasets = await this.listDatasets(1, 100);
+        const existing = datasets.find((d: any) => d.name === this.MEDIA_DATASET_NAME);
+        if (existing) {
+            this.mediaDatasetId = existing.id;
+            this.logger.log(`Found existing media dataset: ${this.mediaDatasetId}`);
+            return this.mediaDatasetId;
+        }
+
+        // Create new dataset
+        const { id } = await this.createDataset(
+            this.MEDIA_DATASET_NAME,
+            'Shared dataset for media library embedding & retrieval',
+        );
+        this.mediaDatasetId = id;
+        this.logger.log(`Created media dataset: ${this.mediaDatasetId}`);
+        return this.mediaDatasetId;
+    }
+
+    /**
+     * Get detailed document status including chunk count and progress.
+     */
+    async getDocumentDetail(datasetId: string, documentId: string): Promise<{
+        status: 'pending' | 'parsing' | 'done' | 'error';
+        progress: number;
+        chunkCount: number;
+        progressMsg: string;
+    } | null> {
+        const doc = await this.getDocumentParseStatus(datasetId, documentId);
+        if (!doc) return null;
+
+        let status: 'pending' | 'parsing' | 'done' | 'error' = 'parsing';
+        if (doc.progress_msg?.includes('Done') || doc.run === '3' || doc.progress === 1) {
+            status = 'done';
+        } else if (doc.progress_msg?.includes('Error') || doc.run === '4') {
+            status = 'error';
+        } else if (!doc.run || doc.run === '0') {
+            status = 'pending';
+        }
+
+        return {
+            status,
+            progress: doc.progress || 0,
+            chunkCount: doc.chunk_count || doc.chunk_num || 0,
+            progressMsg: doc.progress_msg || '',
+        };
+    }
+
+    /**
+     * Remove a document from a dataset.
+     */
+    async removeDocument(datasetId: string, documentIds: string[]): Promise<void> {
+        await this.request('DELETE', `/datasets/${datasetId}/documents`, {
+            ids: documentIds,
+        });
+        this.logger.log(`Removed ${documentIds.length} documents from dataset ${datasetId}`);
+    }
 }
