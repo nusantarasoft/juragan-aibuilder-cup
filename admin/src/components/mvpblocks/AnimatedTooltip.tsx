@@ -36,7 +36,7 @@ export default function TooltipWrapper({
     children,
     className = '',
     position = 'top',
-    usePortal = false,
+    usePortal = true,
 }: TooltipWrapperProps) {
     const [isHovered, setIsHovered] = useState(false);
     const [portalPosition, setPortalPosition] = useState({ x: 0, y: 0 });
@@ -139,6 +139,12 @@ export default function TooltipWrapper({
         </motion.div>
     );
 
+    const portalContent = (
+        <AnimatePresence>
+            {isHovered && tooltipContent}
+        </AnimatePresence>
+    );
+
     return (
         <div
             ref={triggerRef}
@@ -147,13 +153,14 @@ export default function TooltipWrapper({
             onMouseLeave={() => setIsHovered(false)}
             onMouseMove={handleMouseMove}
         >
-            <AnimatePresence mode="popLayout">
-                {isHovered && (
-                    usePortal && typeof document !== 'undefined'
-                        ? createPortal(tooltipContent, document.body)
-                        : tooltipContent
-                )}
-            </AnimatePresence>
+            {usePortal && typeof document !== 'undefined'
+                ? createPortal(portalContent, document.body)
+                : (
+                    <AnimatePresence mode="popLayout">
+                        {isHovered && tooltipContent}
+                    </AnimatePresence>
+                )
+            }
             {children}
         </div>
     );

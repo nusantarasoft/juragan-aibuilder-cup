@@ -512,6 +512,61 @@ const menuConfig = {
                 ],
             },
             {
+                path: "/admin/accounting",
+                name: "Accounting & Finance",
+                icon: <AuditOutlined />,
+                routes: [
+                    {
+                        path: "/admin/accounting/dashboard",
+                        name: "Dashboard",
+                        icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/accounting/accounts",
+                        name: "Chart of Accounts",
+                        icon: <UnorderedListOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/accounting/journals",
+                        name: "Journal Entries",
+                        icon: <FileTextOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/accounting/ledger",
+                        name: "General Ledger",
+                        icon: <BookOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/accounting/payables",
+                        name: "Accounts Payable",
+                        icon: <ReconciliationOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/accounting/receivables",
+                        name: "Accounts Receivable",
+                        icon: <BankOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/accounting/reports",
+                        name: "Financial Reports",
+                        icon: <BarChartOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/accounting/settings",
+                        name: "Settings",
+                        icon: <SettingOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
                 path: "/admin/users",
                 name: "Users & Access",
                 icon: <TeamOutlined />,

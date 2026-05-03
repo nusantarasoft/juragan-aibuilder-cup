@@ -50,6 +50,7 @@ interface MediaPreviewModalProps {
     mode?: 'preview' | 'detail';
     isPublicBucket?: boolean;
     onUpdate?: () => void;
+    onOpenDetail?: (file: MediaFile) => void;
 }
 
 function formatDetailFileSize(bytes?: number): string {
@@ -655,7 +656,8 @@ export default function MediaPreviewModal({
     onClose,
     mode = 'preview',
     isPublicBucket,
-    onUpdate
+    onUpdate,
+    onOpenDetail
 }: MediaPreviewModalProps) {
     const [fullMedia, setFullMedia] = useState<MediaFile | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -1078,11 +1080,7 @@ export default function MediaPreviewModal({
             maskClosable={true}
             destroyOnClose
             keyboard={true}
-            closeIcon={
-                <div className="modal-close-btn flex items-center justify-center w-7 h-7 rounded-full transition-all duration-200 cursor-pointer active:scale-90">
-                    <CloseOutlined className="text-xs" />
-                </div>
-            }
+            closable={false}
             style={mode === 'detail' ? { top: '3vh', height: '90vh', maxWidth: '100vw', padding: 0, paddingBottom: 0 } : { padding: 0 }}
             styles={{
                 header: {
@@ -1545,10 +1543,11 @@ export default function MediaPreviewModal({
                         <div className="divider" />
                         <Tooltip title="Open Details">
                             <Button icon={<ExpandAltOutlined />} onClick={() => {
-                                onClose();
-                                setTimeout(() => {
-                                    // Signal parent to open detail mode
-                                }, 100);
+                                if (onOpenDetail && activeMedia) {
+                                    const file = { ...activeMedia };
+                                    onClose();
+                                    setTimeout(() => onOpenDetail(file), 200);
+                                }
                             }}>
                                 <span className="text-[11px]">Details</span>
                             </Button>

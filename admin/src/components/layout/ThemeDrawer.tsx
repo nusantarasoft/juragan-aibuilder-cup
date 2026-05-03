@@ -118,13 +118,15 @@ export default function ThemeDrawer({ visible, onClose, darkMode }: ThemeDrawerP
 
     const bgCard = darkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.02)";
     const borderColor = darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)";
+    const textColor = darkMode ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.88)';
+    const textSecondary = darkMode ? 'rgba(255,255,255,0.55)' : undefined;
 
     return (
         <Drawer
             title={
                 <Space>
                     <BgColorsOutlined style={{ color: themePalette.primary, fontSize: 20 }} />
-                    <span>Theme Customizer</span>
+                    <span style={{ color: textColor }}>Theme Customizer</span>
                 </Space>
             }
             placement="right"
@@ -132,8 +134,8 @@ export default function ThemeDrawer({ visible, onClose, darkMode }: ThemeDrawerP
             onClose={onClose}
             open={visible}
             styles={{
-                body: { padding: 0 },
-                header: { borderBottom: `2px solid ${themePalette.primary}` },
+                body: { padding: 0, background: darkMode ? '#141414' : '#ffffff', color: darkMode ? 'rgba(255,255,255,0.85)' : undefined },
+                header: { borderBottom: `2px solid ${themePalette.primary}`, background: darkMode ? '#141414' : '#ffffff' },
             }}
         >
             {contextHolder}
@@ -174,7 +176,7 @@ export default function ThemeDrawer({ visible, onClose, darkMode }: ThemeDrawerP
 
                 {/* ─── Preset Themes Grid ─────── */}
                 <div style={{ marginBottom: 10 }}>
-                    <Text strong style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 1.5, opacity: 0.6 }}>
+                    <Text strong style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 1.5, color: textSecondary }}>
                         Preset Themes
                     </Text>
                 </div>
@@ -227,7 +229,7 @@ export default function ThemeDrawer({ visible, onClose, darkMode }: ThemeDrawerP
                                     </div>
                                     <Text style={{
                                         fontSize: 11, fontWeight: isActive ? 700 : 500, display: "block",
-                                        color: isActive ? preset.palette.primary : undefined,
+                                        color: isActive ? preset.palette.primary : textColor,
                                     }}>
                                         {preset.name}
                                     </Text>
@@ -241,7 +243,7 @@ export default function ThemeDrawer({ visible, onClose, darkMode }: ThemeDrawerP
                 <Divider style={{ margin: "16px 0" }}>
                     <Space size={4}>
                         <FormatPainterOutlined style={{ color: themePalette.primary }} />
-                        <Text style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 1.5, opacity: 0.6 }}>Custom Palette</Text>
+                        <Text style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 1.5, color: textSecondary }}>Custom Palette</Text>
                     </Space>
                 </Divider>
 
@@ -269,14 +271,14 @@ export default function ThemeDrawer({ visible, onClose, darkMode }: ThemeDrawerP
                                     />
                                     <div style={{
                                         position: "absolute", inset: 0,
-                                        borderRadius: 8, border: "2px solid rgba(0,0,0,0.08)",
+                                        borderRadius: 8, border: `2px solid ${darkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'}`,
                                         pointerEvents: "none",
                                     }} />
                                 </div>
                                 {/* Label + hex */}
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                    <Text strong style={{ fontSize: 12, display: "block" }}>{label}</Text>
-                                    <Text type="secondary" style={{ fontSize: 10 }}>{desc}</Text>
+                                    <Text strong style={{ fontSize: 12, display: "block", color: textColor }}>{label}</Text>
+                                    <Text style={{ fontSize: 10, color: textSecondary }}>{desc}</Text>
                                 </div>
                                 {/* Hex input */}
                                 <Input

@@ -37,7 +37,6 @@ import {
     Popconfirm,
     Table,
     Segmented,
-    FloatButton,
     Badge,
 } from "antd";
 import {
@@ -151,7 +150,6 @@ import UploadModal from './UploadModal';
 
 
 import MediaPreviewModal from './MediaPreviewModal';
-import AIStudioDrawer from './AIStudioDrawer';
 
 
 const { Text, Title } = Typography;
@@ -250,7 +248,6 @@ export default function MediaLibraryPage() {
 
     // AI & Upload State
     const [uploadModalVisible, setUploadModalVisible] = useState(false);
-    const [aiStudioVisible, setAIStudioVisible] = useState(false);
     const [aiSearchEnabled, setAiSearchEnabled] = useState(false);
     const [aiSearchResults, setAiSearchResults] = useState<string[]>([]);
     const [aiSearchLoading, setAiSearchLoading] = useState(false);
@@ -1649,6 +1646,10 @@ export default function MediaLibraryPage() {
                 onClose={() => setPreviewVisible(false)}
                 isPublicBucket={buckets.find(b => b.name === selectedMedia?.bucket_name)?.isPublic}
                 onUpdate={loadMedia}
+                onOpenDetail={(file) => {
+                    setDetailModalFile(file);
+                    setDetailModalVisible(true);
+                }}
             />
 
             {/* New Folder Modal */}
@@ -1898,10 +1899,6 @@ export default function MediaLibraryPage() {
 
 
 
-            <AIStudioDrawer
-                visible={aiStudioVisible}
-                onClose={() => setAIStudioVisible(false)}
-            />
 
             {/* Media Detail Modal */}
             <MediaPreviewModal
