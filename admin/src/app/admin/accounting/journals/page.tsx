@@ -1,19 +1,25 @@
 'use client';
 import React, { useEffect, useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
 import { Table, Button, Space, Tag, Input, Select, Drawer, Form, InputNumber, message, Typography, Card, Tooltip, Divider, DatePicker, Empty, Spin, Popconfirm, Row, Col, Alert, Modal } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, CheckCircleOutlined, UndoOutlined, EyeOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { accountingService, AcctJournal, AcctJournalLine, AcctAccount } from '@/lib/accountingService';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import dayjs from 'dayjs';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { RangePicker } = DatePicker;
 const formatCurrency = (v: number | string) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(v) || 0);
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const statusColor: Record<string, string> = { draft: 'gold', posted: 'green', reversed: 'volcano', void: 'default' };
 const typeColor: Record<string, string> = { general: 'blue', adjusting: 'purple', closing: 'orange', opening: 'cyan', reversal: 'red' };
 
 export default function JournalEntriesPage() {
+    const { themeColor } = usePreferencesStore();
     const [journals, setJournals] = useState<AcctJournal[]>([]);
     const [accounts, setAccounts] = useState<AcctAccount[]>([]);
     const [loading, setLoading] = useState(true);
@@ -132,14 +138,17 @@ export default function JournalEntriesPage() {
     ];
 
     return (
-        <CMSLayout title="Journal Entries" subTitle={`${journals.length} entries`}>
-        <div style={{ padding: '0 4px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <div><Title level={3} style={{ margin: 0 }}>Journal Entries</Title><Text type="secondary">{journals.length} entries</Text></div>
-                <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>New Journal Entry</Button>
+        <CMSLayout
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Journal Entries</AuroraText>}
+            subTitle={<DecryptedText text={`${journals.length} entries recorded`} animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
+        >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}
+                    style={{ background: `linear-gradient(135deg, ${themeColor}, var(--theme-secondary, #6366f1))`, border: 'none', borderRadius: 10 }}>New Journal Entry</Button>
             </div>
 
-            <Card size="small" style={{ marginBottom: 16, borderRadius: 10 }}>
+            <Card size="small" style={{ ...glass }}>
                 <Space wrap>
                     <Input.Search placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} onSearch={() => load()} style={{ width: 240 }} allowClear />
                     <Select placeholder="Status" value={filterStatus} onChange={setFilterStatus} allowClear style={{ width: 130 }}
@@ -151,7 +160,7 @@ export default function JournalEntriesPage() {
                 </Space>
             </Card>
 
-            <Card style={{ borderRadius: 12 }} bodyStyle={{ padding: 0 }}>
+            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}>
                 <Table dataSource={journals.map(j => ({ ...j, key: j.id }))} columns={columns} loading={loading} size="small"
                     pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t) => `${t} entries` }}
                     scroll={{ x: 1100 }} locale={{ emptyText: <Empty description="No journal entries" /> }} />

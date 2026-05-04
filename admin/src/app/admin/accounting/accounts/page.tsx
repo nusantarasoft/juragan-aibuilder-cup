@@ -4,15 +4,20 @@ import CMSLayout from '@/components/layout/CMSLayout';
 import { Table, Button, Space, Tag, Input, Select, Drawer, Form, InputNumber, Switch, message, Modal, Typography, Card, Tooltip, Divider, TreeSelect, Empty, Spin, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, FilterOutlined, AccountBookOutlined, DownOutlined, RightOutlined } from '@ant-design/icons';
 import { accountingService, AcctAccount } from '@/lib/accountingService';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const formatCurrency = (v: number | string) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(v) || 0);
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const typeColors: Record<string, string> = { asset: 'blue', liability: 'orange', equity: 'purple', revenue: 'green', expense: 'red' };
 const typeLabels: Record<string, string> = { asset: 'Asset', liability: 'Liability', equity: 'Equity', revenue: 'Revenue', expense: 'Expense' };
 const subtypes = ['cash', 'bank', 'receivable', 'payable', 'inventory', 'fixed_asset', 'depreciation', 'tax_receivable', 'tax_payable', 'accrued', 'deferred', 'loan', 'capital', 'retained', 'drawing', 'sales', 'service', 'cogs', 'operating', 'payroll', 'marketing', 'financial', 'forex', 'other', 'contra', 'interest'];
 
 export default function ChartOfAccountsPage() {
+    const { themeColor } = usePreferencesStore();
     const [accounts, setAccounts] = useState<AcctAccount[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -96,28 +101,27 @@ export default function ChartOfAccountsPage() {
     ];
 
     return (
-        <CMSLayout title="Chart of Accounts" subTitle={`${accounts.length} accounts configured`}>
-        <div style={{ padding: '0 4px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <div>
-                    <Title level={3} style={{ margin: 0 }}>Chart of Accounts</Title>
-                    <Text type="secondary">{accounts.length} accounts configured</Text>
-                </div>
-                <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Account</Button>
+        <CMSLayout
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Chart of Accounts</AuroraText>}
+            subTitle={<DecryptedText text={`${accounts.length} accounts configured`} animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
+        >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}
+                    style={{ background: `linear-gradient(135deg, ${themeColor}, var(--theme-secondary, #6366f1))`, border: 'none', borderRadius: 10 }}>Add Account</Button>
             </div>
 
             {/* Filters */}
-            <Card size="small" style={{ marginBottom: 16, borderRadius: 10 }}>
+            <Card size="small" style={{ ...glass }}>
                 <Space wrap>
-                    <Input.Search placeholder="Search by code or name..." value={search} onChange={e => setSearch(e.target.value)} onSearch={handleSearch} style={{ width: 280 }} allowClear />
+                    <Input.Search placeholder="Search by code or name..." value={search} onChange={e => setSearch(e.target.value)} onSearch={handleSearch} style={{ width: 280, borderRadius: 8 }} allowClear />
                     <Select placeholder="Filter by type" value={filterType} onChange={setFilterType} allowClear style={{ width: 160 }}
                         options={Object.entries(typeLabels).map(([k, v]) => ({ value: k, label: v }))} />
                     <Button icon={<ReloadOutlined />} onClick={load}>Refresh</Button>
                 </Space>
             </Card>
 
-            {/* Table */}
-            <Card style={{ borderRadius: 12 }} bodyStyle={{ padding: 0 }}>
+            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}>
                 <Table
                     dataSource={treeData}
                     columns={columns}

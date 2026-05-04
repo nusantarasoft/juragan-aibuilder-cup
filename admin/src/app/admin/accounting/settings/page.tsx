@@ -4,9 +4,13 @@ import CMSLayout from '@/components/layout/CMSLayout';
 import { Table, Card, Typography, Tabs, Button, Space, Tag, Modal, Form, Input, InputNumber, Select, Switch, DatePicker, message, Empty, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, DollarOutlined, CalendarOutlined, PercentageOutlined, ApartmentOutlined, ReloadOutlined } from '@ant-design/icons';
 import { accountingService, AcctCurrency, AcctFiscalPeriod, AcctTax, AcctCostCenter } from '@/lib/accountingService';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import dayjs from 'dayjs';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 // ═══════════════════════════════════════════════════════════
 // CURRENCIES TAB
@@ -39,7 +43,7 @@ function CurrenciesTab() {
                 <Text type="secondary">{data.length} currencies configured</Text>
                 <Space><Button icon={<ReloadOutlined />} onClick={load} /><Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>Add Currency</Button></Space>
             </div>
-            <Card style={{ borderRadius: 12 }} bodyStyle={{ padding: 0 }}>
+            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}>
                 <Table dataSource={data.map(r => ({ ...r, key: r.id }))} loading={loading} size="small" pagination={false}
                     columns={[
                         { title: 'Code', dataIndex: 'code', width: 80, render: (v: string) => <Tag color="blue">{v}</Tag> },
@@ -102,7 +106,7 @@ function FiscalPeriodsTab() {
                 <Text type="secondary">{data.length} fiscal periods</Text>
                 <Space><Button icon={<ReloadOutlined />} onClick={load} /><Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModal(true); }}>Add Period</Button></Space>
             </div>
-            <Card style={{ borderRadius: 12 }} bodyStyle={{ padding: 0 }}>
+            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}>
                 <Table dataSource={data.map(r => ({ ...r, key: r.id }))} loading={loading} size="small" pagination={false}
                     locale={{ emptyText: <Empty description="No fiscal periods yet. Create one to track accounting periods." /> }}
                     columns={[
@@ -157,7 +161,7 @@ function TaxRatesTab() {
                 <Text type="secondary">{data.length} tax rates configured</Text>
                 <Space><Button icon={<ReloadOutlined />} onClick={load} /><Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModal(true); }}>Add Tax Rate</Button></Space>
             </div>
-            <Card style={{ borderRadius: 12 }} bodyStyle={{ padding: 0 }}>
+            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}>
                 <Table dataSource={data.map(r => ({ ...r, key: r.id }))} loading={loading} size="small" pagination={false}
                     columns={[
                         { title: 'Code', dataIndex: 'code', width: 100, render: (v: string) => <Tag color="blue">{v}</Tag> },
@@ -211,7 +215,7 @@ function CostCentersTab() {
                 <Text type="secondary">{data.length} cost centers</Text>
                 <Space><Button icon={<ReloadOutlined />} onClick={load} /><Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModal(true); }}>Add Cost Center</Button></Space>
             </div>
-            <Card style={{ borderRadius: 12 }} bodyStyle={{ padding: 0 }}>
+            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}>
                 <Table dataSource={data.map(r => ({ ...r, key: r.id }))} loading={loading} size="small" pagination={false}
                     locale={{ emptyText: <Empty description="No cost centers yet. Create departments or projects to track expenses." /> }}
                     columns={[
@@ -239,13 +243,13 @@ function CostCentersTab() {
 // MAIN SETTINGS PAGE
 // ═══════════════════════════════════════════════════════════
 export default function AccountingSettingsPage() {
+    const { themeColor } = usePreferencesStore();
     return (
-        <CMSLayout title="Accounting Settings" subTitle="Currencies, Fiscal Periods, Taxes & Cost Centers">
-        <div style={{ padding: '0 4px' }}>
-            <div style={{ marginBottom: 20 }}>
-                <Title level={3} style={{ margin: 0 }}>Accounting Settings</Title>
-                <Text type="secondary">Manage currencies, fiscal periods, tax rates, and cost centers</Text>
-            </div>
+        <CMSLayout
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Accounting Settings</AuroraText>}
+            subTitle={<DecryptedText text="Currencies, Fiscal Periods, Tax Rates & Cost Centers" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
+        >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <Tabs defaultActiveKey="currencies" items={[
                 { key: 'currencies', label: <span><DollarOutlined /> Currencies</span>, children: <CurrenciesTab /> },
                 { key: 'fiscal', label: <span><CalendarOutlined /> Fiscal Periods</span>, children: <FiscalPeriodsTab /> },

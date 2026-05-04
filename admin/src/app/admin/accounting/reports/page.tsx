@@ -1,14 +1,19 @@
 'use client';
 import React, { useEffect, useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
 import { Table, Card, Typography, Tabs, DatePicker, Button, Space, Spin, Tag, Row, Col, Statistic, Divider, Empty, Alert } from 'antd';
 import { DownloadOutlined, FileExcelOutlined, FilePdfOutlined, CheckCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import { accountingService, TrialBalanceRow } from '@/lib/accountingService';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import dayjs from 'dayjs';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const formatCurrency = (v: number | string) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(v) || 0);
 const formatNum = (v: number) => new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(v);
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 // ─── Export Helpers ──────────────────────────────────────
 function exportCSV(filename: string, headers: string[], rows: string[][]) {
@@ -27,6 +32,7 @@ function exportPDF(title: string, headers: string[], rows: string[][], summary?:
 }
 
 export default function FinancialReportsPage() {
+    const { themeColor } = usePreferencesStore();
     const [asOfDate, setAsOfDate] = useState<string>(dayjs().format('YYYY-MM-DD'));
     const [trialBalance, setTrialBalance] = useState<TrialBalanceRow[]>([]);
     const [loading, setLoading] = useState(true);
@@ -159,10 +165,12 @@ export default function FinancialReportsPage() {
                 }}>PDF</Button>
             </div>
 
-            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                <Col xs={24} sm={8}><Card size="small" style={{ borderRadius: 10, background: 'linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%)' }}><Statistic title="Total Assets" value={totalAssets} formatter={v => formatCurrency(Number(v))} valueStyle={{ color: '#1890ff', fontWeight: 700 }} /></Card></Col>
-                <Col xs={24} sm={8}><Card size="small" style={{ borderRadius: 10, background: 'linear-gradient(135deg, #fff7e6 0%, #ffe7ba 100%)' }}><Statistic title="Total Liabilities" value={totalLiabilities} formatter={v => formatCurrency(Number(v))} valueStyle={{ color: '#fa8c16', fontWeight: 700 }} /></Card></Col>
-                <Col xs={24} sm={8}><Card size="small" style={{ borderRadius: 10, background: 'linear-gradient(135deg, #f9f0ff 0%, #efdbff 100%)' }}><Statistic title="Total Equity" value={totalEquity} formatter={v => formatCurrency(Number(v))} valueStyle={{ color: '#722ed1', fontWeight: 700 }} /></Card></Col>
+            <Row gutter={[14, 14]} style={{ marginBottom: 16 }}>
+                {[{ t: 'Total Assets', v: totalAssets, c: '#3b82f6' }, { t: 'Total Liabilities', v: totalLiabilities, c: '#f59e0b' }, { t: 'Total Equity', v: totalEquity, c: '#8b5cf6' }].map((s, i) => (
+                    <Col xs={24} sm={8} key={i}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+                        <Card size="small" style={{ ...glass }}><Statistic title={s.t} value={s.v} formatter={v => formatCurrency(Number(v))} valueStyle={{ color: s.c, fontWeight: 700, fontFamily: 'monospace' }} /></Card>
+                    </motion.div></Col>
+                ))}
             </Row>
 
             <Alert type={Math.abs(totalAssets - totalLiabilities - totalEquity) < 1 ? 'success' : 'warning'} showIcon
@@ -202,14 +210,14 @@ export default function FinancialReportsPage() {
     );
 
     return (
-        <CMSLayout title="Financial Reports" subTitle="Trial Balance, Income Statement & Balance Sheet">
-        <div style={{ padding: '0 4px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <div><Title level={3} style={{ margin: 0 }}>Financial Reports</Title><Text type="secondary">Trial Balance, Income Statement & Balance Sheet</Text></div>
-                <Space>
-                    <Text type="secondary">As of:</Text>
-                    <DatePicker value={dayjs(asOfDate)} onChange={(d) => d && setAsOfDate(d.format('YYYY-MM-DD'))} />
-                </Space>
+        <CMSLayout
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Financial Reports</AuroraText>}
+            subTitle={<DecryptedText text="Trial Balance, Income Statement & Balance Sheet" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
+        >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+                <Text type="secondary">As of:</Text>
+                <DatePicker value={dayjs(asOfDate)} onChange={(d) => d && setAsOfDate(d.format('YYYY-MM-DD'))} />
             </div>
 
             {loading ? (

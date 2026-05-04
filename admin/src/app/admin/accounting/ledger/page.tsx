@@ -1,14 +1,19 @@
 'use client';
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
 import { Table, Select, DatePicker, Card, Typography, Space, Tag, Button, Spin, Empty, Row, Col, Statistic, Divider } from 'antd';
 import { SearchOutlined, ReloadOutlined, DownloadOutlined, BookOutlined } from '@ant-design/icons';
 import { accountingService, AcctAccount, AcctJournalLine } from '@/lib/accountingService';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import dayjs from 'dayjs';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { RangePicker } = DatePicker;
 const formatCurrency = (v: number | string) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(v) || 0);
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 // snake_case → camelCase
 const snakeToCamel = (row: any) => {
@@ -22,6 +27,7 @@ const snakeToCamel = (row: any) => {
 };
 
 export default function GeneralLedgerPage() {
+    const { themeColor } = usePreferencesStore();
     const [accounts, setAccounts] = useState<AcctAccount[]>([]);
     const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>();
     const [dateRange, setDateRange] = useState<[string, string] | null>(null);
@@ -100,15 +106,17 @@ export default function GeneralLedgerPage() {
     ];
 
     return (
-        <CMSLayout title="General Ledger" subTitle="Account transaction history">
-        <div style={{ padding: '0 4px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <div><Title level={3} style={{ margin: 0 }}>General Ledger</Title><Text type="secondary">View account transaction history</Text></div>
+        <CMSLayout
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>General Ledger</AuroraText>}
+            subTitle={<DecryptedText text="Account transaction history and balances" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
+        >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 {lines.length > 0 && <Button icon={<DownloadOutlined />} onClick={exportCSV}>Export CSV</Button>}
             </div>
 
             {/* Filters */}
-            <Card size="small" style={{ marginBottom: 16, borderRadius: 10 }}>
+            <Card size="small" style={{ ...glass }}>
                 <Space wrap size="middle">
                     <div>
                         <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>Account</Text>
@@ -144,27 +152,21 @@ export default function GeneralLedgerPage() {
                 <>
                     {/* Account info + summary */}
                     {selectedAccount && (
-                        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                            <Col xs={24} sm={6}>
-                                <Card size="small" style={{ borderRadius: 10, background: 'linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%)' }}>
-                                    <Statistic title="Opening Balance" value={openingBal} formatter={(v) => formatCurrency(Number(v))} valueStyle={{ fontSize: 16, fontWeight: 600 }} />
-                                </Card>
-                            </Col>
-                            <Col xs={24} sm={6}>
-                                <Card size="small" style={{ borderRadius: 10, background: 'linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%)' }}>
-                                    <Statistic title="Total Debit" value={totalDebit} formatter={(v) => formatCurrency(Number(v))} valueStyle={{ fontSize: 16, fontWeight: 600, color: '#52c41a' }} />
-                                </Card>
-                            </Col>
-                            <Col xs={24} sm={6}>
-                                <Card size="small" style={{ borderRadius: 10, background: 'linear-gradient(135deg, #fff2f0 0%, #ffccc7 100%)' }}>
-                                    <Statistic title="Total Credit" value={totalCredit} formatter={(v) => formatCurrency(Number(v))} valueStyle={{ fontSize: 16, fontWeight: 600, color: '#ff4d4f' }} />
-                                </Card>
-                            </Col>
-                            <Col xs={24} sm={6}>
-                                <Card size="small" style={{ borderRadius: 10, background: 'linear-gradient(135deg, #f9f0ff 0%, #efdbff 100%)' }}>
-                                    <Statistic title="Closing Balance" value={closingBal} formatter={(v) => formatCurrency(Number(v))} valueStyle={{ fontSize: 16, fontWeight: 600, color: '#722ed1' }} />
-                                </Card>
-                            </Col>
+                        <Row gutter={[14, 14]}>
+                            {[
+                                { t: 'Opening Balance', v: openingBal, c: '#3b82f6' },
+                                { t: 'Total Debit', v: totalDebit, c: '#10b981' },
+                                { t: 'Total Credit', v: totalCredit, c: '#ef4444' },
+                                { t: 'Closing Balance', v: closingBal, c: '#8b5cf6' },
+                            ].map((s, i) => (
+                                <Col xs={24} sm={6} key={i}>
+                                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+                                        <Card size="small" style={{ ...glass }}>
+                                            <Statistic title={s.t} value={s.v} formatter={(v) => formatCurrency(Number(v))} valueStyle={{ fontSize: 16, fontWeight: 600, color: s.c, fontFamily: 'monospace' }} />
+                                        </Card>
+                                    </motion.div>
+                                </Col>
+                            ))}
                         </Row>
                     )}
 
