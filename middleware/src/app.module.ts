@@ -25,6 +25,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { ItsmModule } from './itsm/itsm.module';
 import { StudioModule } from './studio/studio.module';
 import { AccountingModule } from './accounting/accounting.module';
+import { HrModule } from './hr/hr.module';
 
 @Module({
     imports: [
@@ -67,6 +68,7 @@ import { AccountingModule } from './accounting/accounting.module';
         ItsmModule,
         StudioModule,
         AccountingModule,
+        HrModule,
     ],
 })
 export class AppModule { }
