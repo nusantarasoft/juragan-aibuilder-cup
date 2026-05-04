@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Typography, Space, Spin, Tag, Progress, Card, Row, Col, Statistic,
     Table, Tooltip, Button, Empty, Badge, message
@@ -333,7 +335,8 @@ export default function PortfolioOverviewPage() {
 
     if (loading) {
         return (
-            <CMSLayout title="Portfolio Overview" subTitle="Aggregate view of all projects">
+            <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Portfolio Overview</AuroraText>}
+            subTitle={<DecryptedText text="Aggregate view of all projects" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
                 <div style={{ textAlign: 'center', padding: 120 }}>
                     <Spin size="large" />
                 </div>
@@ -342,7 +345,8 @@ export default function PortfolioOverviewPage() {
     }
 
     return (
-        <CMSLayout title="Portfolio Overview" subTitle="Aggregate view of all projects">
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Portfolio Overview</AuroraText>}
+            subTitle={<DecryptedText text="Aggregate view of all projects" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
             {contextHolder}
 
             {/* ── Hero Stats Row ── */}

@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     ProTable,
     ProForm,
@@ -620,7 +622,8 @@ export default function ProjectsPage() {
     };
 
     return (
-        <CMSLayout title="Projects" subTitle="Manage all your project portfolios">
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Projects</AuroraText>}
+            subTitle={<DecryptedText text="Manage all your project portfolios" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
             {contextHolder}
 
             {/* ── Gradient Stat Cards ── */}

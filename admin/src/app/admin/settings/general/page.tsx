@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Card,
     Form,
@@ -37,6 +40,7 @@ async function graphqlRequest(query: string, variables?: Record<string, unknown>
 }
 
 export default function GeneralSettingsPage() {
+    const { themeColor } = usePreferencesStore();
     const [form] = Form.useForm();
     const [dremioForm] = Form.useForm();
     const [dremioTestResult, setDremioTestResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -226,8 +230,8 @@ export default function GeneralSettingsPage() {
 
     return (
         <CMSLayout
-            title="Settings"
-            subTitle="Configure your CMS"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Settings</AuroraText>}
+            subTitle={<DecryptedText text="Configure your CMS" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 <Button key="save" type="primary" icon={<SaveOutlined />} onClick={handleSave}>
                     Save Changes

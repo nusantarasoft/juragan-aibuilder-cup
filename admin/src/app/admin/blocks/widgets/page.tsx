@@ -2,6 +2,9 @@
 
 import React from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import { Card, Row, Col, Space, Button, Tag } from "antd";
 import { PlayCircleOutlined, EyeOutlined } from "@ant-design/icons";
 import MiniGamesWidget from "@/components/widgets/MiniGamesWidget";
@@ -60,10 +63,11 @@ const widgets: WidgetCard[] = [
 ];
 
 export default function WidgetsPage() {
+    const { themeColor } = usePreferencesStore();
     return (
         <CMSLayout
-            title="Widgets"
-            subTitle="Interactive components for your landing pages"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Widgets</AuroraText>}
+            subTitle={<DecryptedText text="Interactive components for your landing pages" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
             <Row gutter={[16, 16]}>
                 {widgets.map((widget, index) => (

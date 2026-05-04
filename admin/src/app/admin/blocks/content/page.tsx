@@ -2,6 +2,9 @@
 
 import React from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import { Card, Row, Col, Button, Space, Tag } from "antd";
 import { EditOutlined, EyeOutlined, PlusOutlined } from "@ant-design/icons";
 
@@ -143,10 +146,11 @@ const contentBlocks: ContentBlock[] = [
 ];
 
 export default function ContentBlocksPage() {
+    const { themeColor } = usePreferencesStore();
     return (
         <CMSLayout
-            title="Content Blocks"
-            subTitle="Reusable content sections for your pages"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Content Blocks</AuroraText>}
+            subTitle={<DecryptedText text="Reusable content sections for your pages" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 <Button key="add" type="primary" icon={<PlusOutlined />}>
                     Create Custom Block

@@ -14,10 +14,14 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface Individual {
     id: string; firstName: string; lastName: string; salutation: string;
@@ -50,6 +54,7 @@ const INDIVIDUAL_FIELDS: FieldDef[] = [
 
 export default function IndividualsPage() {
     const [individuals, setIndividuals] = useState<Individual[]>([]);
+    const { themeColor } = usePreferencesStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Individual | null>(null);
@@ -154,16 +159,17 @@ export default function IndividualsPage() {
     ];
 
     return (
-        <CMSLayout title="Individuals" subTitle="People in your CRM — contacts, leads, and team members" extra={[
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Individuals</AuroraText>}
+            subTitle={<DecryptedText text="People in your CRM — contacts, leads, and team members" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[
             <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
             <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>Add Individual</Button>,
         ]}>
-            <Card style={{ marginBottom: 16 }}><Space wrap>
+            <Card style={{ ...glass, marginBottom: 16 }}><Space wrap>
                 <Input prefix={<SearchOutlined />} placeholder="Search by name..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />
                 <Select placeholder="Status" value={statusFilter} onChange={setStatusFilter} allowClear style={{ width: 130 }} options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} />
                 <Select placeholder="Lead Status" value={leadFilter} onChange={setLeadFilter} allowClear style={{ width: 150 }} options={LEAD_STATUSES} />
             </Space></Card>
-            <Card><Table columns={columns} dataSource={individuals.map(i => ({ ...i, key: i.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>
+            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table columns={columns} dataSource={individuals.map(i => ({ ...i, key: i.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Individual" : "Add Individual"} entityName="individual" steps={formSteps} fields={INDIVIDUAL_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["var(--theme-color, #8b5cf6)", "var(--theme-accent, #a855f7)"]} editMode={!!editing} />
 

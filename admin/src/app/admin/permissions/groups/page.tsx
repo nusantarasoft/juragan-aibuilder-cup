@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Card, Tabs, Table, Button, Space, Modal, Form, Input,
     message, Typography,
@@ -40,6 +43,7 @@ const GROUP_FIELDS: FieldDef[] = [
 ];
 
 export default function GroupsTeamsPage() {
+    const { themeColor } = usePreferencesStore();
     const [teams, setTeams] = useState<Team[]>([]);
     const [teamsLoading, setTeamsLoading] = useState(true);
     const [teamModalOpen, setTeamModalOpen] = useState(false);
@@ -281,8 +285,8 @@ export default function GroupsTeamsPage() {
 
     return (
         <CMSLayout
-            title="Groups & Teams"
-            subTitle="Manage teams for record-level access and public groups for sharing"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Groups & Teams</AuroraText>}
+            subTitle={<DecryptedText text="Manage teams for record-level access and public groups for sharing" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[<Button key="reload" icon={<ReloadOutlined />} onClick={() => { loadTeams(); loadGroups(); }} />]}
         >
             <Card><Tabs items={tabItems} /></Card>

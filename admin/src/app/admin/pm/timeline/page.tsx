@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Typography, Space, Spin, Tag, Card, Row, Col, Statistic, Select,
     Tooltip, Progress, Empty, Badge
@@ -147,7 +149,8 @@ export default function TimelinePage() {
 
     if (loading) {
         return (
-            <CMSLayout title="Timeline" subTitle="Cross-project Gantt-style timeline view">
+            <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Timeline</AuroraText>}
+            subTitle={<DecryptedText text="Cross-project Gantt-style timeline view" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
                 <div style={{ textAlign: 'center', padding: 120 }}>
                     <Spin size="large" />
                 </div>
@@ -156,7 +159,8 @@ export default function TimelinePage() {
     }
 
     return (
-        <CMSLayout title="Timeline" subTitle="Cross-project Gantt-style timeline view">
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Timeline</AuroraText>}
+            subTitle={<DecryptedText text="Cross-project Gantt-style timeline view" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
             {/* ── Stats ── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={6}>

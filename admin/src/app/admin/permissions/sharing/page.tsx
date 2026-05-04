@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Card, Tabs, Table, Button, Space, Modal, Form, Input, Select, Tag,
     message, Typography, Spin, Row, Col,
@@ -61,6 +64,7 @@ const RULE_FIELDS: FieldDef[] = [
 ];
 
 export default function SharingPage() {
+    const { themeColor } = usePreferencesStore();
     const [owds, setOwds] = useState<OrgWideDefault[]>([]);
     const [owdLoading, setOwdLoading] = useState(true);
 
@@ -358,8 +362,8 @@ export default function SharingPage() {
 
     return (
         <CMSLayout
-            title="Sharing & Security"
-            subTitle="Configure organization-wide defaults, sharing rules, and field-level security"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Sharing & Security</AuroraText>}
+            subTitle={<DecryptedText text="Configure organization-wide defaults, sharing rules, and field-level security" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[<Button key="reload" icon={<ReloadOutlined />} onClick={() => { loadOwds(); loadRules(); }} />]}
         >
             <Card><Tabs items={tabItems} /></Card>

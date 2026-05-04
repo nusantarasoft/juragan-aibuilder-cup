@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Typography, Space, Spin, Tag, Card, Row, Col, Statistic, Input,
     Table, Empty, Select, Tooltip, Progress, Badge, Button, Drawer, Descriptions
@@ -270,7 +272,8 @@ export default function BacklogPage() {
 
     if (loading) {
         return (
-            <CMSLayout title="Backlog" subTitle="All tasks across all projects">
+            <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Backlog</AuroraText>}
+            subTitle={<DecryptedText text="All tasks across all projects" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
                 <div style={{ textAlign: 'center', padding: 120 }}>
                     <Spin size="large" />
                 </div>
@@ -279,7 +282,8 @@ export default function BacklogPage() {
     }
 
     return (
-        <CMSLayout title="Backlog" subTitle="All tasks across all projects">
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Backlog</AuroraText>}
+            subTitle={<DecryptedText text="All tasks across all projects" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
             {/* ── Stats Row ── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={4}>

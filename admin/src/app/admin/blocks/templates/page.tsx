@@ -2,6 +2,9 @@
 
 import React from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import { Card, Row, Col, Tag, Button, Space, Input, Tabs } from "antd";
 import {
     AppstoreOutlined,
@@ -87,6 +90,7 @@ const BlockGrid = ({ blocks }: { blocks: BlockItem[] }) => (
 );
 
 export default function BlocksTemplatesPage() {
+    const { themeColor } = usePreferencesStore();
     const items = [
         {
             key: "templates",
@@ -111,8 +115,8 @@ export default function BlocksTemplatesPage() {
 
     return (
         <CMSLayout
-            title="Blocks Library"
-            subTitle="Manage reusable page builder blocks"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Blocks Library</AuroraText>}
+            subTitle={<DecryptedText text="Manage reusable page builder blocks" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 <Button key="add" type="primary" icon={<PlusOutlined />}>
                     Create Custom Block

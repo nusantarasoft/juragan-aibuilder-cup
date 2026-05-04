@@ -15,12 +15,15 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import dayjs from "dayjs";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const { TextArea } = Input;
 
 interface Deal {
@@ -125,7 +128,7 @@ export default function DealsPage() {
             {pipelineStages.map(stage => {
                 const stageDeals = deals.filter(d => d.stage === stage.value);
                 const stageTotal = stageDeals.reduce((s, d) => s + (d.amount || 0), 0);
-                return (<div key={stage.value} style={{ minWidth: 260, maxWidth: 280, flex: '0 0 auto', background: '#fafafa', borderRadius: 8, padding: 12, borderTop: `3px solid ${stage.color}` }}>
+                return (<div key={stage.value} style={{ minWidth: 260, maxWidth: 280, flex: '0 0 auto', background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(8px)', borderRadius: 8, padding: 12, borderTop: `3px solid ${stage.color}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}><div><Text strong style={{ fontSize: 13 }}>{stage.label}</Text><br /><Text type="secondary" style={{ fontSize: 11 }}>{stageDeals.length} deals · {formatAmount(stageTotal)}</Text></div></div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {stageDeals.length === 0 && <Text type="secondary" style={{ fontSize: 12, textAlign: 'center', padding: 16 }}>No deals</Text>}
@@ -161,23 +164,24 @@ export default function DealsPage() {
     ];
 
     return (
-        <CMSLayout title="Deals" subTitle="Track your sales pipeline and opportunities" extra={[
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Deals</AuroraText>}
+            subTitle={<DecryptedText text="Track your sales pipeline and opportunities" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[
             <Segmented key="view" options={[{ value: 'board', icon: <AppstoreOutlined /> }, { value: 'list', icon: <UnorderedListOutlined /> }]} value={viewMode} onChange={(v) => setViewMode(v as string)} />,
             <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
             <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>New Deal</Button>,
         ]}>
             <Row gutter={16} style={{ marginBottom: 16 }}>
-                <Col span={6}><Card><Statistic title="Pipeline Value (Open)" value={totalPipeline} prefix={<DollarOutlined />} precision={0} formatter={(v) => formatAmount(Number(v))} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Expected Revenue (Open)" value={weightedPipeline} prefix={<FunnelPlotOutlined />} precision={0} valueStyle={{ color: '#52c41a' }} formatter={(v) => formatAmount(Number(v))} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Won Revenue" value={wonAmount} prefix={<TrophyOutlined />} precision={0} valueStyle={{ color: '#52c41a' }} formatter={(v) => formatAmount(Number(v))} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Open Deals" value={openDeals.length} prefix={<FunnelPlotOutlined />} /></Card></Col>
+                <Col span={6}><Card style={{ ...glass }}><Statistic title="Pipeline Value (Open)" value={totalPipeline} prefix={<DollarOutlined />} precision={0} formatter={(v) => formatAmount(Number(v))} /></Card></Col>
+                <Col span={6}><Card style={{ ...glass }}><Statistic title="Expected Revenue (Open)" value={weightedPipeline} prefix={<FunnelPlotOutlined />} precision={0} valueStyle={{ color: '#52c41a' }} formatter={(v) => formatAmount(Number(v))} /></Card></Col>
+                <Col span={6}><Card style={{ ...glass }}><Statistic title="Won Revenue" value={wonAmount} prefix={<TrophyOutlined />} precision={0} valueStyle={{ color: '#52c41a' }} formatter={(v) => formatAmount(Number(v))} /></Card></Col>
+                <Col span={6}><Card style={{ ...glass }}><Statistic title="Open Deals" value={openDeals.length} prefix={<FunnelPlotOutlined />} /></Card></Col>
             </Row>
-            <Card style={{ marginBottom: 16 }}><Space wrap>
+            <Card style={{ ...glass, marginBottom: 16 }}><Space wrap>
                 <Input prefix={<SearchOutlined />} placeholder="Search deals..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />
                 <Select placeholder="Stage" value={stageFilter} onChange={setStageFilter} allowClear style={{ width: 160 }} options={STAGES.map(s => ({ value: s.value, label: s.label }))} />
             </Space></Card>
 
-            {viewMode === 'board' ? renderBoard() : (<Card><Table columns={columns} dataSource={deals.map(d => ({ ...d, key: d.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>)}
+            {viewMode === 'board' ? renderBoard() : (<Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table columns={columns} dataSource={deals.map(d => ({ ...d, key: d.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>)}
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Deal" : "New Deal"} entityName="deal" steps={formSteps} fields={DEAL_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["#f59e0b", "#ef4444"]} editMode={!!editing} />
 

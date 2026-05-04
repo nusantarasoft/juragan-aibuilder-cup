@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Table,
     Button,
@@ -79,6 +82,7 @@ const samplePages: CMSPage[] = [
 ];
 
 export default function PagesListPage() {
+    const { themeColor } = usePreferencesStore();
     const router = useRouter();
     const [pages, setPages] = useState<CMSPage[]>([]);
     const [loading, setLoading] = useState(true);
@@ -286,8 +290,8 @@ export default function PagesListPage() {
 
     return (
         <CMSLayout
-            title="Pages"
-            subTitle="Manage your website pages"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Pages</AuroraText>}
+            subTitle={<DecryptedText text="Manage your website pages" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 <Button
                     key="create"

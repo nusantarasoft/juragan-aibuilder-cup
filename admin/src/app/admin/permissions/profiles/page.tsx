@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Table, Button, Tag, Space, Modal, Form, Input,
     Card, Checkbox, message, Tooltip, Typography, Spin,
@@ -49,6 +52,7 @@ const PROFILE_FIELDS: FieldDef[] = [
 ];
 
 export default function ProfilesPage() {
+    const { themeColor } = usePreferencesStore();
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -283,8 +287,8 @@ export default function ProfilesPage() {
 
     return (
         <CMSLayout
-            title="Profiles"
-            subTitle="Manage permission profiles — base template for user access"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Profiles</AuroraText>}
+            subTitle={<DecryptedText text="Manage permission profiles — base template for user access" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 <Button key="reload" icon={<ReloadOutlined />} onClick={loadProfiles} />,
                 <Button

@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Table, Button, Space, Modal, Form, Input, Card, Tag,
     message, Typography, Checkbox, Spin,
@@ -48,6 +51,7 @@ const PS_FIELDS: FieldDef[] = [
 ];
 
 export default function PermissionSetsPage() {
+    const { themeColor } = usePreferencesStore();
     const [sets, setSets] = useState<PermissionSet[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -232,8 +236,8 @@ export default function PermissionSetsPage() {
 
     return (
         <CMSLayout
-            title="Permission Sets"
-            subTitle="Additive permissions assigned to individual users"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Permission Sets</AuroraText>}
+            subTitle={<DecryptedText text="Additive permissions assigned to individual users" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 <Button key="reload" icon={<ReloadOutlined />} onClick={loadSets} />,
                 <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setIsModalOpen(true); }}>

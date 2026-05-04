@@ -5,9 +5,13 @@ import { Card, Tag, Spin, Space, message, Tabs, Statistic, Progress, Table } fro
 import { BarChartOutlined, LineChartOutlined, PieChartOutlined, RiseOutlined, FallOutlined, DatabaseOutlined, ShoppingCartOutlined, DollarOutlined, ToolOutlined, AuditOutlined, ScheduleOutlined, SwapOutlined, InboxOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import { inventoryService } from '@/lib/inventoryService';
 
 export default function AnalyticsPage() {
+    const { themeColor } = usePreferencesStore();
     const [loading, setLoading] = useState(false);
     const [invStats, setInvStats] = useState<any>(null);
     const [mfgStats, setMfgStats] = useState<any>(null);
@@ -39,7 +43,7 @@ export default function AnalyticsPage() {
 
     const fmt = (v: number) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 
-    if (loading) return <CMSLayout><div style={{ textAlign: 'center', padding: 100 }}><Spin size="large" /></div></CMSLayout>;
+    if (loading) return <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Analytics & AI</AuroraText>} subTitle={<DecryptedText text="Cross-module analytics, performance metrics, and intelligence hub" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}><div style={{ textAlign: 'center', padding: 100 }}><Spin size="large" /></div></CMSLayout>;
 
     const topCards = [
         { label: 'Total Items', value: invStats?.totalItems || 0, icon: <DatabaseOutlined />, color: 'var(--theme-color, #7c3aed)' },
@@ -111,20 +115,14 @@ export default function AnalyticsPage() {
     const totalFulfillment = fulfillmentBreakdown.reduce((s, f) => s + f.count, 0) || 1;
 
     return (
-        <CMSLayout>
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Analytics & AI</AuroraText>} subTitle={<DecryptedText text="Cross-module analytics, performance metrics, and intelligence hub" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
             <div style={{ padding: '0 4px' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 20 }}>
-                    <h1 style={{ margin: 0, background: 'linear-gradient(135deg, #0891b2, var(--theme-color, #7c3aed))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: 28, fontWeight: 700 }}>
-                        Analytics & AI
-                    </h1>
-                    <span style={{ color: '#888' }}>Cross-module analytics, performance metrics, and intelligence hub</span>
-                </div>
 
                 {/* Overview KPIs */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 14, marginBottom: 24 }}>
                     {topCards.map((k, i) => (
                         <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                            style={{ background: '#fff', borderRadius: 10, padding: '16px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
+                            style={{ background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', borderRadius: 14, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.45)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                                 <span style={{ color: k.color, fontSize: 16 }}>{k.icon}</span>
                                 <span style={{ color: '#999', fontSize: 12 }}>{k.label}</span>

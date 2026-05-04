@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Typography, Space, Spin, Tag, Card, Row, Col, Statistic, Input,
     Table, Empty, Select, Drawer, Descriptions, Button, Tooltip
@@ -222,7 +224,8 @@ export default function KnowledgeBasePage() {
 
     if (loading) {
         return (
-            <CMSLayout title="Knowledge Base" subTitle="Cross-project lessons learned repository">
+            <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Knowledge Base</AuroraText>}
+            subTitle={<DecryptedText text="Cross-project lessons learned repository" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
                 <div style={{ textAlign: 'center', padding: 120 }}>
                     <Spin size="large" />
                 </div>
@@ -231,7 +234,8 @@ export default function KnowledgeBasePage() {
     }
 
     return (
-        <CMSLayout title="Knowledge Base" subTitle="Cross-project lessons learned repository">
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Knowledge Base</AuroraText>}
+            subTitle={<DecryptedText text="Cross-project lessons learned repository" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
             {/* ── Stats Row ── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={8} lg={6}>

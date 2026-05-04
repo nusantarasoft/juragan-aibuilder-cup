@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Layout,
     Button,
@@ -61,18 +63,9 @@ export default function SQLRunnerPage() {
     return (
         <CMSLayout
             title={
-                <div className="flex items-center gap-3">
-                    <span style={{
-                        background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        fontWeight: 700
-                    }}>
-                        SQL Runner
-                    </span>
-                </div>
+                <AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>SQL Runner</AuroraText>
             }
-            subTitle="Execute queries and analyze data"
+            subTitle={<DecryptedText text="Execute queries and analyze data" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 <Space key="actions" size={16}>
                     <Select

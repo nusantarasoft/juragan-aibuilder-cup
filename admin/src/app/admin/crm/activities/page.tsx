@@ -15,6 +15,9 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import dayjs from "dayjs";
@@ -22,6 +25,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 dayjs.extend(relativeTime);
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const { TextArea } = Input;
 
 interface Activity {
@@ -51,6 +55,7 @@ const ACTIVITY_FIELDS: FieldDef[] = [
 
 export default function ActivitiesPage() {
     const [activities, setActivities] = useState<Activity[]>([]);
+    const { themeColor } = usePreferencesStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Activity | null>(null);
@@ -122,22 +127,23 @@ export default function ActivitiesPage() {
     ];
 
     return (
-        <CMSLayout title="Activities" subTitle="Track calls, emails, meetings, and tasks across your CRM" extra={[
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Activities</AuroraText>}
+            subTitle={<DecryptedText text="Track calls, emails, meetings, and tasks across your CRM" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[
             <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
             <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>Log Activity</Button>,
         ]}>
             <Row gutter={16} style={{ marginBottom: 16 }}>
-                <Col span={6}><Card><Statistic title="Open" value={openCount} prefix={<ClockCircleOutlined />} valueStyle={{ color: '#1677ff' }} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Completed" value={completedCount} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#52c41a' }} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Overdue" value={overdueCount} prefix={<FireOutlined />} valueStyle={{ color: overdueCount > 0 ? '#ff4d4f' : undefined }} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Total" value={activities.length} prefix={<ThunderboltOutlined />} /></Card></Col>
+                <Col span={6}><Card style={{ ...glass }}><Statistic title="Open" value={openCount} prefix={<ClockCircleOutlined />} valueStyle={{ color: '#1677ff' }} /></Card></Col>
+                <Col span={6}><Card style={{ ...glass }}><Statistic title="Completed" value={completedCount} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#52c41a' }} /></Card></Col>
+                <Col span={6}><Card style={{ ...glass }}><Statistic title="Overdue" value={overdueCount} prefix={<FireOutlined />} valueStyle={{ color: overdueCount > 0 ? '#ff4d4f' : undefined }} /></Card></Col>
+                <Col span={6}><Card style={{ ...glass }}><Statistic title="Total" value={activities.length} prefix={<ThunderboltOutlined />} /></Card></Col>
             </Row>
-            <Card style={{ marginBottom: 16 }}><Space wrap>
+            <Card style={{ ...glass, marginBottom: 16 }}><Space wrap>
                 <Input prefix={<SearchOutlined />} placeholder="Search by subject..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />
                 <Select placeholder="Type" value={typeFilter} onChange={setTypeFilter} allowClear style={{ width: 130 }} options={ACTIVITY_TYPES.map(t => ({ value: t.value, label: t.label }))} />
                 <Select placeholder="Status" value={statusFilter} onChange={setStatusFilter} allowClear style={{ width: 150 }} options={STATUSES} />
             </Space></Card>
-            <Card><Table columns={columns} dataSource={activities.map(a => ({ ...a, key: a.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>
+            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table columns={columns} dataSource={activities.map(a => ({ ...a, key: a.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Activity" : "Log Activity"} entityName="activity" steps={formSteps} fields={ACTIVITY_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["#10b981", "#059669"]} editMode={!!editing} />
 

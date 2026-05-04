@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Card, Button, Space, Modal, Form, Input, Select, Tree, Tag,
     message, Typography, Empty, Descriptions,
@@ -33,6 +36,7 @@ const ROLE_FIELDS: FieldDef[] = [
 ];
 
 export default function RolesPage() {
+    const { themeColor } = usePreferencesStore();
     const [roles, setRoles] = useState<Role[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -178,8 +182,8 @@ export default function RolesPage() {
 
     return (
         <CMSLayout
-            title="Roles & Hierarchy"
-            subTitle="Define organizational hierarchy for vertical data access"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Roles & Hierarchy</AuroraText>}
+            subTitle={<DecryptedText text="Define organizational hierarchy for vertical data access" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 <Button key="reload" icon={<ReloadOutlined />} onClick={loadRoles} />,
                 <Button

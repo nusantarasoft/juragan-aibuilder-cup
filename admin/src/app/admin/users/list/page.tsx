@@ -2,6 +2,9 @@
 
 import React, { useState } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Table,
     Button,
@@ -77,6 +80,7 @@ const roleColors: Record<string, string> = {
 };
 
 export default function UsersListPage() {
+    const { themeColor } = usePreferencesStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [form] = Form.useForm();
 
@@ -160,8 +164,8 @@ export default function UsersListPage() {
 
     return (
         <CMSLayout
-            title="User Management"
-            subTitle="Manage users and their access"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>User Management</AuroraText>}
+            subTitle={<DecryptedText text="Manage users and their access" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 <Button
                     key="add"

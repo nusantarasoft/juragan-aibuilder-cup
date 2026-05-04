@@ -13,8 +13,12 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 
 const { Text, Title } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface LeadScore {
     individualId: string; firstName: string; lastName: string;
@@ -35,6 +39,7 @@ const riskColors: Record<string, string> = { low: 'green', medium: 'orange', hig
 export default function AIIntelligencePage() {
     const [leads, setLeads] = useState<LeadScore[]>([]);
     const [deals, setDeals] = useState<DealInsight[]>([]);
+    const { themeColor } = usePreferencesStore();
     const [loading, setLoading] = useState(true);
 
     const loadData = useCallback(async () => {
@@ -131,37 +136,38 @@ export default function AIIntelligencePage() {
     ];
 
     if (loading) return (
-        <CMSLayout title="AI Intelligence" subTitle="Loading...">
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>AI Intelligence</AuroraText>} subTitle="Loading...">
             <div style={{ textAlign: 'center', padding: 100 }}><Spin size="large" /></div>
         </CMSLayout>
     );
 
     return (
-        <CMSLayout title="AI Intelligence" subTitle="AI-powered lead scoring and deal insights"
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>AI Intelligence</AuroraText>}
+            subTitle={<DecryptedText text="AI-powered lead scoring and deal insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[<Button key="reload" icon={<ReloadOutlined />} onClick={loadData}>Refresh Analysis</Button>]}>
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={6}>
-                    <Card><Statistic title="Avg Lead Score" value={avgScore} suffix="/ 100"
+                    <Card style={{ ...glass }}><Statistic title="Avg Lead Score" value={avgScore} suffix="/ 100"
                         prefix={<ThunderboltOutlined />} valueStyle={{ color: avgScore >= 50 ? '#52c41a' : '#faad14' }} /></Card>
                 </Col>
                 <Col xs={24} sm={6}>
-                    <Card><Statistic title="Hot Leads (A/B)" value={hotLeads}
+                    <Card style={{ ...glass }}><Statistic title="Hot Leads (A/B)" value={hotLeads}
                         prefix={<TrophyOutlined />} valueStyle={{ color: '#52c41a' }}
                         suffix={`/ ${leads.length}`} /></Card>
                 </Col>
                 <Col xs={24} sm={6}>
-                    <Card><Statistic title="At-Risk Deals" value={atRisk}
+                    <Card style={{ ...glass }}><Statistic title="At-Risk Deals" value={atRisk}
                         prefix={<WarningOutlined />} valueStyle={{ color: atRisk > 0 ? '#ff4d4f' : '#52c41a' }}
                         suffix={`/ ${deals.length}`} /></Card>
                 </Col>
                 <Col xs={24} sm={6}>
-                    <Card><Statistic title="Pipeline at Risk" value={deals.filter(d => d.riskLevel === 'high').reduce((s, d) => s + (d.amount || 0), 0)}
+                    <Card style={{ ...glass }}><Statistic title="Pipeline at Risk" value={deals.filter(d => d.riskLevel === 'high').reduce((s, d) => s + (d.amount || 0), 0)}
                         prefix={<DollarOutlined />} formatter={v => fmt(Number(v))}
                         valueStyle={{ color: '#ff4d4f' }} /></Card>
                 </Col>
             </Row>
 
-            <Card>
+            <Card style={{ ...glass }}>
                 <Tabs defaultActiveKey="leads" items={[
                     {
                         key: 'leads', label: <span><UserOutlined /> Lead Scoring ({leads.length})</span>,

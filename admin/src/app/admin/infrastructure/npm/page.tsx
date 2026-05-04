@@ -4,12 +4,17 @@ import React from 'react';
 import { Card, Button, Typography, Alert } from 'antd';
 import { SafetyCertificateOutlined, ExportOutlined } from '@ant-design/icons';
 import CMSLayout from '@/components/layout/CMSLayout';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 
 export default function NPMPage() {
+    const { themeColor } = usePreferencesStore();
     const dashboardUrl = "http://127.0.0.1:8081";
 
     return (
-        <CMSLayout title="Nginx Proxy Manager" subTitle="Infrastructure > NPM">
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Nginx Proxy Manager</AuroraText>}
+            subTitle={<DecryptedText text="Infrastructure > NPM" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
             <div className="flex flex-col gap-6">
                 <Alert
                     message="Credentials"

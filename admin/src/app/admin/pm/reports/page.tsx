@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Typography, Space, Spin, Tag, Card, Row, Col, Statistic, Table,
     Empty, Select, Tooltip, Progress, Divider, Button, message
@@ -328,7 +330,8 @@ export default function ReportsPage() {
 
     if (loading) {
         return (
-            <CMSLayout title="Reports" subTitle="Portfolio analytics & insights">
+            <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Reports</AuroraText>}
+            subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
                 <div style={{ textAlign: 'center', padding: 120 }}>
                     <Spin size="large" />
                 </div>
@@ -337,7 +340,8 @@ export default function ReportsPage() {
     }
 
     return (
-        <CMSLayout title="Reports" subTitle="Portfolio analytics & insights">
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Reports</AuroraText>}
+            subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
             {contextHolder}
 
             {/* ── Executive Summary ── */}

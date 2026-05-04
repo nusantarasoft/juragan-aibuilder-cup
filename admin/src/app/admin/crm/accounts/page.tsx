@@ -13,10 +13,14 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface Account {
     id: string;
@@ -75,6 +79,7 @@ const ACCOUNT_FIELDS: FieldDef[] = [
 
 export default function AccountsPage() {
     const [accounts, setAccounts] = useState<Account[]>([]);
+    const { themeColor } = usePreferencesStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Account | null>(null);
@@ -233,8 +238,8 @@ export default function AccountsPage() {
 
     return (
         <CMSLayout
-            title="Accounts"
-            subTitle="Companies, organizations, and business entities"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Accounts</AuroraText>}
+            subTitle={<DecryptedText text="Companies, organizations, and business entities" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
                 <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>
@@ -242,7 +247,7 @@ export default function AccountsPage() {
                 </Button>,
             ]}
         >
-            <Card style={{ marginBottom: 16 }}>
+            <Card style={{ ...glass, marginBottom: 16 }}>
                 <Space wrap>
                     <Input prefix={<SearchOutlined />} placeholder="Search by name..." value={search}
                         onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />

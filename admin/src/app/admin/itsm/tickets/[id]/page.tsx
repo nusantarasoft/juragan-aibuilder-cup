@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import { ProCard } from "@ant-design/pro-components";
 import { Button, message, Tag, Space, Typography, Descriptions, Timeline, Input, Switch, Divider, Row, Col, Tooltip, Badge } from "antd";
 import {
