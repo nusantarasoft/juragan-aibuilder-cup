@@ -3,22 +3,21 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import {
-    Button, message, Tag, Popconfirm, Space, Select, Typography, Tooltip, Badge,
-    Form, Input, Row, Col, Switch,
-} from "antd";
+import { Badge, Button, Col, Form, Input, message, Popconfirm, Row, Select, Space, Switch, Tag, Tooltip, Typography } from "antd";
 import {
     PlusOutlined, DeleteOutlined, EditOutlined, EyeOutlined, SearchOutlined,
     CustomerServiceOutlined, RobotOutlined, AlertOutlined, UserOutlined,
-    TeamOutlined, PhoneOutlined, SettingOutlined,
+    TeamOutlined, PhoneOutlined, SettingOutlined, FileExcelOutlined, FilePdfOutlined
 } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { useRouter } from "next/navigation";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 
 const { Text } = Typography;
 
@@ -31,8 +30,8 @@ const DELETE_TICKET = `mutation($id: ID!) { deleteItsmTicket(id: $id) }`;
 
 const priorityColors: Record<string, string> = { critical: '#f5222d', high: '#fa8c16', medium: '#1890ff', low: '#52c41a' };
 const statusColors: Record<string, string> = { new: 'blue', open: 'cyan', in_progress: 'geekblue', pending: 'orange', resolved: 'green', closed: 'default' };
-const channelLabels: Record<string, string> = { portal: '🌐 Portal', email: '📧 Email', phone: '📞 Phone', chat: '💬 Chat' };
-const typeLabels: Record<string, string> = { contact: '📇 Contact', individual: '👤 Individual', account: '🏢 Account', pm_stakeholder: '📋 PM Stakeholder' };
+const channelLabels: Record<string, string> = { portal: 'ðŸŒ Portal', email: 'ðŸ“§ Email', phone: 'ðŸ“ž Phone', chat: 'ðŸ’¬ Chat' };
+const typeLabels: Record<string, string> = { contact: 'ðŸ“‡ Contact', individual: 'ðŸ‘¤ Individual', account: 'ðŸ¢ Account', pm_stakeholder: 'ðŸ“‹ PM Stakeholder' };
 
 const TICKET_FIELDS: FieldDef[] = [
     { name: "title", label: "Title", required: true },
@@ -53,6 +52,7 @@ export default function ItsmTicketsPage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [tickets, setTickets] = useState<any[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
@@ -98,7 +98,7 @@ export default function ItsmTicketsPage() {
             const raw = await gql(`query($title: String!, $description: String) { itsmAiCategorize(title: $title, description: $description) }`, { title, description: desc });
             const result = JSON.parse(raw.itsmAiCategorize);
             setAiSuggestion(result);
-            messageApi.success('AI suggestion ready — review below');
+            messageApi.success('AI suggestion ready â€” review below');
         } catch (err: any) { messageApi.error('AI failed: ' + err.message); }
         finally { setAiSuggesting(false); }
     };
@@ -222,6 +222,8 @@ export default function ItsmTicketsPage() {
                     search: { placeholder: 'Search tickets...', onSearch: (v) => setSearchText(v), allowClear: true, style: { width: 250 } },
                 }}
                 toolBarRender={() => [
+                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_tickets', title: 'ITSM Tickets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'ticketNumber' }, { header: 'Subject', key: 'subject' }, { header: 'Priority', key: 'priority' }, { header: 'Status', key: 'status' }], data: tickets })} /></Tooltip>,
+                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_tickets', title: 'ITSM Tickets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'ticketNumber' }, { header: 'Subject', key: 'subject' }, { header: 'Priority', key: 'priority' }, { header: 'Status', key: 'status' }], data: tickets })} /></Tooltip>,
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 130 }} value={filterStatus} onChange={setFilterStatus}
                         options={[
                             { value: 'new', label: 'New' }, { value: 'open', label: 'Open' },
@@ -241,7 +243,7 @@ export default function ItsmTicketsPage() {
                 ]}
             />
 
-            {/* ─── Ticket SteppedFormModal ─────────────── */}
+            {/* â”€â”€â”€ Ticket SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <SteppedFormModal
                 open={modalOpen}
                 onCancel={() => { setModalOpen(false); setEditing(null); form.resetFields(); setAiSuggestion(null); }}
@@ -269,7 +271,7 @@ export default function ItsmTicketsPage() {
                                         <Space>
                                             <Button icon={<RobotOutlined />} loading={aiSuggesting} onClick={handleAiCategorize}
                                                 style={{ background: themeColor, color: '#fff', border: 'none' }}>
-                                                🤖 AI Auto-Categorize
+                                                ðŸ¤– AI Auto-Categorize
                                             </Button>
                                             {aiSuggestion && (
                                                 <Space size={4}>
@@ -301,8 +303,8 @@ export default function ItsmTicketsPage() {
                                     <Col span={12}>
                                         <Form.Item name="channel" label="Channel">
                                             <Select options={[
-                                                { value: 'portal', label: '🌐 Portal' }, { value: 'email', label: '📧 Email' },
-                                                { value: 'phone', label: '📞 Phone' }, { value: 'chat', label: '💬 Chat' },
+                                                { value: 'portal', label: 'ðŸŒ Portal' }, { value: 'email', label: 'ðŸ“§ Email' },
+                                                { value: 'phone', label: 'ðŸ“ž Phone' }, { value: 'chat', label: 'ðŸ’¬ Chat' },
                                             ]} />
                                         </Form.Item>
                                     </Col>
@@ -311,8 +313,8 @@ export default function ItsmTicketsPage() {
                                     <Col span={8}>
                                         <Form.Item name="priority" label="Priority">
                                             <Select options={[
-                                                { value: 'critical', label: '🔴 Critical' }, { value: 'high', label: '🟠 High' },
-                                                { value: 'medium', label: '🔵 Medium' }, { value: 'low', label: '🟢 Low' },
+                                                { value: 'critical', label: 'ðŸ”´ Critical' }, { value: 'high', label: 'ðŸŸ  High' },
+                                                { value: 'medium', label: 'ðŸ”µ Medium' }, { value: 'low', label: 'ðŸŸ¢ Low' },
                                             ]} />
                                         </Form.Item>
                                     </Col>
@@ -377,7 +379,7 @@ export default function ItsmTicketsPage() {
                                                     <Tag color={r.type === 'contact' ? 'blue' : r.type === 'individual' ? 'green' : r.type === 'account' ? 'gold' : 'purple'}>
                                                         {typeLabels[r.type] || r.type}
                                                     </Tag>
-                                                    <span><strong>{r.name}</strong>{r.email ? ` — ${r.email}` : ''}{r.extra ? ` (${r.extra})` : ''}</span>
+                                                    <span><strong>{r.name}</strong>{r.email ? ` â€” ${r.email}` : ''}{r.extra ? ` (${r.extra})` : ''}</span>
                                                 </Space>
                                             </Select.Option>
                                         ))}
@@ -435,3 +437,5 @@ export default function ItsmTicketsPage() {
         </CMSLayout>
     );
 }
+
+

@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Progress, InputNumber, Avatar, Typography, Card, Statistic, Badge } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, TeamOutlined, UserOutlined, TrophyOutlined, ClockCircleOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Progress, InputNumber, Avatar, Typography, Card, Statistic, Badge, Tooltip } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, TeamOutlined, UserOutlined, TrophyOutlined, ClockCircleOutlined, CheckCircleOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { supaRest, supaInsert, supaUpdate, supaDelete } from "@/lib/supaRest";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
@@ -12,6 +12,8 @@ import type { FieldDef } from "@/components/common/DataImportExport";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -30,6 +32,7 @@ export default function AgentsPage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [data, setData] = useState<any[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<any>(null);
@@ -78,14 +81,14 @@ export default function AgentsPage() {
     const avgUtil = totalActive > 0 ? Math.round(data.filter(a => a.status === 'active').reduce((sum, a) => sum + ((a.current_ticket_count || 0) / (a.max_tickets || 10) * 100), 0) / totalActive) : 0;
 
     const columns: ProColumns<any>[] = [
-        { title: 'Agent', dataIndex: 'name', width: 200, render: (_, r) => <Space><Avatar style={{ backgroundColor: '#1890ff' }} icon={<UserOutlined />} size="small" /><div><Text strong>{r.name}</Text><br/><Text type="secondary" style={{ fontSize: 12 }}>{r.agent_code} · {r.title || r.role}</Text></div></Space> },
+        { title: 'Agent', dataIndex: 'name', width: 200, render: (_, r) => <Space><Avatar style={{ backgroundColor: '#1890ff' }} icon={<UserOutlined />} size="small" /><div><Text strong>{r.name}</Text><br/><Text type="secondary" style={{ fontSize: 12 }}>{r.agent_code} Â· {r.title || r.role}</Text></div></Space> },
         { title: 'Team', dataIndex: 'team', width: 130, render: (_, r) => <Tag>{r.team}</Tag> },
         { title: 'Role', dataIndex: 'role', width: 120, render: (_, r) => <Tag color={roleColors[r.role]}>{(r.role || '').replace(/_/g, ' ').toUpperCase()}</Tag> },
         { title: 'Shift', dataIndex: 'shift', width: 90, render: (_, r) => <Tag color={shiftColors[r.shift]}>{(r.shift || '').toUpperCase()}</Tag> },
         { title: 'Status', dataIndex: 'status', width: 110, render: (_, r) => <Tag color={statusColors[r.status]}>{(r.status || '').replace(/_/g, ' ').toUpperCase()}</Tag> },
         { title: 'Workload', width: 150, render: (_, r) => { const pct = r.max_tickets > 0 ? Math.round((r.current_ticket_count / r.max_tickets) * 100) : 0; return <Progress percent={pct} size="small" status={pct > 80 ? 'exception' : pct > 60 ? 'active' : 'success'} format={() => `${r.current_ticket_count || 0}/${r.max_tickets || 10}`} />; } },
         { title: 'Resolution', dataIndex: 'avg_resolution_hours', width: 100, render: (_, r) => r.avg_resolution_hours ? <Text><ClockCircleOutlined /> {r.avg_resolution_hours}h</Text> : '-' },
-        { title: 'CSAT', dataIndex: 'customer_satisfaction_score', width: 80, render: (_, r) => r.customer_satisfaction_score ? <Tag color={r.customer_satisfaction_score >= 4.5 ? 'green' : r.customer_satisfaction_score >= 4 ? 'blue' : 'orange'}>⭐ {r.customer_satisfaction_score}</Tag> : '-' },
+        { title: 'CSAT', dataIndex: 'customer_satisfaction_score', width: 80, render: (_, r) => r.customer_satisfaction_score ? <Tag color={r.customer_satisfaction_score >= 4.5 ? 'green' : r.customer_satisfaction_score >= 4 ? 'blue' : 'orange'}>â­ {r.customer_satisfaction_score}</Tag> : '-' },
         { title: 'SLA %', dataIndex: 'sla_compliance_pct', width: 80, render: (_, r) => r.sla_compliance_pct ? <Tag color={r.sla_compliance_pct >= 95 ? 'green' : r.sla_compliance_pct >= 90 ? 'orange' : 'red'}>{r.sla_compliance_pct}%</Tag> : '-' },
         {
             title: 'Actions', valueType: 'option', width: 100,
@@ -107,7 +110,7 @@ export default function AgentsPage() {
                     { title: 'Avg Utilization', value: `${avgUtil}%`, icon: <ClockCircleOutlined />, color: avgUtil > 80 ? '#ef4444' : '#10b981' },
                     { title: 'Total Resolved', value: data.reduce((s: number, a: any) => s + (a.total_tickets_resolved || 0), 0), icon: <CheckCircleOutlined />, color: '#8b5cf6' },
                     { title: 'Teams', value: teams.length, icon: <TeamOutlined />, color: '#06b6d4' },
-                    { title: 'Avg CSAT', value: data.length > 0 ? (data.reduce((s: number, a: any) => s + (a.customer_satisfaction_score || 0), 0) / data.filter((a: any) => a.customer_satisfaction_score).length || 0).toFixed(1) : '—', icon: <TrophyOutlined />, color: '#f59e0b' },
+                    { title: 'Avg CSAT', value: data.length > 0 ? (data.reduce((s: number, a: any) => s + (a.customer_satisfaction_score || 0), 0) / data.filter((a: any) => a.customer_satisfaction_score).length || 0).toFixed(1) : 'â€”', icon: <TrophyOutlined />, color: '#f59e0b' },
                 ].map((s, i) => (
                     <Col key={i} xs={12} md={Math.floor(24 / 5)}>
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
@@ -123,6 +126,8 @@ export default function AgentsPage() {
                 headerTitle={<Space><TeamOutlined /> Service Desk Agents <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
+                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_agents', title: 'ITSM Agents', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Email', key: 'email' }, { header: 'Team', key: 'team' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
+                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_agents', title: 'ITSM Agents', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Email', key: 'email' }, { header: 'Team', key: 'team' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 130 }} value={filterStatus} onChange={setFilterStatus}
                         options={[{ value: 'active', label: 'Active' }, { value: 'on_leave', label: 'On Leave' }, { value: 'training', label: 'Training' }, { value: 'unavailable', label: 'Unavailable' }]} />,
                     <Select key="ft" placeholder="Team" allowClear style={{ width: 160 }} value={filterTeam} onChange={setFilterTeam}
@@ -150,7 +155,7 @@ export default function AgentsPage() {
                         </Row>
                         <Row gutter={16}>
                             <Col span={8}><Form.Item name="role" label="Role"><Select options={[{ value: 'agent', label: 'Agent' }, { value: 'senior_agent', label: 'Senior Agent' }, { value: 'specialist', label: 'Specialist' }, { value: 'team_lead', label: 'Team Lead' }, { value: 'manager', label: 'Manager' }]} /></Form.Item></Col>
-                            <Col span={8}><Form.Item name="shift" label="Shift"><Select options={[{ value: 'day', label: '☀️ Day' }, { value: 'night', label: '🌙 Night' }, { value: 'swing', label: '🔄 Swing' }, { value: 'flexible', label: '📐 Flexible' }]} /></Form.Item></Col>
+                            <Col span={8}><Form.Item name="shift" label="Shift"><Select options={[{ value: 'day', label: 'â˜€ï¸ Day' }, { value: 'night', label: 'ðŸŒ™ Night' }, { value: 'swing', label: 'ðŸ”„ Swing' }, { value: 'flexible', label: 'ðŸ“ Flexible' }]} /></Form.Item></Col>
                             <Col span={8}><Form.Item name="max_tickets" label="Max Tickets"><InputNumber style={{ width: '100%' }} min={1} max={50} /></Form.Item></Col>
                         </Row>
                         <Row gutter={16}>
@@ -165,3 +170,4 @@ export default function AgentsPage() {
         </CMSLayout>
     );
 }
+

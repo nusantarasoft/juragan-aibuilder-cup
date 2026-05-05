@@ -1,17 +1,19 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, InputNumber, Typography, Card, Statistic, Badge } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, ProjectOutlined, RocketOutlined, SendOutlined, CheckCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, InputNumber, Typography, Card, Statistic, Badge, Tooltip } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, ProjectOutlined, RocketOutlined, SendOutlined, CheckCircleOutlined, ClockCircleOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -24,7 +26,7 @@ const PUBLISH_TO_CATALOG = `mutation($portfolioId: String!, $input: PublishToCat
 
 const lifecycleColors: Record<string, string> = { pipeline: 'default', design: 'blue', transition: 'geekblue', operation: 'green', retired: 'red' };
 const criticalityColors: Record<string, string> = { low: 'green', medium: 'blue', high: 'orange', critical: 'red' };
-const typeLabels: Record<string, string> = { business: '🏢 Business', technical: '🔧 Technical', supporting: '🔗 Supporting' };
+const typeLabels: Record<string, string> = { business: 'ðŸ¢ Business', technical: 'ðŸ”§ Technical', supporting: 'ðŸ”— Supporting' };
 
 const FIELDS: FieldDef[] = [
     { name: "name", label: "Service Name", required: true },
@@ -40,6 +42,7 @@ export default function ItsmPortfolioPage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [data, setData] = useState<any[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [publishModalOpen, setPublishModalOpen] = useState(false);
@@ -115,7 +118,7 @@ export default function ItsmPortfolioPage() {
         { title: 'Lifecycle', dataIndex: 'lifecycleStatus', width: 120, render: (_, r) => <Tag color={lifecycleColors[r.lifecycleStatus]}>{(r.lifecycleStatus || '').toUpperCase()}</Tag> },
         { title: 'Criticality', dataIndex: 'criticality', width: 100, render: (_, r) => <Tag color={criticalityColors[r.criticality]}>{(r.criticality || '').toUpperCase()}</Tag> },
         { title: 'Business Owner', dataIndex: 'businessOwner', width: 140, ellipsis: true },
-        { title: 'Catalog', dataIndex: 'publishedToCatalog', width: 80, render: (_, r) => r.publishedToCatalog ? <Tag color="green">✓</Tag> : <Tag>—</Tag> },
+        { title: 'Catalog', dataIndex: 'publishedToCatalog', width: 80, render: (_, r) => r.publishedToCatalog ? <Tag color="green">âœ“</Tag> : <Tag>â€”</Tag> },
         {
             title: 'Actions', valueType: 'option', width: 150,
             render: (_, record) => [
@@ -159,6 +162,8 @@ export default function ItsmPortfolioPage() {
                 headerTitle={<Space><ProjectOutlined /> Service Portfolio <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
+                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_portfolio', title: 'Service Portfolio', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'service_type' }, { header: 'Lifecycle', key: 'lifecycle_stage' }], data: data })} /></Tooltip>,
+                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_portfolio', title: 'Service Portfolio', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'service_type' }, { header: 'Lifecycle', key: 'lifecycle_stage' }], data: data })} /></Tooltip>,
                     <Select key="fl" placeholder="Lifecycle" allowClear style={{ width: 140 }} value={filterLifecycle} onChange={setFilterLifecycle}
                         options={[{ value: 'pipeline', label: 'Pipeline' }, { value: 'design', label: 'Design' }, { value: 'transition', label: 'Transition' }, { value: 'operation', label: 'Operation' }, { value: 'retired', label: 'Retired' }]} />,
                     <Select key="ft" placeholder="Type" allowClear style={{ width: 130 }} value={filterType} onChange={setFilterType}
@@ -186,12 +191,12 @@ export default function ItsmPortfolioPage() {
                                 <Row gutter={16}>
                                     <Col span={12}>
                                         <Form.Item name="serviceType" label="Service Type">
-                                            <Select options={[{ value: 'business', label: '🏢 Business' }, { value: 'technical', label: '🔧 Technical' }, { value: 'supporting', label: '🔗 Supporting' }]} />
+                                            <Select options={[{ value: 'business', label: 'ðŸ¢ Business' }, { value: 'technical', label: 'ðŸ”§ Technical' }, { value: 'supporting', label: 'ðŸ”— Supporting' }]} />
                                         </Form.Item>
                                     </Col>
                                     <Col span={12}>
                                         <Form.Item name="criticality" label="Criticality">
-                                            <Select options={[{ value: 'low', label: '🟢 Low' }, { value: 'medium', label: '🔵 Medium' }, { value: 'high', label: '🟠 High' }, { value: 'critical', label: '🔴 Critical' }]} />
+                                            <Select options={[{ value: 'low', label: 'ðŸŸ¢ Low' }, { value: 'medium', label: 'ðŸ”µ Medium' }, { value: 'high', label: 'ðŸŸ  High' }, { value: 'critical', label: 'ðŸ”´ Critical' }]} />
                                         </Form.Item>
                                     </Col>
                                 </Row>
@@ -222,7 +227,7 @@ export default function ItsmPortfolioPage() {
                         content: (
                             <>
                                 <Form.Item name="lifecycleStatus" label="Lifecycle Status">
-                                    <Select options={[{ value: 'pipeline', label: '📋 Pipeline' }, { value: 'design', label: '📐 Design' }, { value: 'transition', label: '🔄 Transition' }, { value: 'operation', label: '✅ Operation' }, { value: 'retired', label: '🗄️ Retired' }]} />
+                                    <Select options={[{ value: 'pipeline', label: 'ðŸ“‹ Pipeline' }, { value: 'design', label: 'ðŸ“ Design' }, { value: 'transition', label: 'ðŸ”„ Transition' }, { value: 'operation', label: 'âœ… Operation' }, { value: 'retired', label: 'ðŸ—„ï¸ Retired' }]} />
                                 </Form.Item>
                                 <Form.Item name="slaTarget" label="SLA Target"><Input placeholder="e.g., 99.9% uptime" /></Form.Item>
                                 <Form.Item name="dependencies" label="Dependencies"><Input.TextArea rows={2} placeholder="Other services this depends on" /></Form.Item>
@@ -296,3 +301,4 @@ export default function ItsmPortfolioPage() {
         </CMSLayout>
     );
 }
+

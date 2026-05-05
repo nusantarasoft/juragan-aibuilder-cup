@@ -4,10 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
-import {
-    Typography, Space, Spin, Tag, Card, Row, Col, Statistic, Input,
-    Table, Empty, Select, Drawer, Descriptions, Button, Tooltip
-} from "antd";
+import { Button, Card, Col, Descriptions, Drawer, Empty, Input, Row, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography } from "antd";
 import {
     BookOutlined, BulbOutlined, SearchOutlined, FilterOutlined,
     FolderOpenOutlined, TagOutlined, CalendarOutlined,
@@ -227,7 +224,7 @@ export default function KnowledgeBasePage() {
     if (loading) {
         return (
             <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Knowledge Base</AuroraText>}
-            subTitle={<DecryptedText text="Cross-project lessons learned repository" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
+            subTitle={<DecryptedText text="Cross-project lessons learned repository" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_knowledge_base', title: 'Lessons Learned', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Project', key: 'projectName' }, { header: 'Category', key: 'category' }, { header: 'Impact', key: 'impact' }], data: lessons })} /></Tooltip>, <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_knowledge_base', title: 'Lessons Learned', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Project', key: 'projectName' }, { header: 'Category', key: 'category' }, { header: 'Impact', key: 'impact' }], data: lessons })} /></Tooltip>]}>
                 <div style={{ textAlign: 'center', padding: 120 }}>
                     <Spin size="large" />
                 </div>
@@ -237,7 +234,7 @@ export default function KnowledgeBasePage() {
 
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Knowledge Base</AuroraText>}
-            subTitle={<DecryptedText text="Cross-project lessons learned repository" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
+            subTitle={<DecryptedText text="Cross-project lessons learned repository" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_knowledge_base', title: 'Lessons Learned', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Project', key: 'projectName' }, { header: 'Category', key: 'category' }, { header: 'Impact', key: 'impact' }], data: lessons })} /></Tooltip>, <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_knowledge_base', title: 'Lessons Learned', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Project', key: 'projectName' }, { header: 'Category', key: 'category' }, { header: 'Impact', key: 'impact' }], data: lessons })} /></Tooltip>]}>
             {/* â”€â”€ Stats Row â”€â”€ */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={8} lg={6}>
@@ -499,5 +496,8 @@ export default function KnowledgeBasePage() {
         </CMSLayout>
     );
 }
+
+
+
 
 

@@ -304,6 +304,8 @@ export default function ReturnsPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
+                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_returns', title: 'eCommerce Returns', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Return #', key: 'returnNumber' }, { header: 'Order #', key: 'orderNumber' }, { header: 'Reason', key: 'reason' }, { header: 'Status', key: 'status' }], data: returns })} /></Tooltip>
+                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_returns', title: 'eCommerce Returns', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Return #', key: 'returnNumber' }, { header: 'Order #', key: 'orderNumber' }, { header: 'Reason', key: 'reason' }, { header: 'Status', key: 'status' }], data: returns })} /></Tooltip>
                             <Button type="primary" icon={<PlusOutlined />} onClick={openNewReturn}
                                 style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)', border: 'none', borderRadius: 8 }}>
                                 New Return

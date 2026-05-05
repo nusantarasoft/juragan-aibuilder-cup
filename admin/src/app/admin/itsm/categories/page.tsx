@@ -1,17 +1,19 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Typography, Form, Input, Select, Row, Col, Card, Statistic, Badge } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, AppstoreOutlined, InfoCircleOutlined, SettingOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Typography, Form, Input, Select, Row, Col, Card, Statistic, Badge, Tooltip } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, AppstoreOutlined, InfoCircleOutlined, SettingOutlined, CheckCircleOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -22,16 +24,16 @@ const UPDATE_CATEGORY = `mutation($id: ID!, $input: UpdateItsmCategoryInput!) { 
 const DELETE_CATEGORY = `mutation($id: ID!) { deleteItsmCategory(id: $id) }`;
 
 const iconOptions = [
-    { value: 'DesktopOutlined', label: '🖥️ Hardware' },
-    { value: 'CodeOutlined', label: '💻 Software' },
-    { value: 'WifiOutlined', label: '📶 Network' },
-    { value: 'SafetyOutlined', label: '🔐 Security' },
-    { value: 'MailOutlined', label: '📧 Email' },
-    { value: 'DatabaseOutlined', label: '🗄️ Database' },
-    { value: 'CloudServerOutlined', label: '☁️ Cloud' },
-    { value: 'QuestionCircleOutlined', label: '❓ General' },
-    { value: 'PrinterOutlined', label: '🖨️ Printer' },
-    { value: 'MobileOutlined', label: '📱 Mobile' },
+    { value: 'DesktopOutlined', label: 'ðŸ–¥ï¸ Hardware' },
+    { value: 'CodeOutlined', label: 'ðŸ’» Software' },
+    { value: 'WifiOutlined', label: 'ðŸ“¶ Network' },
+    { value: 'SafetyOutlined', label: 'ðŸ” Security' },
+    { value: 'MailOutlined', label: 'ðŸ“§ Email' },
+    { value: 'DatabaseOutlined', label: 'ðŸ—„ï¸ Database' },
+    { value: 'CloudServerOutlined', label: 'â˜ï¸ Cloud' },
+    { value: 'QuestionCircleOutlined', label: 'â“ General' },
+    { value: 'PrinterOutlined', label: 'ðŸ–¨ï¸ Printer' },
+    { value: 'MobileOutlined', label: 'ðŸ“± Mobile' },
 ];
 
 const CATEGORY_FIELDS: FieldDef[] = [
@@ -46,6 +48,7 @@ export default function ItsmCategoriesPage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [categories, setCategories] = useState<any[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<any>(null);
@@ -88,7 +91,7 @@ export default function ItsmCategoriesPage() {
             title: 'Icon', dataIndex: 'icon', width: 60,
             render: (_, r) => {
                 const match = iconOptions.find(o => o.value === r.icon);
-                return <Text style={{ fontSize: 20 }}>{match?.label?.split(' ')[0] || '📁'}</Text>;
+                return <Text style={{ fontSize: 20 }}>{match?.label?.split(' ')[0] || 'ðŸ“'}</Text>;
             }
         },
         { title: 'Name', dataIndex: 'name', render: (_, r) => <Text strong>{r.name}</Text> },
@@ -148,13 +151,15 @@ export default function ItsmCategoriesPage() {
                 columns={columns}
                 search={false}
                 toolBarRender={() => [
+                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_categories', title: 'ITSM Categories', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Description', key: 'description' }], data: categories })} /></Tooltip>,
+                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_categories', title: 'ITSM Categories', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Description', key: 'description' }], data: categories })} /></Tooltip>,
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>
                         New Category
                     </Button>,
                 ]}
             />
 
-            {/* ─── Category SteppedFormModal ─────────────── */}
+            {/* â”€â”€â”€ Category SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <SteppedFormModal
                 open={modalOpen}
                 onCancel={() => { setModalOpen(false); setEditing(null); form.resetFields(); }}
@@ -214,3 +219,4 @@ export default function ItsmCategoriesPage() {
         </CMSLayout>
     );
 }
+

@@ -2,19 +2,21 @@
 
 import React, { useState, useEffect } from "react";
 import { Table, Tag, Card, Typography, Input, Space, Button, Tooltip, Row, Col, Drawer, message, Modal, Select, Form, InputNumber, Divider } from "antd";
-import { GiftOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, EyeOutlined, DeleteOutlined, PlusOutlined, MinusCircleOutlined, ShoppingOutlined, EditOutlined } from "@ant-design/icons";
+import { GiftOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, EyeOutlined, DeleteOutlined, PlusOutlined, MinusCircleOutlined, ShoppingOutlined, EditOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { inventoryService, EcomPackage, EcomPackageItem, EcomPackageStatsType } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import ItemPicker from "@/components/inventory/ItemPicker";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
-const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : '—';
+const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : 'â€”';
 
 const PACKAGE_FIELDS: FieldDef[] = [
     { name: 'name', label: 'Package Name', required: true },
@@ -29,6 +31,7 @@ const PACKAGE_FIELDS: FieldDef[] = [
 export default function PackagesPage() {
     const [stats, setStats] = useState<EcomPackageStatsType | null>(null);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [packages, setPackages] = useState<EcomPackage[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -252,6 +255,8 @@ export default function PackagesPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
+                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_packages', title: 'eCommerce Packages', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Price', key: 'price' }, { header: 'Status', key: 'status' }], data: packages })} /></Tooltip>
+                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_packages', title: 'eCommerce Packages', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Price', key: 'price' }, { header: 'Status', key: 'status' }], data: packages })} /></Tooltip>
                             <Button type="primary" icon={<PlusOutlined />} onClick={openNew}
                                 style={{ background: 'linear-gradient(135deg, var(--theme-color, #8b5cf6), #a78bfa)', border: 'none', borderRadius: 8 }}>
                                 New Package
@@ -280,7 +285,7 @@ export default function PackagesPage() {
                             <Table dataSource={pkgItems} rowKey="id" size="small" pagination={false}
                                 columns={[
                                     { title: 'Item', dataIndex: 'itemName', render: (v: string) => <Text strong className="text-sm">{v}</Text> },
-                                    { title: 'SKU', dataIndex: 'itemSku', width: 100, render: (v: string) => <Text code className="text-xs">{v || '—'}</Text> },
+                                    { title: 'SKU', dataIndex: 'itemSku', width: 100, render: (v: string) => <Text code className="text-xs">{v || 'â€”'}</Text> },
                                     { title: 'Qty', dataIndex: 'quantity', width: 50 },
                                     { title: 'Unit Price', dataIndex: 'unitPrice', width: 120, render: (v: number) => fmtCurrency(v) },
                                 ]}
@@ -307,3 +312,4 @@ export default function PackagesPage() {
         </CMSLayout>
     );
 }
+

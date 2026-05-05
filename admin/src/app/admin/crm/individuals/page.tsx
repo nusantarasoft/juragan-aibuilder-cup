@@ -11,12 +11,15 @@ import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     UserOutlined, SearchOutlined, EyeOutlined,
     SwapOutlined, IdcardOutlined, GlobalOutlined,
+    FileExcelOutlined, FilePdfOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
@@ -55,6 +58,7 @@ const INDIVIDUAL_FIELDS: FieldDef[] = [
 export default function IndividualsPage() {
     const [individuals, setIndividuals] = useState<Individual[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Individual | null>(null);
@@ -140,10 +144,10 @@ export default function IndividualsPage() {
 
     const columns: ColumnsType<Individual> = [
         { title: "Name", key: "name", sorter: (a, b) => a.lastName.localeCompare(b.lastName), render: (_, r) => (<Space><Avatar src={r.avatarUrl} icon={<UserOutlined />} style={{ backgroundColor: '#1677ff' }} /><div><Text strong>{r.salutation ? `${r.salutation} ` : ''}{r.firstName} {r.lastName}</Text><br /><Text type="secondary" style={{ fontSize: 12 }}>{[r.jobTitle, r.company].filter(Boolean).join(' at ') || 'No title'}</Text></div></Space>) },
-        { title: "Email", dataIndex: "email", key: "email", width: 200, ellipsis: true, render: (v: string) => v || '—' },
-        { title: "Phone", dataIndex: "phone", key: "phone", width: 140, render: (v: string) => v || '—' },
+        { title: "Email", dataIndex: "email", key: "email", width: 200, ellipsis: true, render: (v: string) => v || 'â€”' },
+        { title: "Phone", dataIndex: "phone", key: "phone", width: 140, render: (v: string) => v || 'â€”' },
         { title: "Lead Status", key: "leadStatus", width: 130, render: (_, r) => { if (!r.leadStatus) return <Tag>Not a Lead</Tag>; const ls = LEAD_STATUSES.find(s => s.value === r.leadStatus); return <Tag color={ls?.color || 'default'}>{ls?.label || r.leadStatus}</Tag>; }, filters: LEAD_STATUSES.map(s => ({ text: s.label, value: s.value })), onFilter: (v, r) => r.leadStatus === v },
-        { title: "Source", dataIndex: "source", key: "source", width: 100, render: (v) => v ? <Tag>{v}</Tag> : '—' },
+        { title: "Source", dataIndex: "source", key: "source", width: 100, render: (v) => v ? <Tag>{v}</Tag> : 'â€”' },
         { title: "Status", dataIndex: "status", key: "status", width: 100, render: (v) => <Tag color={v === 'active' ? 'green' : 'default'}>{v}</Tag> },
         { title: "Actions", key: "actions", width: 150, render: (_, r) => (<Space>
             <Tooltip title="View"><Button type="text" icon={<EyeOutlined />} onClick={() => { setSelected(r); setDetailOpen(true); }} /></Tooltip>
@@ -160,7 +164,9 @@ export default function IndividualsPage() {
 
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Individuals</AuroraText>}
-            subTitle={<DecryptedText text="People in your CRM — contacts, leads, and team members" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[
+            subTitle={<DecryptedText text="People in your CRM â€” contacts, leads, and team members" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[
+                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_individuals', title: 'CRM Individuals', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'First Name', key: 'firstName' }, { header: 'Last Name', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'status' }], data: individuals })} /></Tooltip>,
+                <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_individuals', title: 'CRM Individuals', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'First Name', key: 'firstName' }, { header: 'Last Name', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'status' }], data: individuals })} /></Tooltip>,
             <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
             <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>Add Individual</Button>,
         ]}>
@@ -176,13 +182,13 @@ export default function IndividualsPage() {
             <Drawer title="Individual Details" open={detailOpen} onClose={() => setDetailOpen(false)} width={500}>
                 {selected && (<Descriptions column={1} bordered size="small">
                     <Descriptions.Item label="Name">{selected.salutation ? `${selected.salutation} ` : ''}{selected.firstName} {selected.lastName}</Descriptions.Item>
-                    <Descriptions.Item label="Job Title">{selected.jobTitle || '—'}</Descriptions.Item>
-                    <Descriptions.Item label="Company">{selected.company || '—'}</Descriptions.Item>
-                    <Descriptions.Item label="Department">{selected.department || '—'}</Descriptions.Item>
-                    <Descriptions.Item label="Email">{selected.email || '—'}</Descriptions.Item>
-                    <Descriptions.Item label="Phone">{selected.phone || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Job Title">{selected.jobTitle || 'â€”'}</Descriptions.Item>
+                    <Descriptions.Item label="Company">{selected.company || 'â€”'}</Descriptions.Item>
+                    <Descriptions.Item label="Department">{selected.department || 'â€”'}</Descriptions.Item>
+                    <Descriptions.Item label="Email">{selected.email || 'â€”'}</Descriptions.Item>
+                    <Descriptions.Item label="Phone">{selected.phone || 'â€”'}</Descriptions.Item>
                     <Descriptions.Item label="Lead Status">{selected.leadStatus ? <Tag color={LEAD_STATUSES.find(s => s.value === selected.leadStatus)?.color}>{selected.leadStatus}</Tag> : 'Not a Lead'}</Descriptions.Item>
-                    <Descriptions.Item label="Source">{selected.source || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Source">{selected.source || 'â€”'}</Descriptions.Item>
                     <Descriptions.Item label="Status"><Tag color={selected.status === 'active' ? 'green' : 'default'}>{selected.status}</Tag></Descriptions.Item>
                     {selected.linkedinUrl && <Descriptions.Item label="LinkedIn"><a href={selected.linkedinUrl} target="_blank" rel="noreferrer">{selected.linkedinUrl}</a></Descriptions.Item>}
                     <Descriptions.Item label="Created">{new Date(selected.createdAt).toLocaleDateString()}</Descriptions.Item>
@@ -200,3 +206,4 @@ export default function IndividualsPage() {
         </CMSLayout>
     );
 }
+

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { Table, Tag, Card, Typography, Input, Space, Button, Tooltip, Row, Col, Drawer, message, Modal, Select, Form, InputNumber, Divider } from "antd";
@@ -295,6 +295,8 @@ export default function OrdersPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
+                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_orders', title: 'eCommerce Orders', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Order #', key: 'orderNumber' }, { header: 'Customer', key: 'customerName' }, { header: 'Total', key: 'totalAmount' }, { header: 'Payment', key: 'paymentStatus' }, { header: 'Status', key: 'status' }, { header: 'Date', key: 'createdAt' }], data: filteredOrders })} /></Tooltip>
+                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_orders', title: 'eCommerce Orders', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Order #', key: 'orderNumber' }, { header: 'Customer', key: 'customerName' }, { header: 'Total', key: 'totalAmount' }, { header: 'Payment', key: 'paymentStatus' }, { header: 'Status', key: 'status' }, { header: 'Date', key: 'createdAt' }], data: filteredOrders })} /></Tooltip>
                             <Button type="primary" icon={<PlusOutlined />} onClick={openNewOrder}
                                 style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, border: 'none', borderRadius: 8 }}>
                                 New Order

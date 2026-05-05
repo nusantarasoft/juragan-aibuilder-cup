@@ -3,9 +3,11 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { Card, Table, Tag, Button, Space, Typography, Row, Col, Statistic, Avatar, Tooltip, Segmented, Badge, message } from "antd";
-import { SolutionOutlined, PlusOutlined, UserAddOutlined, StarFilled, AppstoreOutlined, UnorderedListOutlined, MailOutlined, PhoneOutlined, ArrowRightOutlined } from "@ant-design/icons";
+import { SolutionOutlined, PlusOutlined, UserAddOutlined, StarFilled, AppstoreOutlined, UnorderedListOutlined, MailOutlined, PhoneOutlined, ArrowRightOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 
@@ -17,12 +19,12 @@ const UPDATE_STAGE = `mutation($id:String!,$s:String!){updateHrApplicantStage(id
 
 const STAGES = ['applied', 'screening', 'interview', 'offer', 'hired', 'rejected'];
 const stageConfig: Record<string, { color: string; bg: string; label: string; icon: string }> = {
-    applied: { color: '#6b7280', bg: 'rgba(107,114,128,0.08)', label: 'Applied', icon: '📥' },
-    screening: { color: '#3b82f6', bg: 'rgba(59,130,246,0.08)', label: 'Screening', icon: '🔍' },
-    interview: { color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)', label: 'Interview', icon: '💬' },
-    offer: { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', label: 'Offer', icon: '📋' },
-    hired: { color: '#10b981', bg: 'rgba(16,185,129,0.08)', label: 'Hired', icon: '🎉' },
-    rejected: { color: '#ef4444', bg: 'rgba(239,68,68,0.08)', label: 'Rejected', icon: '❌' },
+    applied: { color: '#6b7280', bg: 'rgba(107,114,128,0.08)', label: 'Applied', icon: 'ðŸ“¥' },
+    screening: { color: '#3b82f6', bg: 'rgba(59,130,246,0.08)', label: 'Screening', icon: 'ðŸ”' },
+    interview: { color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)', label: 'Interview', icon: 'ðŸ’¬' },
+    offer: { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', label: 'Offer', icon: 'ðŸ“‹' },
+    hired: { color: '#10b981', bg: 'rgba(16,185,129,0.08)', label: 'Hired', icon: 'ðŸŽ‰' },
+    rejected: { color: '#ef4444', bg: 'rgba(239,68,68,0.08)', label: 'Rejected', icon: 'âŒ' },
 };
 
 function KanbanColumn({ stage, applicants, onMove }: { stage: string; applicants: any[]; onMove: (id: string, stage: string) => void }) {
@@ -74,6 +76,7 @@ export default function RecruitmentPage() {
     const [selectedJob, setSelectedJob] = useState<string | undefined>();
     const [viewMode, setViewMode] = useState<string>('kanban');
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
 
     const load = () => {
         setLoading(true);
@@ -101,8 +104,8 @@ export default function RecruitmentPage() {
 
     const jobCols = [
         { title: 'Position', key: 'title', render: (_: any, r: any) => <><Text strong style={{ cursor: 'pointer', color: selectedJob === r.id ? themeColor : undefined }} onClick={() => setSelectedJob(s => s === r.id ? undefined : r.id)}>{r.title}</Text><br/><Text type="secondary" style={{ fontSize: 11 }}>{r.departmentName}</Text></> },
-        { title: 'Location', dataIndex: 'location', key: 'loc', render: (v: string) => v || '—' },
-        { title: 'Salary Range', key: 'sal', render: (_: any, r: any) => r.salaryMin ? <Text style={{ fontSize: 12 }}>{fmt(r.salaryMin)} — {fmt(r.salaryMax)}</Text> : '—' },
+        { title: 'Location', dataIndex: 'location', key: 'loc', render: (v: string) => v || 'â€”' },
+        { title: 'Salary Range', key: 'sal', render: (_: any, r: any) => r.salaryMin ? <Text style={{ fontSize: 12 }}>{fmt(r.salaryMin)} â€” {fmt(r.salaryMax)}</Text> : 'â€”' },
         { title: 'Openings', dataIndex: 'openings', key: 'open', align: 'center' as const },
         { title: 'Status', dataIndex: 'status', key: 'status', render: (v: string) => <Tag color={v === 'open' ? 'green' : v === 'filled' ? 'blue' : 'default'}>{v}</Tag> },
         { title: 'Closing', dataIndex: 'closingDate', key: 'close' },
@@ -113,7 +116,7 @@ export default function RecruitmentPage() {
         { title: 'Position', dataIndex: 'jobTitle', key: 'job' },
         { title: 'Source', dataIndex: 'source', key: 'src', render: (v: string) => <Tag>{v}</Tag> },
         { title: 'Stage', dataIndex: 'stage', key: 'stage', render: (v: string) => <Tag color={stageConfig[v]?.color}>{stageConfig[v]?.icon} {stageConfig[v]?.label}</Tag> },
-        { title: 'Rating', dataIndex: 'rating', key: 'rat', render: (v: number) => v ? <Space>{Array.from({ length: v }, (_, i) => <StarFilled key={i} style={{ color: '#f59e0b', fontSize: 12 }} />)}</Space> : '—' },
+        { title: 'Rating', dataIndex: 'rating', key: 'rat', render: (v: number) => v ? <Space>{Array.from({ length: v }, (_, i) => <StarFilled key={i} style={{ color: '#f59e0b', fontSize: 12 }} />)}</Space> : 'â€”' },
         { title: 'Applied', dataIndex: 'createdAt', key: 'date', render: (v: string) => new Date(v).toLocaleDateString() },
         { title: 'Actions', key: 'actions', render: (_: any, r: any) => { const next = STAGES[STAGES.indexOf(r.stage) + 1]; return next && r.stage !== 'hired' && r.stage !== 'rejected' ? <Button size="small" type="link" icon={<ArrowRightOutlined />} onClick={() => handleMoveStage(r.id, next)}>{stageConfig[next]?.label}</Button> : null; } },
     ];
@@ -122,7 +125,11 @@ export default function RecruitmentPage() {
         <CMSLayout
             title={<AuroraText colors={[themeColor, '#f59e0b', '#10b981', themeColor]} className="text-[22px] font-bold tracking-tight">Recruitment</AuroraText>}
             subTitle={<DecryptedText text="Job postings, applicant pipeline & hiring workflow" animateOn="view" revealDirection="start" speed={60} sequential />}
-            extra={[<Segmented key="view" value={viewMode} onChange={(v: any) => setViewMode(v)} options={[{ label: <><AppstoreOutlined /> Kanban</>, value: 'kanban' }, { label: <><UnorderedListOutlined /> Table</>, value: 'table' }]} />]}
+            extra={[
+                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'hr_recruitment', title: 'HR Recruitment', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Department', key: 'departmentName' }, { header: 'Status', key: 'status' }], data: postings })} /></Tooltip>,
+                <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'hr_recruitment', title: 'HR Recruitment', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Department', key: 'departmentName' }, { header: 'Status', key: 'status' }], data: postings })} /></Tooltip>,
+                <Segmented key="view" value={viewMode} onChange={(v: any) => setViewMode(v)} options={[{ label: <><AppstoreOutlined /> Kanban</>, value: 'kanban' }, { label: <><UnorderedListOutlined /> Table</>, value: 'table' }]} />,
+            ]}
         >
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* Stats Row */}
@@ -130,11 +137,11 @@ export default function RecruitmentPage() {
                     <Col xs={6}><Card size="small" style={glass}><Statistic title="Open Positions" value={openCount} prefix={<SolutionOutlined />} valueStyle={{ color: '#f59e0b' }} /></Card></Col>
                     <Col xs={6}><Card size="small" style={glass}><Statistic title="Total Applicants" value={applicants.length} prefix={<UserAddOutlined />} valueStyle={{ color: '#3b82f6' }} /></Card></Col>
                     <Col xs={6}><Card size="small" style={glass}><Statistic title="In Pipeline" value={pipelineApplicants.length} prefix={<SolutionOutlined />} valueStyle={{ color: '#8b5cf6' }} /></Card></Col>
-                    <Col xs={6}><Card size="small" style={glass}><Statistic title="Hired" value={applicants.filter(a => a.stage === 'hired').length} prefix={<span>🎉</span>} valueStyle={{ color: '#10b981' }} /></Card></Col>
+                    <Col xs={6}><Card size="small" style={glass}><Statistic title="Hired" value={applicants.filter(a => a.stage === 'hired').length} prefix={<span>ðŸŽ‰</span>} valueStyle={{ color: '#10b981' }} /></Card></Col>
                 </Row>
 
                 {/* Conversion Funnel */}
-                <Card size="small" style={glass} title={<Text strong style={{ fontSize: 13 }}>📊 Hiring Funnel</Text>}>
+                <Card size="small" style={glass} title={<Text strong style={{ fontSize: 13 }}>ðŸ“Š Hiring Funnel</Text>}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         {STAGES.filter(s => s !== 'rejected').map((s, i) => {
                             const cnt = applicants.filter(a => a.stage === s).length;
@@ -179,3 +186,4 @@ export default function RecruitmentPage() {
         </CMSLayout>
     );
 }
+

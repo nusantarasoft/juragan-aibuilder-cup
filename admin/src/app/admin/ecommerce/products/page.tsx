@@ -2,11 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import {
-    Table, Tag, Card, Typography, Input, Select, Row, Col, Button, Tooltip,
-    Modal, Form, message, Divider, Alert, Drawer, Descriptions, Space,
-    InputNumber, Tabs, Popconfirm, Progress
-} from "antd";
+import { Alert, Button, Card, Col, Descriptions, Divider, Drawer, Form, Input, InputNumber, message, Modal, Popconfirm, Progress, Row, Select, Space, Table, Tabs, Tag, Tooltip, Typography } from "antd";
 import {
     ShoppingOutlined, SearchOutlined, ReloadOutlined, InboxOutlined,
     TagOutlined, DollarOutlined, FilterOutlined, PlusOutlined,
@@ -261,6 +257,8 @@ export default function ProductsPage() {
                                 style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, border: 'none', borderRadius: 8 }}
                                 onClick={() => setAddModalOpen(true)}>Add Product</Button>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} style={{ borderRadius: 8 }} /></Tooltip>
+                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_products', title: 'eCommerce Products', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'SKU', key: 'sku' }, { header: 'Price', key: 'price' }, { header: 'Stock', key: 'stock' }, { header: 'Status', key: 'status' }], data: items })} /></Tooltip>
+                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_products', title: 'eCommerce Products', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'SKU', key: 'sku' }, { header: 'Price', key: 'price' }, { header: 'Stock', key: 'stock' }, { header: 'Status', key: 'status' }], data: items })} /></Tooltip>
                         </div>
                     </div>
                     <Table dataSource={filtered} columns={columns} rowKey="id" loading={loading} size="small"
@@ -741,5 +739,7 @@ export default function ProductsPage() {
         </CMSLayout>
     );
 }
+
+
 
 

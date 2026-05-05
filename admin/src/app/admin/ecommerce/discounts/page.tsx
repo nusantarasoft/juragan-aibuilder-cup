@@ -280,6 +280,8 @@ export default function DiscountsPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
+                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_discounts', title: 'eCommerce Discounts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Type', key: 'discountType' }, { header: 'Value', key: 'value' }, { header: 'Status', key: 'status' }], data: discounts })} /></Tooltip>
+                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_discounts', title: 'eCommerce Discounts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Type', key: 'discountType' }, { header: 'Value', key: 'value' }, { header: 'Status', key: 'status' }], data: discounts })} /></Tooltip>
                             <Button type="primary" icon={<PlusOutlined />} onClick={openNew}
                                 style={{ background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: 8 }}>
                                 New Discount

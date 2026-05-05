@@ -132,6 +132,8 @@ export default function AvailabilityPage() {
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModalOpen(true); }}>New Record</Button>,
+                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_availability', title: 'Availability Management', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Service name', key: 'service_name' }, { header: 'Sla target', key: 'sla_target' }, { header: 'Actual availability', key: 'actual_availability' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
+                    <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_availability', title: 'Availability Management', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Service name', key: 'service_name' }, { header: 'Sla target', key: 'sla_target' }, { header: 'Actual availability', key: 'actual_availability' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
                 ]}
             />
 

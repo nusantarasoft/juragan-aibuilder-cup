@@ -11,7 +11,7 @@ import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, CheckOutlined,
     ExclamationCircleOutlined, ClockCircleOutlined,
-    BugOutlined, FileTextOutlined,, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
+    BugOutlined, FileTextOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { AuroraText } from '@/components/magicui/aurora-text';
@@ -205,6 +205,8 @@ export default function CasesPage() {
             subTitle={<DecryptedText text="Customer support cases and issue tracking" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[
             <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
             <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>New Case</Button>,
+                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_cases', title: 'CRM Cases', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Case #', key: 'caseNumber' }, { header: 'Subject', key: 'subject' }, { header: 'Priority', key: 'priority' }, { header: 'Status', key: 'status' }], data: cases })} /></Tooltip>,
+                <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_cases', title: 'CRM Cases', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Case #', key: 'caseNumber' }, { header: 'Subject', key: 'subject' }, { header: 'Priority', key: 'priority' }, { header: 'Status', key: 'status' }], data: cases })} /></Tooltip>,
         ]}>
             <Row gutter={16} style={{ marginBottom: 16 }}>
                 <Col span={6}><Card style={{ ...glass }}><Statistic title="Open" value={openCount} prefix={<ClockCircleOutlined />} valueStyle={{ color: '#1677ff' }} /></Card></Col>
@@ -266,5 +268,6 @@ export default function CasesPage() {
         </CMSLayout>
     );
 }
+
 
 

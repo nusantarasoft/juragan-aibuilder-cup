@@ -3,9 +3,11 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { Card, Table, Tag, Typography, Rate, Row, Col, Statistic, Avatar, Space, Badge, Tooltip, Select, Button, Modal, Form, Input, message } from "antd";
-import { TrophyOutlined, StarFilled, TeamOutlined, RiseOutlined, CheckCircleOutlined, EditOutlined, PlusOutlined, DeleteOutlined } from "@ant-design/icons";
+import { TrophyOutlined, StarFilled, TeamOutlined, RiseOutlined, CheckCircleOutlined, EditOutlined, PlusOutlined, DeleteOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 
@@ -81,6 +83,7 @@ export default function PerformancePage() {
     const [form] = Form.useForm();
     const [rating, setRating] = useState(0);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
 
     const load = async () => {
         setLoading(true);
@@ -120,8 +123,8 @@ export default function PerformancePage() {
         { title: 'Period', dataIndex: 'reviewPeriod', render: (v: string) => <Tag style={{ borderRadius: 10 }}>{v}</Tag> },
         { title: 'Type', dataIndex: 'reviewType', render: (v: string) => <Tag color="blue" style={{ borderRadius: 10 }}>{v}</Tag> },
         { title: 'Rating', dataIndex: 'overallRating', sorter: (a: any, b: any) => (a.overallRating || 0) - (b.overallRating || 0),
-            render: (v: number) => v ? <Space><div style={{ width: 26, height: 26, borderRadius: 8, background: ratingCfg[v]?.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12 }}>{v}</div><Rate disabled value={v} style={{ fontSize: 13 }} /></Space> : '—' },
-        { title: 'Strengths', dataIndex: 'strengths', ellipsis: true, render: (v: string) => v ? <Tooltip title={v}><Text style={{ fontSize: 12 }}>{v}</Text></Tooltip> : '—' },
+            render: (v: number) => v ? <Space><div style={{ width: 26, height: 26, borderRadius: 8, background: ratingCfg[v]?.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12 }}>{v}</div><Rate disabled value={v} style={{ fontSize: 13 }} /></Space> : 'â€”' },
+        { title: 'Strengths', dataIndex: 'strengths', ellipsis: true, render: (v: string) => v ? <Tooltip title={v}><Text style={{ fontSize: 12 }}>{v}</Text></Tooltip> : 'â€”' },
         { title: 'Status', dataIndex: 'status', render: (v: string) => <Tag icon={statusCfg[v]?.icon} color={statusCfg[v]?.color} style={{ borderRadius: 20 }}>{statusCfg[v]?.label || v}</Tag> },
         { title: '', key: 'actions', width: 160,
             render: (_: any, r: any) => (
@@ -136,8 +139,11 @@ export default function PerformancePage() {
         <CMSLayout
             title={<AuroraText colors={[themeColor, '#f59e0b', '#8b5cf6', themeColor]} className="text-[22px] font-bold tracking-tight">Performance</AuroraText>}
             subTitle={<DecryptedText text="Performance reviews, goal tracking & feedback" animateOn="view" revealDirection="start" speed={60} sequential />}
-            extra={[<Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}
-                style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', border: 'none', borderRadius: 8 }}>New Review</Button>]}
+            extra={[
+                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'hr_performance', title: 'HR Performance Reviews', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Employee', key: 'employeeName' }, { header: 'Period', key: 'period' }, { header: 'Rating', key: 'overallRating' }, { header: 'Status', key: 'status' }], data: reviews })} /></Tooltip>,
+                <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'hr_performance', title: 'HR Performance Reviews', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Employee', key: 'employeeName' }, { header: 'Period', key: 'period' }, { header: 'Rating', key: 'overallRating' }, { header: 'Status', key: 'status' }], data: reviews })} /></Tooltip>,
+                <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)} style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', border: 'none', borderRadius: 8 }}>New Review</Button>,
+            ]}
         >
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
@@ -145,7 +151,7 @@ export default function PerformancePage() {
                         { title: 'Total Reviews', value: reviews.length, icon: <TrophyOutlined />, color: '#8b5cf6' },
                         { title: 'Completed', value: completed.length, icon: <CheckCircleOutlined />, color: '#10b981' },
                         { title: 'In Progress', value: inProgress.length, icon: <RiseOutlined />, color: '#3b82f6' },
-                        { title: 'High Performers (≥4)', value: highPerformers, icon: <StarFilled />, color: '#f59e0b' },
+                        { title: 'High Performers (â‰¥4)', value: highPerformers, icon: <StarFilled />, color: '#f59e0b' },
                     ].map((s, i) => (
                         <Col key={i} xs={12} md={6}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
@@ -192,7 +198,7 @@ export default function PerformancePage() {
                     </Row>
                     <Row gutter={12}>
                         <Col span={12}><Form.Item name="reviewType" label="Type" initialValue="annual">
-                            <Select options={[{ value: 'annual', label: 'Annual' }, { value: 'quarterly', label: 'Quarterly' }, { value: 'probation', label: 'Probation' }, { value: '360', label: '360° Review' }]} />
+                            <Select options={[{ value: 'annual', label: 'Annual' }, { value: 'quarterly', label: 'Quarterly' }, { value: 'probation', label: 'Probation' }, { value: '360', label: '360Â° Review' }]} />
                         </Form.Item></Col>
                         <Col span={12}><Form.Item label="Overall Rating">
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -209,3 +215,4 @@ export default function PerformancePage() {
         </CMSLayout>
     );
 }
+

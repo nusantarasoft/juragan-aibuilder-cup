@@ -4,10 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
-import {
-    Typography, Space, Spin, Tag, Card, Row, Col, Statistic, Table,
-    Empty, Select, Tooltip, Progress, Divider, Button, message
-} from "antd";
+import { Button, Card, Col, Divider, Empty, message, Progress, Row, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography } from "antd";
 import {
     BarChartOutlined, ProjectOutlined, CheckCircleOutlined,
     ClockCircleOutlined, ExclamationCircleOutlined, DollarOutlined,
@@ -333,7 +330,7 @@ export default function ReportsPage() {
     if (loading) {
         return (
             <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Reports</AuroraText>}
-            subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
+            subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip>, <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip>]}>
                 <div style={{ textAlign: 'center', padding: 120 }}>
                     <Spin size="large" />
                 </div>
@@ -343,7 +340,7 @@ export default function ReportsPage() {
 
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Reports</AuroraText>}
-            subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
+            subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip>, <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip>]}>
             {contextHolder}
 
             {/* â”€â”€ Executive Summary â”€â”€ */}
@@ -1156,5 +1153,8 @@ export default function ReportsPage() {
         </CMSLayout>
     );
 }
+
+
+
 
 

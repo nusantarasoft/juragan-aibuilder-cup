@@ -4,10 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
-import {
-    Typography, Space, Spin, Tag, Card, Row, Col, Statistic, Input,
-    Table, Empty, Select, Tooltip, Progress, Badge, Button, Drawer, Descriptions
-} from "antd";
+import { Badge, Button, Card, Col, Descriptions, Drawer, Empty, Input, Progress, Row, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography } from "antd";
 import {
     UnorderedListOutlined, SearchOutlined, FilterOutlined,
     ProjectOutlined, ClockCircleOutlined, CheckCircleOutlined,
@@ -275,7 +272,7 @@ export default function BacklogPage() {
     if (loading) {
         return (
             <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Backlog</AuroraText>}
-            subTitle={<DecryptedText text="All tasks across all projects" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
+            subTitle={<DecryptedText text="All tasks across all projects" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_backlog', title: 'PM Backlog Tasks', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Project', key: 'projectName' }], data: tasks })} /></Tooltip>, <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_backlog', title: 'PM Backlog Tasks', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Project', key: 'projectName' }], data: tasks })} /></Tooltip>]}>
                 <div style={{ textAlign: 'center', padding: 120 }}>
                     <Spin size="large" />
                 </div>
@@ -285,7 +282,7 @@ export default function BacklogPage() {
 
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Backlog</AuroraText>}
-            subTitle={<DecryptedText text="All tasks across all projects" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
+            subTitle={<DecryptedText text="All tasks across all projects" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_backlog', title: 'PM Backlog Tasks', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Project', key: 'projectName' }], data: tasks })} /></Tooltip>, <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_backlog', title: 'PM Backlog Tasks', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Project', key: 'projectName' }], data: tasks })} /></Tooltip>]}>
             {/* â”€â”€ Stats Row â”€â”€ */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={4}>
@@ -555,5 +552,8 @@ export default function BacklogPage() {
         </CMSLayout>
     );
 }
+
+
+
 
 

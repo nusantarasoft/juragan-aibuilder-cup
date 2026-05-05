@@ -238,6 +238,8 @@ export default function ContactsPage() {
             extra={[
                 <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
                 <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>
+                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_contacts', title: 'CRM Contacts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'First Name', key: 'firstName' }, { header: 'Last Name', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Company', key: 'company' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'leadStatus' }], data: contacts })} /></Tooltip>,
+                <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_contacts', title: 'CRM Contacts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'First Name', key: 'firstName' }, { header: 'Last Name', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Company', key: 'company' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'leadStatus' }], data: contacts })} /></Tooltip>,
                     Add Contact
                 </Button>,
             ]}

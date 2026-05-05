@@ -3,11 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
-import {
-    Table, Button, Space, Tag, Card, Typography, message,
-    Row, Col, Modal, Form, Input, InputNumber, Select, Tooltip,
-    Drawer, Descriptions, Divider, Progress
-} from "antd";
+import { Button, Card, Col, Descriptions, Divider, Drawer, Form, Input, InputNumber, message, Modal, Progress, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
 import {
     CarOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
     DeleteOutlined, EditOutlined, EyeOutlined,
@@ -513,6 +509,8 @@ export default function FixedAssetsPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
+                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_fixed-assets', title: 'Fixed Assets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'assetCode' }, { header: 'Category', key: 'category' }, { header: 'Status', key: 'status' }, { header: 'Value', key: 'acquisitionCost' }], data: assets })} /></Tooltip>
+                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_fixed-assets', title: 'Fixed Assets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'assetCode' }, { header: 'Category', key: 'category' }, { header: 'Status', key: 'status' }, { header: 'Value', key: 'acquisitionCost' }], data: assets })} /></Tooltip>
                             <Button type="primary" icon={<PlusOutlined />}
                                 onClick={() => { setEditingAsset(null); form.resetFields(); setModalOpen(true); }}
                                 style={{ background: 'linear-gradient(135deg, #6366f1, var(--theme-color, #7c3aed))', borderRadius: 8, border: 'none' }}>
@@ -672,5 +670,7 @@ export default function FixedAssetsPage() {
         </CMSLayout>
     );
 }
+
+
 
 

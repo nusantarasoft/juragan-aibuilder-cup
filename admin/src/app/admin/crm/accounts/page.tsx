@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -167,7 +167,7 @@ export default function AccountsPage() {
     };
 
     const formatRevenue = (v: number) => {
-        if (!v) return 'â€”';
+        if (!v) return 'Ã¢â‚¬â€';
         if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
         if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
         return `$${v}`;
@@ -200,7 +200,7 @@ export default function AccountsPage() {
         },
         {
             title: "Phone", dataIndex: "phone", key: "phone", width: 140,
-            render: (v) => v || 'â€”',
+            render: (v) => v || 'Ã¢â‚¬â€',
         },
         {
             title: "Revenue", key: "revenue", width: 110, align: "right",
@@ -209,7 +209,7 @@ export default function AccountsPage() {
         },
         {
             title: "Employees", dataIndex: "employeeCount", key: "employees", width: 100, align: "right",
-            render: (v) => v ? v.toLocaleString() : 'â€”',
+            render: (v) => v ? v.toLocaleString() : 'Ã¢â‚¬â€',
         },
         {
             title: "Status", dataIndex: "status", key: "status", width: 90,
@@ -246,6 +246,8 @@ export default function AccountsPage() {
             extra={[
                 <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
                 <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>
+                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_accounts', title: 'CRM Accounts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'type' }, { header: 'Industry', key: 'industry' }, { header: 'Phone', key: 'phone' }, { header: 'Revenue', key: 'annualRevenue' }], data: accounts })} /></Tooltip>,
+                <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_accounts', title: 'CRM Accounts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'type' }, { header: 'Industry', key: 'industry' }, { header: 'Phone', key: 'phone' }, { header: 'Revenue', key: 'annualRevenue' }], data: accounts })} /></Tooltip>,
                     Add Account
                 </Button>,
             ]}
@@ -264,7 +266,7 @@ export default function AccountsPage() {
                     loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" />
             </Card>
 
-            {/* â”€â”€â”€ Account SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Account SteppedFormModal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
             <SteppedFormModal
                 open={isModalOpen}
                 onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }}
@@ -346,18 +348,18 @@ export default function AccountsPage() {
                     <Descriptions column={1} bordered size="small">
                         <Descriptions.Item label="Name">{selected.name}</Descriptions.Item>
                         <Descriptions.Item label="Type"><Tag>{TYPES.find(t => t.value === selected.type)?.label || selected.type}</Tag></Descriptions.Item>
-                        <Descriptions.Item label="Industry">{selected.industry || 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Industry">{selected.industry || 'Ã¢â‚¬â€'}</Descriptions.Item>
                         <Descriptions.Item label="Rating">
-                            {selected.rating ? <Tag color={RATINGS.find(r => r.value === selected.rating)?.color}>{selected.rating}</Tag> : 'â€”'}
+                            {selected.rating ? <Tag color={RATINGS.find(r => r.value === selected.rating)?.color}>{selected.rating}</Tag> : 'Ã¢â‚¬â€'}
                         </Descriptions.Item>
-                        <Descriptions.Item label="Phone">{selected.phone || 'â€”'}</Descriptions.Item>
-                        <Descriptions.Item label="Email">{selected.email || 'â€”'}</Descriptions.Item>
-                        <Descriptions.Item label="Website">{selected.website ? <a href={selected.website} target="_blank" rel="noreferrer">{selected.website}</a> : 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Phone">{selected.phone || 'Ã¢â‚¬â€'}</Descriptions.Item>
+                        <Descriptions.Item label="Email">{selected.email || 'Ã¢â‚¬â€'}</Descriptions.Item>
+                        <Descriptions.Item label="Website">{selected.website ? <a href={selected.website} target="_blank" rel="noreferrer">{selected.website}</a> : 'Ã¢â‚¬â€'}</Descriptions.Item>
                         <Descriptions.Item label="Annual Revenue">{formatRevenue(selected.annualRevenue)}</Descriptions.Item>
-                        <Descriptions.Item label="Employees">{selected.employeeCount?.toLocaleString() || 'â€”'}</Descriptions.Item>
-                        <Descriptions.Item label="Ownership">{selected.ownership || 'â€”'}</Descriptions.Item>
-                        <Descriptions.Item label="Account #">{selected.accountNumber || 'â€”'}</Descriptions.Item>
-                        <Descriptions.Item label="Description">{selected.description || 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Employees">{selected.employeeCount?.toLocaleString() || 'Ã¢â‚¬â€'}</Descriptions.Item>
+                        <Descriptions.Item label="Ownership">{selected.ownership || 'Ã¢â‚¬â€'}</Descriptions.Item>
+                        <Descriptions.Item label="Account #">{selected.accountNumber || 'Ã¢â‚¬â€'}</Descriptions.Item>
+                        <Descriptions.Item label="Description">{selected.description || 'Ã¢â‚¬â€'}</Descriptions.Item>
                         <Descriptions.Item label="Created">{new Date(selected.createdAt).toLocaleDateString()}</Descriptions.Item>
                     </Descriptions>
                 )}

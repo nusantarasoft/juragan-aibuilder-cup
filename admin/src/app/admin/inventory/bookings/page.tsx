@@ -348,6 +348,8 @@ export default function BookingsPage() {
                     <Input prefix={<SearchOutlined />} placeholder="Search schedules, bookings..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 320 }} allowClear />
                     <Space>
                         <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Refresh</Button>
+                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_bookings', title: 'Booking Schedules', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Facility', key: 'facility' }, { header: 'Status', key: 'status' }, { header: 'Capacity', key: 'maxCapacity' }], data: schedules })} /></Tooltip>
+                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_bookings', title: 'Booking Schedules', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Facility', key: 'facility' }, { header: 'Status', key: 'status' }, { header: 'Capacity', key: 'maxCapacity' }], data: schedules })} /></Tooltip>
                         <Button type="primary" icon={<PlusOutlined />}
                             onClick={() => { bookingForm.resetFields(); setSelectedScheduleId(undefined); setBookingModalOpen(true); setTab('bookings'); }}
                             style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), #2563eb)', border: 'none', borderRadius: 8 }}>

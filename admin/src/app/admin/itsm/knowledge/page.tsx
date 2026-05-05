@@ -1,17 +1,19 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography, Card, Statistic, Badge } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, BookOutlined, FileTextOutlined, TagOutlined, CheckCircleOutlined, EyeOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography, Card, Statistic, Badge, Tooltip } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, BookOutlined, FileTextOutlined, TagOutlined, CheckCircleOutlined, EyeOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -36,6 +38,7 @@ export default function ItsmKnowledgePage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [data, setData] = useState<any[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
@@ -90,8 +93,8 @@ export default function ItsmKnowledgePage() {
         { title: 'Type', dataIndex: 'articleType', width: 110, render: (_, r) => <Tag color={typeColors[r.articleType]}>{(r.articleType || '').replace(/_/g, ' ').toUpperCase()}</Tag> },
         { title: 'Status', dataIndex: 'status', width: 100, render: (_, r) => <Tag color={statusColors[r.status]}>{(r.status || '').toUpperCase()}</Tag> },
         { title: 'Author', dataIndex: 'author', width: 120, ellipsis: true },
-        { title: '👁', dataIndex: 'views', width: 60, render: (_, r) => r.views || 0 },
-        { title: '👍', dataIndex: 'helpfulCount', width: 60, render: (_, r) => r.helpfulCount || 0 },
+        { title: 'ðŸ‘', dataIndex: 'views', width: 60, render: (_, r) => r.views || 0 },
+        { title: 'ðŸ‘', dataIndex: 'helpfulCount', width: 60, render: (_, r) => r.helpfulCount || 0 },
         { title: 'Tags', dataIndex: 'tags', width: 150, ellipsis: true, render: (_, r) => (r.tags || []).slice(0, 3).map((t: string) => <Tag key={t} style={{ fontSize: 11 }}>{t}</Tag>) },
         {
             title: 'Actions', valueType: 'option', width: 100,
@@ -135,6 +138,8 @@ export default function ItsmKnowledgePage() {
                     search: { placeholder: 'Search articles...', onSearch: (v) => setSearchText(v), allowClear: true, style: { width: 250 } },
                 }}
                 toolBarRender={() => [
+                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_knowledge', title: 'Knowledge Base', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Type', key: 'article_type' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
+                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_knowledge', title: 'Knowledge Base', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Type', key: 'article_type' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 120 }} value={filterStatus} onChange={setFilterStatus}
                         options={[{ value: 'draft', label: 'Draft' }, { value: 'review', label: 'Review' }, { value: 'published', label: 'Published' }, { value: 'archived', label: 'Archived' }]} />,
                     <Select key="ft" placeholder="Type" allowClear style={{ width: 130 }} value={filterType} onChange={setFilterType}
@@ -161,7 +166,7 @@ export default function ItsmKnowledgePage() {
                                 <Row gutter={16}>
                                     <Col span={8}>
                                         <Form.Item name="articleType" label="Article Type">
-                                            <Select options={[{ value: 'solution', label: '✅ Solution' }, { value: 'workaround', label: '🔧 Workaround' }, { value: 'faq', label: '❓ FAQ' }, { value: 'how_to', label: '📖 How-To' }, { value: 'reference', label: '📎 Reference' }]} />
+                                            <Select options={[{ value: 'solution', label: 'âœ… Solution' }, { value: 'workaround', label: 'ðŸ”§ Workaround' }, { value: 'faq', label: 'â“ FAQ' }, { value: 'how_to', label: 'ðŸ“– How-To' }, { value: 'reference', label: 'ðŸ“Ž Reference' }]} />
                                         </Form.Item>
                                     </Col>
                                     <Col span={8}>
@@ -210,3 +215,4 @@ export default function ItsmKnowledgePage() {
         </CMSLayout>
     );
 }
+

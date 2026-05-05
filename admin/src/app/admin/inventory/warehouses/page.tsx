@@ -3,11 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
-import {
-    Table, Button, Space, Tag, Card, Typography, message,
-    Row, Col, Modal, Form, Input, InputNumber, Select, Tabs,
-    Badge, Tooltip, Descriptions, Empty, Spin
-} from "antd";
+import { Badge, Button, Card, Col, Descriptions, Empty, Form, Input, InputNumber, message, Modal, Row, Select, Space, Spin, Table, Tabs, Tag, Tooltip, Typography } from "antd";
 import {
     HomeOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
     EnvironmentOutlined, AppstoreOutlined, InboxOutlined,
@@ -517,6 +513,8 @@ export default function WarehousesPage() {
                                             style={{ maxWidth: 280, borderRadius: 8 }} />
                                         <Space>
                                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
+                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_warehouses', title: 'Warehouses', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Location', key: 'location' }, { header: 'Type', key: 'warehouseType' }, { header: 'Status', key: 'status' }], data: warehouses })} /></Tooltip>
+                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_warehouses', title: 'Warehouses', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Location', key: 'location' }, { header: 'Type', key: 'warehouseType' }, { header: 'Status', key: 'status' }], data: warehouses })} /></Tooltip>
                                             <Button type="primary" icon={<PlusOutlined />}
                                                 onClick={() => { whForm.resetFields(); setWhEditId(null); setWhModalOpen(true); }}
                                                 style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', borderRadius: 8, border: 'none' }}>
@@ -788,5 +786,7 @@ export default function WarehousesPage() {
         </CMSLayout>
     );
 }
+
+
 
 

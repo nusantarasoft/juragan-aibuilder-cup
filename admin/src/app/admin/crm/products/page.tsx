@@ -10,7 +10,7 @@ import {
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, ShoppingOutlined,
-    DollarOutlined, CheckCircleOutlined, AppstoreOutlined,, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
+    DollarOutlined, CheckCircleOutlined, AppstoreOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { AuroraText } from '@/components/magicui/aurora-text';
@@ -117,6 +117,8 @@ export default function ProductsPage() {
             subTitle={<DecryptedText text="Product catalog for quotes and deals" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[
             <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
             <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>Add Product</Button>,
+                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_products', title: 'CRM Products', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Category', key: 'category' }, { header: 'Price', key: 'price' }], data: products })} /></Tooltip>,
+                <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_products', title: 'CRM Products', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Category', key: 'category' }, { header: 'Price', key: 'price' }], data: products })} /></Tooltip>,
         ]}>
             <Row gutter={16} style={{ marginBottom: 16 }}>
                 <Col span={8}><Card style={{ ...glass }}><Statistic title="Total Products" value={products.length} prefix={<ShoppingOutlined />} /></Card></Col>
@@ -141,5 +143,6 @@ export default function ProductsPage() {
         </CMSLayout>
     );
 }
+
 
 

@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Progress, Card, Statistic, Typography, Badge } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, SendOutlined, RocketOutlined, CheckCircleOutlined, TagOutlined, ClockCircleOutlined, ExclamationCircleOutlined, CloudUploadOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Progress, Card, Statistic, Typography, Badge, Tooltip } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, SendOutlined, RocketOutlined, CheckCircleOutlined, TagOutlined, ClockCircleOutlined, ExclamationCircleOutlined, CloudUploadOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { supaRest, supaInsert, supaUpdate, supaDelete } from "@/lib/supaRest";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
@@ -12,6 +12,8 @@ import type { FieldDef } from "@/components/common/DataImportExport";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -31,6 +33,7 @@ export default function ReleasesPage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [data, setData] = useState<any[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<any>(null);
@@ -118,11 +121,11 @@ export default function ReleasesPage() {
 
             {/* Release Pipeline Visualization */}
             {data.length > 0 && (
-                <Card size="small" style={{ ...glass, marginBottom: 16 }} title={<Text strong style={{ fontSize: 13 }}>🚀 Release Pipeline</Text>}>
+                <Card size="small" style={{ ...glass, marginBottom: 16 }} title={<Text strong style={{ fontSize: 13 }}>ðŸš€ Release Pipeline</Text>}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         {['planning', 'building', 'testing', 'approved', 'deploying', 'deployed'].map((stage, i) => {
                             const cnt = data.filter(d => d.status === stage).length;
-                            const cfg = { planning: { color: '#3b82f6', icon: '📋' }, building: { color: '#06b6d4', icon: '🔨' }, testing: { color: '#f59e0b', icon: '🧪' }, approved: { color: '#10b981', icon: '✅' }, deploying: { color: '#8b5cf6', icon: '🚀' }, deployed: { color: '#10b981', icon: '🎉' } }[stage] || { color: '#6b7280', icon: '📦' };
+                            const cfg = { planning: { color: '#3b82f6', icon: 'ðŸ“‹' }, building: { color: '#06b6d4', icon: 'ðŸ”¨' }, testing: { color: '#f59e0b', icon: 'ðŸ§ª' }, approved: { color: '#10b981', icon: 'âœ…' }, deploying: { color: '#8b5cf6', icon: 'ðŸš€' }, deployed: { color: '#10b981', icon: 'ðŸŽ‰' } }[stage] || { color: '#6b7280', icon: 'ðŸ“¦' };
                             return (
                                 <React.Fragment key={stage}>
                                     <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: i * 0.08 }}
@@ -131,7 +134,7 @@ export default function ReleasesPage() {
                                         <Text style={{ fontSize: 10, color: cfg.color, display: 'block' }}>{cfg.icon} {stage.replace(/_/g, ' ')}</Text>
                                         <Text strong style={{ fontSize: 16, color: cfg.color }}>{cnt}</Text>
                                     </motion.div>
-                                    {i < 5 && <span style={{ color: '#d1d5db', fontSize: 10 }}>▸</span>}
+                                    {i < 5 && <span style={{ color: '#d1d5db', fontSize: 10 }}>â–¸</span>}
                                 </React.Fragment>
                             );
                         })}
@@ -143,6 +146,8 @@ export default function ReleasesPage() {
                 headerTitle={<Space><RocketOutlined /> Releases <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
+                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_releases', title: 'Release Management', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'release_number' }, { header: 'Title', key: 'title' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
+                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_releases', title: 'Release Management', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'release_number' }, { header: 'Title', key: 'title' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 140 }} value={filterStatus} onChange={setFilterStatus}
                         options={[{ value: 'planning', label: 'Planning' }, { value: 'building', label: 'Building' }, { value: 'testing', label: 'Testing' }, { value: 'approved', label: 'Approved' }, { value: 'deploying', label: 'Deploying' }, { value: 'deployed', label: 'Deployed' }]} />,
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>New Release</Button>,
@@ -155,8 +160,8 @@ export default function ReleasesPage() {
                         <Form.Item name="title" label="Release Title" rules={[{ required: true }]}><Input placeholder="NusantaraSoft Platform v4.0 GA" /></Form.Item>
                         <Row gutter={16}>
                             <Col span={8}><Form.Item name="version" label="Version"><Input placeholder="v4.0.0" /></Form.Item></Col>
-                            <Col span={8}><Form.Item name="release_type" label="Type"><Select options={[{ value: 'major', label: '🔴 Major' }, { value: 'minor', label: '🔵 Minor' }, { value: 'patch', label: '🟢 Patch' }, { value: 'emergency', label: '🚨 Emergency' }]} /></Form.Item></Col>
-                            <Col span={8}><Form.Item name="risk_level" label="Risk Level"><Select options={[{ value: 'low', label: '🟢 Low' }, { value: 'medium', label: '🔵 Medium' }, { value: 'high', label: '🟠 High' }, { value: 'critical', label: '🔴 Critical' }]} /></Form.Item></Col>
+                            <Col span={8}><Form.Item name="release_type" label="Type"><Select options={[{ value: 'major', label: 'ðŸ”´ Major' }, { value: 'minor', label: 'ðŸ”µ Minor' }, { value: 'patch', label: 'ðŸŸ¢ Patch' }, { value: 'emergency', label: 'ðŸš¨ Emergency' }]} /></Form.Item></Col>
+                            <Col span={8}><Form.Item name="risk_level" label="Risk Level"><Select options={[{ value: 'low', label: 'ðŸŸ¢ Low' }, { value: 'medium', label: 'ðŸ”µ Medium' }, { value: 'high', label: 'ðŸŸ  High' }, { value: 'critical', label: 'ðŸ”´ Critical' }]} /></Form.Item></Col>
                         </Row>
                         <Form.Item name="description" label="Description"><Input.TextArea rows={3} /></Form.Item>
                         {editing && <Form.Item name="status" label="Status"><Select options={[{ value: 'planning', label: 'Planning' }, { value: 'building', label: 'Building' }, { value: 'testing', label: 'Testing' }, { value: 'approved', label: 'Approved' }, { value: 'deploying', label: 'Deploying' }, { value: 'deployed', label: 'Deployed' }, { value: 'rolled_back', label: 'Rolled Back' }]} /></Form.Item>}
@@ -186,3 +191,4 @@ export default function ReleasesPage() {
         </CMSLayout>
     );
 }
+

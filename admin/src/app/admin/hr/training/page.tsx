@@ -3,9 +3,11 @@ import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { Card, Table, Tag, Typography, Row, Col, Statistic, Progress, Space, Segmented, Badge, Tooltip, Button, Modal, Form, Input, Select, InputNumber, DatePicker, Switch, message } from "antd";
-import { ReadOutlined, BookOutlined, SafetyCertificateOutlined, AppstoreOutlined, UnorderedListOutlined, ClockCircleOutlined, DollarOutlined, CalendarOutlined, PlusOutlined, ThunderboltOutlined, DeleteOutlined } from "@ant-design/icons";
+import { ReadOutlined, BookOutlined, SafetyCertificateOutlined, AppstoreOutlined, UnorderedListOutlined, ClockCircleOutlined, DollarOutlined, CalendarOutlined, PlusOutlined, ThunderboltOutlined, DeleteOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import dayjs from "dayjs";
@@ -17,16 +19,16 @@ const CREATE_M = `mutation($t:String!,$n:String!,$cat:String,$desc:String,$dur:I
 const DELETE_M = `mutation($id:String!){deleteHrTrainingProgram(id:$id)}`;
 
 const statusCfg: Record<string, { color: string; label: string; icon: string }> = {
-    upcoming: { color: '#3b82f6', label: 'Upcoming', icon: '📅' },
-    ongoing: { color: '#f59e0b', label: 'In Progress', icon: '🔄' },
-    completed: { color: '#10b981', label: 'Completed', icon: '✅' },
-    cancelled: { color: '#6b7280', label: 'Cancelled', icon: '❌' },
+    upcoming: { color: '#3b82f6', label: 'Upcoming', icon: 'ðŸ“…' },
+    ongoing: { color: '#f59e0b', label: 'In Progress', icon: 'ðŸ”„' },
+    completed: { color: '#10b981', label: 'Completed', icon: 'âœ…' },
+    cancelled: { color: '#6b7280', label: 'Cancelled', icon: 'âŒ' },
 };
 const catCfg: Record<string, { color: string; icon: string; gradient: string }> = {
-    technical: { color: '#3b82f6', icon: '💻', gradient: 'linear-gradient(135deg, #3b82f6, #60a5fa)' },
-    leadership: { color: '#8b5cf6', icon: '👑', gradient: 'linear-gradient(135deg, #8b5cf6, #a78bfa)' },
-    compliance: { color: '#ef4444', icon: '📋', gradient: 'linear-gradient(135deg, #ef4444, #f87171)' },
-    soft_skills: { color: '#06b6d4', icon: '🤝', gradient: 'linear-gradient(135deg, #06b6d4, #22d3ee)' },
+    technical: { color: '#3b82f6', icon: 'ðŸ’»', gradient: 'linear-gradient(135deg, #3b82f6, #60a5fa)' },
+    leadership: { color: '#8b5cf6', icon: 'ðŸ‘‘', gradient: 'linear-gradient(135deg, #8b5cf6, #a78bfa)' },
+    compliance: { color: '#ef4444', icon: 'ðŸ“‹', gradient: 'linear-gradient(135deg, #ef4444, #f87171)' },
+    soft_skills: { color: '#06b6d4', icon: 'ðŸ¤', gradient: 'linear-gradient(135deg, #06b6d4, #22d3ee)' },
 };
 
 function ProgramCard({ program, onDelete }: { program: any; onDelete: (id: string) => void }) {
@@ -67,7 +69,7 @@ function ProgramCard({ program, onDelete }: { program: any; onDelete: (id: strin
                 </Space>
                 {program.cost > 0 ? <Text style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>Rp {fmt(program.cost)}</Text> : <Tag color="green" style={{ fontSize: 9, borderRadius: 10, margin: 0 }}>Free</Tag>}
             </div>
-            {program.startDate && <div style={{ marginTop: 6 }}><CalendarOutlined style={{ color: '#9ca3af', marginRight: 4, fontSize: 10 }} /><Text style={{ fontSize: 10, color: '#9ca3af' }}>{dayjs(program.startDate).format('MMM D')} → {dayjs(program.endDate).format('MMM D, YYYY')}</Text></div>}
+            {program.startDate && <div style={{ marginTop: 6 }}><CalendarOutlined style={{ color: '#9ca3af', marginRight: 4, fontSize: 10 }} /><Text style={{ fontSize: 10, color: '#9ca3af' }}>{dayjs(program.startDate).format('MMM D')} â†’ {dayjs(program.endDate).format('MMM D, YYYY')}</Text></div>}
         </motion.div>
     );
 }
@@ -79,6 +81,7 @@ export default function TrainingPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [form] = Form.useForm();
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
 
     const load = async () => {
         setLoading(true);
@@ -121,7 +124,7 @@ export default function TrainingPage() {
             <div><Text strong style={{ fontSize: 13 }}>{r.name}</Text>{r.certificationName && <><br/><Tag color="gold" style={{ borderRadius: 10, fontSize: 9 }}><SafetyCertificateOutlined /> {r.certificationName}</Tag></>}</div>
         </Space> },
         { title: 'Category', dataIndex: 'category', render: (v: string) => <Tag color={(catCfg[v] || catCfg.technical).color} style={{ borderRadius: 10 }}>{v?.replace('_', ' ')}</Tag> },
-        { title: 'Provider', dataIndex: 'provider', render: (v: string) => v || '—' },
+        { title: 'Provider', dataIndex: 'provider', render: (v: string) => v || 'â€”' },
         { title: 'Duration', dataIndex: 'durationHours', render: (v: number) => <Space size={4}><ClockCircleOutlined style={{ color: '#6b7280' }} /><Text>{v}h</Text></Space>, align: 'center' as const },
         { title: 'Cost', dataIndex: 'cost', render: (v: number) => v > 0 ? <Text style={{ color: '#f59e0b' }}>{fmt(v)}</Text> : <Tag color="green" style={{ borderRadius: 10 }}>Free</Tag>, align: 'right' as const },
         { title: 'Status', dataIndex: 'status', render: (v: string) => <Tag color={(statusCfg[v] || statusCfg.upcoming).color} style={{ borderRadius: 20 }}>{(statusCfg[v] || statusCfg.upcoming).icon} {(statusCfg[v] || statusCfg.upcoming).label}</Tag> },
@@ -133,6 +136,8 @@ export default function TrainingPage() {
             title={<AuroraText colors={[themeColor, '#06b6d4', '#8b5cf6', themeColor]} className="text-[22px] font-bold tracking-tight">Training & Development</AuroraText>}
             subTitle={<DecryptedText text="Training programs, certifications & skill development" animateOn="view" revealDirection="start" speed={60} sequential />}
             extra={[<Space key="actions">
+                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'hr_training', title: 'HR Training', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'trainingType' }, { header: 'Status', key: 'status' }], data: programs })} /></Tooltip>,
+                <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'hr_training', title: 'HR Training', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'trainingType' }, { header: 'Status', key: 'status' }], data: programs })} /></Tooltip>,
                 <Segmented value={viewMode} onChange={(v: any) => setViewMode(v)} options={[{ label: <><AppstoreOutlined /> Cards</>, value: 'grid' }, { label: <><UnorderedListOutlined /> Table</>, value: 'table' }]} />
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}
                     style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)', border: 'none', borderRadius: 8 }}>Add Program</Button>
@@ -206,3 +211,4 @@ export default function TrainingPage() {
         </CMSLayout>
     );
 }
+

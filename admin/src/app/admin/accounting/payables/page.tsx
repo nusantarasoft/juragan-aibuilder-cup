@@ -3,11 +3,13 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
 import { Table, Card, Typography, Space, Tag, Button, Input, Select, Row, Col, Statistic, Empty, Modal, Descriptions, Progress, message, Popconfirm, InputNumber, DatePicker, Form, Divider, Tooltip } from 'antd';
-import { SearchOutlined, ReloadOutlined, PlusOutlined, EyeOutlined, DollarOutlined, DeleteOutlined, MinusCircleOutlined, WarningOutlined, CheckCircleOutlined, SendOutlined } from '@ant-design/icons';
+import { SearchOutlined, ReloadOutlined, PlusOutlined, EyeOutlined, DollarOutlined, DeleteOutlined, MinusCircleOutlined, WarningOutlined, CheckCircleOutlined, SendOutlined, FileExcelOutlined, FilePdfOutlined  } from '@ant-design/icons';
 import { accountingService, AcctInvoice, AcctInvoiceSummary, AcctInvoiceLine, AcctContact, AcctAccount } from '@/lib/accountingService';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { exportToPdf, exportToExcel } from '@/lib/exportUtils';
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 import dayjs from 'dayjs';
 
 const { Text } = Typography;
@@ -18,7 +20,7 @@ const statusColor: Record<string, string> = { draft: 'default', sent: 'blue', pa
 const statusIcon: Record<string, React.ReactNode> = { paid: <CheckCircleOutlined />, overdue: <WarningOutlined /> };
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
-// ─── Aging Stacked Bar ──────────────────────────────────
+// â”€â”€â”€ Aging Stacked Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function AgingBar({ summary }: { summary: AcctInvoiceSummary }) {
     const buckets = [
         { value: summary.current || 0, color: '#10b981', label: 'Current' },
@@ -53,6 +55,7 @@ function AgingBar({ summary }: { summary: AcctInvoiceSummary }) {
 
 export default function AccountsPayablePage() {
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [invoices, setInvoices] = useState<AcctInvoice[]>([]);
     const [summary, setSummary] = useState<AcctInvoiceSummary | null>(null);
     const [loading, setLoading] = useState(true);
@@ -219,6 +222,8 @@ export default function AccountsPayablePage() {
                     <Input placeholder="Search bills..." prefix={<SearchOutlined style={{ opacity: 0.4 }} />} value={search} onChange={e => setSearch(e.target.value)} onPressEnter={load} style={{ width: 260, borderRadius: 8 }} allowClear />
                     <Select placeholder="Status" value={statusFilter} onChange={setStatusFilter} allowClear style={{ width: 140 }} options={[{ value: 'draft', label: 'Draft' }, { value: 'sent', label: 'Sent' }, { value: 'partial', label: 'Partial' }, { value: 'paid', label: 'Paid' }]} />
                     <Button icon={<ReloadOutlined />} onClick={load}>Refresh</Button>
+                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'acct_payables', title: 'Accounts Payable', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Invoice #', key: 'invoiceNumber' }, { header: 'Vendor', key: 'contactName' }, { header: 'Amount', key: 'totalAmount' }, { header: 'Status', key: 'status' }], data: invoices })} /></Tooltip>
+                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'acct_payables', title: 'Accounts Payable', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Invoice #', key: 'invoiceNumber' }, { header: 'Vendor', key: 'contactName' }, { header: 'Amount', key: 'totalAmount' }, { header: 'Status', key: 'status' }], data: invoices })} /></Tooltip>
                 </Space>
             </Card>
 
@@ -266,7 +271,7 @@ export default function AccountsPayablePage() {
             </Modal>
 
             {/* Payment Modal */}
-            <Modal title={`Record Payment — ${paymentModal?.invoiceNumber}`} open={!!paymentModal} onOk={handlePayment} onCancel={() => setPaymentModal(null)} okText="Record Payment">
+            <Modal title={`Record Payment â€” ${paymentModal?.invoiceNumber}`} open={!!paymentModal} onOk={handlePayment} onCancel={() => setPaymentModal(null)} okText="Record Payment">
                 {paymentModal && (
                     <div style={{ padding: '16px 0' }}>
                         <Text type="secondary">Amount Due: </Text><Text strong style={{ color: '#ef4444' }}>{formatCurrency(paymentModal.amountDue)}</Text>
@@ -284,7 +289,7 @@ export default function AccountsPayablePage() {
             <Modal title="Create New Bill" open={createOpen} onOk={handleCreate} onCancel={() => setCreateOpen(false)} okText="Create Bill" width={720} confirmLoading={createLoading} destroyOnClose>
                 <Form form={form} layout="vertical" size="small" initialValues={{ invoiceDate: dayjs(), dueDate: dayjs().add(30, 'day') }}>
                     <Row gutter={16}>
-                        <Col span={12}><Form.Item name="contactId" label="Vendor" rules={[{ required: true }]}><Select showSearch placeholder="Select vendor" optionFilterProp="label" options={contacts.map(c => ({ value: c.id, label: `${c.code ? c.code+' — ' : ''}${c.name}` }))} /></Form.Item></Col>
+                        <Col span={12}><Form.Item name="contactId" label="Vendor" rules={[{ required: true }]}><Select showSearch placeholder="Select vendor" optionFilterProp="label" options={contacts.map(c => ({ value: c.id, label: `${c.code ? c.code+' â€” ' : ''}${c.name}` }))} /></Form.Item></Col>
                         <Col span={12}><Form.Item name="reference" label="Reference / PO #"><Input placeholder="PO-2026-XXX" /></Form.Item></Col>
                     </Row>
                     <Row gutter={16}>
@@ -321,3 +326,4 @@ export default function AccountsPayablePage() {
         </CMSLayout>
     );
 }
+

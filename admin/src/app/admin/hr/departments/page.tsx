@@ -141,6 +141,8 @@ export default function DepartmentsPage() {
                 <Space key="actions">
                     <Segmented value={viewMode} onChange={(v: any) => setViewMode(v)} options={[{ label: <><AppstoreOutlined /> Org Chart</>, value: 'orgchart' }, { label: <><UnorderedListOutlined /> Table</>, value: 'table' }]} />
                     <Button type="primary" icon={<PlusOutlined />} style={{ background: themeColor }} onClick={() => setModalOpen(true)}>Add</Button>
+                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'hr_departments', title: 'HR Departments', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Description', key: 'description' }, { header: 'Status', key: 'status' }], data: departments })} /></Tooltip>,
+                <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'hr_departments', title: 'HR Departments', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Description', key: 'description' }, { header: 'Status', key: 'status' }], data: departments })} /></Tooltip>,
                 </Space>
             ]}
         >

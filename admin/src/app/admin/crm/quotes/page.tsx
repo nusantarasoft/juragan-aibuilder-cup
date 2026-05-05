@@ -10,7 +10,7 @@ import {
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, FileTextOutlined,
-    DollarOutlined, CheckCircleOutlined, ClockCircleOutlined,, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
+    DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { AuroraText } from '@/components/magicui/aurora-text';
@@ -132,6 +132,8 @@ export default function QuotesPage() {
             subTitle={<DecryptedText text="Sales quotes and proposals" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[
             <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
             <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>New Quote</Button>,
+                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_quotes', title: 'CRM Quotes', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Quote #', key: 'quoteNumber' }, { header: 'Account', key: 'accountName' }, { header: 'Total', key: 'total' }, { header: 'Status', key: 'status' }], data: quotes })} /></Tooltip>,
+                <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_quotes', title: 'CRM Quotes', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Quote #', key: 'quoteNumber' }, { header: 'Account', key: 'accountName' }, { header: 'Total', key: 'total' }, { header: 'Status', key: 'status' }], data: quotes })} /></Tooltip>,
         ]}>
             <Row gutter={16} style={{ marginBottom: 16 }}>
                 <Col span={6}><Card style={{ ...glass }}><Statistic title="Total Value" value={totalValue} prefix={<DollarOutlined />} precision={0} formatter={v => fmt(Number(v))} /></Card></Col>
@@ -167,5 +169,6 @@ export default function QuotesPage() {
         </CMSLayout>
     );
 }
+
 
 

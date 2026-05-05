@@ -4,10 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
-import {
-    Typography, Space, Spin, Tag, Progress, Card, Row, Col, Statistic,
-    Table, Tooltip, Button, Empty, Badge, message
-} from "antd";
+import { Badge, Button, Card, Col, Empty, message, Progress, Row, Space, Spin, Statistic, Table, Tag, Tooltip, Typography } from "antd";
 import {
     ProjectOutlined, DashboardOutlined, FundProjectionScreenOutlined,
     CheckCircleOutlined, ClockCircleOutlined, PauseCircleOutlined,
@@ -798,7 +795,7 @@ export default function PortfolioOverviewPage() {
                     </Space>
                 }
                 style={glassCard}
-                extra={<Button icon={<ReloadOutlined />} onClick={loadData} size="small">Reload</Button>}
+                extra={<Space><Button icon={<ReloadOutlined />} onClick={loadData} size="small">Reload</Button><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_portfolio', title: 'PM Portfolio', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip><Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_portfolio', title: 'PM Portfolio', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip></Space>}
             >
                 {projects.length === 0 ? (
                     <Empty description="No projects found. Create one from the Projects page." />
@@ -816,5 +813,8 @@ export default function PortfolioOverviewPage() {
         </CMSLayout>
     );
 }
+
+
+
 
 

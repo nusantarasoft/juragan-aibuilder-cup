@@ -3,11 +3,13 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
 import { Table, Card, Typography, Space, Tag, Button, Input, Select, Row, Col, Empty, Modal, Descriptions, Progress, message, Popconfirm, InputNumber, DatePicker, Form, Divider, Tooltip } from 'antd';
-import { SearchOutlined, ReloadOutlined, EyeOutlined, DollarOutlined, DeleteOutlined, WarningOutlined, CheckCircleOutlined, PlusOutlined, MinusCircleOutlined, SendOutlined } from '@ant-design/icons';
+import { SearchOutlined, ReloadOutlined, EyeOutlined, DollarOutlined, DeleteOutlined, WarningOutlined, CheckCircleOutlined, PlusOutlined, MinusCircleOutlined, SendOutlined, FileExcelOutlined, FilePdfOutlined  } from '@ant-design/icons';
 import { accountingService, AcctInvoice, AcctInvoiceSummary, AcctInvoiceLine, AcctContact, AcctAccount } from '@/lib/accountingService';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { exportToPdf, exportToExcel } from '@/lib/exportUtils';
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 import dayjs from 'dayjs';
 
 const { Text } = Typography;
@@ -52,6 +54,7 @@ function AgingBar({ summary }: { summary: AcctInvoiceSummary }) {
 
 export default function AccountsReceivablePage() {
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [invoices, setInvoices] = useState<AcctInvoice[]>([]);
     const [summary, setSummary] = useState<AcctInvoiceSummary | null>(null);
     const [loading, setLoading] = useState(true);
@@ -214,6 +217,8 @@ export default function AccountsReceivablePage() {
                     <Input placeholder="Search invoices..." prefix={<SearchOutlined style={{ opacity: 0.4 }} />} value={search} onChange={e => setSearch(e.target.value)} onPressEnter={load} style={{ width: 260, borderRadius: 8 }} allowClear />
                     <Select placeholder="Status" value={statusFilter} onChange={setStatusFilter} allowClear style={{ width: 140 }} options={[{ value: 'draft', label: 'Draft' }, { value: 'sent', label: 'Sent' }, { value: 'partial', label: 'Partial' }, { value: 'paid', label: 'Paid' }]} />
                     <Button icon={<ReloadOutlined />} onClick={load}>Refresh</Button>
+                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'acct_receivables', title: 'Accounts Receivable', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Invoice #', key: 'invoiceNumber' }, { header: 'Customer', key: 'contactName' }, { header: 'Amount', key: 'totalAmount' }, { header: 'Status', key: 'status' }], data: invoices })} /></Tooltip>
+                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'acct_receivables', title: 'Accounts Receivable', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Invoice #', key: 'invoiceNumber' }, { header: 'Customer', key: 'contactName' }, { header: 'Amount', key: 'totalAmount' }, { header: 'Status', key: 'status' }], data: invoices })} /></Tooltip>
                 </Space>
             </Card>
 
@@ -258,7 +263,7 @@ export default function AccountsReceivablePage() {
                 )}
             </Modal>
 
-            <Modal title={`Record Payment — ${paymentModal?.invoiceNumber}`} open={!!paymentModal} onOk={handlePayment} onCancel={() => setPaymentModal(null)} okText="Record Payment">
+            <Modal title={`Record Payment â€” ${paymentModal?.invoiceNumber}`} open={!!paymentModal} onOk={handlePayment} onCancel={() => setPaymentModal(null)} okText="Record Payment">
                 {paymentModal && (
                     <div style={{ padding: '16px 0' }}>
                         <Text type="secondary">Outstanding: </Text><Text strong style={{ color: '#3b82f6' }}>{formatCurrency(paymentModal.amountDue)}</Text>
@@ -275,7 +280,7 @@ export default function AccountsReceivablePage() {
             <Modal title="Create New Invoice" open={createOpen} onOk={handleCreate} onCancel={() => setCreateOpen(false)} okText="Create Invoice" width={720} confirmLoading={createLoading} destroyOnClose>
                 <Form form={form} layout="vertical" size="small" initialValues={{ invoiceDate: dayjs(), dueDate: dayjs().add(30, 'day') }}>
                     <Row gutter={16}>
-                        <Col span={12}><Form.Item name="contactId" label="Customer" rules={[{ required: true }]}><Select showSearch placeholder="Select customer" optionFilterProp="label" options={contacts.map(c => ({ value: c.id, label: `${c.code ? c.code+' — ' : ''}${c.name}` }))} /></Form.Item></Col>
+                        <Col span={12}><Form.Item name="contactId" label="Customer" rules={[{ required: true }]}><Select showSearch placeholder="Select customer" optionFilterProp="label" options={contacts.map(c => ({ value: c.id, label: `${c.code ? c.code+' â€” ' : ''}${c.name}` }))} /></Form.Item></Col>
                         <Col span={12}><Form.Item name="reference" label="Reference / SO #"><Input placeholder="SO-2026-XXX" /></Form.Item></Col>
                     </Row>
                     <Row gutter={16}>
@@ -311,3 +316,4 @@ export default function AccountsReceivablePage() {
         </CMSLayout>
     );
 }
+

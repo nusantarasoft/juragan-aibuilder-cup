@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Progress, Typography, Timeline, Card, Statistic, Badge } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, CloudUploadOutlined, RocketOutlined, CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined, ClockCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Progress, Typography, Timeline, Card, Statistic, Badge, Tooltip } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, CloudUploadOutlined, RocketOutlined, CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined, ClockCircleOutlined, ExclamationCircleOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { supaRest, supaInsert, supaUpdate, supaDelete } from "@/lib/supaRest";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
@@ -12,6 +12,8 @@ import type { FieldDef } from "@/components/common/DataImportExport";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -30,6 +32,7 @@ export default function DeploymentsPage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [data, setData] = useState<any[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<any>(null);
@@ -123,7 +126,7 @@ export default function DeploymentsPage() {
 
             {/* Environment Distribution */}
             {data.length > 0 && (
-                <Card size="small" style={{ ...glass, marginBottom: 16 }} title={<Text strong style={{ fontSize: 13 }}>☁️ Environment Distribution</Text>}>
+                <Card size="small" style={{ ...glass, marginBottom: 16 }} title={<Text strong style={{ fontSize: 13 }}>â˜ï¸ Environment Distribution</Text>}>
                     <div style={{ display: 'flex', gap: 12 }}>
                         {['production', 'staging', 'development', 'testing'].map((env, i) => {
                             const cnt = data.filter(d => d.environment === env).length;
@@ -147,10 +150,12 @@ export default function DeploymentsPage() {
                 headerTitle={<Space><CloudUploadOutlined /> Deployments <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
+                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_deployments', title: 'Deployments', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Environment', key: 'environment' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
+                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_deployments', title: 'Deployments', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Environment', key: 'environment' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 140 }} value={filterStatus} onChange={setFilterStatus}
                         options={[{ value: 'planned', label: 'Planned' }, { value: 'in_progress', label: 'In Progress' }, { value: 'completed', label: 'Completed' }, { value: 'failed', label: 'Failed' }, { value: 'rolled_back', label: 'Rolled Back' }]} />,
                     <Select key="fe" placeholder="Environment" allowClear style={{ width: 140 }} value={filterEnv} onChange={setFilterEnv}
-                        options={[{ value: 'production', label: '🔴 Production' }, { value: 'staging', label: '🟠 Staging' }, { value: 'development', label: '🔵 Development' }]} />,
+                        options={[{ value: 'production', label: 'ðŸ”´ Production' }, { value: 'staging', label: 'ðŸŸ  Staging' }, { value: 'development', label: 'ðŸ”µ Development' }]} />,
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>New Deployment</Button>,
                 ]}
             />
@@ -162,7 +167,7 @@ export default function DeploymentsPage() {
                         <Form.Item name="description" label="Description"><Input.TextArea rows={2} /></Form.Item>
                         <Row gutter={16}>
                             <Col span={12}><Form.Item name="deployment_type" label="Type"><Select options={[{ value: 'standard', label: 'Standard' }, { value: 'rolling', label: 'Rolling' }, { value: 'blue_green', label: 'Blue/Green' }, { value: 'canary', label: 'Canary' }, { value: 'phased', label: 'Phased' }, { value: 'big_bang', label: 'Big Bang' }]} /></Form.Item></Col>
-                            <Col span={12}><Form.Item name="environment" label="Environment"><Select options={[{ value: 'production', label: '🔴 Production' }, { value: 'staging', label: '🟠 Staging' }, { value: 'development', label: '🔵 Development' }, { value: 'testing', label: 'Testing' }, { value: 'dr', label: 'DR' }]} /></Form.Item></Col>
+                            <Col span={12}><Form.Item name="environment" label="Environment"><Select options={[{ value: 'production', label: 'ðŸ”´ Production' }, { value: 'staging', label: 'ðŸŸ  Staging' }, { value: 'development', label: 'ðŸ”µ Development' }, { value: 'testing', label: 'Testing' }, { value: 'dr', label: 'DR' }]} /></Form.Item></Col>
                         </Row>
                         {editing && <Form.Item name="status" label="Status"><Select options={[{ value: 'planned', label: 'Planned' }, { value: 'in_progress', label: 'In Progress' }, { value: 'completed', label: 'Completed' }, { value: 'failed', label: 'Failed' }, { value: 'rolled_back', label: 'Rolled Back' }]} /></Form.Item>}
                     </>),
@@ -185,7 +190,7 @@ export default function DeploymentsPage() {
                         <Form.Item name="validation_steps" label="Validation Steps"><Input.TextArea rows={3} placeholder="1. Health checks\n2. Smoke tests\n3. Monitor dashboards" /></Form.Item>
                         <Form.Item name="rollback_steps" label="Rollback Steps"><Input.TextArea rows={3} placeholder="How to revert if deployment fails" /></Form.Item>
                         {editing && (<>
-                            <Form.Item name="validation_result" label="Validation Result"><Select allowClear options={[{ value: 'passed', label: '✅ Passed' }, { value: 'failed', label: '❌ Failed' }, { value: 'partial', label: '⚠️ Partial' }]} /></Form.Item>
+                            <Form.Item name="validation_result" label="Validation Result"><Select allowClear options={[{ value: 'passed', label: 'âœ… Passed' }, { value: 'failed', label: 'âŒ Failed' }, { value: 'partial', label: 'âš ï¸ Partial' }]} /></Form.Item>
                             <Form.Item name="deployment_log" label="Deployment Log"><Input.TextArea rows={3} placeholder="Deployment execution notes" /></Form.Item>
                         </>)}
                     </>),
@@ -195,3 +200,4 @@ export default function DeploymentsPage() {
         </CMSLayout>
     );
 }
+

@@ -157,6 +157,8 @@ export default function EmployeesPage() {
                 <Space key="actions">
                     <Segmented value={viewMode} onChange={(v: any) => setViewMode(v)} options={[{ label: <><AppstoreOutlined /> Grid</>, value: 'grid' }, { label: <><UnorderedListOutlined /> List</>, value: 'list' }]} />
                     <Button type="primary" icon={<PlusOutlined />} style={{ background: themeColor }} onClick={() => setModalOpen(true)}>Add Employee</Button>
+                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'hr_employees', title: 'HR Employees', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'firstName' }, { header: 'Last Name', key: 'lastName' }, { header: 'Department', key: 'departmentName' }, { header: 'Position', key: 'positionTitle' }, { header: 'Status', key: 'status' }], data: employees })} /></Tooltip>,
+                <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'hr_employees', title: 'HR Employees', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'firstName' }, { header: 'Last Name', key: 'lastName' }, { header: 'Department', key: 'departmentName' }, { header: 'Position', key: 'positionTitle' }, { header: 'Status', key: 'status' }], data: employees })} /></Tooltip>,
                 </Space>
             ]}
         >

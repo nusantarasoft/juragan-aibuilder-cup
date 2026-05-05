@@ -4,10 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
-import {
-    Typography, Space, Spin, Tag, Card, Row, Col, Statistic, Select,
-    Tooltip, Progress, Empty, Badge
-} from "antd";
+import { Badge, Button, Card, Col, Empty, Progress, Row, Select, Space, Spin, Statistic, Tag, Tooltip, Typography } from "antd";
 import {
     CalendarOutlined, ProjectOutlined, CheckCircleOutlined,
     ClockCircleOutlined, FlagOutlined, ExclamationCircleOutlined,
@@ -152,7 +149,7 @@ export default function TimelinePage() {
     if (loading) {
         return (
             <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Timeline</AuroraText>}
-            subTitle={<DecryptedText text="Cross-project Gantt-style timeline view" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
+            subTitle={<DecryptedText text="Cross-project Gantt-style timeline view" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_timeline', title: 'PM Timeline', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Start', key: 'startDate' }, { header: 'End', key: 'endDate' }, { header: 'Progress', key: 'progress' }], data: projects })} /></Tooltip>, <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_timeline', title: 'PM Timeline', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Start', key: 'startDate' }, { header: 'End', key: 'endDate' }, { header: 'Progress', key: 'progress' }], data: projects })} /></Tooltip>]}>
                 <div style={{ textAlign: 'center', padding: 120 }}>
                     <Spin size="large" />
                 </div>
@@ -162,7 +159,7 @@ export default function TimelinePage() {
 
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Timeline</AuroraText>}
-            subTitle={<DecryptedText text="Cross-project Gantt-style timeline view" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
+            subTitle={<DecryptedText text="Cross-project Gantt-style timeline view" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_timeline', title: 'PM Timeline', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Start', key: 'startDate' }, { header: 'End', key: 'endDate' }, { header: 'Progress', key: 'progress' }], data: projects })} /></Tooltip>, <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_timeline', title: 'PM Timeline', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Start', key: 'startDate' }, { header: 'End', key: 'endDate' }, { header: 'Progress', key: 'progress' }], data: projects })} /></Tooltip>]}>
             {/* â”€â”€ Stats â”€â”€ */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={6}>
@@ -492,5 +489,8 @@ export default function TimelinePage() {
         </CMSLayout>
     );
 }
+
+
+
 
 

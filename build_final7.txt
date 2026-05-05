@@ -1,0 +1,123 @@
+﻿docker : --progress is a global compose flag, better use `docker compose --progress xx build ...
+At line:1 char:1
++ docker compose build admin --progress plain 2>&1 | Out-File -FilePath ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (--progress is a...ss xx build ...:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Image nusantarasoft-minimal-middleware Building 
+ Image nusantarasoft-minimal-admin Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.21kB done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 2.13kB 0.0s done
+#2 DONE 0.0s
+
+#3 [auth] library/node:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#4 [internal] load metadata for docker.io/library/node:20-alpine
+#4 DONE 1.3s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 475B done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 DONE 0.0s
+
+#7 [base 1/3] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#7 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.0s done
+#7 DONE 0.1s
+
+#6 [internal] load build context
+#6 transferring context: 92.74kB 0.1s done
+#6 DONE 0.2s
+
+#8 [deps 1/3] RUN apk add --no-cache python3 make g++
+#8 CACHED
+
+#9 [deps 2/3] COPY package.json ./
+#9 CACHED
+
+#10 [deps 3/3] RUN npm config set fetch-retry-mintimeout 600000 &&     npm config set fetch-retry-maxtimeout 1200000 &&     npm install --legacy-peer-deps
+#10 CACHED
+
+#11 [base 2/3] RUN apk add --no-cache libc6-compat
+#11 CACHED
+
+#12 [base 3/3] WORKDIR /app
+#12 CACHED
+
+#13 [builder 1/3] COPY --from=deps /app/node_modules ./node_modules
+#13 CACHED
+
+#14 [builder 2/3] COPY . .
+#14 DONE 0.7s
+
+#15 [builder 3/3] RUN npm run build
+#15 1.399 
+#15 1.399 > admin@0.1.0 build
+#15 1.399 > next build
+#15 1.399 
+#15 3.788 Γû▓ Next.js 16.1.0 (Turbopack)
+#15 3.789 
+#15 3.882   Creating an optimized production build ...
+#15 289.9 Γ£ô Compiled successfully in 4.5min
+#15 289.9   Running TypeScript ...
+#15 360.8 Failed to compile.
+#15 360.8 
+#15 360.8 ./src/app/admin/ecommerce/offers/page.tsx:53:36
+#15 360.8 Type error: Cannot find name 'useDateRangeStore'.
+#15 360.8 
+#15 360.8 [0m [90m 51 |[39m     [36mconst[39m [stats[33m,[39m setStats] [33m=[39m useState[33m<[39m[33mEcomOfferStatsType[39m [33m|[39m [36mnull[39m[33m>[39m([36mnull[39m)[33m;[39m
+#15 360.8  [90m 52 |[39m     [36mconst[39m { themeColor } [33m=[39m usePreferencesStore()[33m;[39m
+#15 360.8 [31m[1m>[22m[39m[90m 53 |[39m     [36mconst[39m { startDate[33m,[39m endDate } [33m=[39m useDateRangeStore()[33m;[39m
+#15 360.8  [90m    |[39m                                    [31m[1m^[22m[39m
+#15 360.8  [90m 54 |[39m     [36mconst[39m [offers[33m,[39m setOffers] [33m=[39m useState[33m<[39m[33mEcomOffer[39m[][33m>[39m([])[33m;[39m
+#15 360.8  [90m 55 |[39m     [36mconst[39m [loading[33m,[39m setLoading] [33m=[39m useState([36mtrue[39m)[33m;[39m
+#15 360.8  [90m 56 |[39m     [36mconst[39m [search[33m,[39m setSearch] [33m=[39m useState([32m""[39m)[33m;[39m[0m
+#15 361.1 Next.js build worker exited with code: 1 and signal: null
+#15 361.2 npm notice
+#15 361.2 npm notice New major version of npm available! 10.8.2 -> 11.13.0
+#15 361.2 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+#15 361.2 npm notice To update run: npm install -g npm@11.13.0
+#15 361.2 npm notice
+#15 ERROR: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
+------
+ > [builder 3/3] RUN npm run build:
+360.8  [90m    |[39m                                    [31m[1m^[22m[39m
+360.8  [90m 54 |[39m     [36mconst[39m [offers[33m,[39m setOffers] [33m=[39m useState[33m<[39m[33mEcomOffer[39m[][33m>[39m([])[33m;[39m
+360.8  [90m 55 |[39m     [36mconst[39m [loading[33m,[39m setLoading] [33m=[39m useState([36mtrue[39m)[33m;[39m
+360.8  [90m 56 |[39m     [36mconst[39m [search[33m,[39m setSearch] [33m=[39m useState([32m""[39m)[33m;[39m[0m
+361.1 Next.js build worker exited with code: 1 and signal: null
+361.2 npm notice
+361.2 npm notice New major version of npm available! 10.8.2 -> 11.13.0
+361.2 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+361.2 npm notice To update run: npm install -g npm@11.13.0
+361.2 npm notice
+------
+Dockerfile:31
+
+--------------------
+
+  29 |     
+
+  30 |     # Build the application
+
+  31 | >>> RUN npm run build
+
+  32 |     
+
+  33 |     # ===== Runner Stage =====
+
+--------------------
+
+failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
+
+
+
+View build details: docker-desktop://dashboard/build/default/default/w0ea6da54ponroq5g73vpe06e
+

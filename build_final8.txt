@@ -1,0 +1,157 @@
+﻿docker : --progress is a global compose flag, better use `docker compose --progress xx build ...
+At line:1 char:1
++ docker compose build admin --progress plain 2>&1 | Out-File -FilePath ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (--progress is a...ss xx build ...:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Image nusantarasoft-minimal-middleware Building 
+ Image nusantarasoft-minimal-admin Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.21kB done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 2.13kB 0.0s done
+#2 DONE 0.0s
+
+#3 [auth] library/node:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#4 [internal] load metadata for docker.io/library/node:20-alpine
+#4 DONE 1.4s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 475B done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 DONE 0.0s
+
+#7 [base 1/3] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#7 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.0s done
+#7 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 93.80kB 0.2s done
+#6 DONE 0.2s
+
+#8 [base 2/3] RUN apk add --no-cache libc6-compat
+#8 CACHED
+
+#9 [base 3/3] WORKDIR /app
+#9 CACHED
+
+#10 [deps 1/3] RUN apk add --no-cache python3 make g++
+#10 CACHED
+
+#11 [deps 2/3] COPY package.json ./
+#11 CACHED
+
+#12 [deps 3/3] RUN npm config set fetch-retry-mintimeout 600000 &&     npm config set fetch-retry-maxtimeout 1200000 &&     npm install --legacy-peer-deps
+#12 CACHED
+
+#13 [builder 1/3] COPY --from=deps /app/node_modules ./node_modules
+#13 CACHED
+
+#14 [builder 2/3] COPY . .
+#14 DONE 0.3s
+
+#15 [builder 3/3] RUN npm run build
+#15 1.436 
+#15 1.436 > admin@0.1.0 build
+#15 1.436 > next build
+#15 1.436 
+#15 3.275 Γû▓ Next.js 16.1.0 (Turbopack)
+#15 3.276 
+#15 3.367   Creating an optimized production build ...
+#15 295.1 
+#15 295.1 > Build error occurred
+#15 295.1 Error: Turbopack build failed with 2 errors:
+#15 295.1 ./src/app/admin/ecommerce/offers/page.tsx:56:24
+#15 295.1 Ecmascript file had an error
+#15 295.1 [0m [90m 54 |[39m     [36mconst[39m { themeColor } [33m=[39m usePreferencesStore()[33m;[39m
+#15 295.1  [90m 55 |[39m     [36mconst[39m { startDate[33m,[39m endDate } [33m=[39m useDateRangeStore()[33m;[39m
+#15 295.1 [31m[1m>[22m[39m[90m 56 |[39m     [36mconst[39m { startDate[33m,[39m endDate } [33m=[39m useDateRangeStore()[33m;[39m
+#15 295.1  [90m    |[39m                        [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+#15 295.1  [90m 57 |[39m     [36mconst[39m [offers[33m,[39m setOffers] [33m=[39m useState[33m<[39m[33mEcomOffer[39m[][33m>[39m([])[33m;[39m
+#15 295.1  [90m 58 |[39m     [36mconst[39m [loading[33m,[39m setLoading] [33m=[39m useState([36mtrue[39m)[33m;[39m
+#15 295.1  [90m 59 |[39m     [36mconst[39m [search[33m,[39m setSearch] [33m=[39m useState([32m""[39m)[33m;[39m[0m
+#15 295.1 
+#15 295.1 the name `endDate` is defined multiple times
+#15 295.1 
+#15 295.1 Import traces:
+#15 295.1   Client Component Browser:
+#15 295.1     ./src/app/admin/ecommerce/offers/page.tsx [Client Component Browser]
+#15 295.1     ./src/app/admin/ecommerce/offers/page.tsx [Server Component]
+#15 295.1 
+#15 295.1   Client Component SSR:
+#15 295.1     ./src/app/admin/ecommerce/offers/page.tsx [Client Component SSR]
+#15 295.1     ./src/app/admin/ecommerce/offers/page.tsx [Server Component]
+#15 295.1 
+#15 295.1 
+#15 295.1 ./src/app/admin/ecommerce/offers/page.tsx:56:13
+#15 295.1 Ecmascript file had an error
+#15 295.1 [0m [90m 54 |[39m     [36mconst[39m { themeColor } [33m=[39m usePreferencesStore()[33m;[39m
+#15 295.1  [90m 55 |[39m     [36mconst[39m { startDate[33m,[39m endDate } [33m=[39m useDateRangeStore()[33m;[39m
+#15 295.1 [31m[1m>[22m[39m[90m 56 |[39m     [36mconst[39m { startDate[33m,[39m endDate } [33m=[39m useDateRangeStore()[33m;[39m
+#15 295.1  [90m    |[39m             [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+#15 295.1  [90m 57 |[39m     [36mconst[39m [offers[33m,[39m setOffers] [33m=[39m useState[33m<[39m[33mEcomOffer[39m[][33m>[39m([])[33m;[39m
+#15 295.1  [90m 58 |[39m     [36mconst[39m [loading[33m,[39m setLoading] [33m=[39m useState([36mtrue[39m)[33m;[39m
+#15 295.1  [90m 59 |[39m     [36mconst[39m [search[33m,[39m setSearch] [33m=[39m useState([32m""[39m)[33m;[39m[0m
+#15 295.1 
+#15 295.1 the name `startDate` is defined multiple times
+#15 295.1 
+#15 295.1 Import traces:
+#15 295.1   Client Component Browser:
+#15 295.1     ./src/app/admin/ecommerce/offers/page.tsx [Client Component Browser]
+#15 295.1     ./src/app/admin/ecommerce/offers/page.tsx [Server Component]
+#15 295.1 
+#15 295.1   Client Component SSR:
+#15 295.1     ./src/app/admin/ecommerce/offers/page.tsx [Client Component SSR]
+#15 295.1     ./src/app/admin/ecommerce/offers/page.tsx [Server Component]
+#15 295.1 
+#15 295.1 
+#15 295.1     at <unknown> (./src/app/admin/ecommerce/offers/page.tsx:56:24)
+#15 295.1     at <unknown> (./src/app/admin/ecommerce/offers/page.tsx:56:13)
+#15 295.2 npm notice
+#15 295.2 npm notice New major version of npm available! 10.8.2 -> 11.13.0
+#15 295.2 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+#15 295.2 npm notice To update run: npm install -g npm@11.13.0
+#15 295.2 npm notice
+#15 ERROR: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
+------
+ > [builder 3/3] RUN npm run build:
+295.1     ./src/app/admin/ecommerce/offers/page.tsx [Server Component]
+295.1 
+295.1 
+295.1     at <unknown> (./src/app/admin/ecommerce/offers/page.tsx:56:24)
+295.1     at <unknown> (./src/app/admin/ecommerce/offers/page.tsx:56:13)
+295.2 npm notice
+295.2 npm notice New major version of npm available! 10.8.2 -> 11.13.0
+295.2 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+295.2 npm notice To update run: npm install -g npm@11.13.0
+295.2 npm notice
+------
+Dockerfile:31
+
+--------------------
+
+  29 |     
+
+  30 |     # Build the application
+
+  31 | >>> RUN npm run build
+
+  32 |     
+
+  33 |     # ===== Runner Stage =====
+
+--------------------
+
+failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
+
+
+
+View build details: docker-desktop://dashboard/build/default/default/lxboli97l3apsce65c18m7684
+

@@ -2,11 +2,13 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import CMSLayout from '@/components/layout/CMSLayout';
 import { Table, Button, Space, Tag, Input, Select, Drawer, Form, InputNumber, Switch, message, Modal, Typography, Card, Tooltip, Divider, TreeSelect, Empty, Spin, Popconfirm } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, FilterOutlined, AccountBookOutlined, DownOutlined, RightOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, FilterOutlined, AccountBookOutlined, DownOutlined, RightOutlined, FileExcelOutlined, FilePdfOutlined  } from '@ant-design/icons';
 import { accountingService, AcctAccount } from '@/lib/accountingService';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 
 const { Text } = Typography;
 const formatCurrency = (v: number | string) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(v) || 0);
@@ -18,6 +20,7 @@ const subtypes = ['cash', 'bank', 'receivable', 'payable', 'inventory', 'fixed_a
 
 export default function ChartOfAccountsPage() {
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [accounts, setAccounts] = useState<AcctAccount[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -118,6 +121,8 @@ export default function ChartOfAccountsPage() {
                     <Select placeholder="Filter by type" value={filterType} onChange={setFilterType} allowClear style={{ width: 160 }}
                         options={Object.entries(typeLabels).map(([k, v]) => ({ value: k, label: v }))} />
                     <Button icon={<ReloadOutlined />} onClick={load}>Refresh</Button>
+                    <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'acct_accounts', title: 'Chart of Accounts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Code', key: 'accountCode' }, { header: 'Name', key: 'name' }, { header: 'Type', key: 'accountType' }, { header: 'Balance', key: 'currentBalance' }], data: accounts })} /></Tooltip>
+                    <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'acct_accounts', title: 'Chart of Accounts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Code', key: 'accountCode' }, { header: 'Name', key: 'name' }, { header: 'Type', key: 'accountType' }, { header: 'Balance', key: 'currentBalance' }], data: accounts })} /></Tooltip>
                 </Space>
             </Card>
 
@@ -179,3 +184,4 @@ export default function ChartOfAccountsPage() {
         </CMSLayout>
     );
 }
+

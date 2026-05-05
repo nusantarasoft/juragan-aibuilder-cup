@@ -2,12 +2,14 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
-import { Table, Select, DatePicker, Card, Typography, Space, Tag, Button, Spin, Empty, Row, Col, Statistic, Divider } from 'antd';
-import { SearchOutlined, ReloadOutlined, DownloadOutlined, BookOutlined } from '@ant-design/icons';
+import { Table, Select, DatePicker, Card, Typography, Space, Tag, Button, Spin, Empty, Row, Col, Statistic, Divider, Tooltip } from 'antd';
+import { SearchOutlined, ReloadOutlined, DownloadOutlined, BookOutlined, FileExcelOutlined, FilePdfOutlined  } from '@ant-design/icons';
 import { accountingService, AcctAccount, AcctJournalLine } from '@/lib/accountingService';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { exportToPdf, exportToExcel } from '@/lib/exportUtils';
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 import dayjs from 'dayjs';
 
 const { Text } = Typography;
@@ -15,7 +17,7 @@ const { RangePicker } = DatePicker;
 const formatCurrency = (v: number | string) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(v) || 0);
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
-// snake_case → camelCase
+// snake_case â†’ camelCase
 const snakeToCamel = (row: any) => {
     if (!row) return row;
     const out: any = {};
@@ -28,6 +30,7 @@ const snakeToCamel = (row: any) => {
 
 export default function GeneralLedgerPage() {
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [accounts, setAccounts] = useState<AcctAccount[]>([]);
     const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>();
     const [dateRange, setDateRange] = useState<[string, string] | null>(null);
@@ -139,6 +142,8 @@ export default function GeneralLedgerPage() {
                     </div>
                     <div style={{ paddingTop: 20 }}>
                         <Button icon={<ReloadOutlined />} onClick={loadLedger} disabled={!selectedAccountId}>Refresh</Button>
+                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'acct_ledger', title: 'General Ledger', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Code', key: 'code' }, { header: 'Name', key: 'name' }, { header: 'Type', key: 'accountType' }, { header: 'Balance', key: 'balance' }], data: accounts })} /></Tooltip>
+                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'acct_ledger', title: 'General Ledger', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Code', key: 'code' }, { header: 'Name', key: 'name' }, { header: 'Type', key: 'accountType' }, { header: 'Balance', key: 'balance' }], data: accounts })} /></Tooltip>
                     </div>
                 </Space>
             </Card>
@@ -191,3 +196,4 @@ export default function GeneralLedgerPage() {
         </CMSLayout>
     );
 }
+

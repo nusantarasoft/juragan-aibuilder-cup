@@ -171,6 +171,8 @@ export default function DealsPage() {
             <Segmented key="view" options={[{ value: 'board', icon: <AppstoreOutlined /> }, { value: 'list', icon: <UnorderedListOutlined /> }]} value={viewMode} onChange={(v) => setViewMode(v as string)} />,
             <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
             <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>New Deal</Button>,
+                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_deals', title: 'CRM Deals', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Deal', key: 'dealName' }, { header: 'Amount', key: 'amount' }, { header: 'Stage', key: 'stage' }, { header: 'Win %', key: 'probability' }, { header: 'Account', key: 'accountName' }], data: deals })} /></Tooltip>,
+                <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_deals', title: 'CRM Deals', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Deal', key: 'dealName' }, { header: 'Amount', key: 'amount' }, { header: 'Stage', key: 'stage' }, { header: 'Win %', key: 'probability' }, { header: 'Account', key: 'accountName' }], data: deals })} /></Tooltip>,
         ]}>
             <Row gutter={16} style={{ marginBottom: 16 }}>
                 <Col span={6}><Card style={{ ...glass }}><Statistic title="Pipeline Value (Open)" value={totalPipeline} prefix={<DollarOutlined />} precision={0} formatter={(v) => formatAmount(Number(v))} /></Card></Col>

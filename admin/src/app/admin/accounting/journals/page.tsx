@@ -3,11 +3,13 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
 import { Table, Button, Space, Tag, Input, Select, Drawer, Form, InputNumber, message, Typography, Card, Tooltip, Divider, DatePicker, Empty, Spin, Popconfirm, Row, Col, Alert, Modal } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, CheckCircleOutlined, UndoOutlined, EyeOutlined, MinusCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, CheckCircleOutlined, UndoOutlined, EyeOutlined, MinusCircleOutlined, FileExcelOutlined, FilePdfOutlined  } from '@ant-design/icons';
 import { accountingService, AcctJournal, AcctJournalLine, AcctAccount } from '@/lib/accountingService';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 import dayjs from 'dayjs';
 
 const { Text } = Typography;
@@ -20,6 +22,7 @@ const typeColor: Record<string, string> = { general: 'blue', adjusting: 'purple'
 
 export default function JournalEntriesPage() {
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [journals, setJournals] = useState<AcctJournal[]>([]);
     const [accounts, setAccounts] = useState<AcctAccount[]>([]);
     const [loading, setLoading] = useState(true);
@@ -86,7 +89,7 @@ export default function JournalEntriesPage() {
             if (lines.length < 2) { message.error('At least 2 lines required'); return; }
             const totalDebit = lines.reduce((s: number, l: any) => s + (l.debit || 0), 0);
             const totalCredit = lines.reduce((s: number, l: any) => s + (l.credit || 0), 0);
-            if (Math.abs(totalDebit - totalCredit) > 0.01) { message.error(`Unbalanced: Debit ${formatCurrency(totalDebit)} ≠ Credit ${formatCurrency(totalCredit)}`); return; }
+            if (Math.abs(totalDebit - totalCredit) > 0.01) { message.error(`Unbalanced: Debit ${formatCurrency(totalDebit)} â‰  Credit ${formatCurrency(totalCredit)}`); return; }
 
             await accountingService.createJournal(undefined, { ...values, lines });
             message.success('Journal created');
@@ -157,6 +160,8 @@ export default function JournalEntriesPage() {
                         options={[{ value: 'general', label: 'General' }, { value: 'adjusting', label: 'Adjusting' }, { value: 'closing', label: 'Closing' }, { value: 'reversal', label: 'Reversal' }]} />
                     <RangePicker onChange={(dates) => setDateRange(dates ? [dates[0]!.format('YYYY-MM-DD'), dates[1]!.format('YYYY-MM-DD')] : null)} />
                     <Button icon={<ReloadOutlined />} onClick={load}>Refresh</Button>
+                    <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'acct_journals', title: 'Journal Entries', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'journalNumber' }, { header: 'Date', key: 'journalDate' }, { header: 'Memo', key: 'memo' }, { header: 'Debit', key: 'totalDebit' }, { header: 'Credit', key: 'totalCredit' }, { header: 'Status', key: 'status' }], data: journals })} /></Tooltip>
+                    <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'acct_journals', title: 'Journal Entries', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'journalNumber' }, { header: 'Date', key: 'journalDate' }, { header: 'Memo', key: 'memo' }, { header: 'Debit', key: 'totalDebit' }, { header: 'Credit', key: 'totalCredit' }, { header: 'Status', key: 'status' }], data: journals })} /></Tooltip>
                 </Space>
             </Card>
 
@@ -166,7 +171,7 @@ export default function JournalEntriesPage() {
                     scroll={{ x: 1100 }} locale={{ emptyText: <Empty description="No journal entries" /> }} />
             </Card>
 
-            {/* ─── Create Journal Drawer ─── */}
+            {/* â”€â”€â”€ Create Journal Drawer â”€â”€â”€ */}
             <Drawer title="New Journal Entry" open={createOpen} onClose={() => setCreateOpen(false)} width={800}
                 extra={<Space><Button onClick={() => setCreateOpen(false)}>Cancel</Button><Button type="primary" onClick={handleCreate} disabled={!isBalanced}>Save</Button></Space>}>
 
@@ -188,8 +193,8 @@ export default function JournalEntriesPage() {
                     {/* Balance indicator */}
                     <Alert type={isBalanced ? 'success' : 'error'} showIcon style={{ marginBottom: 16 }}
                         message={isBalanced
-                            ? `Balanced — Debit: ${formatCurrency(liveDebit)} = Credit: ${formatCurrency(liveCredit)}`
-                            : `Unbalanced — Debit: ${formatCurrency(liveDebit)} ≠ Credit: ${formatCurrency(liveCredit)} (Diff: ${formatCurrency(Math.abs(liveDebit - liveCredit))})`} />
+                            ? `Balanced â€” Debit: ${formatCurrency(liveDebit)} = Credit: ${formatCurrency(liveCredit)}`
+                            : `Unbalanced â€” Debit: ${formatCurrency(liveDebit)} â‰  Credit: ${formatCurrency(liveCredit)} (Diff: ${formatCurrency(Math.abs(liveDebit - liveCredit))})`} />
 
                     <Form.List name="lines">
                         {(fields, { add, remove }) => (
@@ -220,7 +225,7 @@ export default function JournalEntriesPage() {
                 </Form>
             </Drawer>
 
-            {/* ─── Detail Drawer ─── */}
+            {/* â”€â”€â”€ Detail Drawer â”€â”€â”€ */}
             <Drawer title={selectedJournal ? `Journal: ${selectedJournal.journalNumber}` : 'Journal Detail'} open={detailOpen} onClose={() => setDetailOpen(false)} width={700}>
                 {selectedJournal && (
                     <>
@@ -273,3 +278,4 @@ export default function JournalEntriesPage() {
         </CMSLayout>
     );
 }
+

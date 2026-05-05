@@ -3,10 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
-import {
-    Table, Button, Space, Tag, Card, Typography, message,
-    Row, Col, Modal, Form, Input, InputNumber, Select, Tooltip
-} from "antd";
+import { Button, Card, Col, Form, Input, InputNumber, message, Modal, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
 import {
     ContainerOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
     DownloadOutlined, UploadOutlined, SwapOutlined,
@@ -365,6 +362,8 @@ export default function StockOperationsPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
+                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_stock-operations', title: 'Stock Operations', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'operationNumber' }, { header: 'Type', key: 'operationType' }, { header: 'Status', key: 'status' }, { header: 'From', key: 'sourceWarehouseName' }, { header: 'To', key: 'destinationWarehouseName' }], data: operations })} /></Tooltip>
+                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_stock-operations', title: 'Stock Operations', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'operationNumber' }, { header: 'Type', key: 'operationType' }, { header: 'Status', key: 'status' }, { header: 'From', key: 'sourceWarehouseName' }, { header: 'To', key: 'destinationWarehouseName' }], data: operations })} /></Tooltip>
                             <Button type="primary" icon={<PlusOutlined />}
                                 onClick={() => { form.resetFields(); setModalOpen(true); }}
                                 style={{ background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: 8, border: 'none' }}>
@@ -398,5 +397,7 @@ export default function StockOperationsPage() {
         </CMSLayout>
     );
 }
+
+
 
 

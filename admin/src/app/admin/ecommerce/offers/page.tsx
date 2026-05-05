@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import { Table, Tag, Card, Typography, Input, Space, Button, Tooltip, Row, Col, message, Modal, Select, Form, InputNumber, DatePicker } from "antd";
-import { TagOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, PlusOutlined, EditOutlined, ThunderboltOutlined, FireOutlined, PercentageOutlined } from "@ant-design/icons";
+import { TagOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, PlusOutlined, EditOutlined, ThunderboltOutlined, FireOutlined, PercentageOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { inventoryService, EcomOffer, EcomOfferStatsType } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
@@ -50,6 +52,7 @@ const OFFER_FIELDS: FieldDef[] = [
 export default function OffersPage() {
     const [stats, setStats] = useState<EcomOfferStatsType | null>(null);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [offers, setOffers] = useState<EcomOffer[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -279,6 +282,10 @@ export default function OffersPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
+                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_offers', title: 'eCommerce Offers', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'offerType' }, { header: 'Discount', key: 'discountValue' }, { header: 'Status', key: 'status' }], data: offers })} /></Tooltip>
+                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_offers', title: 'eCommerce Offers', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'offerType' }, { header: 'Discount', key: 'discountValue' }, { header: 'Status', key: 'status' }], data: offers })} /></Tooltip>
+            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_offers', title: 'eCommerce Offers', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'offerType' }, { header: 'Discount', key: 'discountValue' }, { header: 'Status', key: 'status' }], data: offers })} /></Tooltip>
+            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_offers', title: 'eCommerce Offers', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'offerType' }, { header: 'Discount', key: 'discountValue' }, { header: 'Status', key: 'status' }], data: offers })} /></Tooltip>
                             <Button type="primary" icon={<PlusOutlined />} onClick={openNew}
                                 style={{ background: 'linear-gradient(135deg, #ef4444, #f97316)', border: 'none', borderRadius: 8 }}>
                                 New Offer
