@@ -1,16 +1,18 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography, Alert, Badge, Card, Statistic } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, AlertOutlined, WarningOutlined, ThunderboltOutlined, BellOutlined, ExclamationCircleOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography, Alert, Badge, Card, Statistic, Tooltip } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, AlertOutlined, WarningOutlined, ThunderboltOutlined, BellOutlined, ExclamationCircleOutlined, CheckCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { supaRest, supaInsert, supaUpdate, supaDelete } from "@/lib/supaRest";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
@@ -30,6 +32,7 @@ export default function EventsPage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [data, setData] = useState<any[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<any>(null);
@@ -125,7 +128,7 @@ export default function EventsPage() {
 
             {/* Severity Distribution */}
             {data.length > 0 && (
-                <Card size="small" style={{ ...glass, marginBottom: 16 }} title={<Text strong style={{ fontSize: 13 }}>⚠️ Severity Distribution</Text>}>
+                <Card size="small" style={{ ...glass, marginBottom: 16 }} title={<Text strong style={{ fontSize: 13 }}>âš ï¸ Severity Distribution</Text>}>
                     <div style={{ display: 'flex', gap: 12 }}>
                         {['critical', 'high', 'medium', 'low', 'informational'].map((sev, i) => {
                             const cnt = data.filter(e => e.severity === sev).length;
@@ -154,7 +157,7 @@ export default function EventsPage() {
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 140 }} value={filterStatus} onChange={setFilterStatus}
                         options={[{ value: 'new', label: 'New' }, { value: 'acknowledged', label: 'Acknowledged' }, { value: 'escalated', label: 'Escalated' }, { value: 'closed', label: 'Closed' }]} />,
                     <Select key="fv" placeholder="Severity" allowClear style={{ width: 130 }} value={filterSev} onChange={setFilterSev}
-                        options={[{ value: 'critical', label: '🔴 Critical' }, { value: 'high', label: '🟠 High' }, { value: 'medium', label: '🔵 Medium' }, { value: 'low', label: '🟢 Low' }]} />,
+                        options={[{ value: 'critical', label: 'ðŸ”´ Critical' }, { value: 'high', label: 'ðŸŸ  High' }, { value: 'medium', label: 'ðŸ”µ Medium' }, { value: 'low', label: 'ðŸŸ¢ Low' }]} />,
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>New Event</Button>,
                 ]}
             />
@@ -166,8 +169,8 @@ export default function EventsPage() {
                         <Form.Item name="description" label="Description"><Input.TextArea rows={3} /></Form.Item>
                         <Row gutter={16}>
                             <Col span={8}><Form.Item name="source" label="Source"><Select placeholder="Select" options={[{ value: 'prometheus', label: 'Prometheus' }, { value: 'grafana', label: 'Grafana' }, { value: 'uptime_kuma', label: 'Uptime Kuma' }, { value: 'n8n', label: 'n8n' }, { value: 'manual', label: 'Manual' }]} /></Form.Item></Col>
-                            <Col span={8}><Form.Item name="event_type" label="Type"><Select options={[{ value: 'informational', label: 'ℹ️ Informational' }, { value: 'warning', label: '⚠️ Warning' }, { value: 'exception', label: '❌ Exception' }, { value: 'alert', label: '🚨 Alert' }]} /></Form.Item></Col>
-                            <Col span={8}><Form.Item name="severity" label="Severity"><Select options={[{ value: 'critical', label: '🔴 Critical' }, { value: 'high', label: '🟠 High' }, { value: 'medium', label: '🔵 Medium' }, { value: 'low', label: '🟢 Low' }, { value: 'informational', label: 'ℹ️ Info' }]} /></Form.Item></Col>
+                            <Col span={8}><Form.Item name="event_type" label="Type"><Select options={[{ value: 'informational', label: 'â„¹ï¸ Informational' }, { value: 'warning', label: 'âš ï¸ Warning' }, { value: 'exception', label: 'âŒ Exception' }, { value: 'alert', label: 'ðŸš¨ Alert' }]} /></Form.Item></Col>
+                            <Col span={8}><Form.Item name="severity" label="Severity"><Select options={[{ value: 'critical', label: 'ðŸ”´ Critical' }, { value: 'high', label: 'ðŸŸ  High' }, { value: 'medium', label: 'ðŸ”µ Medium' }, { value: 'low', label: 'ðŸŸ¢ Low' }, { value: 'informational', label: 'â„¹ï¸ Info' }]} /></Form.Item></Col>
                         </Row>
                         <Form.Item name="category" label="Category"><Input placeholder="infrastructure, application, security, database" /></Form.Item>
                         {editing && <Form.Item name="status" label="Status"><Select options={[{ value: 'new', label: 'New' }, { value: 'acknowledged', label: 'Acknowledged' }, { value: 'in_progress', label: 'In Progress' }, { value: 'escalated', label: 'Escalated' }, { value: 'closed', label: 'Closed' }]} /></Form.Item>}
@@ -191,3 +194,5 @@ export default function EventsPage() {
         </CMSLayout>
     );
 }
+
+

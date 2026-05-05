@@ -9,13 +9,15 @@ import {
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, BankOutlined, PhoneOutlined,
-    GlobalOutlined, DollarOutlined,
+    GlobalOutlined, DollarOutlined, FileExcelOutlined, FilePdfOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
@@ -80,6 +82,7 @@ const ACCOUNT_FIELDS: FieldDef[] = [
 export default function AccountsPage() {
     const [accounts, setAccounts] = useState<Account[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Account | null>(null);
@@ -164,7 +167,7 @@ export default function AccountsPage() {
     };
 
     const formatRevenue = (v: number) => {
-        if (!v) return '—';
+        if (!v) return 'â€”';
         if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
         if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
         return `$${v}`;
@@ -197,7 +200,7 @@ export default function AccountsPage() {
         },
         {
             title: "Phone", dataIndex: "phone", key: "phone", width: 140,
-            render: (v) => v || '—',
+            render: (v) => v || 'â€”',
         },
         {
             title: "Revenue", key: "revenue", width: 110, align: "right",
@@ -206,7 +209,7 @@ export default function AccountsPage() {
         },
         {
             title: "Employees", dataIndex: "employeeCount", key: "employees", width: 100, align: "right",
-            render: (v) => v ? v.toLocaleString() : '—',
+            render: (v) => v ? v.toLocaleString() : 'â€”',
         },
         {
             title: "Status", dataIndex: "status", key: "status", width: 90,
@@ -261,7 +264,7 @@ export default function AccountsPage() {
                     loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" />
             </Card>
 
-            {/* ─── Account SteppedFormModal ─────────────── */}
+            {/* â”€â”€â”€ Account SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <SteppedFormModal
                 open={isModalOpen}
                 onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }}
@@ -343,18 +346,18 @@ export default function AccountsPage() {
                     <Descriptions column={1} bordered size="small">
                         <Descriptions.Item label="Name">{selected.name}</Descriptions.Item>
                         <Descriptions.Item label="Type"><Tag>{TYPES.find(t => t.value === selected.type)?.label || selected.type}</Tag></Descriptions.Item>
-                        <Descriptions.Item label="Industry">{selected.industry || '—'}</Descriptions.Item>
+                        <Descriptions.Item label="Industry">{selected.industry || 'â€”'}</Descriptions.Item>
                         <Descriptions.Item label="Rating">
-                            {selected.rating ? <Tag color={RATINGS.find(r => r.value === selected.rating)?.color}>{selected.rating}</Tag> : '—'}
+                            {selected.rating ? <Tag color={RATINGS.find(r => r.value === selected.rating)?.color}>{selected.rating}</Tag> : 'â€”'}
                         </Descriptions.Item>
-                        <Descriptions.Item label="Phone">{selected.phone || '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Email">{selected.email || '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Website">{selected.website ? <a href={selected.website} target="_blank" rel="noreferrer">{selected.website}</a> : '—'}</Descriptions.Item>
+                        <Descriptions.Item label="Phone">{selected.phone || 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Email">{selected.email || 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Website">{selected.website ? <a href={selected.website} target="_blank" rel="noreferrer">{selected.website}</a> : 'â€”'}</Descriptions.Item>
                         <Descriptions.Item label="Annual Revenue">{formatRevenue(selected.annualRevenue)}</Descriptions.Item>
-                        <Descriptions.Item label="Employees">{selected.employeeCount?.toLocaleString() || '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Ownership">{selected.ownership || '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Account #">{selected.accountNumber || '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Description">{selected.description || '—'}</Descriptions.Item>
+                        <Descriptions.Item label="Employees">{selected.employeeCount?.toLocaleString() || 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Ownership">{selected.ownership || 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Account #">{selected.accountNumber || 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Description">{selected.description || 'â€”'}</Descriptions.Item>
                         <Descriptions.Item label="Created">{new Date(selected.createdAt).toLocaleDateString()}</Descriptions.Item>
                     </Descriptions>
                 )}
@@ -362,3 +365,4 @@ export default function AccountsPage() {
         </CMSLayout>
     );
 }
+

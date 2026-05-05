@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, InputNumber, Descriptions, Modal, Typography, Card, Statistic, Badge } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, SafetyOutlined, FieldTimeOutlined, FileProtectOutlined, ExperimentOutlined, ExclamationCircleOutlined, CheckCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, InputNumber, Descriptions, Modal, Typography, Card, Statistic, Badge, Tooltip } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, SafetyOutlined, FieldTimeOutlined, FileProtectOutlined, ExperimentOutlined, ExclamationCircleOutlined, CheckCircleOutlined, ClockCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { supaRest, supaInsert, supaUpdate, supaDelete } from "@/lib/supaRest";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
@@ -12,6 +12,8 @@ import type { FieldDef } from "@/components/common/DataImportExport";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -29,6 +31,7 @@ export default function ContinuityPage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [data, setData] = useState<any[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<any>(null);
@@ -144,6 +147,8 @@ export default function ContinuityPage() {
                     <Select key="ft" placeholder="Type" allowClear style={{ width: 120 }} value={filterType} onChange={setFilterType}
                         options={[{ value: 'bcp', label: '📋 BCP' }, { value: 'drp', label: '🔥 DRP' }, { value: 'crisis', label: '🚨 Crisis' }, { value: 'itrp', label: '🔧 ITRP' }]} />,
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>New Plan</Button>,
+                    <Tooltip key="excel" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'continuity_plans', title: 'Service Continuity Plans', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Plan #', key: 'plan_number' }, { header: 'Title', key: 'title' }, { header: 'Type', key: 'plan_type' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'recovery_priority' }, { header: 'RTO (h)', key: 'rto_hours' }, { header: 'RPO (h)', key: 'rpo_hours' }], data })} /></Tooltip>,
+                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'continuity_plans', title: 'Service Continuity Plans', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Plan #', key: 'plan_number' }, { header: 'Title', key: 'title' }, { header: 'Type', key: 'plan_type' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'recovery_priority' }, { header: 'RTO (h)', key: 'rto_hours' }, { header: 'RPO (h)', key: 'rpo_hours' }], data })} /></Tooltip>,
                 ]}
             />
 

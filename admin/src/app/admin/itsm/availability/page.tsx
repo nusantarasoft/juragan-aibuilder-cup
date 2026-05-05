@@ -1,16 +1,18 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Form, Input, Row, Col, InputNumber, Card, Statistic, Progress, Typography, Badge } from "antd";
-import { PlusOutlined, DeleteOutlined, FieldTimeOutlined, CheckCircleOutlined, CloseCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Form, Input, Row, Col, InputNumber, Card, Statistic, Progress, Typography, Badge, Tooltip } from "antd";
+import { PlusOutlined, DeleteOutlined, FieldTimeOutlined, CheckCircleOutlined, CloseCircleOutlined, ExclamationCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { supaRest, supaInsert, supaDelete } from "@/lib/supaRest";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
@@ -26,6 +28,7 @@ export default function AvailabilityPage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [data, setData] = useState<any[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [form] = Form.useForm();
@@ -61,7 +64,7 @@ export default function AvailabilityPage() {
     const totalDowntime = data.reduce((s, r) => s + (r.downtime_minutes || 0), 0);
 
     const columns: ProColumns<any>[] = [
-        { title: 'Period', width: 180, render: (_, r) => <Text>{r.period_start ? new Date(r.period_start).toLocaleDateString('id-ID') : '-'} → {r.period_end ? new Date(r.period_end).toLocaleDateString('id-ID') : '-'}</Text> },
+        { title: 'Period', width: 180, render: (_, r) => <Text>{r.period_start ? new Date(r.period_start).toLocaleDateString('id-ID') : '-'} â†’ {r.period_end ? new Date(r.period_end).toLocaleDateString('id-ID') : '-'}</Text> },
         { title: 'Availability', width: 160, render: (_, r) => { const pct = r.availability_pct || 0; const target = r.sla_target_pct || 99.9; return <Progress percent={Math.round(pct * 100) / 100} size="small" status={pct >= target ? 'success' : 'exception'} format={() => `${pct.toFixed(2)}%`} />; } },
         { title: 'SLA Target', dataIndex: 'sla_target_pct', width: 100, render: (_, r) => <Tag>{r.sla_target_pct || 99.9}%</Tag> },
         { title: 'SLA Met?', width: 80, render: (_, r) => { const pct = r.availability_pct || 0; const target = r.sla_target_pct || 99.9; return pct >= target ? <Tag color="green" icon={<CheckCircleOutlined />}>Yes</Tag> : <Tag color="red" icon={<CloseCircleOutlined />}>No</Tag>; } },
@@ -106,7 +109,7 @@ export default function AvailabilityPage() {
 
             {/* SLA Compliance Trend */}
             {data.length > 0 && (
-                <Card size="small" style={{ ...glass, marginBottom: 16 }} title={<Text strong style={{ fontSize: 13 }}>⏱️ Availability Trend</Text>}>
+                <Card size="small" style={{ ...glass, marginBottom: 16 }} title={<Text strong style={{ fontSize: 13 }}>â±ï¸ Availability Trend</Text>}>
                     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}>
                         {data.slice(0, 12).reverse().map((r, i) => {
                             const pct = r.availability_pct || 0;
@@ -165,3 +168,5 @@ export default function AvailabilityPage() {
         </CMSLayout>
     );
 }
+
+

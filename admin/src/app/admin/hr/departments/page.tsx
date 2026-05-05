@@ -1,11 +1,13 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { Card, Table, Tag, Button, Space, Typography, Spin, message, Modal, Form, Input, Select, Segmented, Avatar, Badge, Row, Col, Statistic, Tooltip, Progress } from "antd";
-import { ApartmentOutlined, PlusOutlined, TeamOutlined, UnorderedListOutlined, AppstoreOutlined, UserOutlined, DollarOutlined, ArrowDownOutlined } from "@ant-design/icons";
+import { ApartmentOutlined, PlusOutlined, TeamOutlined, UnorderedListOutlined, AppstoreOutlined, UserOutlined, DollarOutlined, ArrowDownOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 
@@ -46,7 +48,7 @@ function OrgNode({ dept, employees, allDepts, level = 0, colorIndex = 0 }: { dep
                     <div style={{ display: 'flex', justifyContent: 'center', gap: -4, marginBottom: 6 }}>
                         <Avatar.Group maxCount={4} size="small" maxStyle={{ backgroundColor: color, fontSize: 10 }}>
                             {deptEmps.slice(0, 5).map(e => (
-                                <Tooltip key={e.id} title={`${e.firstName} ${e.lastName} — ${e.positionTitle || 'Employee'}`}>
+                                <Tooltip key={e.id} title={`${e.firstName} ${e.lastName} â€” ${e.positionTitle || 'Employee'}`}>
                                     <Avatar size="small" style={{ backgroundColor: color, fontSize: 9 }}>{e.firstName[0]}{e.lastName[0]}</Avatar>
                                 </Tooltip>
                             ))}
@@ -87,6 +89,7 @@ export default function DepartmentsPage() {
     const [viewMode, setViewMode] = useState<string>('orgchart');
     const [form] = Form.useForm();
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
 
     const load = () => {
         setLoading(true);
@@ -117,7 +120,7 @@ export default function DepartmentsPage() {
             const ci = departments.indexOf(r) % deptColors.length;
             return <Space><div style={{ width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${deptColors[ci]}15`, color: deptColors[ci] }}><ApartmentOutlined /></div><div><Text strong>{r.name}</Text>{r.code && <Tag color={deptColors[ci]} style={{ marginLeft: 6, borderRadius: 10, fontSize: 10 }}>{r.code}</Tag>}</div></Space>;
         }},
-        { title: 'Description', dataIndex: 'description', key: 'desc', ellipsis: true, render: (v: string) => v || '—' },
+        { title: 'Description', dataIndex: 'description', key: 'desc', ellipsis: true, render: (v: string) => v || 'â€”' },
         { title: 'Parent', key: 'parent', render: (_: any, r: any) => { const p = departments.find(d => d.id === r.parentId); return p ? <Tag style={{ borderRadius: 10 }}>{p.name}</Tag> : <Text type="secondary">Root</Text>; } },
         { title: 'Headcount', key: 'count', align: 'center' as const, sorter: (a: any, b: any) => empCount(a.id) - empCount(b.id),
             render: (_: any, r: any) => {
@@ -125,8 +128,8 @@ export default function DepartmentsPage() {
                 return <Badge count={count} style={{ backgroundColor: count > 0 ? '#3b82f6' : '#e5e7eb' }} showZero />;
             }
         },
-        { title: 'Payroll', key: 'salary', render: (_: any, r: any) => { const s = deptSalary(r.id); return s > 0 ? <Text style={{ fontSize: 12 }}>{fmt(s)}</Text> : '—'; } },
-        { title: 'Avg Salary', key: 'avg', render: (_: any, r: any) => { const c = empCount(r.id); const s = deptSalary(r.id); return c > 0 ? <Text style={{ fontSize: 12, color: '#10b981' }}>{fmt(Math.round(s / c))}</Text> : '—'; } },
+        { title: 'Payroll', key: 'salary', render: (_: any, r: any) => { const s = deptSalary(r.id); return s > 0 ? <Text style={{ fontSize: 12 }}>{fmt(s)}</Text> : 'â€”'; } },
+        { title: 'Avg Salary', key: 'avg', render: (_: any, r: any) => { const c = empCount(r.id); const s = deptSalary(r.id); return c > 0 ? <Text style={{ fontSize: 12, color: '#10b981' }}>{fmt(Math.round(s / c))}</Text> : 'â€”'; } },
         { title: 'Status', dataIndex: 'status', key: 'status', render: (v: string) => <Tag color={v === 'active' ? 'green' : 'default'} style={{ borderRadius: 10 }}>{v}</Tag> },
     ];
 
@@ -178,3 +181,5 @@ export default function DepartmentsPage() {
         </CMSLayout>
     );
 }
+
+

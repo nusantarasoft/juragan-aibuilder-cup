@@ -14,6 +14,7 @@ import {
     ReloadOutlined, GlobalOutlined,
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
+import { FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import CMSLayout from "@/components/layout/CMSLayout";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
@@ -22,6 +23,8 @@ import { inventoryService } from "@/lib/inventoryService";
 import { CrmAccountPicker } from "@/components/inventory/CrmPicker";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import dayjs from "dayjs";
 
 const { TabPane } = Tabs;
@@ -64,6 +67,7 @@ const PRIORITY_ICONS: Record<string, string> = {
 export default function ProcurementPage() {
     const [activeTab, setActiveTab] = useState("suppliers");
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState("");
     const [stats, setStats] = useState<any>(null);
@@ -322,6 +326,40 @@ export default function ProcurementPage() {
                     animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential
                 />
             }
+            extra={[
+                <Tooltip key="excel" title="Export suppliers to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => {
+                    exportToExcel({
+                        fileName: 'procurement_suppliers',
+                        title: 'Suppliers Report',
+                        dateRange: { start: startDate, end: endDate },
+                        columns: [
+                            { header: 'Code', key: 'code' },
+                            { header: 'Name', key: 'name' },
+                            { header: 'Contact', key: 'contactPerson' },
+                            { header: 'City', key: 'city' },
+                            { header: 'Rating', key: 'rating' },
+                            { header: 'Status', key: 'status' },
+                        ],
+                        data: suppliers,
+                    });
+                }} /></Tooltip>,
+                <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => {
+                    exportToPdf({
+                        fileName: 'procurement_report',
+                        title: 'Procurement Report',
+                        dateRange: { start: startDate, end: endDate },
+                        columns: [
+                            { header: 'Code', key: 'code' },
+                            { header: 'Name', key: 'name' },
+                            { header: 'Contact', key: 'contactPerson' },
+                            { header: 'City', key: 'city' },
+                            { header: 'Rating', key: 'rating' },
+                            { header: 'Status', key: 'status' },
+                        ],
+                        data: suppliers,
+                    });
+                }} /></Tooltip>,
+            ]}
         >
         <div style={{ padding: 0 }}>
             {/* Stat Cards */}

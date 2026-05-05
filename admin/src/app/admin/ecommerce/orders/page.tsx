@@ -1,13 +1,15 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { Table, Tag, Card, Typography, Input, Space, Button, Tooltip, Row, Col, Drawer, message, Modal, Select, Form, InputNumber, Divider } from "antd";
-import { ShoppingCartOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, SendOutlined, EyeOutlined, CarOutlined, DeleteOutlined, InboxOutlined, PlusOutlined, MinusCircleOutlined } from "@ant-design/icons";
+import { ShoppingCartOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, SendOutlined, EyeOutlined, CarOutlined, DeleteOutlined, InboxOutlined, PlusOutlined, MinusCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { inventoryService, EcomOrder, EcomOrderItem, EcomStatsType, EcomCustomer } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import ItemPicker from "@/components/inventory/ItemPicker";
 
@@ -27,7 +29,7 @@ const ORDER_STATUS: Record<string, { color: string; icon: React.ReactNode }> = {
 const PAYMENT_COLORS: Record<string, string> = { unpaid: 'red', partial: 'orange', paid: 'green', refunded: 'volcano' };
 const FULFILLMENT_COLORS: Record<string, string> = { physical: 'blue', ticket: 'purple', scheduled: 'cyan', rental: 'orange' };
 
-const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : '—';
+const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : 'â€”';
 
 interface OrderLineItem {
     key: number;
@@ -43,6 +45,7 @@ interface OrderLineItem {
 export default function OrdersPage() {
     const [stats, setStats] = useState<EcomStatsType | null>(null);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [orders, setOrders] = useState<EcomOrder[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -84,7 +87,7 @@ export default function OrdersPage() {
     const handleStatusChange = async (id: string, newStatus: string) => {
         try {
             await inventoryService.updateEcomOrderStatus(id, newStatus);
-            message.success(`Status → ${newStatus}`);
+            message.success(`Status â†’ ${newStatus}`);
             load();
         } catch { message.error("Failed to update status"); }
     };
@@ -97,7 +100,7 @@ export default function OrdersPage() {
         } catch { message.error("Failed to delete"); }
     };
 
-    // ─── New Order helpers ────────────────────────────────
+    // â”€â”€â”€ New Order helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const openNewOrder = async () => {
         orderForm.resetFields();
         setLineItems([]);
@@ -212,12 +215,12 @@ export default function OrdersPage() {
 
     const columns = [
         { title: 'Order #', dataIndex: 'orderNumber', width: 140, render: (v: string) => <Text code className="text-xs">{v}</Text> },
-        { title: 'Customer', dataIndex: 'customerName', ellipsis: true, render: (v: string) => <Text strong className="text-sm">{v || '—'}</Text> },
+        { title: 'Customer', dataIndex: 'customerName', ellipsis: true, render: (v: string) => <Text strong className="text-sm">{v || 'â€”'}</Text> },
         { title: 'Total', dataIndex: 'totalAmount', width: 140, render: (v: number) => <Text strong style={{ color: themeColor }}>{fmtCurrency(v)}</Text> },
         { title: 'Payment', dataIndex: 'paymentStatus', width: 100,
             render: (v: string) => <Tag color={PAYMENT_COLORS[v] || 'default'} className="rounded-full text-xs capitalize">{v}</Tag> },
         { title: 'Source', dataIndex: 'source', width: 80, render: (v: string) => <Tag className="rounded-full text-xs capitalize">{v}</Tag> },
-        { title: 'Date', dataIndex: 'createdAt', width: 100, render: (v: string) => v ? new Date(v).toLocaleDateString() : '—' },
+        { title: 'Date', dataIndex: 'createdAt', width: 100, render: (v: string) => v ? new Date(v).toLocaleDateString() : 'â€”' },
         { title: 'Status', dataIndex: 'status', width: 120,
             render: (v: string) => {
                 const s = ORDER_STATUS[v] || { color: 'default', icon: null };
@@ -311,14 +314,14 @@ export default function OrdersPage() {
                         <Card size="small" style={{ borderRadius: 10 }}>
                             <Row gutter={16}>
                                 <Col span={12}><Text type="secondary" className="text-xs block">Customer</Text><Text strong>{selectedOrder.customerName}</Text></Col>
-                                <Col span={12}><Text type="secondary" className="text-xs block">Email</Text><Text>{selectedOrder.customerEmail || '—'}</Text></Col>
+                                <Col span={12}><Text type="secondary" className="text-xs block">Email</Text><Text>{selectedOrder.customerEmail || 'â€”'}</Text></Col>
                             </Row>
                             <Row gutter={16} className="mt-2">
                                 <Col span={12}><Text type="secondary" className="text-xs block">Total</Text><Text strong style={{ color: themeColor, fontSize: 16 }}>{fmtCurrency(selectedOrder.totalAmount)}</Text></Col>
-                                <Col span={12}><Text type="secondary" className="text-xs block">Payment</Text><Tag color={PAYMENT_COLORS[selectedOrder.paymentStatus || ''] || 'default'}>{selectedOrder.paymentStatus} ({selectedOrder.paymentMethod || '—'})</Tag></Col>
+                                <Col span={12}><Text type="secondary" className="text-xs block">Payment</Text><Tag color={PAYMENT_COLORS[selectedOrder.paymentStatus || ''] || 'default'}>{selectedOrder.paymentStatus} ({selectedOrder.paymentMethod || 'â€”'})</Tag></Col>
                             </Row>
                             <Row gutter={16} className="mt-2">
-                                <Col span={12}><Text type="secondary" className="text-xs block">Shipping</Text><Text>{selectedOrder.shippingMethod || '—'} → {selectedOrder.shippingCity || '—'}</Text></Col>
+                                <Col span={12}><Text type="secondary" className="text-xs block">Shipping</Text><Text>{selectedOrder.shippingMethod || 'â€”'} â†’ {selectedOrder.shippingCity || 'â€”'}</Text></Col>
                                 <Col span={12}><Text type="secondary" className="text-xs block">Source</Text><Tag>{selectedOrder.source}</Tag></Col>
                             </Row>
                         </Card>
@@ -339,7 +342,7 @@ export default function OrdersPage() {
                 )}
             </Drawer>
 
-            {/* ─── New Order Modal ──────────────────────── */}
+            {/* â”€â”€â”€ New Order Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <Modal title="New Order" open={orderModalOpen} onCancel={() => setOrderModalOpen(false)}
                 onOk={handleCreateOrder} okText="Create Order" width={720}>
                 <Form form={orderForm} layout="vertical">
@@ -355,7 +358,7 @@ export default function OrdersPage() {
                                     filterOption={(input, option) => (option?.label as string || '').toLowerCase().includes(input.toLowerCase())}
                                     onChange={onCustomerChange}
                                     options={customers.map(c => ({
-                                        value: c.id, label: `${c.customerCode} — ${c.firstName} ${c.lastName || ''}`
+                                        value: c.id, label: `${c.customerCode} â€” ${c.firstName} ${c.lastName || ''}`
                                     }))} />
                             </Form.Item>
                         </Col>
@@ -455,4 +458,6 @@ export default function OrdersPage() {
         </CMSLayout>
     );
 }
+
+
 

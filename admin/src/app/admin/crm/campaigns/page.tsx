@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -11,13 +11,14 @@ import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, RocketOutlined,
     DollarOutlined, PercentageOutlined, CalendarOutlined,
-    FileTextOutlined,
-} from "@ant-design/icons";
+    FileTextOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import dayjs from "dayjs";
@@ -51,6 +52,7 @@ const CAMPAIGN_FIELDS: FieldDef[] = [
 export default function CampaignsPage() {
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Campaign | null>(null);
@@ -90,7 +92,7 @@ export default function CampaignsPage() {
     };
 
     const openDetails = (c: Campaign) => { setSelected(c); setAiContent(""); setMembers([]); setDetailOpen(true); fetchMembers(c.id); };
-    const fmt = (v: number) => v ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v) : '—';
+    const fmt = (v: number) => v ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v) : 'â€”';
 
     const handleSave = async (values: any) => {
         try {
@@ -123,7 +125,7 @@ export default function CampaignsPage() {
         { title: "Budget", key: "budget", width: 120, align: "right", render: (_, r) => fmt(r.budget) },
         { title: "Spent", key: "spent", width: 120, align: "right", render: (_, r) => fmt(r.actualCost) },
         { title: "Expected", key: "expected", width: 120, align: "right", render: (_, r) => fmt(r.expectedRevenue) },
-        { title: "Dates", key: "dates", width: 180, render: (_, r) => r.startDate ? `${dayjs(r.startDate).format('MMM D')} → ${r.endDate ? dayjs(r.endDate).format('MMM D') : 'Ongoing'}` : '—' },
+        { title: "Dates", key: "dates", width: 180, render: (_, r) => r.startDate ? `${dayjs(r.startDate).format('MMM D')} â†’ ${r.endDate ? dayjs(r.endDate).format('MMM D') : 'Ongoing'}` : 'â€”' },
         { title: "Actions", key: "actions", width: 130, align: "right", render: (_, r) => (<Space>
             <Tooltip title="View"><Button type="text" icon={<EyeOutlined />} onClick={() => openDetails(r)} /></Tooltip>
             <Tooltip title="Edit"><Button type="text" icon={<EditOutlined />} onClick={() => { setEditing(r); form.setFieldsValue({ name: r.name, type: r.type, status: r.status, startDate: r.startDate ? dayjs(r.startDate) : null, endDate: r.endDate ? dayjs(r.endDate) : null, budget: r.budget, actualCost: r.actualCost, expectedRevenue: r.expectedRevenue, description: r.description }); setIsModalOpen(true); }} /></Tooltip>
@@ -132,7 +134,7 @@ export default function CampaignsPage() {
     ];
 
     const memberColumns: ColumnsType<CampaignMember> = [
-        { title: "Name", dataIndex: "individualName", key: "name", render: (text, r) => <div><Text strong>{text || 'Unknown'}</Text><br /><Text type="secondary" style={{ fontSize: 12 }}>{r.individualEmail || '—'}</Text></div> },
+        { title: "Name", dataIndex: "individualName", key: "name", render: (text, r) => <div><Text strong>{text || 'Unknown'}</Text><br /><Text type="secondary" style={{ fontSize: 12 }}>{r.individualEmail || 'â€”'}</Text></div> },
         { title: "Status", dataIndex: "status", key: "status", width: 100, render: t => <Tag color="blue">{t}</Tag> },
         { title: "Added", dataIndex: "createdAt", key: "createdAt", width: 100, render: t => dayjs(t).format('MMM D, YYYY') },
     ];
@@ -165,14 +167,14 @@ export default function CampaignsPage() {
             <Drawer title={`Campaign: ${selected?.name || ''}`} open={detailOpen} onClose={() => setDetailOpen(false)} width={650}>
                 {selected && (<Tabs defaultActiveKey="details" items={[
                     { key: "details", label: "Details", children: (<Descriptions column={1} bordered size="small">
-                        <Descriptions.Item label="Type"><Text style={{ textTransform: 'capitalize' }}>{selected.type || '—'}</Text></Descriptions.Item>
+                        <Descriptions.Item label="Type"><Text style={{ textTransform: 'capitalize' }}>{selected.type || 'â€”'}</Text></Descriptions.Item>
                         <Descriptions.Item label="Status"><Tag color={STATUSES.find(s => s.value === selected.status)?.color}>{selected.status}</Tag></Descriptions.Item>
                         <Descriptions.Item label="Budget">{fmt(selected.budget)}</Descriptions.Item>
                         <Descriptions.Item label="Spent">{fmt(selected.actualCost)}</Descriptions.Item>
                         <Descriptions.Item label="Expected Revenue">{fmt(selected.expectedRevenue)}</Descriptions.Item>
-                        <Descriptions.Item label="ROI">{selected.actualCost > 0 ? (<Text type={selected.expectedRevenue - selected.actualCost > 0 ? 'success' : 'danger'}>{(((selected.expectedRevenue - selected.actualCost) / selected.actualCost) * 100).toFixed(1)}%</Text>) : '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Dates">{selected.startDate ? dayjs(selected.startDate).format('MMM D, YYYY') : '—'} → {selected.endDate ? dayjs(selected.endDate).format('MMM D, YYYY') : 'Ongoing'}</Descriptions.Item>
-                        <Descriptions.Item label="Description">{selected.description || '—'}</Descriptions.Item>
+                        <Descriptions.Item label="ROI">{selected.actualCost > 0 ? (<Text type={selected.expectedRevenue - selected.actualCost > 0 ? 'success' : 'danger'}>{(((selected.expectedRevenue - selected.actualCost) / selected.actualCost) * 100).toFixed(1)}%</Text>) : 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Dates">{selected.startDate ? dayjs(selected.startDate).format('MMM D, YYYY') : 'â€”'} â†’ {selected.endDate ? dayjs(selected.endDate).format('MMM D, YYYY') : 'Ongoing'}</Descriptions.Item>
+                        <Descriptions.Item label="Description">{selected.description || 'â€”'}</Descriptions.Item>
                     </Descriptions>) },
                     { key: "members", label: "Members", children: (<Table columns={memberColumns} dataSource={members} rowKey="id" pagination={{ pageSize: 15 }} size="small" loading={membersLoading} />) },
                     { key: "ai", label: "AI Copy Generator", children: (<Spin spinning={aiLoading}><div style={{ marginBottom: 16 }}><Text>Use Gemini 2.5 Pro to generate optimized copy for this campaign.</Text></div><Button type="primary" onClick={handleGenerateAI} style={{ marginBottom: 16 }} icon={<RocketOutlined />}>Generate {selected.type ? selected.type.replace(/^\w/, c => c.toUpperCase()) : 'Campaign'} Draft</Button>{aiContent && (<TextArea rows={12} value={aiContent} onChange={e => setAiContent(e.target.value)} />)}</Spin>) }
@@ -181,3 +183,5 @@ export default function CampaignsPage() {
         </CMSLayout>
     );
 }
+
+

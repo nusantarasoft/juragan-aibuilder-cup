@@ -1,16 +1,18 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, InputNumber, Typography, Descriptions, Modal, Card, Statistic, Badge } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, ClusterOutlined, NodeIndexOutlined, DesktopOutlined, CloudServerOutlined, DatabaseOutlined, ApiOutlined, GlobalOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, InputNumber, Typography, Descriptions, Modal, Card, Statistic, Badge, Tooltip } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, ClusterOutlined, NodeIndexOutlined, DesktopOutlined, CloudServerOutlined, DatabaseOutlined, ApiOutlined, GlobalOutlined, CheckCircleOutlined, ExclamationCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { supaRest, supaInsert, supaUpdate, supaDelete } from "@/lib/supaRest";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const classIcons: Record<string, React.ReactNode> = { hardware: <DesktopOutlined />, software: <CloudServerOutlined />, network: <GlobalOutlined />, service: <ApiOutlined />, cloud: <CloudServerOutlined />, document: <DatabaseOutlined />, virtual: <CloudServerOutlined /> };
@@ -30,6 +32,7 @@ export default function CmdbPage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [data, setData] = useState<any[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<any>(null);
@@ -96,7 +99,7 @@ export default function CmdbPage() {
 
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>CMDB</AuroraText>}
-            subTitle={<DecryptedText text="Configuration Management Database — Track all IT assets and dependencies" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
+            subTitle={<DecryptedText text="Configuration Management Database â€” Track all IT assets and dependencies" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
             <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
@@ -121,14 +124,14 @@ export default function CmdbPage() {
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
                     <Select key="fc" placeholder="Class" allowClear style={{ width: 130 }} value={filterClass} onChange={setFilterClass}
-                        options={[{ value: 'hardware', label: '💻 Hardware' }, { value: 'software', label: '⚙️ Software' }, { value: 'network', label: '🌐 Network' }, { value: 'service', label: '🔗 Service' }, { value: 'cloud', label: '☁️ Cloud' }]} />,
+                        options={[{ value: 'hardware', label: 'ðŸ’» Hardware' }, { value: 'software', label: 'âš™ï¸ Software' }, { value: 'network', label: 'ðŸŒ Network' }, { value: 'service', label: 'ðŸ”— Service' }, { value: 'cloud', label: 'â˜ï¸ Cloud' }]} />,
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 150 }} value={filterStatus} onChange={setFilterStatus}
                         options={[{ value: 'active', label: 'Active' }, { value: 'under_maintenance', label: 'Maintenance' }, { value: 'retired', label: 'Retired' }, { value: 'planned', label: 'Planned' }]} />,
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>New CI</Button>,
                 ]}
             />
 
-            <Modal title={detailItem?.ci_number + ' — ' + detailItem?.name} open={detailOpen} onCancel={() => setDetailOpen(false)} footer={null} width={700}>
+            <Modal title={detailItem?.ci_number + ' â€” ' + detailItem?.name} open={detailOpen} onCancel={() => setDetailOpen(false)} footer={null} width={700}>
                 {detailItem && (
                     <Descriptions column={2} bordered size="small">
                         <Descriptions.Item label="CI Class">{detailItem.ci_class}</Descriptions.Item>
@@ -157,13 +160,13 @@ export default function CmdbPage() {
                     content: (<>
                         <Form.Item name="name" label="CI Name" rules={[{ required: true }]}><Input placeholder="e.g., PROD-DB-01 (PostgreSQL Primary)" /></Form.Item>
                         <Row gutter={16}>
-                            <Col span={8}><Form.Item name="ci_class" label="Class"><Select options={[{ value: 'hardware', label: '💻 Hardware' }, { value: 'software', label: '⚙️ Software' }, { value: 'network', label: '🌐 Network' }, { value: 'service', label: '🔗 Service' }, { value: 'cloud', label: '☁️ Cloud' }]} /></Form.Item></Col>
+                            <Col span={8}><Form.Item name="ci_class" label="Class"><Select options={[{ value: 'hardware', label: 'ðŸ’» Hardware' }, { value: 'software', label: 'âš™ï¸ Software' }, { value: 'network', label: 'ðŸŒ Network' }, { value: 'service', label: 'ðŸ”— Service' }, { value: 'cloud', label: 'â˜ï¸ Cloud' }]} /></Form.Item></Col>
                             <Col span={8}><Form.Item name="ci_type" label="Type"><Input placeholder="e.g., server, switch, database" /></Form.Item></Col>
                             <Col span={8}><Form.Item name="environment" label="Environment"><Select options={[{ value: 'production', label: 'Production' }, { value: 'staging', label: 'Staging' }, { value: 'development', label: 'Development' }, { value: 'dr', label: 'DR' }]} /></Form.Item></Col>
                         </Row>
                         <Row gutter={16}>
                             <Col span={12}><Form.Item name="status" label="Status"><Select options={[{ value: 'active', label: 'Active' }, { value: 'under_maintenance', label: 'Under Maintenance' }, { value: 'retired', label: 'Retired' }, { value: 'planned', label: 'Planned' }]} /></Form.Item></Col>
-                            <Col span={12}><Form.Item name="criticality" label="Criticality"><Select options={[{ value: 'critical', label: '🔴 Critical' }, { value: 'high', label: '🟠 High' }, { value: 'medium', label: '🔵 Medium' }, { value: 'low', label: '🟢 Low' }]} /></Form.Item></Col>
+                            <Col span={12}><Form.Item name="criticality" label="Criticality"><Select options={[{ value: 'critical', label: 'ðŸ”´ Critical' }, { value: 'high', label: 'ðŸŸ  High' }, { value: 'medium', label: 'ðŸ”µ Medium' }, { value: 'low', label: 'ðŸŸ¢ Low' }]} /></Form.Item></Col>
                         </Row>
                     </>),
                 },
@@ -203,3 +206,5 @@ export default function CmdbPage() {
         </CMSLayout>
     );
 }
+
+

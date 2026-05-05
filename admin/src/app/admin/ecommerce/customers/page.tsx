@@ -1,13 +1,15 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { Table, Tag, Card, Typography, Input, Button, Space, Tooltip, Row, Col, Modal, Form, Select, message } from "antd";
-import { UserOutlined, SearchOutlined, ReloadOutlined, PlusOutlined, DeleteOutlined, TeamOutlined, ShoppingCartOutlined, DollarOutlined, MailOutlined } from "@ant-design/icons";
+import { UserOutlined, SearchOutlined, ReloadOutlined, PlusOutlined, DeleteOutlined, TeamOutlined, ShoppingCartOutlined, DollarOutlined, MailOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { inventoryService, EcomCustomer, EcomStatsType } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { CrmAccountPicker, CrmContactPicker } from "@/components/inventory/CrmPicker";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
@@ -17,7 +19,7 @@ const { Text } = Typography;
 
 const TYPE_COLORS: Record<string, string> = { individual: 'blue', company: 'purple', reseller: 'gold' };
 const STATUS_COLORS: Record<string, string> = { active: 'green', inactive: 'default', blocked: 'red' };
-const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : '—';
+const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : 'â€”';
 
 const CUSTOMER_FIELDS: FieldDef[] = [
     { name: 'customerCode', label: 'Customer Code', required: true },
@@ -36,6 +38,7 @@ const CUSTOMER_FIELDS: FieldDef[] = [
 export default function CustomersPage() {
     const [stats, setStats] = useState<EcomStatsType | null>(null);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [customers, setCustomers] = useState<EcomCustomer[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -109,15 +112,15 @@ export default function CustomersPage() {
     const columns = [
         { title: 'Code', dataIndex: 'customerCode', width: 110, render: (v: string) => <Text code className="text-xs">{v}</Text> },
         { title: 'Name', key: 'name', render: (_: any, r: EcomCustomer) => <Text strong className="text-sm">{r.firstName} {r.lastName || ''}</Text> },
-        { title: 'Email', dataIndex: 'email', ellipsis: true, render: (v: string) => v ? <Text className="text-xs"><MailOutlined className="mr-1" />{v}</Text> : '—' },
+        { title: 'Email', dataIndex: 'email', ellipsis: true, render: (v: string) => v ? <Text className="text-xs"><MailOutlined className="mr-1" />{v}</Text> : 'â€”' },
         { title: 'Phone', dataIndex: 'phone', width: 130 },
-        { title: 'Company', dataIndex: 'company', width: 150, ellipsis: true, render: (v: string) => v || '—' },
+        { title: 'Company', dataIndex: 'company', width: 150, ellipsis: true, render: (v: string) => v || 'â€”' },
         { title: 'Type', dataIndex: 'customerType', width: 100,
             render: (v: string) => <Tag color={TYPE_COLORS[v] || 'default'} className="rounded-full text-xs capitalize">{v}</Tag> },
         { title: 'Orders', dataIndex: 'totalOrders', width: 70, sorter: (a: any, b: any) => (a.totalOrders || 0) - (b.totalOrders || 0) },
         { title: 'Total Spent', dataIndex: 'totalSpent', width: 140, sorter: (a: any, b: any) => (a.totalSpent || 0) - (b.totalSpent || 0),
             render: (v: number) => <Text strong style={{ color: themeColor }}>{fmtCurrency(v)}</Text> },
-        { title: 'City', dataIndex: 'city', width: 120, render: (v: string) => v || '—' },
+        { title: 'City', dataIndex: 'city', width: 120, render: (v: string) => v || 'â€”' },
         { title: 'Status', dataIndex: 'status', width: 90,
             render: (v: string) => <Tag color={STATUS_COLORS[v] || 'default'} className="rounded-full text-xs capitalize">{v}</Tag> },
         { title: '', key: 'actions', width: 50,
@@ -240,3 +243,5 @@ export default function CustomersPage() {
         </CMSLayout>
     );
 }
+
+

@@ -6,23 +6,14 @@ import { Card, Table, Tag, Typography, Row, Col, Statistic, Space, Button, Badge
 import { WalletOutlined, DollarOutlined, TeamOutlined, CalculatorOutlined, BankOutlined, RiseOutlined, DownloadOutlined, PlusOutlined, PlayCircleOutlined, CheckCircleOutlined, DeleteOutlined, EyeOutlined, ClockCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import dayjs from "dayjs";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
-function exportCSV(filename: string, headers: string[], rows: string[][]) {
-    const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))].join('\n');
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
-}
-function exportPDF(title: string, headers: string[], rows: string[][]) {
-    const style = `<style>body{font-family:Arial,sans-serif;margin:20px}h1{font-size:18px;border-bottom:2px solid #333;padding-bottom:8px}h2{font-size:14px;color:#666;margin-top:0}table{width:100%;border-collapse:collapse;margin:16px 0;font-size:12px}th{background:#1a1a2e;color:#fff;padding:8px 12px;text-align:left}td{padding:6px 12px;border-bottom:1px solid #eee}.right{text-align:right}@media print{body{margin:0}}</style>`;
-    const tableHtml = `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
-    const html = `<!DOCTYPE html><html><head><title>${title}</title>${style}</head><body><h1>${title}</h1><h2>NusantaraSoft \u2022 Generated: ${new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</h2>${tableHtml}<script>window.onload=()=>window.print()<\/script></body></html>`;
-    const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close(); }
-}
 const PR_Q = `query($t:String!){hrPayrollRuns(tenantId:$t){id period name status totalGross totalDeductions totalNet employeeCount processedAt paidAt createdAt}}`;
 const EMP_Q = `query($t:String!){hrEmployees(tenantId:$t,status:"active"){id firstName lastName employeeNumber departmentName baseSalary}}`;
 const SLIP_Q = `query($r:String!){hrPayrollSlips(runId:$r){id employeeId employeeName baseSalary grossSalary totalDeductions netSalary components status}}`;
@@ -103,6 +94,13 @@ export default function PayrollPage() {
     const [period, setPeriod] = useState(dayjs().format('YYYY-MM'));
     const [runName, setRunName] = useState('');
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
+
+    // Filter runs by global date range
+    const filteredRuns = runs.filter(r => {
+        if (!r.period) return true;
+        return r.period >= startDate.slice(0, 7) && r.period <= endDate.slice(0, 7);
+    });
 
     useEffect(() => { load(); }, []);
 
@@ -199,11 +197,42 @@ export default function PayrollPage() {
             title={<AuroraText colors={[themeColor, '#10b981', '#f59e0b', themeColor]} className="text-[22px] font-bold tracking-tight">Payroll</AuroraText>}
             subTitle={<DecryptedText text="Payroll processing, salary slips & tax calculations" animateOn="view" revealDirection="start" speed={60} sequential />}
             extra={[
-                <Button key="csv" icon={<FileExcelOutlined />} size="small" onClick={() => exportCSV('payroll_runs.csv', ['Period', 'Name', 'Employees', 'Gross', 'Deductions', 'Net', 'Status'], runs.map(r => [r.period, r.name || '', String(r.employeeCount || 0), String(r.totalGross || 0), String(r.totalDeductions || 0), String(r.totalNet || 0), r.status]))}>Excel</Button>,
-                <Button key="pdf" icon={<FilePdfOutlined />} size="small" onClick={() => {
+                <Tooltip key="excel" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => {
                     const fmtN = (v: number) => new Intl.NumberFormat('id-ID').format(v);
-                    exportPDF('Payroll Report', ['Period', 'Name', 'Employees', 'Gross (Rp)', 'Deductions (Rp)', 'Net (Rp)', 'Status'], runs.map(r => [r.period, r.name || '', String(r.employeeCount || 0), fmtN(r.totalGross || 0), fmtN(r.totalDeductions || 0), fmtN(r.totalNet || 0), r.status]));
-                }}>PDF</Button>,
+                    exportToExcel({
+                        fileName: 'payroll_report',
+                        title: 'Payroll Report',
+                        dateRange: { start: startDate, end: endDate },
+                        columns: [
+                            { header: 'Period', key: 'period' },
+                            { header: 'Name', key: 'name', format: v => v || '—' },
+                            { header: 'Employees', key: 'employeeCount' },
+                            { header: 'Gross (Rp)', key: 'totalGross', format: v => fmtN(v || 0) },
+                            { header: 'Deductions (Rp)', key: 'totalDeductions', format: v => fmtN(v || 0) },
+                            { header: 'Net (Rp)', key: 'totalNet', format: v => fmtN(v || 0) },
+                            { header: 'Status', key: 'status' },
+                        ],
+                        data: filteredRuns,
+                    });
+                }}>Excel</Button></Tooltip>,
+                <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => {
+                    const fmtN = (v: number) => new Intl.NumberFormat('id-ID').format(v);
+                    exportToPdf({
+                        fileName: 'payroll_report',
+                        title: 'Payroll Report',
+                        dateRange: { start: startDate, end: endDate },
+                        columns: [
+                            { header: 'Period', key: 'period' },
+                            { header: 'Name', key: 'name', format: v => v || '—' },
+                            { header: 'Employees', key: 'employeeCount' },
+                            { header: 'Gross (Rp)', key: 'totalGross', format: v => fmtN(v || 0) },
+                            { header: 'Deductions (Rp)', key: 'totalDeductions', format: v => fmtN(v || 0) },
+                            { header: 'Net (Rp)', key: 'totalNet', format: v => fmtN(v || 0) },
+                            { header: 'Status', key: 'status' },
+                        ],
+                        data: filteredRuns,
+                    });
+                }}>PDF</Button></Tooltip>,
                 <Button key="run" type="primary" icon={<PlusOutlined />} onClick={() => setCreateModal(true)}
                     style={{ background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: 8 }}>New Payroll Run</Button>,
             ]}
@@ -265,9 +294,9 @@ export default function PayrollPage() {
                 </Row>
 
                 {/* Payroll Runs Table */}
-                <Card style={glass} title={<Space><WalletOutlined /><Text strong>Payroll Runs</Text><Badge count={runs.length} style={{ backgroundColor: themeColor }} /></Space>}
+                <Card style={glass} title={<Space><WalletOutlined /><Text strong>Payroll Runs</Text><Badge count={filteredRuns.length} style={{ backgroundColor: themeColor }} /></Space>}
                     extra={<Button icon={<DownloadOutlined />} size="small">Export</Button>}>
-                    <Table dataSource={runs} columns={columns} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} size="middle" />
+                    <Table dataSource={filteredRuns} columns={columns} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} size="middle" />
                 </Card>
             </motion.div>
 

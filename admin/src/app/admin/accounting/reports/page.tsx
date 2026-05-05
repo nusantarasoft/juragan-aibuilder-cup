@@ -8,6 +8,8 @@ import { accountingService, TrialBalanceRow } from '@/lib/accountingService';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { useDateRangeStore } from '@/store/useDateRangeStore';
+import { exportToPdf, exportToExcel } from '@/lib/exportUtils';
 import dayjs from 'dayjs';
 
 const { Text } = Typography;
@@ -33,6 +35,7 @@ function exportPDF(title: string, headers: string[], rows: string[][], summary?:
 
 export default function FinancialReportsPage() {
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [asOfDate, setAsOfDate] = useState<string>(dayjs().format('YYYY-MM-DD'));
     const [trialBalance, setTrialBalance] = useState<TrialBalanceRow[]>([]);
     const [loading, setLoading] = useState(true);

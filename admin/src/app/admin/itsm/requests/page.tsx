@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography, Card, Statistic, Badge } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, ReconciliationOutlined, ShopOutlined, UserOutlined, TeamOutlined, CheckCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography, Card, Statistic, Badge, Tooltip } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, ReconciliationOutlined, ShopOutlined, UserOutlined, TeamOutlined, CheckCircleOutlined, ClockCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
@@ -12,6 +12,8 @@ import type { FieldDef } from "@/components/common/DataImportExport";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -38,6 +40,7 @@ export default function ItsmRequestsPage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [data, setData] = useState<any[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [catalogItems, setCatalogItems] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -136,6 +139,38 @@ export default function ItsmRequestsPage() {
                     <Select key="fp" placeholder="Priority" allowClear style={{ width: 120 }} value={filterPriority} onChange={setFilterPriority}
                         options={[{ value: 'critical', label: 'Critical' }, { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }]} />,
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>New Request</Button>,
+                    <Tooltip key="excel" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => {
+                        exportToExcel({
+                            fileName: 'itsm_requests',
+                            title: 'Service Requests Report',
+                            dateRange: { start: startDate, end: endDate },
+                            columns: [
+                                { header: 'Request #', key: 'requestNumber' },
+                                { header: 'Title', key: 'title' },
+                                { header: 'Priority', key: 'priority' },
+                                { header: 'Status', key: 'status', format: v => (v || '').replace(/_/g, ' ') },
+                                { header: 'Requester', key: 'requesterName' },
+                                { header: 'Fulfillment Group', key: 'fulfillmentGroup' },
+                            ],
+                            data,
+                        });
+                    }} /></Tooltip>,
+                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => {
+                        exportToPdf({
+                            fileName: 'itsm_requests',
+                            title: 'Service Requests Report',
+                            dateRange: { start: startDate, end: endDate },
+                            columns: [
+                                { header: 'Request #', key: 'requestNumber' },
+                                { header: 'Title', key: 'title' },
+                                { header: 'Priority', key: 'priority' },
+                                { header: 'Status', key: 'status', format: v => (v || '').replace(/_/g, ' ') },
+                                { header: 'Requester', key: 'requesterName' },
+                                { header: 'Fulfillment Group', key: 'fulfillmentGroup' },
+                            ],
+                            data,
+                        });
+                    }} /></Tooltip>,
                 ]}
             />
 

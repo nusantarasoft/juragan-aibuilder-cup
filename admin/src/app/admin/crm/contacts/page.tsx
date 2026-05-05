@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -9,13 +9,14 @@ import {
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, UserOutlined, BankOutlined,
-    PhoneOutlined, MailOutlined,
-} from "@ant-design/icons";
+    PhoneOutlined, MailOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
@@ -72,6 +73,7 @@ const CONTACT_FIELDS: FieldDef[] = [
 export default function ContactsPage() {
     const [contacts, setContacts] = useState<Contact[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Contact | null>(null);
@@ -197,15 +199,15 @@ export default function ContactsPage() {
         },
         {
             title: "Role", dataIndex: "role", key: "role", width: 130,
-            render: (v) => v ? <Tag color="blue">{ROLES.find(r => r.value === v)?.label || v}</Tag> : '—',
+            render: (v) => v ? <Tag color="blue">{ROLES.find(r => r.value === v)?.label || v}</Tag> : 'â€”',
         },
         {
             title: "Email", key: "email", width: 200,
-            render: (_, r) => r.email || r.individualEmail || '—',
+            render: (_, r) => r.email || r.individualEmail || 'â€”',
         },
         {
             title: "Phone", dataIndex: "phone", key: "phone", width: 140,
-            render: (v) => v || '—',
+            render: (v) => v || 'â€”',
         },
         {
             title: "Actions", key: "actions", width: 130,
@@ -255,7 +257,7 @@ export default function ContactsPage() {
                     loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" />
             </Card>
 
-            {/* ─── Contact SteppedFormModal ─────────────── */}
+            {/* â”€â”€â”€ Contact SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <SteppedFormModal
                 open={isModalOpen}
                 onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }}
@@ -322,12 +324,12 @@ export default function ContactsPage() {
                     <Descriptions column={1} bordered size="small">
                         <Descriptions.Item label="Person">{selected.individualFirstName} {selected.individualLastName}</Descriptions.Item>
                         <Descriptions.Item label="Account">{selected.accountName || 'No account'}</Descriptions.Item>
-                        <Descriptions.Item label="Title">{selected.title || '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Department">{selected.department || '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Role">{ROLES.find(r => r.value === selected.role)?.label || selected.role || '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Email">{selected.email || selected.individualEmail || '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Phone">{selected.phone || '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Mobile">{selected.mobilePhone || '—'}</Descriptions.Item>
+                        <Descriptions.Item label="Title">{selected.title || 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Department">{selected.department || 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Role">{ROLES.find(r => r.value === selected.role)?.label || selected.role || 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Email">{selected.email || selected.individualEmail || 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Phone">{selected.phone || 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Mobile">{selected.mobilePhone || 'â€”'}</Descriptions.Item>
                         <Descriptions.Item label="Primary">{selected.isPrimary ? <Tag color="gold">Yes</Tag> : 'No'}</Descriptions.Item>
                         <Descriptions.Item label="Do Not Call">{selected.doNotCall ? <Tag color="red">Yes</Tag> : 'No'}</Descriptions.Item>
                         <Descriptions.Item label="Do Not Email">{selected.doNotEmail ? <Tag color="red">Yes</Tag> : 'No'}</Descriptions.Item>
@@ -337,3 +339,5 @@ export default function ContactsPage() {
         </CMSLayout>
     );
 }
+
+

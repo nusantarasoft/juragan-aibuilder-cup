@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -11,13 +11,14 @@ import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, CheckOutlined,
     PhoneOutlined, MailOutlined, CalendarOutlined, CheckCircleOutlined,
-    ClockCircleOutlined, FireOutlined, ThunderboltOutlined,
-} from "@ant-design/icons";
+    ClockCircleOutlined, FireOutlined, ThunderboltOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import dayjs from "dayjs";
@@ -56,6 +57,7 @@ const ACTIVITY_FIELDS: FieldDef[] = [
 export default function ActivitiesPage() {
     const [activities, setActivities] = useState<Activity[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Activity | null>(null);
@@ -111,7 +113,7 @@ export default function ActivitiesPage() {
         { title: "Subject", key: "subject", render: (_, r) => (<div><Text strong style={{ textDecoration: r.isCompleted ? 'line-through' : 'none' }}>{r.subject}</Text>{r.description && <><br /><Text type="secondary" style={{ fontSize: 12 }}>{r.description.substring(0, 80)}{r.description.length > 80 ? '...' : ''}</Text></>}</div>) },
         { title: "Related To", key: "related", width: 140, render: (_, r) => <Tag>{r.relatedToType}</Tag> },
         { title: "Priority", key: "priority", width: 90, render: (_, r) => { const cfg = getPriorityConfig(r.priority); return <Tag color={cfg?.color}>{cfg?.label || r.priority}</Tag>; }, filters: PRIORITIES.map(p => ({ text: p.label, value: p.value })), onFilter: (v, r) => r.priority === v },
-        { title: "Due Date", key: "due", width: 140, render: (_, r) => { if (!r.dueDate) return '—'; const d = dayjs(r.dueDate); const isOverdue = !r.isCompleted && d.isBefore(dayjs()); return <Text type={isOverdue ? 'danger' : undefined}>{d.format('MMM D, YYYY')}</Text>; }, sorter: (a, b) => (a.dueDate || '').localeCompare(b.dueDate || '') },
+        { title: "Due Date", key: "due", width: 140, render: (_, r) => { if (!r.dueDate) return 'â€”'; const d = dayjs(r.dueDate); const isOverdue = !r.isCompleted && d.isBefore(dayjs()); return <Text type={isOverdue ? 'danger' : undefined}>{d.format('MMM D, YYYY')}</Text>; }, sorter: (a, b) => (a.dueDate || '').localeCompare(b.dueDate || '') },
         { title: "Status", key: "status", width: 120, render: (_, r) => { const cfg = getStatusConfig(r.status); return <Tag color={cfg?.color}>{cfg?.label || r.status}</Tag>; } },
         { title: "Actions", key: "actions", width: 160, render: (_, r) => (<Space>
             <Tooltip title="View"><Button type="text" icon={<EyeOutlined />} onClick={() => { setSelected(r); setDetailOpen(true); }} /></Tooltip>
@@ -151,16 +153,18 @@ export default function ActivitiesPage() {
                 {selected && (<Descriptions column={1} bordered size="small">
                     <Descriptions.Item label="Type"><Tag color={getTypeConfig(selected.activityType)?.color}>{getTypeConfig(selected.activityType)?.label}</Tag></Descriptions.Item>
                     <Descriptions.Item label="Subject">{selected.subject}</Descriptions.Item>
-                    <Descriptions.Item label="Description">{selected.description || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Description">{selected.description || 'â€”'}</Descriptions.Item>
                     <Descriptions.Item label="Related To">{selected.relatedToType} ({selected.relatedToId})</Descriptions.Item>
                     <Descriptions.Item label="Priority"><Tag color={getPriorityConfig(selected.priority)?.color}>{getPriorityConfig(selected.priority)?.label}</Tag></Descriptions.Item>
                     <Descriptions.Item label="Status"><Tag color={getStatusConfig(selected.status)?.color}>{getStatusConfig(selected.status)?.label}</Tag></Descriptions.Item>
-                    <Descriptions.Item label="Due Date">{selected.dueDate ? dayjs(selected.dueDate).format('MMM D, YYYY HH:mm') : '—'}</Descriptions.Item>
-                    <Descriptions.Item label="Completed">{selected.isCompleted ? <Tag color="green">Yes — {dayjs(selected.completedAt).format('MMM D, YYYY')}</Tag> : 'No'}</Descriptions.Item>
-                    <Descriptions.Item label="Outcome">{selected.outcome || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Due Date">{selected.dueDate ? dayjs(selected.dueDate).format('MMM D, YYYY HH:mm') : 'â€”'}</Descriptions.Item>
+                    <Descriptions.Item label="Completed">{selected.isCompleted ? <Tag color="green">Yes â€” {dayjs(selected.completedAt).format('MMM D, YYYY')}</Tag> : 'No'}</Descriptions.Item>
+                    <Descriptions.Item label="Outcome">{selected.outcome || 'â€”'}</Descriptions.Item>
                     <Descriptions.Item label="Created">{dayjs(selected.createdAt).format('MMM D, YYYY HH:mm')}</Descriptions.Item>
                 </Descriptions>)}
             </Drawer>
         </CMSLayout>
     );
 }
+
+

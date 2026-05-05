@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Switch, DatePicker, Typography, Card, Statistic, Badge } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, SwapOutlined, FileProtectOutlined, ScheduleOutlined, TeamOutlined, CheckCircleOutlined, ExclamationCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Switch, DatePicker, Typography, Card, Statistic, Badge, Tooltip } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, SwapOutlined, FileProtectOutlined, ScheduleOutlined, TeamOutlined, CheckCircleOutlined, ExclamationCircleOutlined, ClockCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
@@ -12,6 +12,8 @@ import type { FieldDef } from "@/components/common/DataImportExport";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -42,6 +44,7 @@ export default function ItsmChangesPage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [data, setData] = useState<any[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
@@ -141,6 +144,40 @@ export default function ItsmChangesPage() {
                     <Select key="ft" placeholder="Type" allowClear style={{ width: 120 }} value={filterType} onChange={setFilterType}
                         options={[{ value: 'standard', label: 'Standard' }, { value: 'normal', label: 'Normal' }, { value: 'emergency', label: 'Emergency' }]} />,
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>New Change</Button>,
+                    <Tooltip key="excel" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => {
+                        exportToExcel({
+                            fileName: 'itsm_changes',
+                            title: 'Change Management Report',
+                            dateRange: { start: startDate, end: endDate },
+                            columns: [
+                                { header: 'Change #', key: 'changeNumber' },
+                                { header: 'Title', key: 'title' },
+                                { header: 'Type', key: 'changeType' },
+                                { header: 'Priority', key: 'priority' },
+                                { header: 'Risk', key: 'riskLevel' },
+                                { header: 'Status', key: 'status', format: v => (v || '').replace(/_/g, ' ') },
+                                { header: 'Assigned To', key: 'assignedTo' },
+                            ],
+                            data,
+                        });
+                    }} /></Tooltip>,
+                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => {
+                        exportToPdf({
+                            fileName: 'itsm_changes',
+                            title: 'Change Management Report',
+                            dateRange: { start: startDate, end: endDate },
+                            columns: [
+                                { header: 'Change #', key: 'changeNumber' },
+                                { header: 'Title', key: 'title' },
+                                { header: 'Type', key: 'changeType' },
+                                { header: 'Priority', key: 'priority' },
+                                { header: 'Risk', key: 'riskLevel' },
+                                { header: 'Status', key: 'status', format: v => (v || '').replace(/_/g, ' ') },
+                                { header: 'Assigned To', key: 'assignedTo' },
+                            ],
+                            data,
+                        });
+                    }} /></Tooltip>,
                 ]}
             />
 

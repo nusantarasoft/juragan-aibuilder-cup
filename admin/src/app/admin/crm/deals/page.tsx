@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -11,8 +11,7 @@ import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, DollarOutlined,
     AppstoreOutlined, UnorderedListOutlined, RocketOutlined,
-    TrophyOutlined, FunnelPlotOutlined, FileTextOutlined,
-} from "@ant-design/icons";
+    TrophyOutlined, FunnelPlotOutlined, FileTextOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { AuroraText } from '@/components/magicui/aurora-text';
@@ -21,6 +20,8 @@ import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import dayjs from "dayjs";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -57,6 +58,7 @@ const DEAL_FIELDS: FieldDef[] = [
 export default function DealsPage() {
     const [deals, setDeals] = useState<Deal[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Deal | null>(null);
@@ -115,7 +117,7 @@ export default function DealsPage() {
 
     const handleDelete = async (id: string) => { try { await gql(`mutation($id: String!) { deleteDeal(id: $id) }`, { id }); message.success("Deleted"); loadData(); } catch (err: any) { message.error(err.message); } };
 
-    const formatAmount = (v: number) => { if (!v) return '—'; return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v); };
+    const formatAmount = (v: number) => { if (!v) return 'â€”'; return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v); };
 
     const openDeals = deals.filter(d => d.status === 'open');
     const totalPipeline = openDeals.reduce((s, d) => s + (d.amount || 0), 0);
@@ -129,14 +131,14 @@ export default function DealsPage() {
                 const stageDeals = deals.filter(d => d.stage === stage.value);
                 const stageTotal = stageDeals.reduce((s, d) => s + (d.amount || 0), 0);
                 return (<div key={stage.value} style={{ minWidth: 260, maxWidth: 280, flex: '0 0 auto', background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(8px)', borderRadius: 8, padding: 12, borderTop: `3px solid ${stage.color}` }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}><div><Text strong style={{ fontSize: 13 }}>{stage.label}</Text><br /><Text type="secondary" style={{ fontSize: 11 }}>{stageDeals.length} deals · {formatAmount(stageTotal)}</Text></div></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}><div><Text strong style={{ fontSize: 13 }}>{stage.label}</Text><br /><Text type="secondary" style={{ fontSize: 11 }}>{stageDeals.length} deals Â· {formatAmount(stageTotal)}</Text></div></div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {stageDeals.length === 0 && <Text type="secondary" style={{ fontSize: 12, textAlign: 'center', padding: 16 }}>No deals</Text>}
                         {stageDeals.map(deal => (<Card key={deal.id} size="small" hoverable style={{ borderRadius: 6, cursor: 'pointer' }} onClick={() => openDetails(deal)}>
                             <Text strong style={{ fontSize: 13 }}>{deal.name}</Text><br /><Text type="secondary" style={{ fontSize: 11 }}>{deal.accountName || 'No account'}</Text>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, marginBottom: 4 }}><Tooltip title="Expected Revenue"><Text style={{ color: '#52c41a', fontWeight: 600, fontSize: 12 }}>{formatAmount(deal.expectedRevenue)}</Text></Tooltip><Tooltip title="Deal Amount"><Text style={{ color: stage.color, fontWeight: 500, fontSize: 12 }}>{formatAmount(deal.amount)}</Text></Tooltip></div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}><Text type="secondary" style={{ fontSize: 11 }}>{deal.probability}% prob</Text>{deal.closeDate && <Text type="secondary" style={{ fontSize: 11 }}>{dayjs(deal.closeDate).format('MMM D')}</Text>}</div>
-                            <div style={{ marginTop: 8, display: 'flex', gap: 4, flexWrap: 'wrap' }}>{STAGES.filter(s => s.value !== deal.stage && s.value !== 'closed_lost').slice(0, 3).map(s => (<Tag key={s.value} color={s.color} style={{ cursor: 'pointer', fontSize: 10, margin: 0 }} onClick={(e) => { e.stopPropagation(); handleStageChange(deal.id, s.value); }}>→ {s.label}</Tag>))}</div>
+                            <div style={{ marginTop: 8, display: 'flex', gap: 4, flexWrap: 'wrap' }}>{STAGES.filter(s => s.value !== deal.stage && s.value !== 'closed_lost').slice(0, 3).map(s => (<Tag key={s.value} color={s.color} style={{ cursor: 'pointer', fontSize: 10, margin: 0 }} onClick={(e) => { e.stopPropagation(); handleStageChange(deal.id, s.value); }}>â†’ {s.label}</Tag>))}</div>
                         </Card>))}
                     </div>
                 </div>);
@@ -150,7 +152,7 @@ export default function DealsPage() {
         { title: "Expected Rev.", key: "expectedRevenue", width: 130, align: "right", render: (_, r) => <Text style={{ color: '#52c41a' }}>{formatAmount(r.expectedRevenue)}</Text>, sorter: (a, b) => (a.expectedRevenue || 0) - (b.expectedRevenue || 0) },
         { title: "Stage", key: "stage", width: 140, render: (_, r) => { const s = STAGES.find(s => s.value === r.stage); return <Tag color={s?.color}>{s?.label || r.stage}</Tag>; } },
         { title: "Probability", key: "prob", width: 100, align: "right", render: (_, r) => `${r.probability || 0}%` },
-        { title: "Close Date", key: "close", width: 120, render: (_, r) => r.closeDate ? dayjs(r.closeDate).format('MMM D, YYYY') : '—', sorter: (a, b) => (a.closeDate || '').localeCompare(b.closeDate || '') },
+        { title: "Close Date", key: "close", width: 120, render: (_, r) => r.closeDate ? dayjs(r.closeDate).format('MMM D, YYYY') : 'â€”', sorter: (a, b) => (a.closeDate || '').localeCompare(b.closeDate || '') },
         { title: "Actions", key: "actions", width: 130, render: (_, r) => (<Space>
             <Tooltip title="View"><Button type="text" icon={<EyeOutlined />} onClick={() => openDetails(r)} /></Tooltip>
             <Tooltip title="Edit"><Button type="text" icon={<EditOutlined />} onClick={() => { setEditing(r); form.setFieldsValue({ name: r.name, description: r.description, amount: r.amount, stage: r.stage, probability: r.probability, closeDate: r.closeDate ? dayjs(r.closeDate) : null, type: r.type, leadSource: r.leadSource, nextStep: r.nextStep }); setIsModalOpen(true); }} /></Tooltip>
@@ -159,7 +161,7 @@ export default function DealsPage() {
     ];
 
     const formSteps = [
-        { title: "Deal Info", icon: <DollarOutlined />, fields: ["name", "amount", "stage", "probability", "closeDate"], content: (<><Row gutter={16}><Col span={16}><Form.Item name="name" label="Deal Name" rules={[{ required: true }]}><Input placeholder="e.g., Acme Corp — Enterprise License" /></Form.Item></Col><Col span={8}><Form.Item name="amount" label="Amount"><InputNumber style={{ width: '100%' }} prefix="$" formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} /></Form.Item></Col></Row><Row gutter={16}><Col span={8}><Form.Item name="stage" label="Stage" initialValue="prospecting"><Select options={STAGES.map(s => ({ value: s.value, label: s.label }))} /></Form.Item></Col><Col span={8}><Form.Item name="probability" label="Probability (%)"><InputNumber style={{ width: '100%' }} min={0} max={100} /></Form.Item></Col><Col span={8}><Form.Item name="closeDate" label="Close Date"><DatePicker style={{ width: '100%' }} /></Form.Item></Col></Row></>) },
+        { title: "Deal Info", icon: <DollarOutlined />, fields: ["name", "amount", "stage", "probability", "closeDate"], content: (<><Row gutter={16}><Col span={16}><Form.Item name="name" label="Deal Name" rules={[{ required: true }]}><Input placeholder="e.g., Acme Corp â€” Enterprise License" /></Form.Item></Col><Col span={8}><Form.Item name="amount" label="Amount"><InputNumber style={{ width: '100%' }} prefix="$" formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} /></Form.Item></Col></Row><Row gutter={16}><Col span={8}><Form.Item name="stage" label="Stage" initialValue="prospecting"><Select options={STAGES.map(s => ({ value: s.value, label: s.label }))} /></Form.Item></Col><Col span={8}><Form.Item name="probability" label="Probability (%)"><InputNumber style={{ width: '100%' }} min={0} max={100} /></Form.Item></Col><Col span={8}><Form.Item name="closeDate" label="Close Date"><DatePicker style={{ width: '100%' }} /></Form.Item></Col></Row></>) },
         { title: "Details", icon: <FileTextOutlined />, fields: ["type", "leadSource", "nextStep", "description"], content: (<><Row gutter={16}><Col span={8}><Form.Item name="type" label="Type"><Select allowClear options={DEAL_TYPES} /></Form.Item></Col><Col span={8}><Form.Item name="leadSource" label="Lead Source"><Select allowClear options={SOURCES.map(v => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }))} /></Form.Item></Col><Col span={8}><Form.Item name="nextStep" label="Next Step"><Input placeholder="e.g., Send proposal" /></Form.Item></Col></Row><Form.Item name="description" label="Description"><TextArea rows={2} /></Form.Item></>) },
     ];
 
@@ -192,14 +194,14 @@ export default function DealsPage() {
                         <Descriptions.Item label="Expected Revenue"><Text type="success">{formatAmount(selected.expectedRevenue)}</Text></Descriptions.Item>
                         <Descriptions.Item label="Stage"><Tag color={STAGES.find(s => s.value === selected.stage)?.color}>{STAGES.find(s => s.value === selected.stage)?.label}</Tag></Descriptions.Item>
                         <Descriptions.Item label="Probability">{selected.probability}%</Descriptions.Item>
-                        <Descriptions.Item label="Close Date">{selected.closeDate ? dayjs(selected.closeDate).format('MMM D, YYYY') : '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Account">{selected.accountName || '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Contact">{selected.contactName || '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Type"><Text style={{ textTransform: 'capitalize' }}>{selected.type?.replace('_', ' ') || '—'}</Text></Descriptions.Item>
-                        <Descriptions.Item label="Lead Source"><Text style={{ textTransform: 'capitalize' }}>{selected.leadSource || '—'}</Text></Descriptions.Item>
-                        <Descriptions.Item label="Next Step">{selected.nextStep || '—'}</Descriptions.Item>
+                        <Descriptions.Item label="Close Date">{selected.closeDate ? dayjs(selected.closeDate).format('MMM D, YYYY') : 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Account">{selected.accountName || 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Contact">{selected.contactName || 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Type"><Text style={{ textTransform: 'capitalize' }}>{selected.type?.replace('_', ' ') || 'â€”'}</Text></Descriptions.Item>
+                        <Descriptions.Item label="Lead Source"><Text style={{ textTransform: 'capitalize' }}>{selected.leadSource || 'â€”'}</Text></Descriptions.Item>
+                        <Descriptions.Item label="Next Step">{selected.nextStep || 'â€”'}</Descriptions.Item>
                         {selected.lossReason && <Descriptions.Item label="Loss Reason">{selected.lossReason}</Descriptions.Item>}
-                        <Descriptions.Item label="Description">{selected.description || '—'}</Descriptions.Item>
+                        <Descriptions.Item label="Description">{selected.description || 'â€”'}</Descriptions.Item>
                     </Descriptions>) },
                     { key: "quotes", label: `Quotes (${selected.quotes?.length || 0})`, children: (<Table dataSource={selected.quotes || []} rowKey="id" pagination={false} size="small" columns={[{ title: 'Quote #', dataIndex: 'quoteNumber', render: t => <Text strong>{t}</Text> }, { title: 'Name', dataIndex: 'name' }, { title: 'Status', dataIndex: 'status', render: t => <Tag>{t}</Tag> }, { title: 'Total', dataIndex: 'total', render: t => formatAmount(t) }, { title: 'Date', dataIndex: 'createdAt', render: t => dayjs(t).format('MMM D, YY') }]} />) },
                     { key: "ai", label: "AI Insights", children: (<Spin spinning={aiLoading}><div style={{ marginBottom: 16 }}><Text>Use Gemini 2.5 Pro to analyze the deal and get an actionable recommendation.</Text></div><Button type="primary" onClick={handleGenerateAI} style={{ marginBottom: 16 }} icon={<RocketOutlined />}>Generate Next Best Action</Button>{aiAction && (<Card size="small" style={{ background: '#f6ffed', borderColor: '#b7eb8f' }}><p style={{ margin: 0 }}>{aiAction}</p></Card>)}</Spin>) }
@@ -208,3 +210,5 @@ export default function DealsPage() {
         </CMSLayout>
     );
 }
+
+
