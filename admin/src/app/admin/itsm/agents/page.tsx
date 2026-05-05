@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Progress, InputNumber, Avatar, Typography, Card, Statistic } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, TeamOutlined, UserOutlined, TrophyOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Progress, InputNumber, Avatar, Typography, Card, Statistic, Badge } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, TeamOutlined, UserOutlined, TrophyOutlined, ClockCircleOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { supaRest, supaInsert, supaUpdate, supaDelete } from "@/lib/supaRest";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
@@ -13,6 +14,7 @@ import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const statusColors: Record<string, string> = { active: 'green', on_leave: 'orange', training: 'blue', unavailable: 'red', resigned: 'default' };
 const roleColors: Record<string, string> = { team_lead: 'gold', senior_agent: 'blue', agent: 'green', specialist: 'purple', manager: 'red' };
 const shiftColors: Record<string, string> = { day: 'blue', night: 'purple', swing: 'orange', flexible: 'cyan' };
@@ -99,15 +101,26 @@ export default function AgentsPage() {
             subTitle={<DecryptedText text="Manage IT service desk agents, skills, and workload" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
-            <Row gutter={16} style={{ marginBottom: 16 }}>
-                <Col span={6}><Card size="small"><Statistic title="Active Agents" value={totalActive} suffix={`/ ${data.length}`} valueStyle={{ color: '#1890ff' }} /></Card></Col>
-                <Col span={6}><Card size="small"><Statistic title="Avg Utilization" value={avgUtil} suffix="%" valueStyle={{ color: avgUtil > 80 ? '#f5222d' : '#52c41a' }} /></Card></Col>
-                <Col span={6}><Card size="small"><Statistic title="Total Resolved" value={data.reduce((s, a) => s + (a.total_tickets_resolved || 0), 0)} valueStyle={{ color: themeColor }} /></Card></Col>
-                <Col span={6}><Card size="small"><Statistic title="Teams" value={teams.length} valueStyle={{ color: '#13c2c2' }} /></Card></Col>
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Active Agents', value: `${totalActive}/${data.length}`, icon: <UserOutlined />, color: '#3b82f6' },
+                    { title: 'Avg Utilization', value: `${avgUtil}%`, icon: <ClockCircleOutlined />, color: avgUtil > 80 ? '#ef4444' : '#10b981' },
+                    { title: 'Total Resolved', value: data.reduce((s: number, a: any) => s + (a.total_tickets_resolved || 0), 0), icon: <CheckCircleOutlined />, color: '#8b5cf6' },
+                    { title: 'Teams', value: teams.length, icon: <TeamOutlined />, color: '#06b6d4' },
+                    { title: 'Avg CSAT', value: data.length > 0 ? (data.reduce((s: number, a: any) => s + (a.customer_satisfaction_score || 0), 0) / data.filter((a: any) => a.customer_satisfaction_score).length || 0).toFixed(1) : '—', icon: <TrophyOutlined />, color: '#f59e0b' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={Math.floor(24 / 5)}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
             </Row>
 
             <ProTable
-                headerTitle={<Space><TeamOutlined /> Service Desk Agents</Space>}
+                headerTitle={<Space><TeamOutlined /> Service Desk Agents <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 130 }} value={filterStatus} onChange={setFilterStatus}

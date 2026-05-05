@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography, Alert, Badge } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, AlertOutlined, WarningOutlined, ThunderboltOutlined, BellOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography, Alert, Badge, Card, Statistic } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, AlertOutlined, WarningOutlined, ThunderboltOutlined, BellOutlined, ExclamationCircleOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { supaRest, supaInsert, supaUpdate, supaDelete } from "@/lib/supaRest";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
@@ -13,6 +14,7 @@ import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const severityColors: Record<string, string> = { critical: '#f5222d', high: '#fa8c16', medium: '#1890ff', low: '#52c41a', informational: '#8c8c8c' };
 const statusColors: Record<string, string> = { new: 'blue', acknowledged: 'cyan', in_progress: 'orange', escalated: 'red', closed: 'default', suppressed: 'gray' };
 const typeColors: Record<string, string> = { informational: 'default', warning: 'gold', exception: 'orange', alert: 'red' };
@@ -101,6 +103,49 @@ export default function EventsPage() {
         <div>
             {contextHolder}
             {critCount > 0 && <Alert type="error" message={`${critCount} critical event(s) require immediate attention`} banner showIcon style={{ marginBottom: 16 }} />}
+
+            {/* KPI Stats */}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Open Events', value: openCount, icon: <AlertOutlined />, color: '#f59e0b' },
+                    { title: 'Critical', value: critCount, icon: <ExclamationCircleOutlined />, color: '#ef4444' },
+                    { title: 'High Severity', value: data.filter(e => e.severity === 'high' && e.status !== 'closed').length, icon: <WarningOutlined />, color: '#f97316' },
+                    { title: 'Acknowledged', value: data.filter(e => e.status === 'acknowledged').length, icon: <CheckCircleOutlined />, color: '#3b82f6' },
+                    { title: 'Total Events', value: data.length, icon: <ThunderboltOutlined />, color: '#8b5cf6' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={Math.floor(24 / 5)}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
+
+            {/* Severity Distribution */}
+            {data.length > 0 && (
+                <Card size="small" style={{ ...glass, marginBottom: 16 }} title={<Text strong style={{ fontSize: 13 }}>⚠️ Severity Distribution</Text>}>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                        {['critical', 'high', 'medium', 'low', 'informational'].map((sev, i) => {
+                            const cnt = data.filter(e => e.severity === sev).length;
+                            const openCnt = data.filter(e => e.severity === sev && e.status !== 'closed').length;
+                            const color = severityColors[sev];
+                            return (
+                                <motion.div key={sev} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.06 }}
+                                    style={{ flex: 1, padding: '10px 8px', borderRadius: 10, background: `${color}08`, border: `1px solid ${color}25`, textAlign: 'center' }}>
+                                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${color}15`, margin: '0 auto 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: color }} />
+                                    </div>
+                                    <Text strong style={{ fontSize: 18, color, display: 'block' }}>{cnt}</Text>
+                                    <Text style={{ fontSize: 10, textTransform: 'capitalize', display: 'block' }}>{sev}</Text>
+                                    {openCnt > 0 && <Text style={{ fontSize: 9, color: '#f59e0b' }}>{openCnt} open</Text>}
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                </Card>
+            )}
 
             <ProTable
                 headerTitle={<Space><AlertOutlined /> Events <Badge count={openCount} style={{ backgroundColor: openCount > 0 ? '#fa8c16' : '#52c41a' }} /></Space>}

@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
-import { Card, Table, Tag, Typography, Row, Col, Statistic, Progress, Space, Segmented, Badge, Tooltip, Button } from "antd";
-import { ReadOutlined, BookOutlined, SafetyCertificateOutlined, AppstoreOutlined, UnorderedListOutlined, ClockCircleOutlined, DollarOutlined, CalendarOutlined, PlusOutlined, ThunderboltOutlined } from "@ant-design/icons";
+import { Card, Table, Tag, Typography, Row, Col, Statistic, Progress, Space, Segmented, Badge, Tooltip, Button, Modal, Form, Input, Select, InputNumber, DatePicker, Switch, message } from "antd";
+import { ReadOutlined, BookOutlined, SafetyCertificateOutlined, AppstoreOutlined, UnorderedListOutlined, ClockCircleOutlined, DollarOutlined, CalendarOutlined, PlusOutlined, ThunderboltOutlined, DeleteOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
@@ -13,82 +13,61 @@ import dayjs from "dayjs";
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const TR_Q = `query($t:String!){hrTrainingPrograms(tenantId:$t){id name description category durationHours provider cost startDate endDate status isMandatory certificationName createdAt}}`;
+const CREATE_M = `mutation($t:String!,$n:String!,$cat:String,$desc:String,$dur:Int,$prov:String,$cost:Float,$sd:String,$ed:String,$mand:Boolean,$cert:String){createHrTrainingProgram(tenantId:$t,name:$n,category:$cat,description:$desc,durationHours:$dur,provider:$prov,cost:$cost,startDate:$sd,endDate:$ed,isMandatory:$mand,certificationName:$cert){id}}`;
+const DELETE_M = `mutation($id:String!){deleteHrTrainingProgram(id:$id)}`;
 
-const statusConfig: Record<string, { color: string; label: string; icon: string }> = {
+const statusCfg: Record<string, { color: string; label: string; icon: string }> = {
     upcoming: { color: '#3b82f6', label: 'Upcoming', icon: '📅' },
     ongoing: { color: '#f59e0b', label: 'In Progress', icon: '🔄' },
     completed: { color: '#10b981', label: 'Completed', icon: '✅' },
     cancelled: { color: '#6b7280', label: 'Cancelled', icon: '❌' },
 };
-const catConfig: Record<string, { color: string; icon: string; gradient: string }> = {
+const catCfg: Record<string, { color: string; icon: string; gradient: string }> = {
     technical: { color: '#3b82f6', icon: '💻', gradient: 'linear-gradient(135deg, #3b82f6, #60a5fa)' },
     leadership: { color: '#8b5cf6', icon: '👑', gradient: 'linear-gradient(135deg, #8b5cf6, #a78bfa)' },
     compliance: { color: '#ef4444', icon: '📋', gradient: 'linear-gradient(135deg, #ef4444, #f87171)' },
     soft_skills: { color: '#06b6d4', icon: '🤝', gradient: 'linear-gradient(135deg, #06b6d4, #22d3ee)' },
 };
 
-// Program Card
-function ProgramCard({ program }: { program: any }) {
-    const cat = catConfig[program.category] || catConfig.technical;
-    const status = statusConfig[program.status] || statusConfig.upcoming;
+function ProgramCard({ program, onDelete }: { program: any; onDelete: (id: string) => void }) {
+    const cat = catCfg[program.category] || catCfg.technical;
+    const status = statusCfg[program.status] || statusCfg.upcoming;
     const fmt = (v: number) => new Intl.NumberFormat('id-ID', { notation: 'compact', compactDisplay: 'short' }).format(v);
-
-    // Calculate progress for ongoing programs
     let progress = 0;
     if (program.status === 'completed') progress = 100;
     else if (program.status === 'ongoing' && program.startDate && program.endDate) {
-        const start = dayjs(program.startDate);
-        const end = dayjs(program.endDate);
-        const now = dayjs();
-        const total = end.diff(start, 'day');
-        const elapsed = now.diff(start, 'day');
+        const total = dayjs(program.endDate).diff(dayjs(program.startDate), 'day');
+        const elapsed = dayjs().diff(dayjs(program.startDate), 'day');
         progress = Math.min(Math.round((elapsed / (total || 1)) * 100), 99);
     }
-
     return (
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} whileHover={{ y: -4, boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }}
-            style={{ ...glass, padding: 16, borderRadius: 14, borderTop: `3px solid ${cat.color}`, height: '100%', cursor: 'default' }}>
-            {/* Header */}
+            style={{ ...glass, padding: 16, borderRadius: 14, borderTop: `3px solid ${cat.color}`, height: '100%', cursor: 'default', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 8, right: 8 }}>
+                <Button size="small" type="text" danger icon={<DeleteOutlined />} onClick={() => Modal.confirm({ title: 'Delete program?', onOk: () => onDelete(program.id) })} />
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 10, background: `${cat.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
-                    {cat.icon}
-                </div>
+                <div style={{ width: 32, height: 32, borderRadius: 10, background: `${cat.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>{cat.icon}</div>
                 <Space size={4}>
                     {program.isMandatory && <Tag color="red" style={{ borderRadius: 10, fontSize: 9, margin: 0 }}>Required</Tag>}
                     <Tag color={status.color} style={{ borderRadius: 10, fontSize: 9, margin: 0 }}>{status.icon} {status.label}</Tag>
                 </Space>
             </div>
-
             <Text strong style={{ fontSize: 13, display: 'block', marginBottom: 4 }}>{program.name}</Text>
             {program.description && <Text type="secondary" style={{ fontSize: 10, display: 'block', marginBottom: 8 }} ellipsis>{program.description}</Text>}
-
-            {/* Category + Certification */}
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
                 <Tag color={cat.color} style={{ borderRadius: 10, fontSize: 10, margin: 0 }}>{program.category?.replace('_', ' ')}</Tag>
                 {program.certificationName && <Tag color="gold" style={{ borderRadius: 10, fontSize: 10, margin: 0 }}><SafetyCertificateOutlined /> {program.certificationName}</Tag>}
             </div>
-
-            {/* Progress for ongoing */}
-            {(program.status === 'ongoing' || program.status === 'completed') && (
-                <Progress percent={progress} size="small" strokeColor={cat.color} style={{ marginBottom: 8 }} />
-            )}
-
-            {/* Footer details */}
+            {(program.status === 'ongoing' || program.status === 'completed') && <Progress percent={progress} size="small" strokeColor={cat.color} style={{ marginBottom: 8 }} />}
             <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: 8, display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
                 <Space size={8}>
                     <Tooltip title="Duration"><Space size={3}><ClockCircleOutlined style={{ color: '#6b7280' }} /><Text style={{ fontSize: 10 }}>{program.durationHours}h</Text></Space></Tooltip>
-                    {program.provider && <Tooltip title="Provider"><Text style={{ fontSize: 10, color: '#6b7280' }}>{program.provider}</Text></Tooltip>}
+                    {program.provider && <Text style={{ fontSize: 10, color: '#6b7280' }}>{program.provider}</Text>}
                 </Space>
-                {program.cost > 0 && <Text style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>Rp {fmt(program.cost)}</Text>}
-                {program.cost === 0 && <Tag color="green" style={{ fontSize: 9, borderRadius: 10, margin: 0 }}>Free</Tag>}
+                {program.cost > 0 ? <Text style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>Rp {fmt(program.cost)}</Text> : <Tag color="green" style={{ fontSize: 9, borderRadius: 10, margin: 0 }}>Free</Tag>}
             </div>
-
-            {program.startDate && (
-                <div style={{ marginTop: 6, fontSize: 10 }}>
-                    <CalendarOutlined style={{ color: '#9ca3af', marginRight: 4 }} />
-                    <Text style={{ fontSize: 10, color: '#9ca3af' }}>{dayjs(program.startDate).format('MMM D')} → {dayjs(program.endDate).format('MMM D, YYYY')}</Text>
-                </div>
-            )}
+            {program.startDate && <div style={{ marginTop: 6 }}><CalendarOutlined style={{ color: '#9ca3af', marginRight: 4, fontSize: 10 }} /><Text style={{ fontSize: 10, color: '#9ca3af' }}>{dayjs(program.startDate).format('MMM D')} → {dayjs(program.endDate).format('MMM D, YYYY')}</Text></div>}
         </motion.div>
     );
 }
@@ -97,9 +76,33 @@ export default function TrainingPage() {
     const [programs, setPrograms] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<string>('grid');
+    const [modalOpen, setModalOpen] = useState(false);
+    const [form] = Form.useForm();
     const { themeColor } = usePreferencesStore();
 
-    useEffect(() => { gql(TR_Q, { t: DEFAULT_TENANT_ID }).then(d => setPrograms(d.hrTrainingPrograms || [])).catch(console.error).finally(() => setLoading(false)); }, []);
+    const load = async () => {
+        setLoading(true);
+        const d = await gql(TR_Q, { t: DEFAULT_TENANT_ID }).catch(() => ({ hrTrainingPrograms: [] }));
+        setPrograms(d.hrTrainingPrograms || []);
+        setLoading(false);
+    };
+    useEffect(() => { load(); }, []);
+
+    const handleCreate = async (values: any) => {
+        try {
+            await gql(CREATE_M, {
+                t: DEFAULT_TENANT_ID, n: values.name, cat: values.category, desc: values.description,
+                dur: values.durationHours, prov: values.provider, cost: values.cost,
+                sd: values.startDate?.format('YYYY-MM-DD'), ed: values.endDate?.format('YYYY-MM-DD'),
+                mand: values.isMandatory, cert: values.certificationName,
+            });
+            message.success('Training program created'); setModalOpen(false); form.resetFields(); load();
+        } catch (e: any) { message.error(e.message || 'Failed'); }
+    };
+
+    const handleDelete = async (id: string) => {
+        try { await gql(DELETE_M, { id }); message.success('Deleted'); load(); } catch { message.error('Failed'); }
+    };
 
     const fmt = (v: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v);
     const completed = programs.filter(p => p.status === 'completed').length;
@@ -108,54 +111,53 @@ export default function TrainingPage() {
     const totalCost = programs.reduce((s, p) => s + (p.cost || 0), 0);
     const totalHours = programs.reduce((s, p) => s + (p.durationHours || 0), 0);
 
-    // Category distribution
-    const catDist = useMemo(() => {
-        const cats = Object.keys(catConfig);
-        return cats.map(c => ({
-            name: c.replace('_', ' '),
-            count: programs.filter(p => p.category === c).length,
-            ...catConfig[c],
-        })).filter(c => c.count > 0);
-    }, [programs]);
-    const maxCat = Math.max(...catDist.map(c => c.count), 1);
+    const catDist = useMemo(() => Object.keys(catCfg).map(c => ({
+        name: c.replace('_', ' '), count: programs.filter(p => p.category === c).length, ...catCfg[c],
+    })).filter(c => c.count > 0), [programs]);
 
     const columns = [
         { title: 'Program', key: 'name', render: (_: any, r: any) => <Space>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: `${(catConfig[r.category] || catConfig.technical).color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>{(catConfig[r.category] || catConfig.technical).icon}</div>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: `${(catCfg[r.category] || catCfg.technical).color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>{(catCfg[r.category] || catCfg.technical).icon}</div>
             <div><Text strong style={{ fontSize: 13 }}>{r.name}</Text>{r.certificationName && <><br/><Tag color="gold" style={{ borderRadius: 10, fontSize: 9 }}><SafetyCertificateOutlined /> {r.certificationName}</Tag></>}</div>
         </Space> },
-        { title: 'Category', dataIndex: 'category', key: 'cat', render: (v: string) => <Tag color={(catConfig[v] || catConfig.technical).color} style={{ borderRadius: 10 }}>{v?.replace('_', ' ')}</Tag> },
-        { title: 'Provider', dataIndex: 'provider', key: 'prov', render: (v: string) => v || '—' },
-        { title: 'Duration', dataIndex: 'durationHours', key: 'dur', render: (v: number) => <Space size={4}><ClockCircleOutlined style={{ color: '#6b7280' }} /><Text>{v}h</Text></Space>, align: 'center' as const },
-        { title: 'Cost', dataIndex: 'cost', key: 'cost', render: (v: number) => v > 0 ? <Text style={{ color: '#f59e0b' }}>{fmt(v)}</Text> : <Tag color="green" style={{ borderRadius: 10 }}>Free</Tag>, align: 'right' as const },
-        { title: 'Period', key: 'period', render: (_: any, r: any) => r.startDate ? <Text style={{ fontSize: 11 }}>{dayjs(r.startDate).format('MMM D')} → {dayjs(r.endDate).format('MMM D')}</Text> : '—' },
-        { title: 'Mandatory', dataIndex: 'isMandatory', key: 'mand', render: (v: boolean) => v ? <Tag color="red" style={{ borderRadius: 10 }}>Required</Tag> : '—', align: 'center' as const },
-        { title: 'Status', dataIndex: 'status', key: 'status', render: (v: string) => <Tag color={(statusConfig[v] || statusConfig.upcoming).color} style={{ borderRadius: 20 }}>{(statusConfig[v] || statusConfig.upcoming).icon} {(statusConfig[v] || statusConfig.upcoming).label}</Tag> },
+        { title: 'Category', dataIndex: 'category', render: (v: string) => <Tag color={(catCfg[v] || catCfg.technical).color} style={{ borderRadius: 10 }}>{v?.replace('_', ' ')}</Tag> },
+        { title: 'Provider', dataIndex: 'provider', render: (v: string) => v || '—' },
+        { title: 'Duration', dataIndex: 'durationHours', render: (v: number) => <Space size={4}><ClockCircleOutlined style={{ color: '#6b7280' }} /><Text>{v}h</Text></Space>, align: 'center' as const },
+        { title: 'Cost', dataIndex: 'cost', render: (v: number) => v > 0 ? <Text style={{ color: '#f59e0b' }}>{fmt(v)}</Text> : <Tag color="green" style={{ borderRadius: 10 }}>Free</Tag>, align: 'right' as const },
+        { title: 'Status', dataIndex: 'status', render: (v: string) => <Tag color={(statusCfg[v] || statusCfg.upcoming).color} style={{ borderRadius: 20 }}>{(statusCfg[v] || statusCfg.upcoming).icon} {(statusCfg[v] || statusCfg.upcoming).label}</Tag> },
+        { title: '', key: 'actions', width: 50, render: (_: any, r: any) => <Button size="small" danger icon={<DeleteOutlined />} onClick={() => Modal.confirm({ title: 'Delete?', onOk: () => handleDelete(r.id) })} /> },
     ];
 
     return (
         <CMSLayout
             title={<AuroraText colors={[themeColor, '#06b6d4', '#8b5cf6', themeColor]} className="text-[22px] font-bold tracking-tight">Training & Development</AuroraText>}
             subTitle={<DecryptedText text="Training programs, certifications & skill development" animateOn="view" revealDirection="start" speed={60} sequential />}
-            extra={[
-                <Space key="actions">
-                    <Segmented value={viewMode} onChange={(v: any) => setViewMode(v)} options={[{ label: <><AppstoreOutlined /> Cards</>, value: 'grid' }, { label: <><UnorderedListOutlined /> Table</>, value: 'table' }]} />
-                    <Button type="primary" icon={<PlusOutlined />} style={{ background: themeColor }}>Add Program</Button>
-                </Space>
-            ]}
+            extra={[<Space key="actions">
+                <Segmented value={viewMode} onChange={(v: any) => setViewMode(v)} options={[{ label: <><AppstoreOutlined /> Cards</>, value: 'grid' }, { label: <><UnorderedListOutlined /> Table</>, value: 'table' }]} />
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}
+                    style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)', border: 'none', borderRadius: 8 }}>Add Program</Button>
+            </Space>]}
         >
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {/* Stats Row */}
                 <Row gutter={[12, 12]}>
-                    <Col xs={12} md={4}><Card size="small" style={{ ...glass, borderTop: '3px solid #06b6d4' }}><Statistic title="Programs" value={programs.length} prefix={<ReadOutlined />} valueStyle={{ color: '#06b6d4' }} /></Card></Col>
-                    <Col xs={12} md={4}><Card size="small" style={{ ...glass, borderTop: '3px solid #f59e0b' }}><Statistic title="In Progress" value={ongoing} prefix={<ThunderboltOutlined />} valueStyle={{ color: '#f59e0b' }} /></Card></Col>
-                    <Col xs={12} md={4}><Card size="small" style={{ ...glass, borderTop: '3px solid #10b981' }}><Statistic title="Completed" value={completed} prefix={<BookOutlined />} valueStyle={{ color: '#10b981' }} /></Card></Col>
-                    <Col xs={12} md={4}><Card size="small" style={{ ...glass, borderTop: '3px solid #ef4444' }}><Statistic title="Mandatory" value={mandatory} prefix={<SafetyCertificateOutlined />} valueStyle={{ color: '#ef4444' }} /></Card></Col>
-                    <Col xs={12} md={4}><Card size="small" style={{ ...glass, borderTop: '3px solid #8b5cf6' }}><Statistic title="Total Hours" value={totalHours} suffix="h" prefix={<ClockCircleOutlined />} valueStyle={{ color: '#8b5cf6' }} /></Card></Col>
-                    <Col xs={12} md={4}><Card size="small" style={{ ...glass, borderTop: '3px solid #f59e0b' }}><Statistic title="Budget" value={fmt(totalCost)} valueStyle={{ color: '#f59e0b', fontSize: 14 }} /></Card></Col>
+                    {[
+                        { title: 'Programs', value: programs.length, icon: <ReadOutlined />, color: '#06b6d4' },
+                        { title: 'In Progress', value: ongoing, icon: <ThunderboltOutlined />, color: '#f59e0b' },
+                        { title: 'Completed', value: completed, icon: <BookOutlined />, color: '#10b981' },
+                        { title: 'Mandatory', value: mandatory, icon: <SafetyCertificateOutlined />, color: '#ef4444' },
+                        { title: 'Total Hours', value: totalHours, icon: <ClockCircleOutlined />, color: '#8b5cf6', suffix: 'h' },
+                        { title: 'Budget', value: fmt(totalCost), icon: <DollarOutlined />, color: '#f59e0b', size: 14 },
+                    ].map((s, i) => (
+                        <Col key={i} xs={12} md={4}>
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                                <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                    <Statistic title={s.title} value={s.value} prefix={s.icon} suffix={(s as any).suffix} valueStyle={{ color: s.color, fontSize: (s as any).size || undefined }} />
+                                </Card>
+                            </motion.div>
+                        </Col>
+                    ))}
                 </Row>
 
-                {/* Category Distribution */}
                 {catDist.length > 0 && (
                     <Card size="small" style={glass}>
                         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -163,9 +165,7 @@ export default function TrainingPage() {
                             {catDist.map((c, i) => (
                                 <motion.div key={c.name} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }}
                                     style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: `${c.color}10`, border: `1px solid ${c.color}33` }}>
-                                    <span>{c.icon}</span>
-                                    <Text style={{ fontSize: 11 }}>{c.name}</Text>
-                                    <Badge count={c.count} style={{ backgroundColor: c.color }} size="small" />
+                                    <span>{c.icon}</span><Text style={{ fontSize: 11 }}>{c.name}</Text><Badge count={c.count} style={{ backgroundColor: c.color }} size="small" />
                                 </motion.div>
                             ))}
                         </div>
@@ -174,18 +174,35 @@ export default function TrainingPage() {
 
                 {viewMode === 'grid' ? (
                     <Row gutter={[12, 12]}>
-                        {programs.map((p, i) => (
-                            <Col xs={24} sm={12} md={8} lg={6} key={p.id}>
-                                <ProgramCard program={p} />
-                            </Col>
-                        ))}
+                        {programs.map(p => <Col xs={24} sm={12} md={8} lg={6} key={p.id}><ProgramCard program={p} onDelete={handleDelete} /></Col>)}
                     </Row>
                 ) : (
-                    <Card style={glass}>
-                        <Table dataSource={programs} columns={columns} rowKey="id" loading={loading} pagination={false} size="middle" />
-                    </Card>
+                    <Card style={glass}><Table dataSource={programs} columns={columns} rowKey="id" loading={loading} pagination={false} size="middle" /></Card>
                 )}
             </motion.div>
+
+            <Modal title="New Training Program" open={modalOpen} onCancel={() => { setModalOpen(false); form.resetFields(); }} onOk={() => form.submit()} okText="Create Program" width={560}>
+                <Form form={form} layout="vertical" onFinish={handleCreate} style={{ paddingTop: 8 }}>
+                    <Form.Item name="name" label="Program Name" rules={[{ required: true }]}><Input placeholder="e.g. Advanced React Workshop" /></Form.Item>
+                    <Row gutter={12}>
+                        <Col span={12}><Form.Item name="category" label="Category" initialValue="technical">
+                            <Select options={Object.entries(catCfg).map(([k, v]) => ({ value: k, label: <Space>{v.icon} {k.replace('_', ' ')}</Space> }))} />
+                        </Form.Item></Col>
+                        <Col span={12}><Form.Item name="provider" label="Provider"><Input placeholder="e.g. Internal, Udemy" /></Form.Item></Col>
+                    </Row>
+                    <Form.Item name="description" label="Description"><Input.TextArea rows={2} placeholder="Brief program description..." /></Form.Item>
+                    <Row gutter={12}>
+                        <Col span={8}><Form.Item name="durationHours" label="Duration (hrs)" initialValue={8}><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
+                        <Col span={8}><Form.Item name="cost" label="Cost (IDR)" initialValue={0}><InputNumber min={0} step={100000} style={{ width: '100%' }} /></Form.Item></Col>
+                        <Col span={8}><Form.Item name="isMandatory" label="Mandatory" valuePropName="checked"><Switch /></Form.Item></Col>
+                    </Row>
+                    <Row gutter={12}>
+                        <Col span={12}><Form.Item name="startDate" label="Start Date"><DatePicker style={{ width: '100%' }} /></Form.Item></Col>
+                        <Col span={12}><Form.Item name="endDate" label="End Date"><DatePicker style={{ width: '100%' }} /></Form.Item></Col>
+                    </Row>
+                    <Form.Item name="certificationName" label="Certification (optional)"><Input placeholder="e.g. AWS Solutions Architect" /></Form.Item>
+                </Form>
+            </Modal>
         </CMSLayout>
     );
 }

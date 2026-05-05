@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, InputNumber, Typography } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, ProjectOutlined, RocketOutlined, SendOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, InputNumber, Typography, Card, Statistic, Badge } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, ProjectOutlined, RocketOutlined, SendOutlined, CheckCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
@@ -13,6 +14,7 @@ import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const GET_PORTFOLIO = `query($lifecycleStatus: String, $serviceType: String, $search: String) { itsmPortfolioServices(lifecycleStatus: $lifecycleStatus, serviceType: $serviceType, search: $search) { id serviceCode name description businessOwner technicalOwner lifecycleStatus serviceType criticality costCenter budgetAllocated slaTarget dependencies risks notes publishedToCatalog publishedAt createdAt } }`;
 const CREATE_PORTFOLIO = `mutation($tenantId: String!, $input: CreateItsmPortfolioInput!) { createItsmPortfolioService(tenantId: $tenantId, input: $input) { id serviceCode } }`;
@@ -136,8 +138,25 @@ export default function ItsmPortfolioPage() {
             subTitle={<DecryptedText text="Manage the lifecycle of IT services" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Services', value: data.length, icon: <ProjectOutlined />, color: '#3b82f6' },
+                    { title: 'Active', value: data.filter((d: any) => d.lifecycleStatus === 'active' || d.lifecycleStatus === 'operational').length, icon: <CheckCircleOutlined />, color: '#10b981' },
+                    { title: 'Pipeline', value: data.filter((d: any) => d.lifecycleStatus === 'pipeline' || d.lifecycleStatus === 'design').length, icon: <RocketOutlined />, color: '#f59e0b' },
+                    { title: 'Retiring', value: data.filter((d: any) => d.lifecycleStatus === 'retiring' || d.lifecycleStatus === 'retired').length, icon: <ClockCircleOutlined />, color: '#ef4444' },
+                    { title: 'Published', value: data.filter((d: any) => d.publishedToCatalog).length, icon: <SendOutlined />, color: '#8b5cf6' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={Math.floor(24 / 5)}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <ProTable
-                headerTitle={<Space><ProjectOutlined /> Service Portfolio</Space>}
+                headerTitle={<Space><ProjectOutlined /> Service Portfolio <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
                     <Select key="fl" placeholder="Lifecycle" allowClear style={{ width: 140 }} value={filterLifecycle} onChange={setFilterLifecycle}

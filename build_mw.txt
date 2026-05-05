@@ -1,0 +1,332 @@
+﻿docker : --progress is a global compose flag, better use `docker compose --progress xx build ...
+At line:1 char:1
++ docker compose build middleware --no-cache --progress plain 2>&1 | Ou ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (--progress is a...ss xx build ...:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Image nusantarasoft-minimal-middleware Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 697B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile:
+#2 transferring dockerfile: 1.53kB 0.0s done
+#2 DONE 0.2s
+
+#3 [internal] load metadata for docker.io/library/node:20-alpine
+#3 ...
+
+#4 [auth] library/node:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:20-alpine
+#3 DONE 1.8s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 538B 0.0s done
+#5 DONE 0.1s
+
+#6 [internal] load build context
+#6 DONE 0.0s
+
+#7 [base 1/3] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#7 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.0s done
+#7 CACHED
+
+#6 [internal] load build context
+#6 transferring context: 78.09kB 0.2s done
+#6 DONE 0.3s
+
+#8 [base 2/3] RUN apk add --no-cache libc6-compat ffmpeg ghostscript graphicsmagick
+#8 1.903 (  1/128) Installing libSvtAv1Enc (3.1.2-r0)
+#8 2.151 (  2/128) Installing aom-libs (3.13.1-r1)
+#8 2.412 (  3/128) Installing libxau (1.0.12-r0)
+#8 2.435 (  4/128) Installing libmd (1.1.0-r0)
+#8 2.474 (  5/128) Installing libbsd (0.12.2-r0)
+#8 2.515 (  6/128) Installing libxdmcp (1.1.5-r1)
+#8 2.635 (  7/128) Installing libxcb (1.17.0-r1)
+#8 2.705 (  8/128) Installing libx11 (1.8.12-r1)
+#8 2.854 (  9/128) Installing hwdata-pci (0.401-r0)
+#8 2.940 ( 10/128) Installing libpciaccess (0.18.1-r1)
+#8 2.988 ( 11/128) Installing libdrm (2.4.131-r0)
+#8 3.091 ( 12/128) Installing libxext (1.3.6-r2)
+#8 3.183 ( 13/128) Installing libxfixes (6.0.2-r0)
+#8 3.230 ( 14/128) Installing libffi (3.5.2-r0)
+#8 3.257 ( 15/128) Installing wayland-libs-client (1.24.0-r0)
+#8 3.286 ( 16/128) Installing libva (2.22.0-r1)
+#8 3.364 ( 17/128) Installing libvdpau (1.5-r4)
+#8 3.427 ( 18/128) Installing libvpl (2.15.0-r1)
+#8 3.467 ( 19/128) Installing ffmpeg-libavutil (8.0.1-r1)
+#8 3.517 ( 20/128) Installing libdav1d (1.5.2-r0)
+#8 3.634 ( 21/128) Installing brotli-libs (1.2.0-r0)
+#8 3.709 ( 22/128) Installing libhwy (1.3.0-r0)
+#8 3.776 ( 23/128) Installing lcms2 (2.19-r0)
+#8 3.870 ( 24/128) Installing libjxl (0.11.1-r3)
+#8 4.034 ( 25/128) Installing lame-libs (3.100-r5)
+#8 4.151 ( 26/128) Installing opus (1.5.2-r1)
+#8 4.193 ( 27/128) Installing rav1e-libs (0.8.1-r0)
+#8 4.314 ( 28/128) Installing spirv-tools (1.4.321.0-r1)
+#8 4.496 ( 29/128) Installing glslang-libs (1.4.321.0-r0)
+#8 4.626 ( 30/128) Installing shaderc (2025.3-r0)
+#8 4.692 ( 31/128) Installing libgomp (15.2.0-r2)
+#8 4.752 ( 32/128) Installing soxr (0.1.3-r7)
+#8 4.780 ( 33/128) Installing ffmpeg-libswresample (8.0.1-r1)
+#8 4.829 ( 34/128) Installing libogg (1.3.6-r0)
+#8 4.873 ( 35/128) Installing libtheora (1.2.0-r0)
+#8 4.923 ( 36/128) Installing libvorbis (1.3.7-r2)
+#8 4.976 ( 37/128) Installing libvpx (1.15.2-r1)
+#8 5.084 ( 38/128) Installing libsharpyuv (1.6.0-r0)
+#8 5.133 ( 39/128) Installing libwebp (1.6.0-r0)
+#8 5.342 ( 40/128) Installing libwebpmux (1.6.0-r0)
+#8 5.375 ( 41/128) Installing x264-libs (0.164.3108-r1)
+#8 5.480 ( 42/128) Installing numactl (2.0.18-r0)
+#8 5.504 ( 43/128) Installing x265-libs (4.1-r0)
+#8 5.867 ( 44/128) Installing xvidcore (1.3.7-r2)
+#8 5.947 ( 45/128) Installing ffmpeg-libavcodec (8.0.1-r1)
+#8 6.543 ( 46/128) Installing alsa-lib (1.2.14-r2)
+#8 6.702 ( 47/128) Installing libexpat (2.7.5-r0)
+#8 6.756 ( 48/128) Installing libbz2 (1.0.8-r6)
+#8 6.816 ( 49/128) Installing libpng (1.6.57-r0)
+#8 6.897 ( 50/128) Installing freetype (2.14.1-r0)
+#8 6.974 ( 51/128) Installing fontconfig (2.17.1-r0)
+#8 7.069 ( 52/128) Installing fribidi (1.0.16-r2)
+#8 7.127 ( 53/128) Installing libintl (0.24.1-r1)
+#8 7.158 ( 54/128) Installing libeconf (0.8.3-r0)
+#8 7.224 ( 55/128) Installing libblkid (2.41.4-r0)
+#8 7.316 ( 56/128) Installing libmount (2.41.4-r0)
+#8 7.367 ( 57/128) Installing pcre2 (10.47-r0)
+#8 7.435 ( 58/128) Installing glib (2.86.3-r0)
+#8 7.717 ( 59/128) Installing graphite2 (1.3.14-r6)
+#8 7.773 ( 60/128) Installing harfbuzz (12.2.0-r0)
+#8 7.914 ( 61/128) Installing libunibreak (6.1-r0)
+#8 7.977 ( 62/128) Installing libass (0.17.4-r0)
+#8 8.041 ( 63/128) Installing libudfread (1.2.0-r0)
+#8 8.083 ( 64/128) Installing libbluray (1.4.0-r0)
+#8 8.141 ( 65/128) Installing mpg123-libs (1.33.3-r0)
+#8 8.242 ( 66/128) Installing libopenmpt (0.8.6-r0)
+#8 8.560 ( 67/128) Installing cjson (1.7.19-r1)
+#8 8.612 ( 68/128) Installing mbedtls (3.6.6-r0)
+#8 8.798 ( 69/128) Installing librist (0.2.10-r1)
+#8 8.848 ( 70/128) Installing libsrt (1.5.3-r1)
+#8 8.929 ( 71/128) Installing libssh (0.11.4-r0)
+#8 9.021 ( 72/128) Installing xz-libs (5.8.3-r0)
+#8 9.097 ( 73/128) Installing libxml2 (2.13.9-r0)
+#8 9.190 ( 74/128) Installing libsodium (1.0.20-r1)
+#8 9.250 ( 75/128) Installing libzmq (4.3.5-r2)
+#8 9.314 ( 76/128) Installing ffmpeg-libavformat (8.0.1-r1)
+#8 9.491 ( 77/128) Installing serd-libs (0.32.4-r0)
+#8 9.562 ( 78/128) Installing zix-libs (0.6.2-r0)
+#8 9.641 ( 79/128) Installing sord-libs (0.16.18-r0)
+#8 9.684 ( 80/128) Installing sratom (0.6.18-r0)
+#8 9.718 ( 81/128) Installing lilv-libs (0.24.26-r0)
+#8 9.752 ( 82/128) Installing libdovi (3.3.2-r0)
+#8 9.809 ( 83/128) Installing vulkan-loader (1.4.321.0-r0)
+#8 9.877 ( 84/128) Installing libplacebo (7.351.0-r0)
+#8 9.962 ( 85/128) Installing ffmpeg-libswscale (8.0.1-r1)
+#8 10.07 ( 86/128) Installing vidstab (1.1.1-r0)
+#8 10.19 ( 87/128) Installing zimg (3.0.6-r0)
+#8 10.29 ( 88/128) Installing ffmpeg-libavfilter (8.0.1-r1)
+#8 10.57 ( 89/128) Installing libasyncns (0.8-r4)
+#8 10.61 ( 90/128) Installing dbus-libs (1.16.2-r1)
+#8 10.65 ( 91/128) Installing libltdl (2.5.4-r2)
+#8 10.69 ( 92/128) Installing orc (0.4.41-r0)
+#8 10.73 ( 93/128) Installing libflac (1.4.3-r2)
+#8 10.77 ( 94/128) Installing libsndfile (1.2.2-r2)
+#8 10.82 ( 95/128) Installing speexdsp (1.2.1-r2)
+#8 10.89 ( 96/128) Installing tdb-libs (1.4.14-r0)
+#8 10.94 ( 97/128) Installing libpulse (17.0-r5)
+#8 11.07 ( 98/128) Installing libjpeg-turbo (3.1.2-r0)
+#8 11.16 ( 99/128) Installing json-c (0.18-r1)
+#8 11.19 (100/128) Installing v4l-utils-libs (1.32.0-r0)
+#8 11.24 (101/128) Installing ffmpeg-libavdevice (8.0.1-r1)
+#8 11.34 (102/128) Installing ffmpeg (8.0.1-r1)
+#8 11.43 (103/128) Installing libice (1.1.2-r0)
+#8 11.51 (104/128) Installing libuuid (2.41.4-r0)
+#8 11.54 (105/128) Installing libsm (1.2.6-r0)
+#8 11.56 (106/128) Installing libxt (1.3.1-r0)
+#8 11.61 (107/128) Installing avahi-libs (0.8-r23)
+#8 11.65 (108/128) Installing gmp (6.3.0-r4)
+#8 11.70 (109/128) Installing nettle (3.10.2-r0)
+#8 11.78 (110/128) Installing libunistring (1.4.1-r0)
+#8 11.99 (111/128) Installing libidn2 (2.3.8-r0)
+#8 12.09 (112/128) Installing libtasn1 (4.21.0-r0)
+#8 12.13 (113/128) Installing p11-kit (0.25.5-r2)
+#8 12.23 (114/128) Installing zstd-libs (1.5.7-r2)
+#8 12.29 (115/128) Installing gnutls (3.8.13-r0)
+#8 12.43 (116/128) Installing cups-libs (2.4.18-r0)
+#8 12.49 (117/128) Installing jbig2dec (0.20-r0)
+#8 12.52 (118/128) Installing openjpeg (2.5.4-r1)
+#8 12.59 (119/128) Installing tiff (4.7.1-r0)
+#8 12.65 (120/128) Installing ghostscript (10.06.0-r0)
+#8 14.22 (121/128) Installing ghostscript-fonts (8.11-r5)
+#8 14.64 (122/128) Installing libde265 (1.0.16-r0)
+#8 14.70 (123/128) Installing libheif (1.21.2-r0)
+#8 14.81 (124/128) Installing libwmflite (0.2.13-r1)
+#8 14.86 (125/128) Installing graphicsmagick (1.3.46-r0)
+#8 15.02 (126/128) Installing musl-obstack (1.2.3-r2)
+#8 15.09 (127/128) Installing libucontext (1.3.3-r0)
+#8 15.23 (128/128) Installing gcompat (1.1.0-r4)
+#8 15.31 Executing busybox-1.37.0-r30.trigger
+#8 15.35 Executing fontconfig-2.17.1-r0.trigger
+#8 15.52 Executing glib-2.86.3-r0.trigger
+#8 15.54 OK: 218.3 MiB in 146 packages
+#8 DONE 16.0s
+
+#9 [base 3/3] WORKDIR /app
+#9 DONE 0.1s
+
+#10 [deps 1/2] COPY package.json package-lock.json* ./
+#10 DONE 0.2s
+
+#11 [runner 1/5] WORKDIR /app
+#11 DONE 0.3s
+
+#12 [runner 2/5] RUN addgroup --system --gid 1001 nodejs &&     adduser --system --uid 1001 nestjs
+#12 DONE 1.2s
+
+#13 [prod-deps 2/2] RUN npm ci --omit=dev || npm install --omit=dev
+#13 9.658 npm warn deprecated lodash.omit@4.5.0: This package is deprecated. Use destructuring assignment syntax instead.
+#13 ...
+
+#14 [deps 2/2] RUN npm ci || npm install
+#14 ...
+
+#13 [prod-deps 2/2] RUN npm ci --omit=dev || npm install --omit=dev
+#13 10.56 npm warn deprecated apollo-server-plugin-base@3.7.2: The `apollo-server-plugin-base` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#13 10.61 npm warn deprecated apollo-datasource@3.3.2: The `apollo-datasource` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#13 10.65 npm warn deprecated apollo-server-errors@3.3.1: The `apollo-server-errors` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#13 10.72 npm warn deprecated apollo-server-types@3.8.0: The `apollo-server-types` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#13 10.87 npm warn deprecated apollo-server-express@3.13.0: The `apollo-server-express` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#13 10.98 npm warn deprecated gm@1.25.1: The gm module has been sunset. Please migrate to an alternative. https://github.com/aheckmann/gm?tab=readme-ov-file#2025-02-24-this-project-is-not-maintained
+#13 11.22 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+#13 11.37 npm warn deprecated apollo-server-env@4.2.1: The `apollo-server-env` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/utils.fetcher` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#13 11.69 npm warn deprecated subscriptions-transport-ws@0.11.0: The `subscriptions-transport-ws` package is no longer maintained. We recommend you use `graphql-ws` instead. For help migrating Apollo software to `graphql-ws`, see https://www.apollographql.com/docs/apollo-server/data/subscriptions/#switching-from-subscriptions-transport-ws    For general help using `graphql-ws`, see https://github.com/enisdenjo/graphql-ws/blob/master/README.md
+#13 11.77 npm warn deprecated apollo-reporting-protobuf@3.4.0: The `apollo-reporting-protobuf` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/usage-reporting-protobuf` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#13 13.66 npm warn deprecated @apollo/server-gateway-interface@1.1.1: @apollo/server-gateway-interface v1 is part of Apollo Server v4, which is deprecated and will transition to end-of-life on January 26, 2026. As long as you are already using a non-EOL version of Node.js, upgrading to v2 should take only a few minutes. See https://www.apollographql.com/docs/apollo-server/previous-versions for details.
+#13 13.81 npm warn deprecated @apollo/server-plugin-landing-page-graphql-playground@4.0.0: The use of GraphQL Playground in Apollo Server was supported in previous versions, but this is no longer the case as of December 31, 2022. This package exists for v4 migration purposes only. We do not intend to resolve security issues or other bugs with this package if they arise, so please migrate away from this to [Apollo Server's default Explorer](https://www.apollographql.com/docs/apollo-server/api/plugin/landing-pages) as soon as possible.
+#13 16.62 npm warn deprecated apollo-server-core@3.13.0: The `apollo-server-core` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#13 18.49 npm warn deprecated graphql@14.7.0: No longer supported; please update to a newer version. Details: https://github.com/graphql/graphql-js#version-support
+#13 19.18 npm warn deprecated @apollo/server@4.12.2: Apollo Server v4 is deprecated and will transition to end-of-life on January 26, 2026. As long as you are already using a non-EOL version of Node.js, upgrading to v5 should take only a few minutes. See https://www.apollographql.com/docs/apollo-server/previous-versions for details.
+#13 19.20 npm warn deprecated fluent-ffmpeg@2.1.3: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+#13 ...
+
+#14 [deps 2/2] RUN npm ci || npm install
+#14 10.89 npm warn deprecated lodash.omit@4.5.0: This package is deprecated. Use destructuring assignment syntax instead.
+#14 13.31 npm warn deprecated apollo-datasource@3.3.2: The `apollo-datasource` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#14 13.31 npm warn deprecated apollo-server-plugin-base@3.7.2: The `apollo-server-plugin-base` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#14 13.40 npm warn deprecated apollo-server-types@3.8.0: The `apollo-server-types` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#14 13.51 npm warn deprecated apollo-server-errors@3.3.1: The `apollo-server-errors` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#14 13.65 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+#14 14.07 npm warn deprecated gm@1.25.1: The gm module has been sunset. Please migrate to an alternative. https://github.com/aheckmann/gm?tab=readme-ov-file#2025-02-24-this-project-is-not-maintained
+#14 14.32 npm warn deprecated apollo-server-express@3.13.0: The `apollo-server-express` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#14 15.60 npm warn deprecated subscriptions-transport-ws@0.11.0: The `subscriptions-transport-ws` package is no longer maintained. We recommend you use `graphql-ws` instead. For help migrating Apollo software to `graphql-ws`, see https://www.apollographql.com/docs/apollo-server/data/subscriptions/#switching-from-subscriptions-transport-ws    For general help using `graphql-ws`, see https://github.com/enisdenjo/graphql-ws/blob/master/README.md
+#14 15.60 npm warn deprecated apollo-server-env@4.2.1: The `apollo-server-env` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/utils.fetcher` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#14 16.53 npm warn deprecated apollo-reporting-protobuf@3.4.0: The `apollo-reporting-protobuf` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/usage-reporting-protobuf` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#14 16.63 npm warn deprecated @apollo/server-gateway-interface@1.1.1: @apollo/server-gateway-interface v1 is part of Apollo Server v4, which is deprecated and will transition to end-of-life on January 26, 2026. As long as you are already using a non-EOL version of Node.js, upgrading to v2 should take only a few minutes. See https://www.apollographql.com/docs/apollo-server/previous-versions for details.
+#14 16.69 npm warn deprecated @apollo/server-plugin-landing-page-graphql-playground@4.0.0: The use of GraphQL Playground in Apollo Server was supported in previous versions, but this is no longer the case as of December 31, 2022. This package exists for v4 migration purposes only. We do not intend to resolve security issues or other bugs with this package if they arise, so please migrate away from this to [Apollo Server's default Explorer](https://www.apollographql.com/docs/apollo-server/api/plugin/landing-pages) as soon as possible.
+#14 20.89 npm warn deprecated apollo-server-core@3.13.0: The `apollo-server-core` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#14 ...
+
+#13 [prod-deps 2/2] RUN npm ci --omit=dev || npm install --omit=dev
+#13 21.19 
+#13 21.19 added 417 packages, and audited 418 packages in 20s
+#13 21.19 
+#13 21.19 80 packages are looking for funding
+#13 21.19   run `npm fund` for details
+#13 21.26 
+#13 21.26 21 vulnerabilities (1 low, 11 moderate, 8 high, 1 critical)
+#13 21.26 
+#13 21.26 To address issues that do not require attention, run:
+#13 21.26   npm audit fix
+#13 21.26 
+#13 21.26 To address all issues possible (including breaking changes), run:
+#13 21.26   npm audit fix --force
+#13 21.26 
+#13 21.26 Some issues need review, and may require choosing
+#13 21.26 a different dependency.
+#13 21.26 
+#13 21.26 Run `npm audit` for details.
+#13 21.26 npm notice
+#13 21.26 npm notice New major version of npm available! 10.8.2 -> 11.13.0
+#13 21.26 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+#13 21.26 npm notice To update run: npm install -g npm@11.13.0
+#13 21.26 npm notice
+#13 DONE 21.5s
+
+#14 [deps 2/2] RUN npm ci || npm install
+#14 23.56 npm warn deprecated graphql@14.7.0: No longer supported; please update to a newer version. Details: https://github.com/graphql/graphql-js#version-support
+#14 24.70 npm warn deprecated @apollo/server@4.12.2: Apollo Server v4 is deprecated and will transition to end-of-life on January 26, 2026. As long as you are already using a non-EOL version of Node.js, upgrading to v5 should take only a few minutes. See https://www.apollographql.com/docs/apollo-server/previous-versions for details.
+#14 24.73 npm warn deprecated fluent-ffmpeg@2.1.3: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+#14 ...
+
+#15 [runner 3/5] COPY --from=prod-deps --chown=nestjs:nodejs /app/node_modules ./node_modules
+#15 DONE 4.0s
+
+#14 [deps 2/2] RUN npm ci || npm install
+#14 31.19 
+#14 31.19 added 595 packages, and audited 596 packages in 30s
+#14 31.19 
+#14 31.19 109 packages are looking for funding
+#14 31.19   run `npm fund` for details
+#14 31.33 
+#14 31.33 33 vulnerabilities (5 low, 16 moderate, 11 high, 1 critical)
+#14 31.33 
+#14 31.33 To address issues that do not require attention, run:
+#14 31.33   npm audit fix
+#14 31.33 
+#14 31.33 To address all issues possible (including breaking changes), run:
+#14 31.33   npm audit fix --force
+#14 31.33 
+#14 31.33 Some issues need review, and may require choosing
+#14 31.33 a different dependency.
+#14 31.33 
+#14 31.33 Run `npm audit` for details.
+#14 31.33 npm notice
+#14 31.33 npm notice New major version of npm available! 10.8.2 -> 11.13.0
+#14 31.33 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+#14 31.33 npm notice To update run: npm install -g npm@11.13.0
+#14 31.33 npm notice
+#14 DONE 31.5s
+
+#16 [builder 1/3] COPY --from=deps /app/node_modules ./node_modules
+#16 DONE 4.6s
+
+#17 [builder 2/3] COPY . .
+#17 DONE 0.5s
+
+#18 [builder 3/3] RUN npm run build
+#18 1.161 
+#18 1.161 > middleware@1.0.0 build
+#18 1.161 > nest build
+#18 1.161 
+#18 18.85 npm notice
+#18 18.85 npm notice New major version of npm available! 10.8.2 -> 11.13.0
+#18 18.85 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+#18 18.85 npm notice To update run: npm install -g npm@11.13.0
+#18 18.85 npm notice
+#18 DONE 18.9s
+
+#19 [runner 4/5] COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
+#19 DONE 0.3s
+
+#20 [runner 5/5] COPY --from=builder --chown=nestjs:nodejs /app/package.json ./
+#20 DONE 0.1s
+
+#21 exporting to image
+#21 exporting layers
+#21 exporting layers 11.9s done
+#21 exporting manifest sha256:ed37b16b1918f53db06e929ca8a36cb0036ace6d429bd69a52b4eaf22447a5bc 0.0s done
+#21 exporting config sha256:862890ae4d79ed0ae7d1845b0adeedb0b6aa35df1ebf6bee6a10cba706244beb 0.0s done
+#21 exporting attestation manifest sha256:7e832135cf0e1078ecc21998ccea1ef39ae6c131d59b8ca97fc03b515f1789d2 0.0s done
+#21 exporting manifest list sha256:888582f078bf77862447afaa3a7b9e1344b8dadbda9eb16adc6285b00368c82b
+#21 exporting manifest list sha256:888582f078bf77862447afaa3a7b9e1344b8dadbda9eb16adc6285b00368c82b 0.0s done
+#21 naming to docker.io/library/nusantarasoft-minimal-middleware:latest done
+#21 unpacking to docker.io/library/nusantarasoft-minimal-middleware:latest
+#21 unpacking to docker.io/library/nusantarasoft-minimal-middleware:latest 6.1s done
+#21 DONE 18.2s
+
+#22 resolving provenance for metadata file
+#22 DONE 0.1s
+ Image nusantarasoft-minimal-middleware Built 

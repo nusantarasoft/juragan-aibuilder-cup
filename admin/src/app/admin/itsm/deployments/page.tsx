@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Progress, Typography, Timeline } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, CloudUploadOutlined, RocketOutlined, CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Progress, Typography, Timeline, Card, Statistic, Badge } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, CloudUploadOutlined, RocketOutlined, CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined, ClockCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { supaRest, supaInsert, supaUpdate, supaDelete } from "@/lib/supaRest";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
@@ -13,6 +14,7 @@ import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const statusColors: Record<string, string> = { planned: 'blue', in_progress: 'orange', completed: 'green', failed: 'red', rolled_back: 'volcano', cancelled: 'default' };
 const statusIcons: Record<string, React.ReactNode> = { planned: <ClockCircleOutlined />, in_progress: <LoadingOutlined />, completed: <CheckCircleOutlined />, failed: <CloseCircleOutlined />, rolled_back: <CloseCircleOutlined /> };
 const typeColors: Record<string, string> = { standard: 'blue', rolling: 'cyan', blue_green: 'green', canary: 'gold', phased: 'purple', big_bang: 'red' };
@@ -100,8 +102,49 @@ export default function DeploymentsPage() {
             subTitle={<DecryptedText text="Plan, execute, and track infrastructure deployments" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
+            {/* KPI Stats */}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Deployments', value: data.length, icon: <CloudUploadOutlined />, color: '#3b82f6' },
+                    { title: 'Completed', value: data.filter(d => d.status === 'completed').length, icon: <CheckCircleOutlined />, color: '#10b981' },
+                    { title: 'Failed', value: data.filter(d => d.status === 'failed' || d.status === 'rolled_back').length, icon: <CloseCircleOutlined />, color: '#ef4444' },
+                    { title: 'In Progress', value: data.filter(d => d.status === 'in_progress').length, icon: <LoadingOutlined />, color: '#f59e0b' },
+                    { title: 'Production', value: data.filter(d => d.environment === 'production').length, icon: <ExclamationCircleOutlined />, color: '#8b5cf6' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={Math.floor(24 / 5)}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
+
+            {/* Environment Distribution */}
+            {data.length > 0 && (
+                <Card size="small" style={{ ...glass, marginBottom: 16 }} title={<Text strong style={{ fontSize: 13 }}>☁️ Environment Distribution</Text>}>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                        {['production', 'staging', 'development', 'testing'].map((env, i) => {
+                            const cnt = data.filter(d => d.environment === env).length;
+                            const pct = Math.round((cnt / data.length) * 100);
+                            const cfg = envColors[env] || 'gray';
+                            return (
+                                <motion.div key={env} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.08 }}
+                                    style={{ flex: 1, padding: '12px 10px', borderRadius: 10, background: `rgba(0,0,0,0.02)`, border: `1px solid rgba(0,0,0,0.06)`, textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+                                    <div style={{ position: 'absolute', bottom: 0, left: 0, height: 4, background: cfg === 'red' ? '#ef4444' : cfg === 'orange' ? '#f59e0b' : cfg === 'blue' ? '#3b82f6' : '#06b6d4', width: `${pct}%`, borderRadius: 4 }} />
+                                    <Text style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block' }}>{env}</Text>
+                                    <Text strong style={{ fontSize: 20 }}>{cnt}</Text>
+                                    <Text style={{ fontSize: 10, color: '#9ca3af', display: 'block' }}>{pct}%</Text>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                </Card>
+            )}
+
             <ProTable
-                headerTitle={<Space><CloudUploadOutlined /> Deployments</Space>}
+                headerTitle={<Space><CloudUploadOutlined /> Deployments <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 140 }} value={filterStatus} onChange={setFilterStatus}

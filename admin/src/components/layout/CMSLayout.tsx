@@ -53,6 +53,7 @@ import { useRouter, usePathname } from "next/navigation";
 import menuConfig from "@/config/menuConfig";
 import GlitchText from "@/components/react-bits/GlitchText";
 import { usePreferencesStore, hexToRgb } from "@/store/usePreferencesStore";
+import GlobalDateRangePicker from "@/components/common/GlobalDateRangePicker";
 // Dynamic import for MetaBalls to prevent SSR crash (ogl WebGL library requires browser)
 const MetaBalls = dynamic(
     () => import("@/components/react-bits/MetaBalls"),
@@ -1262,7 +1263,7 @@ export default function CMSLayout({
                             <PageContainer
                                 title={title}
                                 subTitle={subTitle}
-                                extra={[...(extra || []), <HeaderActions key="pin-star-actions" />]}
+                                extra={[<GlobalDateRangePicker key="global-date" compact />, ...(extra || []), <HeaderActions key="pin-star-actions" />]}
                                 breadcrumb={{
                                     items: breadcrumbItems.map((item, index) => ({
                                         key: index,

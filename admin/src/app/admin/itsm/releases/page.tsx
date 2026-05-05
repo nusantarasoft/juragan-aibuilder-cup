@@ -3,14 +3,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Progress } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, SendOutlined, RocketOutlined, CheckCircleOutlined, TagOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Progress, Card, Statistic, Typography, Badge } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, SendOutlined, RocketOutlined, CheckCircleOutlined, TagOutlined, ClockCircleOutlined, ExclamationCircleOutlined, CloudUploadOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { supaRest, supaInsert, supaUpdate, supaDelete } from "@/lib/supaRest";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+
+const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const statusColors: Record<string, string> = { planning: 'blue', building: 'cyan', testing: 'orange', approved: 'green', deploying: 'purple', deployed: 'green', rolled_back: 'red', cancelled: 'default' };
 const typeColors: Record<string, string> = { major: 'red', minor: 'blue', patch: 'green', emergency: 'volcano' };
@@ -93,8 +97,50 @@ export default function ReleasesPage() {
             subTitle={<DecryptedText text="Plan, build, test, and deploy releases" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
+            {/* KPI Stats */}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Releases', value: data.length, icon: <RocketOutlined />, color: '#8b5cf6' },
+                    { title: 'Deployed', value: data.filter(d => d.status === 'deployed').length, icon: <CheckCircleOutlined />, color: '#10b981' },
+                    { title: 'In Progress', value: data.filter(d => ['building', 'testing', 'deploying'].includes(d.status)).length, icon: <CloudUploadOutlined />, color: '#3b82f6' },
+                    { title: 'High Risk', value: data.filter(d => d.risk_level === 'high' || d.risk_level === 'critical').length, icon: <ExclamationCircleOutlined />, color: '#ef4444' },
+                    { title: 'Planning', value: data.filter(d => d.status === 'planning').length, icon: <ClockCircleOutlined />, color: '#f59e0b' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={Math.floor(24 / 5)}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
+
+            {/* Release Pipeline Visualization */}
+            {data.length > 0 && (
+                <Card size="small" style={{ ...glass, marginBottom: 16 }} title={<Text strong style={{ fontSize: 13 }}>🚀 Release Pipeline</Text>}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {['planning', 'building', 'testing', 'approved', 'deploying', 'deployed'].map((stage, i) => {
+                            const cnt = data.filter(d => d.status === stage).length;
+                            const cfg = { planning: { color: '#3b82f6', icon: '📋' }, building: { color: '#06b6d4', icon: '🔨' }, testing: { color: '#f59e0b', icon: '🧪' }, approved: { color: '#10b981', icon: '✅' }, deploying: { color: '#8b5cf6', icon: '🚀' }, deployed: { color: '#10b981', icon: '🎉' } }[stage] || { color: '#6b7280', icon: '📦' };
+                            return (
+                                <React.Fragment key={stage}>
+                                    <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: i * 0.08 }}
+                                        style={{ flex: 1, background: `${cfg.color}10`, border: `1px solid ${cfg.color}30`, borderRadius: 8, padding: '8px 10px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+                                        <div style={{ position: 'absolute', bottom: 0, left: 0, width: cnt > 0 ? '100%' : '0%', height: 3, background: cfg.color, borderRadius: 3 }} />
+                                        <Text style={{ fontSize: 10, color: cfg.color, display: 'block' }}>{cfg.icon} {stage.replace(/_/g, ' ')}</Text>
+                                        <Text strong style={{ fontSize: 16, color: cfg.color }}>{cnt}</Text>
+                                    </motion.div>
+                                    {i < 5 && <span style={{ color: '#d1d5db', fontSize: 10 }}>▸</span>}
+                                </React.Fragment>
+                            );
+                        })}
+                    </div>
+                </Card>
+            )}
+
             <ProTable
-                headerTitle={<Space><RocketOutlined /> Releases</Space>}
+                headerTitle={<Space><RocketOutlined /> Releases <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 140 }} value={filterStatus} onChange={setFilterStatus}

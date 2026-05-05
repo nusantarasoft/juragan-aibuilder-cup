@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, BookOutlined, FileTextOutlined, TagOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography, Card, Statistic, Badge } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, BookOutlined, FileTextOutlined, TagOutlined, CheckCircleOutlined, EyeOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
@@ -13,6 +14,7 @@ import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const GET_ARTICLES = `query($status: String, $articleType: String, $search: String) { itsmKnowledgeArticles(status: $status, articleType: $articleType, search: $search) { id articleNumber title content categoryId articleType status relatedProblemId author tags views helpfulCount publishedAt createdAt } }`;
 const GET_CATEGORIES = `query { itsmCategories { id name } }`;
@@ -109,8 +111,25 @@ export default function ItsmKnowledgePage() {
             subTitle={<DecryptedText text="Solutions, FAQs, and how-to guides" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Articles', value: data.length, icon: <BookOutlined />, color: '#3b82f6' },
+                    { title: 'Published', value: data.filter((d: any) => d.status === 'published').length, icon: <CheckCircleOutlined />, color: '#10b981' },
+                    { title: 'Draft', value: data.filter((d: any) => d.status === 'draft').length, icon: <FileTextOutlined />, color: '#f59e0b' },
+                    { title: 'Total Views', value: data.reduce((s: number, d: any) => s + (d.viewCount || 0), 0), icon: <EyeOutlined />, color: '#8b5cf6' },
+                    { title: 'Helpful', value: data.reduce((s: number, d: any) => s + (d.helpfulCount || 0), 0), icon: <CheckCircleOutlined />, color: '#06b6d4' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={Math.floor(24 / 5)}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <ProTable
-                headerTitle={<Space><BookOutlined /> Knowledge Base</Space>}
+                headerTitle={<Space><BookOutlined /> Knowledge Base <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolbar={{
                     search: { placeholder: 'Search articles...', onSearch: (v) => setSearchText(v), allowClear: true, style: { width: 250 } },

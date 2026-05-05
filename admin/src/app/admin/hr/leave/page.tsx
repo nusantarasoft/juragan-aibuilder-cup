@@ -1,19 +1,33 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
-import { Card, Table, Tag, Button, Space, Typography, message, Row, Col, Statistic, Modal, Form, Select, DatePicker, Progress, Tooltip, Badge } from "antd";
-import { CoffeeOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, PlusOutlined, CalendarOutlined } from "@ant-design/icons";
+import { Card, Table, Tag, Button, Space, Typography, message, Row, Col, Statistic, Modal, Form, Select, DatePicker, Progress, Tooltip, Badge, Segmented } from "antd";
+import { CoffeeOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, PlusOutlined, CalendarOutlined, AppstoreOutlined, UnorderedListOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import dayjs from "dayjs";
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
+
+// ─── Export Helpers ──────────────────────────────────────
+function exportCSV(filename: string, headers: string[], rows: string[][]) {
+    const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+}
+function exportPDF(title: string, headers: string[], rows: string[][]) {
+    const style = `<style>body{font-family:Arial,sans-serif;margin:20px}h1{font-size:18px;border-bottom:2px solid #333;padding-bottom:8px}h2{font-size:14px;color:#666;margin-top:0}table{width:100%;border-collapse:collapse;margin:16px 0;font-size:12px}th{background:#1a1a2e;color:#fff;padding:8px 12px;text-align:left}td{padding:6px 12px;border-bottom:1px solid #eee}@media print{body{margin:0}}</style>`;
+    const tableHtml = `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    const html = `<!DOCTYPE html><html><head><title>${title}</title>${style}</head><body><h1>${title}</h1><h2>NusantaraSoft • Generated: ${new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</h2>${tableHtml}<script>window.onload=()=>window.print()<\/script></body></html>`;
+    const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close(); }
+}
 const LR_Q = `query($t:String!,$s:String){hrLeaveRequests(tenantId:$t,status:$s){id employeeId employeeName employeeNumber leaveTypeName leaveTypeColor startDate endDate days reason status approvedAt rejectionReason createdAt}}`;
 const LT_Q = `query($t:String!){hrLeaveTypes(tenantId:$t){id name code daysPerYear color}}`;
-const EMP_Q = `query($t:String!){hrEmployees(tenantId:$t,status:"active"){id firstName lastName employeeNumber}}`;
+const EMP_Q = `query($t:String!){hrEmployees(tenantId:$t,status:"active"){id firstName lastName employeeNumber departmentName}}`;
 const LB_Q = `query($t:String!){hrLeaveBalances(tenantId:$t){id employeeId leaveTypeId balance used remaining year}}`;
 const CREATE_LR = `mutation($t:String!,$i:CreateLeaveRequestInput!){createHrLeaveRequest(tenantId:$t,input:$i){id}}`;
 const APPROVE = `mutation($id:String!,$a:String!){approveHrLeaveRequest(id:$id,approverId:$a){id status}}`;
@@ -27,6 +41,97 @@ const statusConfig: Record<string, { color: string; icon: any; bg: string }> = {
 };
 const typeIcons: Record<string, string> = { 'Annual Leave': '🏖️', 'Sick Leave': '🤒', 'Personal Leave': '👤', 'Maternity Leave': '👶' };
 
+// Leave Calendar
+function LeaveCalendar({ requests, month }: { requests: any[]; month: string }) {
+    const start = dayjs(month + '-01');
+    const daysInMonth = start.daysInMonth();
+    const startDay = start.day();
+    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    const dateMap = useMemo(() => {
+        const m = new Map<string, any[]>();
+        requests.filter(r => r.status === 'approved' || r.status === 'pending').forEach(r => {
+            const sd = dayjs(r.startDate), ed = dayjs(r.endDate);
+            let cur = sd;
+            while (cur.isBefore(ed) || cur.isSame(ed, 'day')) {
+                const key = cur.format('YYYY-MM-DD');
+                if (!m.has(key)) m.set(key, []);
+                m.get(key)!.push(r);
+                cur = cur.add(1, 'day');
+            }
+        });
+        return m;
+    }, [requests]);
+
+    return (
+        <div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 4 }}>
+                {weekDays.map(d => <div key={d} style={{ textAlign: 'center', fontSize: 10, color: '#9ca3af', fontWeight: 600, padding: 2 }}>{d}</div>)}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
+                {Array.from({ length: startDay }).map((_, i) => <div key={`empty-${i}`} />)}
+                {Array.from({ length: daysInMonth }, (_, i) => {
+                    const day = i + 1;
+                    const dateStr = start.date(day).format('YYYY-MM-DD');
+                    const dayRecords = dateMap.get(dateStr) || [];
+                    const isWeekend = (startDay + i) % 7 === 0 || (startDay + i) % 7 === 6;
+                    const isToday = dayjs().format('YYYY-MM-DD') === dateStr;
+                    const hasPending = dayRecords.some(r => r.status === 'pending');
+                    const hasApproved = dayRecords.some(r => r.status === 'approved');
+
+                    return (
+                        <Tooltip key={day} title={dayRecords.length > 0 ? dayRecords.map(r => `${r.employeeName} — ${r.leaveTypeName}`).join('\n') : dateStr}>
+                            <motion.div whileHover={{ scale: 1.1 }}
+                                style={{
+                                    aspectRatio: '1', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                    background: hasApproved ? 'rgba(16,185,129,0.15)' : hasPending ? 'rgba(245,158,11,0.12)' : isWeekend ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.3)',
+                                    border: isToday ? '2px solid #3b82f6' : hasApproved ? '1px solid rgba(16,185,129,0.3)' : hasPending ? '1px solid rgba(245,158,11,0.3)' : '1px solid rgba(0,0,0,0.04)',
+                                    cursor: 'default', position: 'relative',
+                                }}>
+                                <Text style={{ fontSize: 12, fontWeight: isToday ? 700 : 400, color: isWeekend ? '#9ca3af' : '#374151' }}>{day}</Text>
+                                {dayRecords.length > 0 && (
+                                    <div style={{ display: 'flex', gap: 2, marginTop: 2 }}>
+                                        {dayRecords.slice(0, 3).map((r, j) => (
+                                            <div key={j} style={{ width: 5, height: 5, borderRadius: '50%', background: r.status === 'approved' ? '#10b981' : '#f59e0b' }} />
+                                        ))}
+                                    </div>
+                                )}
+                            </motion.div>
+                        </Tooltip>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+// Leave Type Usage Chart (horizontal bars)
+function LeaveTypeChart({ typeUsage, themeColor }: { typeUsage: any[]; themeColor: string }) {
+    const maxDays = Math.max(...typeUsage.map(t => t.daysPerYear), 1);
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {typeUsage.map((t, i) => (
+                <motion.div key={t.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ minWidth: 100, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 14 }}>{typeIcons[t.name] || '📅'}</span>
+                        <Text style={{ fontSize: 11, fontWeight: 600 }}>{t.name}</Text>
+                    </div>
+                    <div style={{ flex: 1, position: 'relative', height: 22, borderRadius: 11, background: 'rgba(0,0,0,0.03)', overflow: 'hidden' }}>
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${(t.daysPerYear / maxDays) * 100}%` }} transition={{ delay: 0.3 + i * 0.1, duration: 0.6 }}
+                            style={{ height: '100%', borderRadius: 11, background: `${t.color || themeColor}22`, position: 'absolute' }} />
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${(t.used / maxDays) * 100}%` }} transition={{ delay: 0.3 + i * 0.1, duration: 0.6 }}
+                            style={{ height: '100%', borderRadius: 11, background: t.color || themeColor, display: 'flex', alignItems: 'center', paddingLeft: 8, minWidth: t.used > 0 ? 30 : 0 }}>
+                            {t.used > 0 && <Text style={{ fontSize: 9, fontWeight: 700, color: '#fff' }}>{t.used}d</Text>}
+                        </motion.div>
+                    </div>
+                    <Text style={{ fontSize: 10, color: '#9ca3af', minWidth: 50, textAlign: 'right' }}>{t.remaining}/{t.daysPerYear}d</Text>
+                </motion.div>
+            ))}
+        </div>
+    );
+}
+
 export default function LeavePage() {
     const [requests, setRequests] = useState<any[]>([]);
     const [types, setTypes] = useState<any[]>([]);
@@ -36,6 +141,8 @@ export default function LeavePage() {
     const [statusFilter, setStatusFilter] = useState<string | undefined>();
     const [modalOpen, setModalOpen] = useState(false);
     const [form] = Form.useForm();
+    const [viewMode, setViewMode] = useState<string>('table');
+    const [calMonth, setCalMonth] = useState(dayjs().format('YYYY-MM'));
     const { themeColor } = usePreferencesStore();
 
     const load = async () => {
@@ -52,14 +159,18 @@ export default function LeavePage() {
     useEffect(() => { load(); }, [statusFilter]);
 
     const handleApprove = async (id: string) => { try { await gql(APPROVE, { id, a: 'e1000000-0000-0000-0000-000000000001' }); message.success('Leave approved'); load(); } catch (e: any) { message.error(e.message); } };
-    const handleReject = async (id: string) => { try { await gql(REJECT, { id, r: 'Insufficient leave balance' }); message.success('Leave rejected'); load(); } catch (e: any) { message.error(e.message); } };
+    const handleReject = async (id: string) => {
+        Modal.confirm({ title: 'Reject leave request?', content: 'This will reject the leave and notify the employee.',
+            onOk: async () => { try { await gql(REJECT, { id, r: 'Insufficient leave balance' }); message.success('Leave rejected'); load(); } catch (e: any) { message.error(e.message); } }
+        });
+    };
     const handleCreate = async (values: any) => { try { const days = values.endDate.diff(values.startDate, 'day') + 1; await gql(CREATE_LR, { t: DEFAULT_TENANT_ID, i: { ...values, startDate: values.startDate.format('YYYY-MM-DD'), endDate: values.endDate.format('YYYY-MM-DD'), days } }); message.success('Leave request submitted'); setModalOpen(false); form.resetFields(); load(); } catch (e: any) { message.error(e.message); } };
 
     const pending = requests.filter(r => r.status === 'pending').length;
     const approved = requests.filter(r => r.status === 'approved').length;
+    const rejected = requests.filter(r => r.status === 'rejected').length;
     const totalDaysUsed = requests.filter(r => r.status === 'approved').reduce((sum, r) => sum + (r.days || 0), 0);
 
-    // Aggregate leave type usage
     const typeUsage = types.map(t => {
         const used = requests.filter(r => r.leaveTypeName === t.name && r.status === 'approved').reduce((s, r) => s + (r.days || 0), 0);
         return { ...t, used, remaining: t.daysPerYear - used, pct: Math.round((used / (t.daysPerYear || 1)) * 100) };
@@ -79,44 +190,70 @@ export default function LeavePage() {
         <CMSLayout
             title={<AuroraText colors={[themeColor, '#3b82f6', '#06b6d4', themeColor]} className="text-[22px] font-bold tracking-tight">Leave Management</AuroraText>}
             subTitle={<DecryptedText text="Leave requests, approvals & balance tracking" animateOn="view" revealDirection="start" speed={60} sequential />}
-            extra={[<Button key="add" type="primary" icon={<PlusOutlined />} style={{ background: themeColor }} onClick={() => setModalOpen(true)}>Request Leave</Button>]}
+            extra={[
+                <Button key="csv" icon={<FileExcelOutlined />} size="small" onClick={() => exportCSV('leave_requests.csv', ['Employee', 'Type', 'Start', 'End', 'Days', 'Status', 'Reason'], requests.map(r => [r.employeeName, r.leaveTypeName, r.startDate, r.endDate, String(r.days || 0), r.status, r.reason || '']))}>Excel</Button>,
+                <Button key="pdf" icon={<FilePdfOutlined />} size="small" onClick={() => exportPDF('Leave Requests Report', ['Employee', 'Type', 'Start', 'End', 'Days', 'Status'], requests.map(r => [r.employeeName, r.leaveTypeName, r.startDate, r.endDate, String(r.days || 0), r.status]))}>PDF</Button>,
+                <Segmented key="view" value={viewMode} onChange={(v: any) => setViewMode(v)} options={[
+                    { label: <><UnorderedListOutlined /> List</>, value: 'table' },
+                    { label: <><CalendarOutlined /> Calendar</>, value: 'calendar' },
+                ]} />,
+                <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}
+                    style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)', border: 'none', borderRadius: 8 }}>Request Leave</Button>,
+            ]}
         >
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* Stats Row */}
-                <Row gutter={[16, 16]}>
-                    <Col xs={6}><Card size="small" style={glass}><Statistic title="Pending Requests" value={pending} prefix={<ClockCircleOutlined />} valueStyle={{ color: '#f59e0b' }} /></Card></Col>
-                    <Col xs={6}><Card size="small" style={glass}><Statistic title="Approved" value={approved} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#10b981' }} /></Card></Col>
-                    <Col xs={6}><Card size="small" style={glass}><Statistic title="Total Days Used" value={totalDaysUsed} prefix={<CalendarOutlined />} valueStyle={{ color: '#3b82f6' }} /></Card></Col>
-                    <Col xs={6}><Card size="small" style={glass}><Statistic title="Total Requests" value={requests.length} prefix={<CoffeeOutlined />} valueStyle={{ color: '#8b5cf6' }} /></Card></Col>
+                <Row gutter={[12, 12]}>
+                    {[
+                        { title: 'Pending Requests', value: pending, icon: <ClockCircleOutlined />, color: '#f59e0b' },
+                        { title: 'Approved', value: approved, icon: <CheckCircleOutlined />, color: '#10b981' },
+                        { title: 'Rejected', value: rejected, icon: <CloseCircleOutlined />, color: '#ef4444' },
+                        { title: 'Total Days Used', value: totalDaysUsed, icon: <CalendarOutlined />, color: '#3b82f6' },
+                        { title: 'Total Requests', value: requests.length, icon: <CoffeeOutlined />, color: '#8b5cf6' },
+                    ].map((s, i) => (
+                        <Col key={i} xs={12} md={Math.floor(24 / 5)}>
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                                <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                    <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                                </Card>
+                            </motion.div>
+                        </Col>
+                    ))}
                 </Row>
 
-                {/* Leave Type Balance Cards */}
-                {typeUsage.length > 0 && (
-                    <Card size="small" style={glass} title={<Text strong style={{ fontSize: 13 }}>🏖️ Leave Type Allocation</Text>}>
-                        <Row gutter={[12, 12]}>
-                            {typeUsage.map((t, i) => (
-                                <Col xs={6} key={t.id}>
-                                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.08 }}
-                                        style={{ ...glass, padding: 14, borderRadius: 12, borderTop: `3px solid ${t.color || themeColor}` }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                            <Text strong style={{ fontSize: 13 }}>{typeIcons[t.name] || '📅'} {t.name}</Text>
-                                            <Text type="secondary" style={{ fontSize: 11 }}>{t.code}</Text>
-                                        </div>
-                                        <Progress percent={t.pct} strokeColor={t.color || themeColor} size="small" showInfo={false} style={{ marginBottom: 6 }} />
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <Text style={{ fontSize: 11, color: '#6b7280' }}>Used: <Text strong style={{ color: t.color || themeColor }}>{t.used}</Text></Text>
-                                            <Text style={{ fontSize: 11, color: '#6b7280' }}>of {t.daysPerYear} days/year</Text>
-                                        </div>
-                                    </motion.div>
-                                </Col>
-                            ))}
-                        </Row>
-                    </Card>
-                )}
+                {/* Leave Type Allocation + Calendar / Chart */}
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} md={viewMode === 'calendar' ? 14 : 24}>
+                        {typeUsage.length > 0 && (
+                            <Card size="small" style={{ ...glass, height: '100%' }} title={<Text strong style={{ fontSize: 13 }}>🏖️ Leave Type Usage</Text>}>
+                                <LeaveTypeChart typeUsage={typeUsage} themeColor={themeColor} />
+                            </Card>
+                        )}
+                    </Col>
+                    {viewMode === 'calendar' && (
+                        <Col xs={24} md={10}>
+                            <Card size="small" style={{ ...glass, height: '100%' }}
+                                title={<Space><CalendarOutlined /><Text strong style={{ fontSize: 13 }}>Leave Calendar</Text></Space>}
+                                extra={
+                                    <Space>
+                                        <Button size="small" onClick={() => setCalMonth(dayjs(calMonth).subtract(1, 'month').format('YYYY-MM'))}>◀</Button>
+                                        <Text strong style={{ fontSize: 12, minWidth: 80, textAlign: 'center', display: 'inline-block' }}>{dayjs(calMonth).format('MMM YYYY')}</Text>
+                                        <Button size="small" onClick={() => setCalMonth(dayjs(calMonth).add(1, 'month').format('YYYY-MM'))}>▶</Button>
+                                    </Space>
+                                }>
+                                <LeaveCalendar requests={requests} month={calMonth} />
+                                <div style={{ display: 'flex', gap: 12, marginTop: 12, justifyContent: 'center' }}>
+                                    <Space size={4}><div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} /><Text style={{ fontSize: 10 }}>Approved</Text></Space>
+                                    <Space size={4}><div style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} /><Text style={{ fontSize: 10 }}>Pending</Text></Space>
+                                </div>
+                            </Card>
+                        </Col>
+                    )}
+                </Row>
 
                 {/* Requests Table */}
                 <Card style={glass}
-                    title={<Space><CoffeeOutlined /> <Text strong>Leave Requests</Text></Space>}
+                    title={<Space><CoffeeOutlined /> <Text strong>Leave Requests</Text><Badge count={requests.length} style={{ backgroundColor: themeColor }} /></Space>}
                     extra={<Select placeholder="Filter status" allowClear style={{ width: 150 }} value={statusFilter} onChange={setStatusFilter}
                         options={[
                             { label: <Space><ClockCircleOutlined style={{ color: '#f59e0b' }} />Pending</Space>, value: 'pending' },
@@ -127,11 +264,17 @@ export default function LeavePage() {
                 </Card>
             </motion.div>
 
-            <Modal title="Request Leave" open={modalOpen} onCancel={() => setModalOpen(false)} onOk={() => form.submit()}>
-                <Form form={form} layout="vertical" onFinish={handleCreate}>
-                    <Form.Item name="employeeId" label="Employee" rules={[{ required: true }]}><Select showSearch optionFilterProp="label" options={employees.map(e => ({ label: `${e.firstName} ${e.lastName} (${e.employeeNumber})`, value: e.id }))} /></Form.Item>
-                    <Form.Item name="leaveTypeId" label="Leave Type" rules={[{ required: true }]}><Select options={types.map(t => ({ label: `${typeIcons[t.name] || '📅'} ${t.name} (${t.daysPerYear} days/yr)`, value: t.id }))} /></Form.Item>
-                    <Space size={12}><Form.Item name="startDate" label="Start Date" rules={[{ required: true }]}><DatePicker /></Form.Item><Form.Item name="endDate" label="End Date" rules={[{ required: true }]}><DatePicker /></Form.Item></Space>
+            <Modal title="Request Leave" open={modalOpen} onCancel={() => setModalOpen(false)} onOk={() => form.submit()} okText="Submit Request" width={500}>
+                <Form form={form} layout="vertical" onFinish={handleCreate} style={{ paddingTop: 8 }}>
+                    <Form.Item name="employeeId" label="Employee" rules={[{ required: true }]}><Select showSearch optionFilterProp="label" placeholder="Select employee"
+                        options={employees.map(e => ({ label: `${e.firstName} ${e.lastName} (${e.employeeNumber})`, value: e.id }))} /></Form.Item>
+                    <Form.Item name="leaveTypeId" label="Leave Type" rules={[{ required: true }]}>
+                        <Select options={types.map(t => ({ label: `${typeIcons[t.name] || '📅'} ${t.name} (${t.daysPerYear} days/yr)`, value: t.id }))} />
+                    </Form.Item>
+                    <Row gutter={12}>
+                        <Col span={12}><Form.Item name="startDate" label="Start Date" rules={[{ required: true }]}><DatePicker style={{ width: '100%' }} /></Form.Item></Col>
+                        <Col span={12}><Form.Item name="endDate" label="End Date" rules={[{ required: true }]}><DatePicker style={{ width: '100%' }} /></Form.Item></Col>
+                    </Row>
                     <Form.Item name="reason" label="Reason"><textarea className="ant-input" rows={2} style={{ width: '100%', borderRadius: 8, border: '1px solid #d9d9d9', padding: 8 }} /></Form.Item>
                 </Form>
             </Modal>

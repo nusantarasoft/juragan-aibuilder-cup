@@ -3,14 +3,17 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, ShopOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography, Card, Statistic, Badge } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, ShopOutlined, CheckCircleOutlined, AppstoreOutlined, FileProtectOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const GET_CATALOG = `query($status: String, $search: String) { itsmCatalogItems(status: $status, search: $search) { id catalogCode name shortDescription description portfolioServiceId categoryId icon estimatedDelivery cost approvalRequired approvalType fulfillmentGroup status requestCount createdAt } }`;
 const GET_CATEGORIES = `query { itsmCategories { id name } }`;
@@ -99,8 +102,25 @@ export default function ItsmCatalogPage() {
             subTitle={<DecryptedText text="Services available for request" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Items', value: data.length, icon: <ShopOutlined />, color: '#3b82f6' },
+                    { title: 'Active', value: data.filter(d => d.status === 'active').length, icon: <CheckCircleOutlined />, color: '#10b981' },
+                    { title: 'Approval Required', value: data.filter(d => d.approvalRequired).length, icon: <FileProtectOutlined />, color: '#f59e0b' },
+                    { title: 'Total Requests', value: data.reduce((s, d) => s + (d.requestCount || 0), 0), icon: <AppstoreOutlined />, color: '#8b5cf6' },
+                    { title: 'Categories', value: categories.length, icon: <AppstoreOutlined />, color: '#06b6d4' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={Math.floor(24 / 5)}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <ProTable
-                headerTitle={<Space><ShopOutlined /> Service Catalog</Space>}
+                headerTitle={<Space><ShopOutlined /> Service Catalog <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 120 }} value={filterStatus} onChange={setFilterStatus}

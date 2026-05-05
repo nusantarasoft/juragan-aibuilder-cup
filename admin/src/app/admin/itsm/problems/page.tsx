@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Switch, Typography } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, BugOutlined, SearchOutlined, TeamOutlined, ToolOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Switch, Typography, Card, Statistic, Badge } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, BugOutlined, SearchOutlined, TeamOutlined, ToolOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
@@ -13,6 +14,7 @@ import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const GET_PROBLEMS = `query($status: String, $priority: String, $search: String) { itsmProblems(status: $status, priority: $priority, search: $search) { id problemNumber title description categoryId priority status impact rootCause workaround isKnownError knowledgeArticleId assignedTo assignedGroup reporterName reporterEmail resolutionNotes resolvedAt closedAt createdAt } }`;
 const GET_CATEGORIES = `query { itsmCategories { id name } }`;
@@ -106,8 +108,25 @@ export default function ItsmProblemsPage() {
             subTitle={<DecryptedText text="Root cause investigation and known errors" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Problems', value: data.length, icon: <BugOutlined />, color: '#3b82f6' },
+                    { title: 'Open', value: data.filter((d: any) => d.status === 'open' || d.status === 'investigating').length, icon: <SearchOutlined />, color: '#f59e0b' },
+                    { title: 'Resolved', value: data.filter((d: any) => d.status === 'resolved' || d.status === 'closed').length, icon: <CheckCircleOutlined />, color: '#10b981' },
+                    { title: 'Known Errors', value: data.filter((d: any) => d.knownError).length, icon: <ExclamationCircleOutlined />, color: '#ef4444' },
+                    { title: 'With Workaround', value: data.filter((d: any) => d.workaround).length, icon: <ToolOutlined />, color: '#8b5cf6' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={Math.floor(24 / 5)}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <ProTable
-                headerTitle={<Space><BugOutlined /> Problems</Space>}
+                headerTitle={<Space><BugOutlined /> Problems <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 170 }} value={filterStatus} onChange={setFilterStatus}

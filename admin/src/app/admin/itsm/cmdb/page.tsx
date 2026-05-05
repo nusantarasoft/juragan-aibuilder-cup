@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, InputNumber, Typography, Descriptions, Modal } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, ClusterOutlined, NodeIndexOutlined, DesktopOutlined, CloudServerOutlined, DatabaseOutlined, ApiOutlined, GlobalOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, InputNumber, Typography, Descriptions, Modal, Card, Statistic, Badge } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, ClusterOutlined, NodeIndexOutlined, DesktopOutlined, CloudServerOutlined, DatabaseOutlined, ApiOutlined, GlobalOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { supaRest, supaInsert, supaUpdate, supaDelete } from "@/lib/supaRest";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
@@ -14,6 +15,7 @@ import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const classIcons: Record<string, React.ReactNode> = { hardware: <DesktopOutlined />, software: <CloudServerOutlined />, network: <GlobalOutlined />, service: <ApiOutlined />, cloud: <CloudServerOutlined />, document: <DatabaseOutlined />, virtual: <CloudServerOutlined /> };
 const classColors: Record<string, string> = { hardware: 'blue', software: 'green', network: 'purple', service: 'cyan', cloud: 'geekblue', document: 'orange', virtual: 'magenta' };
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const statusColors: Record<string, string> = { active: 'green', under_maintenance: 'orange', retired: 'default', disposed: 'red', planned: 'blue' };
 const critColors: Record<string, string> = { critical: 'red', high: 'orange', medium: 'blue', low: 'green' };
 
@@ -97,8 +99,25 @@ export default function CmdbPage() {
             subTitle={<DecryptedText text="Configuration Management Database — Track all IT assets and dependencies" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total CIs', value: data.length, icon: <ClusterOutlined />, color: '#3b82f6' },
+                    { title: 'Active', value: data.filter((d: any) => d.status === 'active' || d.status === 'deployed').length, icon: <CheckCircleOutlined />, color: '#10b981' },
+                    { title: 'Critical', value: data.filter((d: any) => d.criticality === 'critical' || d.criticality === 'high').length, icon: <ExclamationCircleOutlined />, color: '#ef4444' },
+                    { title: 'Hardware', value: data.filter((d: any) => d.ciClass === 'hardware').length, icon: <DesktopOutlined />, color: '#8b5cf6' },
+                    { title: 'Software', value: data.filter((d: any) => d.ciClass === 'software').length, icon: <CloudServerOutlined />, color: '#06b6d4' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={Math.floor(24 / 5)}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <ProTable
-                headerTitle={<Space><ClusterOutlined /> Configuration Items</Space>}
+                headerTitle={<Space><ClusterOutlined /> Configuration Items <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
                     <Select key="fc" placeholder="Class" allowClear style={{ width: 130 }} value={filterClass} onChange={setFilterClass}

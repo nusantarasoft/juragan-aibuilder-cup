@@ -289,6 +289,75 @@ export class HrService {
         return data;
     }
 
+    async createPayrollRun(tenantId: string, input: { period: string; name?: string }) {
+        // Get active employees
+        const { data: employees } = await this.db.from('hr_employees').select('id, first_name, last_name, base_salary').eq('tenant_id', tenantId).eq('employment_status', 'active');
+        const emps = employees || [];
+        let totalGross = 0, totalDeductions = 0, totalNet = 0;
+        emps.forEach(e => { totalGross += Number(e.base_salary) || 0; });
+        // Estimate deductions (30% of gross for tax + social security)
+        totalDeductions = Math.round(totalGross * 0.3);
+        totalNet = totalGross - totalDeductions;
+
+        const { data: run, error } = await this.db.from('hr_payroll_runs').insert({
+            tenant_id: tenantId, period: input.period, name: input.name || `Payroll ${input.period}`,
+            status: 'draft', total_gross: totalGross, total_deductions: totalDeductions,
+            total_net: totalNet, employee_count: emps.length,
+        }).select().single();
+        if (error) throw error;
+
+        // Generate payroll slips for each employee
+        const slips = emps.map(e => {
+            const base = Number(e.base_salary) || 0;
+            const pph21 = Math.round(base * 0.15);
+            const bpjsKes = Math.round(base * 0.04);
+            const bpjsTK = Math.round(base * 0.0577);
+            const otherDed = Math.round(base * 0.02);
+            const totalDed = pph21 + bpjsKes + bpjsTK + otherDed;
+            return {
+                payroll_run_id: run.id, employee_id: e.id,
+                employee_name: `${e.first_name} ${e.last_name || ''}`.trim(),
+                base_salary: base, gross_salary: base,
+                total_deductions: totalDed, net_salary: base - totalDed,
+                components: { pph21, bpjsKesehatan: bpjsKes, bpjsKetenagakerjaan: bpjsTK, other: otherDed },
+                status: 'draft',
+            };
+        });
+        if (slips.length > 0) {
+            await this.db.from('hr_payroll_slips').insert(slips);
+        }
+        return run;
+    }
+
+    async processPayrollRun(id: string) {
+        const { data, error } = await this.db.from('hr_payroll_runs').update({
+            status: 'processing', processed_at: new Date().toISOString(),
+        }).eq('id', id).select().single();
+        if (error) throw error;
+        // Mark slips as processing
+        await this.db.from('hr_payroll_slips').update({ status: 'processing' }).eq('payroll_run_id', id);
+        // Auto-complete after processing
+        await this.db.from('hr_payroll_runs').update({ status: 'completed' }).eq('id', id);
+        await this.db.from('hr_payroll_slips').update({ status: 'completed' }).eq('payroll_run_id', id);
+        return { ...data, status: 'completed' };
+    }
+
+    async markPayrollPaid(id: string) {
+        const { data, error } = await this.db.from('hr_payroll_runs').update({
+            status: 'paid', paid_at: new Date().toISOString(),
+        }).eq('id', id).select().single();
+        if (error) throw error;
+        await this.db.from('hr_payroll_slips').update({ status: 'paid' }).eq('payroll_run_id', id);
+        return data;
+    }
+
+    async deletePayrollRun(id: string) {
+        await this.db.from('hr_payroll_slips').delete().eq('payroll_run_id', id);
+        const { error } = await this.db.from('hr_payroll_runs').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
     // ─── RECRUITMENT ────────────────────────────────────────
     async getJobPostings(tenantId: string, filters?: { status?: string }) {
         let q = this.db.from('hr_job_postings').select('*, hr_departments(name)').eq('tenant_id', tenantId);
@@ -353,11 +422,65 @@ export class HrService {
         return data;
     }
 
+    async createPerformanceReview(tenantId: string, input: any) {
+        const { data, error } = await this.db.from('hr_performance_reviews').insert({
+            tenant_id: tenantId, employee_id: input.employeeId,
+            review_period: input.reviewPeriod, review_type: input.reviewType || 'annual',
+            overall_rating: input.overallRating || null,
+            strengths: input.strengths || null, areas_for_improvement: input.areasForImprovement || null,
+            comments: input.comments || null, status: input.status || 'draft',
+        }).select('*, hr_employees!hr_performance_reviews_employee_id_fkey(first_name, last_name)').single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updatePerformanceReview(id: string, input: any) {
+        const updates: any = {};
+        if (input.overallRating !== undefined) updates.overall_rating = input.overallRating;
+        if (input.strengths !== undefined) updates.strengths = input.strengths;
+        if (input.areasForImprovement !== undefined) updates.areas_for_improvement = input.areasForImprovement;
+        if (input.comments !== undefined) updates.comments = input.comments;
+        if (input.status) {
+            updates.status = input.status;
+            if (input.status === 'completed') updates.completed_at = new Date().toISOString();
+        }
+        const { data, error } = await this.db.from('hr_performance_reviews').update(updates).eq('id', id)
+            .select('*, hr_employees!hr_performance_reviews_employee_id_fkey(first_name, last_name)').single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deletePerformanceReview(id: string) {
+        const { error } = await this.db.from('hr_performance_reviews').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
     // ─── TRAINING ───────────────────────────────────────────
     async getTrainingPrograms(tenantId: string) {
         const { data, error } = await this.db.from('hr_training_programs').select('*').eq('tenant_id', tenantId).order('start_date', { ascending: false });
         if (error) throw error;
         return data;
+    }
+
+    async createTrainingProgram(tenantId: string, input: any) {
+        const { data, error } = await this.db.from('hr_training_programs').insert({
+            tenant_id: tenantId, name: input.name, description: input.description || null,
+            category: input.category || 'technical', duration_hours: input.durationHours || 0,
+            provider: input.provider || null, cost: input.cost || 0,
+            start_date: input.startDate || null, end_date: input.endDate || null,
+            status: input.status || 'upcoming', is_mandatory: input.isMandatory || false,
+            certification_name: input.certificationName || null,
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteTrainingProgram(id: string) {
+        await this.db.from('hr_training_enrollments').delete().eq('training_id', id);
+        const { error } = await this.db.from('hr_training_programs').delete().eq('id', id);
+        if (error) throw error;
+        return true;
     }
 
     async getTrainingEnrollments(trainingId: string) {
@@ -366,3 +489,4 @@ export class HrService {
         return data;
     }
 }
+

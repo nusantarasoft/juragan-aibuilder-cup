@@ -129,3 +129,174 @@ At line:1 char:1
 #17 3.857 Γû▓ Next.js 16.1.0 (Turbopack)
 #17 3.858 
 #17 6.255   Creating an optimized production build ...
+#17 295.8 Γ£ô Compiled successfully in 4.4min
+#17 295.8   Running TypeScript ...
+#17 352.7   Collecting page data using 19 workers ...
+#17 354.9 (node:284) Warning: NodeVersionSupportWarning: The AWS SDK for JavaScript (v3)
+#17 354.9 versions published after the first week of January 2027
+#17 354.9 will require node >=22. You are running node v20.20.2.
+#17 354.9 
+#17 354.9 To continue receiving updates to AWS services, bug fixes,
+#17 354.9 and security updates please upgrade to node >=22.
+#17 354.9 
+#17 354.9 More information can be found at: https://a.co/c895JFp
+#17 354.9 (Use `node --trace-warnings ...` to show where the warning was created)
+#17 354.9   Generating static pages using 19 workers (0/111) ...
+#17 356.7   Generating static pages using 19 workers (27/111) 
+#17 357.0   Generating static pages using 19 workers (55/111) 
+#17 357.6   Generating static pages using 19 workers (83/111) 
+#17 358.0 Γ£ô Generating static pages using 19 workers (111/111) in 3.1s
+#17 358.0   Finalizing page optimization ...
+#17 359.0 
+#17 359.0 Route (app)
+#17 359.0 Γöî Γùï /
+#17 359.0 Γö£ Γùï /_not-found
+#17 359.0 Γö£ Γùï /admin
+#17 359.0 Γö£ Γùï /admin/accounting/accounts
+#17 359.0 Γö£ Γùï /admin/accounting/dashboard
+#17 359.0 Γö£ Γùï /admin/accounting/journals
+#17 359.0 Γö£ Γùï /admin/accounting/ledger
+#17 359.0 Γö£ Γùï /admin/accounting/payables
+#17 359.0 Γö£ Γùï /admin/accounting/receivables
+#17 359.0 Γö£ Γùï /admin/accounting/reports
+#17 359.0 Γö£ Γùï /admin/accounting/settings
+#17 359.0 Γö£ Γùï /admin/ai-studio
+#17 359.0 Γö£ Γùï /admin/blocks
+#17 359.0 Γö£ Γùï /admin/blocks/content
+#17 359.0 Γö£ Γùï /admin/blocks/templates
+#17 359.0 Γö£ Γùï /admin/blocks/widgets
+#17 359.0 Γö£ Γùï /admin/crm
+#17 359.0 Γö£ Γùï /admin/crm/accounts
+#17 359.0 Γö£ Γùï /admin/crm/activities
+#17 359.0 Γö£ Γùï /admin/crm/campaigns
+#17 359.0 Γö£ Γùï /admin/crm/cases
+#17 359.0 Γö£ Γùï /admin/crm/contacts
+#17 359.0 Γö£ Γùï /admin/crm/dashboard
+#17 359.0 Γö£ Γùï /admin/crm/deals
+#17 359.0 Γö£ Γùï /admin/crm/individuals
+#17 359.0 Γö£ Γùï /admin/crm/intelligence
+#17 359.0 Γö£ Γùï /admin/crm/products
+#17 359.0 Γö£ Γùï /admin/crm/quotes
+#17 359.0 Γö£ Γùï /admin/dashboard
+#17 359.0 Γö£ Γùï /admin/datasets
+#17 359.0 Γö£ Γùï /admin/ecommerce/customers
+#17 359.0 Γö£ Γùï /admin/ecommerce/discounts
+#17 359.0 Γö£ Γùï /admin/ecommerce/offers
+#17 359.0 Γö£ Γùï /admin/ecommerce/orders
+#17 359.0 Γö£ Γùï /admin/ecommerce/packages
+#17 359.0 Γö£ Γùï /admin/ecommerce/products
+#17 359.0 Γö£ Γùï /admin/ecommerce/returns
+#17 359.0 Γö£ Γùï /admin/ecommerce/settings
+#17 359.0 Γö£ Γùï /admin/hr
+#17 359.0 Γö£ Γùï /admin/hr/analytics
+#17 359.0 Γö£ Γùï /admin/hr/attendance
+#17 359.0 Γö£ Γùï /admin/hr/dashboard
+#17 359.0 Γö£ Γùï /admin/hr/departments
+#17 359.0 Γö£ Γùï /admin/hr/employees
+#17 359.0 Γö£ ╞Æ /admin/hr/employees/[id]
+#17 359.0 Γö£ Γùï /admin/hr/leave
+#17 359.0 Γö£ Γùï /admin/hr/offboarding
+#17 359.0 Γö£ Γùï /admin/hr/onboarding
+#17 359.0 Γö£ Γùï /admin/hr/payroll
+#17 359.0 Γö£ Γùï /admin/hr/performance
+#17 359.0 Γö£ Γùï /admin/hr/positions
+#17 359.0 Γö£ Γùï /admin/hr/recruitment
+#17 359.0 Γö£ Γùï /admin/hr/training
+#17 359.0 Γö£ Γùï /admin/infrastructure/bind9
+#17 359.0 Γö£ Γùï /admin/infrastructure/npm
+#17 359.0 Γö£ Γùï /admin/infrastructure/pihole
+#17 359.0 Γö£ Γùï /admin/infrastructure/traefik
+#17 359.0 Γö£ Γùï /admin/inventory/analytics
+#17 359.0 Γö£ Γùï /admin/inventory/bookings
+#17 359.0 Γö£ Γùï /admin/inventory/fixed-assets
+#17 359.0 Γö£ Γùï /admin/inventory/items
+#17 359.0 Γö£ Γùï /admin/inventory/manufacturing
+#17 359.0 Γö£ Γùï /admin/inventory/procurement
+#17 359.0 Γö£ Γùï /admin/inventory/rentals
+#17 359.0 Γö£ Γùï /admin/inventory/stock
+#17 359.0 Γö£ Γùï /admin/inventory/stock-operations
+#17 359.0 Γö£ Γùï /admin/inventory/stock-opname
+#17 359.0 Γö£ Γùï /admin/inventory/warehouses
+#17 359.0 Γö£ Γùï /admin/itsm/agents
+#17 359.0 Γö£ Γùï /admin/itsm/availability
+#17 359.0 Γö£ Γùï /admin/itsm/catalog
+#17 359.0 Γö£ Γùï /admin/itsm/categories
+#17 359.0 Γö£ Γùï /admin/itsm/changes
+#17 359.0 Γö£ Γùï /admin/itsm/cmdb
+#17 359.0 Γö£ Γùï /admin/itsm/continuity
+#17 359.0 Γö£ Γùï /admin/itsm/dashboard
+#17 359.0 Γö£ Γùï /admin/itsm/deployments
+#17 359.0 Γö£ Γùï /admin/itsm/events
+#17 359.0 Γö£ Γùï /admin/itsm/knowledge
+#17 359.0 Γö£ Γùï /admin/itsm/portfolio
+#17 359.0 Γö£ Γùï /admin/itsm/problems
+#17 359.0 Γö£ Γùï /admin/itsm/releases
+#17 359.0 Γö£ Γùï /admin/itsm/requests
+#17 359.0 Γö£ Γùï /admin/itsm/sla
+#17 359.0 Γö£ Γùï /admin/itsm/tickets
+#17 359.0 Γö£ ╞Æ /admin/itsm/tickets/[id]
+#17 359.0 Γö£ Γùï /admin/media
+#17 359.0 Γö£ Γùï /admin/pages
+#17 359.0 Γö£ Γùï /admin/pages/builder
+#17 359.0 Γö£ Γùï /admin/pages/list
+#17 359.0 Γö£ Γùï /admin/permissions
+#17 359.0 Γö£ Γùï /admin/permissions/groups
+#17 359.0 Γö£ Γùï /admin/permissions/permission-sets
+#17 359.0 Γö£ Γùï /admin/permissions/profiles
+#17 359.0 Γö£ Γùï /admin/permissions/roles
+#17 359.0 Γö£ Γùï /admin/permissions/sharing
+#17 359.0 Γö£ Γùï /admin/pm/backlog
+#17 359.0 Γö£ Γùï /admin/pm/dashboard
+#17 359.0 Γö£ Γùï /admin/pm/knowledge-base
+#17 359.0 Γö£ Γùï /admin/pm/portfolio
+#17 359.0 Γö£ Γùï /admin/pm/projects
+#17 359.0 Γö£ Γùï /admin/pm/reports
+#17 359.0 Γö£ Γùï /admin/pm/timeline
+#17 359.0 Γö£ Γùï /admin/settings
+#17 359.0 Γö£ Γùï /admin/settings/general
+#17 359.0 Γö£ Γùï /admin/sql-runner
+#17 359.0 Γö£ Γùï /admin/users
+#17 359.0 Γö£ Γùï /admin/users/list
+#17 359.0 Γö£ Γùï /admin/users/roles
+#17 359.0 Γö£ ╞Æ /api/media
+#17 359.0 Γöö Γùï /login
+#17 359.0 
+#17 359.0 
+#17 359.0 Γùï  (Static)   prerendered as static content
+#17 359.0 ╞Æ  (Dynamic)  server-rendered on demand
+#17 359.0 
+#17 359.1 npm notice
+#17 359.1 npm notice New major version of npm available! 10.8.2 -> 11.13.0
+#17 359.1 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+#17 359.1 npm notice To update run: npm install -g npm@11.13.0
+#17 359.1 npm notice
+#17 DONE 359.8s
+
+#18 [runner 3/6] COPY --from=builder /app/public ./public
+#18 DONE 0.3s
+
+#19 [runner 4/6] RUN mkdir .next && chown nextjs:nodejs .next
+#19 DONE 0.3s
+
+#20 [runner 5/6] COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+#20 DONE 1.0s
+
+#21 [runner 6/6] COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+#21 DONE 0.2s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 3.8s done
+#22 exporting manifest sha256:1652ef6a438cd405fb03510970f6aa91fe8560a2295e82b14ec1b9fe41e37a74 0.0s done
+#22 exporting config sha256:2762eba6b23f1cb762a86e5d7114d5570eba469e65cef7a05ada36f97ef8c901 0.0s done
+#22 exporting attestation manifest sha256:2625ab1af604f3966256937fc239442ac4dfc032766245f238d23921260bde29 0.0s done
+#22 exporting manifest list sha256:5c09ebf6e218fbaa678e35cdac7254fb552c762f155aac7d59eee1256c265ec5
+#22 exporting manifest list sha256:5c09ebf6e218fbaa678e35cdac7254fb552c762f155aac7d59eee1256c265ec5 0.0s done
+#22 naming to docker.io/library/nusantarasoft-minimal-admin:latest done
+#22 unpacking to docker.io/library/nusantarasoft-minimal-admin:latest
+#22 unpacking to docker.io/library/nusantarasoft-minimal-admin:latest 5.5s done
+#22 DONE 9.5s
+
+#23 resolving provenance for metadata file
+#23 DONE 0.1s
+ Image nusantarasoft-minimal-admin Built 

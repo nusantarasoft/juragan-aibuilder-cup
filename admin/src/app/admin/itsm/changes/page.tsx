@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Switch, DatePicker, Typography } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, SwapOutlined, FileProtectOutlined, ScheduleOutlined, TeamOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Switch, DatePicker, Typography, Card, Statistic, Badge } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, SwapOutlined, FileProtectOutlined, ScheduleOutlined, TeamOutlined, CheckCircleOutlined, ExclamationCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
@@ -13,6 +14,7 @@ import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const GET_CHANGES = `query($status: String, $changeType: String, $search: String) { itsmChanges(status: $status, changeType: $changeType, search: $search) { id changeNumber title description categoryId changeType priority riskLevel status impact implementationPlan rollbackPlan testPlan scheduledStart scheduledEnd cabRequired cabDecision cabNotes cabDate requestedBy assignedTo assignedGroup reviewNotes createdAt } }`;
 const GET_CATEGORIES = `query { itsmCategories { id name } }`;
@@ -113,8 +115,25 @@ export default function ItsmChangesPage() {
             subTitle={<DecryptedText text="Plan, review, and implement changes" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Changes', value: data.length, icon: <SwapOutlined />, color: '#3b82f6' },
+                    { title: 'Approved', value: data.filter((d: any) => d.status === 'approved' || d.status === 'implemented').length, icon: <CheckCircleOutlined />, color: '#10b981' },
+                    { title: 'Emergency', value: data.filter((d: any) => d.changeType === 'emergency').length, icon: <ExclamationCircleOutlined />, color: '#ef4444' },
+                    { title: 'Pending Review', value: data.filter((d: any) => d.status === 'pending' || d.status === 'submitted').length, icon: <ClockCircleOutlined />, color: '#f59e0b' },
+                    { title: 'Success Rate', value: data.length > 0 ? `${Math.round((data.filter((d: any) => d.status === 'implemented' || d.status === 'closed').length / data.length) * 100)}%` : '—', icon: <CheckCircleOutlined />, color: '#8b5cf6' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={Math.floor(24 / 5)}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <ProTable
-                headerTitle={<Space><SwapOutlined /> Change Requests</Space>}
+                headerTitle={<Space><SwapOutlined /> Change Requests <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 150 }} value={filterStatus} onChange={setFilterStatus}

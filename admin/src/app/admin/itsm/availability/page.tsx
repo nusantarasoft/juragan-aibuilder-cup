@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Form, Input, Row, Col, InputNumber, Card, Statistic, Progress, Typography } from "antd";
-import { PlusOutlined, DeleteOutlined, FieldTimeOutlined, CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Form, Input, Row, Col, InputNumber, Card, Statistic, Progress, Typography, Badge } from "antd";
+import { PlusOutlined, DeleteOutlined, FieldTimeOutlined, CheckCircleOutlined, CloseCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { supaRest, supaInsert, supaDelete } from "@/lib/supaRest";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
@@ -13,6 +14,7 @@ import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const FIELDS: FieldDef[] = [
     { name: "period_start", label: "Period Start", required: true },
@@ -84,12 +86,43 @@ export default function AvailabilityPage() {
             subTitle={<DecryptedText text="Track service uptime, SLA compliance, and reliability metrics" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
-            <Row gutter={16} style={{ marginBottom: 16 }}>
-                <Col span={6}><Card size="small"><Statistic title="Avg Availability" value={avgAvail.toFixed(2)} suffix="%" valueStyle={{ color: avgAvail >= 99.9 ? '#52c41a' : avgAvail >= 99 ? '#fa8c16' : '#f5222d' }} /></Card></Col>
-                <Col span={6}><Card size="small"><Statistic title="Total Records" value={data.length} valueStyle={{ color: '#1890ff' }} /></Card></Col>
-                <Col span={6}><Card size="small"><Statistic title="Total Downtime" value={totalDowntime} suffix="min" valueStyle={{ color: totalDowntime > 0 ? '#f5222d' : '#52c41a' }} /></Card></Col>
-                <Col span={6}><Card size="small"><Statistic title="Total Incidents" value={totalIncidents} valueStyle={{ color: totalIncidents > 0 ? '#fa8c16' : '#52c41a' }} /></Card></Col>
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Avg Availability', value: `${avgAvail.toFixed(2)}%`, icon: <CheckCircleOutlined />, color: avgAvail >= 99.9 ? '#10b981' : avgAvail >= 99 ? '#f59e0b' : '#ef4444' },
+                    { title: 'Total Records', value: data.length, icon: <FieldTimeOutlined />, color: '#3b82f6' },
+                    { title: 'Total Downtime', value: `${totalDowntime} min`, icon: <CloseCircleOutlined />, color: totalDowntime > 0 ? '#ef4444' : '#10b981' },
+                    { title: 'Total Incidents', value: totalIncidents, icon: <ExclamationCircleOutlined />, color: totalIncidents > 0 ? '#f59e0b' : '#10b981' },
+                    { title: 'SLA Met', value: `${data.filter(r => (r.availability_pct || 0) >= (r.sla_target_pct || 99.9)).length}/${data.length}`, icon: <CheckCircleOutlined />, color: '#8b5cf6' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={Math.floor(24 / 5)}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
             </Row>
+
+            {/* SLA Compliance Trend */}
+            {data.length > 0 && (
+                <Card size="small" style={{ ...glass, marginBottom: 16 }} title={<Text strong style={{ fontSize: 13 }}>⏱️ Availability Trend</Text>}>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}>
+                        {data.slice(0, 12).reverse().map((r, i) => {
+                            const pct = r.availability_pct || 0;
+                            const target = r.sla_target_pct || 99.9;
+                            const met = pct >= target;
+                            return (
+                                <motion.div key={r.id} initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ delay: i * 0.05 }}
+                                    style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', transformOrigin: 'bottom' }}>
+                                    <Text style={{ fontSize: 8, color: met ? '#10b981' : '#ef4444' }}>{pct.toFixed(1)}%</Text>
+                                    <div style={{ width: '100%', height: `${Math.max(pct - 95, 0) * 16}px`, minHeight: 4, borderRadius: '4px 4px 0 0', background: met ? '#10b981' : '#ef4444', maxHeight: 60 }} />
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                </Card>
+            )}
 
             <ProTable
                 headerTitle={<Space><FieldTimeOutlined /> Availability Records</Space>}

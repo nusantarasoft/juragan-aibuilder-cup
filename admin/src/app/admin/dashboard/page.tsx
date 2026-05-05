@@ -268,7 +268,7 @@ export default function DashboardPage() {
                                 { name: 'CRM', count: `${crm?.totalIndividuals || 0} leads`, color: '#1890ff', href: '/admin/crm/dashboard' },
                                 { name: 'ITSM', count: `${itsm?.totalTickets || 0} tickets`, color: themeColor, href: '/admin/itsm/dashboard' },
                                 { name: 'Inventory', count: 'Items & Stock', color: '#52c41a', href: '/admin/inventory/items' },
-                                { name: 'E-Commerce', count: 'Orders & Products', color: '#eb2f96', href: '/admin/ecommerce/orders' },
+                                { name: 'E-Commerce', count: 'Orders & Products', color: '#eb2f96', href: '/admin/ecommerce/dashboard' },
                                 { name: 'Projects', count: 'Tasks & Sprints', color: '#13c2c2', href: '/admin/pm/dashboard' },
                                 { name: 'AI Studio', count: 'ML Models', color: '#2f54eb', href: '/admin/ai-studio' },
                                 { name: 'Infrastructure', count: 'Networking', color: '#fa541c', href: '/admin/infrastructure/traefik' },

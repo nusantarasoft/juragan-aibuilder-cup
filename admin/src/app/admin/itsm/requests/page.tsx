@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, ReconciliationOutlined, ShopOutlined, UserOutlined, TeamOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography, Card, Statistic, Badge } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, ReconciliationOutlined, ShopOutlined, UserOutlined, TeamOutlined, CheckCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
@@ -13,6 +14,7 @@ import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const GET_REQUESTS = `query($status: String, $priority: String, $search: String) { itsmServiceRequests(status: $status, priority: $priority, search: $search) { id requestNumber title description catalogItemId categoryId priority status requestedFor requesterName requesterEmail fulfillmentGroup fulfilledBy fulfilledAt notes slaDue createdAt } }`;
 const GET_CATALOG = `query { itsmCatalogItems(status: "active") { id catalogCode name } }`;
@@ -108,8 +110,25 @@ export default function ItsmRequestsPage() {
             subTitle={<DecryptedText text="Manage user service requests" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Requests', value: data.length, icon: <ReconciliationOutlined />, color: '#3b82f6' },
+                    { title: 'Open', value: data.filter((d: any) => d.status === 'open' || d.status === 'in_progress' || d.status === 'pending').length, icon: <ClockCircleOutlined />, color: '#f59e0b' },
+                    { title: 'Fulfilled', value: data.filter((d: any) => d.status === 'fulfilled' || d.status === 'closed').length, icon: <CheckCircleOutlined />, color: '#10b981' },
+                    { title: 'High Priority', value: data.filter((d: any) => d.priority === 'high' || d.priority === 'critical').length, icon: <ReconciliationOutlined />, color: '#ef4444' },
+                    { title: 'Avg Score', value: data.length > 0 ? (data.reduce((s: number, d: any) => s + (d.satisfaction || 0), 0) / data.filter((d: any) => d.satisfaction).length || 0).toFixed(1) : '—', icon: <UserOutlined />, color: '#8b5cf6' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={Math.floor(24 / 5)}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <ProTable
-                headerTitle={<Space><ReconciliationOutlined /> Service Requests</Space>}
+                headerTitle={<Space><ReconciliationOutlined /> Service Requests <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 150 }} value={filterStatus} onChange={setFilterStatus}

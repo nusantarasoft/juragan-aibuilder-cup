@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Typography, Form, Input, Select, InputNumber, Row, Col } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, FlagOutlined, ClockCircleOutlined, SettingOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Typography, Form, Input, Select, InputNumber, Row, Col, Card, Statistic, Badge } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, FlagOutlined, ClockCircleOutlined, SettingOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
@@ -13,6 +14,7 @@ import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const GET_POLICIES = `query { itsmSlaPolicies { id name priority responseTimeMinutes resolutionTimeMinutes escalationAfterMinutes status createdAt } }`;
 const CREATE_POLICY = `mutation($tenantId: String!, $input: CreateItsmSlaPolicyInput!) { createItsmSlaPolicy(tenantId: $tenantId, input: $input) { id } }`;
@@ -133,8 +135,25 @@ export default function ItsmSlaPage() {
             subTitle={<DecryptedText text="Service Level Agreement configuration" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Policies', value: policies.length, icon: <FlagOutlined />, color: '#3b82f6' },
+                    { title: 'Active', value: policies.filter((p: any) => p.status === 'active').length, icon: <CheckCircleOutlined />, color: '#10b981' },
+                    { title: 'Avg Response', value: policies.length > 0 ? `${Math.round(policies.reduce((s: number, p: any) => s + (p.responseTimeMinutes || 0), 0) / policies.length)}m` : '—', icon: <ClockCircleOutlined />, color: '#f59e0b' },
+                    { title: 'Avg Resolution', value: policies.length > 0 ? `${Math.round(policies.reduce((s: number, p: any) => s + (p.resolutionTimeMinutes || 0), 0) / policies.length)}m` : '—', icon: <ClockCircleOutlined />, color: '#8b5cf6' },
+                    { title: 'Priority Levels', value: [...new Set(policies.map((p: any) => p.priority))].length, icon: <SettingOutlined />, color: '#06b6d4' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={Math.floor(24 / 5)}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <ProTable
-                headerTitle={<Space><FlagOutlined /> SLA Policies</Space>}
+                headerTitle={<Space><FlagOutlined /> SLA Policies <Badge count={policies.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id"
                 dataSource={policies}
                 loading={loading}

@@ -432,6 +432,19 @@ export class HrResolver {
     // Payroll
     @Query(() => [HrPayrollRun]) async hrPayrollRuns(@Args('tenantId') tenantId: string) { return (await this.hrService.getPayrollRuns(tenantId)).map((r: any) => ({ id: r.id, period: r.period, name: r.name, status: r.status, totalGross: r.total_gross, totalDeductions: r.total_deductions, totalNet: r.total_net, employeeCount: r.employee_count, processedAt: r.processed_at, paidAt: r.paid_at, createdAt: r.created_at })); }
     @Query(() => [HrPayrollSlip]) async hrPayrollSlips(@Args('runId') runId: string) { return (await this.hrService.getPayrollSlips(runId)).map((r: any) => ({ id: r.id, employeeId: r.employee_id, employeeName: r.employee_name, baseSalary: r.base_salary, grossSalary: r.gross_salary, totalDeductions: r.total_deductions, netSalary: r.net_salary, components: r.components, status: r.status })); }
+    @Mutation(() => HrPayrollRun) async createHrPayrollRun(@Args('tenantId') tenantId: string, @Args('period') period: string, @Args('name', { nullable: true }) name?: string) {
+        const r = await this.hrService.createPayrollRun(tenantId, { period, name });
+        return { id: r.id, period: r.period, name: r.name, status: r.status, totalGross: r.total_gross, totalDeductions: r.total_deductions, totalNet: r.total_net, employeeCount: r.employee_count, processedAt: r.processed_at, paidAt: r.paid_at, createdAt: r.created_at };
+    }
+    @Mutation(() => HrPayrollRun) async processHrPayrollRun(@Args('id') id: string) {
+        const r = await this.hrService.processPayrollRun(id);
+        return { id: r.id, period: r.period, name: r.name, status: r.status, totalGross: r.total_gross, totalDeductions: r.total_deductions, totalNet: r.total_net, employeeCount: r.employee_count, processedAt: r.processed_at, paidAt: r.paid_at, createdAt: r.created_at };
+    }
+    @Mutation(() => HrPayrollRun) async markHrPayrollPaid(@Args('id') id: string) {
+        const r = await this.hrService.markPayrollPaid(id);
+        return { id: r.id, period: r.period, name: r.name, status: r.status, totalGross: r.total_gross, totalDeductions: r.total_deductions, totalNet: r.total_net, employeeCount: r.employee_count, processedAt: r.processed_at, paidAt: r.paid_at, createdAt: r.created_at };
+    }
+    @Mutation(() => Boolean) async deleteHrPayrollRun(@Args('id') id: string) { return this.hrService.deletePayrollRun(id); }
 
     // Recruitment
     @Query(() => [HrJobPosting]) async hrJobPostings(@Args('tenantId') tenantId: string, @Args('status', { nullable: true }) status?: string) { return (await this.hrService.getJobPostings(tenantId, { status })).map(mapJobPosting); }
@@ -442,7 +455,18 @@ export class HrResolver {
 
     // Performance
     @Query(() => [HrPerformanceReview]) async hrPerformanceReviews(@Args('tenantId') tenantId: string, @Args('employeeId', { nullable: true }) employeeId?: string) { return (await this.hrService.getPerformanceReviews(tenantId, { employeeId })).map(mapReview); }
+    @Mutation(() => HrPerformanceReview) async createHrPerformanceReview(@Args('tenantId') tenantId: string, @Args('employeeId') employeeId: string, @Args('reviewPeriod') reviewPeriod: string, @Args('reviewType', { nullable: true }) reviewType?: string, @Args('overallRating', { type: () => Int, nullable: true }) overallRating?: number, @Args('strengths', { nullable: true }) strengths?: string, @Args('areasForImprovement', { nullable: true }) areasForImprovement?: string, @Args('comments', { nullable: true }) comments?: string) {
+        return mapReview(await this.hrService.createPerformanceReview(tenantId, { employeeId, reviewPeriod, reviewType, overallRating, strengths, areasForImprovement, comments }));
+    }
+    @Mutation(() => HrPerformanceReview) async updateHrPerformanceReview(@Args('id') id: string, @Args('overallRating', { type: () => Int, nullable: true }) overallRating?: number, @Args('strengths', { nullable: true }) strengths?: string, @Args('areasForImprovement', { nullable: true }) areasForImprovement?: string, @Args('comments', { nullable: true }) comments?: string, @Args('status', { nullable: true }) status?: string) {
+        return mapReview(await this.hrService.updatePerformanceReview(id, { overallRating, strengths, areasForImprovement, comments, status }));
+    }
+    @Mutation(() => Boolean) async deleteHrPerformanceReview(@Args('id') id: string) { return this.hrService.deletePerformanceReview(id); }
 
     // Training
     @Query(() => [HrTraining]) async hrTrainingPrograms(@Args('tenantId') tenantId: string) { return (await this.hrService.getTrainingPrograms(tenantId)).map(mapTraining); }
+    @Mutation(() => HrTraining) async createHrTrainingProgram(@Args('tenantId') tenantId: string, @Args('name') name: string, @Args('category', { nullable: true }) category?: string, @Args('description', { nullable: true }) description?: string, @Args('durationHours', { type: () => Int, nullable: true }) durationHours?: number, @Args('provider', { nullable: true }) provider?: string, @Args('cost', { type: () => Float, nullable: true }) cost?: number, @Args('startDate', { nullable: true }) startDate?: string, @Args('endDate', { nullable: true }) endDate?: string, @Args('isMandatory', { nullable: true }) isMandatory?: boolean, @Args('certificationName', { nullable: true }) certificationName?: string) {
+        return mapTraining(await this.hrService.createTrainingProgram(tenantId, { name, category, description, durationHours, provider, cost, startDate, endDate, isMandatory, certificationName }));
+    }
+    @Mutation(() => Boolean) async deleteHrTrainingProgram(@Args('id') id: string) { return this.hrService.deleteTrainingProgram(id); }
 }

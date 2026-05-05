@@ -461,6 +461,12 @@ const menuConfig = {
                 icon: <ShopOutlined />,
                 routes: [
                     {
+                        path: "/admin/ecommerce/dashboard",
+                        name: "Dashboard",
+                        icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                    {
                         path: "/admin/ecommerce/products",
                         name: "Products",
                         icon: <ShoppingOutlined />,

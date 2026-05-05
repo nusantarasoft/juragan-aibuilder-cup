@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, InputNumber, Descriptions, Modal, Typography } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, SafetyOutlined, FieldTimeOutlined, FileProtectOutlined, ExperimentOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, InputNumber, Descriptions, Modal, Typography, Card, Statistic, Badge } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, SafetyOutlined, FieldTimeOutlined, FileProtectOutlined, ExperimentOutlined, ExclamationCircleOutlined, CheckCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { supaRest, supaInsert, supaUpdate, supaDelete } from "@/lib/supaRest";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
@@ -13,6 +14,7 @@ import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const statusColors: Record<string, string> = { draft: 'default', active: 'green', under_review: 'blue', approved: 'green', expired: 'red', archived: 'gray' };
 const typeColors: Record<string, string> = { bcp: 'blue', drp: 'red', crisis: 'volcano', itrp: 'purple' };
 const priorityColors: Record<string, string> = { critical: 'red', high: 'orange', medium: 'blue', low: 'green' };
@@ -95,8 +97,48 @@ export default function ContinuityPage() {
             subTitle={<DecryptedText text="Business continuity and disaster recovery plans" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
+            {/* KPI Stats */}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Plans', value: data.length, icon: <SafetyOutlined />, color: '#3b82f6' },
+                    { title: 'Active', value: data.filter(d => d.status === 'active' || d.status === 'approved').length, icon: <CheckCircleOutlined />, color: '#10b981' },
+                    { title: 'Expired / Draft', value: data.filter(d => d.status === 'expired' || d.status === 'draft').length, icon: <ClockCircleOutlined />, color: '#f59e0b' },
+                    { title: 'Critical Priority', value: data.filter(d => d.recovery_priority === 'critical').length, icon: <ExclamationCircleOutlined />, color: '#ef4444' },
+                    { title: 'Avg RTO', value: data.length > 0 ? `${(data.reduce((s, d) => s + (d.rto_hours || 0), 0) / data.length).toFixed(1)}h` : '—', icon: <FieldTimeOutlined />, color: '#8b5cf6' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={Math.floor(24 / 5)}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
+
+            {/* Plan Type Distribution */}
+            {data.length > 0 && (
+                <Card size="small" style={{ ...glass, marginBottom: 16 }} title={<Text strong style={{ fontSize: 13 }}>🛡️ Plan Type Distribution</Text>}>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                        {[{ key: 'bcp', label: 'BCP', icon: '📋', color: '#3b82f6' }, { key: 'drp', label: 'DRP', icon: '🔥', color: '#ef4444' }, { key: 'crisis', label: 'Crisis', icon: '🚨', color: '#f59e0b' }, { key: 'itrp', label: 'ITRP', icon: '🔧', color: '#8b5cf6' }].map((t, i) => {
+                            const cnt = data.filter(d => d.plan_type === t.key).length;
+                            const active = data.filter(d => d.plan_type === t.key && (d.status === 'active' || d.status === 'approved')).length;
+                            return (
+                                <motion.div key={t.key} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.08 }}
+                                    style={{ flex: 1, padding: '12px 10px', borderRadius: 10, background: `${t.color}08`, border: `1px solid ${t.color}20`, textAlign: 'center' }}>
+                                    <Text style={{ fontSize: 18, display: 'block' }}>{t.icon}</Text>
+                                    <Text strong style={{ fontSize: 20, color: t.color, display: 'block' }}>{cnt}</Text>
+                                    <Text style={{ fontSize: 10, display: 'block' }}>{t.label}</Text>
+                                    {active > 0 && <Badge count={`${active} active`} style={{ backgroundColor: '#10b981', fontSize: 9 }} />}
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                </Card>
+            )}
+
             <ProTable
-                headerTitle={<Space><SafetyOutlined /> Continuity Plans</Space>}
+                headerTitle={<Space><SafetyOutlined /> Continuity Plans <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
                     <Select key="ft" placeholder="Type" allowClear style={{ width: 120 }} value={filterType} onChange={setFilterType}
