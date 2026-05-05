@@ -5,8 +5,11 @@ import CMSLayout from "@/components/layout/CMSLayout";
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
-import { Card, Row, Col, Button, Space, Tag } from "antd";
-import { EditOutlined, EyeOutlined, PlusOutlined } from "@ant-design/icons";
+import { Card, Row, Col, Button, Space, Tag, Statistic } from "antd";
+import { EditOutlined, EyeOutlined, PlusOutlined, AppstoreOutlined, BlockOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
+
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface ContentBlock {
     name: string;
@@ -157,6 +160,21 @@ export default function ContentBlocksPage() {
                 </Button>,
             ]}
         >
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Block Types', value: contentBlocks.length, icon: <AppstoreOutlined />, color: '#3b82f6' },
+                    { title: 'Layout Blocks', value: contentBlocks.filter(b => ['Features Grid','Image Gallery','Team Section'].includes(b.name)).length, icon: <BlockOutlined />, color: '#10b981' },
+                    { title: 'Form Blocks', value: contentBlocks.filter(b => ['Contact Form'].includes(b.name)).length, icon: <EditOutlined />, color: '#8b5cf6' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={8}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <Row gutter={[16, 16]}>
                 {contentBlocks.map((block, index) => (
                     <Col key={index} xs={24} sm={12} lg={8}>

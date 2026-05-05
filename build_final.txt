@@ -1,0 +1,314 @@
+﻿docker : --progress is a global compose flag, better use `docker compose --progress xx build ...
+At line:1 char:1
++ docker compose build admin --no-cache --progress plain 2>&1 | Out-Fil ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (--progress is a...ss xx build ...:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Image nusantarasoft-minimal-admin Building 
+ Image nusantarasoft-minimal-middleware Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.25kB done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 2.13kB 0.0s done
+#2 DONE 0.1s
+
+#3 [internal] load metadata for docker.io/library/node:20-alpine
+#3 ...
+
+#4 [auth] library/node:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:20-alpine
+#3 DONE 1.6s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 475B done
+#5 DONE 0.1s
+
+#6 [internal] load build context
+#6 DONE 0.0s
+
+#7 [base 1/3] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#7 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.1s done
+#7 CACHED
+
+#6 [internal] load build context
+#6 transferring context: 101.06kB 0.2s done
+#6 DONE 0.3s
+
+#8 [base 2/3] RUN apk add --no-cache libc6-compat
+#8 2.677 (1/3) Installing musl-obstack (1.2.3-r2)
+#8 2.703 (2/3) Installing libucontext (1.3.3-r0)
+#8 2.728 (3/3) Installing gcompat (1.1.0-r4)
+#8 2.773 OK: 11.0 MiB in 21 packages
+#8 DONE 3.1s
+
+#9 [base 3/3] WORKDIR /app
+#9 DONE 0.2s
+
+#10 [runner 1/6] WORKDIR /app
+#10 DONE 0.3s
+
+#11 [deps 1/3] RUN apk add --no-cache python3 make g++
+#11 ...
+
+#12 [runner 2/6] RUN addgroup --system --gid 1001 nodejs &&     adduser --system --uid 1001 nextjs
+#12 DONE 1.2s
+
+#11 [deps 1/3] RUN apk add --no-cache python3 make g++
+#11 1.964 ( 1/29) Installing libstdc++-dev (15.2.0-r2)
+#11 2.416 ( 2/29) Installing jansson (2.14.1-r0)
+#11 2.457 ( 3/29) Installing zstd-libs (1.5.7-r2)
+#11 2.521 ( 4/29) Installing binutils (2.45.1-r0)
+#11 2.826 ( 5/29) Installing libgomp (15.2.0-r2)
+#11 2.868 ( 6/29) Installing libatomic (15.2.0-r2)
+#11 2.904 ( 7/29) Installing gmp (6.3.0-r4)
+#11 2.958 ( 8/29) Installing isl26 (0.26-r1)
+#11 3.037 ( 9/29) Installing mpfr4 (4.2.2-r0)
+#11 3.074 (10/29) Installing mpc1 (1.3.1-r1)
+#11 3.102 (11/29) Installing gcc (15.2.0-r2)
+#11 8.613 (12/29) Installing musl-dev (1.2.5-r23)
+#11 8.896 (13/29) Installing g++ (15.2.0-r2)
+#11 10.58 (14/29) Installing make (4.4.1-r3)
+#11 10.62 (15/29) Installing libbz2 (1.0.8-r6)
+#11 10.67 (16/29) Installing libexpat (2.7.5-r0)
+#11 10.72 (17/29) Installing libffi (3.5.2-r0)
+#11 10.77 (18/29) Installing gdbm (1.26-r0)
+#11 10.80 (19/29) Installing xz-libs (5.8.3-r0)
+#11 10.88 (20/29) Installing mpdecimal (4.0.1-r0)
+#11 10.94 (21/29) Installing ncurses-terminfo-base (6.5_p20251123-r0)
+#11 10.99 (22/29) Installing libncursesw (6.5_p20251123-r0)
+#11 11.08 (23/29) Installing libpanelw (6.5_p20251123-r0)
+#11 11.13 (24/29) Installing readline (8.3.1-r0)
+#11 11.19 (25/29) Installing sqlite-libs (3.51.2-r0)
+#11 11.30 (26/29) Installing python3 (3.12.13-r0)
+#11 12.12 (27/29) Installing python3-pycache-pyc0 (3.12.13-r0)
+#11 12.50 (28/29) Installing pyc (3.12.13-r0)
+#11 12.50 (29/29) Installing python3-pyc (3.12.13-r0)
+#11 12.50 Executing busybox-1.37.0-r30.trigger
+#11 12.51 OK: 301.3 MiB in 50 packages
+#11 DONE 12.9s
+
+#13 [deps 2/3] COPY package.json ./
+#13 DONE 0.2s
+
+#14 [deps 3/3] RUN npm config set fetch-retry-mintimeout 600000 &&     npm config set fetch-retry-maxtimeout 1200000 &&     npm install --legacy-peer-deps
+#14 117.9 npm warn deprecated prebuild-install@7.1.3: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.
+#14 119.2 npm warn deprecated @otplib/plugin-thirty-two@12.0.1: Please upgrade to v13 of otplib. Refer to otplib docs for migration paths
+#14 119.3 npm warn deprecated @otplib/plugin-crypto@12.0.1: Please upgrade to v13 of otplib. Refer to otplib docs for migration paths
+#14 119.9 npm warn deprecated @otplib/preset-default@12.0.1: Please upgrade to v13 of otplib. Refer to otplib docs for migration paths
+#14 255.8 
+#14 255.8 added 1281 packages, and audited 1282 packages in 4m
+#14 255.8 
+#14 255.8 257 packages are looking for funding
+#14 255.8   run `npm fund` for details
+#14 256.1 
+#14 256.1 16 vulnerabilities (2 low, 3 moderate, 7 high, 4 critical)
+#14 256.1 
+#14 256.1 To address all issues possible (including breaking changes), run:
+#14 256.1   npm audit fix --force
+#14 256.1 
+#14 256.1 Some issues need review, and may require choosing
+#14 256.1 a different dependency.
+#14 256.1 
+#14 256.1 Run `npm audit` for details.
+#14 DONE 257.1s
+
+#15 [builder 1/3] COPY --from=deps /app/node_modules ./node_modules
+#15 DONE 95.8s
+
+#16 [builder 2/3] COPY . .
+#16 DONE 3.7s
+
+#17 [builder 3/3] RUN npm run build
+#17 2.677 
+#17 2.677 > admin@0.1.0 build
+#17 2.677 > next build
+#17 2.677 
+#17 5.078 Γû▓ Next.js 16.1.0 (Turbopack)
+#17 5.079 
+#17 5.204   Creating an optimized production build ...
+#17 347.1 Γ£ô Compiled successfully in 5.5min
+#17 347.1   Running TypeScript ...
+#17 406.0   Collecting page data using 19 workers ...
+#17 408.3 (node:254) Warning: NodeVersionSupportWarning: The AWS SDK for JavaScript (v3)
+#17 408.3 versions published after the first week of January 2027
+#17 408.3 will require node >=22. You are running node v20.20.2.
+#17 408.3 
+#17 408.3 To continue receiving updates to AWS services, bug fixes,
+#17 408.3 and security updates please upgrade to node >=22.
+#17 408.3 
+#17 408.3 More information can be found at: https://a.co/c895JFp
+#17 408.3 (Use `node --trace-warnings ...` to show where the warning was created)
+#17 408.3   Generating static pages using 19 workers (0/112) ...
+#17 409.8   Generating static pages using 19 workers (28/112) 
+#17 410.2   Generating static pages using 19 workers (56/112) 
+#17 410.5 (node:261) Warning: NodeVersionSupportWarning: The AWS SDK for JavaScript (v3)
+#17 410.5 versions published after the first week of January 2027
+#17 410.5 will require node >=22. You are running node v20.20.2.
+#17 410.5 
+#17 410.5 To continue receiving updates to AWS services, bug fixes,
+#17 410.5 and security updates please upgrade to node >=22.
+#17 410.5 
+#17 410.5 More information can be found at: https://a.co/c895JFp
+#17 410.5 (Use `node --trace-warnings ...` to show where the warning was created)
+#17 410.5   Generating static pages using 19 workers (84/112) 
+#17 410.8 Γ£ô Generating static pages using 19 workers (112/112) in 2.5s
+#17 410.8   Finalizing page optimization ...
+#17 412.0 
+#17 412.0 Route (app)
+#17 412.0 Γöî Γùï /
+#17 412.0 Γö£ Γùï /_not-found
+#17 412.0 Γö£ Γùï /admin
+#17 412.0 Γö£ Γùï /admin/accounting/accounts
+#17 412.0 Γö£ Γùï /admin/accounting/dashboard
+#17 412.0 Γö£ Γùï /admin/accounting/journals
+#17 412.0 Γö£ Γùï /admin/accounting/ledger
+#17 412.0 Γö£ Γùï /admin/accounting/payables
+#17 412.0 Γö£ Γùï /admin/accounting/receivables
+#17 412.0 Γö£ Γùï /admin/accounting/reports
+#17 412.0 Γö£ Γùï /admin/accounting/settings
+#17 412.0 Γö£ Γùï /admin/ai-studio
+#17 412.0 Γö£ Γùï /admin/blocks
+#17 412.0 Γö£ Γùï /admin/blocks/content
+#17 412.0 Γö£ Γùï /admin/blocks/templates
+#17 412.0 Γö£ Γùï /admin/blocks/widgets
+#17 412.0 Γö£ Γùï /admin/crm
+#17 412.0 Γö£ Γùï /admin/crm/accounts
+#17 412.0 Γö£ Γùï /admin/crm/activities
+#17 412.0 Γö£ Γùï /admin/crm/campaigns
+#17 412.0 Γö£ Γùï /admin/crm/cases
+#17 412.0 Γö£ Γùï /admin/crm/contacts
+#17 412.0 Γö£ Γùï /admin/crm/dashboard
+#17 412.0 Γö£ Γùï /admin/crm/deals
+#17 412.0 Γö£ Γùï /admin/crm/individuals
+#17 412.0 Γö£ Γùï /admin/crm/intelligence
+#17 412.0 Γö£ Γùï /admin/crm/products
+#17 412.0 Γö£ Γùï /admin/crm/quotes
+#17 412.0 Γö£ Γùï /admin/dashboard
+#17 412.0 Γö£ Γùï /admin/datasets
+#17 412.0 Γö£ Γùï /admin/ecommerce/customers
+#17 412.0 Γö£ Γùï /admin/ecommerce/dashboard
+#17 412.0 Γö£ Γùï /admin/ecommerce/discounts
+#17 412.0 Γö£ Γùï /admin/ecommerce/offers
+#17 412.0 Γö£ Γùï /admin/ecommerce/orders
+#17 412.0 Γö£ Γùï /admin/ecommerce/packages
+#17 412.0 Γö£ Γùï /admin/ecommerce/products
+#17 412.0 Γö£ Γùï /admin/ecommerce/returns
+#17 412.0 Γö£ Γùï /admin/ecommerce/settings
+#17 412.0 Γö£ Γùï /admin/hr
+#17 412.0 Γö£ Γùï /admin/hr/analytics
+#17 412.0 Γö£ Γùï /admin/hr/attendance
+#17 412.0 Γö£ Γùï /admin/hr/dashboard
+#17 412.0 Γö£ Γùï /admin/hr/departments
+#17 412.0 Γö£ Γùï /admin/hr/employees
+#17 412.0 Γö£ ╞Æ /admin/hr/employees/[id]
+#17 412.0 Γö£ Γùï /admin/hr/leave
+#17 412.0 Γö£ Γùï /admin/hr/offboarding
+#17 412.0 Γö£ Γùï /admin/hr/onboarding
+#17 412.0 Γö£ Γùï /admin/hr/payroll
+#17 412.0 Γö£ Γùï /admin/hr/performance
+#17 412.0 Γö£ Γùï /admin/hr/positions
+#17 412.0 Γö£ Γùï /admin/hr/recruitment
+#17 412.0 Γö£ Γùï /admin/hr/training
+#17 412.0 Γö£ Γùï /admin/infrastructure/bind9
+#17 412.0 Γö£ Γùï /admin/infrastructure/npm
+#17 412.0 Γö£ Γùï /admin/infrastructure/pihole
+#17 412.0 Γö£ Γùï /admin/infrastructure/traefik
+#17 412.0 Γö£ Γùï /admin/inventory/analytics
+#17 412.0 Γö£ Γùï /admin/inventory/bookings
+#17 412.0 Γö£ Γùï /admin/inventory/fixed-assets
+#17 412.0 Γö£ Γùï /admin/inventory/items
+#17 412.0 Γö£ Γùï /admin/inventory/manufacturing
+#17 412.0 Γö£ Γùï /admin/inventory/procurement
+#17 412.0 Γö£ Γùï /admin/inventory/rentals
+#17 412.0 Γö£ Γùï /admin/inventory/stock
+#17 412.0 Γö£ Γùï /admin/inventory/stock-operations
+#17 412.0 Γö£ Γùï /admin/inventory/stock-opname
+#17 412.0 Γö£ Γùï /admin/inventory/warehouses
+#17 412.0 Γö£ Γùï /admin/itsm/agents
+#17 412.0 Γö£ Γùï /admin/itsm/availability
+#17 412.0 Γö£ Γùï /admin/itsm/catalog
+#17 412.0 Γö£ Γùï /admin/itsm/categories
+#17 412.0 Γö£ Γùï /admin/itsm/changes
+#17 412.0 Γö£ Γùï /admin/itsm/cmdb
+#17 412.0 Γö£ Γùï /admin/itsm/continuity
+#17 412.0 Γö£ Γùï /admin/itsm/dashboard
+#17 412.0 Γö£ Γùï /admin/itsm/deployments
+#17 412.0 Γö£ Γùï /admin/itsm/events
+#17 412.0 Γö£ Γùï /admin/itsm/knowledge
+#17 412.0 Γö£ Γùï /admin/itsm/portfolio
+#17 412.0 Γö£ Γùï /admin/itsm/problems
+#17 412.0 Γö£ Γùï /admin/itsm/releases
+#17 412.0 Γö£ Γùï /admin/itsm/requests
+#17 412.0 Γö£ Γùï /admin/itsm/sla
+#17 412.0 Γö£ Γùï /admin/itsm/tickets
+#17 412.0 Γö£ ╞Æ /admin/itsm/tickets/[id]
+#17 412.0 Γö£ Γùï /admin/media
+#17 412.0 Γö£ Γùï /admin/pages
+#17 412.0 Γö£ Γùï /admin/pages/builder
+#17 412.0 Γö£ Γùï /admin/pages/list
+#17 412.0 Γö£ Γùï /admin/permissions
+#17 412.0 Γö£ Γùï /admin/permissions/groups
+#17 412.0 Γö£ Γùï /admin/permissions/permission-sets
+#17 412.0 Γö£ Γùï /admin/permissions/profiles
+#17 412.0 Γö£ Γùï /admin/permissions/roles
+#17 412.0 Γö£ Γùï /admin/permissions/sharing
+#17 412.0 Γö£ Γùï /admin/pm/backlog
+#17 412.0 Γö£ Γùï /admin/pm/dashboard
+#17 412.0 Γö£ Γùï /admin/pm/knowledge-base
+#17 412.0 Γö£ Γùï /admin/pm/portfolio
+#17 412.0 Γö£ Γùï /admin/pm/projects
+#17 412.0 Γö£ Γùï /admin/pm/reports
+#17 412.0 Γö£ Γùï /admin/pm/timeline
+#17 412.0 Γö£ Γùï /admin/settings
+#17 412.0 Γö£ Γùï /admin/settings/general
+#17 412.0 Γö£ Γùï /admin/sql-runner
+#17 412.0 Γö£ Γùï /admin/users
+#17 412.0 Γö£ Γùï /admin/users/list
+#17 412.0 Γö£ Γùï /admin/users/roles
+#17 412.0 Γö£ ╞Æ /api/media
+#17 412.0 Γöö Γùï /login
+#17 412.0 
+#17 412.0 
+#17 412.0 Γùï  (Static)   prerendered as static content
+#17 412.0 ╞Æ  (Dynamic)  server-rendered on demand
+#17 412.0 
+#17 412.1 npm notice
+#17 412.1 npm notice New major version of npm available! 10.8.2 -> 11.13.0
+#17 412.1 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+#17 412.1 npm notice To update run: npm install -g npm@11.13.0
+#17 412.1 npm notice
+#17 DONE 412.3s
+
+#18 [runner 3/6] COPY --from=builder /app/public ./public
+#18 DONE 0.1s
+
+#19 [runner 4/6] RUN mkdir .next && chown nextjs:nodejs .next
+#19 DONE 0.6s
+
+#20 [runner 5/6] COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+#20 DONE 2.2s
+
+#21 [runner 6/6] COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+#21 DONE 0.2s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 3.2s done
+#22 exporting manifest sha256:34517442609cb328b559f009e7697da9eeba33cf91f02065451fa1f1082a1e79 0.0s done
+#22 exporting config sha256:11c2bbe883958f749ac509e7a0cd54986207242718ef84e54cc50376ad236f42 0.0s done
+#22 exporting attestation manifest sha256:1d7a58171c7917ccd198b10024e46ba0685721aa978ebbc8b1d659c4b9cd23c9 0.0s done
+#22 exporting manifest list sha256:a66c528a8891d046fb99e7960bb5fcbcef08ce1013940ca066e37a85a6023c63 0.0s done
+#22 naming to docker.io/library/nusantarasoft-minimal-admin:latest
+#22 naming to docker.io/library/nusantarasoft-minimal-admin:latest done
+#22 unpacking to docker.io/library/nusantarasoft-minimal-admin:latest
+#22 unpacking to docker.io/library/nusantarasoft-minimal-admin:latest 1.6s done
+#22 DONE 5.0s
+
+#23 resolving provenance for metadata file
+#23 DONE 0.0s
+ Image nusantarasoft-minimal-admin Built 

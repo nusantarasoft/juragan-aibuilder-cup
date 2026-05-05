@@ -18,7 +18,9 @@ import {
     Popconfirm,
     Dropdown,
     Empty,
+    Card, Row, Col, Statistic,
 } from "antd";
+import { motion } from "framer-motion";
 import {
     PlusOutlined,
     EditOutlined,
@@ -32,6 +34,8 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import pageService, { CMSPage } from "@/lib/pageService";
+
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 // Sample data for development (when Supabase is not connected)
 const samplePages: CMSPage[] = [
@@ -303,6 +307,21 @@ export default function PagesListPage() {
                 </Button>,
             ]}
         >
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Pages', value: pages.length, icon: <FileTextOutlined />, color: '#3b82f6' },
+                    { title: 'Published', value: pages.filter(p => p.status === 'published').length, icon: <GlobalOutlined />, color: '#10b981' },
+                    { title: 'Draft', value: pages.filter(p => p.status === 'draft').length, icon: <FileTextOutlined />, color: '#f59e0b' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={8}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <Table
                 columns={columns}
                 dataSource={pages}

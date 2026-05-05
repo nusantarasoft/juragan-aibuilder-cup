@@ -7,8 +7,9 @@ import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Table, Button, Space, Modal, Form, Input, Card, Tag,
-    message, Typography, Checkbox, Spin,
+    message, Typography, Checkbox, Spin, Row, Col, Statistic,
 } from "antd";
+import { motion } from "framer-motion";
 import {
     PlusOutlined, DeleteOutlined, ReloadOutlined,
     KeyOutlined, SettingOutlined,
@@ -19,6 +20,7 @@ import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface PermissionSet {
     id: string;
@@ -245,6 +247,21 @@ export default function PermissionSetsPage() {
                 </Button>,
             ]}
         >
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Sets', value: sets.length, icon: <KeyOutlined />, color: '#3b82f6' },
+                    { title: 'System Sets', value: sets.filter(s => s.isSystem).length, icon: <SettingOutlined />, color: '#f59e0b' },
+                    { title: 'Custom Sets', value: sets.filter(s => !s.isSystem).length, icon: <KeyOutlined />, color: '#10b981' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={8}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <Card>
                 <Table columns={columns} dataSource={sets.map(s => ({ ...s, key: s.id }))} loading={loading} pagination={false} size="middle" />
             </Card>

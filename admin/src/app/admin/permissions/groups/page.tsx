@@ -7,8 +7,9 @@ import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Card, Tabs, Table, Button, Space, Modal, Form, Input,
-    message, Typography,
+    message, Typography, Row, Col, Statistic, Badge,
 } from "antd";
+import { motion } from "framer-motion";
 import {
     PlusOutlined, DeleteOutlined, ReloadOutlined,
     TeamOutlined, UsergroupAddOutlined,
@@ -19,6 +20,7 @@ import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface Team {
     id: string;
@@ -289,6 +291,21 @@ export default function GroupsTeamsPage() {
             subTitle={<DecryptedText text="Manage teams for record-level access and public groups for sharing" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[<Button key="reload" icon={<ReloadOutlined />} onClick={() => { loadTeams(); loadGroups(); }} />]}
         >
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Teams', value: teams.length, icon: <TeamOutlined />, color: '#3b82f6' },
+                    { title: 'Public Groups', value: groups.length, icon: <UsergroupAddOutlined />, color: '#10b981' },
+                    { title: 'Total Entities', value: teams.length + groups.length, icon: <TeamOutlined />, color: '#8b5cf6' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={8}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <Card><Tabs items={tabItems} /></Card>
 
             <SteppedFormModal

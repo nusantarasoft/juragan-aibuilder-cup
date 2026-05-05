@@ -17,7 +17,9 @@ import {
     Form,
     Select,
     message,
+    Card, Row, Col, Statistic,
 } from "antd";
+import { motion } from "framer-motion";
 import {
     PlusOutlined,
     EditOutlined,
@@ -27,6 +29,8 @@ import {
     UserOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
+
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface UserData {
     key: string;
@@ -177,6 +181,21 @@ export default function UsersListPage() {
                 </Button>,
             ]}
         >
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Users', value: sampleUsers.length, icon: <UserOutlined />, color: '#3b82f6' },
+                    { title: 'Active', value: sampleUsers.filter(u => u.status === 'active').length, icon: <UserOutlined />, color: '#10b981' },
+                    { title: 'Admins', value: sampleUsers.filter(u => u.role.includes('admin')).length, icon: <UserOutlined />, color: '#f59e0b' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={8}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <div style={{ marginBottom: 16 }}>
                 <Input
                     placeholder="Search users..."
