@@ -1,20 +1,22 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { Table, Tag, Card, Typography, Input, Space, Button, Tooltip, Row, Col, message, Modal, Select, Form, InputNumber, Switch, DatePicker } from "antd";
-import { PercentageOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, PlusOutlined, EditOutlined, CopyOutlined, ThunderboltOutlined } from "@ant-design/icons";
+import { PercentageOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, PlusOutlined, EditOutlined, CopyOutlined, ThunderboltOutlined , FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { inventoryService, EcomDiscount, EcomDiscountStatsType } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import dayjs from "dayjs";
 
 const { Text } = Typography;
-const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : '—';
+const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : 'â€”';
 
 const DISCOUNT_FIELDS: FieldDef[] = [
     { name: 'name', label: 'Discount Name', required: true },
@@ -37,6 +39,7 @@ const DISCOUNT_FIELDS: FieldDef[] = [
 export default function DiscountsPage() {
     const [stats, setStats] = useState<EcomDiscountStatsType | null>(null);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [discounts, setDiscounts] = useState<EcomDiscount[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -152,11 +155,11 @@ export default function DiscountsPage() {
                 </Text>
             ),
         },
-        { title: 'Min Order', dataIndex: 'minOrderAmount', width: 130, render: (v: number) => v ? fmtCurrency(v) : '—' },
+        { title: 'Min Order', dataIndex: 'minOrderAmount', width: 130, render: (v: number) => v ? fmtCurrency(v) : 'â€”' },
         { title: 'Uses', key: 'uses', width: 100,
             render: (_: any, r: EcomDiscount) => <Text>{r.timesUsed || 0}{r.usageLimit ? ` / ${r.usageLimit}` : ''}</Text> },
         { title: 'Valid Until', dataIndex: 'validUntil', width: 120,
-            render: (v: string) => v ? new Date(v).toLocaleDateString() : '∞' },
+            render: (v: string) => v ? new Date(v).toLocaleDateString() : 'âˆž' },
         { title: 'Features', key: 'features', width: 140,
             render: (_: any, r: EcomDiscount) => (
                 <Space size={4}>
@@ -224,7 +227,7 @@ export default function DiscountsPage() {
                     <Row gutter={16}>
                         <Col span={8}><Form.Item name="validFrom" label="Valid From"><DatePicker showTime style={{ width: '100%' }} /></Form.Item></Col>
                         <Col span={8}><Form.Item name="validUntil" label="Valid Until"><DatePicker showTime style={{ width: '100%' }} /></Form.Item></Col>
-                        <Col span={4}><Form.Item name="usageLimit" label="Usage Limit"><InputNumber min={0} style={{ width: '100%' }} placeholder="0=∞" /></Form.Item></Col>
+                        <Col span={4}><Form.Item name="usageLimit" label="Usage Limit"><InputNumber min={0} style={{ width: '100%' }} placeholder="0=âˆž" /></Form.Item></Col>
                         <Col span={4}><Form.Item name="appliesTo" label="Applies To" initialValue="order">
                             <Select options={[{ value: 'order', label: 'Order' }, { value: 'item', label: 'Item' }, { value: 'shipping', label: 'Shipping' }]} />
                         </Form.Item></Col>
@@ -305,3 +308,5 @@ export default function DiscountsPage() {
         </CMSLayout>
     );
 }
+
+

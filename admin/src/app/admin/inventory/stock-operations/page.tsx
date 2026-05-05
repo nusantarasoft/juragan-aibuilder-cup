@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -11,10 +11,11 @@ import {
     ContainerOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
     DownloadOutlined, UploadOutlined, SwapOutlined,
     DeleteOutlined, WarningOutlined, GiftOutlined,
-    CheckCircleOutlined, InboxOutlined
-} from "@ant-design/icons";
+    CheckCircleOutlined, InboxOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import {
     inventoryService, StockOperation, StockOperationStatsType
@@ -70,6 +71,7 @@ const STOCK_OP_FIELDS: FieldDef[] = [
 export default function StockOperationsPage() {
     const [stats, setStats] = useState<StockOperationStatsType | null>(null);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [operations, setOperations] = useState<StockOperation[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -102,7 +104,7 @@ export default function StockOperationsPage() {
 
     const handleCreate = async (values: any) => {
         await inventoryService.createStockOperation('default', values);
-        message.success("Stock operation created — stock ledger updated");
+        message.success("Stock operation created â€” stock ledger updated");
         setModalOpen(false);
         form.resetFields();
         loadAll();
@@ -127,7 +129,7 @@ export default function StockOperationsPage() {
         } catch { message.error("Failed to delete"); }
     };
 
-    // ─── KPI Cards ─────────────────────────────────
+    // â”€â”€â”€ KPI Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const kpiCards = [
         { title: 'Total Operations', value: stats?.totalOperations || 0, icon: <ContainerOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { title: 'Receives', value: stats?.receives || 0, icon: <DownloadOutlined />, color: '#10b981' },
@@ -137,7 +139,7 @@ export default function StockOperationsPage() {
         { title: 'Donations', value: stats?.donations || 0, icon: <GiftOutlined />, color: themeColor },
     ];
 
-    // ─── Columns ───────────────────────────────────
+    // â”€â”€â”€ Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const columns = [
         {
             title: 'Op #', dataIndex: 'operationNumber', width: 140,
@@ -171,11 +173,11 @@ export default function StockOperationsPage() {
         },
         {
             title: 'Reason', dataIndex: 'reason', width: 140, ellipsis: true,
-            render: (v: string) => v ? <Tag className="rounded-full text-xs">{v.replace(/_/g, ' ')}</Tag> : '—',
+            render: (v: string) => v ? <Tag className="rounded-full text-xs">{v.replace(/_/g, ' ')}</Tag> : 'â€”',
         },
         {
             title: 'Batch', dataIndex: 'batchNumber', width: 110,
-            render: (v: string) => v || '—',
+            render: (v: string) => v || 'â€”',
         },
         {
             title: 'Status', dataIndex: 'status', width: 110,
@@ -183,7 +185,7 @@ export default function StockOperationsPage() {
         },
         {
             title: 'Date', dataIndex: 'createdAt', width: 110,
-            render: (v: string) => v ? new Date(v).toLocaleDateString() : '—',
+            render: (v: string) => v ? new Date(v).toLocaleDateString() : 'â€”',
         },
         {
             title: '', key: 'actions', width: 70,
@@ -396,3 +398,5 @@ export default function StockOperationsPage() {
         </CMSLayout>
     );
 }
+
+

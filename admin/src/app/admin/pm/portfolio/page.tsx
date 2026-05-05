@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -14,13 +14,14 @@ import {
     ExclamationCircleOutlined, DollarOutlined, BarChartOutlined,
     TeamOutlined, ArrowUpOutlined, ArrowDownOutlined, ThunderboltOutlined,
     RocketOutlined, ReloadOutlined, BulbOutlined, AimOutlined,
-    FireOutlined, WarningOutlined, SafetyCertificateOutlined
-} from "@ant-design/icons";
+    FireOutlined, WarningOutlined, SafetyCertificateOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text, Title } = Typography;
 
@@ -55,6 +56,7 @@ export default function PortfolioOverviewPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [projects, setProjects] = useState<any[]>([]);
     const [aiAnalysis, setAiAnalysis] = useState<any>(null);
     const [aiLoading, setAiLoading] = useState(false);
@@ -91,7 +93,7 @@ export default function PortfolioOverviewPage() {
         }
     };
 
-    // ── Computed stats ──
+    // â”€â”€ Computed stats â”€â”€
     const totalProjects = projects.length;
     const activeProjects = projects.filter(p => p.status === 'active').length;
     const completedProjects = projects.filter(p => p.status === 'completed').length;
@@ -103,20 +105,20 @@ export default function PortfolioOverviewPage() {
     const totalInProgress = projects.reduce((sum, p) => sum + (p.taskCounts?.inProgress || 0), 0);
     const taskCompletion = totalTasks > 0 ? Math.round((totalDone / totalTasks) * 100) : 0;
 
-    // ── Status distribution ──
+    // â”€â”€ Status distribution â”€â”€
     const statusBuckets = ['active', 'planning', 'paused', 'completed', 'cancelled'].map(s => ({
         status: s,
         count: projects.filter(p => p.status === s).length,
         ...(STATUS_CONFIG[s] || { color: '#6b7280', gradient: '', label: s }),
     }));
 
-    // ── Priority distribution ──
+    // â”€â”€ Priority distribution â”€â”€
     const priorityBuckets = ['critical', 'high', 'medium', 'low'].map(p => ({
         priority: p,
         count: projects.filter(pr => pr.priority === p).length,
     }));
 
-    // ── Risk Heat Map Data ──
+    // â”€â”€ Risk Heat Map Data â”€â”€
     const riskData = useMemo(() => {
         return projects.map(p => {
             const tc = p.taskCounts || {};
@@ -156,7 +158,7 @@ export default function PortfolioOverviewPage() {
         }).filter(p => p.status === 'active' || p.status === 'planning');
     }, [projects]);
 
-    // ── Active Sprint Summary (tasks in active projects) ──
+    // â”€â”€ Active Sprint Summary (tasks in active projects) â”€â”€
     const sprintSummary = useMemo(() => {
         const activeOnly = projects.filter(p => p.status === 'active');
         const inProgressTasks = activeOnly.reduce((sum, p) => sum + (p.taskCounts?.inProgress || 0), 0);
@@ -175,14 +177,14 @@ export default function PortfolioOverviewPage() {
         borderRadius: 16,
     }), [isDark]);
 
-    // ── Risk Cell Color ──
+    // â”€â”€ Risk Cell Color â”€â”€
     const getRiskCellColor = (score: number) => {
         if (score >= 60) return { bg: isDark ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.08)', border: '#ef4444', text: '#ef4444' };
         if (score >= 30) return { bg: isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.08)', border: '#f59e0b', text: '#f59e0b' };
         return { bg: isDark ? 'rgba(16,185,129,0.15)' : 'rgba(16,185,129,0.08)', border: '#10b981', text: '#10b981' };
     };
 
-    // ── Stat Card ──
+    // â”€â”€ Stat Card â”€â”€
     const StatCard = ({ title, value, suffix, icon, gradient, extra }: {
         title: string; value: number | string; suffix?: string;
         icon: React.ReactNode; gradient: string; extra?: React.ReactNode;
@@ -278,7 +280,7 @@ export default function PortfolioOverviewPage() {
             key: 'budget',
             width: 160,
             render: (_: any, record: any) => {
-                if (!record.budget) return <Text type="secondary">—</Text>;
+                if (!record.budget) return <Text type="secondary">â€”</Text>;
                 const pct = Math.min(100, Math.round(((record.spent || 0) / record.budget) * 100));
                 return (
                     <div>
@@ -298,7 +300,7 @@ export default function PortfolioOverviewPage() {
             key: 'timeline',
             width: 180,
             render: (_: any, record: any) => {
-                if (!record.start_date || !record.end_date) return <Text type="secondary">—</Text>;
+                if (!record.start_date || !record.end_date) return <Text type="secondary">â€”</Text>;
                 const start = dayjs(record.start_date);
                 const end = dayjs(record.end_date);
                 const now = dayjs();
@@ -313,7 +315,7 @@ export default function PortfolioOverviewPage() {
                             trailColor={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}
                         />
                         <Text type="secondary" style={{ fontSize: 10 }}>
-                            {start.format('MMM D')} — {end.format('MMM D, YYYY')}
+                            {start.format('MMM D')} â€” {end.format('MMM D, YYYY')}
                             {isOverdue && <Tag color="red" style={{ fontSize: 9, marginLeft: 4 }}>OVERDUE</Tag>}
                         </Text>
                     </div>
@@ -349,7 +351,7 @@ export default function PortfolioOverviewPage() {
             subTitle={<DecryptedText text="Aggregate view of all projects" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
             {contextHolder}
 
-            {/* ── Hero Stats Row ── */}
+            {/* â”€â”€ Hero Stats Row â”€â”€ */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={6}>
                     <StatCard
@@ -413,14 +415,14 @@ export default function PortfolioOverviewPage() {
                         gradient="linear-gradient(135deg, var(--theme-color, #8b5cf6), #a78bfa)"
                         extra={
                             <Text type="secondary" style={{ fontSize: 11 }}>
-                                {completedProjects} completed • {projects.filter(p => p.status === 'paused').length} paused
+                                {completedProjects} completed â€¢ {projects.filter(p => p.status === 'paused').length} paused
                             </Text>
                         }
                     />
                 </Col>
             </Row>
 
-            {/* ── Active Sprints Summary + Risk Heat Map ── */}
+            {/* â”€â”€ Active Sprints Summary + Risk Heat Map â”€â”€ */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 {/* Active Sprints Summary */}
                 <Col xs={24} lg={10}>
@@ -556,7 +558,7 @@ export default function PortfolioOverviewPage() {
                                                     <div>Timeline: {project.timelinePct}% elapsed</div>
                                                     <div>Task Progress: {project.progress}%</div>
                                                     <div>Budget: {project.budgetPct}% burned</div>
-                                                    {project.isOverdue && <div style={{ color: '#ef4444' }}>⚠️ OVERDUE</div>}
+                                                    {project.isOverdue && <div style={{ color: '#ef4444' }}>âš ï¸ OVERDUE</div>}
                                                 </div>
                                             }
                                         >
@@ -588,18 +590,18 @@ export default function PortfolioOverviewPage() {
                                                             color: riskStyle.text, border: `1px solid ${riskStyle.border}33`,
                                                             fontWeight: 600,
                                                         }}>
-                                                            {project.riskLevel === 'critical' ? '🔴' : project.riskLevel === 'elevated' ? '🟡' : '🟢'} {project.riskScore}
+                                                            {project.riskLevel === 'critical' ? 'ðŸ”´' : project.riskLevel === 'elevated' ? 'ðŸŸ¡' : 'ðŸŸ¢'} {project.riskScore}
                                                         </Tag>
                                                     </div>
                                                     <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
                                                         <Text type="secondary" style={{ fontSize: 10 }}>
-                                                            📊 {project.progress}% done
+                                                            ðŸ“Š {project.progress}% done
                                                         </Text>
                                                         <Text type="secondary" style={{ fontSize: 10 }}>
-                                                            💰 {project.budgetPct}% spent
+                                                            ðŸ’° {project.budgetPct}% spent
                                                         </Text>
                                                         <Text type="secondary" style={{ fontSize: 10 }}>
-                                                            ⏱ {project.timelinePct}% elapsed
+                                                            â± {project.timelinePct}% elapsed
                                                         </Text>
                                                         {project.isOverdue && (
                                                             <Text style={{ fontSize: 10, color: '#ef4444', fontWeight: 600 }}>
@@ -618,7 +620,7 @@ export default function PortfolioOverviewPage() {
                 </Col>
             </Row>
 
-            {/* ── Status & Priority Distribution ── */}
+            {/* â”€â”€ Status & Priority Distribution â”€â”€ */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} lg={14}>
                     <Card
@@ -676,7 +678,7 @@ export default function PortfolioOverviewPage() {
                 </Col>
             </Row>
 
-            {/* ── AI Portfolio Analysis ── */}
+            {/* â”€â”€ AI Portfolio Analysis â”€â”€ */}
             <Card
                 title={
                     <Space>
@@ -786,7 +788,7 @@ export default function PortfolioOverviewPage() {
                 )}
             </Card>
 
-            {/* ── Project Table ── */}
+            {/* â”€â”€ Project Table â”€â”€ */}
             <Card
                 title={
                     <Space>
@@ -814,3 +816,5 @@ export default function PortfolioOverviewPage() {
         </CMSLayout>
     );
 }
+
+

@@ -12,10 +12,13 @@ import {
     RiseOutlined, FallOutlined, ReloadOutlined,
     UserOutlined, DollarOutlined, BulbOutlined, FireOutlined,
     CheckCircleOutlined, ClockCircleOutlined, FunnelPlotOutlined,
+    FileExcelOutlined, FilePdfOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 
@@ -132,6 +135,7 @@ export default function AIIntelligencePage() {
     const [leads, setLeads] = useState<LeadScore[]>([]);
     const [deals, setDeals] = useState<DealInsight[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
 
     const loadData = useCallback(async () => {
@@ -239,7 +243,11 @@ export default function AIIntelligencePage() {
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, "#8b5cf6", "#06b6d4"]} className="text-[22px] font-bold tracking-tight">AI Intelligence</AuroraText>}
             subTitle={<DecryptedText text="AI-powered lead scoring, deal insights & pipeline analytics" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
-            extra={[<Button key="reload" icon={<ReloadOutlined />} onClick={loadData} style={{ borderRadius: 8 }}>Refresh Analysis</Button>]}>
+            extra={[
+                <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} style={{ borderRadius: 8 }}>Refresh Analysis</Button>,
+                <Tooltip key="xl" title="Export leads to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_lead_scoring', title: 'CRM Lead Scoring Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'firstName', format: (v: string, row: any) => `${v} ${row.lastName}` }, { header: 'Email', key: 'email' }, { header: 'Company', key: 'company' }, { header: 'Score', key: 'score' }, { header: 'Grade', key: 'grade' }, { header: 'Status', key: 'leadStatus' }], data: leads })} /></Tooltip>,
+                <Tooltip key="pd" title="Export deals to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_deal_insights', title: 'CRM Deal Insights Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Deal', key: 'dealName' }, { header: 'Account', key: 'accountName' }, { header: 'Amount', key: 'amount', format: (v: number) => fmt(v) }, { header: 'Stage', key: 'stage' }, { header: 'Win %', key: 'probability' }, { header: 'Risk', key: 'riskLevel' }, { header: 'Age (d)', key: 'daysSinceCreation' }], data: deals })} /></Tooltip>,
+            ]}>
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* KPI Stats */}

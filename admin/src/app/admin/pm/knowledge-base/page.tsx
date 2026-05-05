@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -12,13 +12,14 @@ import {
     BookOutlined, BulbOutlined, SearchOutlined, FilterOutlined,
     FolderOpenOutlined, TagOutlined, CalendarOutlined,
     ExclamationCircleOutlined, CheckCircleOutlined,
-    InfoCircleOutlined, WarningOutlined
-} from "@ant-design/icons";
+    InfoCircleOutlined, WarningOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text, Paragraph } = Typography;
 
@@ -42,6 +43,7 @@ export default function KnowledgeBasePage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [lessons, setLessons] = useState<any[]>([]);
     const [search, setSearch] = useState("");
     const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
@@ -66,7 +68,7 @@ export default function KnowledgeBasePage() {
 
     useEffect(() => { loadData(); }, [loadData]);
 
-    // ── Filters ──
+    // â”€â”€ Filters â”€â”€
     const filtered = useMemo(() => {
         let result = [...lessons];
         if (search) {
@@ -84,7 +86,7 @@ export default function KnowledgeBasePage() {
         return result;
     }, [lessons, search, categoryFilter, phaseFilter]);
 
-    // ── Computed stats ──
+    // â”€â”€ Computed stats â”€â”€
     const allCategories = useMemo(() => {
         const cats = new Set(lessons.map(l => l.category).filter(Boolean));
         return Array.from(cats);
@@ -177,7 +179,7 @@ export default function KnowledgeBasePage() {
                 <Tag color="default" style={{ textTransform: 'capitalize', fontSize: 11 }}>
                     {phase}
                 </Tag>
-            ) : <Text type="secondary">—</Text>,
+            ) : <Text type="secondary">â€”</Text>,
         },
         {
             title: 'Impact',
@@ -189,7 +191,7 @@ export default function KnowledgeBasePage() {
                 <Tooltip title={impact}>
                     <Text style={{ fontSize: 12 }}>{impact}</Text>
                 </Tooltip>
-            ) : <Text type="secondary">—</Text>,
+            ) : <Text type="secondary">â€”</Text>,
         },
         {
             title: 'Tags',
@@ -218,7 +220,7 @@ export default function KnowledgeBasePage() {
                     <CalendarOutlined style={{ marginRight: 4 }} />
                     {dayjs(date).format('MMM D, YYYY')}
                 </Text>
-            ) : <Text type="secondary">—</Text>,
+            ) : <Text type="secondary">â€”</Text>,
         },
     ];
 
@@ -236,7 +238,7 @@ export default function KnowledgeBasePage() {
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Knowledge Base</AuroraText>}
             subTitle={<DecryptedText text="Cross-project lessons learned repository" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
-            {/* ── Stats Row ── */}
+            {/* â”€â”€ Stats Row â”€â”€ */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={8} lg={6}>
                     <Card style={{ ...glassCard, borderTop: `3px solid ${themeColor}` }} size="small">
@@ -280,7 +282,7 @@ export default function KnowledgeBasePage() {
                 </Col>
             </Row>
 
-            {/* ── Category Distribution ── */}
+            {/* â”€â”€ Category Distribution â”€â”€ */}
             {categoryDistribution.length > 0 && (
                 <Card
                     title={<Space><TagOutlined style={{ color: themeColor }} /> Category Distribution</Space>}
@@ -316,7 +318,7 @@ export default function KnowledgeBasePage() {
                 </Card>
             )}
 
-            {/* ── Search & Filters ── */}
+            {/* â”€â”€ Search & Filters â”€â”€ */}
             <Card style={{ ...glassCard, marginBottom: 16 }} size="small">
                 <Space size={12} wrap style={{ width: '100%' }}>
                     <Input
@@ -349,7 +351,7 @@ export default function KnowledgeBasePage() {
                 </Space>
             </Card>
 
-            {/* ── Lessons Table ── */}
+            {/* â”€â”€ Lessons Table â”€â”€ */}
             <Card
                 title={
                     <Space>
@@ -384,7 +386,7 @@ export default function KnowledgeBasePage() {
                 )}
             </Card>
 
-            {/* ── Detail Drawer ── */}
+            {/* â”€â”€ Detail Drawer â”€â”€ */}
             <Drawer
                 title={
                     <Space>
@@ -418,7 +420,7 @@ export default function KnowledgeBasePage() {
                                     <Tag icon={<FolderOpenOutlined />} color="geekblue">
                                         {viewingLesson.project.name} ({viewingLesson.project.project_number})
                                     </Tag>
-                                ) : '—'}
+                                ) : 'â€”'}
                             </Descriptions.Item>
                             <Descriptions.Item label="Category">
                                 {(() => {
@@ -427,15 +429,15 @@ export default function KnowledgeBasePage() {
                                 })()}
                             </Descriptions.Item>
                             <Descriptions.Item label="Phase">
-                                {viewingLesson.phase ? <Tag>{viewingLesson.phase}</Tag> : '—'}
+                                {viewingLesson.phase ? <Tag>{viewingLesson.phase}</Tag> : 'â€”'}
                             </Descriptions.Item>
                             <Descriptions.Item label="Submitted By">
-                                {viewingLesson.submitted_by || '—'}
+                                {viewingLesson.submitted_by || 'â€”'}
                             </Descriptions.Item>
                             <Descriptions.Item label="Submitted Date">
                                 {viewingLesson.submitted_date
                                     ? dayjs(viewingLesson.submitted_date).format('MMMM D, YYYY')
-                                    : '—'}
+                                    : 'â€”'}
                             </Descriptions.Item>
                         </Descriptions>
 
@@ -497,3 +499,5 @@ export default function KnowledgeBasePage() {
         </CMSLayout>
     );
 }
+
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
@@ -14,10 +14,11 @@ import {
     SearchOutlined, ThunderboltOutlined, BarChartOutlined,
     RobotOutlined, DashboardOutlined, CheckCircleOutlined,
     ClockCircleOutlined, ExclamationCircleOutlined,
-    FileTextOutlined, UnorderedListOutlined
-} from "@ant-design/icons";
+    FileTextOutlined, UnorderedListOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { TooltipWrapper as AnimatedTooltip } from "@/components/mvpblocks/AnimatedTooltip";
 import {
@@ -56,6 +57,7 @@ const MOVEMENT_ICONS: Record<string, React.ReactNode> = {
 export default function StockDashboardPage() {
     const [stats, setStats] = useState<InvStockStats | null>(null);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [ledger, setLedger] = useState<StockLedgerEntry[]>([]);
     const [movements, setMovements] = useState<StockMovement[]>([]);
     const [items, setItems] = useState<InvItem[]>([]);
@@ -345,7 +347,7 @@ export default function StockDashboardPage() {
                                         </div>
                                     )}
                                 </div>
-                                <Button type="text" size="small" onClick={() => setAnomalyResult(null)}>✕</Button>
+                                <Button type="text" size="small" onClick={() => setAnomalyResult(null)}>âœ•</Button>
                             </div>
                         </Card>
                     </motion.div>
@@ -390,7 +392,7 @@ export default function StockDashboardPage() {
                 </Row>
             </div>
 
-            {/* ─── Record Movement SteppedFormModal ──────── */}
+            {/* â”€â”€â”€ Record Movement SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <SteppedFormModal
                 open={movementModalOpen}
                 onCancel={() => { setMovementModalOpen(false); movementForm.resetFields(); }}
@@ -413,14 +415,14 @@ export default function StockDashboardPage() {
                                     <Col span={12}>
                                         <Form.Item name="movementType" label="Movement Type" rules={[{ required: true }]}>
                                             <Select options={[
-                                                { value: 'IN', label: '📥 Stock In' },
-                                                { value: 'OUT', label: '📤 Stock Out' },
-                                                { value: 'ADJUST_IN', label: '🔼 Adjust In' },
-                                                { value: 'ADJUST_OUT', label: '🔽 Adjust Out' },
-                                                { value: 'TRANSFER', label: '🔄 Transfer' },
-                                                { value: 'RETURN_IN', label: '↩️ Return In' },
-                                                { value: 'PRODUCTION', label: '🏭 Production' },
-                                                { value: 'CONSUMPTION', label: '🔧 Consumption' },
+                                                { value: 'IN', label: 'ðŸ“¥ Stock In' },
+                                                { value: 'OUT', label: 'ðŸ“¤ Stock Out' },
+                                                { value: 'ADJUST_IN', label: 'ðŸ”¼ Adjust In' },
+                                                { value: 'ADJUST_OUT', label: 'ðŸ”½ Adjust Out' },
+                                                { value: 'TRANSFER', label: 'ðŸ”„ Transfer' },
+                                                { value: 'RETURN_IN', label: 'â†©ï¸ Return In' },
+                                                { value: 'PRODUCTION', label: 'ðŸ­ Production' },
+                                                { value: 'CONSUMPTION', label: 'ðŸ”§ Consumption' },
                                             ]} />
                                         </Form.Item>
                                     </Col>
@@ -479,3 +481,5 @@ export default function StockDashboardPage() {
         </CMSLayout>
     );
 }
+
+

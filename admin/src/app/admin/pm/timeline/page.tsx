@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -11,13 +11,14 @@ import {
 import {
     CalendarOutlined, ProjectOutlined, CheckCircleOutlined,
     ClockCircleOutlined, FlagOutlined, ExclamationCircleOutlined,
-    AimOutlined, ThunderboltOutlined, FieldTimeOutlined
-} from "@ant-design/icons";
+    AimOutlined, ThunderboltOutlined, FieldTimeOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text, Title } = Typography;
 
@@ -54,6 +55,7 @@ export default function TimelinePage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [projects, setProjects] = useState<any[]>([]);
     const [portfolio, setPortfolio] = useState<any[]>([]);
     const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -161,7 +163,7 @@ export default function TimelinePage() {
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Timeline</AuroraText>}
             subTitle={<DecryptedText text="Cross-project Gantt-style timeline view" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
-            {/* ── Stats ── */}
+            {/* â”€â”€ Stats â”€â”€ */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={6}>
                     <Card style={{ ...glassCard, borderTop: `3px solid ${themeColor}` }} size="small">
@@ -206,7 +208,7 @@ export default function TimelinePage() {
                 </Col>
             </Row>
 
-            {/* ── Filter ── */}
+            {/* â”€â”€ Filter â”€â”€ */}
             <Card style={{ ...glassCard, marginBottom: 16 }} size="small">
                 <Space size={12} wrap>
                     <Select
@@ -229,7 +231,7 @@ export default function TimelinePage() {
                 </Space>
             </Card>
 
-            {/* ── Timeline Chart ── */}
+            {/* â”€â”€ Timeline Chart â”€â”€ */}
             <Card
                 title={
                     <Space>
@@ -244,7 +246,7 @@ export default function TimelinePage() {
                     <Empty description="No projects with timeline data. Set start and end dates on your projects." />
                 ) : (
                     <div style={{ position: 'relative', minHeight: 100 }}>
-                        {/* ── Month Headers ── */}
+                        {/* â”€â”€ Month Headers â”€â”€ */}
                         <div style={{
                             position: 'relative',
                             height: 32,
@@ -271,7 +273,7 @@ export default function TimelinePage() {
                             ))}
                         </div>
 
-                        {/* ── Today Line ── */}
+                        {/* â”€â”€ Today Line â”€â”€ */}
                         <div style={{
                             position: 'absolute',
                             left: `calc(220px + ${todayPct}% * (100% - 220px) / 100%)`,
@@ -299,7 +301,7 @@ export default function TimelinePage() {
                             </div>
                         </div>
 
-                        {/* ── Project Bars ── */}
+                        {/* â”€â”€ Project Bars â”€â”€ */}
                         {enrichedProjects.map((project, idx) => {
                             const start = dayjs(project.startDate);
                             const end = dayjs(project.endDate);
@@ -373,11 +375,11 @@ export default function TimelinePage() {
                                             title={
                                                 <div style={{ fontSize: 12 }}>
                                                     <div><strong>{project.name}</strong></div>
-                                                    <div>{start.format('MMM D, YYYY')} — {end.format('MMM D, YYYY')}</div>
+                                                    <div>{start.format('MMM D, YYYY')} â€” {end.format('MMM D, YYYY')}</div>
                                                     <div>Status: {project.status} | Priority: {project.priority}</div>
                                                     <div>Tasks: {tc.done}/{tc.total} ({taskPct}%)</div>
                                                     {isOverdue
-                                                        ? <div style={{ color: '#ef4444' }}>⚠ Overdue by {Math.abs(daysRemaining)} days</div>
+                                                        ? <div style={{ color: '#ef4444' }}>âš  Overdue by {Math.abs(daysRemaining)} days</div>
                                                         : project.status !== 'completed' && <div>{daysRemaining} days remaining</div>
                                                     }
                                                 </div>
@@ -447,7 +449,7 @@ export default function TimelinePage() {
                             );
                         })}
 
-                        {/* ── Month grid lines ── */}
+                        {/* â”€â”€ Month grid lines â”€â”€ */}
                         {monthMarkers.map((m, i) => (
                             <div
                                 key={`grid-${i}`}
@@ -466,7 +468,7 @@ export default function TimelinePage() {
                 )}
             </Card>
 
-            {/* ── Legend ── */}
+            {/* â”€â”€ Legend â”€â”€ */}
             <Card style={{ ...glassCard, marginTop: 16 }} size="small">
                 <Space size={16} wrap>
                     <Text strong style={{ fontSize: 12 }}>Legend:</Text>
@@ -490,3 +492,5 @@ export default function TimelinePage() {
         </CMSLayout>
     );
 }
+
+

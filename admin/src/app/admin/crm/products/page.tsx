@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -10,13 +10,14 @@ import {
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, ShoppingOutlined,
-    DollarOutlined, CheckCircleOutlined, AppstoreOutlined,
-} from "@ant-design/icons";
+    DollarOutlined, CheckCircleOutlined, AppstoreOutlined,, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
@@ -44,6 +45,7 @@ const PRODUCT_FIELDS: FieldDef[] = [
 export default function ProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Product | null>(null);
@@ -96,7 +98,7 @@ export default function ProductsPage() {
     const columns: ColumnsType<Product> = [
         { title: "Product", key: "name", render: (_, r) => <div><Text strong>{r.name}</Text>{r.code && <><br /><Text type="secondary" code>{r.code}</Text></>}</div>, sorter: (a, b) => a.name.localeCompare(b.name) },
         { title: "Price", key: "price", width: 120, align: "right", render: (_, r) => <Text strong>{fmt(r.unitPrice)}</Text>, sorter: (a, b) => a.unitPrice - b.unitPrice },
-        { title: "Category", key: "cat", width: 120, render: (_, r) => r.category ? <Tag>{r.category}</Tag> : '—' },
+        { title: "Category", key: "cat", width: 120, render: (_, r) => r.category ? <Tag>{r.category}</Tag> : 'â€”' },
         { title: "Status", key: "active", width: 90, render: (_, r) => <Tag color={r.isActive ? 'green' : 'default'}>{r.isActive ? 'Active' : 'Inactive'}</Tag> },
         { title: "Actions", key: "actions", width: 130, render: (_, r) => (<Space>
             <Tooltip title="View"><Button type="text" icon={<EyeOutlined />} onClick={() => { setSelected(r); setDetailOpen(true); }} /></Tooltip>
@@ -129,13 +131,15 @@ export default function ProductsPage() {
             <Drawer title="Product Details" open={detailOpen} onClose={() => setDetailOpen(false)} width={450}>
                 {selected && (<Descriptions column={1} bordered size="small">
                     <Descriptions.Item label="Name">{selected.name}</Descriptions.Item>
-                    <Descriptions.Item label="Code">{selected.code || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Code">{selected.code || 'â€”'}</Descriptions.Item>
                     <Descriptions.Item label="Price"><Text strong>{fmt(selected.unitPrice)}</Text></Descriptions.Item>
-                    <Descriptions.Item label="Category">{selected.category || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Category">{selected.category || 'â€”'}</Descriptions.Item>
                     <Descriptions.Item label="Status"><Tag color={selected.isActive ? 'green' : 'default'}>{selected.isActive ? 'Active' : 'Inactive'}</Tag></Descriptions.Item>
-                    <Descriptions.Item label="Description">{selected.description || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Description">{selected.description || 'â€”'}</Descriptions.Item>
                 </Descriptions>)}
             </Drawer>
         </CMSLayout>
     );
 }
+
+

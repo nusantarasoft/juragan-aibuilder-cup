@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -10,22 +10,23 @@ import {
 import {
     ShoppingOutlined, SearchOutlined, ReloadOutlined, InboxOutlined,
     TagOutlined, DollarOutlined, FilterOutlined, PlusOutlined,
-    EditOutlined, DeleteOutlined, EyeOutlined, CopyOutlined
-} from "@ant-design/icons";
+    EditOutlined, DeleteOutlined, EyeOutlined, CopyOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion, AnimatePresence } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { inventoryService } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 
 const { Text, Title, Paragraph } = Typography;
 
 const SELLABLE_TYPES = [
-    { value: 'physical', label: 'Physical Product', icon: '📦', desc: 'Tangible item tracked in stock (e-commerce, retail)', color: '#3b82f6' },
-    { value: 'ticket', label: 'Ticket / Event', icon: '🎫', desc: 'One-time event entry with seat capacity', color: 'var(--theme-color, #8b5cf6)' },
-    { value: 'scheduled', label: 'Scheduled Service', icon: '🗓️', desc: 'Recurring route or time-based service', color: '#06b6d4' },
-    { value: 'rental', label: 'Rental Asset', icon: '🔑', desc: 'Item rented out and returned', color: '#f59e0b' },
+    { value: 'physical', label: 'Physical Product', icon: 'ðŸ“¦', desc: 'Tangible item tracked in stock (e-commerce, retail)', color: '#3b82f6' },
+    { value: 'ticket', label: 'Ticket / Event', icon: 'ðŸŽ«', desc: 'One-time event entry with seat capacity', color: 'var(--theme-color, #8b5cf6)' },
+    { value: 'scheduled', label: 'Scheduled Service', icon: 'ðŸ—“ï¸', desc: 'Recurring route or time-based service', color: '#06b6d4' },
+    { value: 'rental', label: 'Rental Asset', icon: 'ðŸ”‘', desc: 'Item rented out and returned', color: '#f59e0b' },
 ];
 
 const ITEM_TYPE_FOR_FULFILLMENT: Record<string, string> = {
@@ -40,12 +41,13 @@ const STATUS_COLORS: Record<string, string> = {
     active: 'green', draft: 'default', archived: 'red',
 };
 
-const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : '—';
+const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : 'â€”';
 
 export default function ProductsPage() {
     const router = useRouter();
     const [items, setItems] = useState<any[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [fulfillmentFilter, setFulfillmentFilter] = useState<string | undefined>();
@@ -94,7 +96,7 @@ export default function ProductsPage() {
         return true;
     });
 
-    // ─── Add Product ───
+    // â”€â”€â”€ Add Product â”€â”€â”€
     const handleAddProduct = async () => {
         if (!selectedType) return;
         try {
@@ -122,7 +124,7 @@ export default function ProductsPage() {
         addForm.resetFields();
     };
 
-    // ─── Edit Product ───
+    // â”€â”€â”€ Edit Product â”€â”€â”€
     const openEditModal = (product: any) => {
         setEditingProduct(product);
         editForm.setFieldsValue(product);
@@ -149,7 +151,7 @@ export default function ProductsPage() {
         } finally { setEditSaving(false); }
     };
 
-    // ─── Delete Product ───
+    // â”€â”€â”€ Delete Product â”€â”€â”€
     const handleDelete = async (id: string) => {
         try {
             await inventoryService.deleteItem(id);
@@ -159,7 +161,7 @@ export default function ProductsPage() {
         } catch { message.error("Failed to delete product"); }
     };
 
-    // ─── Duplicate ───
+    // â”€â”€â”€ Duplicate â”€â”€â”€
     const handleDuplicate = async (product: any) => {
         try {
             const { id, createdAt, updatedAt, ...rest } = product;
@@ -181,7 +183,7 @@ export default function ProductsPage() {
     ];
 
     const columns = [
-        { title: 'SKU', dataIndex: 'sku', width: 120, render: (v: string) => <Text code className="text-xs">{v || '—'}</Text> },
+        { title: 'SKU', dataIndex: 'sku', width: 120, render: (v: string) => <Text code className="text-xs">{v || 'â€”'}</Text> },
         { title: 'Product Name', dataIndex: 'name', ellipsis: true,
             render: (v: string, r: any) => (
                 <Text strong className="text-sm cursor-pointer hover:text-[color:var(--theme-color, #7c3aed)]" onClick={() => setDetailDrawer(r)}>{v}</Text>
@@ -198,7 +200,7 @@ export default function ProductsPage() {
                 const sell = r.sellingPrice || 0;
                 const pct = cost > 0 ? (((sell - cost) / cost) * 100) : 0;
                 const isProfit = pct >= 0;
-                return cost > 0 ? <Text style={{ color: isProfit ? '#16a34a' : '#dc2626', fontWeight: 600, fontSize: 12 }}>{pct.toFixed(0)}%</Text> : <Text className="text-xs text-gray-400">—</Text>;
+                return cost > 0 ? <Text style={{ color: isProfit ? '#16a34a' : '#dc2626', fontWeight: 600, fontSize: 12 }}>{pct.toFixed(0)}%</Text> : <Text className="text-xs text-gray-400">â€”</Text>;
             },
         },
         { title: 'Status', dataIndex: 'status', width: 90,
@@ -219,7 +221,7 @@ export default function ProductsPage() {
     return (
         <CMSLayout
             title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Products</AuroraText>}
-            subTitle={<DecryptedText text="Catalog from Inventory — all fulfillment types" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
+            subTitle={<DecryptedText text="Catalog from Inventory â€” all fulfillment types" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
                 <Row gutter={[12, 12]}>
@@ -267,12 +269,12 @@ export default function ProductsPage() {
                         onRow={(record) => ({ onClick: () => setDetailDrawer(record), style: { cursor: 'pointer' } })}
                     />
                     <Alert
-                        message={<span>For advanced settings (variants, media, stock, BOM) — <Button size="small" type="link" style={{ padding: 0 }} onClick={() => router.push('/admin/inventory/items')}>Open Item Master →</Button></span>}
+                        message={<span>For advanced settings (variants, media, stock, BOM) â€” <Button size="small" type="link" style={{ padding: 0 }} onClick={() => router.push('/admin/inventory/items')}>Open Item Master â†’</Button></span>}
                         type="info" showIcon style={{ marginTop: 12, borderRadius: 8 }} />
                 </Card>
             </div>
 
-            {/* ═══ Add Product Modal ═══ */}
+            {/* â•â•â• Add Product Modal â•â•â• */}
             <Modal
                 title={null}
                 open={addModalOpen}
@@ -284,9 +286,9 @@ export default function ProductsPage() {
             >
                 <div style={{ padding: '24px 28px 0', borderBottom: addStep === 1 ? 'none' : '1px solid #f0f0f0', paddingBottom: 20 }}>
                     <Title level={4} className="!m-0" style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        ✨ Add New Product
+                        âœ¨ Add New Product
                     </Title>
-                    <Text type="secondary" className="text-xs">Step {addStep + 1} of 2 — {addStep === 0 ? 'Choose fulfillment type' : 'Enter product details'}</Text>
+                    <Text type="secondary" className="text-xs">Step {addStep + 1} of 2 â€” {addStep === 0 ? 'Choose fulfillment type' : 'Enter product details'}</Text>
                 </div>
 
                 <div style={{ padding: '20px 28px' }}>
@@ -390,7 +392,7 @@ export default function ProductsPage() {
 
                                     {/* Type-specific fields */}
                                     {selectedType === 'ticket' && (<>
-                                        <Divider className="my-3"><Text type="secondary" className="text-xs">🎫 Event Details</Text></Divider>
+                                        <Divider className="my-3"><Text type="secondary" className="text-xs">ðŸŽ« Event Details</Text></Divider>
                                         <Row gutter={16}>
                                             <Col span={12}><Form.Item name={['metadata', 'venue']} label="Venue"><Input placeholder="e.g. Bali Convention Center" style={{ borderRadius: 10 }} /></Form.Item></Col>
                                             <Col span={12}><Form.Item name={['metadata', 'eventDate']} label="Event Date"><Input type="date" style={{ borderRadius: 10 }} /></Form.Item></Col>
@@ -402,7 +404,7 @@ export default function ProductsPage() {
                                     </>)}
 
                                     {selectedType === 'scheduled' && (<>
-                                        <Divider className="my-3"><Text type="secondary" className="text-xs">🗓️ Route Details</Text></Divider>
+                                        <Divider className="my-3"><Text type="secondary" className="text-xs">ðŸ—“ï¸ Route Details</Text></Divider>
                                         <Row gutter={16}>
                                             <Col span={12}><Form.Item name={['metadata', 'origin']} label="Origin"><Input placeholder="e.g. Sanur Harbor" style={{ borderRadius: 10 }} /></Form.Item></Col>
                                             <Col span={12}><Form.Item name={['metadata', 'destination']} label="Destination"><Input placeholder="e.g. Nusa Penida" style={{ borderRadius: 10 }} /></Form.Item></Col>
@@ -415,16 +417,16 @@ export default function ProductsPage() {
                                     </>)}
 
                                     {selectedType === 'rental' && (<>
-                                        <Divider className="my-3"><Text type="secondary" className="text-xs">🔑 Rental Details</Text></Divider>
+                                        <Divider className="my-3"><Text type="secondary" className="text-xs">ðŸ”‘ Rental Details</Text></Divider>
                                         <Row gutter={16}>
                                             <Col span={8}><Form.Item name={['metadata', 'rentalPeriod']} label="Period"><Select options={[{ value: 'hourly', label: 'Hourly' }, { value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' }, { value: 'monthly', label: 'Monthly' }]} style={{ borderRadius: 10 }} /></Form.Item></Col>
-                                            <Col span={8}><Form.Item name={['metadata', 'condition']} label="Condition"><Select options={[{ value: 'excellent', label: '✨ Excellent' }, { value: 'good', label: '👍 Good' }, { value: 'fair', label: '👌 Fair' }]} style={{ borderRadius: 10 }} /></Form.Item></Col>
+                                            <Col span={8}><Form.Item name={['metadata', 'condition']} label="Condition"><Select options={[{ value: 'excellent', label: 'âœ¨ Excellent' }, { value: 'good', label: 'ðŸ‘ Good' }, { value: 'fair', label: 'ðŸ‘Œ Fair' }]} style={{ borderRadius: 10 }} /></Form.Item></Col>
                                             <Col span={8}><Form.Item name={['metadata', 'depositAmount']} label="Deposit (IDR)"><InputNumber min={0} style={{ width: '100%', borderRadius: 10 }} formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={v => v!.replace(/,/g, '') as any} /></Form.Item></Col>
                                         </Row>
                                     </>)}
 
                                     {selectedType === 'physical' && (<>
-                                        <Divider className="my-3"><Text type="secondary" className="text-xs">📦 Physical Details</Text></Divider>
+                                        <Divider className="my-3"><Text type="secondary" className="text-xs">ðŸ“¦ Physical Details</Text></Divider>
                                         <Row gutter={16}>
                                             <Col span={8}><Form.Item name="weight" label="Weight"><InputNumber min={0} placeholder="0" style={{ width: '100%', borderRadius: 10 }} /></Form.Item></Col>
                                             <Col span={8}><Form.Item name="weightUnit" label="Unit"><Select options={[{ value: 'kg', label: 'Kilogram' }, { value: 'g', label: 'Gram' }, { value: 'lb', label: 'Pound' }]} style={{ borderRadius: 10 }} /></Form.Item></Col>
@@ -448,12 +450,12 @@ export default function ProductsPage() {
                 {/* Footer */}
                 <div style={{ padding: '12px 28px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     {addStep === 1 ? (
-                        <Button onClick={() => setAddStep(0)} style={{ borderRadius: 8 }}>← Back</Button>
+                        <Button onClick={() => setAddStep(0)} style={{ borderRadius: 8 }}>â† Back</Button>
                     ) : <div />}
                     {addStep === 0 ? (
                         <Button type="primary" disabled={!selectedType} onClick={() => setAddStep(1)}
                             style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, border: 'none', borderRadius: 8, minWidth: 120 }}>
-                            Continue →
+                            Continue â†’
                         </Button>
                     ) : (
                         <Button type="primary" onClick={handleAddProduct} loading={saving}
@@ -465,7 +467,7 @@ export default function ProductsPage() {
                 </div>
             </Modal>
 
-            {/* ═══ Edit Product Modal ═══ */}
+            {/* â•â•â• Edit Product Modal â•â•â• */}
             <Modal
                 title={null}
                 open={editModalOpen}
@@ -481,13 +483,13 @@ export default function ProductsPage() {
                             <div className="flex items-center gap-3">
                                 <div style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
                                     background: `${SELLABLE_TYPES.find(t => t.value === editingProduct.fulfillmentType)?.color || '#6366f1'}15` }}>
-                                    {SELLABLE_TYPES.find(t => t.value === editingProduct.fulfillmentType)?.icon || '📦'}
+                                    {SELLABLE_TYPES.find(t => t.value === editingProduct.fulfillmentType)?.icon || 'ðŸ“¦'}
                                 </div>
                                 <div>
                                     <Title level={4} className="!m-0" style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                                         Edit Product
                                     </Title>
-                                    <Text type="secondary" className="text-xs">{editingProduct.sku || 'No SKU'} · {editingProduct.fulfillmentType}</Text>
+                                    <Text type="secondary" className="text-xs">{editingProduct.sku || 'No SKU'} Â· {editingProduct.fulfillmentType}</Text>
                                 </div>
                             </div>
                         </div>
@@ -546,7 +548,7 @@ export default function ProductsPage() {
                                                     </Col>
                                                     <Col span={8} style={{ textAlign: 'center' }}>
                                                         <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Margin</Text>
-                                                        <Text strong style={{ color: isProfit ? '#16a34a' : '#dc2626' }}>{cost > 0 ? `${pct.toFixed(1)}%` : '—'}</Text>
+                                                        <Text strong style={{ color: isProfit ? '#16a34a' : '#dc2626' }}>{cost > 0 ? `${pct.toFixed(1)}%` : 'â€”'}</Text>
                                                     </Col>
                                                 </Row>
                                             </Card>
@@ -563,9 +565,9 @@ export default function ProductsPage() {
                                     <Col span={12}>
                                         <Form.Item name="status" label="Status">
                                             <Select style={{ borderRadius: 10 }} options={[
-                                                { value: 'active', label: '🟢 Active' },
-                                                { value: 'draft', label: '🟡 Draft' },
-                                                { value: 'archived', label: '⚪ Archived' },
+                                                { value: 'active', label: 'ðŸŸ¢ Active' },
+                                                { value: 'draft', label: 'ðŸŸ¡ Draft' },
+                                                { value: 'archived', label: 'âšª Archived' },
                                             ]} />
                                         </Form.Item>
                                     </Col>
@@ -577,7 +579,7 @@ export default function ProductsPage() {
 
                                 {/* Type-specific fields in edit */}
                                 {editingProduct?.fulfillmentType === 'ticket' && (<>
-                                    <Divider className="my-3"><Text type="secondary" className="text-xs">🎫 Event Details</Text></Divider>
+                                    <Divider className="my-3"><Text type="secondary" className="text-xs">ðŸŽ« Event Details</Text></Divider>
                                     <Row gutter={16}>
                                         <Col span={12}><Form.Item name={['metadata', 'venue']} label="Venue"><Input placeholder="Venue name" style={{ borderRadius: 10 }} /></Form.Item></Col>
                                         <Col span={12}><Form.Item name={['metadata', 'eventDate']} label="Event Date"><Input type="date" style={{ borderRadius: 10 }} /></Form.Item></Col>
@@ -589,7 +591,7 @@ export default function ProductsPage() {
                                 </>)}
 
                                 {editingProduct?.fulfillmentType === 'scheduled' && (<>
-                                    <Divider className="my-3"><Text type="secondary" className="text-xs">🗓️ Route</Text></Divider>
+                                    <Divider className="my-3"><Text type="secondary" className="text-xs">ðŸ—“ï¸ Route</Text></Divider>
                                     <Row gutter={16}>
                                         <Col span={12}><Form.Item name={['metadata', 'origin']} label="Origin"><Input style={{ borderRadius: 10 }} /></Form.Item></Col>
                                         <Col span={12}><Form.Item name={['metadata', 'destination']} label="Destination"><Input style={{ borderRadius: 10 }} /></Form.Item></Col>
@@ -597,10 +599,10 @@ export default function ProductsPage() {
                                 </>)}
 
                                 {editingProduct?.fulfillmentType === 'rental' && (<>
-                                    <Divider className="my-3"><Text type="secondary" className="text-xs">🔑 Rental</Text></Divider>
+                                    <Divider className="my-3"><Text type="secondary" className="text-xs">ðŸ”‘ Rental</Text></Divider>
                                     <Row gutter={16}>
                                         <Col span={8}><Form.Item name={['metadata', 'rentalPeriod']} label="Period"><Select options={[{ value: 'hourly', label: 'Hourly' }, { value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' }, { value: 'monthly', label: 'Monthly' }]} style={{ borderRadius: 10 }} /></Form.Item></Col>
-                                        <Col span={8}><Form.Item name={['metadata', 'condition']} label="Condition"><Select options={[{ value: 'excellent', label: '✨ Excellent' }, { value: 'good', label: '👍 Good' }, { value: 'fair', label: '👌 Fair' }]} style={{ borderRadius: 10 }} /></Form.Item></Col>
+                                        <Col span={8}><Form.Item name={['metadata', 'condition']} label="Condition"><Select options={[{ value: 'excellent', label: 'âœ¨ Excellent' }, { value: 'good', label: 'ðŸ‘ Good' }, { value: 'fair', label: 'ðŸ‘Œ Fair' }]} style={{ borderRadius: 10 }} /></Form.Item></Col>
                                         <Col span={8}><Form.Item name={['metadata', 'depositAmount']} label="Deposit"><InputNumber min={0} style={{ width: '100%', borderRadius: 10 }} formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={v => v!.replace(/,/g, '') as any} /></Form.Item></Col>
                                     </Row>
                                 </>)}
@@ -623,7 +625,7 @@ export default function ProductsPage() {
                 )}
             </Modal>
 
-            {/* ═══ Product Detail Drawer ═══ */}
+            {/* â•â•â• Product Detail Drawer â•â•â• */}
             <Drawer
                 title={null}
                 open={!!detailDrawer}
@@ -641,7 +643,7 @@ export default function ProductsPage() {
                             <div style={{ padding: '24px 24px 16px', background: `linear-gradient(135deg, ${ft?.color || '#6366f1'}08, ${ft?.color || '#6366f1'}03)`, borderBottom: '1px solid #f0f0f0' }}>
                                 <div className="flex items-center gap-4 mb-3">
                                     <div style={{ width: 52, height: 52, borderRadius: 14, background: `${ft?.color || '#6366f1'}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
-                                        {ft?.icon || '📦'}
+                                        {ft?.icon || 'ðŸ“¦'}
                                     </div>
                                     <div className="flex-1">
                                         <Title level={4} className="!m-0">{detailDrawer.name}</Title>
@@ -653,7 +655,7 @@ export default function ProductsPage() {
                                 </div>
                                 <div className="flex gap-2 flex-wrap">
                                     <Tag color={ft?.color || 'blue'} className="rounded-full">{ft?.label || detailDrawer.fulfillmentType}</Tag>
-                                    {detailDrawer.brand && <Tag className="rounded-full">🏷️ {detailDrawer.brand}</Tag>}
+                                    {detailDrawer.brand && <Tag className="rounded-full">ðŸ·ï¸ {detailDrawer.brand}</Tag>}
                                     {(detailDrawer.tags || []).map((t: string) => <Tag key={t} className="rounded-full text-xs">{t}</Tag>)}
                                 </div>
                             </div>
@@ -677,7 +679,7 @@ export default function ProductsPage() {
                                         <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: profit >= 0 ? '#f0fdf4' : '#fef2f2' }}>
                                             <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Margin</Text>
                                             <Text strong style={{ fontSize: 14, color: profit >= 0 ? '#16a34a' : '#dc2626' }}>
-                                                {(detailDrawer.costPrice || 0) > 0 ? `${marginPct.toFixed(0)}%` : '—'}
+                                                {(detailDrawer.costPrice || 0) > 0 ? `${marginPct.toFixed(0)}%` : 'â€”'}
                                             </Text>
                                         </Card>
                                     </Col>
@@ -685,10 +687,10 @@ export default function ProductsPage() {
 
                                 {/* Details */}
                                 <Descriptions column={2} size="small" bordered style={{ borderRadius: 10, marginBottom: 16 }}>
-                                    <Descriptions.Item label="Type">{detailDrawer.itemType || '—'}</Descriptions.Item>
+                                    <Descriptions.Item label="Type">{detailDrawer.itemType || 'â€”'}</Descriptions.Item>
                                     <Descriptions.Item label="Tax">{detailDrawer.taxRate || 0}%</Descriptions.Item>
                                     <Descriptions.Item label="Currency">{detailDrawer.currency || 'IDR'}</Descriptions.Item>
-                                    <Descriptions.Item label="UOM">{detailDrawer.primaryUom || '—'}</Descriptions.Item>
+                                    <Descriptions.Item label="UOM">{detailDrawer.primaryUom || 'â€”'}</Descriptions.Item>
                                 </Descriptions>
 
                                 {detailDrawer.description && (
@@ -702,13 +704,13 @@ export default function ProductsPage() {
                                 {detailDrawer.metadata && Object.keys(detailDrawer.metadata).length > 0 && (
                                     <Card size="small" style={{ borderRadius: 10, background: `${ft?.color || '#6366f1'}05`, border: `1px solid ${ft?.color || '#6366f1'}15`, marginBottom: 16 }}>
                                         <Text type="secondary" className="text-xs uppercase tracking-wider block mb-2">
-                                            {detailDrawer.fulfillmentType === 'ticket' ? '🎫 Event Info' : detailDrawer.fulfillmentType === 'scheduled' ? '🗓️ Route Info' : detailDrawer.fulfillmentType === 'rental' ? '🔑 Rental Info' : '📋 Details'}
+                                            {detailDrawer.fulfillmentType === 'ticket' ? 'ðŸŽ« Event Info' : detailDrawer.fulfillmentType === 'scheduled' ? 'ðŸ—“ï¸ Route Info' : detailDrawer.fulfillmentType === 'rental' ? 'ðŸ”‘ Rental Info' : 'ðŸ“‹ Details'}
                                         </Text>
                                         <Descriptions column={2} size="small">
                                             {detailDrawer.metadata.venue && <Descriptions.Item label="Venue">{detailDrawer.metadata.venue}</Descriptions.Item>}
                                             {detailDrawer.metadata.eventDate && <Descriptions.Item label="Date">{detailDrawer.metadata.eventDate}</Descriptions.Item>}
                                             {detailDrawer.metadata.capacity && <Descriptions.Item label="Capacity">{detailDrawer.metadata.capacity}</Descriptions.Item>}
-                                            {detailDrawer.metadata.origin && <Descriptions.Item label="Route">{detailDrawer.metadata.origin} → {detailDrawer.metadata.destination}</Descriptions.Item>}
+                                            {detailDrawer.metadata.origin && <Descriptions.Item label="Route">{detailDrawer.metadata.origin} â†’ {detailDrawer.metadata.destination}</Descriptions.Item>}
                                             {detailDrawer.metadata.durationMinutes && <Descriptions.Item label="Duration">{detailDrawer.metadata.durationMinutes} min</Descriptions.Item>}
                                             {detailDrawer.metadata.vehicleName && <Descriptions.Item label="Vehicle">{detailDrawer.metadata.vehicleName}</Descriptions.Item>}
                                             {detailDrawer.metadata.rentalPeriod && <Descriptions.Item label="Period"><Tag className="rounded-full text-xs capitalize">{detailDrawer.metadata.rentalPeriod}</Tag></Descriptions.Item>}
@@ -739,3 +741,5 @@ export default function ProductsPage() {
         </CMSLayout>
     );
 }
+
+

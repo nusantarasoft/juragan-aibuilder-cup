@@ -1,14 +1,16 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Table, Tag, Button, Modal, Form, Input, InputNumber, Select, Space, message, Tabs, Progress, Drawer, Row, Col, Card, Typography } from 'antd';
-import { PlusOutlined, ReloadOutlined, ScheduleOutlined, CheckCircleOutlined, ClockCircleOutlined, TeamOutlined, DollarOutlined, SearchOutlined, SendOutlined, LoginOutlined, CloseCircleOutlined, EyeOutlined, UserOutlined } from '@ant-design/icons';
+import { Table, Tag, Button, Modal, Form, Input, InputNumber, Select, Space, message, Tabs, Progress, Drawer, Row, Col, Card, Typography , Tooltip } from 'antd';
+import { PlusOutlined, ReloadOutlined, ScheduleOutlined, CheckCircleOutlined, ClockCircleOutlined, TeamOutlined, DollarOutlined, SearchOutlined, SendOutlined, LoginOutlined, CloseCircleOutlined, EyeOutlined, UserOutlined , FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
 import { inventoryService, BookingSchedule, BookingOccurrence, Booking, BookingPassenger, BookingStatsType, InvItem } from '@/lib/inventoryService';
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
@@ -36,6 +38,7 @@ const BOOKING_FIELDS: FieldDef[] = [
 
 export default function BookingsPage() {
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [schedules, setSchedules] = useState<BookingSchedule[]>([]);
     const [occurrences, setOccurrences] = useState<BookingOccurrence[]>([]);
     const [bookings, setBookings] = useState<Booking[]>([]);
@@ -129,42 +132,42 @@ export default function BookingsPage() {
         { title: 'Code', dataIndex: 'scheduleCode', render: (v: string) => <Tag style={{ fontFamily: 'monospace' }}>{v}</Tag> },
         { title: 'Route / Event', dataIndex: 'routeName', ellipsis: true },
         { title: 'Origin', dataIndex: 'origin', ellipsis: true },
-        { title: 'Destination', dataIndex: 'destination', ellipsis: true, render: (v: string) => v || '—' },
-        { title: 'Time', render: (_: any, r: BookingSchedule) => `${r.departureTime || '—'} → ${r.arrivalTime || '—'}` },
-        { title: 'Vessel', dataIndex: 'vehicleName', render: (v: string) => v || '—' },
+        { title: 'Destination', dataIndex: 'destination', ellipsis: true, render: (v: string) => v || 'â€”' },
+        { title: 'Time', render: (_: any, r: BookingSchedule) => `${r.departureTime || 'â€”'} â†’ ${r.arrivalTime || 'â€”'}` },
+        { title: 'Vessel', dataIndex: 'vehicleName', render: (v: string) => v || 'â€”' },
         { title: 'Capacity', dataIndex: 'capacity', render: (v: number) => <strong>{v}</strong> },
         { title: 'Product', dataIndex: 'itemId', width: 160, ellipsis: true, render: (v: string) => {
-            if (!v) return <Tag color="default">—</Tag>;
+            if (!v) return <Tag color="default">â€”</Tag>;
             const item = items.find(i => i.id === v);
-            return <Tag color="purple" style={{ fontSize: 11, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>🎫 {item?.name || 'Linked'}</Tag>;
+            return <Tag color="purple" style={{ fontSize: 11, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>ðŸŽ« {item?.name || 'Linked'}</Tag>;
         }},
         { title: 'Economy', dataIndex: 'priceEconomy', render: fmt },
         { title: 'Business', dataIndex: 'priceBusiness', render: fmt },
-        { title: 'VIP', dataIndex: 'priceVip', render: (v: number) => v ? fmt(v) : '—' },
+        { title: 'VIP', dataIndex: 'priceVip', render: (v: number) => v ? fmt(v) : 'â€”' },
         { title: 'Status', dataIndex: 'status', render: (v: string) => <Tag color={STATUS_COLORS[v] || 'default'}>{v}</Tag> },
     ];
 
     const occurrenceColumns = [
         { title: 'Route', render: (_: any, r: BookingOccurrence) => {
             const s = schedules.find(s => s.id === r.scheduleId);
-            return <span style={{ fontWeight: 500 }}>{s?.routeName || '—'}</span>;
+            return <span style={{ fontWeight: 500 }}>{s?.routeName || 'â€”'}</span>;
         }},
         { title: 'Date', dataIndex: 'departureDate', render: (v: string) => new Date(v).toLocaleDateString('id-ID', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) },
-        { title: 'Time', dataIndex: 'departureTime', render: (v: string) => v || '—' },
+        { title: 'Time', dataIndex: 'departureTime', render: (v: string) => v || 'â€”' },
         { title: 'Capacity', render: (_: any, r: BookingOccurrence) => {
             const isFull = (r.bookedCount || 0) >= (r.totalCapacity || 1);
             return (
                 <Space direction="vertical" size={0} style={{ width: 120 }}>
                     <span>{r.bookedCount || 0}/{r.totalCapacity || 0} booked</span>
                     {isFull
-                        ? <Tag color="red" style={{ fontWeight: 700, margin: '4px 0' }}>🚫 SOLD OUT</Tag>
+                        ? <Tag color="red" style={{ fontWeight: 700, margin: '4px 0' }}>ðŸš« SOLD OUT</Tag>
                         : <Progress percent={Math.round(((r.bookedCount || 0) / (r.totalCapacity || 1)) * 100)} size="small"
                             strokeColor={(r.bookedCount || 0) / (r.totalCapacity || 1) > 0.8 ? '#f5222d' : '#1890ff'} />
                     }
                 </Space>
             );
         }},
-        { title: 'Check‑ins', render: (_: any, r: BookingOccurrence) => `${r.checkedInCount || 0}/${r.bookedCount || 0}` },
+        { title: 'Checkâ€‘ins', render: (_: any, r: BookingOccurrence) => `${r.checkedInCount || 0}/${r.bookedCount || 0}` },
         { title: 'Status', dataIndex: 'status', render: (v: string, r: BookingOccurrence) => {
             const isFull = (r.bookedCount || 0) >= (r.totalCapacity || 1);
             return (
@@ -193,11 +196,11 @@ export default function BookingsPage() {
         { title: 'Customer', dataIndex: 'customerName' },
         { title: 'Route', render: (_: any, r: Booking) => {
             const s = schedules.find(s => s.id === r.scheduleId);
-            return s?.routeName || '—';
+            return s?.routeName || 'â€”';
         }},
         { title: 'Date', render: (_: any, r: Booking) => {
             const o = occurrences.find(o => o.id === r.occurrenceId);
-            return o ? new Date(o.departureDate).toLocaleDateString('id-ID') : '—';
+            return o ? new Date(o.departureDate).toLocaleDateString('id-ID') : 'â€”';
         }},
         { title: 'Pax', dataIndex: 'passengerCount', render: (v: number) => <strong>{v}</strong> },
         { title: 'Class', dataIndex: 'class', render: (v: string) => <Tag color={v === 'vip' ? 'gold' : v === 'business' ? 'blue' : 'default'}>{v?.toUpperCase()}</Tag> },
@@ -245,7 +248,7 @@ export default function BookingsPage() {
                                     filterOption={(input, option) => (option?.label as string || '').toLowerCase().includes(input.toLowerCase())}
                                     onChange={(v) => { setSelectedScheduleId(v); bookingForm.setFieldsValue({ occurrenceId: undefined }); recalcTotal(); }}
                                     options={schedules.filter(s => s.status === 'active').map(s => ({
-                                        value: s.id, label: `${s.scheduleCode} — ${s.routeName} (${s.origin} → ${s.destination || '—'})`
+                                        value: s.id, label: `${s.scheduleCode} â€” ${s.routeName} (${s.origin} â†’ ${s.destination || 'â€”'})`
                                     }))} />
                             </Form.Item>
                         </Col>
@@ -256,7 +259,7 @@ export default function BookingsPage() {
                                 <Select placeholder={selectedScheduleId ? 'Select departure' : 'Select a schedule first'} disabled={!selectedScheduleId}
                                     options={filteredOccurrences.map(o => ({
                                         value: o.id,
-                                        label: `${new Date(o.departureDate).toLocaleDateString('id-ID')} ${o.departureTime || ''} — ${o.bookedCount || 0}/${o.totalCapacity || 0} booked`
+                                        label: `${new Date(o.departureDate).toLocaleDateString('id-ID')} ${o.departureTime || ''} â€” ${o.bookedCount || 0}/${o.totalCapacity || 0} booked`
                                     }))} />
                             </Form.Item>
                         </Col>
@@ -356,15 +359,15 @@ export default function BookingsPage() {
                 <Card size="small" style={{ flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)' }}>
                     {/* Tabs */}
                     <Tabs activeKey={tab} onChange={setTab} items={[
-                        { key: 'schedules', label: `🗓️ Schedules (${schedules.length})`, children: (
+                        { key: 'schedules', label: `ðŸ—“ï¸ Schedules (${schedules.length})`, children: (
                             <Table dataSource={filteredSchedules} columns={scheduleColumns} rowKey="id" size="middle" loading={loading}
                                 pagination={{ pageSize: 10 }} scroll={{ x: 1200 }} />
                         )},
-                        { key: 'departures', label: `🚢 Departures (${occurrences.length})`, children: (
+                        { key: 'departures', label: `ðŸš¢ Departures (${occurrences.length})`, children: (
                             <Table dataSource={occurrences} columns={occurrenceColumns} rowKey="id" size="middle" loading={loading}
                                 pagination={{ pageSize: 10 }} scroll={{ x: 900 }} />
                         )},
-                        { key: 'bookings', label: `🎫 Bookings (${bookings.length})`, children: (
+                        { key: 'bookings', label: `ðŸŽ« Bookings (${bookings.length})`, children: (
                             <Table dataSource={filteredBookings} columns={bookingColumns} rowKey="id" size="middle" loading={loading}
                                 pagination={{ pageSize: 10 }} scroll={{ x: 1100 }} />
                         )},
@@ -372,7 +375,7 @@ export default function BookingsPage() {
                 </Card>
 
                 {/* Passenger Drawer */}
-                <Drawer title={`Passengers — ${selectedBooking?.bookingCode}`} open={!!selectedBooking} onClose={() => setSelectedBooking(null)} width={520}>
+                <Drawer title={`Passengers â€” ${selectedBooking?.bookingCode}`} open={!!selectedBooking} onClose={() => setSelectedBooking(null)} width={520}>
                     {selectedBooking && (
                         <div>
                             <div style={{ marginBottom: 16, padding: 12, background: '#f8f9fa', borderRadius: 8 }}>
@@ -384,17 +387,17 @@ export default function BookingsPage() {
                                 columns={[
                                     { title: '#', render: (_: any, __: any, i: number) => i + 1, width: 40 },
                                     { title: 'Name', dataIndex: 'name' },
-                                    { title: 'ID Number', dataIndex: 'idNumber', render: (v: string) => v ? <Tag style={{ fontFamily: 'monospace', fontSize: 11 }}>{v}</Tag> : '—' },
-                                    { title: 'Nationality', dataIndex: 'nationality', render: (v: string) => v || '—' },
+                                    { title: 'ID Number', dataIndex: 'idNumber', render: (v: string) => v ? <Tag style={{ fontFamily: 'monospace', fontSize: 11 }}>{v}</Tag> : 'â€”' },
+                                    { title: 'Nationality', dataIndex: 'nationality', render: (v: string) => v || 'â€”' },
                                     { title: 'Class', dataIndex: 'class', render: (v: string) => <Tag>{v?.toUpperCase()}</Tag> },
-                                    { title: 'Notes', dataIndex: 'notes', render: (v: string) => v || '—' },
+                                    { title: 'Notes', dataIndex: 'notes', render: (v: string) => v || 'â€”' },
                                 ]}
                             />
                         </div>
                     )}
                 </Drawer>
 
-                {/* ─── Booking SteppedFormModal ──────────────────────── */}
+                {/* â”€â”€â”€ Booking SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 <SteppedFormModal
                     open={bookingModalOpen}
                     onCancel={() => { setBookingModalOpen(false); bookingForm.resetFields(); setSelectedScheduleId(undefined); }}
@@ -413,3 +416,5 @@ export default function BookingsPage() {
         </CMSLayout>
     );
 }
+
+

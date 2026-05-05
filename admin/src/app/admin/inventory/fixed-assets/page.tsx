@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -13,10 +13,11 @@ import {
     DeleteOutlined, EditOutlined, EyeOutlined,
     ToolOutlined, DollarOutlined, ExclamationCircleOutlined,
     CheckCircleOutlined, WarningOutlined, CloseCircleOutlined,
-    ThunderboltOutlined, CalendarOutlined
-} from "@ant-design/icons";
+    ThunderboltOutlined, CalendarOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import {
     inventoryService, FixedAsset, FixedAssetStatsType
@@ -56,7 +57,7 @@ const DEP_METHODS = [
 ];
 
 const fmtCurrency = (v?: number) => v != null ? `Rp ${v.toLocaleString()}` : '-';
-const fmtDate = (v?: string) => v ? new Date(v).toLocaleDateString() : '—';
+const fmtDate = (v?: string) => v ? new Date(v).toLocaleDateString() : 'â€”';
 
 const ASSET_FIELDS: FieldDef[] = [
     { name: 'assetName', label: 'Asset Name', required: true },
@@ -79,6 +80,7 @@ const ASSET_FIELDS: FieldDef[] = [
 export default function FixedAssetsPage() {
     const [stats, setStats] = useState<FixedAssetStatsType | null>(null);
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [assets, setAssets] = useState<FixedAsset[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -189,7 +191,7 @@ export default function FixedAssetsPage() {
         }
     };
 
-    // ─── KPI Cards ─────────────────────────────────
+    // â”€â”€â”€ KPI Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const kpiCards = [
         { title: 'Total Assets', value: stats?.totalAssets || 0, icon: <CarOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { title: 'Active', value: stats?.active || 0, icon: <CheckCircleOutlined />, color: '#10b981' },
@@ -199,12 +201,12 @@ export default function FixedAssetsPage() {
         { title: 'Current Value', value: fmtCurrency(stats?.totalCurrentValue), icon: <DollarOutlined />, color: '#059669' },
     ];
 
-    // ─── Depreciation Bar ──────────────────────────
+    // â”€â”€â”€ Depreciation Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const depPct = stats && stats.totalPurchaseValue
         ? Math.round((stats.totalAccumulatedDep / stats.totalPurchaseValue) * 100)
         : 0;
 
-    // ─── Columns ───────────────────────────────────
+    // â”€â”€â”€ Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const columns = [
         {
             title: 'Asset #', dataIndex: 'assetNumber', width: 140,
@@ -220,7 +222,7 @@ export default function FixedAssetsPage() {
         },
         {
             title: 'Category', dataIndex: 'assetCategory', width: 120,
-            render: (v: string) => v ? <Tag className="rounded-full text-xs capitalize">{v}</Tag> : '—',
+            render: (v: string) => v ? <Tag className="rounded-full text-xs capitalize">{v}</Tag> : 'â€”',
         },
         {
             title: 'Purchase Price', dataIndex: 'purchasePrice', width: 140,
@@ -246,7 +248,7 @@ export default function FixedAssetsPage() {
         },
         {
             title: 'Condition', dataIndex: 'condition', width: 100,
-            render: (v: string) => v ? <Tag color={CONDITIONS[v] || 'default'} className="rounded-full text-xs capitalize">{v}</Tag> : '—',
+            render: (v: string) => v ? <Tag color={CONDITIONS[v] || 'default'} className="rounded-full text-xs capitalize">{v}</Tag> : 'â€”',
         },
         {
             title: 'Location', dataIndex: 'location', width: 130, ellipsis: true,
@@ -528,7 +530,7 @@ export default function FixedAssetsPage() {
                 </Card>
             </div>
 
-            {/* ─── Stepped Form Modal for Create/Edit ────── */}
+            {/* â”€â”€â”€ Stepped Form Modal for Create/Edit â”€â”€â”€â”€â”€â”€ */}
             <SteppedFormModal
                 open={modalOpen}
                 onCancel={() => { setModalOpen(false); setEditingAsset(null); form.resetFields(); }}
@@ -546,7 +548,7 @@ export default function FixedAssetsPage() {
                 initialValues={editingAsset || undefined}
             />
 
-            {/* ─── Dispose Modal ─────────────────────────── */}
+            {/* â”€â”€â”€ Dispose Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <Modal title="Dispose Asset" open={disposeModalOpen}
                 onCancel={() => setDisposeModalOpen(false)} onOk={handleDispose}
                 okText="Dispose" okButtonProps={{ danger: true }}>
@@ -565,7 +567,7 @@ export default function FixedAssetsPage() {
                 </Form>
             </Modal>
 
-            {/* ─── Detail Drawer ─────────────────────────── */}
+            {/* â”€â”€â”€ Detail Drawer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <Drawer title={selectedAsset?.assetName || 'Asset Detail'} open={drawerOpen}
                 onClose={() => setDrawerOpen(false)} width={520}
                 extra={selectedAsset && (
@@ -582,10 +584,10 @@ export default function FixedAssetsPage() {
                             <Descriptions.Item label="Category" span={1}>
                                 <Tag className="capitalize">{selectedAsset.assetCategory || 'N/A'}</Tag>
                             </Descriptions.Item>
-                            <Descriptions.Item label="Serial #" span={1}>{selectedAsset.serialNumber || '—'}</Descriptions.Item>
+                            <Descriptions.Item label="Serial #" span={1}>{selectedAsset.serialNumber || 'â€”'}</Descriptions.Item>
                             <Descriptions.Item label="Condition" span={1}>
                                 <Tag color={CONDITIONS[selectedAsset.condition || ''] || 'default'} className="capitalize">
-                                    {selectedAsset.condition || '—'}
+                                    {selectedAsset.condition || 'â€”'}
                                 </Tag>
                             </Descriptions.Item>
                             <Descriptions.Item label="Status" span={2}>
@@ -609,10 +611,10 @@ export default function FixedAssetsPage() {
                         <Divider className="!my-3"><Text type="secondary" className="text-xs">Depreciation</Text></Divider>
                         <Descriptions column={2} size="small" bordered>
                             <Descriptions.Item label="Method" span={1}>
-                                {selectedAsset.depreciationMethod?.replace(/_/g, ' ') || '—'}
+                                {selectedAsset.depreciationMethod?.replace(/_/g, ' ') || 'â€”'}
                             </Descriptions.Item>
                             <Descriptions.Item label="Useful Life" span={1}>
-                                {selectedAsset.usefulLifeMonths ? `${selectedAsset.usefulLifeMonths} months` : '—'}
+                                {selectedAsset.usefulLifeMonths ? `${selectedAsset.usefulLifeMonths} months` : 'â€”'}
                             </Descriptions.Item>
                             <Descriptions.Item label="Accumulated Dep." span={1}>
                                 <Text style={{ color: '#ef4444' }}>{fmtCurrency(selectedAsset.accumulatedDepreciation)}</Text>
@@ -633,17 +635,17 @@ export default function FixedAssetsPage() {
 
                         <Divider className="!my-3"><Text type="secondary" className="text-xs">Location & Assignment</Text></Divider>
                         <Descriptions column={2} size="small" bordered>
-                            <Descriptions.Item label="Location">{selectedAsset.location || '—'}</Descriptions.Item>
-                            <Descriptions.Item label="Assigned To">{selectedAsset.assignedTo || '—'}</Descriptions.Item>
+                            <Descriptions.Item label="Location">{selectedAsset.location || 'â€”'}</Descriptions.Item>
+                            <Descriptions.Item label="Assigned To">{selectedAsset.assignedTo || 'â€”'}</Descriptions.Item>
                             <Descriptions.Item label="Warranty" span={2}>{fmtDate(selectedAsset.warrantyExpiry)}</Descriptions.Item>
                         </Descriptions>
 
                         <Divider className="!my-3"><Text type="secondary" className="text-xs">Maintenance</Text></Divider>
                         <Descriptions column={2} size="small" bordered>
-                            <Descriptions.Item label="Schedule">{selectedAsset.maintenanceSchedule || '—'}</Descriptions.Item>
+                            <Descriptions.Item label="Schedule">{selectedAsset.maintenanceSchedule || 'â€”'}</Descriptions.Item>
                             <Descriptions.Item label="Last Maint.">{fmtDate(selectedAsset.lastMaintenanceDate)}</Descriptions.Item>
                             <Descriptions.Item label="Next Maint.">{fmtDate(selectedAsset.nextMaintenanceDate)}</Descriptions.Item>
-                            <Descriptions.Item label="Insurance">{selectedAsset.insurancePolicy || '—'}</Descriptions.Item>
+                            <Descriptions.Item label="Insurance">{selectedAsset.insurancePolicy || 'â€”'}</Descriptions.Item>
                         </Descriptions>
 
                         {selectedAsset.status === 'disposed' && (
@@ -651,7 +653,7 @@ export default function FixedAssetsPage() {
                                 <Divider className="!my-3"><Text type="secondary" className="text-xs">Disposal</Text></Divider>
                                 <Descriptions column={2} size="small" bordered>
                                     <Descriptions.Item label="Disposed Date">{fmtDate(selectedAsset.disposedDate)}</Descriptions.Item>
-                                    <Descriptions.Item label="Method">{selectedAsset.disposalMethod || '—'}</Descriptions.Item>
+                                    <Descriptions.Item label="Method">{selectedAsset.disposalMethod || 'â€”'}</Descriptions.Item>
                                     <Descriptions.Item label="Disposal Value" span={2}>{fmtCurrency(selectedAsset.disposalValue)}</Descriptions.Item>
                                 </Descriptions>
                             </>
@@ -670,3 +672,5 @@ export default function FixedAssetsPage() {
         </CMSLayout>
     );
 }
+
+
