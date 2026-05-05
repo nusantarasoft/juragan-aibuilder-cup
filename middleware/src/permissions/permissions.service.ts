@@ -426,4 +426,41 @@ export class PermissionsService {
         if (error) throw error;
         return true;
     }
+
+    // ─── DATA EXPORT AUDIT LOGS ─────────────────────────────
+
+    async logDataExport(input: {
+        tenantId: string; userId: string; userEmail?: string; userName?: string;
+        exportType: string; module: string; fileName: string;
+        recordCount?: number; dateRangeStart?: string; dateRangeEnd?: string;
+        ipAddress?: string; userAgent?: string;
+    }) {
+        const { data, error } = await this.db.from('data_export_logs').insert({
+            tenant_id: input.tenantId,
+            user_id: input.userId,
+            user_email: input.userEmail || null,
+            user_name: input.userName || null,
+            export_type: input.exportType,
+            module: input.module,
+            file_name: input.fileName,
+            record_count: input.recordCount || 0,
+            date_range_start: input.dateRangeStart || null,
+            date_range_end: input.dateRangeEnd || null,
+            ip_address: input.ipAddress || null,
+            user_agent: input.userAgent || null,
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async getDataExportLogs(tenantId: string, limit = 50, offset = 0) {
+        const { data, error, count } = await this.db
+            .from('data_export_logs')
+            .select('*', { count: 'exact' })
+            .eq('tenant_id', tenantId)
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1);
+        if (error) throw error;
+        return { logs: data || [], total: count || 0 };
+    }
 }

@@ -4,6 +4,7 @@
  */
 
 import dayjs from 'dayjs';
+import { useAuthStore } from '@/store/useAuthStore';
 
 // ─── Types ─────────────────────────────────────────────
 export interface ExportColumn {
@@ -30,6 +31,43 @@ export interface ExportOptions {
     data: any[];
     /** Date range for the report header */
     dateRange?: { start: string; end: string };
+}
+
+// ─── Audit Log (fire-and-forget) ───────────────────────
+const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
+
+async function logExportAudit(exportType: 'pdf' | 'excel', options: ExportOptions): Promise<void> {
+    try {
+        const user = useAuthStore.getState().user;
+        if (!user) return;
+
+        await fetch(GRAPHQL_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                query: `mutation($input: LogDataExportInput!) {
+                    logDataExport(input: $input) { id }
+                }`,
+                variables: {
+                    input: {
+                        tenantId: '00000000-0000-0000-0000-000000000010',
+                        userId: user.id,
+                        userEmail: user.email,
+                        userName: user.fullName,
+                        exportType,
+                        module: options.fileName,
+                        fileName: `${options.fileName}_${dayjs().format('YYYY-MM-DD_HHmm')}.${exportType === 'excel' ? 'xlsx' : 'pdf'}`,
+                        recordCount: options.data.length,
+                        dateRangeStart: options.dateRange?.start || null,
+                        dateRangeEnd: options.dateRange?.end || null,
+                        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+                    },
+                },
+            }),
+        });
+    } catch {
+        // Non-blocking: never fail an export because of audit logging
+    }
 }
 
 // ─── Excel Export (XLSX) ───────────────────────────────
@@ -60,6 +98,9 @@ export async function exportToExcel(options: ExportOptions): Promise<void> {
 
     const dateStr = dayjs().format('YYYY-MM-DD_HHmm');
     XLSX.writeFile(wb, `${options.fileName}_${dateStr}.xlsx`);
+
+    // Audit log (fire-and-forget)
+    logExportAudit('excel', options);
 }
 
 // ─── PDF Export (jsPDF + autoTable) ────────────────────
@@ -129,4 +170,7 @@ export async function exportToPdf(options: ExportOptions): Promise<void> {
 
     const dateStr = dayjs().format('YYYY-MM-DD_HHmm');
     doc.save(`${options.fileName}_${dateStr}.pdf`);
+
+    // Audit log (fire-and-forget)
+    logExportAudit('pdf', options);
 }

@@ -6,13 +6,14 @@ import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
-    Table, Button, Tag, Space, Modal, Form, Input,
-    Card, Checkbox, message, Tooltip, Typography, Spin, Row, Col, Statistic,
+    Table, Button, Tag, Space, Modal, Form, Input, Switch,
+    Card, Checkbox, message, Tooltip, Typography, Spin, Row, Col, Statistic, Divider,
 } from "antd";
 import { motion } from "framer-motion";
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, SafetyOutlined,
     ReloadOutlined, IdcardOutlined, SettingOutlined,
+    FileExcelOutlined, FilePdfOutlined, CloudDownloadOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
@@ -48,6 +49,12 @@ const SYSTEM_OBJECTS = [
     "cases", "activities", "projects", "tasks", "teams",
 ];
 
+const EXPORT_PERMISSION_KEYS = [
+    { key: 'export.pdf', label: 'PDF Export', description: 'Allow exporting data as PDF reports', icon: <FilePdfOutlined style={{ color: '#ef4444' }} /> },
+    { key: 'export.excel', label: 'Excel Export', description: 'Allow exporting data as Excel spreadsheets', icon: <FileExcelOutlined style={{ color: '#22c55e' }} /> },
+    { key: 'export.bulk', label: 'Bulk Export', description: 'Allow exporting all records (no row limit)', icon: <CloudDownloadOutlined style={{ color: '#3b82f6' }} /> },
+];
+
 const PROFILE_FIELDS: FieldDef[] = [
     { name: "name", label: "Profile Name", required: true },
     { name: "description", label: "Description" },
@@ -65,6 +72,7 @@ export default function ProfilesPage() {
     const [objectPerms, setObjectPerms] = useState<ObjectPermission[]>([]);
     const [permsLoading, setPermsLoading] = useState(false);
     const [permsDrawerOpen, setPermsDrawerOpen] = useState(false);
+    const [exportPerms, setExportPerms] = useState<Record<string, boolean>>({});
 
     const loadProfiles = useCallback(async () => {
         setLoading(true);
@@ -101,6 +109,39 @@ export default function ProfilesPage() {
             message.error("Failed to load permissions: " + err.message);
         } finally {
             setPermsLoading(false);
+        }
+    };
+
+    const loadSystemPermissions = async (profileId: string) => {
+        try {
+            const data = await gql(`
+                query($profileId: String!) {
+                    profileSystemPermissions(profileId: $profileId) {
+                        id permissionKey isEnabled
+                    }
+                }
+            `, { profileId });
+            const perms: Record<string, boolean> = {};
+            (data.profileSystemPermissions || []).forEach((p: any) => {
+                perms[p.permissionKey] = p.isEnabled;
+            });
+            setExportPerms(perms);
+        } catch { /* ignore */ }
+    };
+
+    const handleExportPermChange = async (profileId: string, permissionKey: string, isEnabled: boolean) => {
+        try {
+            await gql(`
+                mutation($profileId: String!, $permissionKey: String!, $isEnabled: Boolean!) {
+                    upsertProfileSystemPermission(profileId: $profileId, permissionKey: $permissionKey, isEnabled: $isEnabled) {
+                        id permissionKey isEnabled
+                    }
+                }
+            `, { profileId, permissionKey, isEnabled });
+            setExportPerms(prev => ({ ...prev, [permissionKey]: isEnabled }));
+            message.success(`${permissionKey} ${isEnabled ? 'enabled' : 'disabled'}`);
+        } catch (err: any) {
+            message.error(err.message);
         }
     };
 
@@ -219,6 +260,7 @@ export default function ProfilesPage() {
                                 setSelectedProfile(record);
                                 setPermsDrawerOpen(true);
                                 loadObjectPermissions(record.id);
+                                loadSystemPermissions(record.id);
                             }}
                         />
                     </Tooltip>
@@ -349,13 +391,44 @@ export default function ProfilesPage() {
 
             {/* Object Permissions Modal — kept as separate specialized workflow */}
             <Modal
-                title={<Space><SafetyOutlined /><span>Object Permissions — {selectedProfile?.name}</span></Space>}
+                title={<Space><SafetyOutlined /><span>Permissions — {selectedProfile?.name}</span></Space>}
                 open={permsDrawerOpen}
                 onCancel={() => setPermsDrawerOpen(false)}
                 footer={null}
                 width={900}
             >
                 <Spin spinning={permsLoading}>
+                    {/* Export Permissions */}
+                    <Card
+                        size="small"
+                        title={<Space><CloudDownloadOutlined /> Export Permissions</Space>}
+                        style={{ marginBottom: 16, borderLeft: '3px solid #3b82f6' }}
+                    >
+                        <Row gutter={[16, 12]}>
+                            {EXPORT_PERMISSION_KEYS.map(ep => (
+                                <Col key={ep.key} xs={24} sm={8}>
+                                    <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                                        <Space>
+                                            {ep.icon}
+                                            <Text strong>{ep.label}</Text>
+                                        </Space>
+                                        <Text type="secondary" style={{ fontSize: 11 }}>{ep.description}</Text>
+                                        <Switch
+                                            checked={exportPerms[ep.key] ?? true}
+                                            onChange={(checked) => selectedProfile && handleExportPermChange(selectedProfile.id, ep.key, checked)}
+                                            checkedChildren="On"
+                                            unCheckedChildren="Off"
+                                            style={{ marginTop: 4 }}
+                                        />
+                                    </Space>
+                                </Col>
+                            ))}
+                        </Row>
+                    </Card>
+
+                    <Divider style={{ margin: '8px 0 12px' }} />
+
+                    {/* Object Permissions */}
                     <Table columns={permColumns} dataSource={permData} pagination={false} size="small" bordered scroll={{ y: 400 }} />
                 </Spin>
             </Modal>

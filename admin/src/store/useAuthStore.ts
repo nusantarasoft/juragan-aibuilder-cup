@@ -20,6 +20,17 @@ export const ROLE_LABELS: Record<AppRole, string> = {
     guest: 'Guest',
 };
 
+/** Map any role string from the backend to a valid AppRole */
+export function normalizeRole(raw?: string | null): AppRole {
+    if (!raw) return 'viewer';
+    const lower = raw.toLowerCase().replace(/[\s-]/g, '_');
+    if (lower in ROLE_LEVELS) return lower as AppRole;
+    // Common Supabase role mappings
+    if (lower === 'service_role' || lower === 'supabase_admin') return 'super_admin';
+    if (lower === 'authenticated') return 'viewer';
+    return 'viewer';
+}
+
 // ─── User Session ───────────────────────────────────────────────────────
 export interface AuthUser {
     id: string;
@@ -39,6 +50,9 @@ interface AuthState {
 
     /** Clear the current user session */
     clearUser: () => void;
+
+    /** Sync from AuthContext user data (convenience method) */
+    syncFromAuth: (userData: { id: string; email: string; fullName?: string; role?: string }) => void;
 
     /** Check if the current user meets the minimum role level */
     hasRole: (requiredRole: AppRole) => boolean;
@@ -74,27 +88,30 @@ const browserStorage = {
 
 const encryptedStorage = typeof window !== 'undefined' ? browserStorage : noopStorage;
 
-// ─── Default Admin User ────────────────────────────────────────────────
-// The admin panel is already auth-gated; default to admin role so
-// existing functionality is fully preserved until roles are configured.
-const DEFAULT_USER: AuthUser = {
-    id: 'system',
-    email: 'admin@nusantarasoft.com',
-    fullName: 'System Administrator',
-    role: 'admin',
-    tenantId: 'default',
-};
-
 // ─── Store ─────────────────────────────────────────────────────────────
 export const useAuthStore = create<AuthState>()(
     persist(
         (set, get) => ({
-            user: DEFAULT_USER,
-            isAuthenticated: true,
+            user: null,
+            isAuthenticated: false,
 
             setUser: (user) => set({ user, isAuthenticated: true }),
 
             clearUser: () => set({ user: null, isAuthenticated: false }),
+
+            syncFromAuth: (userData) => {
+                const role = normalizeRole(userData.role);
+                set({
+                    user: {
+                        id: userData.id,
+                        email: userData.email,
+                        fullName: userData.fullName || userData.email.split('@')[0],
+                        role,
+                        tenantId: 'default',
+                    },
+                    isAuthenticated: true,
+                });
+            },
 
             hasRole: (requiredRole) => {
                 const { user } = get();
