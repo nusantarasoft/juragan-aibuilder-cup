@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
@@ -719,8 +720,7 @@ export default function ProjectsPage() {
                 />
                 <Space>
                     <Button icon={<ReloadOutlined />} onClick={loadData}>Reload</Button>
-                    <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_projects', title: 'PM Projects Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'projectNumber' }, { header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip>
-                    <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_projects', title: 'PM Projects Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'projectNumber' }, { header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip>
+                    <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_projects', title: 'PM Projects Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'projectNumber' }, { header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_projects', title: 'PM Projects Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'projectNumber' }, { header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip></RbacGuard>
                     <Button icon={<PlusOutlined />} type="primary" onClick={handleAdd}>New Project</Button>
                 </Space>
             </div>

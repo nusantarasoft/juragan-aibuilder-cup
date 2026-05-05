@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
 import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography, Card, Statistic, Badge, Tooltip } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined, ShopOutlined, CheckCircleOutlined, AppstoreOutlined, FileProtectOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
@@ -126,8 +127,7 @@ export default function ItsmCatalogPage() {
                 headerTitle={<Space><ShopOutlined /> Service Catalog <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
-                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_catalog', title: 'Service Catalog', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Category', key: 'category' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
-                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_catalog', title: 'Service Catalog', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Category', key: 'category' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
+                    <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_catalog', title: 'Service Catalog', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Category', key: 'category' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_catalog', title: 'Service Catalog', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Category', key: 'category' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip></RbacGuard>,
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 120 }} value={filterStatus} onChange={setFilterStatus}
                         options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }, { value: 'deprecated', label: 'Deprecated' }]} />,
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>New Catalog Item</Button>,

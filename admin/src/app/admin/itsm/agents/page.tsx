@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
 import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Progress, InputNumber, Avatar, Typography, Card, Statistic, Badge, Tooltip } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined, TeamOutlined, UserOutlined, TrophyOutlined, ClockCircleOutlined, CheckCircleOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
@@ -126,8 +127,7 @@ export default function AgentsPage() {
                 headerTitle={<Space><TeamOutlined /> Service Desk Agents <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
-                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_agents', title: 'ITSM Agents', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Email', key: 'email' }, { header: 'Team', key: 'team' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
-                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_agents', title: 'ITSM Agents', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Email', key: 'email' }, { header: 'Team', key: 'team' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
+                    <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_agents', title: 'ITSM Agents', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Email', key: 'email' }, { header: 'Team', key: 'team' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_agents', title: 'ITSM Agents', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Email', key: 'email' }, { header: 'Team', key: 'team' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip></RbacGuard>,
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 130 }} value={filterStatus} onChange={setFilterStatus}
                         options={[{ value: 'active', label: 'Active' }, { value: 'on_leave', label: 'On Leave' }, { value: 'training', label: 'Training' }, { value: 'unavailable', label: 'Unavailable' }]} />,
                     <Select key="ft" placeholder="Team" allowClear style={{ width: 160 }} value={filterTeam} onChange={setFilterTeam}

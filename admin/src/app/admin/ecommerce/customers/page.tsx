@@ -5,6 +5,7 @@ import { Table, Tag, Card, Typography, Input, Button, Space, Tooltip, Row, Col, 
 import { UserOutlined, SearchOutlined, ReloadOutlined, PlusOutlined, DeleteOutlined, TeamOutlined, ShoppingCartOutlined, DollarOutlined, MailOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { inventoryService, EcomCustomer, EcomStatsType } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
@@ -215,8 +216,7 @@ export default function CustomersPage() {
                             value={search} onChange={e => setSearch(e.target.value)} allowClear style={{ maxWidth: 300, borderRadius: 8 }} size="small" />
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
-                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_customers', title: 'eCommerce Customers', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'firstName' }, { header: 'Surname', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'status' }], data: filtered })} /></Tooltip>
-                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_customers', title: 'eCommerce Customers', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'firstName' }, { header: 'Surname', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'status' }], data: filtered })} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_customers', title: 'eCommerce Customers', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'firstName' }, { header: 'Surname', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'status' }], data: filtered })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_customers', title: 'eCommerce Customers', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'firstName' }, { header: 'Surname', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'status' }], data: filtered })} /></Tooltip></RbacGuard>
                             <Button type="primary" icon={<PlusOutlined />}
                                 onClick={() => { form.resetFields(); setModalOpen(true); }}
                                 style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, borderRadius: 8, border: 'none' }}>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { Button, Card, Col, Form, Input, InputNumber, message, Modal, Progress, Row, Select, Space, Table, Tabs, Tag, Tooltip, Typography } from "antd";
 import {
     ToolOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
@@ -548,8 +549,7 @@ export default function ManufacturingPage() {
                                             style={{ maxWidth: 280, borderRadius: 8 }} />
                                         <Space>
                                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
-                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_manufacturing', title: 'Manufacturing BOMs', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Product', key: 'productName' }, { header: 'Status', key: 'status' }, { header: 'Quantity', key: 'outputQuantity' }], data: boms })} /></Tooltip>
-                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_manufacturing', title: 'Manufacturing BOMs', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Product', key: 'productName' }, { header: 'Status', key: 'status' }, { header: 'Quantity', key: 'outputQuantity' }], data: boms })} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_manufacturing', title: 'Manufacturing BOMs', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Product', key: 'productName' }, { header: 'Status', key: 'status' }, { header: 'Quantity', key: 'outputQuantity' }], data: boms })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_manufacturing', title: 'Manufacturing BOMs', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Product', key: 'productName' }, { header: 'Status', key: 'status' }, { header: 'Quantity', key: 'outputQuantity' }], data: boms })} /></Tooltip></RbacGuard>
                                             <Button type="primary" icon={<PlusOutlined />}
                                                 onClick={() => { bomForm.resetFields(); setBomEditId(null); setBomModalOpen(true); }}
                                                 style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', borderRadius: 8, border: 'none' }}>

@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { Card, Table, Tag, Button, Space, Typography, Row, Col, Statistic, Avatar, Tooltip, Segmented, Badge, message } from "antd";
 import { SolutionOutlined, PlusOutlined, UserAddOutlined, StarFilled, AppstoreOutlined, UnorderedListOutlined, MailOutlined, PhoneOutlined, ArrowRightOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
@@ -126,8 +127,7 @@ export default function RecruitmentPage() {
             title={<AuroraText colors={[themeColor, '#f59e0b', '#10b981', themeColor]} className="text-[22px] font-bold tracking-tight">Recruitment</AuroraText>}
             subTitle={<DecryptedText text="Job postings, applicant pipeline & hiring workflow" animateOn="view" revealDirection="start" speed={60} sequential />}
             extra={[
-                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'hr_recruitment', title: 'HR Recruitment', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Department', key: 'departmentName' }, { header: 'Status', key: 'status' }], data: postings })} /></Tooltip>,
-                <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'hr_recruitment', title: 'HR Recruitment', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Department', key: 'departmentName' }, { header: 'Status', key: 'status' }], data: postings })} /></Tooltip>,
+                <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'hr_recruitment', title: 'HR Recruitment', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Department', key: 'departmentName' }, { header: 'Status', key: 'status' }], data: postings })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'hr_recruitment', title: 'HR Recruitment', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Department', key: 'departmentName' }, { header: 'Status', key: 'status' }], data: postings })} /></Tooltip></RbacGuard>,
                 <Segmented key="view" value={viewMode} onChange={(v: any) => setViewMode(v)} options={[{ label: <><AppstoreOutlined /> Kanban</>, value: 'kanban' }, { label: <><UnorderedListOutlined /> Table</>, value: 'table' }]} />,
             ]}
         >

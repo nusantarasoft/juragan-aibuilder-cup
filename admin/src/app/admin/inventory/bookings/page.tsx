@@ -5,6 +5,7 @@ import { Table, Tag, Button, Modal, Form, Input, InputNumber, Select, Space, mes
 import { PlusOutlined, ReloadOutlined, ScheduleOutlined, CheckCircleOutlined, ClockCircleOutlined, TeamOutlined, DollarOutlined, SearchOutlined, SendOutlined, LoginOutlined, CloseCircleOutlined, EyeOutlined, UserOutlined , FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
+import RbacGuard from '@/components/common/RbacGuard';
 import { inventoryService, BookingSchedule, BookingOccurrence, Booking, BookingPassenger, BookingStatsType, InvItem } from '@/lib/inventoryService';
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
@@ -348,8 +349,7 @@ export default function BookingsPage() {
                     <Input prefix={<SearchOutlined />} placeholder="Search schedules, bookings..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 320 }} allowClear />
                     <Space>
                         <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Refresh</Button>
-                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_bookings', title: 'Booking Schedules', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Facility', key: 'facility' }, { header: 'Status', key: 'status' }, { header: 'Capacity', key: 'maxCapacity' }], data: schedules })} /></Tooltip>
-                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_bookings', title: 'Booking Schedules', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Facility', key: 'facility' }, { header: 'Status', key: 'status' }, { header: 'Capacity', key: 'maxCapacity' }], data: schedules })} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_bookings', title: 'Booking Schedules', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Facility', key: 'facility' }, { header: 'Status', key: 'status' }, { header: 'Capacity', key: 'maxCapacity' }], data: schedules })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_bookings', title: 'Booking Schedules', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Facility', key: 'facility' }, { header: 'Status', key: 'status' }, { header: 'Capacity', key: 'maxCapacity' }], data: schedules })} /></Tooltip></RbacGuard>
                         <Button type="primary" icon={<PlusOutlined />}
                             onClick={() => { bookingForm.resetFields(); setSelectedScheduleId(undefined); setBookingModalOpen(true); setTab('bookings'); }}
                             style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), #2563eb)', border: 'none', borderRadius: 8 }}>

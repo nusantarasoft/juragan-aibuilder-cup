@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
 import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Switch, DatePicker, Typography, Card, Statistic, Badge, Tooltip } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined, SwapOutlined, FileProtectOutlined, ScheduleOutlined, TeamOutlined, CheckCircleOutlined, ExclamationCircleOutlined, ClockCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
@@ -144,7 +145,7 @@ export default function ItsmChangesPage() {
                     <Select key="ft" placeholder="Type" allowClear style={{ width: 120 }} value={filterType} onChange={setFilterType}
                         options={[{ value: 'standard', label: 'Standard' }, { value: 'normal', label: 'Normal' }, { value: 'emergency', label: 'Emergency' }]} />,
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>New Change</Button>,
-                    <Tooltip key="excel" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => {
+                    <RbacGuard requiredRole="manager"><Tooltip key="excel" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => {
                         exportToExcel({
                             fileName: 'itsm_changes',
                             title: 'Change Management Report',
@@ -160,8 +161,7 @@ export default function ItsmChangesPage() {
                             ],
                             data,
                         });
-                    }} /></Tooltip>,
-                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => {
+                    }} /></Tooltip>, <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => {
                         exportToPdf({
                             fileName: 'itsm_changes',
                             title: 'Change Management Report',
@@ -177,7 +177,7 @@ export default function ItsmChangesPage() {
                             ],
                             data,
                         });
-                    }} /></Tooltip>,
+                    }} /></Tooltip></RbacGuard>,
                 ]}
             />
 

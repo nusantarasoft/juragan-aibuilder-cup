@@ -1,7 +1,8 @@
-'use client';
+﻿'use client';
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
+import RbacGuard from '@/components/common/RbacGuard';
 import { Table, Card, Typography, Space, Tag, Button, Input, Select, Row, Col, Statistic, Empty, Modal, Descriptions, Progress, message, Popconfirm, InputNumber, DatePicker, Form, Divider, Tooltip } from 'antd';
 import { SearchOutlined, ReloadOutlined, PlusOutlined, EyeOutlined, DollarOutlined, DeleteOutlined, MinusCircleOutlined, WarningOutlined, CheckCircleOutlined, SendOutlined, FileExcelOutlined, FilePdfOutlined  } from '@ant-design/icons';
 import { accountingService, AcctInvoice, AcctInvoiceSummary, AcctInvoiceLine, AcctContact, AcctAccount } from '@/lib/accountingService';
@@ -222,8 +223,7 @@ export default function AccountsPayablePage() {
                     <Input placeholder="Search bills..." prefix={<SearchOutlined style={{ opacity: 0.4 }} />} value={search} onChange={e => setSearch(e.target.value)} onPressEnter={load} style={{ width: 260, borderRadius: 8 }} allowClear />
                     <Select placeholder="Status" value={statusFilter} onChange={setStatusFilter} allowClear style={{ width: 140 }} options={[{ value: 'draft', label: 'Draft' }, { value: 'sent', label: 'Sent' }, { value: 'partial', label: 'Partial' }, { value: 'paid', label: 'Paid' }]} />
                     <Button icon={<ReloadOutlined />} onClick={load}>Refresh</Button>
-                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'acct_payables', title: 'Accounts Payable', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Invoice #', key: 'invoiceNumber' }, { header: 'Vendor', key: 'contactName' }, { header: 'Amount', key: 'totalAmount' }, { header: 'Status', key: 'status' }], data: invoices })} /></Tooltip>
-                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'acct_payables', title: 'Accounts Payable', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Invoice #', key: 'invoiceNumber' }, { header: 'Vendor', key: 'contactName' }, { header: 'Amount', key: 'totalAmount' }, { header: 'Status', key: 'status' }], data: invoices })} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'acct_payables', title: 'Accounts Payable', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Invoice #', key: 'invoiceNumber' }, { header: 'Vendor', key: 'contactName' }, { header: 'Amount', key: 'totalAmount' }, { header: 'Status', key: 'status' }], data: invoices })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'acct_payables', title: 'Accounts Payable', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Invoice #', key: 'invoiceNumber' }, { header: 'Vendor', key: 'contactName' }, { header: 'Amount', key: 'totalAmount' }, { header: 'Status', key: 'status' }], data: invoices })} /></Tooltip></RbacGuard>
                 </Space>
             </Card>
 

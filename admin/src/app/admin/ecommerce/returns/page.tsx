@@ -5,6 +5,7 @@ import { Table, Tag, Card, Typography, Input, Space, Button, Tooltip, Row, Col, 
 import { RollbackOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, EyeOutlined, DeleteOutlined, PlusOutlined, MinusCircleOutlined , FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { inventoryService, EcomReturn, EcomReturnItem, EcomReturnStatsType, EcomOrder } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
@@ -304,8 +305,7 @@ export default function ReturnsPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
-                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_returns', title: 'eCommerce Returns', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Return #', key: 'returnNumber' }, { header: 'Order #', key: 'orderNumber' }, { header: 'Reason', key: 'reason' }, { header: 'Status', key: 'status' }], data: returns })} /></Tooltip>
-                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_returns', title: 'eCommerce Returns', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Return #', key: 'returnNumber' }, { header: 'Order #', key: 'orderNumber' }, { header: 'Reason', key: 'reason' }, { header: 'Status', key: 'status' }], data: returns })} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_returns', title: 'eCommerce Returns', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Return #', key: 'returnNumber' }, { header: 'Order #', key: 'orderNumber' }, { header: 'Reason', key: 'reason' }, { header: 'Status', key: 'status' }], data: returns })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_returns', title: 'eCommerce Returns', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Return #', key: 'returnNumber' }, { header: 'Order #', key: 'orderNumber' }, { header: 'Reason', key: 'reason' }, { header: 'Status', key: 'status' }], data: returns })} /></Tooltip></RbacGuard>
                             <Button type="primary" icon={<PlusOutlined />} onClick={openNewReturn}
                                 style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)', border: 'none', borderRadius: 8 }}>
                                 New Return

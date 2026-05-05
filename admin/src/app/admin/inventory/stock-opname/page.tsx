@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import {
     Table, Button, Space, Tag, Card, Typography, message,
     Row, Col, Modal, Form, Input, InputNumber, Select, Progress, Tooltip
@@ -375,8 +376,7 @@ export default function StockOpnamePage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
-                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_stock_opname', title: 'Stock Opname', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'sessionNumber' }, { header: 'Warehouse', key: 'warehouseName' }, { header: 'Status', key: 'status' }], data: sessions })} /></Tooltip>
-                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_stock_opname', title: 'Stock Opname', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'sessionNumber' }, { header: 'Warehouse', key: 'warehouseName' }, { header: 'Status', key: 'status' }], data: sessions })} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_stock_opname', title: 'Stock Opname', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'sessionNumber' }, { header: 'Warehouse', key: 'warehouseName' }, { header: 'Status', key: 'status' }], data: sessions })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_stock_opname', title: 'Stock Opname', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'sessionNumber' }, { header: 'Warehouse', key: 'warehouseName' }, { header: 'Status', key: 'status' }], data: sessions })} /></Tooltip></RbacGuard>
                             <Button type="primary" icon={<PlusOutlined />}
                                 onClick={() => { sessionForm.resetFields(); setSessionModalOpen(true); }}
                                 style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', borderRadius: 8, border: 'none' }}>

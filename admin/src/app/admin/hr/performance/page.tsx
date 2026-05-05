@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { Card, Table, Tag, Typography, Rate, Row, Col, Statistic, Avatar, Space, Badge, Tooltip, Select, Button, Modal, Form, Input, message } from "antd";
 import { TrophyOutlined, StarFilled, TeamOutlined, RiseOutlined, CheckCircleOutlined, EditOutlined, PlusOutlined, DeleteOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
@@ -140,8 +141,7 @@ export default function PerformancePage() {
             title={<AuroraText colors={[themeColor, '#f59e0b', '#8b5cf6', themeColor]} className="text-[22px] font-bold tracking-tight">Performance</AuroraText>}
             subTitle={<DecryptedText text="Performance reviews, goal tracking & feedback" animateOn="view" revealDirection="start" speed={60} sequential />}
             extra={[
-                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'hr_performance', title: 'HR Performance Reviews', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Employee', key: 'employeeName' }, { header: 'Period', key: 'period' }, { header: 'Rating', key: 'overallRating' }, { header: 'Status', key: 'status' }], data: reviews })} /></Tooltip>,
-                <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'hr_performance', title: 'HR Performance Reviews', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Employee', key: 'employeeName' }, { header: 'Period', key: 'period' }, { header: 'Rating', key: 'overallRating' }, { header: 'Status', key: 'status' }], data: reviews })} /></Tooltip>,
+                <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'hr_performance', title: 'HR Performance Reviews', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Employee', key: 'employeeName' }, { header: 'Period', key: 'period' }, { header: 'Rating', key: 'overallRating' }, { header: 'Status', key: 'status' }], data: reviews })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'hr_performance', title: 'HR Performance Reviews', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Employee', key: 'employeeName' }, { header: 'Period', key: 'period' }, { header: 'Rating', key: 'overallRating' }, { header: 'Status', key: 'status' }], data: reviews })} /></Tooltip></RbacGuard>,
                 <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)} style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', border: 'none', borderRadius: 8 }}>New Review</Button>,
             ]}
         >

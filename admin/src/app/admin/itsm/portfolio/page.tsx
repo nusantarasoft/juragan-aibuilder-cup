@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
 import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, InputNumber, Typography, Card, Statistic, Badge, Tooltip } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined, ProjectOutlined, RocketOutlined, SendOutlined, CheckCircleOutlined, ClockCircleOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
@@ -162,8 +163,7 @@ export default function ItsmPortfolioPage() {
                 headerTitle={<Space><ProjectOutlined /> Service Portfolio <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
-                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_portfolio', title: 'Service Portfolio', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'service_type' }, { header: 'Lifecycle', key: 'lifecycle_stage' }], data: data })} /></Tooltip>,
-                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_portfolio', title: 'Service Portfolio', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'service_type' }, { header: 'Lifecycle', key: 'lifecycle_stage' }], data: data })} /></Tooltip>,
+                    <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_portfolio', title: 'Service Portfolio', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'service_type' }, { header: 'Lifecycle', key: 'lifecycle_stage' }], data: data })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_portfolio', title: 'Service Portfolio', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'service_type' }, { header: 'Lifecycle', key: 'lifecycle_stage' }], data: data })} /></Tooltip></RbacGuard>,
                     <Select key="fl" placeholder="Lifecycle" allowClear style={{ width: 140 }} value={filterLifecycle} onChange={setFilterLifecycle}
                         options={[{ value: 'pipeline', label: 'Pipeline' }, { value: 'design', label: 'Design' }, { value: 'transition', label: 'Transition' }, { value: 'operation', label: 'Operation' }, { value: 'retired', label: 'Retired' }]} />,
                     <Select key="ft" placeholder="Type" allowClear style={{ width: 130 }} value={filterType} onChange={setFilterType}

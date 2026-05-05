@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { Card, Table, Tag, Button, Space, Typography, message, Modal, Form, Input, Select, InputNumber, Row, Col, Statistic, Badge, Tooltip } from "antd";
 import { SkinOutlined, PlusOutlined, RiseOutlined, TeamOutlined, ApartmentOutlined, DollarOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
@@ -136,8 +137,7 @@ export default function PositionsPage() {
             title={<AuroraText colors={[themeColor, '#f59e0b', '#8b5cf6', themeColor]} className="text-[22px] font-bold tracking-tight">Positions</AuroraText>}
             subTitle={<DecryptedText text="Job titles, grades & salary band catalog" animateOn="view" revealDirection="start" speed={60} sequential />}
             extra={[
-                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'hr_positions', title: 'HR Positions', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Department', key: 'departmentName' }, { header: 'Status', key: 'status' }], data: positions })} /></Tooltip>,
-                <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'hr_positions', title: 'HR Positions', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Department', key: 'departmentName' }, { header: 'Status', key: 'status' }], data: positions })} /></Tooltip>,
+                <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'hr_positions', title: 'HR Positions', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Department', key: 'departmentName' }, { header: 'Status', key: 'status' }], data: positions })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'hr_positions', title: 'HR Positions', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Department', key: 'departmentName' }, { header: 'Status', key: 'status' }], data: positions })} /></Tooltip></RbacGuard>,
                 <Button key="add" type="primary" icon={<PlusOutlined />} style={{ background: themeColor }} onClick={() => setModalOpen(true)}>Add Position</Button>,
             ]}
         >

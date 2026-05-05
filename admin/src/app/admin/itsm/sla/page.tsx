@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
 import { Button, message, Tag, Popconfirm, Space, Typography, Form, Input, Select, InputNumber, Row, Col, Card, Statistic, Badge, Tooltip } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined, FlagOutlined, ClockCircleOutlined, SettingOutlined, CheckCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
@@ -166,8 +167,7 @@ export default function ItsmSlaPage() {
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>
                         New SLA Policy
                     </Button>,
-                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'sla_policies', title: 'SLA Policies', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Priority', key: 'priority' }, { header: 'Response (min)', key: 'responseTimeMinutes' }, { header: 'Resolution (min)', key: 'resolutionTimeMinutes' }, { header: 'Escalation (min)', key: 'escalationAfterMinutes' }, { header: 'Status', key: 'status' }], data: policies })} /></Tooltip>,
-                    <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'sla_policies', title: 'SLA Policies', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Priority', key: 'priority' }, { header: 'Response (min)', key: 'responseTimeMinutes' }, { header: 'Resolution (min)', key: 'resolutionTimeMinutes' }, { header: 'Escalation (min)', key: 'escalationAfterMinutes' }, { header: 'Status', key: 'status' }], data: policies })} /></Tooltip>,
+                    <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'sla_policies', title: 'SLA Policies', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Priority', key: 'priority' }, { header: 'Response (min)', key: 'responseTimeMinutes' }, { header: 'Resolution (min)', key: 'resolutionTimeMinutes' }, { header: 'Escalation (min)', key: 'escalationAfterMinutes' }, { header: 'Status', key: 'status' }], data: policies })} /></Tooltip> <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'sla_policies', title: 'SLA Policies', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Priority', key: 'priority' }, { header: 'Response (min)', key: 'responseTimeMinutes' }, { header: 'Resolution (min)', key: 'resolutionTimeMinutes' }, { header: 'Escalation (min)', key: 'escalationAfterMinutes' }, { header: 'Status', key: 'status' }], data: policies })} /></Tooltip></RbacGuard>,
                 ]}
             />
 

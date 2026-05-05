@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { Card, Table, Tag, Button, Space, Typography, Spin, message, Modal, Form, Input, Select, Segmented, Avatar, Badge, Row, Col, Statistic, Tooltip, Progress } from "antd";
 import { ApartmentOutlined, PlusOutlined, TeamOutlined, UnorderedListOutlined, AppstoreOutlined, UserOutlined, DollarOutlined, ArrowDownOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
@@ -141,8 +142,7 @@ export default function DepartmentsPage() {
                 <Space key="actions">
                     <Segmented value={viewMode} onChange={(v: any) => setViewMode(v)} options={[{ label: <><AppstoreOutlined /> Org Chart</>, value: 'orgchart' }, { label: <><UnorderedListOutlined /> Table</>, value: 'table' }]} />
                     <Button type="primary" icon={<PlusOutlined />} style={{ background: themeColor }} onClick={() => setModalOpen(true)}>Add</Button>
-                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'hr_departments', title: 'HR Departments', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Description', key: 'description' }, { header: 'Status', key: 'status' }], data: departments })} /></Tooltip>,
-                <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'hr_departments', title: 'HR Departments', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Description', key: 'description' }, { header: 'Status', key: 'status' }], data: departments })} /></Tooltip>,
+                <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'hr_departments', title: 'HR Departments', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Description', key: 'description' }, { header: 'Status', key: 'status' }], data: departments })} /></Tooltip> <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'hr_departments', title: 'HR Departments', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Description', key: 'description' }, { header: 'Status', key: 'status' }], data: departments })} /></Tooltip></RbacGuard>,
                 </Space>
             ]}
         >

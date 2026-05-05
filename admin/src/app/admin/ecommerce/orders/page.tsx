@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { Table, Tag, Card, Typography, Input, Space, Button, Tooltip, Row, Col, Drawer, message, Modal, Select, Form, InputNumber, Divider } from "antd";
 import { ShoppingCartOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, SendOutlined, EyeOutlined, CarOutlined, DeleteOutlined, InboxOutlined, PlusOutlined, MinusCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { inventoryService, EcomOrder, EcomOrderItem, EcomStatsType, EcomCustomer } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
@@ -295,8 +296,7 @@ export default function OrdersPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
-                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_orders', title: 'eCommerce Orders', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Order #', key: 'orderNumber' }, { header: 'Customer', key: 'customerName' }, { header: 'Total', key: 'totalAmount' }, { header: 'Payment', key: 'paymentStatus' }, { header: 'Status', key: 'status' }, { header: 'Date', key: 'createdAt' }], data: filteredOrders })} /></Tooltip>
-                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_orders', title: 'eCommerce Orders', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Order #', key: 'orderNumber' }, { header: 'Customer', key: 'customerName' }, { header: 'Total', key: 'totalAmount' }, { header: 'Payment', key: 'paymentStatus' }, { header: 'Status', key: 'status' }, { header: 'Date', key: 'createdAt' }], data: filteredOrders })} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_orders', title: 'eCommerce Orders', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Order #', key: 'orderNumber' }, { header: 'Customer', key: 'customerName' }, { header: 'Total', key: 'totalAmount' }, { header: 'Payment', key: 'paymentStatus' }, { header: 'Status', key: 'status' }, { header: 'Date', key: 'createdAt' }], data: filteredOrders })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_orders', title: 'eCommerce Orders', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Order #', key: 'orderNumber' }, { header: 'Customer', key: 'customerName' }, { header: 'Total', key: 'totalAmount' }, { header: 'Payment', key: 'paymentStatus' }, { header: 'Status', key: 'status' }, { header: 'Date', key: 'createdAt' }], data: filteredOrders })} /></Tooltip></RbacGuard>
                             <Button type="primary" icon={<PlusOutlined />} onClick={openNewOrder}
                                 style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, border: 'none', borderRadius: 8 }}>
                                 New Order

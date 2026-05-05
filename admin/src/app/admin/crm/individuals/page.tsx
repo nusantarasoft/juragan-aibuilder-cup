@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import {
     Table, Button, Space, Modal, Form, Input, Select, Tag, Card,
     message, Typography, Avatar, Tooltip, Drawer, Descriptions, Row, Col,
@@ -165,8 +166,7 @@ export default function IndividualsPage() {
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Individuals</AuroraText>}
             subTitle={<DecryptedText text="People in your CRM â€” contacts, leads, and team members" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[
-                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_individuals', title: 'CRM Individuals', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'First Name', key: 'firstName' }, { header: 'Last Name', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'status' }], data: individuals })} /></Tooltip>,
-                <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_individuals', title: 'CRM Individuals', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'First Name', key: 'firstName' }, { header: 'Last Name', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'status' }], data: individuals })} /></Tooltip>,
+                <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_individuals', title: 'CRM Individuals', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'First Name', key: 'firstName' }, { header: 'Last Name', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'status' }], data: individuals })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_individuals', title: 'CRM Individuals', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'First Name', key: 'firstName' }, { header: 'Last Name', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'status' }], data: individuals })} /></Tooltip></RbacGuard>,
             <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
             <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>Add Individual</Button>,
         ]}>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
 import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, InputNumber, Typography, Descriptions, Modal, Card, Statistic, Badge, Tooltip } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined, ClusterOutlined, NodeIndexOutlined, DesktopOutlined, CloudServerOutlined, DatabaseOutlined, ApiOutlined, GlobalOutlined, CheckCircleOutlined, ExclamationCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
@@ -128,8 +129,7 @@ export default function CmdbPage() {
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 150 }} value={filterStatus} onChange={setFilterStatus}
                         options={[{ value: 'active', label: 'Active' }, { value: 'under_maintenance', label: 'Maintenance' }, { value: 'retired', label: 'Retired' }, { value: 'planned', label: 'Planned' }]} />,
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>New CI</Button>,
-                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_cmdb', title: 'CMDB Configuration Items', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Ci class', key: 'ci_class' }, { header: 'Ci type', key: 'ci_type' }, { header: 'Status', key: 'status' }, { header: 'Environment', key: 'environment' }, { header: 'Owner', key: 'owner' }], data: data })} /></Tooltip>,
-                    <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_cmdb', title: 'CMDB Configuration Items', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Ci class', key: 'ci_class' }, { header: 'Ci type', key: 'ci_type' }, { header: 'Status', key: 'status' }, { header: 'Environment', key: 'environment' }, { header: 'Owner', key: 'owner' }], data: data })} /></Tooltip>,
+                    <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_cmdb', title: 'CMDB Configuration Items', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Ci class', key: 'ci_class' }, { header: 'Ci type', key: 'ci_type' }, { header: 'Status', key: 'status' }, { header: 'Environment', key: 'environment' }, { header: 'Owner', key: 'owner' }], data: data })} /></Tooltip> <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_cmdb', title: 'CMDB Configuration Items', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Ci class', key: 'ci_class' }, { header: 'Ci type', key: 'ci_type' }, { header: 'Status', key: 'status' }, { header: 'Environment', key: 'environment' }, { header: 'Owner', key: 'owner' }], data: data })} /></Tooltip></RbacGuard>,
                 ]}
             />
 

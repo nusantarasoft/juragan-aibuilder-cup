@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { Badge, Button, Card, Col, Descriptions, Divider, Drawer, Empty, Form, Image, Input, InputNumber, message, Modal, Popconfirm, Progress, Row, Segmented, Select, Space, Spin, Statistic, Steps, Switch, Table, Tabs, Tag, Tooltip, Typography } from "antd";
 import {
     PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined,
@@ -471,8 +472,7 @@ export default function ItemMasterPage() {
                             />
                             <AnimatedTooltip content="Reload">
                                 <Button icon={<ReloadOutlined />} onClick={loadAll} />
-                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_items', title: 'Inventory Items', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'SKU', key: 'sku' }, { header: 'Category', key: 'category' }, { header: 'Stock', key: 'quantityOnHand' }, { header: 'Unit Cost', key: 'unitCost' }], data: items })} /></Tooltip>
-                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_items', title: 'Inventory Items', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'SKU', key: 'sku' }, { header: 'Category', key: 'category' }, { header: 'Stock', key: 'quantityOnHand' }, { header: 'Unit Cost', key: 'unitCost' }], data: items })} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_items', title: 'Inventory Items', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'SKU', key: 'sku' }, { header: 'Category', key: 'category' }, { header: 'Stock', key: 'quantityOnHand' }, { header: 'Unit Cost', key: 'unitCost' }], data: items })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_items', title: 'Inventory Items', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'SKU', key: 'sku' }, { header: 'Category', key: 'category' }, { header: 'Stock', key: 'quantityOnHand' }, { header: 'Unit Cost', key: 'unitCost' }], data: items })} /></Tooltip></RbacGuard>
                             </AnimatedTooltip>
                             <AnimatedTooltip content="New Category">
                                 <Button icon={<AppstoreOutlined />} onClick={() => setCategoryModalOpen(true)} />

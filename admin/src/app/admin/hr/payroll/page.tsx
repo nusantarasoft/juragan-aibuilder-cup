@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { Card, Table, Tag, Typography, Row, Col, Statistic, Space, Button, Badge, Tooltip, Progress, Drawer, Modal, Input, message, Divider } from "antd";
 import { WalletOutlined, DollarOutlined, TeamOutlined, CalculatorOutlined, BankOutlined, RiseOutlined, DownloadOutlined, PlusOutlined, PlayCircleOutlined, CheckCircleOutlined, DeleteOutlined, EyeOutlined, ClockCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
@@ -197,7 +198,7 @@ export default function PayrollPage() {
             title={<AuroraText colors={[themeColor, '#10b981', '#f59e0b', themeColor]} className="text-[22px] font-bold tracking-tight">Payroll</AuroraText>}
             subTitle={<DecryptedText text="Payroll processing, salary slips & tax calculations" animateOn="view" revealDirection="start" speed={60} sequential />}
             extra={[
-                <Tooltip key="excel" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => {
+                <RbacGuard requiredRole="manager"><Tooltip key="excel" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => {
                     const fmtN = (v: number) => new Intl.NumberFormat('id-ID').format(v);
                     exportToExcel({
                         fileName: 'payroll_report',
@@ -214,8 +215,7 @@ export default function PayrollPage() {
                         ],
                         data: filteredRuns,
                     });
-                }}>Excel</Button></Tooltip>,
-                <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => {
+                }}>Excel</Button></Tooltip>, <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => {
                     const fmtN = (v: number) => new Intl.NumberFormat('id-ID').format(v);
                     exportToPdf({
                         fileName: 'payroll_report',
@@ -232,7 +232,7 @@ export default function PayrollPage() {
                         ],
                         data: filteredRuns,
                     });
-                }}>PDF</Button></Tooltip>,
+                }}>PDF</Button></Tooltip></RbacGuard>,
                 <Button key="run" type="primary" icon={<PlusOutlined />} onClick={() => setCreateModal(true)}
                     style={{ background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: 8 }}>New Payroll Run</Button>,
             ]}

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
 import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography, Alert, Badge, Card, Statistic, Tooltip } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined, AlertOutlined, WarningOutlined, ThunderboltOutlined, BellOutlined, ExclamationCircleOutlined, CheckCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
@@ -159,8 +160,7 @@ export default function EventsPage() {
                     <Select key="fv" placeholder="Severity" allowClear style={{ width: 130 }} value={filterSev} onChange={setFilterSev}
                         options={[{ value: 'critical', label: 'ðŸ”´ Critical' }, { value: 'high', label: 'ðŸŸ  High' }, { value: 'medium', label: 'ðŸ”µ Medium' }, { value: 'low', label: 'ðŸŸ¢ Low' }]} />,
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>New Event</Button>,
-                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_events', title: 'Event Management', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Source', key: 'source' }, { header: 'Severity', key: 'severity' }, { header: 'Status', key: 'status' }, { header: 'Category', key: 'category' }], data: data })} /></Tooltip>,
-                    <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_events', title: 'Event Management', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Source', key: 'source' }, { header: 'Severity', key: 'severity' }, { header: 'Status', key: 'status' }, { header: 'Category', key: 'category' }], data: data })} /></Tooltip>,
+                    <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_events', title: 'Event Management', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Source', key: 'source' }, { header: 'Severity', key: 'severity' }, { header: 'Status', key: 'status' }, { header: 'Category', key: 'category' }], data: data })} /></Tooltip> <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_events', title: 'Event Management', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Source', key: 'source' }, { header: 'Severity', key: 'severity' }, { header: 'Status', key: 'status' }, { header: 'Category', key: 'category' }], data: data })} /></Tooltip></RbacGuard>,
                 ]}
             />
 

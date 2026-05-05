@@ -9,6 +9,7 @@ import {
     EditOutlined, DeleteOutlined, EyeOutlined, CopyOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion, AnimatePresence } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { inventoryService } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
@@ -257,8 +258,7 @@ export default function ProductsPage() {
                                 style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, border: 'none', borderRadius: 8 }}
                                 onClick={() => setAddModalOpen(true)}>Add Product</Button>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} style={{ borderRadius: 8 }} /></Tooltip>
-                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_products', title: 'eCommerce Products', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'SKU', key: 'sku' }, { header: 'Price', key: 'price' }, { header: 'Stock', key: 'stock' }, { header: 'Status', key: 'status' }], data: items })} /></Tooltip>
-                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_products', title: 'eCommerce Products', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'SKU', key: 'sku' }, { header: 'Price', key: 'price' }, { header: 'Stock', key: 'stock' }, { header: 'Status', key: 'status' }], data: items })} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_products', title: 'eCommerce Products', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'SKU', key: 'sku' }, { header: 'Price', key: 'price' }, { header: 'Stock', key: 'stock' }, { header: 'Status', key: 'status' }], data: items })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_products', title: 'eCommerce Products', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'SKU', key: 'sku' }, { header: 'Price', key: 'price' }, { header: 'Stock', key: 'stock' }, { header: 'Status', key: 'status' }], data: items })} /></Tooltip></RbacGuard>
                         </div>
                     </div>
                     <Table dataSource={filtered} columns={columns} rowKey="id" loading={loading} size="small"

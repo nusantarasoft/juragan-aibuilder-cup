@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
 import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography, Card, Statistic, Badge, Tooltip } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined, ReconciliationOutlined, ShopOutlined, UserOutlined, TeamOutlined, CheckCircleOutlined, ClockCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
@@ -139,7 +140,7 @@ export default function ItsmRequestsPage() {
                     <Select key="fp" placeholder="Priority" allowClear style={{ width: 120 }} value={filterPriority} onChange={setFilterPriority}
                         options={[{ value: 'critical', label: 'Critical' }, { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }]} />,
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>New Request</Button>,
-                    <Tooltip key="excel" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => {
+                    <RbacGuard requiredRole="manager"><Tooltip key="excel" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => {
                         exportToExcel({
                             fileName: 'itsm_requests',
                             title: 'Service Requests Report',
@@ -154,8 +155,7 @@ export default function ItsmRequestsPage() {
                             ],
                             data,
                         });
-                    }} /></Tooltip>,
-                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => {
+                    }} /></Tooltip>, <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => {
                         exportToPdf({
                             fileName: 'itsm_requests',
                             title: 'Service Requests Report',
@@ -170,7 +170,7 @@ export default function ItsmRequestsPage() {
                             ],
                             data,
                         });
-                    }} /></Tooltip>,
+                    }} /></Tooltip></RbacGuard>,
                 ]}
             />
 

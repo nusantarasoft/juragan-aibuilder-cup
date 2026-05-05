@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import {
     Table, Button, Space, Modal, Form, Input, Select, Tag, Card,
     message, Typography, Tooltip, Drawer, Descriptions, Row, Col, InputNumber,
@@ -246,8 +247,7 @@ export default function AccountsPage() {
             extra={[
                 <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
                 <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>
-                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_accounts', title: 'CRM Accounts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'type' }, { header: 'Industry', key: 'industry' }, { header: 'Phone', key: 'phone' }, { header: 'Revenue', key: 'annualRevenue' }], data: accounts })} /></Tooltip>,
-                <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_accounts', title: 'CRM Accounts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'type' }, { header: 'Industry', key: 'industry' }, { header: 'Phone', key: 'phone' }, { header: 'Revenue', key: 'annualRevenue' }], data: accounts })} /></Tooltip>,
+                <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_accounts', title: 'CRM Accounts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'type' }, { header: 'Industry', key: 'industry' }, { header: 'Phone', key: 'phone' }, { header: 'Revenue', key: 'annualRevenue' }], data: accounts })} /></Tooltip> <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_accounts', title: 'CRM Accounts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'type' }, { header: 'Industry', key: 'industry' }, { header: 'Phone', key: 'phone' }, { header: 'Revenue', key: 'annualRevenue' }], data: accounts })} /></Tooltip></RbacGuard>,
                     Add Account
                 </Button>,
             ]}

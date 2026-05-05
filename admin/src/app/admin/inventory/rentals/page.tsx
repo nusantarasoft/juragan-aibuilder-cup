@@ -5,6 +5,7 @@ import { Table, Tag, Button, Space, message, Tabs, Progress, Drawer, Description
 import { PlusOutlined, ReloadOutlined, SearchOutlined, ToolOutlined, CheckCircleOutlined, WarningOutlined, DollarOutlined, SwapOutlined, ClockCircleOutlined, CarOutlined, EyeOutlined, UserOutlined, CalendarOutlined , FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
+import RbacGuard from '@/components/common/RbacGuard';
 import { inventoryService, RentalAsset, RentalContract, RentalStatsType } from '@/lib/inventoryService';
 import dayjs from 'dayjs';
 import DecryptedText from "@/components/react-bits/DecryptedText";
@@ -354,8 +355,7 @@ export default function RentalsPage() {
                     <Input prefix={<SearchOutlined />} placeholder="Search assets, contracts..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 320 }} allowClear />
                     <Space>
                         <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Refresh</Button>
-                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_rentals', title: 'Rental Assets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Category', key: 'category' }, { header: 'Status', key: 'status' }, { header: 'Daily Rate', key: 'dailyRate' }], data: assets })} /></Tooltip>
-                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_rentals', title: 'Rental Assets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Category', key: 'category' }, { header: 'Status', key: 'status' }, { header: 'Daily Rate', key: 'dailyRate' }], data: assets })} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_rentals', title: 'Rental Assets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Category', key: 'category' }, { header: 'Status', key: 'status' }, { header: 'Daily Rate', key: 'dailyRate' }], data: assets })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_rentals', title: 'Rental Assets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Category', key: 'category' }, { header: 'Status', key: 'status' }, { header: 'Daily Rate', key: 'dailyRate' }], data: assets })} /></Tooltip></RbacGuard>
                         <Button type="primary" icon={<PlusOutlined />}
                             onClick={() => { contractForm.resetFields(); setContractModalOpen(true); setTab('contracts'); }}
                             style={{ background: 'linear-gradient(135deg, #d97706, #dc2626)', border: 'none', borderRadius: 8 }}>

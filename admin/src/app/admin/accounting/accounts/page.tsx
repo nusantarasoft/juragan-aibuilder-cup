@@ -1,6 +1,7 @@
-'use client';
+﻿'use client';
 import React, { useEffect, useState, useMemo } from 'react';
 import CMSLayout from '@/components/layout/CMSLayout';
+import RbacGuard from '@/components/common/RbacGuard';
 import { Table, Button, Space, Tag, Input, Select, Drawer, Form, InputNumber, Switch, message, Modal, Typography, Card, Tooltip, Divider, TreeSelect, Empty, Spin, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, FilterOutlined, AccountBookOutlined, DownOutlined, RightOutlined, FileExcelOutlined, FilePdfOutlined  } from '@ant-design/icons';
 import { accountingService, AcctAccount } from '@/lib/accountingService';
@@ -121,8 +122,7 @@ export default function ChartOfAccountsPage() {
                     <Select placeholder="Filter by type" value={filterType} onChange={setFilterType} allowClear style={{ width: 160 }}
                         options={Object.entries(typeLabels).map(([k, v]) => ({ value: k, label: v }))} />
                     <Button icon={<ReloadOutlined />} onClick={load}>Refresh</Button>
-                    <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'acct_accounts', title: 'Chart of Accounts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Code', key: 'accountCode' }, { header: 'Name', key: 'name' }, { header: 'Type', key: 'accountType' }, { header: 'Balance', key: 'currentBalance' }], data: accounts })} /></Tooltip>
-                    <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'acct_accounts', title: 'Chart of Accounts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Code', key: 'accountCode' }, { header: 'Name', key: 'name' }, { header: 'Type', key: 'accountType' }, { header: 'Balance', key: 'currentBalance' }], data: accounts })} /></Tooltip>
+                    <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'acct_accounts', title: 'Chart of Accounts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Code', key: 'accountCode' }, { header: 'Name', key: 'name' }, { header: 'Type', key: 'accountType' }, { header: 'Balance', key: 'currentBalance' }], data: accounts })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'acct_accounts', title: 'Chart of Accounts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Code', key: 'accountCode' }, { header: 'Name', key: 'name' }, { header: 'Type', key: 'accountType' }, { header: 'Balance', key: 'currentBalance' }], data: accounts })} /></Tooltip></RbacGuard>
                 </Space>
             </Card>
 

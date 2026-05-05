@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { Badge, Button, Card, Col, Descriptions, Divider, Empty, Form, Input, InputNumber, message, Row, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography } from "antd";
 import {
     ArrowUpOutlined, ArrowDownOutlined, SwapOutlined,
@@ -307,8 +308,7 @@ export default function StockDashboardPage() {
                             </Button>
                             <AnimatedTooltip content="Reload">
                                 <Button icon={<ReloadOutlined />} onClick={loadAll} />
-                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_stock', title: 'Stock Ledger', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Item', key: 'itemName' }, { header: 'Warehouse', key: 'warehouseName' }, { header: 'Type', key: 'transactionType' }, { header: 'Qty', key: 'quantity' }, { header: 'Balance', key: 'balanceAfter' }], data: ledger })} /></Tooltip>
-                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_stock', title: 'Stock Ledger', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Item', key: 'itemName' }, { header: 'Warehouse', key: 'warehouseName' }, { header: 'Type', key: 'transactionType' }, { header: 'Qty', key: 'quantity' }, { header: 'Balance', key: 'balanceAfter' }], data: ledger })} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_stock', title: 'Stock Ledger', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Item', key: 'itemName' }, { header: 'Warehouse', key: 'warehouseName' }, { header: 'Type', key: 'transactionType' }, { header: 'Qty', key: 'quantity' }, { header: 'Balance', key: 'balanceAfter' }], data: ledger })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_stock', title: 'Stock Ledger', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Item', key: 'itemName' }, { header: 'Warehouse', key: 'warehouseName' }, { header: 'Type', key: 'transactionType' }, { header: 'Qty', key: 'quantity' }, { header: 'Balance', key: 'balanceAfter' }], data: ledger })} /></Tooltip></RbacGuard>
                             </AnimatedTooltip>
                             <Button type="primary" icon={<PlusOutlined />}
                                 onClick={() => { movementForm.resetFields(); setMovementModalOpen(true); }}

@@ -1,7 +1,8 @@
-'use client';
+﻿'use client';
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
+import RbacGuard from '@/components/common/RbacGuard';
 import { Table, Button, Space, Tag, Input, Select, Drawer, Form, InputNumber, message, Typography, Card, Tooltip, Divider, DatePicker, Empty, Spin, Popconfirm, Row, Col, Alert, Modal } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, CheckCircleOutlined, UndoOutlined, EyeOutlined, MinusCircleOutlined, FileExcelOutlined, FilePdfOutlined  } from '@ant-design/icons';
 import { accountingService, AcctJournal, AcctJournalLine, AcctAccount } from '@/lib/accountingService';
@@ -160,8 +161,7 @@ export default function JournalEntriesPage() {
                         options={[{ value: 'general', label: 'General' }, { value: 'adjusting', label: 'Adjusting' }, { value: 'closing', label: 'Closing' }, { value: 'reversal', label: 'Reversal' }]} />
                     <RangePicker onChange={(dates) => setDateRange(dates ? [dates[0]!.format('YYYY-MM-DD'), dates[1]!.format('YYYY-MM-DD')] : null)} />
                     <Button icon={<ReloadOutlined />} onClick={load}>Refresh</Button>
-                    <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'acct_journals', title: 'Journal Entries', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'journalNumber' }, { header: 'Date', key: 'journalDate' }, { header: 'Memo', key: 'memo' }, { header: 'Debit', key: 'totalDebit' }, { header: 'Credit', key: 'totalCredit' }, { header: 'Status', key: 'status' }], data: journals })} /></Tooltip>
-                    <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'acct_journals', title: 'Journal Entries', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'journalNumber' }, { header: 'Date', key: 'journalDate' }, { header: 'Memo', key: 'memo' }, { header: 'Debit', key: 'totalDebit' }, { header: 'Credit', key: 'totalCredit' }, { header: 'Status', key: 'status' }], data: journals })} /></Tooltip>
+                    <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'acct_journals', title: 'Journal Entries', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'journalNumber' }, { header: 'Date', key: 'journalDate' }, { header: 'Memo', key: 'memo' }, { header: 'Debit', key: 'totalDebit' }, { header: 'Credit', key: 'totalCredit' }, { header: 'Status', key: 'status' }], data: journals })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'acct_journals', title: 'Journal Entries', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'journalNumber' }, { header: 'Date', key: 'journalDate' }, { header: 'Memo', key: 'memo' }, { header: 'Debit', key: 'totalDebit' }, { header: 'Credit', key: 'totalCredit' }, { header: 'Status', key: 'status' }], data: journals })} /></Tooltip></RbacGuard>
                 </Space>
             </Card>
 

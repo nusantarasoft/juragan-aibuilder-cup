@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { Table, Tag, Card, Typography, Input, Space, Button, Tooltip, Row, Col, Drawer, message, Modal, Select, Form, InputNumber, Divider } from "antd";
 import { GiftOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, EyeOutlined, DeleteOutlined, PlusOutlined, MinusCircleOutlined, ShoppingOutlined, EditOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { inventoryService, EcomPackage, EcomPackageItem, EcomPackageStatsType } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
@@ -255,8 +256,7 @@ export default function PackagesPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
-                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_packages', title: 'eCommerce Packages', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Price', key: 'price' }, { header: 'Status', key: 'status' }], data: packages })} /></Tooltip>
-                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_packages', title: 'eCommerce Packages', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Price', key: 'price' }, { header: 'Status', key: 'status' }], data: packages })} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_packages', title: 'eCommerce Packages', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Price', key: 'price' }, { header: 'Status', key: 'status' }], data: packages })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_packages', title: 'eCommerce Packages', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Price', key: 'price' }, { header: 'Status', key: 'status' }], data: packages })} /></Tooltip></RbacGuard>
                             <Button type="primary" icon={<PlusOutlined />} onClick={openNew}
                                 style={{ background: 'linear-gradient(135deg, var(--theme-color, #8b5cf6), #a78bfa)', border: 'none', borderRadius: 8 }}>
                                 New Package

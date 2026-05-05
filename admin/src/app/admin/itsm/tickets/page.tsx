@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
 import { Badge, Button, Col, Form, Input, message, Popconfirm, Row, Select, Space, Switch, Tag, Tooltip, Typography } from "antd";
 import {
@@ -222,8 +223,7 @@ export default function ItsmTicketsPage() {
                     search: { placeholder: 'Search tickets...', onSearch: (v) => setSearchText(v), allowClear: true, style: { width: 250 } },
                 }}
                 toolBarRender={() => [
-                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_tickets', title: 'ITSM Tickets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'ticketNumber' }, { header: 'Subject', key: 'subject' }, { header: 'Priority', key: 'priority' }, { header: 'Status', key: 'status' }], data: tickets })} /></Tooltip>,
-                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_tickets', title: 'ITSM Tickets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'ticketNumber' }, { header: 'Subject', key: 'subject' }, { header: 'Priority', key: 'priority' }, { header: 'Status', key: 'status' }], data: tickets })} /></Tooltip>,
+                    <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_tickets', title: 'ITSM Tickets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'ticketNumber' }, { header: 'Subject', key: 'subject' }, { header: 'Priority', key: 'priority' }, { header: 'Status', key: 'status' }], data: tickets })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_tickets', title: 'ITSM Tickets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'ticketNumber' }, { header: 'Subject', key: 'subject' }, { header: 'Priority', key: 'priority' }, { header: 'Status', key: 'status' }], data: tickets })} /></Tooltip></RbacGuard>,
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 130 }} value={filterStatus} onChange={setFilterStatus}
                         options={[
                             { value: 'new', label: 'New' }, { value: 'open', label: 'Open' },

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
 import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Typography, Card, Statistic, Badge, Tooltip } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined, BookOutlined, FileTextOutlined, TagOutlined, CheckCircleOutlined, EyeOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
@@ -138,8 +139,7 @@ export default function ItsmKnowledgePage() {
                     search: { placeholder: 'Search articles...', onSearch: (v) => setSearchText(v), allowClear: true, style: { width: 250 } },
                 }}
                 toolBarRender={() => [
-                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_knowledge', title: 'Knowledge Base', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Type', key: 'article_type' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
-                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_knowledge', title: 'Knowledge Base', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Type', key: 'article_type' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
+                    <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_knowledge', title: 'Knowledge Base', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Type', key: 'article_type' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_knowledge', title: 'Knowledge Base', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Type', key: 'article_type' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip></RbacGuard>,
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 120 }} value={filterStatus} onChange={setFilterStatus}
                         options={[{ value: 'draft', label: 'Draft' }, { value: 'review', label: 'Review' }, { value: 'published', label: 'Published' }, { value: 'archived', label: 'Archived' }]} />,
                     <Select key="ft" placeholder="Type" allowClear style={{ width: 130 }} value={filterType} onChange={setFilterType}

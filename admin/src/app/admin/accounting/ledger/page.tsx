@@ -1,7 +1,8 @@
-'use client';
+﻿'use client';
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
+import RbacGuard from '@/components/common/RbacGuard';
 import { Table, Select, DatePicker, Card, Typography, Space, Tag, Button, Spin, Empty, Row, Col, Statistic, Divider, Tooltip } from 'antd';
 import { SearchOutlined, ReloadOutlined, DownloadOutlined, BookOutlined, FileExcelOutlined, FilePdfOutlined  } from '@ant-design/icons';
 import { accountingService, AcctAccount, AcctJournalLine } from '@/lib/accountingService';
@@ -142,8 +143,7 @@ export default function GeneralLedgerPage() {
                     </div>
                     <div style={{ paddingTop: 20 }}>
                         <Button icon={<ReloadOutlined />} onClick={loadLedger} disabled={!selectedAccountId}>Refresh</Button>
-                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'acct_ledger', title: 'General Ledger', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Code', key: 'code' }, { header: 'Name', key: 'name' }, { header: 'Type', key: 'accountType' }, { header: 'Balance', key: 'balance' }], data: accounts })} /></Tooltip>
-                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'acct_ledger', title: 'General Ledger', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Code', key: 'code' }, { header: 'Name', key: 'name' }, { header: 'Type', key: 'accountType' }, { header: 'Balance', key: 'balance' }], data: accounts })} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'acct_ledger', title: 'General Ledger', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Code', key: 'code' }, { header: 'Name', key: 'name' }, { header: 'Type', key: 'accountType' }, { header: 'Balance', key: 'balance' }], data: accounts })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'acct_ledger', title: 'General Ledger', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Code', key: 'code' }, { header: 'Name', key: 'name' }, { header: 'Type', key: 'accountType' }, { header: 'Balance', key: 'balance' }], data: accounts })} /></Tooltip></RbacGuard>
                     </div>
                 </Space>
             </Card>

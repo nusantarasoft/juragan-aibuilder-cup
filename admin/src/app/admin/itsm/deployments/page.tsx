@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
 import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Progress, Typography, Timeline, Card, Statistic, Badge, Tooltip } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined, CloudUploadOutlined, RocketOutlined, CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined, ClockCircleOutlined, ExclamationCircleOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
@@ -150,8 +151,7 @@ export default function DeploymentsPage() {
                 headerTitle={<Space><CloudUploadOutlined /> Deployments <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
                 toolBarRender={() => [
-                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_deployments', title: 'Deployments', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Environment', key: 'environment' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
-                    <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_deployments', title: 'Deployments', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Environment', key: 'environment' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip>,
+                    <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_deployments', title: 'Deployments', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Environment', key: 'environment' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_deployments', title: 'Deployments', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Environment', key: 'environment' }, { header: 'Status', key: 'status' }], data: data })} /></Tooltip></RbacGuard>,
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 140 }} value={filterStatus} onChange={setFilterStatus}
                         options={[{ value: 'planned', label: 'Planned' }, { value: 'in_progress', label: 'In Progress' }, { value: 'completed', label: 'Completed' }, { value: 'failed', label: 'Failed' }, { value: 'rolled_back', label: 'Rolled Back' }]} />,
                     <Select key="fe" placeholder="Environment" allowClear style={{ width: 140 }} value={filterEnv} onChange={setFilterEnv}

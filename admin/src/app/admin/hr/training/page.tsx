@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { Card, Table, Tag, Typography, Row, Col, Statistic, Progress, Space, Segmented, Badge, Tooltip, Button, Modal, Form, Input, Select, InputNumber, DatePicker, Switch, message } from "antd";
 import { ReadOutlined, BookOutlined, SafetyCertificateOutlined, AppstoreOutlined, UnorderedListOutlined, ClockCircleOutlined, DollarOutlined, CalendarOutlined, PlusOutlined, ThunderboltOutlined, DeleteOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
@@ -136,8 +137,7 @@ export default function TrainingPage() {
             title={<AuroraText colors={[themeColor, '#06b6d4', '#8b5cf6', themeColor]} className="text-[22px] font-bold tracking-tight">Training & Development</AuroraText>}
             subTitle={<DecryptedText text="Training programs, certifications & skill development" animateOn="view" revealDirection="start" speed={60} sequential />}
             extra={[<Space key="actions">
-                <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'hr_training', title: 'HR Training', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'trainingType' }, { header: 'Status', key: 'status' }], data: programs })} /></Tooltip>,
-                <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'hr_training', title: 'HR Training', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'trainingType' }, { header: 'Status', key: 'status' }], data: programs })} /></Tooltip>,
+                <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'hr_training', title: 'HR Training', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'trainingType' }, { header: 'Status', key: 'status' }], data: programs })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'hr_training', title: 'HR Training', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'trainingType' }, { header: 'Status', key: 'status' }], data: programs })} /></Tooltip></RbacGuard>,
                 <Segmented value={viewMode} onChange={(v: any) => setViewMode(v)} options={[{ label: <><AppstoreOutlined /> Cards</>, value: 'grid' }, { label: <><UnorderedListOutlined /> Table</>, value: 'table' }]} />
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}
                     style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)', border: 'none', borderRadius: 8 }}>Add Program</Button>

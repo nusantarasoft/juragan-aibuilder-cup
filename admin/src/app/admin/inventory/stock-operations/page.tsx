@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { Button, Card, Col, Form, Input, InputNumber, message, Modal, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
 import {
     ContainerOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
@@ -362,8 +363,7 @@ export default function StockOperationsPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
-                            <Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_stock-operations', title: 'Stock Operations', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'operationNumber' }, { header: 'Type', key: 'operationType' }, { header: 'Status', key: 'status' }, { header: 'From', key: 'sourceWarehouseName' }, { header: 'To', key: 'destinationWarehouseName' }], data: operations })} /></Tooltip>
-                            <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_stock-operations', title: 'Stock Operations', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'operationNumber' }, { header: 'Type', key: 'operationType' }, { header: 'Status', key: 'status' }, { header: 'From', key: 'sourceWarehouseName' }, { header: 'To', key: 'destinationWarehouseName' }], data: operations })} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_stock-operations', title: 'Stock Operations', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'operationNumber' }, { header: 'Type', key: 'operationType' }, { header: 'Status', key: 'status' }, { header: 'From', key: 'sourceWarehouseName' }, { header: 'To', key: 'destinationWarehouseName' }], data: operations })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_stock-operations', title: 'Stock Operations', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'operationNumber' }, { header: 'Type', key: 'operationType' }, { header: 'Status', key: 'status' }, { header: 'From', key: 'sourceWarehouseName' }, { header: 'To', key: 'destinationWarehouseName' }], data: operations })} /></Tooltip></RbacGuard>
                             <Button type="primary" icon={<PlusOutlined />}
                                 onClick={() => { form.resetFields(); setModalOpen(true); }}
                                 style={{ background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: 8, border: 'none' }}>

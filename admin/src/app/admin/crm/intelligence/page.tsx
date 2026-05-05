@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import {
     Card, Tabs, Table, Tag, Typography, Progress, Space, Badge, Tooltip,
     message, Spin, Row, Col, Statistic, Button, Empty,

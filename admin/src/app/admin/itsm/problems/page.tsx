@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
 import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, Switch, Typography, Card, Statistic, Badge, Tooltip } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined, BugOutlined, SearchOutlined, TeamOutlined, ToolOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
@@ -137,8 +138,7 @@ export default function ItsmProblemsPage() {
                     <Select key="fp" placeholder="Priority" allowClear style={{ width: 120 }} value={filterPriority} onChange={setFilterPriority}
                         options={[{ value: 'critical', label: 'Critical' }, { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }]} />,
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>New Problem</Button>,
-                    <Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_problems', title: 'Problem Management Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Problem #', key: 'problemNumber' }, { header: 'Title', key: 'title' }, { header: 'Priority', key: 'priority' }, { header: 'Status', key: 'status', format: (v: string) => (v||'').replace(/_/g,' ') }, { header: 'Impact', key: 'impact' }, { header: 'Known Error', key: 'isKnownError', format: (v: boolean) => v ? 'Yes' : 'No' }, { header: 'Assigned', key: 'assignedTo' }], data })} /></Tooltip>,
-                    <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_problems', title: 'Problem Management Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Problem #', key: 'problemNumber' }, { header: 'Title', key: 'title' }, { header: 'Priority', key: 'priority' }, { header: 'Status', key: 'status', format: (v: string) => (v||'').replace(/_/g,' ') }, { header: 'Impact', key: 'impact' }, { header: 'Known Error', key: 'isKnownError', format: (v: boolean) => v ? 'Yes' : 'No' }, { header: 'Assigned', key: 'assignedTo' }], data })} /></Tooltip>,
+                    <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_problems', title: 'Problem Management Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Problem #', key: 'problemNumber' }, { header: 'Title', key: 'title' }, { header: 'Priority', key: 'priority' }, { header: 'Status', key: 'status', format: (v: string) => (v||'').replace(/_/g,' ') }, { header: 'Impact', key: 'impact' }, { header: 'Known Error', key: 'isKnownError', format: (v: boolean) => v ? 'Yes' : 'No' }, { header: 'Assigned', key: 'assignedTo' }], data })} /></Tooltip> <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_problems', title: 'Problem Management Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Problem #', key: 'problemNumber' }, { header: 'Title', key: 'title' }, { header: 'Priority', key: 'priority' }, { header: 'Status', key: 'status', format: (v: string) => (v||'').replace(/_/g,' ') }, { header: 'Impact', key: 'impact' }, { header: 'Known Error', key: 'isKnownError', format: (v: boolean) => v ? 'Yes' : 'No' }, { header: 'Assigned', key: 'assignedTo' }], data })} /></Tooltip></RbacGuard>,
                 ]}
             />
 
