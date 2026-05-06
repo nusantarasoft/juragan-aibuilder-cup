@@ -51,10 +51,11 @@ interface ExportLogResult {
 const MODULE_COLORS: Record<string, string> = {
     itsm: '#ef4444', crm: '#3b82f6', hr: '#8b5cf6', pm: '#f59e0b',
     inventory: '#10b981', ecommerce: '#ec4899', accounting: '#6366f1',
+    ops: '#0891b2', commerce: '#d946ef', notifications: '#f97316',
 };
 
 function getModuleColor(module: string): string {
-    const prefix = module.split('_')[0]?.toLowerCase();
+    const prefix = (module.split('.')[0] || module.split('_')[0])?.toLowerCase();
     return MODULE_COLORS[prefix] || '#64748b';
 }
 
@@ -177,7 +178,7 @@ export default function ExportLogsPage() {
             width: 180,
             render: (_, r) => (
                 <Tag color={getModuleColor(r.module)} style={{ textTransform: 'capitalize' }}>
-                    {r.module?.replace(/_/g, ' ')}
+                    {r.module?.replace(/[._]/g, ' ')}
                 </Tag>
             ),
         },
@@ -239,7 +240,7 @@ export default function ExportLogsPage() {
                     <Card size="small" style={{ ...glass, marginBottom: 16, borderLeft: `4px solid ${getModuleColor(topModule[0])}` }}>
                         <Space>
                             <AppstoreOutlined style={{ fontSize: 18, color: getModuleColor(topModule[0]) }} />
-                            <Text>Most exported module: <Text strong style={{ textTransform: 'capitalize' }}>{topModule[0]?.replace(/_/g, ' ')}</Text> ({topModule[1]} exports)</Text>
+                            <Text>Most exported module: <Text strong style={{ textTransform: 'capitalize' }}>{topModule[0]?.replace(/[._]/g, ' ')}</Text> ({topModule[1]} exports)</Text>
                         </Space>
                     </Card>
                 </motion.div>
@@ -254,7 +255,7 @@ export default function ExportLogsPage() {
                         style={{ width: 200 }}
                         value={filterModule}
                         onChange={setFilterModule}
-                        options={allModules.map(m => ({ label: m.replace(/_/g, ' '), value: m }))}
+                        options={allModules.map(m => ({ label: m.replace(/[._]/g, ' '), value: m }))}
                     />
                     <Select
                         placeholder="Export type"
