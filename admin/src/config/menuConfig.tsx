@@ -801,6 +801,12 @@ const menuConfig = {
                         icon: <SettingOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/notifications/analytics",
+                        name: "Analytics",
+                        icon: <BarChartOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {
