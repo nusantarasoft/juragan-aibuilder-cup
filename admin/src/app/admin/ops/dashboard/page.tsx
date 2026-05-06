@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
@@ -14,6 +15,7 @@ import {
     BookOutlined, RocketOutlined, CheckCircleOutlined, ClockCircleOutlined,
     WarningOutlined, ThunderboltOutlined, ScheduleOutlined, BarChartOutlined,
     SendOutlined, BellOutlined, MailOutlined, ApiOutlined,
+    PlusOutlined, InboxOutlined, PlayCircleOutlined, ArrowRightOutlined,
 } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
@@ -53,6 +55,7 @@ const DELIVERY_ICONS: Record<string, React.ReactNode> = {
 
 export default function OpsDashboardPage() {
     const { themeColor } = usePreferencesStore();
+    const router = useRouter();
     const [playbooks, setPlaybooks] = useState<any[]>([]);
     const [runs, setRuns] = useState<any[]>([]);
     const [schedules, setSchedules] = useState<any[]>([]);
@@ -161,7 +164,8 @@ export default function OpsDashboardPage() {
 
                     <Col xs={24} md={8}>
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
-                            <Card title={<Space><RocketOutlined style={{ color: '#3b82f6' }} /> Active Runs</Space>} size="small" style={glass}>
+                            <Card title={<Space><RocketOutlined style={{ color: '#3b82f6' }} /> Active Runs</Space>} size="small" style={glass}
+                                extra={<Button type="link" size="small" onClick={() => router.push('/admin/ops/runs')}>View All <ArrowRightOutlined /></Button>}>
                                 {activeRuns.length === 0 ? (
                                     <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No active runs" />
                                 ) : (
@@ -169,10 +173,10 @@ export default function OpsDashboardPage() {
                                         size="small"
                                         dataSource={activeRuns.slice(0, 5)}
                                         renderItem={(run: any) => (
-                                            <List.Item>
+                                            <List.Item style={{ cursor: 'pointer' }} onClick={() => router.push(`/admin/ops/runs/${run.id}`)}>
                                                 <List.Item.Meta
                                                     avatar={<ThunderboltOutlined style={{ color: '#3b82f6', fontSize: 18 }} />}
-                                                    title={<Text strong style={{ fontSize: 13 }}>{run.name}</Text>}
+                                                    title={<Text strong style={{ fontSize: 13, color: '#7c3aed' }}>{run.name}</Text>}
                                                     description={
                                                         <Space size={4}>
                                                             <Tag color={PRIORITY_COLORS[run.playbookPriority] || '#94a3b8'} style={{ fontSize: 10 }}>{run.playbookPriority}</Tag>
@@ -198,10 +202,10 @@ export default function OpsDashboardPage() {
                                         size="small"
                                         dataSource={overdueRuns.slice(0, 5)}
                                         renderItem={(run: any) => (
-                                            <List.Item>
+                                            <List.Item style={{ cursor: 'pointer' }} onClick={() => router.push(`/admin/ops/runs/${run.id}`)}>
                                                 <List.Item.Meta
                                                     avatar={<WarningOutlined style={{ color: '#ef4444' }} />}
-                                                    title={<Text strong style={{ fontSize: 13 }}>{run.name}</Text>}
+                                                    title={<Text strong style={{ fontSize: 13, color: '#7c3aed' }}>{run.name}</Text>}
                                                     description={<Text type="danger" style={{ fontSize: 11 }}>Due {dayjs(run.dueAt).fromNow()}</Text>}
                                                 />
                                             </List.Item>
@@ -296,6 +300,33 @@ export default function OpsDashboardPage() {
                                         )}
                                     />
                                 )}
+                            </Card>
+                        </motion.div>
+                    </Col>
+                </Row>
+
+                {/* Row 2.5: Quick Actions */}
+                <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                    <Col xs={24}>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.58 }}>
+                            <Card title={<Space><PlayCircleOutlined /> Quick Actions</Space>} size="small" style={glass}>
+                                <Space wrap>
+                                    <Button type="primary" icon={<PlusOutlined />} onClick={() => router.push('/admin/ops/runs')}>
+                                        New Run
+                                    </Button>
+                                    <Button icon={<BookOutlined />} onClick={() => router.push('/admin/ops/playbooks')}>
+                                        Manage Playbooks
+                                    </Button>
+                                    <Button icon={<ScheduleOutlined />} onClick={() => router.push('/admin/ops/schedules')}>
+                                        View Schedules
+                                    </Button>
+                                    <Button icon={<ClockCircleOutlined />} onClick={() => router.push('/admin/ops/history')}>
+                                        Run History
+                                    </Button>
+                                    <Button icon={<InboxOutlined />} onClick={() => router.push('/admin/notifications/inbox')}>
+                                        Notification Inbox
+                                    </Button>
+                                </Space>
                             </Card>
                         </motion.div>
                     </Col>

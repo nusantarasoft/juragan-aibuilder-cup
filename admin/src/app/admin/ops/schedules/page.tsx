@@ -105,7 +105,7 @@ export default function SchedulesPage() {
 
     const columns: ColumnsType<any> = [
         {
-            title: "Schedule", key: "name",
+            title: "Schedule", key: "name", width: 220,
             render: (_, r) => (
                 <Space>
                     <ScheduleOutlined style={{ fontSize: 18, color: r.isActive ? '#3b82f6' : '#94a3b8' }} />
@@ -119,9 +119,31 @@ export default function SchedulesPage() {
             ),
         },
         { title: "Cron", dataIndex: "cronExpression", width: 130, render: (v: string) => <Text code style={{ fontSize: 11 }}>{v}</Text> },
-        { title: "Timezone", dataIndex: "timezone", width: 130 },
+        { title: "Timezone", dataIndex: "timezone", width: 130, render: (v: string) => <Text style={{ fontSize: 11 }}>{v}</Text> },
         { title: "Active", key: "isActive", width: 80, align: 'center', render: (_, r) => <Switch checked={r.isActive} size="small" onChange={(v) => handleToggle(r.id, v)} /> },
-        { title: "Last Run", key: "lastRun", width: 140, render: (_, r) => r.lastRunAt ? <Text style={{ fontSize: 12 }}>{dayjs(r.lastRunAt).fromNow()}</Text> : '—' },
+        {
+            title: "Next Run", key: "nextRun", width: 140,
+            render: (_, r) => {
+                if (!r.isActive) return <Text type="secondary" style={{ fontSize: 11 }}>—</Text>;
+                if (!r.nextRunAt) return <Text type="secondary" style={{ fontSize: 11 }}>Not scheduled</Text>;
+                const isOverdue = dayjs(r.nextRunAt).isBefore(dayjs());
+                return (
+                    <Tooltip title={dayjs(r.nextRunAt).format('MMM D, HH:mm')}>
+                        <Tag color={isOverdue ? 'red' : 'blue'} style={{ fontSize: 11 }}>
+                            <ClockCircleOutlined /> {dayjs(r.nextRunAt).fromNow()}
+                        </Tag>
+                    </Tooltip>
+                );
+            },
+        },
+        {
+            title: "Last Run", key: "lastRun", width: 140,
+            render: (_, r) => r.lastRunAt ? (
+                <Tooltip title={dayjs(r.lastRunAt).format('MMM D, HH:mm')}>
+                    <Text style={{ fontSize: 12 }}>{dayjs(r.lastRunAt).fromNow()}</Text>
+                </Tooltip>
+            ) : <Text type="secondary" style={{ fontSize: 11 }}>Never</Text>,
+        },
         {
             title: "Actions", key: "actions", width: 140,
             render: (_, r) => (
@@ -179,7 +201,7 @@ export default function SchedulesPage() {
                 ))}
             </Row>
 
-            <Card><Table columns={columns} dataSource={schedules.map(s => ({ ...s, key: s.id }))} loading={loading} pagination={false} size="middle" /></Card>
+            <Card><Table columns={columns} dataSource={schedules.map(s => ({ ...s, key: s.id }))} loading={loading} pagination={false} size="middle" scroll={{ x: 900 }} /></Card>
 
             <SteppedFormModal
                 open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }}
