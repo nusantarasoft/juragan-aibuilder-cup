@@ -225,4 +225,46 @@ export class NotificationsService {
         if (error) throw error;
         return data;
     }
+
+    // ─── CLEANUP & STATS ────────────────────────────────────
+
+    async cleanupOldLogs(tenantId: string, retentionDays = 30): Promise<{ deletedLogs: number; deletedNotifs: number }> {
+        const cutoff = new Date(Date.now() - retentionDays * 86400000).toISOString();
+
+        // Delete old notification logs
+        const { count: deletedLogs, error: e1 } = await this.db.from('notification_logs')
+            .delete({ count: 'exact' }).eq('tenant_id', tenantId).lt('created_at', cutoff);
+        if (e1) throw e1;
+
+        // Delete old read notifications
+        const { count: deletedNotifs, error: e2 } = await this.db.from('notifications')
+            .delete({ count: 'exact' }).eq('tenant_id', tenantId).eq('is_read', true).lt('created_at', cutoff);
+        if (e2) throw e2;
+
+        return { deletedLogs: deletedLogs || 0, deletedNotifs: deletedNotifs || 0 };
+    }
+
+    async getNotificationStats(tenantId: string) {
+        const [logsRes, notifsRes, channelsRes] = await Promise.all([
+            this.db.from('notification_logs').select('id, status, channel_type', { count: 'exact' }).eq('tenant_id', tenantId),
+            this.db.from('notifications').select('id, is_read', { count: 'exact' }).eq('tenant_id', tenantId),
+            this.db.from('notification_channels').select('id, channel_type, is_active').eq('tenant_id', tenantId),
+        ]);
+
+        const logs = logsRes.data || [];
+        const notifs = notifsRes.data || [];
+        const channels = channelsRes.data || [];
+
+        return {
+            totalLogs: logs.length,
+            sentLogs: logs.filter((l: any) => l.status === 'sent').length,
+            failedLogs: logs.filter((l: any) => l.status === 'failed').length,
+            totalNotifications: notifs.length,
+            unreadNotifications: notifs.filter((n: any) => !n.is_read).length,
+            activeChannels: channels.filter((c: any) => c.is_active).length,
+            channelBreakdown: Object.entries(
+                logs.reduce((acc: any, l: any) => { acc[l.channel_type] = (acc[l.channel_type] || 0) + 1; return acc; }, {})
+            ).map(([type, count]) => ({ type, count })),
+        };
+    }
 }

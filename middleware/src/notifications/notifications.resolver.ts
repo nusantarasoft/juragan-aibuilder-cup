@@ -77,6 +77,29 @@ class NotifLog {
     @Field() createdAt: string;
 }
 
+@ObjectType()
+class NotifCleanupResult {
+    @Field() deletedLogs: number;
+    @Field() deletedNotifs: number;
+}
+
+@ObjectType()
+class NotifChannelBreakdown {
+    @Field() type: string;
+    @Field() count: number;
+}
+
+@ObjectType()
+class NotifStats {
+    @Field() totalLogs: number;
+    @Field() sentLogs: number;
+    @Field() failedLogs: number;
+    @Field() totalNotifications: number;
+    @Field() unreadNotifications: number;
+    @Field() activeChannels: number;
+    @Field(() => [NotifChannelBreakdown]) channelBreakdown: NotifChannelBreakdown[];
+}
+
 // ─── Mappers ────────────────────────────────────────────
 
 function mapChannel(d: any): NotifChannel {
@@ -315,5 +338,22 @@ export class NotificationsResolver {
             body: `This is a test notification from Nusantarasoft via ${channel.name} (${channel.channel_type})`,
         });
         return result.success;
+    }
+
+    // ─── Cleanup & Stats ────────────────────────────────────
+
+    @Mutation(() => NotifCleanupResult)
+    async cleanupNotificationLogs(
+        @Args('tenantId') tenantId: string,
+        @Args('retentionDays', { nullable: true, defaultValue: 30 }) retentionDays: number,
+    ) {
+        return this.notificationsService.cleanupOldLogs(tenantId, retentionDays);
+    }
+
+    @Query(() => NotifStats)
+    async notificationStats(
+        @Args('tenantId') tenantId: string,
+    ) {
+        return this.notificationsService.getNotificationStats(tenantId);
     }
 }
