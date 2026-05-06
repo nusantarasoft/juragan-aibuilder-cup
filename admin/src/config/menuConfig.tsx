@@ -752,6 +752,12 @@ const menuConfig = {
                         icon: <FieldTimeOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/ops/system-health",
+                        name: "System Health",
+                        icon: <HeartOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {

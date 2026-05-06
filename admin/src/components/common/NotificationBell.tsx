@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Badge, Popover, List, Button, Space, Typography, Tag, Empty, Divider, Tooltip } from "antd";
 import {
     BellOutlined, CheckOutlined, CheckCircleOutlined,
     MailOutlined, ToolOutlined, BugOutlined, ShoppingOutlined,
     DollarOutlined, TeamOutlined, SettingOutlined, RocketOutlined,
+    SoundOutlined,
 } from "@ant-design/icons";
 import { useNotificationStore } from "@/store/useNotificationStore";
 import dayjs from "dayjs";
@@ -27,14 +28,74 @@ const MODULE_ICONS: Record<string, React.ReactNode> = {
     system: <ToolOutlined style={{ color: '#94a3b8' }} />,
 };
 
+/** Attempt to play a short notification chime via Web Audio API */
+function playNotificationSound() {
+    try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.setValueAtTime(1174.66, ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.25);
+    } catch { /* Web Audio not available */ }
+}
+
+/** Request and show a browser desktop notification */
+function showDesktopNotification(title: string, body: string) {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+        new Notification(title, {
+            body,
+            icon: '/favicon.ico',
+            badge: '/favicon.ico',
+            tag: 'ns-notification',
+        });
+    } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission();
+    }
+}
+
 export default function NotificationBell() {
     const { notifications, unreadCount, markRead, markAllRead, startPolling } = useNotificationStore();
     const [open, setOpen] = useState(false);
+    const [pulse, setPulse] = useState(false);
+    const prevUnreadRef = useRef(unreadCount);
 
     useEffect(() => {
         const stop = startPolling();
+        // Request browser notification permission on mount
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
         return stop;
     }, [startPolling]);
+
+    // Detect new unread notifications
+    useEffect(() => {
+        if (unreadCount > prevUnreadRef.current && prevUnreadRef.current >= 0) {
+            // New notification arrived!
+            setPulse(true);
+            playNotificationSound();
+
+            // Show desktop notification for the newest unread
+            const newest = notifications.find((n: any) => !n.isRead);
+            if (newest) {
+                showDesktopNotification(
+                    newest.title || 'New Notification',
+                    newest.message || ''
+                );
+            }
+
+            const timer = setTimeout(() => setPulse(false), 2000);
+            return () => clearTimeout(timer);
+        }
+        prevUnreadRef.current = unreadCount;
+    }, [unreadCount, notifications]);
 
     const handleClick = (notif: any) => {
         if (!notif.isRead) {
@@ -154,10 +215,18 @@ export default function NotificationBell() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
+                            animation: pulse ? 'bellPulse 0.3s ease-in-out 3' : undefined,
                         }}
                     />
                 </Badge>
             </Tooltip>
+            <style jsx global>{`
+                @keyframes bellPulse {
+                    0%, 100% { transform: rotate(0deg); }
+                    25% { transform: rotate(12deg); }
+                    75% { transform: rotate(-12deg); }
+                }
+            `}</style>
         </Popover>
     );
 }
