@@ -60,6 +60,7 @@ export default function OpsDashboardPage() {
     const [runs, setRuns] = useState<any[]>([]);
     const [schedules, setSchedules] = useState<any[]>([]);
     const [deliveryLogs, setDeliveryLogs] = useState<any[]>([]);
+    const [notifStats, setNotifStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     const loadData = useCallback(async () => {
@@ -75,7 +76,15 @@ export default function OpsDashboardPage() {
             setRuns(runData.opsRuns || []);
             setSchedules(schData.opsSchedules || []);
             setDeliveryLogs(logData.notificationLogs || []);
-        } catch { /* ignore */ } finally { setLoading(false); }
+        } catch { /* ignore */ }
+        try {
+            const nsData = await gql(`query($t: String!) { notificationStats(tenantId: $t) {
+                totalLogs sentLogs failedLogs totalNotifications unreadNotifications activeChannels
+                channelBreakdown { type count }
+            } }`, { t: DEFAULT_TENANT_ID });
+            setNotifStats(nsData.notificationStats || null);
+        } catch { /* ignore */ }
+        setLoading(false);
     }, []);
 
     useEffect(() => { loadData(); }, [loadData]);
@@ -305,9 +314,52 @@ export default function OpsDashboardPage() {
                     </Col>
                 </Row>
 
-                {/* Row 2.5: Quick Actions */}
+                {/* Row 2.5: Communication Health + Quick Actions */}
                 <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                    <Col xs={24}>
+                    <Col xs={24} md={12}>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.58 }}>
+                            <Card title={<Space><SendOutlined /> Communication Health</Space>} size="small" style={glass}
+                                extra={<Button type="link" size="small" onClick={() => router.push('/admin/notifications/analytics')}>Details <ArrowRightOutlined /></Button>}>
+                                {notifStats ? (
+                                    <Row gutter={[12, 8]}>
+                                        <Col span={8} style={{ textAlign: 'center' }}>
+                                            <Progress type="circle" percent={notifStats.totalLogs > 0 ? Math.round((notifStats.sentLogs / notifStats.totalLogs) * 100) : 0} size={64}
+                                                strokeColor={notifStats.totalLogs > 0 && (notifStats.sentLogs / notifStats.totalLogs) >= 0.8 ? '#22c55e' : '#f59e0b'} />
+                                            <div style={{ marginTop: 4 }}><Text type="secondary" style={{ fontSize: 10 }}>Success Rate</Text></div>
+                                        </Col>
+                                        <Col span={16}>
+                                            <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <Text style={{ fontSize: 11 }}>Dispatched</Text>
+                                                    <Text strong style={{ fontSize: 11 }}>{notifStats.totalLogs}</Text>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <Text style={{ fontSize: 11, color: '#22c55e' }}>Delivered</Text>
+                                                    <Text strong style={{ fontSize: 11, color: '#22c55e' }}>{notifStats.sentLogs}</Text>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <Text style={{ fontSize: 11, color: '#ef4444' }}>Failed</Text>
+                                                    <Text strong style={{ fontSize: 11, color: '#ef4444' }}>{notifStats.failedLogs}</Text>
+                                                </div>
+                                                <Divider style={{ margin: '4px 0' }} />
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <Text style={{ fontSize: 11 }}>Channels Active</Text>
+                                                    <Tag color="blue" style={{ fontSize: 10 }}>{notifStats.activeChannels}</Tag>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <Text style={{ fontSize: 11 }}>Unread Inbox</Text>
+                                                    <Tag color={notifStats.unreadNotifications > 0 ? 'orange' : 'green'} style={{ fontSize: 10 }}>{notifStats.unreadNotifications}</Tag>
+                                                </div>
+                                            </Space>
+                                        </Col>
+                                    </Row>
+                                ) : (
+                                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No notification data" />
+                                )}
+                            </Card>
+                        </motion.div>
+                    </Col>
+                    <Col xs={24} md={12}>
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.58 }}>
                             <Card title={<Space><PlayCircleOutlined /> Quick Actions</Space>} size="small" style={glass}>
                                 <Space wrap>
