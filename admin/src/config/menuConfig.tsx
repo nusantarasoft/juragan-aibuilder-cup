@@ -783,6 +783,12 @@ const menuConfig = {
                         icon: <NodeIndexOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/notifications/delivery-logs",
+                        name: "Delivery Logs",
+                        icon: <AuditOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {
