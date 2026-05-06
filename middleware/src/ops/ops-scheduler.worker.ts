@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { OpsService } from './ops.service';
 import { SupabaseService } from '../supabase/supabase.service';
+import { NotificationDispatcher } from '../notifications/notification.dispatcher';
 
 /**
  * OpsSchedulerWorker — runs every minute and checks if any ops_schedules
@@ -17,6 +18,7 @@ export class OpsSchedulerWorker {
     constructor(
         private opsService: OpsService,
         private supabaseService: SupabaseService,
+        private dispatcher: NotificationDispatcher,
     ) {}
 
     /**
@@ -70,6 +72,19 @@ export class OpsSchedulerWorker {
                         }).eq('id', schedule.id);
 
                         this.logger.log(`✅ Created run: ${runName}`);
+
+                        // Dispatch in-app notification
+                        try {
+                            await this.dispatcher.dispatch({
+                                tenantId,
+                                channelType: 'in_app',
+                                recipient: 'system',
+                                subject: `Scheduled Run: ${playbookName}`,
+                                body: `Automated run "${runName}" created from schedule "${schedule.name}".`,
+                            });
+                        } catch (notifErr: any) {
+                            this.logger.warn(`Notification dispatch failed: ${notifErr.message}`);
+                        }
                     } catch (err: any) {
                         this.logger.error(`Failed to create run for schedule ${schedule.name}: ${err.message}`);
                     }

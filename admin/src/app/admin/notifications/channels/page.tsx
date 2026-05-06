@@ -7,12 +7,13 @@ import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Table, Button, Tag, Space, Modal, Form, Input, Select, Card, Switch, Tooltip,
-    message, Typography, Row, Col, Statistic,
+    message, Typography, Row, Col, Statistic, Popconfirm,
 } from "antd";
 import { motion } from "framer-motion";
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     MailOutlined, MessageOutlined, ApiOutlined, BellOutlined, SendOutlined,
+    ThunderboltOutlined, ExperimentOutlined, CheckCircleOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
@@ -96,6 +97,60 @@ export default function ChannelsPage() {
         } catch (err: any) { message.error(err.message); }
     };
 
+    const [testingId, setTestingId] = useState<string | null>(null);
+
+    const handleSendTest = async (channelId: string, channelType: string) => {
+        const placeholders: Record<string, string> = {
+            email: 'test@example.com',
+            whatsapp: '+628123456789',
+            webhook: 'https://httpbin.org/post',
+            in_app: 'system',
+        };
+
+        Modal.confirm({
+            title: 'Send Test Notification',
+            icon: <ExperimentOutlined style={{ color: '#8b5cf6' }} />,
+            content: (
+                <div style={{ marginTop: 12 }}>
+                    <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                        Enter the recipient to send a test message:
+                    </Text>
+                    <Input
+                        id="test-recipient-input"
+                        placeholder={placeholders[channelType] || 'recipient'}
+                        defaultValue={placeholders[channelType]}
+                    />
+                </div>
+            ),
+            okText: 'Send Test',
+            cancelText: 'Cancel',
+            onOk: async () => {
+                const input = document.getElementById('test-recipient-input') as HTMLInputElement;
+                const recipient = input?.value?.trim();
+                if (!recipient) { message.warning('Recipient is required'); throw new Error('empty'); }
+
+                setTestingId(channelId);
+                try {
+                    const res = await gql<{ testNotificationChannel: boolean }>(`
+                        mutation($t: String!, $channelId: String!, $testRecipient: String!) {
+                            testNotificationChannel(tenantId: $t, channelId: $channelId, testRecipient: $testRecipient)
+                        }
+                    `, { t: DEFAULT_TENANT_ID, channelId, testRecipient: recipient });
+
+                    if (res.testNotificationChannel) {
+                        message.success('Test notification sent successfully!');
+                    } else {
+                        message.warning('Test dispatch reported failure — check Delivery Logs for details.');
+                    }
+                } catch (err: any) {
+                    message.error('Test failed: ' + err.message);
+                } finally {
+                    setTestingId(null);
+                }
+            },
+        });
+    };
+
     const columns: ColumnsType<any> = [
         {
             title: "Channel", key: "name",
@@ -105,9 +160,18 @@ export default function ChannelsPage() {
         },
         { title: "Active", key: "active", width: 80, align: 'center', render: (_, r) => <Tag color={r.isActive ? 'success' : 'default'}>{r.isActive ? 'Yes' : 'No'}</Tag> },
         {
-            title: "Actions", key: "actions", width: 120,
+            title: "Actions", key: "actions", width: 180,
             render: (_, r) => (
                 <Space>
+                    <Tooltip title="Send Test">
+                        <Button
+                            type="text"
+                            icon={<ThunderboltOutlined />}
+                            loading={testingId === r.id}
+                            style={{ color: '#8b5cf6' }}
+                            onClick={() => handleSendTest(r.id, r.channelType)}
+                        />
+                    </Tooltip>
                     <Button type="text" icon={<EditOutlined />} onClick={() => { setEditing(r); form.setFieldsValue(r); setIsModalOpen(true); }} />
                     <Button type="text" danger icon={<DeleteOutlined />} onClick={() => Modal.confirm({ title: `Delete "${r.name}"?`, onOk: () => handleDelete(r.id) })} />
                 </Space>
