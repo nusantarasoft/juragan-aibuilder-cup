@@ -17,6 +17,9 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import RbacGuard from "@/components/common/RbacGuard";
+import { FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 
@@ -141,7 +144,10 @@ export default function RunsPage() {
         <CMSLayout
             title={<AuroraText colors={[themeColor, "#6366f1", "#a78bfa"]}>Active Runs</AuroraText>}
             subTitle={<DecryptedText text="Monitor and manage currently executing operational workflows" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
-            extra={[<Button key="reload" icon={<ReloadOutlined />} onClick={loadRuns} />]}
+            extra={[
+                <Button key="reload" icon={<ReloadOutlined />} onClick={loadRuns} />,
+                <RbacGuard key="exp" requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ops_runs', title: 'Active Runs', columns: [{ header: 'Run', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Playbook', key: 'playbookName' }, { header: 'Priority', key: 'playbookPriority' }, { header: 'Created', key: 'createdAt' }], data: runs })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ops_runs', title: 'Active Runs', columns: [{ header: 'Run', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Playbook', key: 'playbookName' }, { header: 'Priority', key: 'playbookPriority' }], data: runs })} /></Tooltip></RbacGuard>,
+            ]}
         >
             <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
                 {[

@@ -568,6 +568,14 @@ services:
       # RAGFlow Config
       - RAGFLOW_API_KEY=${RAGFLOW_API_KEY}
       - RAGFLOW_API_URL=http://ragflow:9380
+      # Notification Dispatcher
+      - OPENCLAW_GATEWAY_URL=http://openclaw:18789
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_SENDER_NAME=${SMTP_SENDER_NAME:-Nusantarasoft}
     networks:
       - management-network
     depends_on:

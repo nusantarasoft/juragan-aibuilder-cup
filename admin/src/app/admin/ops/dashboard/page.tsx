@@ -6,7 +6,7 @@ import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
-    Card, Row, Col, Statistic, Tag, Space, Typography, Spin, List, Progress, Empty,
+    Card, Row, Col, Statistic, Tag, Space, Typography, Spin, List, Progress, Empty, Button, Tooltip,
 } from "antd";
 import { motion } from "framer-motion";
 import {
@@ -14,6 +14,9 @@ import {
     WarningOutlined, ThunderboltOutlined, ScheduleOutlined, BarChartOutlined,
 } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import RbacGuard from "@/components/common/RbacGuard";
+import { FileExcelOutlined, FilePdfOutlined, ReloadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 
@@ -76,6 +79,9 @@ export default function OpsDashboardPage() {
         <CMSLayout
             title={<AuroraText colors={[themeColor, "#6366f1", "#a78bfa"]}>Operations</AuroraText>}
             subTitle={<DecryptedText text="Manage recurring operational workflows and task execution" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
+            extra={[
+                <RbacGuard key="exp" requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ops_dashboard', title: 'Operations Dashboard', columns: [{ header: 'Run', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Playbook', key: 'playbookName' }, { header: 'Priority', key: 'playbookPriority' }, { header: 'Created', key: 'createdAt' }], data: runs })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ops_dashboard', title: 'Operations Dashboard', columns: [{ header: 'Run', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Playbook', key: 'playbookName' }, { header: 'Priority', key: 'playbookPriority' }, { header: 'Created', key: 'createdAt' }], data: runs })} /></Tooltip></RbacGuard>,
+            ]}
         >
             <Spin spinning={loading}>
                 {/* Stats */}

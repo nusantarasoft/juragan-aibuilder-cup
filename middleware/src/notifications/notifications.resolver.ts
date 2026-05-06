@@ -3,6 +3,7 @@ import {
     ObjectType, Field, ID, InputType,
 } from '@nestjs/graphql';
 import { NotificationsService } from './notifications.service';
+import { NotificationDispatcher } from './notification.dispatcher';
 import GraphQLJSON from 'graphql-type-json';
 
 // ─── Types ──────────────────────────────────────────────
@@ -126,7 +127,10 @@ function mapLog(d: any): NotifLog {
 
 @Resolver()
 export class NotificationsResolver {
-    constructor(private notificationsService: NotificationsService) {}
+    constructor(
+        private notificationsService: NotificationsService,
+        private dispatcher: NotificationDispatcher,
+    ) {}
 
     // Channels
     @Query(() => [NotifChannel])
@@ -274,5 +278,42 @@ export class NotificationsResolver {
         @Args('limit', { nullable: true, defaultValue: 50 }) limit?: number,
     ) {
         return (await this.notificationsService.getNotificationLogs(tenantId, limit)).map(mapLog);
+    }
+
+    // ─── Dispatcher Mutations ────────────────────────────
+
+    @Mutation(() => Boolean)
+    async sendNotification(
+        @Args('tenantId') tenantId: string,
+        @Args('channelType') channelType: string,
+        @Args('recipient') recipient: string,
+        @Args('body') body: string,
+        @Args('subject', { nullable: true }) subject?: string,
+    ) {
+        const result = await this.dispatcher.dispatch({
+            tenantId, channelType, recipient, subject, body,
+        });
+        return result.success;
+    }
+
+    @Mutation(() => Boolean)
+    async testNotificationChannel(
+        @Args('tenantId') tenantId: string,
+        @Args('channelId') channelId: string,
+        @Args('testRecipient') testRecipient: string,
+    ) {
+        // Fetch the channel to get its type and config
+        const channels = await this.notificationsService.getChannels(tenantId);
+        const channel = channels.find((c: any) => c.id === channelId);
+        if (!channel) throw new Error('Channel not found');
+
+        const result = await this.dispatcher.dispatch({
+            tenantId,
+            channelType: channel.channel_type,
+            recipient: testRecipient,
+            subject: 'Test Notification',
+            body: `This is a test notification from Nusantarasoft via ${channel.name} (${channel.channel_type})`,
+        });
+        return result.success;
     }
 }

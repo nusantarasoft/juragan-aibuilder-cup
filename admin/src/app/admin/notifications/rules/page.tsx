@@ -6,7 +6,7 @@ import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
-    Table, Button, Tag, Space, Modal, Form, Input, Select, Card, Switch,
+    Table, Button, Tag, Space, Modal, Form, Input, Select, Card, Switch, Tooltip,
     message, Typography, Row, Col, Statistic,
 } from "antd";
 import { motion } from "framer-motion";
@@ -16,6 +16,9 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import RbacGuard from "@/components/common/RbacGuard";
+import { FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
@@ -162,6 +165,7 @@ export default function RulesPage() {
             extra={[
                 <Button key="reload" icon={<ReloadOutlined />} onClick={load} />,
                 <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>Create Rule</Button>,
+                <RbacGuard key="exp" requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'notification_rules', title: 'Notification Rules', columns: [{ header: 'Name', key: 'name' }, { header: 'Module', key: 'module' }, { header: 'Event', key: 'event' }, { header: 'Recipient', key: 'recipientType' }, { header: 'Active', key: 'isActive' }], data: rules })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'notification_rules', title: 'Notification Rules', columns: [{ header: 'Name', key: 'name' }, { header: 'Module', key: 'module' }, { header: 'Event', key: 'event' }, { header: 'Recipient', key: 'recipientType' }], data: rules })} /></Tooltip></RbacGuard>,
             ]}
         >
             <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>

@@ -17,6 +17,9 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import RbacGuard from "@/components/common/RbacGuard";
+import { FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import dayjs from "dayjs";
@@ -220,6 +223,7 @@ export default function PlaybooksPage() {
             extra={[
                 <Button key="reload" icon={<ReloadOutlined />} onClick={loadPlaybooks} />,
                 <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditingPb(null); form.resetFields(); setIsModalOpen(true); }}>Create Playbook</Button>,
+                <RbacGuard key="exp" requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ops_playbooks', title: 'Playbooks', columns: [{ header: 'Name', key: 'name' }, { header: 'Category', key: 'category' }, { header: 'Priority', key: 'priority' }, { header: 'Est. Minutes', key: 'estimatedMinutes' }, { header: 'Active', key: 'isActive' }], data: playbooks })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ops_playbooks', title: 'Playbooks', columns: [{ header: 'Name', key: 'name' }, { header: 'Category', key: 'category' }, { header: 'Priority', key: 'priority' }, { header: 'Est. Minutes', key: 'estimatedMinutes' }], data: playbooks })} /></Tooltip></RbacGuard>,
             ]}
         >
             <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>

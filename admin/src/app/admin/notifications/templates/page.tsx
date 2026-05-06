@@ -6,7 +6,7 @@ import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
-    Table, Button, Tag, Space, Modal, Form, Input, Select, Card,
+    Table, Button, Tag, Space, Modal, Form, Input, Select, Card, Tooltip,
     message, Typography, Row, Col, Statistic,
 } from "antd";
 import { motion } from "framer-motion";
@@ -16,6 +16,9 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import RbacGuard from "@/components/common/RbacGuard";
+import { FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
@@ -134,6 +137,7 @@ export default function TemplatesPage() {
             extra={[
                 <Button key="reload" icon={<ReloadOutlined />} onClick={load} />,
                 <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>Create Template</Button>,
+                <RbacGuard key="exp" requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'notification_templates', title: 'Notification Templates', columns: [{ header: 'Name', key: 'name' }, { header: 'Channel', key: 'channelType' }, { header: 'Subject', key: 'subject' }, { header: 'Active', key: 'isActive' }], data: templates })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'notification_templates', title: 'Notification Templates', columns: [{ header: 'Name', key: 'name' }, { header: 'Channel', key: 'channelType' }, { header: 'Subject', key: 'subject' }], data: templates })} /></Tooltip></RbacGuard>,
             ]}
         >
             <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
