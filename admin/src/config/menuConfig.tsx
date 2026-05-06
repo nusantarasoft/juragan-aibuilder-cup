@@ -709,6 +709,80 @@ const menuConfig = {
                         icon: <UsergroupAddOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/permissions/export-logs",
+                        name: "Export Audit Log",
+                        icon: <AuditOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/ops",
+                name: "Operations",
+                icon: <ScheduleOutlined />,
+                routes: [
+                    {
+                        path: "/admin/ops/dashboard",
+                        name: "Dashboard",
+                        icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ops/playbooks",
+                        name: "Playbooks",
+                        icon: <BookOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ops/runs",
+                        name: "Active Runs",
+                        icon: <RocketOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ops/schedules",
+                        name: "Schedules",
+                        icon: <ClockCircleOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ops/history",
+                        name: "History",
+                        icon: <FieldTimeOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/notifications",
+                name: "Notifications",
+                icon: <AlertOutlined />,
+                routes: [
+                    {
+                        path: "/admin/notifications/inbox",
+                        name: "Inbox",
+                        icon: <InboxOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/notifications/channels",
+                        name: "Channels",
+                        icon: <SendOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/notifications/templates",
+                        name: "Templates",
+                        icon: <FileTextOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/notifications/rules",
+                        name: "Rules",
+                        icon: <NodeIndexOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {

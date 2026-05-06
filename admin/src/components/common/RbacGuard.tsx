@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAuthStore, type AppRole } from "@/store/useAuthStore";
+import { usePermissionCache } from "@/store/usePermissionCache";
 
 interface RbacGuardProps {
     /** Minimum role required to render children */
@@ -18,8 +19,8 @@ interface RbacGuardProps {
  * Role-Based Access Control wrapper.
  *
  * Renders children only when the current user's role meets or exceeds
- * the required role level. Optionally checks a system permission key
- * for fine-grained feature gating.
+ * the required role level. When a permissionKey is provided, also checks
+ * the system permission via the permission engine (cached).
  *
  * Role hierarchy (highest → lowest):
  *   super_admin (100) → admin (80) → manager (60) → viewer (40) → guest (20)
@@ -37,15 +38,31 @@ interface RbacGuardProps {
  */
 export default function RbacGuard({ requiredRole, permissionKey, children, fallback = null }: RbacGuardProps) {
     const hasRole = useAuthStore((s) => s.hasRole);
+    const user = useAuthStore((s) => s.user);
+    const hasPermission = usePermissionCache((s) => s.hasPermission);
+    const fetchPermission = usePermissionCache((s) => s.fetchPermission);
+    const [permGranted, setPermGranted] = useState(true);
 
     // Role check is always enforced
     if (!hasRole(requiredRole)) {
         return <>{fallback}</>;
     }
 
-    // permissionKey is reserved for future fine-grained system permission checks.
-    // When integrated with the permission engine, it will query hasSystemPermission.
-    // For now, passing role check is sufficient.
+    // If a permissionKey is specified, check system permission (async + cached)
+    useEffect(() => {
+        if (!permissionKey || !user?.id) return;
+
+        // Check cache first
+        const cached = hasPermission(permissionKey);
+        setPermGranted(cached);
+
+        // Fetch in background if not cached
+        fetchPermission(user.id, permissionKey).then(setPermGranted);
+    }, [permissionKey, user?.id, hasPermission, fetchPermission]);
+
+    if (permissionKey && !permGranted) {
+        return <>{fallback}</>;
+    }
 
     return <>{children}</>;
 }
