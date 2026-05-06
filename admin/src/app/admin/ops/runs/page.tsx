@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Table, Button, Tag, Space, Modal, Card, message, Typography,
-    Row, Col, Statistic, Tooltip, Drawer, List, Steps, Input,
+    Row, Col, Statistic, Tooltip, Drawer, List, Steps, Input, Progress,
 } from "antd";
 import { motion } from "framer-motion";
 import {
@@ -34,8 +35,10 @@ const PRIORITY_COLORS: Record<string, string> = { critical: 'red', high: 'orange
 
 export default function RunsPage() {
     const { themeColor } = usePreferencesStore();
+    const router = useRouter();
     const [runs, setRuns] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [stepsMap, setStepsMap] = useState<Record<string, { total: number; completed: number }>>({}); 
     const [selectedRun, setSelectedRun] = useState<any>(null);
     const [runSteps, setRunSteps] = useState<any[]>([]);
     const [stepsLoading, setStepsLoading] = useState(false);
@@ -48,7 +51,18 @@ export default function RunsPage() {
                 id name status playbookId playbookName playbookCategory playbookPriority
                 startedBy startedAt completedAt dueAt notes createdAt
             } }`, { t: DEFAULT_TENANT_ID });
-            setRuns((data.opsRuns || []).filter((r: any) => r.status !== 'completed'));
+            const activeRuns = (data.opsRuns || []).filter((r: any) => r.status !== 'completed');
+            setRuns(activeRuns);
+            // Load steps progress for each active run
+            const map: Record<string, { total: number; completed: number }> = {};
+            await Promise.allSettled(activeRuns.map(async (r: any) => {
+                try {
+                    const stepsData = await gql(`query($runId: String!) { opsRunSteps(runId: $runId) { id status } }`, { runId: r.id });
+                    const steps = stepsData.opsRunSteps || [];
+                    map[r.id] = { total: steps.length, completed: steps.filter((s: any) => s.status === 'completed').length };
+                } catch { /* ignore */ }
+            }));
+            setStepsMap(map);
         } catch (err: any) { message.error(err.message); }
         finally { setLoading(false); }
     }, []);
@@ -89,7 +103,7 @@ export default function RunsPage() {
         {
             title: "Run", key: "name",
             render: (_, r) => (
-                <Space style={{ cursor: 'pointer' }} onClick={() => window.location.href = `/admin/ops/runs/${r.id}`}>
+                <Space style={{ cursor: 'pointer' }} onClick={() => router.push(`/admin/ops/runs/${r.id}`)}>
                     <RocketOutlined style={{ fontSize: 18, color: r.status === 'in_progress' ? '#3b82f6' : '#94a3b8' }} />
                     <div>
                         <Text strong style={{ color: '#6366f1' }}>{r.name}</Text><br />
@@ -102,11 +116,40 @@ export default function RunsPage() {
         { title: "Priority", key: "priority", width: 90, render: (_, r) => <Tag color={PRIORITY_COLORS[r.playbookPriority]}>{r.playbookPriority}</Tag> },
         {
             title: "Due", key: "due", width: 130,
-            render: (_, r) => r.dueAt ? (
-                <Text type={dayjs(r.dueAt).isBefore(dayjs()) ? 'danger' : undefined} style={{ fontSize: 12 }}>
-                    {dayjs(r.dueAt).fromNow()}
-                </Text>
-            ) : '—',
+            sorter: (a: any, b: any) => {
+                if (!a.dueAt) return 1;
+                if (!b.dueAt) return -1;
+                return dayjs(a.dueAt).unix() - dayjs(b.dueAt).unix();
+            },
+            render: (_: any, r: any) => {
+                if (!r.dueAt) return <Text type="secondary" style={{ fontSize: 11 }}>No deadline</Text>;
+                const isOverdue = dayjs(r.dueAt).isBefore(dayjs());
+                return (
+                    <Tooltip title={dayjs(r.dueAt).format('YYYY-MM-DD HH:mm')}>
+                        <Tag color={isOverdue ? 'red' : 'blue'} style={{ fontSize: 10 }}>
+                            {isOverdue ? '⚠️' : '⏰'} {dayjs(r.dueAt).fromNow()}
+                        </Tag>
+                    </Tooltip>
+                );
+            },
+        },
+        {
+            title: "Progress", key: "progress", width: 120,
+            render: (_: any, r: any) => {
+                const stats = stepsMap[r.id];
+                if (!stats || stats.total === 0) return <Text type="secondary" style={{ fontSize: 10 }}>-</Text>;
+                const pct = Math.round((stats.completed / stats.total) * 100);
+                return (
+                    <Tooltip title={`${stats.completed}/${stats.total} steps completed`}>
+                        <Progress
+                            percent={pct}
+                            size="small"
+                            strokeColor={pct === 100 ? '#22c55e' : pct > 50 ? '#3b82f6' : '#f59e0b'}
+                            format={() => <Text style={{ fontSize: 10 }}>{stats.completed}/{stats.total}</Text>}
+                        />
+                    </Tooltip>
+                );
+            },
         },
         { title: "Started", key: "started", width: 130, render: (_, r) => r.startedAt ? <Text style={{ fontSize: 12 }}>{dayjs(r.startedAt).fromNow()}</Text> : '—' },
         {
@@ -140,6 +183,9 @@ export default function RunsPage() {
     const completedSteps = runSteps.filter(s => s.status === 'completed').length;
     const currentStep = runSteps.findIndex(s => s.status === 'pending' || s.status === 'in_progress');
 
+    const failedRuns = runs.filter(r => r.status === 'failed');
+    const overdueRuns = runs.filter(r => r.dueAt && dayjs(r.dueAt).isBefore(dayjs()) && r.status !== 'completed');
+
     return (
         <CMSLayout
             title={<AuroraText colors={[themeColor, "#6366f1", "#a78bfa"]}>Active Runs</AuroraText>}
@@ -153,19 +199,21 @@ export default function RunsPage() {
                 {[
                     { title: 'In Progress', value: activeRuns.length, icon: <ThunderboltOutlined />, color: '#3b82f6' },
                     { title: 'Pending', value: pendingRuns.length, icon: <ClockCircleOutlined />, color: '#f59e0b' },
+                    { title: 'Failed', value: failedRuns.length, icon: <WarningOutlined />, color: '#ef4444' },
+                    { title: 'Overdue', value: overdueRuns.length, icon: <WarningOutlined />, color: '#dc2626' },
                     { title: 'Total Active', value: runs.length, icon: <RocketOutlined />, color: '#8b5cf6' },
                 ].map((s, i) => (
-                    <Col key={i} xs={12} md={8}>
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                    <Col key={i} xs={12} sm={8} md={4}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                             <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
-                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color, fontSize: 20 }} />
                             </Card>
                         </motion.div>
                     </Col>
                 ))}
             </Row>
 
-            <Card><Table columns={columns} dataSource={runs.map(r => ({ ...r, key: r.id }))} loading={loading} pagination={false} size="middle" /></Card>
+            <Card><Table columns={columns} dataSource={runs.map(r => ({ ...r, key: r.id }))} loading={loading} pagination={false} size="middle" scroll={{ x: 1000 }} /></Card>
 
             {/* Steps Execution Drawer */}
             <Drawer title={<Space><RocketOutlined /> Run Steps — {selectedRun?.name}</Space>}
