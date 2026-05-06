@@ -314,6 +314,71 @@ export default function OpsDashboardPage() {
                     </Col>
                 </Row>
 
+                {/* Row 2.25: Execution Duration Trends */}
+                <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                    <Col xs={24}>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.56 }}>
+                            <Card title={<Space><BarChartOutlined /> Execution Duration Trends</Space>} size="small" style={glass}
+                                extra={<Button type="link" size="small" onClick={() => router.push('/admin/ops/history')}>View History <ArrowRightOutlined /></Button>}>
+                                {(() => {
+                                    // Compute avg duration per playbook from completed runs
+                                    const pbDurations: Record<string, { totalMin: number; count: number; max: number }> = {};
+                                    runs.filter(r => r.startedAt && r.completedAt && r.status === 'completed').forEach(r => {
+                                        const name = r.playbookName || 'Unknown';
+                                        const mins = dayjs(r.completedAt).diff(dayjs(r.startedAt), 'minute');
+                                        if (!pbDurations[name]) pbDurations[name] = { totalMin: 0, count: 0, max: 0 };
+                                        pbDurations[name].totalMin += mins;
+                                        pbDurations[name].count++;
+                                        pbDurations[name].max = Math.max(pbDurations[name].max, mins);
+                                    });
+                                    const entries = Object.entries(pbDurations).sort((a, b) => (b[1].totalMin / b[1].count) - (a[1].totalMin / a[1].count));
+                                    const maxAvg = entries.length > 0 ? Math.max(...entries.map(([, v]) => v.totalMin / v.count)) : 1;
+
+                                    if (entries.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No completed runs with duration data" />;
+                                    return (
+                                        <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                                            {entries.map(([name, stats]) => {
+                                                const avg = Math.round(stats.totalMin / stats.count);
+                                                const pct = Math.round((avg / maxAvg) * 100);
+                                                // Find matching playbook for estimated time
+                                                const pb = playbooks.find(p => p.name === name);
+                                                const est = pb?.estimatedMinutes || 0;
+                                                const isOverEstimate = est > 0 && avg > est * 1.2;
+                                                return (
+                                                    <div key={name}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                                                            <Space size={6}>
+                                                                <BookOutlined style={{ color: '#8b5cf6', fontSize: 12 }} />
+                                                                <Text style={{ fontSize: 12 }}>{name}</Text>
+                                                                {isOverEstimate && (
+                                                                    <Tooltip title={`Avg ${avg} min exceeds estimate of ${est} min`}>
+                                                                        <Tag color="red" style={{ fontSize: 9 }}>Slow</Tag>
+                                                                    </Tooltip>
+                                                                )}
+                                                            </Space>
+                                                            <Space size={8}>
+                                                                <Text type="secondary" style={{ fontSize: 11 }}>Avg: {avg} min</Text>
+                                                                <Text type="secondary" style={{ fontSize: 10 }}>({stats.count} runs)</Text>
+                                                                {est > 0 && <Tag style={{ fontSize: 9 }}>Est: {est}m</Tag>}
+                                                            </Space>
+                                                        </div>
+                                                        <Progress
+                                                            percent={pct}
+                                                            showInfo={false}
+                                                            strokeColor={isOverEstimate ? '#ef4444' : avg > 60 ? '#f59e0b' : '#22c55e'}
+                                                            size="small"
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
+                                        </Space>
+                                    );
+                                })()}
+                            </Card>
+                        </motion.div>
+                    </Col>
+                </Row>
+
                 {/* Row 2.5: Communication Health + Quick Actions */}
                 <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                     <Col xs={24} md={12}>

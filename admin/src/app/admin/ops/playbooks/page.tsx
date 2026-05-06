@@ -55,13 +55,31 @@ export default function PlaybooksPage() {
     const [stepModalOpen, setStepModalOpen] = useState(false);
     const [editingStep, setEditingStep] = useState<any>(null);
 
+    const [runsMap, setRunsMap] = useState<Record<string, { count: number; totalMinutes: number }>>({}); 
+
     const loadPlaybooks = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await gql(`query($t: String!) { opsPlaybooks(tenantId: $t) {
-                id name description category priority estimatedMinutes tags isActive createdBy createdAt
-            } }`, { t: DEFAULT_TENANT_ID });
-            setPlaybooks(data.opsPlaybooks || []);
+            const [pbData, runData] = await Promise.all([
+                gql(`query($t: String!) { opsPlaybooks(tenantId: $t) {
+                    id name description category priority estimatedMinutes tags isActive createdBy createdAt
+                } }`, { t: DEFAULT_TENANT_ID }),
+                gql(`query($t: String!) { opsRuns(tenantId: $t) {
+                    id playbookId startedAt completedAt status
+                } }`, { t: DEFAULT_TENANT_ID }),
+            ]);
+            setPlaybooks(pbData.opsPlaybooks || []);
+            // Build runs aggregation per playbook
+            const map: Record<string, { count: number; totalMinutes: number }> = {};
+            (runData.opsRuns || []).forEach((r: any) => {
+                if (!r.playbookId) return;
+                if (!map[r.playbookId]) map[r.playbookId] = { count: 0, totalMinutes: 0 };
+                map[r.playbookId].count++;
+                if (r.startedAt && r.completedAt) {
+                    map[r.playbookId].totalMinutes += dayjs(r.completedAt).diff(dayjs(r.startedAt), 'minute');
+                }
+            });
+            setRunsMap(map);
         } catch (err: any) { message.error(err.message); }
         finally { setLoading(false); }
     }, []);
@@ -153,7 +171,7 @@ export default function PlaybooksPage() {
 
     const columns: ColumnsType<any> = [
         {
-            title: "Playbook", key: "name",
+            title: "Playbook", key: "name", width: 260,
             render: (_, r) => (
                 <Space>
                     <BookOutlined style={{ fontSize: 20, color: PRIORITY_COLORS[r.priority] === 'red' ? '#ef4444' : '#8b5cf6' }} />
@@ -168,7 +186,22 @@ export default function PlaybooksPage() {
         },
         { title: "Category", dataIndex: "category", width: 120, render: (v: string) => <Tag style={{ textTransform: 'capitalize' }}>{v}</Tag> },
         { title: "Priority", dataIndex: "priority", width: 100, render: (v: string) => <Tag color={PRIORITY_COLORS[v]}>{v}</Tag> },
-        { title: "Est. Time", dataIndex: "estimatedMinutes", width: 90, align: 'right', render: (v: number) => v ? `${v} min` : '—' },
+        { title: "Est. Time", dataIndex: "estimatedMinutes", width: 90, align: 'right' as const, render: (v: number) => v ? `${v} min` : '—' },
+        {
+            title: "Runs / Total Time", key: "runStats", width: 140, align: 'center' as const,
+            render: (_: any, r: any) => {
+                const stats = runsMap[r.id];
+                if (!stats || stats.count === 0) return <Text type="secondary" style={{ fontSize: 11 }}>No runs</Text>;
+                const totalTime = stats.totalMinutes < 60 ? `${stats.totalMinutes}m` : `${Math.floor(stats.totalMinutes / 60)}h ${stats.totalMinutes % 60}m`;
+                return (
+                    <Tooltip title={`${stats.count} runs, total execution: ${totalTime}`}>
+                        <Tag color="blue" style={{ fontSize: 10 }}>{stats.count} runs</Tag>
+                        <br />
+                        <Text type="secondary" style={{ fontSize: 10 }}>{totalTime}</Text>
+                    </Tooltip>
+                );
+            },
+        },
         {
             title: "Actions", key: "actions", width: 200,
             render: (_, r) => (
@@ -244,7 +277,7 @@ export default function PlaybooksPage() {
                 ))}
             </Row>
 
-            <Card><Table columns={columns} dataSource={playbooks.map(p => ({ ...p, key: p.id }))} loading={loading} pagination={false} size="middle" /></Card>
+            <Card><Table columns={columns} dataSource={playbooks.map(p => ({ ...p, key: p.id }))} loading={loading} pagination={false} size="middle" scroll={{ x: 1000 }} /></Card>
 
             <SteppedFormModal
                 open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditingPb(null); form.resetFields(); }}
