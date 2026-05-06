@@ -27,22 +27,22 @@ const MODULE_ICONS: Record<string, string> = {
 export default function InboxPage() {
     const { themeColor } = usePreferencesStore();
     const user = useAuthStore((s) => s.user);
+    const userId = user?.id || 'system'; // Fallback for dev mode
     const [notifications, setNotifications] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     const loadNotifications = useCallback(async () => {
-        if (!user?.id) return;
         setLoading(true);
         try {
             const data = await gql(`query($t: String!, $uid: String!) {
                 notifications(tenantId: $t, userId: $uid) {
                     id title message module link icon isRead readAt createdAt
                 }
-            }`, { t: DEFAULT_TENANT_ID, uid: user.id });
+            }`, { t: DEFAULT_TENANT_ID, uid: userId });
             setNotifications(data.notifications || []);
         } catch (err: any) { message.error(err.message); }
         finally { setLoading(false); }
-    }, [user?.id]);
+    }, [userId]);
 
     useEffect(() => { loadNotifications(); }, [loadNotifications]);
 
@@ -54,9 +54,8 @@ export default function InboxPage() {
     };
 
     const handleMarkAllRead = async () => {
-        if (!user?.id) return;
         try {
-            await gql(`mutation($t: String!, $uid: String!) { markAllNotificationsRead(tenantId: $t, userId: $uid) }`, { t: DEFAULT_TENANT_ID, uid: user.id });
+            await gql(`mutation($t: String!, $uid: String!) { markAllNotificationsRead(tenantId: $t, userId: $uid) }`, { t: DEFAULT_TENANT_ID, uid: userId });
             setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
             message.success("All marked as read");
         } catch (err: any) { message.error(err.message); }
