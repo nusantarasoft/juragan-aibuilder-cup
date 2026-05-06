@@ -1,8 +1,8 @@
--- ═══════════════════════════════════════════════════════════════════
--- NUSANTARASOFT 3 — Ops & Notifications Demo Seed Data
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- NUSANTARASOFT 3 â€” Ops & Notifications Demo Seed Data
 -- Populates realistic runs, run steps, notifications, and rules
 -- Run: docker exec -i postgres psql -U supabase_admin -d nusantarasoft < seed_demo.sql
--- ═══════════════════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 DO $$
 DECLARE
@@ -17,9 +17,9 @@ DECLARE
     v_run1 UUID; v_run2 UUID; v_run3 UUID; v_run4 UUID; v_run5 UUID;
     v_run6 UUID; v_run7 UUID; v_run8 UUID;
 BEGIN
-    -- ═══ RUN 1: Completed Daily Health Check (yesterday) ═══
+    -- â•â•â• RUN 1: Completed Daily Health Check (yesterday) â•â•â•
     INSERT INTO ops_runs (tenant_id, playbook_id, name, status, started_by, started_at, completed_at, notes)
-    VALUES (v_tid, v_pb_health, 'Daily Health Check — May 5', 'completed', 'admin',
+    VALUES (v_tid, v_pb_health, 'Daily Health Check â€” May 5', 'completed', 'admin',
             NOW() - INTERVAL '1 day 2 hours', NOW() - INTERVAL '1 day 1 hour 30 minutes',
             'All systems nominal. CPU at 42%, memory 61%.')
     RETURNING id INTO v_run1;
@@ -32,7 +32,7 @@ BEGIN
     (v_run1, '5d58c35e-27a2-484d-8fb1-377eef2d025b', 5, 'Check SSL Certificates', 'completed', 'admin', 'Admin', NOW()-INTERVAL '1d 1h40m', NOW()-INTERVAL '1d 1h35m', 'admin', 'All valid, nearest expiry: 89 days'),
     (v_run1, 'ef769b2c-d9dd-4bde-87e6-5afc8a37b5cc', 6, 'Update Status Dashboard', 'completed', 'admin', 'Admin', NOW()-INTERVAL '1d 1h35m', NOW()-INTERVAL '1d 1h30m', 'admin', 'Dashboard updated');
 
-    -- ═══ RUN 2: In-Progress Production Deployment ═══
+    -- â•â•â• RUN 2: In-Progress Production Deployment â•â•â•
     INSERT INTO ops_runs (tenant_id, playbook_id, name, status, started_by, started_at, due_at, notes)
     VALUES (v_tid, v_pb_deploy, 'Release v2.7.2 Deployment', 'in_progress', 'admin',
             NOW() - INTERVAL '45 minutes', NOW() + INTERVAL '2 hours',
@@ -48,7 +48,7 @@ BEGIN
     (v_run2, 'ef4ea4ec-372c-4cc4-b37e-238b199cdbd2', 6, 'Manager Approval', 'pending', NULL, NULL, NULL, NULL, NULL, NULL),
     (v_run2, '83b82942-f2da-468c-907f-f987597a94eb', 7, 'Update Release Notes', 'pending', NULL, NULL, NULL, NULL, NULL, NULL);
 
-    -- ═══ RUN 3: Completed Onboarding ═══
+    -- â•â•â• RUN 3: Completed Onboarding â•â•â•
     INSERT INTO ops_runs (tenant_id, playbook_id, name, status, started_by, started_at, completed_at, notes)
     VALUES (v_tid, v_pb_onboard, 'Onboarding: Sarah Chen', 'completed', 'hr_team',
             NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days 4 hours',
@@ -65,9 +65,9 @@ BEGIN
     (v_run3, 'b5ff0d50-eb0f-4e24-8c79-ca76f0379024', 7, 'Day 1 Buddy Assignment', 'completed', 'hr_team', 'HR Team', NOW()-INTERVAL '2d8h', NOW()-INTERVAL '2d6h', 'hr_team'),
     (v_run3, 'd457f02f-e715-4081-917c-ef569e1471ea', 8, 'Send Welcome Notification', 'completed', 'system', 'System', NOW()-INTERVAL '2d6h', NOW()-INTERVAL '2d4h', 'system');
 
-    -- ═══ RUN 4: Failed Security Audit ═══
+    -- â•â•â• RUN 4: Failed Security Audit â•â•â•
     INSERT INTO ops_runs (tenant_id, playbook_id, name, status, started_by, started_at, completed_at, notes)
-    VALUES (v_tid, v_pb_security, 'Security Audit — Week 18', 'failed', 'security_team',
+    VALUES (v_tid, v_pb_security, 'Security Audit â€” Week 18', 'failed', 'security_team',
             NOW() - INTERVAL '5 days', NOW() - INTERVAL '4 days 20 hours',
             'FAILED: 2 critical vulnerabilities found in dependency scan.')
     RETURNING id INTO v_run4;
@@ -77,9 +77,9 @@ BEGIN
     (v_run4, '21899488-2976-42ce-b53e-a897e5a54d38', 2, 'Check Firewall Rules', 'completed', 'security_team', 'Security', NOW()-INTERVAL '4d23h', NOW()-INTERVAL '4d22h', 'security_team', '2 unused rules removed'),
     (v_run4, '319d7edd-7dcc-40c1-9d2d-1d8b3f318b84', 3, 'Scan for Vulnerabilities', 'failed', 'security_team', 'Security', NOW()-INTERVAL '4d22h', NOW()-INTERVAL '4d21h', 'security_team', 'CVE-2026-1234 and CVE-2026-5678 found'),
     (v_run4, 'efe15a4c-9a0a-42a3-8ca0-25144feed557', 4, 'Review User Permissions', 'skipped', NULL, NULL, NULL, NULL, NULL, 'Skipped due to failure'),
-    (v_run4, '7a040073-1fbb-4acf-b6f3-f838ebbf8c80', 5, 'Security Sign-off', 'skipped', NULL, NULL, NULL, NULL, NULL, 'Cannot sign off — audit failed');
+    (v_run4, '7a040073-1fbb-4acf-b6f3-f838ebbf8c80', 5, 'Security Sign-off', 'skipped', NULL, NULL, NULL, NULL, NULL, 'Cannot sign off â€” audit failed');
 
-    -- ═══ RUN 5: Pending Compliance Report ═══
+    -- â•â•â• RUN 5: Pending Compliance Report â•â•â•
     INSERT INTO ops_runs (tenant_id, playbook_id, name, status, started_by, started_at, due_at, notes)
     VALUES (v_tid, v_pb_compliance, 'May 2026 Compliance Report', 'pending', NULL,
             NULL, NOW() + INTERVAL '5 days',
@@ -94,9 +94,9 @@ BEGIN
     (v_run5, '59566bed-7082-4cac-8e4d-922d2c62070c', 5, 'Compliance Officer Review', 'pending'),
     (v_run5, '724cac27-4bec-489f-a070-90347de19270', 6, 'Archive Report', 'pending');
 
-    -- ═══ RUN 6: Completed Health Check (2 days ago) ═══
+    -- â•â•â• RUN 6: Completed Health Check (2 days ago) â•â•â•
     INSERT INTO ops_runs (tenant_id, playbook_id, name, status, started_by, started_at, completed_at)
-    VALUES (v_tid, v_pb_health, 'Daily Health Check — May 3', 'completed', 'admin',
+    VALUES (v_tid, v_pb_health, 'Daily Health Check â€” May 3', 'completed', 'admin',
             NOW() - INTERVAL '3 days 3 hours', NOW() - INTERVAL '3 days 2 hours 30 minutes')
     RETURNING id INTO v_run6;
 
@@ -108,7 +108,7 @@ BEGIN
     (v_run6, '5d58c35e-27a2-484d-8fb1-377eef2d025b', 5, 'Check SSL Certificates', 'completed', 'admin', 'Admin', NOW()-INTERVAL '3d2h40m', NOW()-INTERVAL '3d2h35m', 'admin'),
     (v_run6, 'ef769b2c-d9dd-4bde-87e6-5afc8a37b5cc', 6, 'Update Status Dashboard', 'completed', 'admin', 'Admin', NOW()-INTERVAL '3d2h35m', NOW()-INTERVAL '3d2h30m', 'admin');
 
-    -- ═══ RUN 7: Cancelled Onboarding ═══
+    -- â•â•â• RUN 7: Cancelled Onboarding â•â•â•
     INSERT INTO ops_runs (tenant_id, playbook_id, name, status, started_by, started_at, completed_at, notes)
     VALUES (v_tid, v_pb_onboard, 'Onboarding: James Rivera (cancelled)', 'cancelled', 'hr_team',
             NOW() - INTERVAL '7 days', NOW() - INTERVAL '6 days',
@@ -117,11 +117,11 @@ BEGIN
 
     INSERT INTO ops_run_steps (run_id, step_id, step_order, title, status, notes) VALUES
     (v_run7, 'a8f8ffca-1875-4905-b2b9-3c0e9bf6f62d', 1, 'Create Email & Accounts', 'completed', 'Accounts created'),
-    (v_run7, 'bdff0ecf-c1bf-4fd9-8266-a4d0ff63a24e', 2, 'Provision System Access', 'skipped', 'Cancelled — offer declined');
+    (v_run7, 'bdff0ecf-c1bf-4fd9-8266-a4d0ff63a24e', 2, 'Provision System Access', 'skipped', 'Cancelled â€” offer declined');
 
-    -- ═══ RUN 8: In-Progress Security Audit (today) ═══
+    -- â•â•â• RUN 8: In-Progress Security Audit (today) â•â•â•
     INSERT INTO ops_runs (tenant_id, playbook_id, name, status, started_by, started_at, due_at)
-    VALUES (v_tid, v_pb_security, 'Security Audit — Week 19', 'in_progress', 'security_team',
+    VALUES (v_tid, v_pb_security, 'Security Audit â€” Week 19', 'in_progress', 'security_team',
             NOW() - INTERVAL '2 hours', NOW() + INTERVAL '4 hours')
     RETURNING id INTO v_run8;
 
@@ -132,18 +132,18 @@ BEGIN
     (v_run8, 'efe15a4c-9a0a-42a3-8ca0-25144feed557', 4, 'Review User Permissions', 'pending', NULL, NULL, NULL, NULL, NULL),
     (v_run8, '7a040073-1fbb-4acf-b6f3-f838ebbf8c80', 5, 'Security Sign-off', 'pending', NULL, NULL, NULL, NULL, NULL);
 
-    -- ═══ ADDITIONAL NOTIFICATIONS ═══
+    -- â•â•â• ADDITIONAL NOTIFICATIONS â•â•â•
     INSERT INTO notifications (tenant_id, user_id, title, message, module, link, icon, is_read, created_at) VALUES
     (v_tid, 'system', 'Deployment Started', 'Release v2.7.2 deployment is in progress', 'ops', '/admin/ops/runs', NULL, false, NOW()-INTERVAL '45m'),
-    (v_tid, 'system', 'Security Audit Failed', '2 critical CVEs found in dependency scan — Week 18', 'ops', '/admin/ops/runs', NULL, true, NOW()-INTERVAL '5d'),
+    (v_tid, 'system', 'Security Audit Failed', '2 critical CVEs found in dependency scan â€” Week 18', 'ops', '/admin/ops/runs', NULL, true, NOW()-INTERVAL '5d'),
     (v_tid, 'system', 'New Employee Onboarded', 'Sarah Chen has completed all onboarding steps', 'hr', '/admin/ops/history', NULL, true, NOW()-INTERVAL '2d4h'),
     (v_tid, 'system', 'Compliance Report Due', 'May 2026 compliance report due in 5 days', 'ops', '/admin/ops/runs', NULL, false, NOW()-INTERVAL '30m'),
     (v_tid, 'system', 'SSL Certificate Expiring', 'api.nusantarasoft.id SSL expires in 89 days', 'system', '/admin/ops/system-health', NULL, true, NOW()-INTERVAL '1d'),
-    (v_tid, 'system', 'Backup Verified', 'Database backup verified — 842MB, integrity check passed', 'system', NULL, NULL, true, NOW()-INTERVAL '25m'),
-    (v_tid, 'system', 'Schedule Created', 'Weekly Security Audit schedule activated — cron: 0 10 * * 1', 'ops', '/admin/ops/schedules', NULL, true, NOW()-INTERVAL '6d'),
+    (v_tid, 'system', 'Backup Verified', 'Database backup verified â€” 842MB, integrity check passed', 'system', NULL, NULL, true, NOW()-INTERVAL '25m'),
+    (v_tid, 'system', 'Schedule Created', 'Weekly Security Audit schedule activated â€” cron: 0 10 * * 1', 'ops', '/admin/ops/schedules', NULL, true, NOW()-INTERVAL '6d'),
     (v_tid, 'system', 'Realtime Connected', 'Supabase Realtime WebSocket notifications are now active', 'system', '/admin/notifications/preferences', NULL, false, NOW()-INTERVAL '10m');
 
-    -- ═══ ADDITIONAL NOTIFICATION LOGS ═══
+    -- â•â•â• ADDITIONAL NOTIFICATION LOGS â•â•â•
     INSERT INTO notification_logs (tenant_id, channel_type, recipient, subject, body, status, created_at) VALUES
     (v_tid, 'email', 'devops@nusantarasoft.id', 'Deployment v2.7.2 Started', 'Release v2.7.2 deployment has been initiated by admin.', 'sent', NOW()-INTERVAL '45m'),
     (v_tid, 'email', 'security@nusantarasoft.id', 'Security Audit FAILED', 'Critical vulnerabilities detected: CVE-2026-1234, CVE-2026-5678', 'sent', NOW()-INTERVAL '4d20h'),
