@@ -57,8 +57,8 @@ export default function HistoryPage() {
         {
             title: "Run", key: "name",
             render: (_, r) => (
-                <div>
-                    <Text strong>{r.name}</Text><br />
+                <div style={{ cursor: 'pointer' }} onClick={() => window.location.href = `/admin/ops/runs/${r.id}`}>
+                    <Text strong style={{ color: '#6366f1' }}>{r.name}</Text><br />
                     <Text type="secondary" style={{ fontSize: 11 }}>{r.playbookName}</Text>
                 </div>
             ),

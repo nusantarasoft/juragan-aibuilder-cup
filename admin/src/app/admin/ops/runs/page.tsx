@@ -89,10 +89,10 @@ export default function RunsPage() {
         {
             title: "Run", key: "name",
             render: (_, r) => (
-                <Space>
+                <Space style={{ cursor: 'pointer' }} onClick={() => window.location.href = `/admin/ops/runs/${r.id}`}>
                     <RocketOutlined style={{ fontSize: 18, color: r.status === 'in_progress' ? '#3b82f6' : '#94a3b8' }} />
                     <div>
-                        <Text strong>{r.name}</Text><br />
+                        <Text strong style={{ color: '#6366f1' }}>{r.name}</Text><br />
                         <Text type="secondary" style={{ fontSize: 11 }}>{r.playbookName}</Text>
                     </div>
                 </Space>
