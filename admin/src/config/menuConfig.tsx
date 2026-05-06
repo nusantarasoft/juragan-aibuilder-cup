@@ -795,6 +795,12 @@ const menuConfig = {
                         icon: <AuditOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/notifications/preferences",
+                        name: "Preferences",
+                        icon: <SettingOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {

@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { gql, DEFAULT_TENANT_ID } from '@/lib/graphql';
+import { getSupabaseClient } from '@/lib/supabaseClient';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface Notification {
     id: string;
@@ -18,6 +20,7 @@ interface NotificationStore {
     unreadCount: number;
     loading: boolean;
     lastFetch: number;
+    realtimeActive: boolean;
 
     fetchNotifications: () => Promise<void>;
     markRead: (id: string) => Promise<void>;
@@ -25,14 +28,32 @@ interface NotificationStore {
     startPolling: () => () => void;
 }
 
-const POLL_INTERVAL = 30_000; // 30 seconds
+const POLL_INTERVAL = 30_000; // 30s fallback polling
 const USER_ID = 'system'; // Will be dynamic once auth is wired
+
+/**
+ * Map a Supabase row (snake_case) to the Notification interface (camelCase).
+ */
+function mapRow(row: any): Notification {
+    return {
+        id: row.id,
+        title: row.title,
+        message: row.message,
+        module: row.module,
+        link: row.link,
+        icon: row.icon,
+        isRead: row.is_read ?? false,
+        readAt: row.read_at,
+        createdAt: row.created_at,
+    };
+}
 
 export const useNotificationStore = create<NotificationStore>((set, get) => ({
     notifications: [],
     unreadCount: 0,
     loading: false,
     lastFetch: 0,
+    realtimeActive: false,
 
     fetchNotifications: async () => {
         try {
@@ -82,10 +103,78 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
         // Initial fetch
         get().fetchNotifications();
 
-        const interval = setInterval(() => {
-            get().fetchNotifications();
-        }, POLL_INTERVAL);
+        // ── Attempt Supabase Realtime subscription ──
+        let channel: RealtimeChannel | null = null;
+        let pollingInterval: ReturnType<typeof setInterval> | null = null;
 
-        return () => clearInterval(interval);
+        try {
+            const supabase = getSupabaseClient();
+            channel = supabase
+                .channel('notifications-realtime')
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: 'notifications',
+                        filter: `user_id=eq.${USER_ID}`,
+                    },
+                    (payload) => {
+                        // Real-time INSERT — prepend to existing notifications
+                        const newNotif = mapRow(payload.new);
+                        const { notifications } = get();
+                        set({
+                            notifications: [newNotif, ...notifications],
+                            unreadCount: [newNotif, ...notifications].filter(n => !n.isRead).length,
+                            lastFetch: Date.now(),
+                        });
+                    }
+                )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'notifications',
+                        filter: `user_id=eq.${USER_ID}`,
+                    },
+                    (payload) => {
+                        // Real-time UPDATE — update matching notification
+                        const updated = mapRow(payload.new);
+                        const { notifications } = get();
+                        const mapped = notifications.map(n => n.id === updated.id ? updated : n);
+                        set({
+                            notifications: mapped,
+                            unreadCount: mapped.filter(n => !n.isRead).length,
+                            lastFetch: Date.now(),
+                        });
+                    }
+                )
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        set({ realtimeActive: true });
+                        // With Realtime active, reduce polling to a 2-minute heartbeat
+                        if (pollingInterval) clearInterval(pollingInterval);
+                        pollingInterval = setInterval(() => get().fetchNotifications(), 120_000);
+                    } else {
+                        set({ realtimeActive: false });
+                    }
+                });
+        } catch {
+            // Realtime failed to initialize — fall through to polling
+        }
+
+        // ── Fallback polling (30s) — will be replaced if Realtime connects ──
+        if (!pollingInterval) {
+            pollingInterval = setInterval(() => get().fetchNotifications(), POLL_INTERVAL);
+        }
+
+        // Cleanup function
+        return () => {
+            if (pollingInterval) clearInterval(pollingInterval);
+            if (channel) {
+                try { getSupabaseClient().removeChannel(channel); } catch { /* ignore */ }
+            }
+        };
     },
 }));
