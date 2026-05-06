@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
@@ -38,6 +39,7 @@ const PLAYBOOK_FIELDS: FieldDef[] = [
 
 export default function PlaybooksPage() {
     const { themeColor } = usePreferencesStore();
+    const router = useRouter();
     const [playbooks, setPlaybooks] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -156,7 +158,7 @@ export default function PlaybooksPage() {
                 <Space>
                     <BookOutlined style={{ fontSize: 20, color: PRIORITY_COLORS[r.priority] === 'red' ? '#ef4444' : '#8b5cf6' }} />
                     <div>
-                        <Text strong>{r.name}</Text>
+                        <Text strong style={{ color: '#7c3aed', cursor: 'pointer' }} onClick={() => router.push(`/admin/ops/playbooks/${r.id}`)}>{r.name}</Text>
                         {!r.isActive && <Tag color="default" style={{ marginLeft: 6 }}>Inactive</Tag>}
                         <br />
                         <Text type="secondary" style={{ fontSize: 11 }}>{r.description || 'No description'}</Text>
