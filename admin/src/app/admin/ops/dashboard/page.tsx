@@ -6,12 +6,14 @@ import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
-    Card, Row, Col, Statistic, Tag, Space, Typography, Spin, List, Progress, Empty, Button, Tooltip,
+    Card, Row, Col, Statistic, Tag, Space, Typography, Spin, List, Progress,
+    Empty, Button, Tooltip, Timeline, Divider,
 } from "antd";
 import { motion } from "framer-motion";
 import {
     BookOutlined, RocketOutlined, CheckCircleOutlined, ClockCircleOutlined,
     WarningOutlined, ThunderboltOutlined, ScheduleOutlined, BarChartOutlined,
+    SendOutlined, BellOutlined, MailOutlined, ApiOutlined,
 } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
@@ -36,24 +38,40 @@ const PRIORITY_COLORS: Record<string, string> = {
     critical: '#ef4444', high: '#f59e0b', medium: '#3b82f6', low: '#94a3b8',
 };
 
+const CATEGORY_COLORS: Record<string, string> = {
+    infrastructure: '#3b82f6', security: '#ef4444', monitoring: '#22c55e',
+    deployment: '#8b5cf6', maintenance: '#f59e0b', compliance: '#06b6d4',
+    other: '#94a3b8',
+};
+
+const DELIVERY_ICONS: Record<string, React.ReactNode> = {
+    email: <MailOutlined style={{ color: '#3b82f6' }} />,
+    whatsapp: <SendOutlined style={{ color: '#22c55e' }} />,
+    webhook: <ApiOutlined style={{ color: '#f59e0b' }} />,
+    in_app: <BellOutlined style={{ color: '#8b5cf6' }} />,
+};
+
 export default function OpsDashboardPage() {
     const { themeColor } = usePreferencesStore();
     const [playbooks, setPlaybooks] = useState<any[]>([]);
     const [runs, setRuns] = useState<any[]>([]);
     const [schedules, setSchedules] = useState<any[]>([]);
+    const [deliveryLogs, setDeliveryLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const [pbData, runData, schData] = await Promise.all([
+            const [pbData, runData, schData, logData] = await Promise.all([
                 gql(`query($t: String!) { opsPlaybooks(tenantId: $t) { id name category priority isActive estimatedMinutes createdAt } }`, { t: DEFAULT_TENANT_ID }),
                 gql(`query($t: String!) { opsRuns(tenantId: $t) { id name status playbookName playbookPriority startedAt completedAt dueAt createdAt } }`, { t: DEFAULT_TENANT_ID }),
-                gql(`query($t: String!) { opsSchedules(tenantId: $t) { id name cronExpression isActive playbookName nextRunAt lastRunAt } }`, { t: DEFAULT_TENANT_ID }),
+                gql(`query($t: String!) { opsSchedules(tenantId: $t) { id name cronExpression isActive playbookName nextRunAt lastRunAt timezone } }`, { t: DEFAULT_TENANT_ID }),
+                gql(`query($t: String!, $limit: Float) { notificationLogs(tenantId: $t, limit: $limit) { id channelType recipient subject status createdAt } }`, { t: DEFAULT_TENANT_ID, limit: 10 }),
             ]);
             setPlaybooks(pbData.opsPlaybooks || []);
             setRuns(runData.opsRuns || []);
             setSchedules(schData.opsSchedules || []);
+            setDeliveryLogs(logData.notificationLogs || []);
         } catch { /* ignore */ } finally { setLoading(false); }
     }, []);
 
@@ -65,6 +83,35 @@ export default function OpsDashboardPage() {
     const overdueRuns = runs.filter(r => r.dueAt && dayjs(r.dueAt).isBefore(dayjs()) && r.status !== 'completed');
     const completionRate = runs.length > 0 ? Math.round((completedRuns.length / runs.length) * 100) : 0;
     const activeSchedules = schedules.filter(s => s.isActive);
+
+    // Playbook category distribution
+    const categoryMap: Record<string, number> = {};
+    playbooks.forEach(p => { const cat = p.category || 'other'; categoryMap[cat] = (categoryMap[cat] || 0) + 1; });
+    const totalPb = playbooks.length || 1;
+
+    // Priority distribution
+    const priorityMap: Record<string, number> = {};
+    playbooks.forEach(p => { const pri = p.priority || 'medium'; priorityMap[pri] = (priorityMap[pri] || 0) + 1; });
+
+    // Build unified activity timeline
+    const activityItems = [
+        ...runs.slice(0, 5).map(r => ({
+            time: r.createdAt,
+            color: STATUS_CONFIG[r.status]?.color || '#94a3b8',
+            icon: STATUS_CONFIG[r.status]?.icon || <ClockCircleOutlined />,
+            title: r.name,
+            desc: `${r.status.replace('_', ' ')} - ${r.playbookName || 'Playbook'}`,
+            type: 'run' as const,
+        })),
+        ...deliveryLogs.slice(0, 5).map(d => ({
+            time: d.createdAt,
+            color: d.status === 'sent' ? '#22c55e' : d.status === 'failed' ? '#ef4444' : '#f59e0b',
+            icon: DELIVERY_ICONS[d.channelType] || <BellOutlined />,
+            title: d.subject || 'Notification',
+            desc: `${d.channelType} > ${d.recipient}`,
+            type: 'notification' as const,
+        })),
+    ].sort((a, b) => dayjs(b.time).unix() - dayjs(a.time).unix()).slice(0, 8);
 
     const stats = [
         { title: 'Playbooks', value: playbooks.length, icon: <BookOutlined />, color: '#8b5cf6' },
@@ -80,11 +127,12 @@ export default function OpsDashboardPage() {
             title={<AuroraText colors={[themeColor, "#6366f1", "#a78bfa"]}>Operations</AuroraText>}
             subTitle={<DecryptedText text="Manage recurring operational workflows and task execution" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
+                <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
                 <RbacGuard key="exp" requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ops_dashboard', title: 'Operations Dashboard', columns: [{ header: 'Run', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Playbook', key: 'playbookName' }, { header: 'Priority', key: 'playbookPriority' }, { header: 'Created', key: 'createdAt' }], data: runs })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ops_dashboard', title: 'Operations Dashboard', columns: [{ header: 'Run', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Playbook', key: 'playbookName' }, { header: 'Priority', key: 'playbookPriority' }, { header: 'Created', key: 'createdAt' }], data: runs })} /></Tooltip></RbacGuard>,
             ]}
         >
             <Spin spinning={loading}>
-                {/* Stats */}
+                {/* Stats Row */}
                 <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
                     {stats.map((s, i) => (
                         <Col key={i} xs={12} sm={8} md={4}>
@@ -97,8 +145,8 @@ export default function OpsDashboardPage() {
                     ))}
                 </Row>
 
-                <Row gutter={[16, 16]}>
-                    {/* Completion Rate */}
+                {/* Row 1: Completion + Active Runs + Overdue */}
+                <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                     <Col xs={24} md={8}>
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
                             <Card title={<Space><BarChartOutlined /> Completion Rate</Space>} size="small" style={glass}>
@@ -111,7 +159,6 @@ export default function OpsDashboardPage() {
                         </motion.div>
                     </Col>
 
-                    {/* Active Runs */}
                     <Col xs={24} md={8}>
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
                             <Card title={<Space><RocketOutlined style={{ color: '#3b82f6' }} /> Active Runs</Space>} size="small" style={glass}>
@@ -141,7 +188,6 @@ export default function OpsDashboardPage() {
                         </motion.div>
                     </Col>
 
-                    {/* Overdue */}
                     <Col xs={24} md={8}>
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
                             <Card title={<Space><WarningOutlined style={{ color: '#ef4444' }} /> Overdue Tasks</Space>} size="small" style={{ ...glass, borderTop: overdueRuns.length > 0 ? '3px solid #ef4444' : undefined }}>
@@ -166,7 +212,129 @@ export default function OpsDashboardPage() {
                         </motion.div>
                     </Col>
                 </Row>
+
+                {/* Row 2: Category Distribution + Priority + Schedule Health */}
+                <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                    <Col xs={24} md={8}>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }}>
+                            <Card title={<Space><BookOutlined /> Playbook Categories</Space>} size="small" style={glass}>
+                                {Object.entries(categoryMap).length === 0 ? (
+                                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No playbooks" />
+                                ) : (
+                                    <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                                        {Object.entries(categoryMap).sort((a, b) => b[1] - a[1]).map(([cat, count]) => (
+                                            <div key={cat}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                                                    <Text style={{ fontSize: 12, textTransform: 'capitalize' }}>{cat}</Text>
+                                                    <Text type="secondary" style={{ fontSize: 11 }}>{count}</Text>
+                                                </div>
+                                                <Progress
+                                                    percent={Math.round((count / totalPb) * 100)}
+                                                    showInfo={false}
+                                                    strokeColor={CATEGORY_COLORS[cat.toLowerCase()] || '#94a3b8'}
+                                                    size="small"
+                                                />
+                                            </div>
+                                        ))}
+                                    </Space>
+                                )}
+                            </Card>
+                        </motion.div>
+                    </Col>
+
+                    <Col xs={24} md={8}>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
+                            <Card title={<Space><ThunderboltOutlined /> Priority Distribution</Space>} size="small" style={glass}>
+                                <div style={{ display: 'flex', justifyContent: 'space-around', padding: '16px 0' }}>
+                                    {['critical', 'high', 'medium', 'low'].map(pri => (
+                                        <div key={pri} style={{ textAlign: 'center' }}>
+                                            <Progress
+                                                type="circle"
+                                                percent={Math.round(((priorityMap[pri] || 0) / totalPb) * 100)}
+                                                size={60}
+                                                strokeColor={PRIORITY_COLORS[pri]}
+                                                format={() => priorityMap[pri] || 0}
+                                            />
+                                            <div style={{ marginTop: 6 }}>
+                                                <Tag color={PRIORITY_COLORS[pri]} style={{ fontSize: 10, textTransform: 'capitalize' }}>{pri}</Tag>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card>
+                        </motion.div>
+                    </Col>
+
+                    <Col xs={24} md={8}>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.55 }}>
+                            <Card title={<Space><ScheduleOutlined style={{ color: '#06b6d4' }} /> Schedule Health</Space>} size="small" style={glass}>
+                                {schedules.length === 0 ? (
+                                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No schedules" />
+                                ) : (
+                                    <List
+                                        size="small"
+                                        dataSource={schedules.slice(0, 5)}
+                                        renderItem={(sch: any) => (
+                                            <List.Item>
+                                                <List.Item.Meta
+                                                    avatar={
+                                                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: sch.isActive ? '#22c55e' : '#94a3b8', marginTop: 6 }} />
+                                                    }
+                                                    title={<Text strong style={{ fontSize: 12 }}>{sch.name}</Text>}
+                                                    description={
+                                                        <Space size={4}>
+                                                            <Tag style={{ fontSize: 10 }}>{sch.cronExpression}</Tag>
+                                                            {sch.nextRunAt && (
+                                                                <Text type="secondary" style={{ fontSize: 10 }}>
+                                                                    Next: {dayjs(sch.nextRunAt).fromNow()}
+                                                                </Text>
+                                                            )}
+                                                        </Space>
+                                                    }
+                                                />
+                                            </List.Item>
+                                        )}
+                                    />
+                                )}
+                            </Card>
+                        </motion.div>
+                    </Col>
+                </Row>
+
+                {/* Row 3: Activity Timeline */}
+                <Row gutter={[16, 16]}>
+                    <Col xs={24}>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
+                            <Card title={<Space><ClockCircleOutlined /> Recent Activity</Space>} size="small" style={glass}>
+                                {activityItems.length === 0 ? (
+                                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No recent activity" />
+                                ) : (
+                                    <Timeline
+                                        mode="left"
+                                        items={activityItems.map(item => ({
+                                            color: item.color,
+                                            dot: item.icon,
+                                            children: (
+                                                <div>
+                                                    <Space size={8}>
+                                                        <Tag color={item.type === 'run' ? 'blue' : 'purple'} style={{ fontSize: 10 }}>
+                                                            {item.type === 'run' ? 'OPS RUN' : 'NOTIFICATION'}
+                                                        </Tag>
+                                                        <Text type="secondary" style={{ fontSize: 11 }}>{dayjs(item.time).fromNow()}</Text>
+                                                    </Space>
+                                                    <div><Text strong style={{ fontSize: 13 }}>{item.title}</Text></div>
+                                                    <Text type="secondary" style={{ fontSize: 11 }}>{item.desc}</Text>
+                                                </div>
+                                            ),
+                                        }))}
+                                    />
+                                )}
+                            </Card>
+                        </motion.div>
+                    </Col>
+                </Row>
             </Spin>
         </CMSLayout>
     );
 }
+
