@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
@@ -38,6 +39,7 @@ const MODULE_COLORS: Record<string, string> = {
 
 export default function InboxPage() {
     const { themeColor } = usePreferencesStore();
+    const router = useRouter();
     const user = useAuthStore((s) => s.user);
     const userId = user?.id || 'system';
     const [notifications, setNotifications] = useState<any[]>([]);
@@ -256,7 +258,7 @@ export default function InboxPage() {
                                                     n.link && (
                                                         <Tooltip key="link" title="Open">
                                                             <Button type="text" size="small" icon={<LinkOutlined />}
-                                                                onClick={() => window.location.href = n.link} />
+                                                                onClick={() => n.link?.startsWith('/') ? router.push(n.link) : (window.location.href = n.link)} />
                                                         </Tooltip>
                                                     ),
                                                     !n.isRead && (

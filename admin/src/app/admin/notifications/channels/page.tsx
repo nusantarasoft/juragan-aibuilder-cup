@@ -207,17 +207,21 @@ export default function ChannelsPage() {
                 {[
                     { title: 'Total', value: channels.length, icon: <SendOutlined />, color: '#8b5cf6' },
                     { title: 'Active', value: channels.filter(c => c.isActive).length, icon: <BellOutlined />, color: '#22c55e' },
+                    { title: 'Email', value: channels.filter(c => c.channelType === 'email').length, icon: <MailOutlined />, color: '#3b82f6' },
+                    { title: 'WhatsApp', value: channels.filter(c => c.channelType === 'whatsapp').length, icon: <MessageOutlined />, color: '#25d366' },
+                    { title: 'Webhook', value: channels.filter(c => c.channelType === 'webhook').length, icon: <ApiOutlined />, color: '#f59e0b' },
+                    { title: 'In-App', value: channels.filter(c => c.channelType === 'in_app').length, icon: <BellOutlined />, color: '#a855f7' },
                 ].map((s, i) => (
-                    <Col key={i} xs={12} md={6}>
+                    <Col key={i} xs={12} sm={8} md={4}>
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                             <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
-                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color, fontSize: 20 }} />
                             </Card>
                         </motion.div>
                     </Col>
                 ))}
             </Row>
-            <Card><Table columns={columns} dataSource={channels.map(c => ({ ...c, key: c.id }))} loading={loading} pagination={false} size="middle" /></Card>
+            <Card><Table columns={columns} dataSource={channels.map(c => ({ ...c, key: c.id }))} loading={loading} pagination={false} size="middle" scroll={{ x: 600 }} /></Card>
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }}
                 onSubmit={handleSave} form={form} title={editing ? "Edit Channel" : "Add Channel"}
                 entityName="channel" steps={formSteps} fields={CHANNEL_FIELDS} width={480}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
@@ -25,6 +25,11 @@ import type { FieldDef } from "@/components/common/DataImportExport";
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
+const MODULE_COLORS: Record<string, string> = {
+    crm: '#1890ff', hr: '#9254de', ops: '#fa8c16', itsm: '#13c2c2',
+    inventory: '#52c41a', ecommerce: '#eb2f96', accounting: '#faad14', pm: '#2f54eb',
+};
+
 const MODULE_OPTIONS = ['crm','hr','ops','itsm','inventory','ecommerce','accounting','pm'].map(m => ({ label: m.toUpperCase(), value: m }));
 const EVENT_OPTIONS = ['create','update','delete','assign','complete','overdue','status_change'].map(e => ({ label: e.replace('_', ' '), value: e }));
 const RECIPIENT_OPTIONS = ['assignee','creator','role','email','webhook'].map(r => ({ label: r, value: r }));
@@ -43,6 +48,7 @@ export default function RulesPage() {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<any>(null);
+    const [moduleFilter, setModuleFilter] = useState<string | undefined>(undefined);
     const [form] = Form.useForm();
 
     const load = useCallback(async () => {
@@ -113,7 +119,7 @@ export default function RulesPage() {
             title: "Rule", key: "name",
             render: (_, r) => (<div><Text strong>{r.name}</Text><br /><Text type="secondary" style={{ fontSize: 11 }}>When {r.module}.{r.event}</Text></div>),
         },
-        { title: "Module", dataIndex: "module", width: 100, render: (v: string) => <Tag>{v.toUpperCase()}</Tag> },
+        { title: "Module", dataIndex: "module", width: 100, render: (v: string) => <Tag color={MODULE_COLORS[v] || 'default'} style={{ fontWeight: 500 }}>{v.toUpperCase()}</Tag> },
         { title: "Event", dataIndex: "event", width: 120, render: (v: string) => <Tag color="geekblue">{v.replace('_', ' ')}</Tag> },
         { title: "Channel", key: "channel", width: 130, render: (_, r) => r.channelName ? <Tag>{r.channelName}</Tag> : '—' },
         { title: "Recipient", dataIndex: "recipientType", width: 100, render: (v: string) => <Tag>{v}</Tag> },
@@ -172,15 +178,28 @@ export default function RulesPage() {
                 {[
                     { title: 'Total Rules', value: rules.length, icon: <NodeIndexOutlined />, color: '#8b5cf6' },
                     { title: 'Active', value: rules.filter(r => r.isActive).length, icon: <ThunderboltOutlined />, color: '#22c55e' },
+                    { title: 'Inactive', value: rules.filter(r => !r.isActive).length, icon: <NodeIndexOutlined />, color: '#94a3b8' },
+                    { title: 'Modules', value: [...new Set(rules.map(r => r.module))].length, icon: <NodeIndexOutlined />, color: '#3b82f6' },
+                    { title: 'Event Types', value: [...new Set(rules.map(r => r.event))].length, icon: <ThunderboltOutlined />, color: '#f59e0b' },
                 ].map((s, i) => (
-                    <Col key={i} xs={12} md={6}>
+                    <Col key={i} xs={12} sm={8} md={4}>
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}><Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} /></Card>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}><Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color, fontSize: 20 }} /></Card>
                         </motion.div>
                     </Col>
                 ))}
             </Row>
-            <Card><Table columns={columns} dataSource={rules.map(r => ({ ...r, key: r.id }))} loading={loading} pagination={false} size="middle" /></Card>
+
+            <Card extra={
+                <Space>
+                    <Select value={moduleFilter} onChange={setModuleFilter} allowClear placeholder="Filter by module" style={{ width: 160 }}
+                        options={[...new Set(rules.map(r => r.module))].map(m => ({ label: m.toUpperCase(), value: m }))} />
+                </Space>
+            }>
+                <Table columns={columns}
+                    dataSource={(moduleFilter ? rules.filter(r => r.module === moduleFilter) : rules).map(r => ({ ...r, key: r.id }))}
+                    loading={loading} pagination={false} size="middle" scroll={{ x: 800 }} />
+            </Card>
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }}
                 onSubmit={handleSave} form={form} title={editing ? "Edit Rule" : "Create Rule"}
                 entityName="rule" steps={formSteps} fields={RULE_FIELDS} width={600}

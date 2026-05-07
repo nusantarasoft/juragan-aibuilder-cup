@@ -289,6 +289,7 @@ export default function DeliveryLogsPage() {
                         showTotal: (t) => `${t} delivery records`,
                     }}
                     size="middle"
+                    scroll={{ x: 900 }}
                     locale={{
                         emptyText: (
                             <Empty

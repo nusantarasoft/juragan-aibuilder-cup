@@ -144,15 +144,19 @@ export default function TemplatesPage() {
                 {[
                     { title: 'Total', value: templates.length, icon: <FileTextOutlined />, color: '#8b5cf6' },
                     { title: 'Active', value: templates.filter(t => t.isActive).length, icon: <CodeOutlined />, color: '#22c55e' },
+                    { title: 'Email', value: templates.filter(t => t.channelType === 'email').length, icon: <FileTextOutlined />, color: '#3b82f6' },
+                    { title: 'WhatsApp', value: templates.filter(t => t.channelType === 'whatsapp').length, icon: <FileTextOutlined />, color: '#25d366' },
+                    { title: 'Webhook', value: templates.filter(t => t.channelType === 'webhook').length, icon: <FileTextOutlined />, color: '#f59e0b' },
+                    { title: 'Variables', value: [...new Set(templates.flatMap(t => t.variables || []))].length, icon: <CodeOutlined />, color: '#ec4899' },
                 ].map((s, i) => (
-                    <Col key={i} xs={12} md={6}>
+                    <Col key={i} xs={12} sm={8} md={4}>
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}><Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} /></Card>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}><Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color, fontSize: 20 }} /></Card>
                         </motion.div>
                     </Col>
                 ))}
             </Row>
-            <Card><Table columns={columns} dataSource={templates.map(t => ({ ...t, key: t.id }))} loading={loading} pagination={false} size="middle" /></Card>
+            <Card><Table columns={columns} dataSource={templates.map(t => ({ ...t, key: t.id }))} loading={loading} pagination={false} size="middle" scroll={{ x: 700 }} /></Card>
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }}
                 onSubmit={handleSave} form={form} title={editing ? "Edit Template" : "Create Template"}
                 entityName="template" steps={formSteps} fields={TEMPLATE_FIELDS} width={560}

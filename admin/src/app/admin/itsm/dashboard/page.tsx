@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProCard } from "@ant-design/pro-components";
 import { Row, Col, Statistic, Tag, Table, Space, Progress, message, Typography, Badge, Tabs, Descriptions, Modal } from "antd";
@@ -50,6 +51,7 @@ export default function ItsmDashboardPage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [stats, setStats] = useState<any>(null);
     const { themeColor } = usePreferencesStore();
+    const router = useRouter();
     const [modules, setModules] = useState<any>(null);
     const [tickets, setTickets] = useState<any[]>([]);
     const [allTickets, setAllTickets] = useState<any[]>([]);
@@ -136,7 +138,7 @@ export default function ItsmDashboardPage() {
             {/* ROW 1: Core ITSM Modules */}
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                 <Col xs={24} sm={12} md={6}>
-                    <ProCard bordered hoverable style={{ background: 'linear-gradient(135deg, rgba(245,34,45,0.08) 0%, rgba(245,34,45,0.02) 100%)', borderLeft: `4px solid ${themeColor}`, cursor: 'pointer', backdropFilter: 'blur(20px)', borderRadius: 12 }} onClick={() => window.location.href = '/admin/itsm/tickets'}>
+                    <ProCard bordered hoverable style={{ background: 'linear-gradient(135deg, rgba(245,34,45,0.08) 0%, rgba(245,34,45,0.02) 100%)', borderLeft: `4px solid ${themeColor}`, cursor: 'pointer', backdropFilter: 'blur(20px)', borderRadius: 12 }} onClick={() => router.push('/admin/itsm/tickets')}>
                         <Statistic title={<Space><AlertOutlined style={{ color: themeColor }} /> Incidents</Space>} value={stats?.totalOpen || 0} suffix={<Text type="secondary" style={{ fontSize: 12 }}>/ {stats?.totalTickets || 0}</Text>} loading={loading} />
                         <div style={{ marginTop: 8 }}>
                             {stats?.totalSlaBreach > 0 && <Tag color="red" icon={<WarningOutlined />}>{stats.totalSlaBreach} SLA Breach</Tag>}
@@ -145,18 +147,18 @@ export default function ItsmDashboardPage() {
                     </ProCard>
                 </Col>
                 <Col xs={24} sm={12} md={6}>
-                    <ProCard bordered hoverable style={{ background: 'linear-gradient(135deg, rgba(24,144,255,0.08) 0%, rgba(24,144,255,0.02) 100%)', borderLeft: '4px solid #1890ff', cursor: 'pointer', backdropFilter: 'blur(20px)', borderRadius: 12 }} onClick={() => window.location.href = '/admin/itsm/requests'}>
+                    <ProCard bordered hoverable style={{ background: 'linear-gradient(135deg, rgba(24,144,255,0.08) 0%, rgba(24,144,255,0.02) 100%)', borderLeft: '4px solid #1890ff', cursor: 'pointer', backdropFilter: 'blur(20px)', borderRadius: 12 }} onClick={() => router.push('/admin/itsm/requests')}>
                         <Statistic title={<Space><FileTextOutlined style={{ color: '#1890ff' }} /> Service Requests</Space>} value={modules?.serviceRequests?.open || 0} suffix={<Text type="secondary" style={{ fontSize: 12 }}>/ {modules?.serviceRequests?.total || 0}</Text>} loading={loading} />
                     </ProCard>
                 </Col>
                 <Col xs={24} sm={12} md={6}>
-                    <ProCard bordered hoverable style={{ background: 'linear-gradient(135deg, rgba(250,140,22,0.08) 0%, rgba(250,140,22,0.02) 100%)', borderLeft: '4px solid #fa8c16', cursor: 'pointer', backdropFilter: 'blur(20px)', borderRadius: 12 }} onClick={() => window.location.href = '/admin/itsm/problems'}>
+                    <ProCard bordered hoverable style={{ background: 'linear-gradient(135deg, rgba(250,140,22,0.08) 0%, rgba(250,140,22,0.02) 100%)', borderLeft: '4px solid #fa8c16', cursor: 'pointer', backdropFilter: 'blur(20px)', borderRadius: 12 }} onClick={() => router.push('/admin/itsm/problems')}>
                         <Statistic title={<Space><BugOutlined style={{ color: '#fa8c16' }} /> Problems</Space>} value={modules?.problems?.open || 0} suffix={<Text type="secondary" style={{ fontSize: 12 }}>/ {modules?.problems?.total || 0}</Text>} loading={loading} />
                         {(modules?.problems?.knownErrors || 0) > 0 && <Tag color="volcano" style={{ marginTop: 4 }}>{modules.problems.knownErrors} Known Errors</Tag>}
                     </ProCard>
                 </Col>
                 <Col xs={24} sm={12} md={6}>
-                    <ProCard bordered hoverable style={{ background: 'linear-gradient(135deg, rgba(82,196,26,0.08) 0%, rgba(82,196,26,0.02) 100%)', borderLeft: '4px solid #52c41a', cursor: 'pointer', backdropFilter: 'blur(20px)', borderRadius: 12 }} onClick={() => window.location.href = '/admin/itsm/changes'}>
+                    <ProCard bordered hoverable style={{ background: 'linear-gradient(135deg, rgba(82,196,26,0.08) 0%, rgba(82,196,26,0.02) 100%)', borderLeft: '4px solid #52c41a', cursor: 'pointer', backdropFilter: 'blur(20px)', borderRadius: 12 }} onClick={() => router.push('/admin/itsm/changes')}>
                         <Statistic title={<Space><SyncOutlined style={{ color: '#52c41a' }} /> Changes</Space>} value={modules?.changes?.open || 0} suffix={<Text type="secondary" style={{ fontSize: 12 }}>/ {modules?.changes?.total || 0}</Text>} loading={loading} />
                     </ProCard>
                 </Col>
@@ -173,7 +175,7 @@ export default function ItsmDashboardPage() {
                     { title: 'Availability', value: avgAvail || '-', sub: `${availData.length} Records`, icon: <FieldTimeOutlined />, color: avgAvail >= 99.9 ? '#52c41a' : '#fa8c16', gradient: avgAvail >= 99.9 ? 'linear-gradient(135deg, rgba(82,196,26,0.07) 0%, rgba(82,196,26,0.02) 100%)' : 'linear-gradient(135deg, rgba(250,140,22,0.07) 0%, rgba(250,140,22,0.02) 100%)', href: '/admin/itsm/availability', suffix: '%' },
                 ].map(card => (
                     <Col xs={24} sm={12} md={4} key={card.title}>
-                        <ProCard bordered hoverable size="small" style={{ background: card.gradient, borderTop: `3px solid ${card.color}`, cursor: 'pointer', borderRadius: 12, backdropFilter: 'blur(20px)', padding: 0 }} onClick={() => window.location.href = card.href}>
+                        <ProCard bordered hoverable size="small" style={{ background: card.gradient, borderTop: `3px solid ${card.color}`, cursor: 'pointer', borderRadius: 12, backdropFilter: 'blur(20px)', padding: 0 }} onClick={() => router.push(card.href)}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                 <div style={{
                                     width: 44, height: 44, borderRadius: 10,
