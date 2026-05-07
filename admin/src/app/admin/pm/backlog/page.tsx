@@ -287,65 +287,22 @@ export default function BacklogPage() {
             subTitle={<DecryptedText text="All tasks across all projects" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_backlog', title: 'PM Backlog Tasks', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Project', key: 'projectName' }], data: tasks })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_backlog', title: 'PM Backlog Tasks', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Project', key: 'projectName' }], data: tasks })} /></Tooltip></RbacGuard>]}>
             {/* ── Stats Row ── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #6366f1' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 12 }}>Total Tasks</span>}
-                            value={totalTasks}
-                            prefix={<UnorderedListOutlined style={{ color: themeColor }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 700 }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #64748b' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 12 }}>To Do</span>}
-                            value={todoCount}
-                            valueStyle={{ fontSize: 24, fontWeight: 700, color: '#64748b' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #3b82f6' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 12 }}>In Progress</span>}
-                            value={inProgressCount}
-                            prefix={<ClockCircleOutlined style={{ color: '#3b82f6' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 700, color: '#3b82f6' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #10b981' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 12 }}>Done</span>}
-                            value={doneCount}
-                            prefix={<CheckCircleOutlined style={{ color: '#10b981' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #ef4444' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 12 }}>Overdue</span>}
-                            value={overdueCount}
-                            prefix={<ExclamationCircleOutlined style={{ color: '#ef4444' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 700, color: '#ef4444' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #f59e0b' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 12 }}>Unassigned</span>}
-                            value={unassignedCount}
-                            prefix={<UserOutlined style={{ color: '#f59e0b' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 700, color: '#f59e0b' }}
-                        />
-                    </Card>
-                </Col>
+                {[
+                    { title: 'Total Tasks', value: totalTasks, icon: <UnorderedListOutlined style={{ color: themeColor }} />, color: '#6366f1' },
+                    { title: 'To Do', value: todoCount, color: '#64748b' },
+                    { title: 'In Progress', value: inProgressCount, icon: <ClockCircleOutlined style={{ color: '#3b82f6' }} />, color: '#3b82f6' },
+                    { title: 'Done', value: doneCount, icon: <CheckCircleOutlined style={{ color: '#10b981' }} />, color: '#10b981' },
+                    { title: 'Overdue', value: overdueCount, icon: <ExclamationCircleOutlined style={{ color: '#ef4444' }} />, color: '#ef4444' },
+                    { title: 'Unassigned', value: unassignedCount, icon: <UserOutlined style={{ color: '#f59e0b' }} />, color: '#f59e0b' },
+                ].map((s, i) => (
+                    <Col key={i} xs={24} sm={12} lg={4}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card style={{ ...glassCard, borderTop: `3px solid ${s.color}` }} size="small">
+                                <Statistic title={<span style={{ fontSize: 12 }}>{s.title}</span>} value={s.value} prefix={s.icon} valueStyle={{ fontSize: 24, fontWeight: 700, color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
             </Row>
 
             {/* ── Effort Summary ── */}

@@ -346,6 +346,7 @@ export default function ReportsPage() {
             {contextHolder}
 
             {/* ── Executive Summary ── */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={4}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #6366f1' }} size="small">
@@ -411,6 +412,7 @@ export default function ReportsPage() {
                     </Card>
                 </Col>
             </Row>
+            </motion.div>
 
             {/* ── Task Flow & Priority Distribution ── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>

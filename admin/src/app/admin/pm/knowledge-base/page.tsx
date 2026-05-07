@@ -240,6 +240,7 @@ export default function KnowledgeBasePage() {
             {/* ── Stats Row ── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={8} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
                     <Card style={{ ...glassCard, borderTop: `3px solid ${themeColor}` }} size="small">
                         <Statistic
                             title={<span style={{ fontSize: 12 }}>Total Lessons</span>}
@@ -248,8 +249,10 @@ export default function KnowledgeBasePage() {
                             valueStyle={{ fontSize: 28, fontWeight: 700, color: themeColor }}
                         />
                     </Card>
+                        </motion.div>
                 </Col>
                 <Col xs={24} sm={8} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #3b82f6' }} size="small">
                         <Statistic
                             title={<span style={{ fontSize: 12 }}>Contributing Projects</span>}
@@ -258,8 +261,10 @@ export default function KnowledgeBasePage() {
                             valueStyle={{ fontSize: 28, fontWeight: 700, color: '#3b82f6' }}
                         />
                     </Card>
+                        </motion.div>
                 </Col>
                 <Col xs={24} sm={8} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #10b981' }} size="small">
                         <Statistic
                             title={<span style={{ fontSize: 12 }}>Categories</span>}
@@ -268,8 +273,10 @@ export default function KnowledgeBasePage() {
                             valueStyle={{ fontSize: 28, fontWeight: 700, color: '#10b981' }}
                         />
                     </Card>
+                        </motion.div>
                 </Col>
                 <Col xs={24} sm={8} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #f59e0b' }} size="small">
                         <Statistic
                             title={<span style={{ fontSize: 12 }}>Unique Tags</span>}
@@ -278,6 +285,7 @@ export default function KnowledgeBasePage() {
                             valueStyle={{ fontSize: 28, fontWeight: 700, color: '#f59e0b' }}
                         />
                     </Card>
+                        </motion.div>
                 </Col>
             </Row>
 

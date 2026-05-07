@@ -250,14 +250,14 @@ export default function AccountingSettingsPage() {
             title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Accounting Settings</AuroraText>}
             subTitle={<DecryptedText text="Currencies, Fiscal Periods, Tax Rates & Cost Centers" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <Tabs defaultActiveKey="currencies" items={[
                 { key: 'currencies', label: <span><DollarOutlined /> Currencies</span>, children: <CurrenciesTab /> },
                 { key: 'fiscal', label: <span><CalendarOutlined /> Fiscal Periods</span>, children: <FiscalPeriodsTab /> },
                 { key: 'taxes', label: <span><PercentageOutlined /> Tax Rates</span>, children: <TaxRatesTab /> },
                 { key: 'costcenters', label: <span><ApartmentOutlined /> Cost Centers</span>, children: <CostCentersTab /> },
             ]} />
-        </div>
+        </motion.div>
         </CMSLayout>
     );
 }

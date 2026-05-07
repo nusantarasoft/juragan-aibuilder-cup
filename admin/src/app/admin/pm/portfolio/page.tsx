@@ -351,6 +351,7 @@ export default function PortfolioOverviewPage() {
             {contextHolder}
 
             {/* ── Hero Stats Row ── */}
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={6}>
                     <StatCard
@@ -812,6 +813,7 @@ export default function PortfolioOverviewPage() {
                     />
                 )}
             </Card>
+            </motion.div>
         </CMSLayout>
     );
 }

@@ -171,6 +171,7 @@ export default function IndividualsPage() {
             <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
             <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>Add Individual</Button>,
         ]}>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35 }}>
             <Card style={{ ...glass, marginBottom: 16 }}><Space wrap>
                 <Input prefix={<SearchOutlined />} placeholder="Search by name..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />
                 <Select placeholder="Status" value={statusFilter} onChange={setStatusFilter} allowClear style={{ width: 130 }} options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} />
@@ -204,6 +205,7 @@ export default function IndividualsPage() {
                     {convertStep === 2 && (<><Form.Item label="Create a Deal?"><Switch checked={createDeal} onChange={setCreateDeal} /></Form.Item>{createDeal && (<><Form.Item name="dealName" label="Deal Name" rules={[{ required: createDeal }]}><Input placeholder="e.g., Enterprise License" /></Form.Item><Row gutter={16}><Col span={8}><Form.Item name="dealAmount" label="Amount"><InputNumber style={{ width: '100%' }} prefix="$" /></Form.Item></Col><Col span={8}><Form.Item name="dealStage" label="Stage" initialValue="prospecting"><Select options={[{ value: 'prospecting', label: 'Prospecting' }, { value: 'qualification', label: 'Qualification' }, { value: 'proposal', label: 'Proposal' }]} /></Form.Item></Col><Col span={8}><Form.Item name="dealCloseDate" label="Close Date"><DatePicker style={{ width: '100%' }} /></Form.Item></Col></Row></>)}</>)}
                 </Form>
             </Modal>
+            </motion.div>
         </CMSLayout>
     );
 }

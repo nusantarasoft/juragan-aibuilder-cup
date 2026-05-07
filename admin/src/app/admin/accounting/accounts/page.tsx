@@ -110,6 +110,7 @@ export default function ChartOfAccountsPage() {
             title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Chart of Accounts</AuroraText>}
             subTitle={<DecryptedText text={`${accounts.length} accounts configured`} animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}
@@ -182,6 +183,7 @@ export default function ChartOfAccountsPage() {
                 </Form>
             </Drawer>
         </div>
+        </motion.div>
         </CMSLayout>
     );
 }

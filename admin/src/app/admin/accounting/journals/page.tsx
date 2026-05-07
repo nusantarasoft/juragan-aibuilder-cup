@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
@@ -146,6 +146,7 @@ export default function JournalEntriesPage() {
             title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Journal Entries</AuroraText>}
             subTitle={<DecryptedText text={`${journals.length} entries recorded`} animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}
@@ -275,6 +276,7 @@ export default function JournalEntriesPage() {
                 )}
             </Drawer>
         </div>
+        </motion.div>
         </CMSLayout>
     );
 }

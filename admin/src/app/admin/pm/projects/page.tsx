@@ -633,6 +633,7 @@ export default function ProjectsPage() {
             {/* â”€â”€ Gradient Stat Cards â”€â”€ */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
                     <StatCard
                         title="Total Projects"
                         value={stats.total}
@@ -655,8 +656,10 @@ export default function ProjectsPage() {
                             </div>
                         }
                     />
+                        </motion.div>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
                     <StatCard
                         title="Active Projects"
                         value={stats.active}
@@ -672,8 +675,10 @@ export default function ProjectsPage() {
                             )
                         }
                     />
+                        </motion.div>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
                     <StatCard
                         title="Budget Utilization"
                         value={stats.budgetPct}
@@ -688,8 +693,10 @@ export default function ProjectsPage() {
                             </Text>
                         }
                     />
+                        </motion.div>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
                     <StatCard
                         title="Completed"
                         value={stats.completed}
@@ -706,6 +713,7 @@ export default function ProjectsPage() {
                             ) : null
                         }
                     />
+                        </motion.div>
                 </Col>
             </Row>
 
