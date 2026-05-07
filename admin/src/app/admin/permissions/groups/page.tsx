@@ -7,17 +7,20 @@ import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Card, Tabs, Table, Button, Space, Modal, Form, Input,
-    message, Typography, Row, Col, Statistic, Badge,
+    message, Typography, Row, Col, Statistic, Badge, Tooltip,
 } from "antd";
 import { motion } from "framer-motion";
 import {
     PlusOutlined, DeleteOutlined, ReloadOutlined,
-    TeamOutlined, UsergroupAddOutlined,
+    TeamOutlined, UsergroupAddOutlined, FileExcelOutlined, FilePdfOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import RbacGuard from "@/components/common/RbacGuard";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -46,6 +49,7 @@ const GROUP_FIELDS: FieldDef[] = [
 
 export default function GroupsTeamsPage() {
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [teams, setTeams] = useState<Team[]>([]);
     const [teamsLoading, setTeamsLoading] = useState(true);
     const [teamModalOpen, setTeamModalOpen] = useState(false);
@@ -289,7 +293,10 @@ export default function GroupsTeamsPage() {
         <CMSLayout
             title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Groups & Teams</AuroraText>}
             subTitle={<DecryptedText text="Manage teams for record-level access and public groups for sharing" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
-            extra={[<Button key="reload" icon={<ReloadOutlined />} onClick={() => { loadTeams(); loadGroups(); }} />]}
+            extra={[
+                <RbacGuard key="exports" requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'groups_teams', title: 'Groups & Teams', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Type', key: 'type' }, { header: 'Name', key: 'name' }, { header: 'Description', key: 'description' }], data: [...teams.map(t => ({ ...t, type: 'Team' })), ...groups.map(g => ({ ...g, type: 'Public Group' }))] })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'groups_teams', title: 'Groups & Teams', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Type', key: 'type' }, { header: 'Name', key: 'name' }, { header: 'Description', key: 'description' }], data: [...teams.map(t => ({ ...t, type: 'Team' })), ...groups.map(g => ({ ...g, type: 'Public Group' }))] })} /></Tooltip></RbacGuard>,
+                <Button key="reload" icon={<ReloadOutlined />} onClick={() => { loadTeams(); loadGroups(); }} />,
+            ]}
         >
             <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
                 {[

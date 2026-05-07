@@ -6,18 +6,22 @@ import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
-    Card, Tabs, Table, Button, Space, Modal, Form, Input, Select, Tag,
+    Card, Tabs, Table, Button, Space, Modal, Form, Input, Select, Tag, Tooltip,
     message, Typography, Spin, Row, Col, Statistic,
 } from "antd";
 import { motion } from "framer-motion";
 import {
     PlusOutlined, DeleteOutlined, ReloadOutlined,
     LockOutlined, ShareAltOutlined, EyeOutlined,
+    FileExcelOutlined, FilePdfOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import RbacGuard from "@/components/common/RbacGuard";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -67,6 +71,7 @@ const RULE_FIELDS: FieldDef[] = [
 
 export default function SharingPage() {
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [owds, setOwds] = useState<OrgWideDefault[]>([]);
     const [owdLoading, setOwdLoading] = useState(true);
 
@@ -366,7 +371,10 @@ export default function SharingPage() {
         <CMSLayout
             title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Sharing & Security</AuroraText>}
             subTitle={<DecryptedText text="Configure organization-wide defaults, sharing rules, and field-level security" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
-            extra={[<Button key="reload" icon={<ReloadOutlined />} onClick={() => { loadOwds(); loadRules(); }} />]}
+            extra={[
+                <RbacGuard key="exports" requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'sharing_rules', title: 'Sharing Rules', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Object', key: 'objectName' }, { header: 'Type', key: 'ruleType' }, { header: 'Access Level', key: 'accessLevel' }, { header: 'Active', key: 'isActive', format: (v: boolean) => v ? 'Yes' : 'No' }], data: rules })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'sharing_rules', title: 'Sharing Rules', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Object', key: 'objectName' }, { header: 'Type', key: 'ruleType' }, { header: 'Access Level', key: 'accessLevel' }, { header: 'Active', key: 'isActive', format: (v: boolean) => v ? 'Yes' : 'No' }], data: rules })} /></Tooltip></RbacGuard>,
+                <Button key="reload" icon={<ReloadOutlined />} onClick={() => { loadOwds(); loadRules(); }} />,
+            ]}
         >
             <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
                 {[

@@ -17,6 +17,9 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import RbacGuard from "@/components/common/RbacGuard";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import isToday from "dayjs/plugin/isToday";
@@ -61,6 +64,7 @@ function getModuleColor(module: string): string {
 
 export default function ExportLogsPage() {
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [logs, setLogs] = useState<ExportLog[]>([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -218,6 +222,7 @@ export default function ExportLogsPage() {
             title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Export Audit Log</AuroraText>}
             subTitle={<DecryptedText text="Compliance audit trail — track all data exports across modules" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
+                <RbacGuard key="exports" requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'export_audit_log', title: 'Export Audit Log', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'User', key: 'userName' }, { header: 'Email', key: 'userEmail' }, { header: 'Type', key: 'exportType' }, { header: 'Module', key: 'module' }, { header: 'File', key: 'fileName' }, { header: 'Records', key: 'recordCount' }, { header: 'Date', key: 'createdAt' }], data: logs })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'export_audit_log', title: 'Export Audit Log', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'User', key: 'userName' }, { header: 'Email', key: 'userEmail' }, { header: 'Type', key: 'exportType' }, { header: 'Module', key: 'module' }, { header: 'File', key: 'fileName' }, { header: 'Records', key: 'recordCount' }, { header: 'Date', key: 'createdAt' }], data: logs })} /></Tooltip></RbacGuard>,
                 <Button key="reload" icon={<ReloadOutlined />} onClick={loadLogs} />,
             ]}
         >

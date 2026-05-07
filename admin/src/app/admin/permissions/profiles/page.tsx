@@ -19,6 +19,9 @@ import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import RbacGuard from "@/components/common/RbacGuard";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -62,6 +65,7 @@ const PROFILE_FIELDS: FieldDef[] = [
 
 export default function ProfilesPage() {
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -334,6 +338,7 @@ export default function ProfilesPage() {
             title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Profiles</AuroraText>}
             subTitle={<DecryptedText text="Manage permission profiles — base template for user access" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
+                <RbacGuard key="exports" requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'profiles', title: 'Permission Profiles', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Description', key: 'description' }, { header: 'System', key: 'isSystem', format: (v: boolean) => v ? 'Yes' : 'No' }, { header: 'Custom', key: 'isCustom', format: (v: boolean) => v ? 'Yes' : 'No' }], data: profiles })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'profiles', title: 'Permission Profiles', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Description', key: 'description' }, { header: 'System', key: 'isSystem', format: (v: boolean) => v ? 'Yes' : 'No' }, { header: 'Custom', key: 'isCustom', format: (v: boolean) => v ? 'Yes' : 'No' }], data: profiles })} /></Tooltip></RbacGuard>,
                 <Button key="reload" icon={<ReloadOutlined />} onClick={loadProfiles} />,
                 <Button
                     key="add"

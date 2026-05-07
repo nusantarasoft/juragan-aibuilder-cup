@@ -6,18 +6,21 @@ import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
-    Table, Button, Space, Modal, Form, Input, Card, Tag,
+    Table, Button, Space, Modal, Form, Input, Card, Tag, Tooltip,
     message, Typography, Checkbox, Spin, Row, Col, Statistic,
 } from "antd";
 import { motion } from "framer-motion";
 import {
     PlusOutlined, DeleteOutlined, ReloadOutlined,
-    KeyOutlined, SettingOutlined,
+    KeyOutlined, SettingOutlined, FileExcelOutlined, FilePdfOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import RbacGuard from "@/components/common/RbacGuard";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -54,6 +57,7 @@ const PS_FIELDS: FieldDef[] = [
 
 export default function PermissionSetsPage() {
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [sets, setSets] = useState<PermissionSet[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -241,6 +245,7 @@ export default function PermissionSetsPage() {
             title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Permission Sets</AuroraText>}
             subTitle={<DecryptedText text="Additive permissions assigned to individual users" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
+                <RbacGuard key="exports" requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'permission_sets', title: 'Permission Sets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Description', key: 'description' }, { header: 'System', key: 'isSystem', format: (v: boolean) => v ? 'Yes' : 'No' }], data: sets })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'permission_sets', title: 'Permission Sets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Description', key: 'description' }, { header: 'System', key: 'isSystem', format: (v: boolean) => v ? 'Yes' : 'No' }], data: sets })} /></Tooltip></RbacGuard>,
                 <Button key="reload" icon={<ReloadOutlined />} onClick={loadSets} />,
                 <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setIsModalOpen(true); }}>
                     Create Permission Set

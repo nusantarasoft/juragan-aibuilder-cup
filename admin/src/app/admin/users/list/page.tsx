@@ -17,7 +17,7 @@ import {
     Form,
     Select,
     message,
-    Card, Row, Col, Statistic,
+    Card, Row, Col, Statistic, Tooltip,
 } from "antd";
 import { motion } from "framer-motion";
 import {
@@ -27,8 +27,12 @@ import {
     MoreOutlined,
     SearchOutlined,
     UserOutlined,
+    FileExcelOutlined, FilePdfOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import RbacGuard from "@/components/common/RbacGuard";
 
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
@@ -85,6 +89,7 @@ const roleColors: Record<string, string> = {
 
 export default function UsersListPage() {
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [form] = Form.useForm();
 
@@ -171,6 +176,7 @@ export default function UsersListPage() {
             title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>User Management</AuroraText>}
             subTitle={<DecryptedText text="Manage users and their access" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
+                <RbacGuard key="exports" requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'users', title: 'User Management', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Email', key: 'email' }, { header: 'Role', key: 'role' }, { header: 'Status', key: 'status' }, { header: 'Last Login', key: 'lastLogin' }, { header: 'Created', key: 'createdAt' }], data: sampleUsers })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'users', title: 'User Management', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Email', key: 'email' }, { header: 'Role', key: 'role' }, { header: 'Status', key: 'status' }, { header: 'Last Login', key: 'lastLogin' }, { header: 'Created', key: 'createdAt' }], data: sampleUsers })} /></Tooltip></RbacGuard>,
                 <Button
                     key="add"
                     type="primary"
