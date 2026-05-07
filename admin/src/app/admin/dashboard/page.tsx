@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { ProCard } from "@ant-design/pro-components";
 import { Row, Col, Statistic, Tag, Space, Progress, message, Typography, Card, Badge, Button, Divider } from "antd";
@@ -15,6 +16,7 @@ import {
     ArrowRightOutlined, BarChartOutlined,
     BuildOutlined, DatabaseOutlined,
     ShopOutlined, AppstoreOutlined,
+    PlayCircleOutlined, CalendarOutlined, BellOutlined,
 } from "@ant-design/icons";
 import { gql } from "@/lib/graphql";
 import { supaRest } from "@/lib/supaRest";
@@ -24,6 +26,9 @@ import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Title, Text, Paragraph } = Typography;
 const DEFAULT_TENANT = 'default';
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+dayjs.extend(relativeTime);
 
 const GET_ITSM_STATS = `query { itsmDashboardStats { totalOpen totalUnassigned totalSlaBreach avgResolutionHours slaCompliance totalTickets byCritical byHigh byMedium byLow } }`;
 const GET_ITSM_MODULES = `query { itsmModuleCounts { serviceRequests { total open } problems { total open knownErrors } changes { total open } knowledge { total published } } }`;
@@ -39,6 +44,7 @@ const fmtCurrency = (n: number) => {
 export default function DashboardPage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [loading, setLoading] = useState(true);
+    const router = useRouter();
     const [itsm, setItsm] = useState<any>(null);
     const [itsmMod, setItsmMod] = useState<any>(null);
     const [crm, setCrm] = useState<any>(null);
@@ -54,6 +60,12 @@ export default function DashboardPage() {
     const [avgAvail, setAvgAvail] = useState(0);
     const [depsCompleted, setDepsCompleted] = useState(0);
     const [depsTotal, setDepsTotal] = useState(0);
+    // Ops module
+    const [opsPlaybooks, setOpsPlaybooks] = useState(0);
+    const [opsActiveRuns, setOpsActiveRuns] = useState(0);
+    const [opsOverdue, setOpsOverdue] = useState(0);
+    const [opsSchedules, setOpsSchedules] = useState(0);
+    const [notifHealth, setNotifHealth] = useState<{ dispatched: number; delivered: number; failRate: number }>({ dispatched: 0, delivered: 0, failRate: 0 });
 
     useEffect(() => {
         (async () => {
@@ -86,13 +98,31 @@ export default function DashboardPage() {
                 setAvgAvail(avails.length > 0 ? +(avails.reduce((s: number, r: any) => s + (r.availability_pct || 0), 0) / avails.length).toFixed(2) : 0);
                 setDepsCompleted(deps.filter((d: any) => d.status === 'completed').length);
                 setDepsTotal(deps.length);
+                // Ops module data
+                try {
+                    const [opsPb, opsRn, opsSch, notifLogs] = await Promise.all([
+                        gql(`query($t: String!) { opsPlaybooks(tenantId: $t) { id } }`, { t: DEFAULT_TENANT }),
+                        gql(`query($t: String!) { opsRuns(tenantId: $t) { id status dueAt } }`, { t: DEFAULT_TENANT }),
+                        gql(`query($t: String!) { opsSchedules(tenantId: $t) { id isActive } }`, { t: DEFAULT_TENANT }),
+                        gql(`query($t: String!) { notificationLogs(tenantId: $t) { id status } }`, { t: DEFAULT_TENANT }),
+                    ]);
+                    setOpsPlaybooks((opsPb.opsPlaybooks || []).length);
+                    const runs = opsRn.opsRuns || [];
+                    setOpsActiveRuns(runs.filter((r: any) => r.status === 'in_progress').length);
+                    setOpsOverdue(runs.filter((r: any) => r.dueAt && dayjs(r.dueAt).isBefore(dayjs()) && r.status !== 'completed').length);
+                    setOpsSchedules((opsSch.opsSchedules || []).filter((s: any) => s.isActive).length);
+                    const logs = notifLogs.notificationLogs || [];
+                    const sent = logs.filter((l: any) => l.status === 'sent').length;
+                    const failed = logs.filter((l: any) => l.status === 'failed').length;
+                    setNotifHealth({ dispatched: logs.length, delivered: sent, failRate: logs.length > 0 ? Math.round((failed / logs.length) * 100) : 0 });
+                } catch { /* ignore ops data errors */ }
             } catch (err: any) { messageApi.error(err.message); }
             finally { setLoading(false); }
         })();
     }, [messageApi]);
 
     const ModuleCard = ({ title, icon, color, href, children }: { title: string, icon: React.ReactNode, color: string, href: string, children: React.ReactNode }) => (
-        <ProCard bordered hoverable style={{ borderTop: `3px solid ${color}`, cursor: 'pointer', height: '100%' }} onClick={() => window.location.href = href}>
+        <ProCard bordered hoverable style={{ borderTop: `3px solid ${color}`, cursor: 'pointer', height: '100%' }} onClick={() => router.push(href)}>
             <Space style={{ marginBottom: 8 }}>
                 <span style={{ fontSize: 18, color }}>{icon}</span>
                 <Text strong style={{ fontSize: 13 }}>{title}</Text>
@@ -202,6 +232,34 @@ export default function DashboardPage() {
                 </Col>
             </Row>
 
+            {/* ══════ ROW 2.5: Operations & Notifications Quick Status ══════ */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                <Col xs={24} md={8}>
+                    <ProCard title={<Space><PlayCircleOutlined /> Operations</Space>} bordered loading={loading} style={{ height: '100%' }} extra={<a onClick={() => router.push('/admin/ops/dashboard')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
+                        <Row gutter={[8, 12]}>
+                            <Col span={12}><Statistic title="Playbooks" value={opsPlaybooks} valueStyle={{ fontSize: 18, color: '#8b5cf6' }} /></Col>
+                            <Col span={12}><Statistic title="Active Runs" value={opsActiveRuns} valueStyle={{ fontSize: 18, color: '#3b82f6' }} /></Col>
+                            <Col span={12}><Statistic title="Schedules" value={opsSchedules} valueStyle={{ fontSize: 18, color: '#06b6d4' }} /></Col>
+                            <Col span={12}><Statistic title="Overdue" value={opsOverdue} valueStyle={{ fontSize: 18, color: opsOverdue > 0 ? '#ef4444' : '#22c55e' }} prefix={opsOverdue > 0 ? <WarningOutlined /> : <CheckCircleOutlined />} /></Col>
+                        </Row>
+                    </ProCard>
+                </Col>
+                <Col xs={24} md={8}>
+                    <ProCard title={<Space><BellOutlined /> Notification Health</Space>} bordered loading={loading} style={{ height: '100%' }} extra={<a onClick={() => router.push('/admin/notifications/analytics')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
+                        <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                            <Progress type="circle" percent={100 - notifHealth.failRate} size={80}
+                                strokeColor={notifHealth.failRate <= 5 ? '#22c55e' : notifHealth.failRate <= 15 ? '#f59e0b' : '#ef4444'}
+                                format={() => `${100 - notifHealth.failRate}%`} />
+                        </div>
+                        <Row gutter={8} style={{ textAlign: 'center', marginTop: 8 }}>
+                            <Col span={8}><Text style={{ fontSize: 11 }}>Dispatched<br /><Text strong>{notifHealth.dispatched}</Text></Text></Col>
+                            <Col span={8}><Text style={{ fontSize: 11 }}>Delivered<br /><Text strong style={{ color: '#22c55e' }}>{notifHealth.delivered}</Text></Text></Col>
+                            <Col span={8}><Text style={{ fontSize: 11 }}>Fail Rate<br /><Text strong type={notifHealth.failRate > 10 ? 'danger' : undefined}>{notifHealth.failRate}%</Text></Text></Col>
+                        </Row>
+                    </ProCard>
+                </Col>
+            </Row>
+
             {/* ══════ ROW 3: ITIL v4 Module Quick Status ══════ */}
             <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
                 <Col xs={12} sm={8} md={4}>
@@ -250,9 +308,11 @@ export default function DashboardPage() {
                                 { label: 'Create Page', href: '/admin/pages/builder', color: '#fa8c16', icon: <FileTextOutlined /> },
                                 { label: 'Manage Users', href: '/admin/users/list', color: '#eb2f96', icon: <TeamOutlined /> },
                                 { label: 'Media Library', href: '/admin/media', color: '#2f54eb', icon: <PictureOutlined /> },
+                                { label: 'Ops Dashboard', href: '/admin/ops/dashboard', color: '#8b5cf6', icon: <PlayCircleOutlined /> },
+                                { label: 'Notifications', href: '/admin/notifications/inbox', color: '#06b6d4', icon: <BellOutlined /> },
                             ].map(a => (
                                 <Col span={12} key={a.label}>
-                                    <Button type="text" block style={{ textAlign: 'left', height: 'auto', padding: '8px 12px', borderRadius: 8, border: '1px solid #f0f0f0' }} onClick={() => window.location.href = a.href}>
+                                    <Button type="text" block style={{ textAlign: 'left', height: 'auto', padding: '8px 12px', borderRadius: 8, border: '1px solid #f0f0f0' }} onClick={() => router.push(a.href)}>
                                         <Space><span style={{ color: a.color }}>{a.icon}</span><Text style={{ fontSize: 12 }}>{a.label}</Text></Space>
                                     </Button>
                                 </Col>
@@ -272,9 +332,11 @@ export default function DashboardPage() {
                                 { name: 'Projects', count: 'Tasks & Sprints', color: '#13c2c2', href: '/admin/pm/dashboard' },
                                 { name: 'AI Studio', count: 'ML Models', color: '#2f54eb', href: '/admin/ai-studio' },
                                 { name: 'Infrastructure', count: 'Networking', color: '#fa541c', href: '/admin/infrastructure/traefik' },
+                                { name: 'Operations', count: `${opsPlaybooks} playbooks`, color: '#8b5cf6', href: '/admin/ops/dashboard' },
+                                { name: 'Notifications', count: `${notifHealth.dispatched} sent`, color: '#06b6d4', href: '/admin/notifications/analytics' },
                             ].map(m => (
                                 <Col span={12} key={m.name}>
-                                    <Card size="small" bordered hoverable style={{ cursor: 'pointer', borderLeft: `3px solid ${m.color}` }} onClick={() => window.location.href = m.href}>
+                                    <Card size="small" bordered hoverable style={{ cursor: 'pointer', borderLeft: `3px solid ${m.color}` }} onClick={() => router.push(m.href)}>
                                         <Text strong style={{ color: m.color, fontSize: 13 }}>{m.name}</Text>
                                         <br /><Text type="secondary" style={{ fontSize: 11 }}>{m.count}</Text>
                                     </Card>
