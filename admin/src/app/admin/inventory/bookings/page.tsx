@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { Table, Tag, Button, Modal, Form, Input, InputNumber, Select, Space, message, Tabs, Progress, Drawer, Row, Col, Card, Typography , Tooltip } from 'antd';
@@ -16,6 +16,7 @@ import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const STATUS_COLORS: Record<string, string> = {
     active: 'green', suspended: 'orange', cancelled: 'red',
@@ -334,7 +335,7 @@ export default function BookingsPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 14, marginBottom: 24 }}>
                     {kpis.map((k, i) => (
                         <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                            style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.5)' }}>
+                            style={{ ...glass, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.5)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                                 <span style={{ color: k.color, fontSize: 16 }}>{k.icon}</span>
                                 <span style={{ color: '#999', fontSize: 12 }}>{k.label}</span>
@@ -358,7 +359,7 @@ export default function BookingsPage() {
                     </Space>
                 </div>
 
-                <Card size="small" style={{ flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)' }}>
+                <Card size="small" style={{ flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)' }}>
                     {/* Tabs */}
                     <Tabs activeKey={tab} onChange={setTab} items={[
                         { key: 'schedules', label: `ðŸ—“ï¸ Schedules (${schedules.length})`, children: (

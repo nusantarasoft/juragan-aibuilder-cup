@@ -38,6 +38,7 @@ const ChartLiquid: any = dynamic(() => import("@ant-design/charts").then((m: any
 const NetworkGraph: any = dynamic(() => import("@ant-design/charts").then((m: any) => m.NetworkGraph), { ssr: false, loading: () => <div style={{ height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading network…</div> });
 
 const { Title, Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const GET_STATS = `query { itsmDashboardStats { totalOpen totalUnassigned totalSlaBreach avgResolutionHours slaCompliance totalTickets byCritical byHigh byMedium byLow statusNew statusOpen statusInProgress statusPending statusResolved statusClosed } }`;
 const GET_MODULE_COUNTS = `query { itsmModuleCounts { serviceRequests { total open } problems { total open knownErrors } changes { total open } knowledge { total published } } }`;
@@ -1067,7 +1068,7 @@ export default function ItsmDashboardPage() {
                 defaultActiveKey="overview"
                 items={tabItems}
                 size="middle"
-                tabBarStyle={{ marginBottom: 20, fontWeight: 500, background: 'rgba(255,255,255,0.4)', backdropFilter: 'blur(16px)', borderRadius: 12, padding: '4px 8px', border: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.08)' }}
+                tabBarStyle={{ marginBottom: 20, fontWeight: 500, ...glass, padding: '4px 8px', border: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.08)' }}
                 type="card"
             />
         </div>

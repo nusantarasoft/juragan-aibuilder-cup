@@ -69,6 +69,7 @@ import { TooltipWrapper as AnimatedTooltip } from '@/components/mvpblocks/Animat
 import { motion, AnimatePresence } from "framer-motion";
 
 const { Title, Text, Paragraph } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const { TextArea } = Input;
 const { Dragger } = Upload;
 
@@ -822,7 +823,7 @@ export default function AIStudioPage() {
                         <Card
                             size="small"
                             style={{
-                                background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)',
+                                ...glass,
                                 boxShadow: '0 1px 2px rgba(0,0,0,0.04)', border: '1px solid rgba(255,255,255,0.5)'
                             }}
                             className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)]"

@@ -9,6 +9,7 @@ import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { inventoryService } from '@/lib/inventoryService';
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 export default function AnalyticsPage() {
     const { themeColor } = usePreferencesStore();
@@ -122,7 +123,7 @@ export default function AnalyticsPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 14, marginBottom: 24 }}>
                     {topCards.map((k, i) => (
                         <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                            style={{ background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', borderRadius: 14, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.45)' }}>
+                            style={{ ...glass, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.45)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                                 <span style={{ color: k.color, fontSize: 16 }}>{k.icon}</span>
                                 <span style={{ color: '#999', fontSize: 12 }}>{k.label}</span>

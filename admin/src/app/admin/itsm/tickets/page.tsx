@@ -22,6 +22,7 @@ import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { useDateRangeStore } from "@/store/useDateRangeStore";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const GET_TICKETS = `query($status: String, $priority: String, $search: String) { itsmTickets(status: $status, priority: $priority, search: $search) { id ticketNumber title description categoryId priority status impact urgency contactId accountId individualId pmStakeholderId reporterName reporterEmail assignedTo assignedGroup channel slaResolutionDue createdAt } }`;
 const GET_CATEGORIES = `query { itsmCategories { id name } }`;

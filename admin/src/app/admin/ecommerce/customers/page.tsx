@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { Table, Tag, Card, Typography, Input, Button, Space, Tooltip, Row, Col, Modal, Form, Select, message } from "antd";
@@ -17,6 +17,7 @@ import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const TYPE_COLORS: Record<string, string> = { individual: 'blue', company: 'purple', reseller: 'gold' };
 const STATUS_COLORS: Record<string, string> = { active: 'green', inactive: 'default', blocked: 'red' };
@@ -193,8 +194,7 @@ export default function CustomersPage() {
                         <Col key={i} xs={12} sm={12} md={6}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                                    ...glass,
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -210,7 +210,7 @@ export default function CustomersPage() {
                     ))}
                 </Row>
 
-                <Card size="small" style={{ flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)' }}>
+                <Card size="small" style={{ flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)' }}>
                     <div className="flex items-center justify-between mb-3">
                         <Input prefix={<SearchOutlined className="text-gray-400" />} placeholder="Search customers..."
                             value={search} onChange={e => setSearch(e.target.value)} allowClear style={{ maxWidth: 300, borderRadius: 8 }} size="small" />

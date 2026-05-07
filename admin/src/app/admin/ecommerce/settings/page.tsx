@@ -11,6 +11,7 @@ import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 
 const { Text, Title } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 export default function SettingsPage() {
     const [settings, setSettings] = useState<EcomStoreSettings | null>(null);
@@ -54,7 +55,7 @@ export default function SettingsPage() {
 
     const sectionCard = (title: string, icon: React.ReactNode, color: string, children: React.ReactNode) => (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <Card size="small" style={{ borderRadius: 12, background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.5)' }}>
+            <Card size="small" style={{ ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)' }}>
                 <div className="flex items-center gap-2 mb-3">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${color}15`, color, fontSize: 16 }}>{icon}</div>
                     <Text strong style={{ background: `linear-gradient(to right, ${color}, var(--theme-secondary, #6366f1))`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: 14 }}>{title}</Text>

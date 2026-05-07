@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,6 +25,7 @@ import ItemMediaGallery, { ProductGallery, MediaInfo } from "@/components/invent
 import { inventoryService, InvItem, InvCategory, InvStockStats, AiClassification } from "@/lib/inventoryService";
 
 const { Title, Text, Paragraph } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const SELLABLE_FULFILLMENT_TYPES = [
     { value: 'physical', label: 'Physical Goods', icon: <DropboxOutlined />, color: 'var(--theme-color, #7c3aed)', desc: 'Tangible products with stock tracking', example: 'Laptop, T-shirt, Bolt', sellable: true },
@@ -404,8 +405,7 @@ export default function ItemMasterPage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                                    ...glass,
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -425,8 +425,7 @@ export default function ItemMasterPage() {
 
                 {/* Toolbar */}
                 <Card size="small" style={{
-                    background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                    ...glass,
                 }}>
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -487,8 +486,8 @@ export default function ItemMasterPage() {
 
                 {/* Table / Grid */}
                 <Card size="small" style={{
-                    flex: 1, minHeight: 0, borderRadius: 12,
-                    background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)',
+                    flex: 1, minHeight: 0,
+                    ...glass, borderRadius: 12,
                     border: '1px solid rgba(255,255,255,0.5)',
                 }}>
                     {viewMode === 'table' ? (

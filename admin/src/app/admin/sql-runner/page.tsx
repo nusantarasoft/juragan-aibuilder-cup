@@ -35,6 +35,7 @@ import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Content, Sider } = Layout;
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 export default function SQLRunnerPage() {
     const [showExplorer, setShowExplorer] = useState(true);

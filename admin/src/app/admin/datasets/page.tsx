@@ -54,6 +54,7 @@ import CreateVDSModal from "./CreateVDSModal";
 import { dremioService } from "@/lib/dremioService";
 
 const { Title, Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 export default function DatasetsPage() {
     const { resolvedTheme } = useTheme();
