@@ -23,7 +23,7 @@ function exportCSV(filename: string, headers: string[], rows: string[][]) {
 }
 function exportPDF(title: string, headers: string[], rows: string[][]) {
     const style = `<style>body{font-family:Arial,sans-serif;margin:20px}h1{font-size:18px;border-bottom:2px solid #333;padding-bottom:8px}h2{font-size:14px;color:#666;margin-top:0}table{width:100%;border-collapse:collapse;margin:16px 0;font-size:12px}th{background:#1a1a2e;color:#fff;padding:8px 12px;text-align:left}td{padding:6px 12px;border-bottom:1px solid #eee}@media print{body{margin:0}}</style>`;
-    const tableHtml = `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    const tableHtml = `<Table scroll={{ x: 900 }}><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
     const html = `<!DOCTYPE html><html><head><title>${title}</title>${style}</head><body><h1>${title}</h1><h2>NusantaraSoft â€¢ Generated: ${new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</h2>${tableHtml}<script>window.onload=()=>window.print()<\/script></body></html>`;
     const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close(); }
 }
@@ -263,7 +263,7 @@ export default function LeavePage() {
                             { label: <Space><CheckCircleOutlined style={{ color: '#10b981' }} />Approved</Space>, value: 'approved' },
                             { label: <Space><CloseCircleOutlined style={{ color: '#ef4444' }} />Rejected</Space>, value: 'rejected' },
                         ]} />}>
-                    <Table dataSource={requests} columns={columns} rowKey="id" loading={loading} pagination={{ pageSize: 15 }} size="middle" />
+                    <Table scroll={{ x: 900 }} dataSource={requests} columns={columns} rowKey="id" loading={loading} pagination={{ pageSize: 15 }} size="middle" />
                 </Card>
             </motion.div>
 

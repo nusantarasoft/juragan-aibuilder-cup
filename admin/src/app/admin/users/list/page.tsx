@@ -204,7 +204,7 @@ export default function UsersListPage() {
                 />
             </div>
 
-            <Table
+            <Table scroll={{ x: 900 }}
                 columns={columns}
                 dataSource={sampleUsers}
                 pagination={{

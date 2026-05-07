@@ -1559,7 +1559,7 @@ export default function MediaLibraryPage() {
                                     )}
                                 />
                             ) : (
-                                <Table
+                                <Table scroll={{ x: 900 }}
                                     dataSource={filteredMedia}
                                     rowKey="id"
                                     size="small"

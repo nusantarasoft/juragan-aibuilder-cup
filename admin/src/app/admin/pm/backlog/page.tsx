@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -102,14 +102,14 @@ export default function BacklogPage() {
 
     useEffect(() => { loadData(); }, [loadData]);
 
-    // â”€â”€ Project map â”€â”€
+    // ── Project map ──
     const projectMap = useMemo(() => {
         const m = new Map<string, any>();
         projects.forEach(p => m.set(p.id, p));
         return m;
     }, [projects]);
 
-    // â”€â”€ Filters â”€â”€
+    // ── Filters ──
     const filtered = useMemo(() => {
         let result = [...tasks];
         if (search) {
@@ -127,7 +127,7 @@ export default function BacklogPage() {
         return result;
     }, [tasks, search, statusFilter, priorityFilter, projectFilter, typeFilter]);
 
-    // â”€â”€ Computed stats â”€â”€
+    // ── Computed stats ──
     const totalTasks = tasks.length;
     const todoCount = tasks.filter(t => t.status === 'todo').length;
     const inProgressCount = tasks.filter(t => t.status === 'in_progress').length;
@@ -230,7 +230,7 @@ export default function BacklogPage() {
             render: (_: any, record: any) => {
                 const est = record.estimatedHours || 0;
                 const log = record.loggedHours || 0;
-                if (est === 0 && log === 0) return <Text type="secondary">â€”</Text>;
+                if (est === 0 && log === 0) return <Text type="secondary">—</Text>;
                 const pct = est > 0 ? Math.min(100, Math.round((log / est) * 100)) : 0;
                 return (
                     <Tooltip title={`${log}h logged / ${est}h estimated`}>
@@ -257,7 +257,7 @@ export default function BacklogPage() {
                 return dayjs(a.dueDate).unix() - dayjs(b.dueDate).unix();
             },
             render: (date: string, record: any) => {
-                if (!date) return <Text type="secondary">â€”</Text>;
+                if (!date) return <Text type="secondary">—</Text>;
                 const isOverdue = dayjs(date).isBefore(dayjs()) && record.status !== 'done';
                 return (
                     <Text style={{ fontSize: 11, color: isOverdue ? '#ef4444' : undefined }}>
@@ -284,7 +284,7 @@ export default function BacklogPage() {
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Backlog</AuroraText>}
             subTitle={<DecryptedText text="All tasks across all projects" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_backlog', title: 'PM Backlog Tasks', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Project', key: 'projectName' }], data: tasks })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_backlog', title: 'PM Backlog Tasks', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Project', key: 'projectName' }], data: tasks })} /></Tooltip></RbacGuard>]}>
-            {/* â”€â”€ Stats Row â”€â”€ */}
+            {/* ── Stats Row ── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={4}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #6366f1' }} size="small">
@@ -347,7 +347,7 @@ export default function BacklogPage() {
                 </Col>
             </Row>
 
-            {/* â”€â”€ Effort Summary â”€â”€ */}
+            {/* ── Effort Summary ── */}
             <Card style={{ ...glassCard, marginBottom: 16 }} size="small">
                 <Row gutter={24} align="middle">
                     <Col>
@@ -365,13 +365,13 @@ export default function BacklogPage() {
                     </Col>
                     <Col>
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                            {projects.length} projects â€¢ {blockedCount} blocked
+                            {projects.length} projects • {blockedCount} blocked
                         </Text>
                     </Col>
                 </Row>
             </Card>
 
-            {/* â”€â”€ Search & Filters â”€â”€ */}
+            {/* ── Search & Filters ── */}
             <Card style={{ ...glassCard, marginBottom: 16 }} size="small">
                 <Space size={12} wrap style={{ width: '100%' }}>
                     <Input
@@ -428,7 +428,7 @@ export default function BacklogPage() {
                 </Space>
             </Card>
 
-            {/* â”€â”€ Tasks Table â”€â”€ */}
+            {/* ── Tasks Table ── */}
             <Card
                 title={
                     <Space>
@@ -448,7 +448,7 @@ export default function BacklogPage() {
                         }
                     />
                 ) : (
-                    <Table
+                    <Table scroll={{ x: 900 }}
                         dataSource={filtered}
                         columns={columns}
                         rowKey="id"
@@ -463,7 +463,7 @@ export default function BacklogPage() {
                 )}
             </Card>
 
-            {/* â”€â”€ Detail Drawer â”€â”€ */}
+            {/* ── Detail Drawer ── */}
             <Drawer
                 title={
                     <Space>
@@ -498,7 +498,7 @@ export default function BacklogPage() {
                                     const proj = projectMap.get(viewingTask.projectId);
                                     return proj ? (
                                         <Tag icon={<ProjectOutlined />} color="geekblue">{proj.name}</Tag>
-                                    ) : 'â€”';
+                                    ) : '—';
                                 })()}
                             </Descriptions.Item>
                             <Descriptions.Item label="Status">
@@ -524,7 +524,7 @@ export default function BacklogPage() {
                                 {viewingTask.loggedHours || 0}h logged / {viewingTask.estimatedHours || 0}h estimated
                             </Descriptions.Item>
                             <Descriptions.Item label="Due Date">
-                                {viewingTask.dueDate ? dayjs(viewingTask.dueDate).format('MMMM D, YYYY') : 'â€”'}
+                                {viewingTask.dueDate ? dayjs(viewingTask.dueDate).format('MMMM D, YYYY') : '—'}
                             </Descriptions.Item>
                             <Descriptions.Item label="Created">
                                 {dayjs(viewingTask.createdAt).format('MMMM D, YYYY')}

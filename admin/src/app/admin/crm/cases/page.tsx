@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -153,8 +153,8 @@ export default function CasesPage() {
         { title: "Subject", key: "subject", render: (_, r) => (<div><Text strong>{r.subject}</Text>{r.accountName && <><br /><Text type="secondary" style={{ fontSize: 12 }}>{r.accountName}</Text></>}</div>) },
         { title: "Priority", key: "priority", width: 100, render: (_, r) => { const p = PRIORITIES.find(p => p.value === r.priority); return <Tag color={p?.color}>{p?.label || r.priority}</Tag>; } },
         { title: "Status", key: "status", width: 110, render: (_, r) => { const s = STATUSES.find(s => s.value === r.status); return <Tag color={s?.color}>{s?.label || r.status}</Tag>; } },
-        { title: "Origin", key: "origin", width: 80, render: (_, r) => r.origin ? <Tag>{r.origin}</Tag> : 'â€”' },
-        { title: "Type", key: "type", width: 120, render: (_, r) => r.type ? <Tag>{r.type.replace('_', ' ')}</Tag> : 'â€”' },
+        { title: "Origin", key: "origin", width: 80, render: (_, r) => r.origin ? <Tag>{r.origin}</Tag> : '—' },
+        { title: "Type", key: "type", width: 120, render: (_, r) => r.type ? <Tag>{r.type.replace('_', ' ')}</Tag> : '—' },
         { title: "Created", key: "created", width: 110, render: (_, r) => dayjs(r.createdAt).format('MMM D, YYYY') },
         { title: "Actions", key: "actions", width: 150, render: (_, r) => (<Space>
             <Tooltip title="View"><Button type="text" icon={<EyeOutlined />} onClick={() => { setSelected(r); setDetailOpen(true); }} /></Tooltip>
@@ -221,9 +221,9 @@ export default function CasesPage() {
                 <Select placeholder="Priority" value={priorityFilter} onChange={setPriorityFilter} allowClear style={{ width: 130 }} options={PRIORITIES} />
             </Space></Card>
 
-            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table columns={columns} dataSource={cases.map(c => ({ ...c, key: c.id }))} loading={loading} pagination={{ pageSize: 20 }} size="middle" /></Card>
+            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table scroll={{ x: 900 }} columns={columns} dataSource={cases.map(c => ({ ...c, key: c.id }))} loading={loading} pagination={{ pageSize: 20 }} size="middle" /></Card>
 
-            {/* â”€â”€â”€ Case SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ─── Case SteppedFormModal ─────────────── */}
             <SteppedFormModal
                 open={isModalOpen}
                 onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }}
@@ -239,7 +239,7 @@ export default function CasesPage() {
                 editMode={!!editing}
             />
 
-            {/* Close Case Resolution Modal â€” kept as separate workflow */}
+            {/* Close Case Resolution Modal — kept as separate workflow */}
             <Modal title={`Close Case: ${closeTarget?.caseNumber}`} open={closeModal} okText="Close Case"
                 okButtonProps={{ style: { background: '#52c41a', borderColor: '#52c41a' } }}
                 onOk={handleClose} onCancel={() => { setCloseModal(false); setCloseTarget(null); }}>
@@ -254,11 +254,11 @@ export default function CasesPage() {
                         <Descriptions.Item label="Subject">{selected.subject}</Descriptions.Item>
                         <Descriptions.Item label="Priority"><Tag color={PRIORITIES.find(p => p.value === selected.priority)?.color}>{selected.priority}</Tag></Descriptions.Item>
                         <Descriptions.Item label="Status"><Tag color={STATUSES.find(s => s.value === selected.status)?.color}>{selected.status}</Tag></Descriptions.Item>
-                        <Descriptions.Item label="Origin">{selected.origin || 'â€”'}</Descriptions.Item>
-                        <Descriptions.Item label="Type">{selected.type?.replace('_', ' ') || 'â€”'}</Descriptions.Item>
-                        <Descriptions.Item label="Contact">{selected.contactName || 'â€”'}</Descriptions.Item>
-                        <Descriptions.Item label="Account">{selected.accountName || 'â€”'}</Descriptions.Item>
-                        <Descriptions.Item label="Description">{selected.description || 'â€”'}</Descriptions.Item>
+                        <Descriptions.Item label="Origin">{selected.origin || '—'}</Descriptions.Item>
+                        <Descriptions.Item label="Type">{selected.type?.replace('_', ' ') || '—'}</Descriptions.Item>
+                        <Descriptions.Item label="Contact">{selected.contactName || '—'}</Descriptions.Item>
+                        <Descriptions.Item label="Account">{selected.accountName || '—'}</Descriptions.Item>
+                        <Descriptions.Item label="Description">{selected.description || '—'}</Descriptions.Item>
                         {selected.resolution && <Descriptions.Item label="Resolution">{selected.resolution}</Descriptions.Item>}
                         {selected.closedAt && <Descriptions.Item label="Closed At">{dayjs(selected.closedAt).format('MMM D, YYYY HH:mm')}</Descriptions.Item>}
                         <Descriptions.Item label="Created">{dayjs(selected.createdAt).format('MMM D, YYYY')}</Descriptions.Item>

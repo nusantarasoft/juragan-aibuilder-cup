@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
@@ -21,7 +21,7 @@ const statusColor: Record<string, string> = { draft: 'default', sent: 'blue', pa
 const statusIcon: Record<string, React.ReactNode> = { paid: <CheckCircleOutlined />, overdue: <WarningOutlined /> };
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
-// â”€â”€â”€ Aging Stacked Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Aging Stacked Bar ──────────────────────────────────
 function AgingBar({ summary }: { summary: AcctInvoiceSummary }) {
     const buckets = [
         { value: summary.current || 0, color: '#10b981', label: 'Current' },
@@ -229,7 +229,7 @@ export default function AccountsPayablePage() {
 
             {/* Table */}
             <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}>
-                <Table dataSource={invoices.map(i => ({ ...i, key: i.id }))} columns={columns} loading={loading} size="small"
+                <Table scroll={{ x: 900 }} dataSource={invoices.map(i => ({ ...i, key: i.id }))} columns={columns} loading={loading} size="small"
                     pagination={{ pageSize: 20, showTotal: t => `${t} bills` }}
                     locale={{ emptyText: <Empty description="No vendor bills found" /> }}
                 />
@@ -254,7 +254,7 @@ export default function AccountsPayablePage() {
                         </Descriptions>
                         {detailModal.notes && <Card size="small" style={{ marginBottom: 16 }}><Text type="secondary">Notes: </Text>{detailModal.notes}</Card>}
                         <Text strong>Line Items</Text>
-                        <Table dataSource={detailLines.map(l => ({ ...l, key: l.id }))} size="small" pagination={false} style={{ marginTop: 8 }}
+                        <Table scroll={{ x: 900 }} dataSource={detailLines.map(l => ({ ...l, key: l.id }))} size="small" pagination={false} style={{ marginTop: 8 }}
                             columns={[
                                 { title: '#', dataIndex: 'lineNumber', width: 40 },
                                 { title: 'Description', dataIndex: 'description' },
@@ -271,7 +271,7 @@ export default function AccountsPayablePage() {
             </Modal>
 
             {/* Payment Modal */}
-            <Modal title={`Record Payment â€” ${paymentModal?.invoiceNumber}`} open={!!paymentModal} onOk={handlePayment} onCancel={() => setPaymentModal(null)} okText="Record Payment">
+            <Modal title={`Record Payment — ${paymentModal?.invoiceNumber}`} open={!!paymentModal} onOk={handlePayment} onCancel={() => setPaymentModal(null)} okText="Record Payment">
                 {paymentModal && (
                     <div style={{ padding: '16px 0' }}>
                         <Text type="secondary">Amount Due: </Text><Text strong style={{ color: '#ef4444' }}>{formatCurrency(paymentModal.amountDue)}</Text>
@@ -289,7 +289,7 @@ export default function AccountsPayablePage() {
             <Modal title="Create New Bill" open={createOpen} onOk={handleCreate} onCancel={() => setCreateOpen(false)} okText="Create Bill" width={720} confirmLoading={createLoading} destroyOnClose>
                 <Form form={form} layout="vertical" size="small" initialValues={{ invoiceDate: dayjs(), dueDate: dayjs().add(30, 'day') }}>
                     <Row gutter={16}>
-                        <Col span={12}><Form.Item name="contactId" label="Vendor" rules={[{ required: true }]}><Select showSearch placeholder="Select vendor" optionFilterProp="label" options={contacts.map(c => ({ value: c.id, label: `${c.code ? c.code+' â€” ' : ''}${c.name}` }))} /></Form.Item></Col>
+                        <Col span={12}><Form.Item name="contactId" label="Vendor" rules={[{ required: true }]}><Select showSearch placeholder="Select vendor" optionFilterProp="label" options={contacts.map(c => ({ value: c.id, label: `${c.code ? c.code+' — ' : ''}${c.name}` }))} /></Form.Item></Col>
                         <Col span={12}><Form.Item name="reference" label="Reference / PO #"><Input placeholder="PO-2026-XXX" /></Form.Item></Col>
                     </Row>
                     <Row gutter={16}>

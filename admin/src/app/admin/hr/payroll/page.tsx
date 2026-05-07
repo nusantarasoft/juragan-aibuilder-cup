@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -296,7 +296,7 @@ export default function PayrollPage() {
                 {/* Payroll Runs Table */}
                 <Card style={glass} title={<Space><WalletOutlined /><Text strong>Payroll Runs</Text><Badge count={filteredRuns.length} style={{ backgroundColor: themeColor }} /></Space>}
                     extra={<Button icon={<DownloadOutlined />} size="small">Export</Button>}>
-                    <Table dataSource={filteredRuns} columns={columns} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} size="middle" />
+                    <Table dataSource={filteredRuns} columns={columns} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} size="middle" scroll={{ x: 900 }} />
                 </Card>
             </motion.div>
 
@@ -319,7 +319,7 @@ export default function PayrollPage() {
                                 </Col>
                             ))}
                         </Row>
-                        <Table dataSource={slips} columns={slipColumns} rowKey="id" loading={slipLoading} size="small"
+                        <Table dataSource={slips} columns={slipColumns} rowKey="id" loading={slipLoading} size="small" scroll={{ x: 700 }}
                             pagination={false} expandable={{
                                 expandedRowRender: (r: any) => {
                                     const c = r.components || {};

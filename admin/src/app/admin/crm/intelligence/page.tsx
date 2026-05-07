@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -296,12 +296,12 @@ export default function AIIntelligencePage() {
                         {
                             key: 'leads', label: <span><UserOutlined /> Lead Scoring <Badge count={leads.length} style={{ backgroundColor: themeColor }} /></span>,
                             children: <Table columns={leadColumns} dataSource={leads.map(l => ({ ...l, key: l.individualId }))}
-                                pagination={{ pageSize: 15 }} size="middle" />,
+                                pagination={{ pageSize: 15 }} size="middle" scroll={{ x: 900 }} />,
                         },
                         {
                             key: 'deals', label: <span><RiseOutlined /> Deal Insights <Badge count={deals.length} style={{ backgroundColor: '#3b82f6' }} /></span>,
                             children: <Table columns={dealColumns} dataSource={deals.map(d => ({ ...d, key: d.dealId }))}
-                                pagination={{ pageSize: 15 }} size="middle" />,
+                                pagination={{ pageSize: 15 }} size="middle" scroll={{ x: 900 }} />,
                         },
                     ]} />
                 </Card>

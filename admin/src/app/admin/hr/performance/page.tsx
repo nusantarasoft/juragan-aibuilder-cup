@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -124,8 +124,8 @@ export default function PerformancePage() {
         { title: 'Period', dataIndex: 'reviewPeriod', render: (v: string) => <Tag style={{ borderRadius: 10 }}>{v}</Tag> },
         { title: 'Type', dataIndex: 'reviewType', render: (v: string) => <Tag color="blue" style={{ borderRadius: 10 }}>{v}</Tag> },
         { title: 'Rating', dataIndex: 'overallRating', sorter: (a: any, b: any) => (a.overallRating || 0) - (b.overallRating || 0),
-            render: (v: number) => v ? <Space><div style={{ width: 26, height: 26, borderRadius: 8, background: ratingCfg[v]?.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12 }}>{v}</div><Rate disabled value={v} style={{ fontSize: 13 }} /></Space> : 'â€”' },
-        { title: 'Strengths', dataIndex: 'strengths', ellipsis: true, render: (v: string) => v ? <Tooltip title={v}><Text style={{ fontSize: 12 }}>{v}</Text></Tooltip> : 'â€”' },
+            render: (v: number) => v ? <Space><div style={{ width: 26, height: 26, borderRadius: 8, background: ratingCfg[v]?.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12 }}>{v}</div><Rate disabled value={v} style={{ fontSize: 13 }} /></Space> : '—' },
+        { title: 'Strengths', dataIndex: 'strengths', ellipsis: true, render: (v: string) => v ? <Tooltip title={v}><Text style={{ fontSize: 12 }}>{v}</Text></Tooltip> : '—' },
         { title: 'Status', dataIndex: 'status', render: (v: string) => <Tag icon={statusCfg[v]?.icon} color={statusCfg[v]?.color} style={{ borderRadius: 20 }}>{statusCfg[v]?.label || v}</Tag> },
         { title: '', key: 'actions', width: 160,
             render: (_: any, r: any) => (
@@ -151,7 +151,7 @@ export default function PerformancePage() {
                         { title: 'Total Reviews', value: reviews.length, icon: <TrophyOutlined />, color: '#8b5cf6' },
                         { title: 'Completed', value: completed.length, icon: <CheckCircleOutlined />, color: '#10b981' },
                         { title: 'In Progress', value: inProgress.length, icon: <RiseOutlined />, color: '#3b82f6' },
-                        { title: 'High Performers (â‰¥4)', value: highPerformers, icon: <StarFilled />, color: '#f59e0b' },
+                        { title: 'High Performers (≥4)', value: highPerformers, icon: <StarFilled />, color: '#f59e0b' },
                     ].map((s, i) => (
                         <Col key={i} xs={12} md={6}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
@@ -181,7 +181,7 @@ export default function PerformancePage() {
                     title={<Space><TrophyOutlined /><Text strong>Performance Reviews</Text><Badge count={reviews.length} style={{ backgroundColor: themeColor }} /></Space>}
                     extra={<Select placeholder="Filter status" allowClear style={{ width: 150 }} value={statusFilter} onChange={setStatusFilter}
                         options={Object.entries(statusCfg).map(([k, v]) => ({ label: <Space>{v.icon} {v.label}</Space>, value: k }))} />}>
-                    <Table dataSource={filtered} columns={columns} rowKey="id" loading={loading} pagination={{ pageSize: 15 }} size="middle" />
+                    <Table scroll={{ x: 900 }} dataSource={filtered} columns={columns} rowKey="id" loading={loading} pagination={{ pageSize: 15 }} size="middle" />
                 </Card>
             </motion.div>
 
@@ -198,7 +198,7 @@ export default function PerformancePage() {
                     </Row>
                     <Row gutter={12}>
                         <Col span={12}><Form.Item name="reviewType" label="Type" initialValue="annual">
-                            <Select options={[{ value: 'annual', label: 'Annual' }, { value: 'quarterly', label: 'Quarterly' }, { value: 'probation', label: 'Probation' }, { value: '360', label: '360Â° Review' }]} />
+                            <Select options={[{ value: 'annual', label: 'Annual' }, { value: 'quarterly', label: 'Quarterly' }, { value: 'probation', label: 'Probation' }, { value: '360', label: '360° Review' }]} />
                         </Form.Item></Col>
                         <Col span={12}><Form.Item label="Overall Rating">
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

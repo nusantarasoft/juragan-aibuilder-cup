@@ -319,7 +319,7 @@ export default function SharingPage() {
             label: <Space><LockOutlined /> Org-Wide Defaults</Space>,
             children: (
                 <Spin spinning={owdLoading}>
-                    <Table columns={owdColumns} dataSource={SYSTEM_OBJECTS.map(obj => ({ key: obj, object: obj }))} pagination={false} size="small" bordered />
+                    <Table scroll={{ x: 900 }} columns={owdColumns} dataSource={SYSTEM_OBJECTS.map(obj => ({ key: obj, object: obj }))} pagination={false} size="small" bordered />
                 </Spin>
             ),
         },
@@ -333,7 +333,7 @@ export default function SharingPage() {
                             Create Sharing Rule
                         </Button>
                     </div>
-                    <Table columns={rulesColumns} dataSource={rules.map(r => ({ ...r, key: r.id }))} loading={rulesLoading}
+                    <Table scroll={{ x: 900 }} columns={rulesColumns} dataSource={rules.map(r => ({ ...r, key: r.id }))} loading={rulesLoading}
                         pagination={false} size="middle" locale={{ emptyText: "No sharing rules yet" }} />
                 </>
             ),
@@ -354,7 +354,7 @@ export default function SharingPage() {
                         />
                     </Space>
                     <Spin spinning={flsLoading}>
-                        <Table columns={flsColumns} dataSource={fieldPerms.map(f => ({ ...f, key: f.id }))} pagination={false}
+                        <Table scroll={{ x: 900 }} columns={flsColumns} dataSource={fieldPerms.map(f => ({ ...f, key: f.id }))} pagination={false}
                             size="small" bordered locale={{ emptyText: "Select a profile and object to view field-level security" }} />
                     </Spin>
                 </>

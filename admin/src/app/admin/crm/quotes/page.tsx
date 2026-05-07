@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -112,10 +112,10 @@ export default function QuotesPage() {
     const columns: ColumnsType<Quote> = [
         { title: "#", dataIndex: "quoteNumber", key: "num", width: 110, render: v => <Text strong style={{ fontFamily: 'monospace' }}>{v}</Text> },
         { title: "Quote", key: "name", render: (_, r) => <div><Text strong>{r.name}</Text>{r.dealName && <><br /><Text type="secondary" style={{ fontSize: 12 }}>Deal: {r.dealName}</Text></>}</div> },
-        { title: "Account", key: "account", width: 140, render: (_, r) => r.accountName || 'â€”' },
+        { title: "Account", key: "account", width: 140, render: (_, r) => r.accountName || '—' },
         { title: "Total", key: "total", width: 120, align: "right", render: (_, r) => <Text strong>{fmt(r.total)}</Text>, sorter: (a, b) => (a.total || 0) - (b.total || 0) },
         { title: "Status", key: "status", width: 100, render: (_, r) => { const s = STATUSES.find(s => s.value === r.status); return <Tag color={s?.color}>{s?.label || r.status}</Tag>; } },
-        { title: "Valid Until", key: "valid", width: 120, render: (_, r) => r.validUntil ? dayjs(r.validUntil).format('MMM D, YYYY') : 'â€”' },
+        { title: "Valid Until", key: "valid", width: 120, render: (_, r) => r.validUntil ? dayjs(r.validUntil).format('MMM D, YYYY') : '—' },
         { title: "Actions", key: "actions", width: 130, render: (_, r) => (<Space>
             <Tooltip title="View"><Button type="text" icon={<EyeOutlined />} onClick={() => { setSelected(r); setDetailOpen(true); }} /></Tooltip>
             <Tooltip title="Edit"><Button type="text" icon={<EditOutlined />} onClick={() => { setEditing(r); form.setFieldsValue({ name: r.name, status: r.status, discountPercent: r.discountPercent, taxPercent: r.taxPercent, validUntil: r.validUntil ? dayjs(r.validUntil) : null, description: r.description }); setIsModalOpen(true); }} /></Tooltip>
@@ -124,7 +124,7 @@ export default function QuotesPage() {
     ];
 
     const formSteps = [
-        { title: "Quote Info", icon: <FileTextOutlined />, fields: ["name", "status", "discountPercent", "taxPercent"], content: (<><Form.Item name="name" label="Quote Name" rules={[{ required: true }]}><Input placeholder="e.g., Acme Corp â€” Enterprise Package" /></Form.Item><Row gutter={16}>{editing && <Col span={8}><Form.Item name="status" label="Status"><Select options={STATUSES} /></Form.Item></Col>}<Col span={8}><Form.Item name="discountPercent" label="Discount %"><InputNumber style={{ width: '100%' }} min={0} max={100} suffix="%" /></Form.Item></Col><Col span={8}><Form.Item name="taxPercent" label="Tax %"><InputNumber style={{ width: '100%' }} min={0} max={100} suffix="%" /></Form.Item></Col></Row></>) },
+        { title: "Quote Info", icon: <FileTextOutlined />, fields: ["name", "status", "discountPercent", "taxPercent"], content: (<><Form.Item name="name" label="Quote Name" rules={[{ required: true }]}><Input placeholder="e.g., Acme Corp — Enterprise Package" /></Form.Item><Row gutter={16}>{editing && <Col span={8}><Form.Item name="status" label="Status"><Select options={STATUSES} /></Form.Item></Col>}<Col span={8}><Form.Item name="discountPercent" label="Discount %"><InputNumber style={{ width: '100%' }} min={0} max={100} suffix="%" /></Form.Item></Col><Col span={8}><Form.Item name="taxPercent" label="Tax %"><InputNumber style={{ width: '100%' }} min={0} max={100} suffix="%" /></Form.Item></Col></Row></>) },
         { title: "Details", icon: <DollarOutlined />, fields: ["validUntil", "description"], content: (<><Form.Item name="validUntil" label="Valid Until"><DatePicker style={{ width: '100%' }} /></Form.Item><Form.Item name="description" label="Description"><TextArea rows={2} /></Form.Item></>) },
     ];
 
@@ -145,7 +145,7 @@ export default function QuotesPage() {
                 <Input prefix={<SearchOutlined />} placeholder="Search quotes..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />
                 <Select placeholder="Status" value={statusFilter} onChange={setStatusFilter} allowClear style={{ width: 140 }} options={STATUSES} />
             </Space></Card>
-            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table columns={columns} dataSource={quotes.map(q => ({ ...q, key: q.id }))} loading={loading} pagination={{ pageSize: 20 }} size="middle" /></Card>
+            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table scroll={{ x: 900 }} columns={columns} dataSource={quotes.map(q => ({ ...q, key: q.id }))} loading={loading} pagination={{ pageSize: 20 }} size="middle" /></Card>
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Quote" : "New Quote"} entityName="quote" steps={formSteps} fields={QUOTE_FIELDS} width={600} onBatchCreate={handleBatchCreate} gradient={["#0ea5e9", "#6366f1"]} editMode={!!editing} />
 
@@ -158,11 +158,11 @@ export default function QuotesPage() {
                     <Descriptions.Item label="Discount">{selected.discountPercent || 0}%</Descriptions.Item>
                     <Descriptions.Item label="Tax">{selected.taxPercent || 0}%</Descriptions.Item>
                     <Descriptions.Item label="Total"><Text strong style={{ fontSize: 16 }}>{fmt(selected.total)}</Text></Descriptions.Item>
-                    <Descriptions.Item label="Deal">{selected.dealName || 'â€”'}</Descriptions.Item>
-                    <Descriptions.Item label="Account">{selected.accountName || 'â€”'}</Descriptions.Item>
-                    <Descriptions.Item label="Contact">{selected.contactName || 'â€”'}</Descriptions.Item>
-                    <Descriptions.Item label="Valid Until">{selected.validUntil ? dayjs(selected.validUntil).format('MMM D, YYYY') : 'â€”'}</Descriptions.Item>
-                    <Descriptions.Item label="Description">{selected.description || 'â€”'}</Descriptions.Item>
+                    <Descriptions.Item label="Deal">{selected.dealName || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Account">{selected.accountName || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Contact">{selected.contactName || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Valid Until">{selected.validUntil ? dayjs(selected.validUntil).format('MMM D, YYYY') : '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Description">{selected.description || '—'}</Descriptions.Item>
                     <Descriptions.Item label="Created">{dayjs(selected.createdAt).format('MMM D, YYYY')}</Descriptions.Item>
                 </Descriptions>)}
             </Drawer>

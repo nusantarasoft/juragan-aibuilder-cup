@@ -386,7 +386,7 @@ export default function ItsmDashboardPage() {
 
             {/* ROW 6: Recent Tickets */}
             <ProCard title={<Space><AlertOutlined /> Recent Incidents</Space>} bordered extra={<a href="/admin/itsm/tickets">View All</a>}>
-                <Table dataSource={tickets} columns={ticketCols} rowKey="id" pagination={false} size="small" loading={loading} />
+                <Table scroll={{ x: 900 }} dataSource={tickets} columns={ticketCols} rowKey="id" pagination={false} size="small" loading={loading} />
             </ProCard>
         </>
     );
@@ -473,7 +473,7 @@ export default function ItsmDashboardPage() {
                 </Col>
             </Row>
             <ProCard title={<Space><AlertOutlined style={{ color: '#f5222d' }} /> SLA Breach Tickets</Space>} bordered style={{ background: 'linear-gradient(135deg, rgba(245,34,45,0.03) 0%, rgba(250,140,22,0.02) 100%)', borderRadius: 12 }}>
-                <Table dataSource={tickets.filter(t => t.slaResolutionDue && new Date(t.slaResolutionDue) < new Date())} columns={ticketCols} rowKey="id" pagination={false} size="small" loading={loading} locale={{ emptyText: 'No SLA breaches — great job! 🎉' }} />
+                <Table scroll={{ x: 900 }} dataSource={tickets.filter(t => t.slaResolutionDue && new Date(t.slaResolutionDue) < new Date())} columns={ticketCols} rowKey="id" pagination={false} size="small" loading={loading} locale={{ emptyText: 'No SLA breaches — great job! 🎉' }} />
             </ProCard>
         </>
     );
@@ -522,7 +522,7 @@ export default function ItsmDashboardPage() {
                 </Col>
             </Row>
             <ProCard title={<Space><ThunderboltOutlined /> All Events</Space>} bordered style={{ background: 'linear-gradient(135deg, rgba(114,46,209,0.03) 0%, rgba(24,144,255,0.02) 100%)', borderRadius: 12 }}>
-                <Table dataSource={eventsData} rowKey="id" size="small" pagination={{ pageSize: 10 }} columns={[
+                <Table scroll={{ x: 900 }} dataSource={eventsData} rowKey="id" size="small" pagination={{ pageSize: 10 }} columns={[
                     { title: '#', dataIndex: 'event_number', width: 110, render: (v: any) => <Tag style={{ fontFamily: 'monospace' }}>{v}</Tag> },
                     { title: 'Title', dataIndex: 'title', ellipsis: true },
                     { title: 'Severity', dataIndex: 'severity', width: 100, render: (v: any) => <Tag color={sevColors[v]}>{(v || '').toUpperCase()}</Tag> },
@@ -546,7 +546,7 @@ export default function ItsmDashboardPage() {
                 <Col xs={12} sm={6}><ProCard bordered style={{ background: avgUtil > 80 ? 'linear-gradient(135deg, rgba(245,34,45,0.08) 0%, rgba(245,34,45,0.02) 100%)' : 'linear-gradient(135deg, rgba(82,196,26,0.08) 0%, rgba(82,196,26,0.02) 100%)', borderRadius: 12, backdropFilter: 'blur(20px)' }}><Statistic title="Avg Utilization" value={avgUtil} suffix="%" valueStyle={{ fontSize: 24, color: avgUtil > 80 ? '#f5222d' : '#52c41a' }} /></ProCard></Col>
             </Row>
             <ProCard title={<Space><TeamOutlined style={{ color: '#13c2c2' }} /> Agent Performance Table</Space>} bordered style={{ marginBottom: 16, background: 'linear-gradient(135deg, rgba(19,194,194,0.03) 0%, rgba(24,144,255,0.02) 100%)', borderRadius: 12 }}>
-                <Table dataSource={agentsData} rowKey="id" size="small" pagination={false} columns={[
+                <Table scroll={{ x: 900 }} dataSource={agentsData} rowKey="id" size="small" pagination={false} columns={[
                     { title: 'Agent', dataIndex: 'name', render: (v: any, r: any) => <Space><Badge status={r.status === 'active' ? 'success' : 'default'} /><Text strong>{v}</Text></Space> },
                     { title: 'Code', dataIndex: 'agent_code', width: 90, render: (v: any) => <Tag style={{ fontFamily: 'monospace' }}>{v}</Tag> },
                     { title: 'Role', dataIndex: 'role', width: 100, render: (v: any) => <Tag color="blue">{v}</Tag> },
@@ -606,7 +606,7 @@ export default function ItsmDashboardPage() {
                 <Col xs={12} sm={6}><ProCard bordered style={{ background: 'linear-gradient(135deg, rgba(250,140,22,0.08) 0%, rgba(250,173,20,0.02) 100%)', borderRadius: 12, backdropFilter: 'blur(20px)' }}><Statistic title="Active Releases" value={activeReleases} valueStyle={{ fontSize: 24, color: themeColor }} /></ProCard></Col>
             </Row>
             <ProCard title={<Space><CloudUploadOutlined style={{ color: '#1890ff' }} /> Deployments</Space>} bordered style={{ marginBottom: 16, background: 'linear-gradient(135deg, rgba(24,144,255,0.03) 0%, rgba(82,196,26,0.02) 100%)', borderRadius: 12 }}>
-                <Table dataSource={deploymentsData} rowKey="id" size="small" pagination={{ pageSize: 10 }} columns={[
+                <Table scroll={{ x: 900 }} dataSource={deploymentsData} rowKey="id" size="small" pagination={{ pageSize: 10 }} columns={[
                     { title: '#', dataIndex: 'deployment_number', width: 110, render: (v: any) => <Tag color="blue" style={{ fontFamily: 'monospace' }}>{v}</Tag> },
                     { title: 'Title', dataIndex: 'title', ellipsis: true },
                     { title: 'Environment', dataIndex: 'environment', width: 110, render: (v: any) => { const c: Record<string, string> = { production: 'red', staging: 'orange', development: 'blue' }; return <Tag color={c[v]}>{v?.toUpperCase()}</Tag>; } },
@@ -616,7 +616,7 @@ export default function ItsmDashboardPage() {
                 ]} />
             </ProCard>
             <ProCard title={<Space><RocketOutlined style={{ color: '#9254de' }} /> Releases</Space>} bordered style={{ background: 'linear-gradient(135deg, rgba(146,84,222,0.03) 0%, rgba(250,140,22,0.02) 100%)', borderRadius: 12 }}>
-                <Table dataSource={releasesData} rowKey="id" size="small" pagination={{ pageSize: 10 }} columns={[
+                <Table scroll={{ x: 900 }} dataSource={releasesData} rowKey="id" size="small" pagination={{ pageSize: 10 }} columns={[
                     { title: '#', dataIndex: 'release_number', width: 110, render: (v: any) => <Tag color="purple" style={{ fontFamily: 'monospace' }}>{v}</Tag> },
                     { title: 'Title', dataIndex: 'title', ellipsis: true },
                     { title: 'Version', dataIndex: 'version', width: 90, render: (v: any) => <Tag>{v}</Tag> },
@@ -642,7 +642,7 @@ export default function ItsmDashboardPage() {
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                 <Col xs={24} md={14}>
                     <ProCard title={<Space><SafetyOutlined style={{ color: '#f5222d' }} /> Continuity Plans</Space>} bordered style={{ background: 'linear-gradient(135deg, rgba(245,34,45,0.03) 0%, rgba(250,140,22,0.02) 100%)', borderRadius: 12 }}>
-                        <Table dataSource={continuityData} rowKey="id" size="small" pagination={false} columns={[
+                        <Table scroll={{ x: 900 }} dataSource={continuityData} rowKey="id" size="small" pagination={false} columns={[
                             { title: '#', dataIndex: 'plan_number', width: 100, render: (v: any) => <Tag style={{ fontFamily: 'monospace' }}>{v}</Tag> },
                             { title: 'Title', dataIndex: 'title', ellipsis: true },
                             { title: 'Type', dataIndex: 'plan_type', width: 80, render: (v: any) => { const c: Record<string, string> = { bcp: 'blue', drp: 'red', crisis: 'volcano', itrp: 'purple' }; return <Tag color={c[v]}>{v?.toUpperCase()}</Tag>; } },

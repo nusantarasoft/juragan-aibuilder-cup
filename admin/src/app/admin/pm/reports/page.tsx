@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -72,7 +72,7 @@ export default function ReportsPage() {
     useEffect(() => setMounted(true), []);
     const isDark = mounted && resolvedTheme === 'dark';
 
-    // â”€â”€ AI Feature State â”€â”€
+    // ── AI Feature State ──
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [statusReport, setStatusReport] = useState<any>(null);
     const [statusReportLoading, setStatusReportLoading] = useState(false);
@@ -98,7 +98,7 @@ export default function ReportsPage() {
 
     useEffect(() => { loadData(); }, [loadData]);
 
-    // â”€â”€ Computed Metrics â”€â”€
+    // ── Computed Metrics ──
     const totalProjects = projects.length;
     const activeProjects = projects.filter(p => p.status === 'active').length;
     const completedProjects = projects.filter(p => p.status === 'completed').length;
@@ -120,21 +120,21 @@ export default function ReportsPage() {
     const totalSpent = projects.reduce((s, p) => s + (p.spent || 0), 0);
     const budgetVariance = totalBudget > 0 ? Math.round(((totalSpent - totalBudget) / totalBudget) * 100) : 0;
 
-    // â”€â”€ Priority Distribution â”€â”€
+    // ── Priority Distribution ──
     const priorityDist = useMemo(() => {
         const buckets: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0 };
         tasks.forEach(t => { if (buckets[t.priority] !== undefined) buckets[t.priority]++; });
         return buckets;
     }, [tasks]);
 
-    // â”€â”€ Type Distribution â”€â”€
+    // ── Type Distribution ──
     const typeDist = useMemo(() => {
         const buckets: Record<string, number> = {};
         tasks.forEach(t => { buckets[t.type] = (buckets[t.type] || 0) + 1; });
         return buckets;
     }, [tasks]);
 
-    // â”€â”€ Team Workload â”€â”€
+    // ── Team Workload ──
     const teamWorkload = useMemo(() => {
         const map = new Map<string, { name: string; total: number; done: number; inProgress: number; hours: number }>();
         tasks.forEach(t => {
@@ -150,7 +150,7 @@ export default function ReportsPage() {
         return Array.from(map.values()).sort((a, b) => b.total - a.total);
     }, [tasks]);
 
-    // â”€â”€ Project Health Scores â”€â”€
+    // ── Project Health Scores ──
     const projectHealth = useMemo(() => {
         return projects
             .filter(p => p.status === 'active' || p.status === 'planning')
@@ -202,7 +202,7 @@ export default function ReportsPage() {
         borderRadius: 12,
     };
 
-    // â”€â”€ AI Handlers â”€â”€
+    // ── AI Handlers ──
     const handleGenerateStatusReport = async () => {
         if (!selectedProjectId) { messageApi.warning('Select a project first'); return; }
         setStatusReportLoading(true);
@@ -344,7 +344,7 @@ export default function ReportsPage() {
             subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip></RbacGuard>]}>
             {contextHolder}
 
-            {/* â”€â”€ Executive Summary â”€â”€ */}
+            {/* ── Executive Summary ── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={4}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #6366f1' }} size="small">
@@ -411,7 +411,7 @@ export default function ReportsPage() {
                 </Col>
             </Row>
 
-            {/* â”€â”€ Task Flow & Priority Distribution â”€â”€ */}
+            {/* ── Task Flow & Priority Distribution ── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} lg={14}>
                     <Card
@@ -497,7 +497,7 @@ export default function ReportsPage() {
                 </Col>
             </Row>
 
-            {/* â”€â”€ Effort & Budget Analytics â”€â”€ */}
+            {/* ── Effort & Budget Analytics ── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} lg={12}>
                     <Card
@@ -565,7 +565,7 @@ export default function ReportsPage() {
                 </Col>
             </Row>
 
-            {/* â”€â”€ Team Workload â”€â”€ */}
+            {/* ── Team Workload ── */}
             <Card
                 title={<Space><TeamOutlined style={{ color: '#3b82f6' }} /> Team Workload</Space>}
                 size="small"
@@ -592,7 +592,7 @@ export default function ReportsPage() {
                                         style={{ flex: 1 }}
                                     />
                                     <Text type="secondary" style={{ fontSize: 10, width: 100, textAlign: 'right' }}>
-                                        {member.done}/{member.total} tasks â€¢ {member.hours}h
+                                        {member.done}/{member.total} tasks • {member.hours}h
                                     </Text>
                                 </div>
                             );
@@ -601,7 +601,7 @@ export default function ReportsPage() {
                 )}
             </Card>
 
-            {/* â”€â”€ Project Health Scorecard â”€â”€ */}
+            {/* ── Project Health Scorecard ── */}
             <Card
                 title={
                     <Space>
@@ -615,7 +615,7 @@ export default function ReportsPage() {
                 {projectHealth.length === 0 ? (
                     <Empty description="No active projects to score." />
                 ) : (
-                    <Table
+                    <Table scroll={{ x: 900 }}
                         dataSource={projectHealth}
                         columns={healthColumns}
                         rowKey="id"
@@ -630,7 +630,7 @@ export default function ReportsPage() {
                 )}
             </Card>
 
-            {/* â”€â”€ Type Distribution â”€â”€ */}
+            {/* ── Type Distribution ── */}
             {Object.keys(typeDist).length > 0 && (
                 <Card
                     title={<Space><FundProjectionScreenOutlined style={{ color: themeColor }} /> Task Type Distribution</Space>}
@@ -658,9 +658,9 @@ export default function ReportsPage() {
                 </Card>
             )}
 
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
-            {/* â”€â”€â”€ AI-POWERED INSIGHTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            {/* ─── AI-POWERED INSIGHTS ─────────────────────────────────────── */}
+            {/* ═══════════════════════════════════════════════════════════════ */}
 
             <Divider style={{ borderColor: isDark ? 'rgba(139,92,246,0.2)' : 'rgba(0,0,0,0.06)' }}>
                 <Space>
@@ -669,7 +669,7 @@ export default function ReportsPage() {
                 </Space>
             </Divider>
 
-            {/* â”€â”€ Project Selector for AI â”€â”€ */}
+            {/* ── Project Selector for AI ── */}
             <Card
                 size="small"
                 style={{ ...glassCard, marginBottom: 20, borderTop: `3px solid ${themeColor}` }}
@@ -678,7 +678,7 @@ export default function ReportsPage() {
                     <BulbOutlined style={{ fontSize: 18, color: '#f59e0b' }} />
                     <Text strong style={{ fontSize: 13 }}>Select a project for AI analysis:</Text>
                     <Select
-                        placeholder="Choose a projectâ€¦"
+                        placeholder="Choose a project…"
                         value={selectedProjectId}
                         onChange={(val) => {
                             setSelectedProjectId(val);
@@ -716,7 +716,7 @@ export default function ReportsPage() {
                 </div>
             </Card>
 
-            {/* â”€â”€ AI Status Report â”€â”€ */}
+            {/* ── AI Status Report ── */}
             {statusReport && (
                 <Card
                     title={
@@ -801,7 +801,7 @@ export default function ReportsPage() {
                                     </Text>
                                     {statusReport.accomplishments.map((item: string, idx: number) => (
                                         <div key={idx} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'flex-start' }}>
-                                            <span style={{ color: '#10b981', fontWeight: 700, fontSize: 11 }}>âœ“</span>
+                                            <span style={{ color: '#10b981', fontWeight: 700, fontSize: 11 }}>✓</span>
                                             <Text style={{ fontSize: 11 }}>{item}</Text>
                                         </div>
                                     ))}
@@ -824,7 +824,7 @@ export default function ReportsPage() {
                                     </Text>
                                     {statusReport.nextPeriodGoals.map((item: string, idx: number) => (
                                         <div key={idx} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'flex-start' }}>
-                                            <span style={{ color: themeColor, fontWeight: 700, fontSize: 11 }}>â†’</span>
+                                            <span style={{ color: themeColor, fontWeight: 700, fontSize: 11 }}>→</span>
                                             <Text style={{ fontSize: 11 }}>{item}</Text>
                                         </div>
                                     ))}
@@ -847,7 +847,7 @@ export default function ReportsPage() {
                                     </Text>
                                     {statusReport.blockers.map((item: string, idx: number) => (
                                         <div key={idx} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'flex-start' }}>
-                                            <span style={{ color: '#ef4444', fontWeight: 700, fontSize: 11 }}>âš </span>
+                                            <span style={{ color: '#ef4444', fontWeight: 700, fontSize: 11 }}>⚠</span>
                                             <Text style={{ fontSize: 11 }}>{item}</Text>
                                         </div>
                                     ))}
@@ -909,7 +909,7 @@ export default function ReportsPage() {
                                         border: '1px solid rgba(139,92,246,0.1)',
                                         display: 'flex', gap: 8, alignItems: 'flex-start',
                                     }}>
-                                        <span style={{ color: themeColor, fontWeight: 700, fontSize: 11 }}>ðŸ’¡</span>
+                                        <span style={{ color: themeColor, fontWeight: 700, fontSize: 11 }}>💡</span>
                                         <Text style={{ fontSize: 11 }}>{rec}</Text>
                                     </div>
                                 ))}
@@ -919,7 +919,7 @@ export default function ReportsPage() {
                 </Card>
             )}
 
-            {/* â”€â”€ AI Critical Path Analysis â”€â”€ */}
+            {/* ── AI Critical Path Analysis ── */}
             {criticalPath && (
                 <Card
                     title={
@@ -1034,7 +1034,7 @@ export default function ReportsPage() {
                                                     </Text>
                                                     <div style={{ display: 'flex', gap: 10, marginTop: 2, flexWrap: 'wrap' }}>
                                                         <Text type="secondary" style={{ fontSize: 10 }}>
-                                                            â± {task.estimatedDays} days
+                                                            ⏱ {task.estimatedDays} days
                                                         </Text>
                                                         {task.slack !== undefined && (
                                                             <Text type="secondary" style={{
@@ -1046,7 +1046,7 @@ export default function ReportsPage() {
                                                         )}
                                                         {task.earliestStart && (
                                                             <Text type="secondary" style={{ fontSize: 10 }}>
-                                                                {dayjs(task.earliestStart).format('MMM D')} â†’ {dayjs(task.latestFinish).format('MMM D')}
+                                                                {dayjs(task.earliestStart).format('MMM D')} → {dayjs(task.latestFinish).format('MMM D')}
                                                             </Text>
                                                         )}
                                                     </div>
@@ -1103,7 +1103,7 @@ export default function ReportsPage() {
                                         </Text>
                                         {criticalPath.bottlenecks.map((item: string, idx: number) => (
                                             <div key={idx} style={{ display: 'flex', gap: 6, marginBottom: 3 }}>
-                                                <span style={{ color: '#f59e0b', fontWeight: 700, fontSize: 11 }}>âš </span>
+                                                <span style={{ color: '#f59e0b', fontWeight: 700, fontSize: 11 }}>⚠</span>
                                                 <Text style={{ fontSize: 11 }}>{item}</Text>
                                             </div>
                                         ))}
@@ -1123,7 +1123,7 @@ export default function ReportsPage() {
                                         </Text>
                                         {criticalPath.recommendations.map((rec: string, idx: number) => (
                                             <div key={idx} style={{ display: 'flex', gap: 6, marginBottom: 3 }}>
-                                                <span style={{ color: themeColor, fontWeight: 700, fontSize: 11 }}>ðŸ’¡</span>
+                                                <span style={{ color: themeColor, fontWeight: 700, fontSize: 11 }}>💡</span>
                                                 <Text style={{ fontSize: 11 }}>{rec}</Text>
                                             </div>
                                         ))}
@@ -1135,7 +1135,7 @@ export default function ReportsPage() {
                 </Card>
             )}
 
-            {/* â”€â”€ Empty state when no AI results â”€â”€ */}
+            {/* ── Empty state when no AI results ── */}
             {!statusReport && !criticalPath && selectedProjectId && (
                 <Card
                     size="small"

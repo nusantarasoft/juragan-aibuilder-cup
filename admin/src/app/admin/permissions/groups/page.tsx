@@ -263,7 +263,7 @@ export default function GroupsTeamsPage() {
                             Create Team
                         </Button>
                     </div>
-                    <Table columns={teamColumns} dataSource={teams.map(t => ({ ...t, key: t.id }))} loading={teamsLoading}
+                    <Table scroll={{ x: 900 }} columns={teamColumns} dataSource={teams.map(t => ({ ...t, key: t.id }))} loading={teamsLoading}
                         pagination={false} size="middle" locale={{ emptyText: "No teams yet" }} />
                 </>
             ),
@@ -278,7 +278,7 @@ export default function GroupsTeamsPage() {
                             Create Public Group
                         </Button>
                     </div>
-                    <Table columns={groupColumns} dataSource={groups.map(g => ({ ...g, key: g.id }))} loading={groupsLoading}
+                    <Table scroll={{ x: 900 }} columns={groupColumns} dataSource={groups.map(g => ({ ...g, key: g.id }))} loading={groupsLoading}
                         pagination={false} size="middle" locale={{ emptyText: "No public groups yet" }} />
                 </>
             ),

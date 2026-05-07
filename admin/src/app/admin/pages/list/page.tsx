@@ -322,7 +322,7 @@ export default function PagesListPage() {
                     </Col>
                 ))}
             </Row>
-            <Table
+            <Table scroll={{ x: 900 }}
                 columns={columns}
                 dataSource={pages}
                 rowKey="id"

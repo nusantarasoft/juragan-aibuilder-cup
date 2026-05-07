@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
@@ -18,7 +18,7 @@ const { RangePicker } = DatePicker;
 const formatCurrency = (v: number | string) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(v) || 0);
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
-// snake_case â†’ camelCase
+// snake_case → camelCase
 const snakeToCamel = (row: any) => {
     if (!row) return row;
     const out: any = {};
@@ -177,7 +177,7 @@ export default function GeneralLedgerPage() {
 
                     {/* Transaction table */}
                     <Card style={{ borderRadius: 12 }} bodyStyle={{ padding: 0 }}>
-                        <Table dataSource={lines.map((l, i) => ({ ...l, key: l.id || i }))} columns={columns} loading={loading}
+                        <Table scroll={{ x: 900 }} dataSource={lines.map((l, i) => ({ ...l, key: l.id || i }))} columns={columns} loading={loading}
                             size="small" pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (t) => `${t} transactions` }}
                             locale={{ emptyText: <Empty description="No transactions found for this account" /> }}
                             summary={() => lines.length > 0 ? (

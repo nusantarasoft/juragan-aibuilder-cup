@@ -1,0 +1,158 @@
+﻿docker : --progress is a global compose flag, better use `docker compose --progress xx build ...
+At line:1 char:1
++ docker compose build admin --progress plain 2>&1 | Out-File -FilePath ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (--progress is a...ss xx build ...:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Image nusantarasoft-minimal-middleware Building 
+ Image nusantarasoft-minimal-admin Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.21kB done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 2.13kB 0.0s done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:20-alpine
+#3 ...
+
+#4 [auth] library/node:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:20-alpine
+#3 DONE 1.6s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 475B done
+#5 DONE 0.1s
+
+#6 [internal] load build context
+#6 DONE 0.0s
+
+#7 [base 1/3] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#7 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.0s done
+#7 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 1.00MB 0.2s done
+#6 DONE 0.2s
+
+#8 [base 2/3] RUN apk add --no-cache libc6-compat
+#8 CACHED
+
+#9 [base 3/3] WORKDIR /app
+#9 CACHED
+
+#10 [deps 1/3] RUN apk add --no-cache python3 make g++
+#10 CACHED
+
+#11 [deps 2/3] COPY package.json ./
+#11 CACHED
+
+#12 [deps 3/3] RUN npm config set fetch-retry-mintimeout 600000 &&     npm config set fetch-retry-maxtimeout 1200000 &&     npm install --legacy-peer-deps
+#12 CACHED
+
+#13 [builder 1/3] COPY --from=deps /app/node_modules ./node_modules
+#13 CACHED
+
+#14 [builder 2/3] COPY . .
+#14 DONE 0.4s
+
+#15 [builder 3/3] RUN npm run build
+#15 1.089 
+#15 1.089 > admin@0.1.0 build
+#15 1.089 > next build
+#15 1.089 
+#15 2.376 Γû▓ Next.js 16.1.0 (Turbopack)
+#15 2.376 
+#15 2.456   Creating an optimized production build ...
+#15 276.9 
+#15 276.9 > Build error occurred
+#15 276.9 Error: Turbopack build failed with 4 errors:
+#15 276.9 ./src/app/admin/crm/intelligence/page.tsx
+#15 276.9 Reading source code for parsing failed
+#15 276.9 An unexpected error happened while trying to read the source code to parse: failed to convert rope into string
+#15 276.9 
+#15 276.9 Caused by:
+#15 276.9 - invalid utf-8 sequence of 1 bytes from index 6693
+#15 276.9 
+#15 276.9 
+#15 276.9 ./src/app/admin/hr/payroll/page.tsx
+#15 276.9 Reading source code for parsing failed
+#15 276.9 An unexpected error happened while trying to read the source code to parse: failed to convert rope into string
+#15 276.9 
+#15 276.9 Caused by:
+#15 276.9 - invalid utf-8 sequence of 1 bytes from index 12189
+#15 276.9 
+#15 276.9 
+#15 276.9 ./src/app/admin/accounting/ledger/page.tsx:184:59
+#15 276.9 Parsing ecmascript source code failed
+#15 276.9 [0m [90m 182 |[39m                             locale[33m=[39m{{ emptyText[33m:[39m [33m<[39m[33mEmpty[39m description[33m=[39m[32m"No transactions found for this account"[39m [33m/[39m[33m>[39m }}
+#15 276.9  [90m 183 |[39m                             summary[33m=[39m{() [33m=>[39m lines[33m.[39mlength [33m>[39m [35m0[39m [33m?[39m (
+#15 276.9 [31m[1m>[22m[39m[90m 184 |[39m                                 [33m<[39m[33mTable[39m scroll[33m=[39m{{ x[33m:[39m [35m900[39m }}[33m.[39m[33mSummary[39m[33m.[39m[33mRow[39m[33m>[39m
+#15 276.9  [90m     |[39m                                                           [31m[1m^[22m[39m
+#15 276.9  [90m 185 |[39m                                     [33m<[39m[33mTable[39m scroll[33m=[39m{{ x[33m:[39m [35m900[39m }}[33m.[39m[33mSummary[39m[33m.[39m[33mCell[39m index[33m=[39m{[35m0[39m} colSpan[33m=[39m{[35m3[39m}[33m>[39m[33m<[39m[33mText[39m strong[33m>[39m[33mTotals[39m[33m<[39m[33m/[39m[33mText[39m[33m>[39m[33m<[39m[33m/[39m[33mTable[39m[33m.[39m[33mSummary[39m[33m.[39m[33mCell[39m[33m>[39m
+#15 276.9  [90m 186 |[39m                                     [33m<[39m[33mTable[39m scroll[33m=[39m{{ x[33m:[39m [35m900[39m }}[33m.[39m[33mSummary[39m[33m.[39m[33mCell[39m index[33m=[39m{[35m1[39m} align[33m=[39m[32m"right"[39m[33m>[39m[33m<[39m[33mText[39m strong style[33m=[39m{{ fontFamily[33m:[39m [32m'monospace'[39m[33m,[39m color[33m:[39m [32m'#52c41a'[39m }}[33m>[39m{formatCurrency(totalDebit)}[33m<[39m[33m/[39m[33mText[39m[33m>[39m[33m<[39m[33m/[39m[33mTable[39m[33m.[39m[33mSummary[39m[33m.[39m[33mCell[39m[33m>[39m
+#15 276.9  [90m 187 |[39m                                     [33m<[39m[33mTable[39m scroll[33m=[39m{{ x[33m:[39m [35m900[39m }}[33m.[39m[33mSummary[39m[33m.[39m[33mCell[39m index[33m=[39m{[35m2[39m} align[33m=[39m[32m"right"[39m[33m>[39m[33m<[39m[33mText[39m strong style[33m=[39m{{ fontFamily[33m:[39m [32m'monospace'[39m[33m,[39m color[33m:[39m [32m'#ff4d4f'[39m }}[33m>[39m{formatCurrency(totalCredit)}[33m<[39m[33m/[39m[33mText[39m[33m>[39m[33m<[39m[33m/[39m[33mTable[39m[33m.[39m[33mSummary[39m[33m.[39m[33mCell[39m[33m>[39m[0m
+#15 276.9 
+#15 276.9 Expected '</', got '.'
+#15 276.9 
+#15 276.9 
+#15 276.9 ./src/app/admin/accounting/reports/page.tsx:94:51
+#15 276.9 Parsing ecmascript source code failed
+#15 276.9 [0m [90m 92 |[39m [32m                    ]}[39m
+#15 276.9  [90m 93 |[39m [32m                    summary={() => ([39m
+#15 276.9 [31m[1m>[22m[39m[90m 94 |[39m [32m                        <Table scroll={{ x: 900 }}.Summary.Row style={{ background: '#f5f5f5' }}>[39m
+#15 276.9  [90m    |[39m                                                   [31m[1m^[22m[39m
+#15 276.9  [90m 95 |[39m [32m                            <Table scroll={{ x: 900 }}.Summary.Cell index={0} colSpan={3}><Text strong>TOTAL</Text></Table.Summary.Cell>[39m
+#15 276.9  [90m 96 |[39m [32m                            <Table scroll={{ x: 900 }}.Summary.Cell index={1} align="right"><Text strong style={{ fontFamily: 'monospace' }}>{formatCurrency(tbTotalDebit)}</Text></Table.Summary.Cell>[39m
+#15 276.9  [90m 97 |[39m [32m                            <Table scroll={{ x: 900 }}.Summary.Cell index={2} align="right"><Text strong style={{ fontFamily: 'monospace' }}>{formatCurrency(tbTotalCredit)}</Text></Table.Summary.Cell>[39m[0m
+#15 276.9 
+#15 276.9 Expected '</', got '.'
+#15 276.9 
+#15 276.9 
+#15 276.9     at <unknown> (./src/app/admin/accounting/ledger/page.tsx:184:59)
+#15 276.9     at <unknown> (./src/app/admin/accounting/reports/page.tsx:94:51)
+#15 277.1 npm notice
+#15 277.1 npm notice New major version of npm available! 10.8.2 -> 11.14.0
+#15 277.1 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.14.0
+#15 277.1 npm notice To update run: npm install -g npm@11.14.0
+#15 277.1 npm notice
+#15 ERROR: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
+------
+ > [builder 3/3] RUN npm run build:
+276.9 Expected '</', got '.'
+276.9 
+276.9 
+276.9     at <unknown> (./src/app/admin/accounting/ledger/page.tsx:184:59)
+276.9     at <unknown> (./src/app/admin/accounting/reports/page.tsx:94:51)
+277.1 npm notice
+277.1 npm notice New major version of npm available! 10.8.2 -> 11.14.0
+277.1 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.14.0
+277.1 npm notice To update run: npm install -g npm@11.14.0
+277.1 npm notice
+------
+Dockerfile:31
+
+--------------------
+
+  29 |     
+
+  30 |     # Build the application
+
+  31 | >>> RUN npm run build
+
+  32 |     
+
+  33 |     # ===== Runner Stage =====
+
+--------------------
+
+failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
+
+
+
+View build details: docker-desktop://dashboard/build/default/default/un84ba3nyzdw5sl3jhd9hfvxw
+

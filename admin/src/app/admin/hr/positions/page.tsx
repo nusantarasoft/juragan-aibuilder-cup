@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -111,25 +111,25 @@ export default function PositionsPage() {
                 </div>
             </Space>
         )},
-        { title: 'Department', dataIndex: 'departmentName', key: 'dept', render: (v: string) => v ? <Tag style={{ borderRadius: 10 }}>{v}</Tag> : 'â€”' },
+        { title: 'Department', dataIndex: 'departmentName', key: 'dept', render: (v: string) => v ? <Tag style={{ borderRadius: 10 }}>{v}</Tag> : '—' },
         { title: 'Grade', dataIndex: 'grade', key: 'grade', render: (v: string) => v ? (
             <Tooltip title={gradeConfig[v]?.level}>
                 <Tag color={gradeConfig[v]?.color} style={{ borderRadius: 20, fontWeight: 600 }}>{v}</Tag>
             </Tooltip>
-        ) : 'â€”', align: 'center' as const },
+        ) : '—', align: 'center' as const },
         { title: 'Salary Range', key: 'salary', render: (_: any, r: any) => r.minSalary && r.maxSalary ? (
             <div>
-                <Text style={{ fontSize: 12 }}>{fmt(r.minSalary)} â€” {fmt(r.maxSalary)}</Text>
+                <Text style={{ fontSize: 12 }}>{fmt(r.minSalary)} — {fmt(r.maxSalary)}</Text>
                 <div style={{ height: 4, borderRadius: 2, background: `${(gradeConfig[r.grade] || { color: '#6b7280' }).color}15`, marginTop: 4 }}>
                     <motion.div initial={{ width: 0 }} animate={{ width: '100%' }} transition={{ duration: 0.8 }}
                         style={{ height: '100%', borderRadius: 2, background: `linear-gradient(90deg, ${(gradeConfig[r.grade] || { color: '#6b7280' }).color}66, ${(gradeConfig[r.grade] || { color: '#6b7280' }).color})` }} />
                 </div>
             </div>
-        ) : 'â€”' },
+        ) : '—' },
         { title: 'Headcount', dataIndex: 'headcountBudget', key: 'hc', align: 'center' as const,
             render: (v: number) => <Badge count={v || 0} style={{ backgroundColor: '#8b5cf6' }} showZero /> },
         { title: 'Status', dataIndex: 'isActive', key: 'status',
-            render: (v: boolean) => <Tag color={v ? 'green' : 'default'} style={{ borderRadius: 20 }}>{v ? 'â— Active' : 'â—‹ Inactive'}</Tag> },
+            render: (v: boolean) => <Tag color={v ? 'green' : 'default'} style={{ borderRadius: 20 }}>{v ? '● Active' : '○ Inactive'}</Tag> },
     ];
 
     return (
@@ -184,7 +184,7 @@ export default function PositionsPage() {
 
                 {/* Table */}
                 <Card style={glass}>
-                    <Table dataSource={positions} columns={columns} rowKey="id" loading={loading} pagination={false} size="middle" />
+                    <Table scroll={{ x: 900 }} dataSource={positions} columns={columns} rowKey="id" loading={loading} pagination={false} size="middle" />
                 </Card>
             </motion.div>
 
@@ -196,7 +196,7 @@ export default function PositionsPage() {
                     </Row>
                     <Row gutter={12}>
                         <Col span={12}><Form.Item name="departmentId" label="Department"><Select allowClear options={departments.map(d => ({ label: d.name, value: d.id }))} /></Form.Item></Col>
-                        <Col span={12}><Form.Item name="grade" label="Grade"><Select options={Object.entries(gradeConfig).map(([k, v]) => ({ label: `${k} â€” ${v.level}`, value: k }))} /></Form.Item></Col>
+                        <Col span={12}><Form.Item name="grade" label="Grade"><Select options={Object.entries(gradeConfig).map(([k, v]) => ({ label: `${k} — ${v.level}`, value: k }))} /></Form.Item></Col>
                     </Row>
                     <Row gutter={12}>
                         <Col span={8}><Form.Item name="minSalary" label="Min Salary"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>

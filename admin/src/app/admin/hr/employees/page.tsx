@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -139,11 +139,11 @@ export default function EmployeesPage() {
                 <Avatar style={{ backgroundColor: deptMap.get(r.departmentName) || themeColor, fontSize: 11 }} src={r.avatarUrl}>{r.firstName[0]}{r.lastName[0]}</Avatar>
             </Badge><div><Text strong style={{ cursor: 'pointer', fontSize: 13 }} onClick={() => router.push(`/admin/hr/employees/${r.id}`)}>{r.firstName} {r.lastName}</Text><br /><Text type="secondary" style={{ fontSize: 10 }}>{r.employeeNumber}</Text></div></Space>
         )},
-        { title: 'Department', dataIndex: 'departmentName', key: 'dept', render: (v: string) => v ? <Tag color={deptMap.get(v)} style={{ borderRadius: 10 }}>{v}</Tag> : 'â€”' },
-        { title: 'Position', dataIndex: 'positionTitle', key: 'pos', render: (v: string) => v || 'â€”' },
+        { title: 'Department', dataIndex: 'departmentName', key: 'dept', render: (v: string) => v ? <Tag color={deptMap.get(v)} style={{ borderRadius: 10 }}>{v}</Tag> : '—' },
+        { title: 'Position', dataIndex: 'positionTitle', key: 'pos', render: (v: string) => v || '—' },
         { title: 'Type', dataIndex: 'employmentType', key: 'type', render: (v: string) => <Tag color={typeLabels[v]?.color} style={{ borderRadius: 10 }}>{typeLabels[v]?.label || v}</Tag> },
         { title: 'Status', dataIndex: 'employmentStatus', key: 'status', render: (v: string) => <Tag color={statusConfig[v]?.color} style={{ borderRadius: 10 }}>{v?.replace('_', ' ')}</Tag> },
-        { title: 'Salary', dataIndex: 'baseSalary', key: 'salary', render: (v: number) => v ? <Text style={{ fontSize: 12 }}>{fmt(v)}</Text> : 'â€”', align: 'right' as const },
+        { title: 'Salary', dataIndex: 'baseSalary', key: 'salary', render: (v: number) => v ? <Text style={{ fontSize: 12 }}>{fmt(v)}</Text> : '—', align: 'right' as const },
         { title: 'Tenure', key: 'tenure', render: (_: any, r: any) => { const y = dayjs().diff(dayjs(r.hireDate), 'year', true); return <Text style={{ fontSize: 12 }}>{y < 1 ? `${Math.round(y * 12)}mo` : `${y.toFixed(1)}yr`}</Text>; } },
         { title: 'Contact', key: 'contact', render: (_: any, r: any) => (
             <Space direction="vertical" size={0}>{r.email && <Text style={{ fontSize: 11 }}><MailOutlined /> {r.email}</Text>}{r.phone && <Text style={{ fontSize: 11 }}><PhoneOutlined /> {r.phone}</Text>}</Space>
@@ -153,7 +153,7 @@ export default function EmployeesPage() {
     return (
         <CMSLayout
             title={<AuroraText colors={[themeColor, '#3b82f6', '#8b5cf6', themeColor]} className="text-[22px] font-bold tracking-tight">Employee Directory</AuroraText>}
-            subTitle={<DecryptedText text="Manage your workforce â€” profiles, roles & compensation" animateOn="view" revealDirection="start" speed={60} sequential />}
+            subTitle={<DecryptedText text="Manage your workforce — profiles, roles & compensation" animateOn="view" revealDirection="start" speed={60} sequential />}
             extra={[
                 <Space key="actions">
                     <Segmented value={viewMode} onChange={(v: any) => setViewMode(v)} options={[{ label: <><AppstoreOutlined /> Grid</>, value: 'grid' }, { label: <><UnorderedListOutlined /> List</>, value: 'list' }]} />
@@ -194,7 +194,7 @@ export default function EmployeesPage() {
                     </Row>
                 ) : (
                     <Card style={glass}>
-                        <Table dataSource={employees} columns={columns} rowKey="id" loading={loading}
+                        <Table scroll={{ x: 900 }} dataSource={employees} columns={columns} rowKey="id" loading={loading}
                             pagination={{ pageSize: 15, showTotal: t => `${t} employees` }} size="middle"
                             onRow={r => ({ onClick: () => router.push(`/admin/hr/employees/${r.id}`), style: { cursor: 'pointer' } })} />
                     </Card>

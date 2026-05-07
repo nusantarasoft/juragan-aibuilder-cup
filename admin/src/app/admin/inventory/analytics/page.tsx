@@ -175,7 +175,7 @@ export default function AnalyticsPage() {
                             </Card>
 
                             <Card title="Revenue Streams" style={{ borderRadius: 12, marginTop: 16 }}>
-                                <Table dataSource={[
+                                <Table scroll={{ x: 900 }} dataSource={[
                                     { stream: 'Procurement Spend', amount: totalProcSpend, type: 'expense' },
                                     { stream: 'Booking Revenue', amount: totalBookingRevenue, type: 'revenue' },
                                     { stream: 'Rental Revenue', amount: totalRentalRevenue, type: 'revenue' },

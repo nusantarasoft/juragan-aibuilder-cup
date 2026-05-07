@@ -279,7 +279,7 @@ export default function ExportLogsPage() {
 
             {/* Table */}
             <Card>
-                <Table
+                <Table scroll={{ x: 900 }}
                     columns={columns}
                     dataSource={logs.map(l => ({ ...l, key: l.id }))}
                     loading={loading}

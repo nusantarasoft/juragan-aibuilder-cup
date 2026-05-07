@@ -334,7 +334,7 @@ export default function AccountingDashboardPage() {
                     style={{ ...glass }}
                     styles={{ body: { padding: 0 } }}
                 >
-                    <Table dataSource={(data.recentJournals as any[] || []).map((j: any) => { const c = snakeToCamel(j); return { ...c, key: c.id }; })} columns={columns} pagination={false} size="small"
+                    <Table scroll={{ x: 900 }} dataSource={(data.recentJournals as any[] || []).map((j: any) => { const c = snakeToCamel(j); return { ...c, key: c.id }; })} columns={columns} pagination={false} size="small"
                         locale={{ emptyText: <Empty description="No journal entries yet" /> }} />
                 </Card>
             </motion.div>

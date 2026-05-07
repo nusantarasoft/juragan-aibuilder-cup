@@ -1,0 +1,372 @@
+﻿docker : --progress is a global compose flag, better use `docker compose --progress xx build ...
+At line:1 char:1
++ docker compose build admin middleware --progress plain 2>&1 | Out-Fil ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (--progress is a...ss xx build ...:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Image nusantarasoft-minimal-middleware Building 
+ Image nusantarasoft-minimal-admin Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.23kB done
+#1 DONE 0.0s
+
+#2 [middleware internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.53kB done
+#2 DONE 0.0s
+
+#3 [admin internal] load build definition from Dockerfile
+#3 transferring dockerfile: 2.13kB done
+#3 DONE 0.1s
+
+#4 [admin internal] load metadata for docker.io/library/node:20-alpine
+#4 DONE 1.0s
+
+#5 [admin internal] load .dockerignore
+#5 transferring context: 475B done
+#5 DONE 0.0s
+
+#6 [middleware internal] load .dockerignore
+#6 transferring context: 538B done
+#6 DONE 0.1s
+
+#7 [admin internal] load build context
+#7 DONE 0.0s
+
+#8 [middleware internal] load build context
+#8 DONE 0.0s
+
+#9 [middleware base 1/3] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#9 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.0s done
+#9 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.0s done
+#9 DONE 0.0s
+
+#8 [middleware internal] load build context
+#8 transferring context: 35.91kB 0.1s done
+#8 DONE 0.1s
+
+#7 [admin internal] load build context
+#7 transferring context: 76.10kB 0.1s done
+#7 DONE 0.2s
+
+#10 [middleware base 2/3] RUN apk add --no-cache libc6-compat ffmpeg ghostscript graphicsmagick
+#10 CACHED
+
+#11 [middleware base 3/3] WORKDIR /app
+#11 CACHED
+
+#12 [middleware deps 1/2] COPY package.json package-lock.json* ./
+#12 DONE 0.1s
+
+#13 [admin base 3/3] WORKDIR /app
+#13 CACHED
+
+#14 [admin deps 2/3] COPY package.json ./
+#14 CACHED
+
+#15 [admin deps 1/3] RUN apk add --no-cache python3 make g++
+#15 CACHED
+
+#16 [admin deps 3/3] RUN npm config set fetch-retry-mintimeout 600000 &&     npm config set fetch-retry-maxtimeout 1200000 &&     npm install --legacy-peer-deps
+#16 CACHED
+
+#17 [admin builder 1/3] COPY --from=deps /app/node_modules ./node_modules
+#17 CACHED
+
+#18 [admin base 2/3] RUN apk add --no-cache libc6-compat
+#18 CACHED
+
+#19 [admin builder 2/3] COPY . .
+#19 CACHED
+
+#20 [admin builder 3/3] RUN npm run build
+#20 1.101 
+#20 1.101 > admin@0.1.0 build
+#20 1.101 > next build
+#20 1.101 
+#20 2.479 Γû▓ Next.js 16.1.0 (Turbopack)
+#20 2.480 
+#20 2.564   Creating an optimized production build ...
+#20 ...
+
+#21 [middleware prod-deps 2/2] RUN npm ci --omit=dev || npm install --omit=dev
+#21 2.358 npm error code EUSAGE
+#21 2.358 npm error
+#21 2.358 npm error `npm ci` can only install packages when your package.json and package-lock.json or npm-shrinkwrap.json are in sync. Please update your lock file with `npm install` before continuing.
+#21 2.358 npm error
+#21 2.358 npm error Missing: @types/nodemailer@6.4.23 from lock file
+#21 2.358 npm error Missing: nodemailer@6.10.1 from lock file
+#21 2.358 npm error
+#21 2.358 npm error Clean install a project
+#21 2.358 npm error
+#21 2.358 npm error Usage:
+#21 2.358 npm error npm ci
+#21 2.358 npm error
+#21 2.358 npm error Options:
+#21 2.358 npm error [--install-strategy <hoisted|nested|shallow|linked>] [--legacy-bundling]
+#21 2.358 npm error [--global-style] [--omit <dev|optional|peer> [--omit <dev|optional|peer> ...]]
+#21 2.358 npm error [--include <prod|dev|optional|peer> [--include <prod|dev|optional|peer> ...]]
+#21 2.358 npm error [--strict-peer-deps] [--foreground-scripts] [--ignore-scripts] [--no-audit]
+#21 2.358 npm error [--no-bin-links] [--no-fund] [--dry-run]
+#21 2.358 npm error [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
+#21 2.358 npm error [-ws|--workspaces] [--include-workspace-root] [--install-links]
+#21 2.358 npm error
+#21 2.358 npm error aliases: clean-install, ic, install-clean, isntall-clean
+#21 2.358 npm error
+#21 2.358 npm error Run "npm help ci" for more info
+#21 2.363 npm notice
+#21 2.363 npm notice New major version of npm available! 10.8.2 -> 11.13.0
+#21 2.363 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+#21 2.363 npm notice To update run: npm install -g npm@11.13.0
+#21 2.363 npm notice
+#21 2.363 npm error A complete log of this run can be found in: /root/.npm/_logs/2026-05-06T04_51_53_835Z-debug-0.log
+#21 8.053 npm warn deprecated lodash.omit@4.5.0: This package is deprecated. Use destructuring assignment syntax instead.
+#21 9.383 npm warn deprecated apollo-datasource@3.3.2: The `apollo-datasource` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#21 9.437 npm warn deprecated apollo-server-types@3.8.0: The `apollo-server-types` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#21 9.443 npm warn deprecated apollo-server-plugin-base@3.7.2: The `apollo-server-plugin-base` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#21 9.536 npm warn deprecated apollo-server-errors@3.3.1: The `apollo-server-errors` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#21 9.718 npm warn deprecated apollo-server-express@3.13.0: The `apollo-server-express` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#21 9.777 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+#21 9.941 npm warn deprecated gm@1.25.1: The gm module has been sunset. Please migrate to an alternative. https://github.com/aheckmann/gm?tab=readme-ov-file#2025-02-24-this-project-is-not-maintained
+#21 ...
+
+#22 [middleware deps 2/2] RUN npm ci || npm install
+#22 2.351 npm error code EUSAGE
+#22 2.351 npm error
+#22 2.351 npm error `npm ci` can only install packages when your package.json and package-lock.json or npm-shrinkwrap.json are in sync. Please update your lock file with `npm install` before continuing.
+#22 2.351 npm error
+#22 2.351 npm error Missing: @types/nodemailer@6.4.23 from lock file
+#22 2.351 npm error Missing: nodemailer@6.10.1 from lock file
+#22 2.351 npm error
+#22 2.351 npm error Clean install a project
+#22 2.351 npm error
+#22 2.351 npm error Usage:
+#22 2.351 npm error npm ci
+#22 2.351 npm error
+#22 2.351 npm error Options:
+#22 2.351 npm error [--install-strategy <hoisted|nested|shallow|linked>] [--legacy-bundling]
+#22 2.351 npm error [--global-style] [--omit <dev|optional|peer> [--omit <dev|optional|peer> ...]]
+#22 2.351 npm error [--include <prod|dev|optional|peer> [--include <prod|dev|optional|peer> ...]]
+#22 2.351 npm error [--strict-peer-deps] [--foreground-scripts] [--ignore-scripts] [--no-audit]
+#22 2.351 npm error [--no-bin-links] [--no-fund] [--dry-run]
+#22 2.351 npm error [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
+#22 2.351 npm error [-ws|--workspaces] [--include-workspace-root] [--install-links]
+#22 2.351 npm error
+#22 2.351 npm error aliases: clean-install, ic, install-clean, isntall-clean
+#22 2.351 npm error
+#22 2.351 npm error Run "npm help ci" for more info
+#22 2.356 npm notice
+#22 2.356 npm notice New major version of npm available! 10.8.2 -> 11.13.0
+#22 2.356 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+#22 2.356 npm notice To update run: npm install -g npm@11.13.0
+#22 2.356 npm notice
+#22 2.356 npm error A complete log of this run can be found in: /root/.npm/_logs/2026-05-06T04_51_53_806Z-debug-0.log
+#22 9.836 npm warn deprecated lodash.omit@4.5.0: This package is deprecated. Use destructuring assignment syntax instead.
+#22 ...
+
+#21 [middleware prod-deps 2/2] RUN npm ci --omit=dev || npm install --omit=dev
+#21 10.14 npm warn deprecated apollo-server-env@4.2.1: The `apollo-server-env` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/utils.fetcher` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#21 10.52 npm warn deprecated apollo-reporting-protobuf@3.4.0: The `apollo-reporting-protobuf` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/usage-reporting-protobuf` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#21 10.82 npm warn deprecated subscriptions-transport-ws@0.11.0: The `subscriptions-transport-ws` package is no longer maintained. We recommend you use `graphql-ws` instead. For help migrating Apollo software to `graphql-ws`, see https://www.apollographql.com/docs/apollo-server/data/subscriptions/#switching-from-subscriptions-transport-ws    For general help using `graphql-ws`, see https://github.com/enisdenjo/graphql-ws/blob/master/README.md
+#21 11.62 npm warn deprecated @apollo/server-gateway-interface@1.1.1: @apollo/server-gateway-interface v1 is part of Apollo Server v4, which is deprecated and will transition to end-of-life on January 26, 2026. As long as you are already using a non-EOL version of Node.js, upgrading to v2 should take only a few minutes. See https://www.apollographql.com/docs/apollo-server/previous-versions for details.
+#21 11.66 npm warn deprecated @apollo/server-plugin-landing-page-graphql-playground@4.0.0: The use of GraphQL Playground in Apollo Server was supported in previous versions, but this is no longer the case as of December 31, 2022. This package exists for v4 migration purposes only. We do not intend to resolve security issues or other bugs with this package if they arise, so please migrate away from this to [Apollo Server's default Explorer](https://www.apollographql.com/docs/apollo-server/api/plugin/landing-pages) as soon as possible.
+#21 14.40 npm warn deprecated apollo-server-core@3.13.0: The `apollo-server-core` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#21 16.43 npm warn deprecated graphql@14.7.0: No longer supported; please update to a newer version. Details: https://github.com/graphql/graphql-js#version-support
+#21 16.80 npm warn deprecated fluent-ffmpeg@2.1.3: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+#21 16.82 npm warn deprecated @apollo/server@4.12.2: Apollo Server v4 is deprecated and will transition to end-of-life on January 26, 2026. As long as you are already using a non-EOL version of Node.js, upgrading to v5 should take only a few minutes. See https://www.apollographql.com/docs/apollo-server/previous-versions for details.
+#21 ...
+
+#22 [middleware deps 2/2] RUN npm ci || npm install
+#22 11.74 npm warn deprecated apollo-server-plugin-base@3.7.2: The `apollo-server-plugin-base` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#22 11.74 npm warn deprecated apollo-datasource@3.3.2: The `apollo-datasource` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#22 11.74 npm warn deprecated apollo-server-types@3.8.0: The `apollo-server-types` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#22 11.89 npm warn deprecated apollo-server-errors@3.3.1: The `apollo-server-errors` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#22 12.22 npm warn deprecated gm@1.25.1: The gm module has been sunset. Please migrate to an alternative. https://github.com/aheckmann/gm?tab=readme-ov-file#2025-02-24-this-project-is-not-maintained
+#22 12.29 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+#22 12.30 npm warn deprecated apollo-server-express@3.13.0: The `apollo-server-express` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#22 13.11 npm warn deprecated subscriptions-transport-ws@0.11.0: The `subscriptions-transport-ws` package is no longer maintained. We recommend you use `graphql-ws` instead. For help migrating Apollo software to `graphql-ws`, see https://www.apollographql.com/docs/apollo-server/data/subscriptions/#switching-from-subscriptions-transport-ws    For general help using `graphql-ws`, see https://github.com/enisdenjo/graphql-ws/blob/master/README.md
+#22 13.63 npm warn deprecated apollo-server-env@4.2.1: The `apollo-server-env` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/utils.fetcher` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#22 14.42 npm warn deprecated apollo-reporting-protobuf@3.4.0: The `apollo-reporting-protobuf` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/usage-reporting-protobuf` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#22 14.54 npm warn deprecated @apollo/server-gateway-interface@1.1.1: @apollo/server-gateway-interface v1 is part of Apollo Server v4, which is deprecated and will transition to end-of-life on January 26, 2026. As long as you are already using a non-EOL version of Node.js, upgrading to v2 should take only a few minutes. See https://www.apollographql.com/docs/apollo-server/previous-versions for details.
+#22 14.54 npm warn deprecated @apollo/server-plugin-landing-page-graphql-playground@4.0.0: The use of GraphQL Playground in Apollo Server was supported in previous versions, but this is no longer the case as of December 31, 2022. This package exists for v4 migration purposes only. We do not intend to resolve security issues or other bugs with this package if they arise, so please migrate away from this to [Apollo Server's default Explorer](https://www.apollographql.com/docs/apollo-server/api/plugin/landing-pages) as soon as possible.
+#22 17.92 npm warn deprecated apollo-server-core@3.13.0: The `apollo-server-core` package is part of Apollo Server v2 and v3, which are now end-of-life (as of October 22nd 2023 and October 22nd 2024, respectively). This package's functionality is now found in the `@apollo/server` package. See https://www.apollographql.com/docs/apollo-server/previous-versions/ for more details.
+#22 ...
+
+#21 [middleware prod-deps 2/2] RUN npm ci --omit=dev || npm install --omit=dev
+#21 19.16 
+#21 19.16 added 418 packages, and audited 419 packages in 17s
+#21 19.17 
+#21 19.17 80 packages are looking for funding
+#21 19.17   run `npm fund` for details
+#21 19.22 
+#21 19.22 21 vulnerabilities (1 low, 10 moderate, 9 high, 1 critical)
+#21 19.22 
+#21 19.22 To address issues that do not require attention, run:
+#21 19.22   npm audit fix
+#21 19.22 
+#21 19.22 To address all issues possible (including breaking changes), run:
+#21 19.22   npm audit fix --force
+#21 19.22 
+#21 19.22 Some issues need review, and may require choosing
+#21 19.22 a different dependency.
+#21 19.22 
+#21 19.22 Run `npm audit` for details.
+#21 DONE 19.9s
+
+#20 [admin builder 3/3] RUN npm run build
+#20 ...
+
+#22 [middleware deps 2/2] RUN npm ci || npm install
+#22 20.18 npm warn deprecated graphql@14.7.0: No longer supported; please update to a newer version. Details: https://github.com/graphql/graphql-js#version-support
+#22 21.31 npm warn deprecated @apollo/server@4.12.2: Apollo Server v4 is deprecated and will transition to end-of-life on January 26, 2026. As long as you are already using a non-EOL version of Node.js, upgrading to v5 should take only a few minutes. See https://www.apollographql.com/docs/apollo-server/previous-versions for details.
+#22 21.31 npm warn deprecated fluent-ffmpeg@2.1.3: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+#22 ...
+
+#23 [middleware runner 1/5] WORKDIR /app
+#23 CACHED
+
+#24 [middleware runner 2/5] RUN addgroup --system --gid 1001 nodejs &&     adduser --system --uid 1001 nestjs
+#24 CACHED
+
+#25 [middleware runner 3/5] COPY --from=prod-deps --chown=nestjs:nodejs /app/node_modules ./node_modules
+#25 DONE 5.6s
+
+#22 [middleware deps 2/2] RUN npm ci || npm install
+#22 30.09 
+#22 30.09 added 597 packages, and audited 598 packages in 28s
+#22 30.09 
+#22 30.09 109 packages are looking for funding
+#22 30.09   run `npm fund` for details
+#22 30.28 
+#22 30.28 33 vulnerabilities (5 low, 15 moderate, 12 high, 1 critical)
+#22 30.28 
+#22 30.28 To address issues that do not require attention, run:
+#22 30.28   npm audit fix
+#22 30.28 
+#22 30.28 To address all issues possible (including breaking changes), run:
+#22 30.28   npm audit fix --force
+#22 30.28 
+#22 30.28 Some issues need review, and may require choosing
+#22 30.28 a different dependency.
+#22 30.28 
+#22 30.28 Run `npm audit` for details.
+#22 DONE 30.5s
+
+#20 [admin builder 3/3] RUN npm run build
+#20 ...
+
+#26 [middleware builder 1/3] COPY --from=deps /app/node_modules ./node_modules
+#26 DONE 6.1s
+
+#20 [admin builder 3/3] RUN npm run build
+#20 ...
+
+#27 [middleware builder 2/3] COPY . .
+#27 DONE 0.8s
+
+#20 [admin builder 3/3] RUN npm run build
+#20 ...
+
+#28 [middleware builder 3/3] RUN npm run build
+#28 1.406 
+#28 1.406 > middleware@1.0.0 build
+#28 1.406 > nest build
+#28 1.406 
+#28 42.15 npm notice
+#28 42.15 npm notice New major version of npm available! 10.8.2 -> 11.13.0
+#28 42.15 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+#28 42.15 npm notice To update run: npm install -g npm@11.13.0
+#28 42.15 npm notice
+#28 DONE 42.3s
+
+#20 [admin builder 3/3] RUN npm run build
+#20 ...
+
+#29 [middleware runner 4/5] COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
+#29 DONE 0.7s
+
+#20 [admin builder 3/3] RUN npm run build
+#20 ...
+
+#30 [middleware runner 5/5] COPY --from=builder --chown=nestjs:nodejs /app/package.json ./
+#30 DONE 0.3s
+
+#20 [admin builder 3/3] RUN npm run build
+#20 ...
+
+#31 [middleware] exporting to image
+#31 exporting layers
+#31 exporting layers 25.7s done
+#31 exporting manifest sha256:b2df6a6ed756c19b5709a3546e015ffd2aaa10bef564cbafc91d2db9a0053b68 0.1s done
+#31 exporting config sha256:06e0065b6582fc29c8465b696de752cb1f1929007c4932263f5d7f022741270d 0.1s done
+#31 exporting attestation manifest sha256:056000c941bbcd6a7a390cbe08362c42795ddd3fd28d5fd9e793cedfc83cfe7e 0.1s done
+#31 exporting manifest list sha256:83a44e4829e9d5bd203d018164c3a860b619e8f174c5167f435d819f9a2d0a4e
+#31 exporting manifest list sha256:83a44e4829e9d5bd203d018164c3a860b619e8f174c5167f435d819f9a2d0a4e 0.1s done
+#31 naming to docker.io/library/nusantarasoft-minimal-middleware:latest done
+#31 unpacking to docker.io/library/nusantarasoft-minimal-middleware:latest
+#31 unpacking to docker.io/library/nusantarasoft-minimal-middleware:latest 8.3s done
+#31 DONE 34.6s
+
+#20 [admin builder 3/3] RUN npm run build
+#20 ...
+
+#32 [middleware] resolving provenance for metadata file
+#32 DONE 0.3s
+
+#20 [admin builder 3/3] RUN npm run build
+#20 379.3 Γ£ô Compiled successfully in 6.3min
+#20 379.3   Running TypeScript ...
+#20 472.7 Failed to compile.
+#20 472.7 
+#20 472.7 ./src/app/admin/notifications/channels/page.tsx:139:62
+#20 472.7 Type error: Cannot find name 'Tooltip'.
+#20 472.7 
+#20 472.7 [0m [90m 137 |[39m                 [33m<[39m[33mButton[39m key[33m=[39m[32m"reload"[39m icon[33m=[39m{[33m<[39m[33mReloadOutlined[39m [35m/>} onClick={load} /[39m[33m>[39m[33m,[39m
+#20 472.7  [90m 138 |[39m                 [33m<[39m[33mButton[39m key[33m=[39m[32m"add"[39m type[33m=[39m[32m"primary"[39m icon[33m=[39m{[33m<[39m[33mPlusOutlined[39m [33m/[39m[33m>[39m} onClick[33m=[39m{() [33m=>[39m { setEditing([36mnull[39m)[33m;[39m form[33m.[39mresetFields()[33m;[39m setIsModalOpen([36mtrue[39m)[33m;[39m }}[33m>[39m[33mAdd[39m [33mChannel[39m[33m<[39m[33m/[39m[33mButton[39m[33m>[39m[33m,[39m
+#20 472.7 [31m[1m>[22m[39m[90m 139 |[39m                 [33m<[39m[33mRbacGuard[39m key[33m=[39m[32m"exp"[39m requiredRole[33m=[39m[32m"manager"[39m[33m>[39m[33m<[39m[33mTooltip[39m title[33m=[39m[32m"Export to Excel"[39m[33m>[39m[33m<[39m[33mButton[39m icon[33m=[39m{[33m<[39m[33mFileExcelOutlined[39m [35m/>} size="small" onClick={() => exportToExcel({ fileName: 'notification_channels', title: 'Notification Channels', columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'channelType' }, { header: 'Active', key: 'isActive' }], data: channels })} /[39m[33m>[39m[33m<[39m[35m/Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined /[39m[33m>[39m} size[33m=[39m[32m"small"[39m onClick[33m=[39m{() [33m=>[39m exportToPdf({ fileName[33m:[39m [32m'notification_channels'[39m[33m,[39m title[33m:[39m [32m'Notification Channels'[39m[33m,[39m columns[33m:[39m [{ header[33m:[39m [32m'Name'[39m[33m,[39m key[33m:[39m [32m'name'[39m }[33m,[39m { header[33m:[39m [32m'Type'[39m[33m,[39m key[33m:[39m [32m'channelType'[39m }[33m,[39m { header[33m:[39m [32m'Active'[39m[33m,[39m key[33m:[39m [32m'isActive'[39m }][33m,[39m data[33m:[39m channels })} [33m/[39m[33m>[39m[33m<[39m[33m/[39m[33mTooltip[39m[33m>[39m[33m<[39m[33m/[39m[33mRbacGuard[39m[33m>[39m[33m,[39m
+#20 472.7  [90m     |[39m                                                              [31m[1m^[22m[39m
+#20 472.7  [90m 140 |[39m             ]}
+#20 472.7  [90m 141 |[39m         [33m>[39m
+#20 472.7  [90m 142 |[39m             [33m<[39m[33mRow[39m gutter[33m=[39m{[[35m12[39m[33m,[39m [35m12[39m]} style[33m=[39m{{ marginBottom[33m:[39m [35m16[39m }}[33m>[39m[0m
+#20 472.9 Next.js build worker exited with code: 1 and signal: null
+#20 473.1 npm notice
+#20 473.1 npm notice New major version of npm available! 10.8.2 -> 11.13.0
+#20 473.1 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+#20 473.1 npm notice To update run: npm install -g npm@11.13.0
+#20 473.1 npm notice
+#20 ERROR: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
+------
+ > [admin builder 3/3] RUN npm run build:
+472.7  [90m     |[39m                                                              [31m[1m^[22m[39m
+472.7  [90m 140 |[39m             ]}
+472.7  [90m 141 |[39m         [33m>[39m
+472.7  [90m 142 |[39m             [33m<[39m[33mRow[39m gutter[33m=[39m{[[35m12[39m[33m,[39m [35m12[39m]} style[33m=[39m{{ marginBottom[33m:[39m [35m16[39m }}[33m>[39m[0m
+472.9 Next.js build worker exited with code: 1 and signal: null
+473.1 npm notice
+473.1 npm notice New major version of npm available! 10.8.2 -> 11.13.0
+473.1 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+473.1 npm notice To update run: npm install -g npm@11.13.0
+473.1 npm notice
+------
+Dockerfile:31
+
+--------------------
+
+  29 |     
+
+  30 |     # Build the application
+
+  31 | >>> RUN npm run build
+
+  32 |     
+
+  33 |     # ===== Runner Stage =====
+
+--------------------
+
+target admin: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
+
+
+
+View build details: docker-desktop://dashboard/build/default/default/ydlf3u8axrxlzy9qp0g3zla9f
+

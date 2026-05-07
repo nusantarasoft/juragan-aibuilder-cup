@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -19,12 +19,12 @@ const ATT_Q = `query($t:String!,$m:String,$e:String){hrAttendance(tenantId:$t,mo
 const EMP_Q = `query($t:String!){hrEmployees(tenantId:$t,status:"active"){id firstName lastName employeeNumber departmentName}}`;
 
 const statusConfig: Record<string, { color: string; bg: string; icon: string; label: string }> = {
-    present: { color: '#10b981', bg: 'rgba(16,185,129,0.08)', icon: 'âœ…', label: 'Present' },
-    late: { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', icon: 'â°', label: 'Late' },
-    absent: { color: '#ef4444', bg: 'rgba(239,68,68,0.08)', icon: 'âŒ', label: 'Absent' },
-    half_day: { color: '#3b82f6', bg: 'rgba(59,130,246,0.08)', icon: 'ðŸ”µ', label: 'Half Day' },
-    remote: { color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)', icon: 'ðŸ ', label: 'Remote' },
-    leave: { color: '#06b6d4', bg: 'rgba(6,182,212,0.08)', icon: 'ðŸ–ï¸', label: 'On Leave' },
+    present: { color: '#10b981', bg: 'rgba(16,185,129,0.08)', icon: '✅', label: 'Present' },
+    late: { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', icon: '⏰', label: 'Late' },
+    absent: { color: '#ef4444', bg: 'rgba(239,68,68,0.08)', icon: '❌', label: 'Absent' },
+    half_day: { color: '#3b82f6', bg: 'rgba(59,130,246,0.08)', icon: '🔵', label: 'Half Day' },
+    remote: { color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)', icon: '🏠', label: 'Remote' },
+    leave: { color: '#06b6d4', bg: 'rgba(6,182,212,0.08)', icon: '🏖️', label: 'On Leave' },
 };
 
 // Calendar Heatmap Component
@@ -140,9 +140,9 @@ function EmployeeSummaryCard({ emp, records }: { emp: any; records: any[] }) {
             <Progress percent={attendancePct} showInfo={false} size="small" strokeColor={attendancePct >= 90 ? '#10b981' : attendancePct >= 70 ? '#f59e0b' : '#ef4444'} style={{ marginBottom: 8 }} />
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Space size={12}>
-                    <Tooltip title="Present"><Text style={{ fontSize: 11 }}>âœ… {present}</Text></Tooltip>
-                    <Tooltip title="Late"><Text style={{ fontSize: 11 }}>â° {late}</Text></Tooltip>
-                    <Tooltip title="Absent"><Text style={{ fontSize: 11 }}>âŒ {absent}</Text></Tooltip>
+                    <Tooltip title="Present"><Text style={{ fontSize: 11 }}>✅ {present}</Text></Tooltip>
+                    <Tooltip title="Late"><Text style={{ fontSize: 11 }}>⏰ {late}</Text></Tooltip>
+                    <Tooltip title="Absent"><Text style={{ fontSize: 11 }}>❌ {absent}</Text></Tooltip>
                 </Space>
                 <Space size={8}>
                     <Tooltip title="Work Hours"><Text style={{ fontSize: 11, color: '#3b82f6' }}><FieldTimeOutlined /> {totalHours.toFixed(1)}h</Text></Tooltip>
@@ -177,7 +177,7 @@ export default function AttendancePage() {
     const absent = records.filter(r => r.status === 'absent').length;
     const totalHours = records.reduce((s, r) => s + (r.workHours || 0), 0);
     const totalOT = records.reduce((s, r) => s + (r.overtimeHours || 0), 0);
-    const avgHours = records.length > 0 ? (totalHours / records.filter(r => r.workHours > 0).length).toFixed(1) : 'â€”';
+    const avgHours = records.length > 0 ? (totalHours / records.filter(r => r.workHours > 0).length).toFixed(1) : '—';
 
     // Unique employees with records
     const uniqueEmps = useMemo(() => {
@@ -188,10 +188,10 @@ export default function AttendancePage() {
     const columns = [
         { title: 'Employee', key: 'emp', render: (_: any, r: any) => <Space><Avatar size="small" style={{ backgroundColor: statusConfig[r.status]?.color || themeColor, fontSize: 10 }}>{r.employeeName?.split(' ').map((n: string) => n[0]).join('')}</Avatar><div><Text strong style={{ fontSize: 13 }}>{r.employeeName}</Text><br/><Text type="secondary" style={{ fontSize: 10 }}>{r.employeeNumber}</Text></div></Space> },
         { title: 'Date', dataIndex: 'date', key: 'date', render: (v: string) => <Text>{dayjs(v).format('ddd, MMM D')}</Text> },
-        { title: 'Clock In', dataIndex: 'clockIn', key: 'in', render: (v: string) => v ? <Tag color="blue" style={{ borderRadius: 12 }}>{dayjs(v).format('HH:mm')}</Tag> : <Text type="secondary">â€”</Text> },
-        { title: 'Clock Out', dataIndex: 'clockOut', key: 'out', render: (v: string) => v ? <Tag color="purple" style={{ borderRadius: 12 }}>{dayjs(v).format('HH:mm')}</Tag> : <Text type="secondary">â€”</Text> },
-        { title: 'Hours', dataIndex: 'workHours', key: 'hrs', render: (v: number) => v ? <Text strong>{v}h</Text> : 'â€”' },
-        { title: 'Overtime', dataIndex: 'overtimeHours', key: 'ot', render: (v: number) => v && v > 0 ? <Tag color="orange" style={{ borderRadius: 12 }}><ThunderboltOutlined /> {v}h</Tag> : 'â€”' },
+        { title: 'Clock In', dataIndex: 'clockIn', key: 'in', render: (v: string) => v ? <Tag color="blue" style={{ borderRadius: 12 }}>{dayjs(v).format('HH:mm')}</Tag> : <Text type="secondary">—</Text> },
+        { title: 'Clock Out', dataIndex: 'clockOut', key: 'out', render: (v: string) => v ? <Tag color="purple" style={{ borderRadius: 12 }}>{dayjs(v).format('HH:mm')}</Tag> : <Text type="secondary">—</Text> },
+        { title: 'Hours', dataIndex: 'workHours', key: 'hrs', render: (v: number) => v ? <Text strong>{v}h</Text> : '—' },
+        { title: 'Overtime', dataIndex: 'overtimeHours', key: 'ot', render: (v: number) => v && v > 0 ? <Tag color="orange" style={{ borderRadius: 12 }}><ThunderboltOutlined /> {v}h</Tag> : '—' },
         { title: 'Status', dataIndex: 'status', key: 'status', render: (v: string) => <Tag color={statusConfig[v]?.color} style={{ borderRadius: 20 }}>{statusConfig[v]?.icon} {statusConfig[v]?.label || v}</Tag> },
     ];
 
@@ -226,7 +226,7 @@ export default function AttendancePage() {
                     <Row gutter={[16, 16]}>
                         {/* Calendar Heatmap */}
                         <Col xs={24} md={14}>
-                            <Card style={glass} title={<Space><AppstoreOutlined /> <Text strong>Attendance Calendar â€” {dayjs(month).format('MMMM YYYY')}</Text></Space>}>
+                            <Card style={glass} title={<Space><AppstoreOutlined /> <Text strong>Attendance Calendar — {dayjs(month).format('MMMM YYYY')}</Text></Space>}>
                                 <CalendarHeatmap records={records} month={month} />
                             </Card>
                         </Col>
@@ -242,7 +242,7 @@ export default function AttendancePage() {
                     </Row>
                 ) : (
                     <Card style={glass}>
-                        <Table dataSource={records} columns={columns} rowKey="id" loading={loading} pagination={{ pageSize: 20 }} size="middle" />
+                        <Table scroll={{ x: 900 }} dataSource={records} columns={columns} rowKey="id" loading={loading} pagination={{ pageSize: 20 }} size="middle" />
                     </Card>
                 )}
             </motion.div>

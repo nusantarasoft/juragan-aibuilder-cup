@@ -1,0 +1,268 @@
+﻿docker : --progress is a global compose flag, better use `docker compose --progress xx build ...
+At line:1 char:1
++ docker compose build admin --progress plain 2>&1 | Out-File -FilePath ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (--progress is a...ss xx build ...:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Image nusantarasoft-minimal-admin Building 
+ Image nusantarasoft-minimal-middleware Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.21kB done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 2.13kB 0.0s done
+#2 DONE 0.0s
+
+#3 [auth] library/node:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#4 [internal] load metadata for docker.io/library/node:20-alpine
+#4 DONE 1.5s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 475B done
+#5 DONE 0.0s
+
+#6 [base 1/3] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#6 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 102.87kB 0.1s done
+#7 DONE 0.1s
+
+#8 [base 2/3] RUN apk add --no-cache libc6-compat
+#8 CACHED
+
+#9 [base 3/3] WORKDIR /app
+#9 CACHED
+
+#10 [deps 1/3] RUN apk add --no-cache python3 make g++
+#10 CACHED
+
+#11 [deps 2/3] COPY package.json ./
+#11 CACHED
+
+#12 [deps 3/3] RUN npm config set fetch-retry-mintimeout 600000 &&     npm config set fetch-retry-maxtimeout 1200000 &&     npm install --legacy-peer-deps
+#12 CACHED
+
+#13 [builder 1/3] COPY --from=deps /app/node_modules ./node_modules
+#13 CACHED
+
+#14 [builder 2/3] COPY . .
+#14 DONE 0.6s
+
+#15 [builder 3/3] RUN npm run build
+#15 1.077 
+#15 1.077 > admin@0.1.0 build
+#15 1.077 > next build
+#15 1.077 
+#15 2.290 Γû▓ Next.js 16.1.0 (Turbopack)
+#15 2.291 
+#15 2.367   Creating an optimized production build ...
+#15 254.0 Γ£ô Compiled successfully in 4.0min
+#15 254.0   Running TypeScript ...
+#15 305.5   Collecting page data using 19 workers ...
+#15 307.7 (node:237) Warning: NodeVersionSupportWarning: The AWS SDK for JavaScript (v3)
+#15 307.7 versions published after the first week of January 2027
+#15 307.7 will require node >=22. You are running node v20.20.2.
+#15 307.7 
+#15 307.7 To continue receiving updates to AWS services, bug fixes,
+#15 307.7 and security updates please upgrade to node >=22.
+#15 307.7 
+#15 307.7 More information can be found at: https://a.co/c895JFp
+#15 307.7 (Use `node --trace-warnings ...` to show where the warning was created)
+#15 307.7   Generating static pages using 19 workers (0/126) ...
+#15 309.2   Generating static pages using 19 workers (31/126) 
+#15 309.7   Generating static pages using 19 workers (62/126) 
+#15 309.9   Generating static pages using 19 workers (94/126) 
+#15 309.9 (node:230) Warning: NodeVersionSupportWarning: The AWS SDK for JavaScript (v3)
+#15 309.9 versions published after the first week of January 2027
+#15 309.9 will require node >=22. You are running node v20.20.2.
+#15 309.9 
+#15 309.9 To continue receiving updates to AWS services, bug fixes,
+#15 309.9 and security updates please upgrade to node >=22.
+#15 309.9 
+#15 309.9 More information can be found at: https://a.co/c895JFp
+#15 309.9 (Use `node --trace-warnings ...` to show where the warning was created)
+#15 310.4 Γ£ô Generating static pages using 19 workers (126/126) in 2.8s
+#15 310.5   Finalizing page optimization ...
+#15 311.5 
+#15 311.5 Route (app)
+#15 311.5 Γöî Γùï /
+#15 311.5 Γö£ Γùï /_not-found
+#15 311.5 Γö£ Γùï /admin
+#15 311.5 Γö£ Γùï /admin/accounting/accounts
+#15 311.5 Γö£ Γùï /admin/accounting/dashboard
+#15 311.5 Γö£ Γùï /admin/accounting/journals
+#15 311.5 Γö£ Γùï /admin/accounting/ledger
+#15 311.5 Γö£ Γùï /admin/accounting/payables
+#15 311.5 Γö£ Γùï /admin/accounting/receivables
+#15 311.5 Γö£ Γùï /admin/accounting/reports
+#15 311.5 Γö£ Γùï /admin/accounting/settings
+#15 311.5 Γö£ Γùï /admin/ai-studio
+#15 311.5 Γö£ Γùï /admin/blocks
+#15 311.5 Γö£ Γùï /admin/blocks/content
+#15 311.5 Γö£ Γùï /admin/blocks/templates
+#15 311.5 Γö£ Γùï /admin/blocks/widgets
+#15 311.5 Γö£ Γùï /admin/crm
+#15 311.5 Γö£ Γùï /admin/crm/accounts
+#15 311.5 Γö£ Γùï /admin/crm/activities
+#15 311.5 Γö£ Γùï /admin/crm/campaigns
+#15 311.5 Γö£ Γùï /admin/crm/cases
+#15 311.5 Γö£ Γùï /admin/crm/contacts
+#15 311.5 Γö£ Γùï /admin/crm/dashboard
+#15 311.5 Γö£ Γùï /admin/crm/deals
+#15 311.5 Γö£ Γùï /admin/crm/individuals
+#15 311.5 Γö£ Γùï /admin/crm/intelligence
+#15 311.5 Γö£ Γùï /admin/crm/products
+#15 311.5 Γö£ Γùï /admin/crm/quotes
+#15 311.5 Γö£ Γùï /admin/dashboard
+#15 311.5 Γö£ Γùï /admin/datasets
+#15 311.5 Γö£ Γùï /admin/ecommerce/customers
+#15 311.5 Γö£ Γùï /admin/ecommerce/dashboard
+#15 311.5 Γö£ Γùï /admin/ecommerce/discounts
+#15 311.5 Γö£ Γùï /admin/ecommerce/offers
+#15 311.5 Γö£ Γùï /admin/ecommerce/orders
+#15 311.5 Γö£ Γùï /admin/ecommerce/packages
+#15 311.5 Γö£ Γùï /admin/ecommerce/products
+#15 311.5 Γö£ Γùï /admin/ecommerce/returns
+#15 311.5 Γö£ Γùï /admin/ecommerce/settings
+#15 311.5 Γö£ Γùï /admin/hr
+#15 311.5 Γö£ Γùï /admin/hr/analytics
+#15 311.5 Γö£ Γùï /admin/hr/attendance
+#15 311.5 Γö£ Γùï /admin/hr/dashboard
+#15 311.5 Γö£ Γùï /admin/hr/departments
+#15 311.5 Γö£ Γùï /admin/hr/employees
+#15 311.5 Γö£ ╞Æ /admin/hr/employees/[id]
+#15 311.5 Γö£ Γùï /admin/hr/leave
+#15 311.5 Γö£ Γùï /admin/hr/offboarding
+#15 311.5 Γö£ Γùï /admin/hr/onboarding
+#15 311.5 Γö£ Γùï /admin/hr/payroll
+#15 311.5 Γö£ Γùï /admin/hr/performance
+#15 311.5 Γö£ Γùï /admin/hr/positions
+#15 311.5 Γö£ Γùï /admin/hr/recruitment
+#15 311.5 Γö£ Γùï /admin/hr/training
+#15 311.5 Γö£ Γùï /admin/infrastructure/bind9
+#15 311.5 Γö£ Γùï /admin/infrastructure/npm
+#15 311.5 Γö£ Γùï /admin/infrastructure/pihole
+#15 311.5 Γö£ Γùï /admin/infrastructure/traefik
+#15 311.5 Γö£ Γùï /admin/inventory/analytics
+#15 311.5 Γö£ Γùï /admin/inventory/bookings
+#15 311.5 Γö£ Γùï /admin/inventory/fixed-assets
+#15 311.5 Γö£ Γùï /admin/inventory/items
+#15 311.5 Γö£ Γùï /admin/inventory/manufacturing
+#15 311.5 Γö£ Γùï /admin/inventory/procurement
+#15 311.5 Γö£ Γùï /admin/inventory/rentals
+#15 311.5 Γö£ Γùï /admin/inventory/stock
+#15 311.5 Γö£ Γùï /admin/inventory/stock-operations
+#15 311.5 Γö£ Γùï /admin/inventory/stock-opname
+#15 311.5 Γö£ Γùï /admin/inventory/warehouses
+#15 311.5 Γö£ Γùï /admin/itsm/agents
+#15 311.5 Γö£ Γùï /admin/itsm/availability
+#15 311.5 Γö£ Γùï /admin/itsm/catalog
+#15 311.5 Γö£ Γùï /admin/itsm/categories
+#15 311.5 Γö£ Γùï /admin/itsm/changes
+#15 311.5 Γö£ Γùï /admin/itsm/cmdb
+#15 311.5 Γö£ Γùï /admin/itsm/continuity
+#15 311.5 Γö£ Γùï /admin/itsm/dashboard
+#15 311.5 Γö£ Γùï /admin/itsm/deployments
+#15 311.5 Γö£ Γùï /admin/itsm/events
+#15 311.5 Γö£ Γùï /admin/itsm/knowledge
+#15 311.5 Γö£ Γùï /admin/itsm/portfolio
+#15 311.5 Γö£ Γùï /admin/itsm/problems
+#15 311.5 Γö£ Γùï /admin/itsm/releases
+#15 311.5 Γö£ Γùï /admin/itsm/requests
+#15 311.5 Γö£ Γùï /admin/itsm/sla
+#15 311.5 Γö£ Γùï /admin/itsm/tickets
+#15 311.5 Γö£ ╞Æ /admin/itsm/tickets/[id]
+#15 311.5 Γö£ Γùï /admin/media
+#15 311.5 Γö£ Γùï /admin/notifications/analytics
+#15 311.5 Γö£ Γùï /admin/notifications/channels
+#15 311.5 Γö£ Γùï /admin/notifications/delivery-logs
+#15 311.5 Γö£ Γùï /admin/notifications/inbox
+#15 311.5 Γö£ Γùï /admin/notifications/preferences
+#15 311.5 Γö£ Γùï /admin/notifications/rules
+#15 311.5 Γö£ Γùï /admin/notifications/templates
+#15 311.5 Γö£ Γùï /admin/ops/dashboard
+#15 311.5 Γö£ Γùï /admin/ops/history
+#15 311.5 Γö£ Γùï /admin/ops/playbooks
+#15 311.5 Γö£ ╞Æ /admin/ops/playbooks/[id]
+#15 311.5 Γö£ Γùï /admin/ops/runs
+#15 311.5 Γö£ ╞Æ /admin/ops/runs/[id]
+#15 311.5 Γö£ Γùï /admin/ops/schedules
+#15 311.5 Γö£ Γùï /admin/ops/system-health
+#15 311.5 Γö£ Γùï /admin/pages
+#15 311.5 Γö£ Γùï /admin/pages/builder
+#15 311.5 Γö£ Γùï /admin/pages/list
+#15 311.5 Γö£ Γùï /admin/permissions
+#15 311.5 Γö£ Γùï /admin/permissions/export-logs
+#15 311.5 Γö£ Γùï /admin/permissions/groups
+#15 311.5 Γö£ Γùï /admin/permissions/permission-sets
+#15 311.5 Γö£ Γùï /admin/permissions/profiles
+#15 311.5 Γö£ Γùï /admin/permissions/roles
+#15 311.5 Γö£ Γùï /admin/permissions/sharing
+#15 311.5 Γö£ Γùï /admin/pm/backlog
+#15 311.5 Γö£ Γùï /admin/pm/dashboard
+#15 311.5 Γö£ Γùï /admin/pm/knowledge-base
+#15 311.5 Γö£ Γùï /admin/pm/portfolio
+#15 311.5 Γö£ Γùï /admin/pm/projects
+#15 311.5 Γö£ Γùï /admin/pm/reports
+#15 311.5 Γö£ Γùï /admin/pm/timeline
+#15 311.5 Γö£ Γùï /admin/settings
+#15 311.5 Γö£ Γùï /admin/settings/general
+#15 311.5 Γö£ Γùï /admin/sql-runner
+#15 311.5 Γö£ Γùï /admin/users
+#15 311.5 Γö£ Γùï /admin/users/list
+#15 311.5 Γö£ Γùï /admin/users/roles
+#15 311.5 Γö£ ╞Æ /api/media
+#15 311.5 Γöö Γùï /login
+#15 311.5 
+#15 311.5 
+#15 311.5 Γùï  (Static)   prerendered as static content
+#15 311.5 ╞Æ  (Dynamic)  server-rendered on demand
+#15 311.5 
+#15 311.6 npm notice
+#15 311.6 npm notice New major version of npm available! 10.8.2 -> 11.14.0
+#15 311.6 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.14.0
+#15 311.6 npm notice To update run: npm install -g npm@11.14.0
+#15 311.6 npm notice
+#15 DONE 311.8s
+
+#16 [runner 1/6] WORKDIR /app
+#16 CACHED
+
+#17 [runner 2/6] RUN addgroup --system --gid 1001 nodejs &&     adduser --system --uid 1001 nextjs
+#17 CACHED
+
+#18 [runner 3/6] COPY --from=builder /app/public ./public
+#18 CACHED
+
+#19 [runner 4/6] RUN mkdir .next && chown nextjs:nodejs .next
+#19 CACHED
+
+#20 [runner 5/6] COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+#20 DONE 1.3s
+
+#21 [runner 6/6] COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+#21 DONE 0.4s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 3.9s done
+#22 exporting manifest sha256:eaf7af3b222035b8b0d59e5c5510038434bbaea6f9295d28fa63b7ee86167ca0 0.0s done
+#22 exporting config sha256:439393ec709b3dfeedb02c07186e65d36ec86ca7cc06d601d906653019f9228c 0.0s done
+#22 exporting attestation manifest sha256:686605ef0a32052e3dfda54df2f9bf20f41f8f43108d1652324575b05768339b
+#22 exporting attestation manifest sha256:686605ef0a32052e3dfda54df2f9bf20f41f8f43108d1652324575b05768339b 0.2s done
+#22 exporting manifest list sha256:eea9da9787df141fbb2ba57d9f6807c702ff6ae4ae4bf55205d6862a10e8075d
+#22 exporting manifest list sha256:eea9da9787df141fbb2ba57d9f6807c702ff6ae4ae4bf55205d6862a10e8075d 0.1s done
+#22 naming to docker.io/library/nusantarasoft-minimal-admin:latest 0.0s done
+#22 unpacking to docker.io/library/nusantarasoft-minimal-admin:latest
+#22 unpacking to docker.io/library/nusantarasoft-minimal-admin:latest 1.5s done
+#22 DONE 6.0s
+
+#23 resolving provenance for metadata file
+#23 DONE 0.0s
+ Image nusantarasoft-minimal-admin Built 

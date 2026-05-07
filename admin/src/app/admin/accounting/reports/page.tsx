@@ -81,7 +81,7 @@ export default function FinancialReportsPage() {
             />
 
             <Card style={{ borderRadius: 12 }} bodyStyle={{ padding: 0 }}>
-                <Table dataSource={trialBalance.map(r => ({ ...r, key: r.accountId }))} size="small" pagination={false}
+                <Table scroll={{ x: 900 }} dataSource={trialBalance.map(r => ({ ...r, key: r.accountId }))} size="small" pagination={false}
                     columns={[
                         { title: 'Code', dataIndex: 'accountCode', width: 90, render: (v: string) => <Text style={{ fontFamily: 'monospace' }}>{v}</Text> },
                         { title: 'Account Name', dataIndex: 'accountName', ellipsis: true },

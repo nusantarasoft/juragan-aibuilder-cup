@@ -44,7 +44,7 @@ function CurrenciesTab() {
                 <Space><Button icon={<ReloadOutlined />} onClick={load} /><Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>Add Currency</Button></Space>
             </div>
             <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}>
-                <Table dataSource={data.map(r => ({ ...r, key: r.id }))} loading={loading} size="small" pagination={false}
+                <Table scroll={{ x: 900 }} dataSource={data.map(r => ({ ...r, key: r.id }))} loading={loading} size="small" pagination={false}
                     columns={[
                         { title: 'Code', dataIndex: 'code', width: 80, render: (v: string) => <Tag color="blue">{v}</Tag> },
                         { title: 'Name', dataIndex: 'name' },
@@ -107,7 +107,7 @@ function FiscalPeriodsTab() {
                 <Space><Button icon={<ReloadOutlined />} onClick={load} /><Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModal(true); }}>Add Period</Button></Space>
             </div>
             <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}>
-                <Table dataSource={data.map(r => ({ ...r, key: r.id }))} loading={loading} size="small" pagination={false}
+                <Table scroll={{ x: 900 }} dataSource={data.map(r => ({ ...r, key: r.id }))} loading={loading} size="small" pagination={false}
                     locale={{ emptyText: <Empty description="No fiscal periods yet. Create one to track accounting periods." /> }}
                     columns={[
                         { title: 'Name', dataIndex: 'name' },
@@ -162,7 +162,7 @@ function TaxRatesTab() {
                 <Space><Button icon={<ReloadOutlined />} onClick={load} /><Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModal(true); }}>Add Tax Rate</Button></Space>
             </div>
             <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}>
-                <Table dataSource={data.map(r => ({ ...r, key: r.id }))} loading={loading} size="small" pagination={false}
+                <Table scroll={{ x: 900 }} dataSource={data.map(r => ({ ...r, key: r.id }))} loading={loading} size="small" pagination={false}
                     columns={[
                         { title: 'Code', dataIndex: 'code', width: 100, render: (v: string) => <Tag color="blue">{v}</Tag> },
                         { title: 'Name', dataIndex: 'name' },
@@ -216,7 +216,7 @@ function CostCentersTab() {
                 <Space><Button icon={<ReloadOutlined />} onClick={load} /><Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModal(true); }}>Add Cost Center</Button></Space>
             </div>
             <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}>
-                <Table dataSource={data.map(r => ({ ...r, key: r.id }))} loading={loading} size="small" pagination={false}
+                <Table scroll={{ x: 900 }} dataSource={data.map(r => ({ ...r, key: r.id }))} loading={loading} size="small" pagination={false}
                     locale={{ emptyText: <Empty description="No cost centers yet. Create departments or projects to track expenses." /> }}
                     columns={[
                         { title: 'Code', dataIndex: 'code', width: 100, render: (v: string) => <Text style={{ fontFamily: 'monospace' }}>{v}</Text> },

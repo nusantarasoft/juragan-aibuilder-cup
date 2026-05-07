@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -99,7 +99,7 @@ export default function ProductsPage() {
     const columns: ColumnsType<Product> = [
         { title: "Product", key: "name", render: (_, r) => <div><Text strong>{r.name}</Text>{r.code && <><br /><Text type="secondary" code>{r.code}</Text></>}</div>, sorter: (a, b) => a.name.localeCompare(b.name) },
         { title: "Price", key: "price", width: 120, align: "right", render: (_, r) => <Text strong>{fmt(r.unitPrice)}</Text>, sorter: (a, b) => a.unitPrice - b.unitPrice },
-        { title: "Category", key: "cat", width: 120, render: (_, r) => r.category ? <Tag>{r.category}</Tag> : 'â€”' },
+        { title: "Category", key: "cat", width: 120, render: (_, r) => r.category ? <Tag>{r.category}</Tag> : '—' },
         { title: "Status", key: "active", width: 90, render: (_, r) => <Tag color={r.isActive ? 'green' : 'default'}>{r.isActive ? 'Active' : 'Inactive'}</Tag> },
         { title: "Actions", key: "actions", width: 130, render: (_, r) => (<Space>
             <Tooltip title="View"><Button type="text" icon={<EyeOutlined />} onClick={() => { setSelected(r); setDetailOpen(true); }} /></Tooltip>
@@ -126,18 +126,18 @@ export default function ProductsPage() {
                 <Col span={8}><Card style={{ ...glass }}><Statistic title="Avg Price" value={avgPrice} prefix={<DollarOutlined />} precision={2} formatter={v => fmt(Number(v))} /></Card></Col>
             </Row>
             <Card style={{ ...glass, marginBottom: 16 }}><Input prefix={<SearchOutlined />} placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 300 }} allowClear /></Card>
-            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table columns={columns} dataSource={products.map(p => ({ ...p, key: p.id }))} loading={loading} pagination={{ pageSize: 20 }} size="middle" /></Card>
+            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table scroll={{ x: 900 }} columns={columns} dataSource={products.map(p => ({ ...p, key: p.id }))} loading={loading} pagination={{ pageSize: 20 }} size="middle" /></Card>
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Product" : "Add Product"} entityName="product" steps={formSteps} fields={PRODUCT_FIELDS} width={600} onBatchCreate={handleBatchCreate} gradient={["#ec4899", "#f43f5e"]} editMode={!!editing} />
 
             <Drawer title="Product Details" open={detailOpen} onClose={() => setDetailOpen(false)} width={450}>
                 {selected && (<Descriptions column={1} bordered size="small">
                     <Descriptions.Item label="Name">{selected.name}</Descriptions.Item>
-                    <Descriptions.Item label="Code">{selected.code || 'â€”'}</Descriptions.Item>
+                    <Descriptions.Item label="Code">{selected.code || '—'}</Descriptions.Item>
                     <Descriptions.Item label="Price"><Text strong>{fmt(selected.unitPrice)}</Text></Descriptions.Item>
-                    <Descriptions.Item label="Category">{selected.category || 'â€”'}</Descriptions.Item>
+                    <Descriptions.Item label="Category">{selected.category || '—'}</Descriptions.Item>
                     <Descriptions.Item label="Status"><Tag color={selected.isActive ? 'green' : 'default'}>{selected.isActive ? 'Active' : 'Inactive'}</Tag></Descriptions.Item>
-                    <Descriptions.Item label="Description">{selected.description || 'â€”'}</Descriptions.Item>
+                    <Descriptions.Item label="Description">{selected.description || '—'}</Descriptions.Item>
                 </Descriptions>)}
             </Drawer>
         </CMSLayout>
