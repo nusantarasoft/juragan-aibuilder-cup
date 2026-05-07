@@ -1,6 +1,7 @@
-﻿'use client';
+'use client';
 import React, { useEffect, useState, useMemo } from 'react';
 import CMSLayout from '@/components/layout/CMSLayout';
+import { motion } from "framer-motion";
 import RbacGuard from '@/components/common/RbacGuard';
 import { Table, Button, Space, Tag, Input, Select, Drawer, Form, InputNumber, Switch, message, Modal, Typography, Card, Tooltip, Divider, TreeSelect, Empty, Spin, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, FilterOutlined, AccountBookOutlined, DownOutlined, RightOutlined, FileExcelOutlined, FilePdfOutlined  } from '@ant-design/icons';

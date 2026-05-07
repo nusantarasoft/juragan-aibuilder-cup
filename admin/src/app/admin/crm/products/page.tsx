@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { motion } from "framer-motion";
 import RbacGuard from "@/components/common/RbacGuard";
 import {
     Table, Button, Space, Modal, Form, Input, Select, Tag, Card,
@@ -121,9 +122,9 @@ export default function ProductsPage() {
                 <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_products', title: 'CRM Products', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Category', key: 'category' }, { header: 'Price', key: 'price' }], data: products })} /></Tooltip> <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_products', title: 'CRM Products', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Category', key: 'category' }, { header: 'Price', key: 'price' }], data: products })} /></Tooltip></RbacGuard>,
         ]}>
             <Row gutter={16} style={{ marginBottom: 16 }}>
-                <Col span={8}><Card style={{ ...glass }}><Statistic title="Total Products" value={products.length} prefix={<ShoppingOutlined />} /></Card></Col>
-                <Col span={8}><Card style={{ ...glass }}><Statistic title="Active" value={activeProducts.length} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#52c41a' }} /></Card></Col>
-                <Col span={8}><Card style={{ ...glass }}><Statistic title="Avg Price" value={avgPrice} prefix={<DollarOutlined />} precision={2} formatter={v => fmt(Number(v))} /></Card></Col>
+                <Col span={8}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}><Card style={{ ...glass }}><Statistic title="Total Products" value={products.length} prefix={<ShoppingOutlined />} /></Card></motion.div></Col>
+                <Col span={8}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}><Card style={{ ...glass }}><Statistic title="Active" value={activeProducts.length} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#52c41a' }} /></Card></motion.div></Col>
+                <Col span={8}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Card style={{ ...glass }}><Statistic title="Avg Price" value={avgPrice} prefix={<DollarOutlined />} precision={2} formatter={v => fmt(Number(v))} /></Card></motion.div></Col>
             </Row>
             <Card style={{ ...glass, marginBottom: 16 }}><Input prefix={<SearchOutlined />} placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 300 }} allowClear /></Card>
             <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table scroll={{ x: 900 }} columns={columns} dataSource={products.map(p => ({ ...p, key: p.id }))} loading={loading} pagination={{ pageSize: 20 }} size="middle" /></Card>

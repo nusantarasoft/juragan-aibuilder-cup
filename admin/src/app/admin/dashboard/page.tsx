@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { motion } from "framer-motion";
 import { ProCard } from "@ant-design/pro-components";
 import { Row, Col, Statistic, Tag, Space, Progress, message, Typography, Card, Badge, Button, Divider } from "antd";
 import {
@@ -197,12 +198,12 @@ export default function DashboardPage() {
                 <Col xs={24} md={8}>
                     <ProCard title={<Space><SolutionOutlined /> CRM Summary</Space>} bordered loading={loading} style={{ height: '100%' }} extra={<a href="/admin/crm/dashboard"><ArrowRightOutlined /></a>}>
                         <Row gutter={[8, 12]}>
-                            <Col span={12}><Statistic title="Leads" value={crm?.totalIndividuals || 0} valueStyle={{ fontSize: 18, color: '#1890ff' }} /></Col>
-                            <Col span={12}><Statistic title="Contacts" value={crm?.totalContacts || 0} valueStyle={{ fontSize: 18, color: '#13c2c2' }} /></Col>
-                            <Col span={12}><Statistic title="Won Revenue" value={fmtCurrency(crm?.wonValue || 0)} prefix="Rp" valueStyle={{ fontSize: 18, color: '#52c41a' }} /></Col>
+                            <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Leads" value={crm?.totalIndividuals || 0} valueStyle={{ fontSize: 18, color: '#1890ff' }} /></motion.div></Col>
+                            <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Contacts" value={crm?.totalContacts || 0} valueStyle={{ fontSize: 18, color: '#13c2c2' }} /></motion.div></Col>
+                            <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Won Revenue" value={fmtCurrency(crm?.wonValue || 0)} prefix="Rp" valueStyle={{ fontSize: 18, color: '#52c41a' }} /></motion.div></Col>
                             <Col span={12}><Statistic title="Quotes" value={crm?.totalQuotes || 0} suffix={<Text type="secondary" style={{ fontSize: 11 }}>{crm?.acceptedQuotes || 0} accepted</Text>} valueStyle={{ fontSize: 18 }} /></Col>
-                            <Col span={12}><Statistic title="Campaigns" value={crm?.activeCampaigns || 0} suffix={`/ ${crm?.totalCampaigns || 0}`} valueStyle={{ fontSize: 18, color: themeColor }} /></Col>
-                            <Col span={12}><Statistic title="Cases" value={crm?.openCases || 0} suffix={`/ ${crm?.totalCases || 0}`} valueStyle={{ fontSize: 18, color: (crm?.criticalCases || 0) > 0 ? '#f5222d' : '#1890ff' }} /></Col>
+                            <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Campaigns" value={crm?.activeCampaigns || 0} suffix={`/ ${crm?.totalCampaigns || 0}`} valueStyle={{ fontSize: 18, color: themeColor }} /></motion.div></Col>
+                            <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Cases" value={crm?.openCases || 0} suffix={`/ ${crm?.totalCases || 0}`} valueStyle={{ fontSize: 18, color: (crm?.criticalCases || 0) > 0 ? '#f5222d' : '#1890ff' }} /></motion.div></Col>
                         </Row>
                     </ProCard>
                 </Col>
@@ -237,9 +238,9 @@ export default function DashboardPage() {
                 <Col xs={24} md={8}>
                     <ProCard title={<Space><PlayCircleOutlined /> Operations</Space>} bordered loading={loading} style={{ height: '100%' }} extra={<a onClick={() => router.push('/admin/ops/dashboard')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
                         <Row gutter={[8, 12]}>
-                            <Col span={12}><Statistic title="Playbooks" value={opsPlaybooks} valueStyle={{ fontSize: 18, color: '#8b5cf6' }} /></Col>
-                            <Col span={12}><Statistic title="Active Runs" value={opsActiveRuns} valueStyle={{ fontSize: 18, color: '#3b82f6' }} /></Col>
-                            <Col span={12}><Statistic title="Schedules" value={opsSchedules} valueStyle={{ fontSize: 18, color: '#06b6d4' }} /></Col>
+                            <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Playbooks" value={opsPlaybooks} valueStyle={{ fontSize: 18, color: '#8b5cf6' }} /></motion.div></Col>
+                            <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Active Runs" value={opsActiveRuns} valueStyle={{ fontSize: 18, color: '#3b82f6' }} /></motion.div></Col>
+                            <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Schedules" value={opsSchedules} valueStyle={{ fontSize: 18, color: '#06b6d4' }} /></motion.div></Col>
                             <Col span={12}><Statistic title="Overdue" value={opsOverdue} valueStyle={{ fontSize: 18, color: opsOverdue > 0 ? '#ef4444' : '#22c55e' }} prefix={opsOverdue > 0 ? <WarningOutlined /> : <CheckCircleOutlined />} /></Col>
                         </Row>
                     </ProCard>

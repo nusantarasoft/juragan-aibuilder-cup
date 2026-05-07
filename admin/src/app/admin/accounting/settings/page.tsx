@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import CMSLayout from '@/components/layout/CMSLayout';
+import { motion } from "framer-motion";
 import { Table, Card, Typography, Tabs, Button, Space, Tag, Modal, Form, Input, InputNumber, Select, Switch, DatePicker, message, Empty, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, DollarOutlined, CalendarOutlined, PercentageOutlined, ApartmentOutlined, ReloadOutlined } from '@ant-design/icons';
 import { accountingService, AcctCurrency, AcctFiscalPeriod, AcctTax, AcctCostCenter } from '@/lib/accountingService';

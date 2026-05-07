@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { motion } from "framer-motion";
 import { ProCard } from "@ant-design/pro-components";
 import { Row, Col, Statistic, Tag, Table, Space, Progress, message, Typography, Badge, Tabs, Descriptions, Modal } from "antd";
 import {
@@ -207,9 +208,9 @@ export default function ItsmDashboardPage() {
                             <Progress type="dashboard" percent={stats?.slaCompliance || 0} strokeColor={(stats?.slaCompliance || 100) >= 90 ? '#52c41a' : (stats?.slaCompliance || 100) >= 70 ? '#fa8c16' : '#f5222d'} format={(pct) => <div style={{ textAlign: 'center' }}><div style={{ fontSize: 28, fontWeight: 700 }}>{pct}%</div><div style={{ fontSize: 11, color: '#999' }}>SLA Target</div></div>} size={160} />
                         </div>
                         <Row gutter={16} style={{ textAlign: 'center', marginTop: 8 }}>
-                            <Col span={8}><Statistic title="CSAT" value={avgCsat} valueStyle={{ fontSize: 16, color: avgCsat >= 4.5 ? '#52c41a' : '#fa8c16' }} prefix="⭐" /></Col>
-                            <Col span={8}><Statistic title="Agent SLA" value={avgSla} suffix="%" valueStyle={{ fontSize: 16, color: avgSla >= 95 ? '#52c41a' : '#fa8c16' }} /></Col>
-                            <Col span={8}><Statistic title="Resolved" value={totalResolved} valueStyle={{ fontSize: 16, color: themeColor }} /></Col>
+                            <Col span={8}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="CSAT" value={avgCsat} valueStyle={{ fontSize: 16, color: avgCsat >= 4.5 ? '#52c41a' : '#fa8c16' }} prefix="⭐" /></motion.div></Col>
+                            <Col span={8}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Agent SLA" value={avgSla} suffix="%" valueStyle={{ fontSize: 16, color: avgSla >= 95 ? '#52c41a' : '#fa8c16' }} /></motion.div></Col>
+                            <Col span={8}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Resolved" value={totalResolved} valueStyle={{ fontSize: 16, color: themeColor }} /></motion.div></Col>
                         </Row>
                     </ProCard>
                 </Col>
@@ -365,8 +366,8 @@ export default function ItsmDashboardPage() {
                 <Col xs={24} md={8}>
                     <ProCard title={<Space><BookOutlined style={{ color: '#2f54eb' }} /> Knowledge Base</Space>} bordered extra={<a href="/admin/itsm/knowledge">View</a>} size="small" style={{ background: 'linear-gradient(135deg, rgba(47,84,235,0.04) 0%, rgba(82,196,26,0.02) 100%)', borderRadius: 12 }}>
                         <Row gutter={16} style={{ textAlign: 'center', paddingTop: 12 }}>
-                            <Col span={12}><Statistic title="Published" value={modules?.knowledge?.published || 0} valueStyle={{ color: '#52c41a' }} loading={loading} /></Col>
-                            <Col span={12}><Statistic title="Total" value={modules?.knowledge?.total || 0} valueStyle={{ color: '#1890ff' }} loading={loading} /></Col>
+                            <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Published" value={modules?.knowledge?.published || 0} valueStyle={{ color: '#52c41a' }} loading={loading} /></motion.div></Col>
+                            <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Total" value={modules?.knowledge?.total || 0} valueStyle={{ color: '#1890ff' }} loading={loading} /></motion.div></Col>
                         </Row>
                     </ProCard>
                 </Col>
@@ -425,10 +426,10 @@ export default function ItsmDashboardPage() {
                             <Progress type="dashboard" percent={stats?.slaCompliance || 0} size={200} strokeColor={(stats?.slaCompliance || 0) >= 90 ? '#52c41a' : (stats?.slaCompliance || 0) >= 70 ? '#fa8c16' : '#f5222d'} format={p => <div style={{ textAlign: 'center' }}><div style={{ fontSize: 36, fontWeight: 700 }}>{p}%</div><div style={{ fontSize: 12, color: '#999' }}>SLA Target: 95%</div></div>} />
                         </div>
                         <Row gutter={16} style={{ textAlign: 'center' }}>
-                            <Col span={6}><Statistic title="CSAT" value={avgCsat} prefix="⭐" valueStyle={{ fontSize: 18 }} /></Col>
-                            <Col span={6}><Statistic title="Agent SLA" value={avgSla} suffix="%" valueStyle={{ fontSize: 18 }} /></Col>
-                            <Col span={6}><Statistic title="Resolved" value={totalResolved} valueStyle={{ fontSize: 18, color: '#52c41a' }} /></Col>
-                            <Col span={6}><Statistic title="Avg Time" value={stats?.avgResolutionHours || 0} suffix="h" valueStyle={{ fontSize: 18 }} /></Col>
+                            <Col span={6}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="CSAT" value={avgCsat} prefix="⭐" valueStyle={{ fontSize: 18 }} /></motion.div></Col>
+                            <Col span={6}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Agent SLA" value={avgSla} suffix="%" valueStyle={{ fontSize: 18 }} /></motion.div></Col>
+                            <Col span={6}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Resolved" value={totalResolved} valueStyle={{ fontSize: 18, color: '#52c41a' }} /></motion.div></Col>
+                            <Col span={6}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Avg Time" value={stats?.avgResolutionHours || 0} suffix="h" valueStyle={{ fontSize: 18 }} /></motion.div></Col>
                         </Row>
                     </ProCard>
                 </Col>
@@ -656,9 +657,9 @@ export default function ItsmDashboardPage() {
                 <Col xs={24} md={10}>
                     <ProCard title={<Space><BookOutlined style={{ color: '#2f54eb' }} /> Knowledge Base Summary</Space>} bordered style={{ marginBottom: 16, background: 'linear-gradient(135deg, rgba(47,84,235,0.04) 0%, rgba(82,196,26,0.02) 100%)', borderRadius: 12 }}>
                         <Row gutter={16} style={{ textAlign: 'center', padding: '16px 0' }}>
-                            <Col span={8}><Statistic title="Total" value={modules?.knowledge?.total || 0} valueStyle={{ color: '#1890ff', fontSize: 22 }} /></Col>
-                            <Col span={8}><Statistic title="Published" value={modules?.knowledge?.published || 0} valueStyle={{ color: '#52c41a', fontSize: 22 }} /></Col>
-                            <Col span={8}><Statistic title="Draft" value={(modules?.knowledge?.total || 0) - (modules?.knowledge?.published || 0)} valueStyle={{ color: '#fa8c16', fontSize: 22 }} /></Col>
+                            <Col span={8}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Total" value={modules?.knowledge?.total || 0} valueStyle={{ color: '#1890ff', fontSize: 22 }} /></motion.div></Col>
+                            <Col span={8}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Published" value={modules?.knowledge?.published || 0} valueStyle={{ color: '#52c41a', fontSize: 22 }} /></motion.div></Col>
+                            <Col span={8}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Draft" value={(modules?.knowledge?.total || 0) - (modules?.knowledge?.published || 0)} valueStyle={{ color: '#fa8c16', fontSize: 22 }} /></motion.div></Col>
                         </Row>
                     </ProCard>
                     <ProCard title="RTO Analysis" bordered style={{ background: 'linear-gradient(135deg, rgba(250,140,22,0.04) 0%, rgba(245,34,45,0.02) 100%)', borderRadius: 12 }}>
