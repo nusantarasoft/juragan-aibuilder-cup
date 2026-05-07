@@ -18,7 +18,7 @@ import {
     Popconfirm,
     Dropdown,
     Empty,
-    Card, Row, Col, Statistic,
+    Card, Row, Col, Statistic, Tooltip,
 } from "antd";
 import { motion } from "framer-motion";
 import {
@@ -33,6 +33,10 @@ import {
     CloudUploadOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
+import { FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import RbacGuard from "@/components/common/RbacGuard";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 import pageService, { CMSPage } from "@/lib/pageService";
 
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -87,6 +91,7 @@ const samplePages: CMSPage[] = [
 
 export default function PagesListPage() {
     const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const router = useRouter();
     const [pages, setPages] = useState<CMSPage[]>([]);
     const [loading, setLoading] = useState(true);
