@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { motion } from "framer-motion";
+import RbacGuard from "@/components/common/RbacGuard";
 import {
     Table, Button, Space, Modal, Form, Input, Select, Tag, Card,
     message, Typography, Tooltip, Drawer, Descriptions, Row, Col,
@@ -10,14 +12,19 @@ import {
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, ShoppingOutlined,
-    DollarOutlined, CheckCircleOutlined, AppstoreOutlined,
-} from "@ant-design/icons";
+    DollarOutlined, CheckCircleOutlined, AppstoreOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const { TextArea } = Input;
 
 interface Product {
@@ -39,6 +46,8 @@ const PRODUCT_FIELDS: FieldDef[] = [
 
 export default function ProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Product | null>(null);
@@ -106,17 +115,19 @@ export default function ProductsPage() {
     ];
 
     return (
-        <CMSLayout title="Products" subTitle="Product catalog for quotes and deals" extra={[
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Products</AuroraText>}
+            subTitle={<DecryptedText text="Product catalog for quotes and deals" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[
             <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
             <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>Add Product</Button>,
+                <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_products', title: 'CRM Products', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Category', key: 'category' }, { header: 'Price', key: 'price' }], data: products })} /></Tooltip> <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_products', title: 'CRM Products', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Category', key: 'category' }, { header: 'Price', key: 'price' }], data: products })} /></Tooltip></RbacGuard>,
         ]}>
             <Row gutter={16} style={{ marginBottom: 16 }}>
-                <Col span={8}><Card><Statistic title="Total Products" value={products.length} prefix={<ShoppingOutlined />} /></Card></Col>
-                <Col span={8}><Card><Statistic title="Active" value={activeProducts.length} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#52c41a' }} /></Card></Col>
-                <Col span={8}><Card><Statistic title="Avg Price" value={avgPrice} prefix={<DollarOutlined />} precision={2} formatter={v => fmt(Number(v))} /></Card></Col>
+                <Col span={8}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}><Card style={{ ...glass }}><Statistic title="Total Products" value={products.length} prefix={<ShoppingOutlined />} /></Card></motion.div></Col>
+                <Col span={8}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}><Card style={{ ...glass }}><Statistic title="Active" value={activeProducts.length} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#52c41a' }} /></Card></motion.div></Col>
+                <Col span={8}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Card style={{ ...glass }}><Statistic title="Avg Price" value={avgPrice} prefix={<DollarOutlined />} precision={2} formatter={v => fmt(Number(v))} /></Card></motion.div></Col>
             </Row>
-            <Card style={{ marginBottom: 16 }}><Input prefix={<SearchOutlined />} placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 300 }} allowClear /></Card>
-            <Card><Table columns={columns} dataSource={products.map(p => ({ ...p, key: p.id }))} loading={loading} pagination={{ pageSize: 20 }} size="middle" /></Card>
+            <Card style={{ ...glass, marginBottom: 16 }}><Input prefix={<SearchOutlined />} placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 300 }} allowClear /></Card>
+            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table scroll={{ x: 900 }} columns={columns} dataSource={products.map(p => ({ ...p, key: p.id }))} loading={loading} pagination={{ pageSize: 20 }} size="middle" /></Card>
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Product" : "Add Product"} entityName="product" steps={formSteps} fields={PRODUCT_FIELDS} width={600} onBatchCreate={handleBatchCreate} gradient={["#ec4899", "#f43f5e"]} editMode={!!editing} />
 
@@ -133,3 +144,6 @@ export default function ProductsPage() {
         </CMSLayout>
     );
 }
+
+
+

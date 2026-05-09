@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { motion } from "framer-motion";
+import RbacGuard from "@/components/common/RbacGuard";
 import {
     Table, Button, Space, Modal, Form, Input, Select, Tag, Card,
     message, Typography, Avatar, Tooltip, Drawer, Descriptions, Row, Col,
@@ -11,13 +13,20 @@ import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     UserOutlined, SearchOutlined, EyeOutlined,
     SwapOutlined, IdcardOutlined, GlobalOutlined,
+    FileExcelOutlined, FilePdfOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface Individual {
     id: string; firstName: string; lastName: string; salutation: string;
@@ -50,6 +59,8 @@ const INDIVIDUAL_FIELDS: FieldDef[] = [
 
 export default function IndividualsPage() {
     const [individuals, setIndividuals] = useState<Individual[]>([]);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Individual | null>(null);
@@ -154,18 +165,21 @@ export default function IndividualsPage() {
     ];
 
     return (
-        <CMSLayout title="Individuals" subTitle="People in your CRM — contacts, leads, and team members" extra={[
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Individuals</AuroraText>}
+            subTitle={<DecryptedText text="People in your CRM — contacts, leads, and team members" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[
+                <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_individuals', title: 'CRM Individuals', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'First Name', key: 'firstName' }, { header: 'Last Name', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'status' }], data: individuals })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_individuals', title: 'CRM Individuals', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'First Name', key: 'firstName' }, { header: 'Last Name', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'status' }], data: individuals })} /></Tooltip></RbacGuard>,
             <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
             <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>Add Individual</Button>,
         ]}>
-            <Card style={{ marginBottom: 16 }}><Space wrap>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35 }}>
+            <Card style={{ ...glass, marginBottom: 16 }}><Space wrap>
                 <Input prefix={<SearchOutlined />} placeholder="Search by name..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />
                 <Select placeholder="Status" value={statusFilter} onChange={setStatusFilter} allowClear style={{ width: 130 }} options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} />
                 <Select placeholder="Lead Status" value={leadFilter} onChange={setLeadFilter} allowClear style={{ width: 150 }} options={LEAD_STATUSES} />
             </Space></Card>
-            <Card><Table columns={columns} dataSource={individuals.map(i => ({ ...i, key: i.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>
+            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table scroll={{ x: 900 }} columns={columns} dataSource={individuals.map(i => ({ ...i, key: i.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>
 
-            <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Individual" : "Add Individual"} entityName="individual" steps={formSteps} fields={INDIVIDUAL_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["#8b5cf6", "#a855f7"]} editMode={!!editing} />
+            <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Individual" : "Add Individual"} entityName="individual" steps={formSteps} fields={INDIVIDUAL_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["var(--theme-color, #8b5cf6)", "var(--theme-accent, #a855f7)"]} editMode={!!editing} />
 
             <Drawer title="Individual Details" open={detailOpen} onClose={() => setDetailOpen(false)} width={500}>
                 {selected && (<Descriptions column={1} bordered size="small">
@@ -191,6 +205,8 @@ export default function IndividualsPage() {
                     {convertStep === 2 && (<><Form.Item label="Create a Deal?"><Switch checked={createDeal} onChange={setCreateDeal} /></Form.Item>{createDeal && (<><Form.Item name="dealName" label="Deal Name" rules={[{ required: createDeal }]}><Input placeholder="e.g., Enterprise License" /></Form.Item><Row gutter={16}><Col span={8}><Form.Item name="dealAmount" label="Amount"><InputNumber style={{ width: '100%' }} prefix="$" /></Form.Item></Col><Col span={8}><Form.Item name="dealStage" label="Stage" initialValue="prospecting"><Select options={[{ value: 'prospecting', label: 'Prospecting' }, { value: 'qualification', label: 'Qualification' }, { value: 'proposal', label: 'Proposal' }]} /></Form.Item></Col><Col span={8}><Form.Item name="dealCloseDate" label="Close Date"><DatePicker style={{ width: '100%' }} /></Form.Item></Col></Row></>)}</>)}
                 </Form>
             </Modal>
+            </motion.div>
         </CMSLayout>
     );
 }
+

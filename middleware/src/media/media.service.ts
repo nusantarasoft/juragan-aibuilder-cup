@@ -1,7 +1,8 @@
-﻿import { Injectable, Logger, Inject, forwardRef, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { RagService } from '../rag/rag.service';
+import { RagflowService } from '../studio/ragflow.service';
 import * as Minio from 'minio';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
@@ -81,8 +82,9 @@ export class MediaService implements OnModuleInit {
     constructor(
         private readonly configService: ConfigService,
         private readonly supabase: SupabaseService,
-        @Inject(forwardRef(() => RagService)) // Inject RagService
-        private readonly ragService: RagService
+        @Inject(forwardRef(() => RagService))
+        private readonly ragService: RagService,
+        private readonly ragflowService: RagflowService,
     ) {
         const endPoint = this.configService.get('S3_ENDPOINT') || 'minio';
         const port = parseInt(this.configService.get('S3_PORT'), 10) || 9000;
@@ -981,47 +983,270 @@ export class MediaService implements OnModuleInit {
     // Actually, safest is to let Frontend trigger it OR inject RagService.
     // Let's inject RagService in the constructor. (Requires updating constructor)
 
-    // TEMPORARY: Empty methods to avoid compilation error until RagService injection is added
     private async resolveAutoLabel(id: string) {
         this.logger.log(`Triggering auto-label for ${id}`);
         await this.ragService.autoLabelMedia(id);
     }
-    private async resolveEmbedding(id: string) {
-        this.logger.log(`Triggering embedding for ${id}`);
-        // We need content to embed, normally text. 
-        // For images, we might use description/tags. 
-        // RagService.generateMediaEmbeddings expects(content: string).
-        // If empty, RagService refactor handles fetching title/desc/OCR? 
-        // Checking RagService... refactored version fetches data if content is empty.
-        await this.ragService.generateMediaEmbeddings(id, '');
+
+    /**
+     * Generate embedding via RAGFlow: upload file to dedicated dataset,
+     * trigger parsing/chunking, and store RAGFlow references in media metadata.
+     */
+    async resolveEmbedding(id: string): Promise<boolean> {
+        this.logger.log(`[RAGFlow Embed] Starting embedding for media ${id}`);
+
+        try {
+            // 1. Get media record
+            const { data: mediaRecord, error: fetchError } = await this.supabase
+                .getAdminClient()
+                .from('media')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (fetchError || !mediaRecord) {
+                this.logger.error(`Media not found: ${id}`, fetchError);
+                return false;
+            }
+
+            // 2. Get or create the shared RAGFlow media dataset
+            const datasetId = await this.ragflowService.getOrCreateMediaDataset();
+
+            // 3. Check if already uploaded (re-generate scenario)
+            const existingDocId = mediaRecord.metadata?.ragflow_doc_id;
+            if (existingDocId) {
+                this.logger.log(`[RAGFlow Embed] Removing existing doc ${existingDocId} for re-generation`);
+                try {
+                    await this.ragflowService.removeDocument(datasetId, [existingDocId]);
+                } catch (e) {
+                    this.logger.warn(`Failed to remove old RAGFlow doc: ${e.message}`);
+                }
+            }
+
+            // 4. Download file from MinIO
+            const fileKey = mediaRecord.s3_key;
+            const bucket = mediaRecord.bucket_name || await this.getDefaultBucket();
+
+            this.logger.log(`[RAGFlow Embed] Downloading ${fileKey} from ${bucket}`);
+            const buffer = await this.getFileBufferForEmbedding(fileKey, bucket);
+            if (!buffer) {
+                this.logger.error(`[RAGFlow Embed] Failed to download file from MinIO`);
+                return false;
+            }
+
+            // 5. Upload to RAGFlow
+            const ragflowDocs = await this.ragflowService.uploadDocument(
+                datasetId,
+                buffer,
+                mediaRecord.filename,
+            );
+            const ragflowDocId = ragflowDocs?.[0]?.id;
+
+            if (!ragflowDocId) {
+                this.logger.error(`[RAGFlow Embed] Upload returned no document ID`);
+                return false;
+            }
+
+            this.logger.log(`[RAGFlow Embed] Uploaded doc ${ragflowDocId}, triggering parse...`);
+
+            // 6. Trigger parsing (chunking + vectorization)
+            await this.ragflowService.parseDocuments(datasetId, [ragflowDocId]);
+
+            // 7. Store RAGFlow references in media metadata
+            const updatedMeta = {
+                ...(mediaRecord.metadata || {}),
+                ragflow_doc_id: ragflowDocId,
+                ragflow_dataset_id: datasetId,
+                embedding_status: 'parsing',
+                embedding_progress: 0,
+                embedding_chunk_count: 0,
+            };
+
+            await this.supabase.getAdminClient()
+                .from('media')
+                .update({ metadata: updatedMeta })
+                .eq('id', id);
+
+            this.logger.log(`[RAGFlow Embed] Parsing triggered for ${mediaRecord.filename}`);
+            return true;
+
+        } catch (e) {
+            this.logger.error(`[RAGFlow Embed] Failed for ${id}`, e);
+
+            // Mark error in metadata
+            try {
+                const { data: currentMedia } = await this.supabase.getAdminClient()
+                    .from('media').select('metadata').eq('id', id).single();
+                await this.supabase.getAdminClient()
+                    .from('media')
+                    .update({
+                        metadata: {
+                            ...(currentMedia?.metadata || {}),
+                            embedding_status: 'error',
+                            embedding_error: e.message || 'Unknown error',
+                        }
+                    })
+                    .eq('id', id);
+            } catch { /* ignore metadata update errors */ }
+
+            return false;
+        }
     }
 
+    /**
+     * Check the RAGFlow embedding/parsing status for a media file.
+     * Polls RAGFlow for document parse progress and updates local metadata.
+     */
+    async checkEmbeddingStatus(id: string): Promise<{
+        status: 'none' | 'pending' | 'parsing' | 'done' | 'error';
+        progress: number;
+        chunkCount: number;
+        ragflowDocId: string | null;
+        progressMsg: string;
+    }> {
+        const { data: mediaRecord } = await this.supabase
+            .getAdminClient()
+            .from('media')
+            .select('metadata')
+            .eq('id', id)
+            .single();
+
+        const meta = mediaRecord?.metadata || {};
+        const ragflowDocId = meta.ragflow_doc_id;
+        const ragflowDatasetId = meta.ragflow_dataset_id;
+
+        // No RAGFlow doc means no embedding was ever generated
+        if (!ragflowDocId || !ragflowDatasetId) {
+            return { status: 'none', progress: 0, chunkCount: 0, ragflowDocId: null, progressMsg: '' };
+        }
+
+        // If already done or error, return cached status
+        if (meta.embedding_status === 'done' || meta.embedding_status === 'error') {
+            return {
+                status: meta.embedding_status,
+                progress: meta.embedding_progress || (meta.embedding_status === 'done' ? 1 : 0),
+                chunkCount: meta.embedding_chunk_count || 0,
+                ragflowDocId,
+                progressMsg: meta.embedding_error || '',
+            };
+        }
+
+        // Poll RAGFlow for current status
+        try {
+            const detail = await this.ragflowService.getDocumentDetail(ragflowDatasetId, ragflowDocId);
+            if (!detail) {
+                return { status: 'error', progress: 0, chunkCount: 0, ragflowDocId, progressMsg: 'Document not found in RAGFlow' };
+            }
+
+            // Update local metadata cache
+            const updatedMeta = {
+                ...meta,
+                embedding_status: detail.status,
+                embedding_progress: detail.progress,
+                embedding_chunk_count: detail.chunkCount,
+            };
+
+            await this.supabase.getAdminClient()
+                .from('media')
+                .update({ metadata: updatedMeta })
+                .eq('id', id);
+
+            return {
+                status: detail.status,
+                progress: detail.progress,
+                chunkCount: detail.chunkCount,
+                ragflowDocId,
+                progressMsg: detail.progressMsg,
+            };
+        } catch (e) {
+            this.logger.warn(`[RAGFlow Embed] Failed to poll status for ${id}: ${e.message}`);
+            return {
+                status: meta.embedding_status || 'error',
+                progress: meta.embedding_progress || 0,
+                chunkCount: meta.embedding_chunk_count || 0,
+                ragflowDocId,
+                progressMsg: e.message,
+            };
+        }
+    }
+
+    /**
+     * Remove RAGFlow embedding for a media file.
+     * Deletes the document from RAGFlow dataset and clears metadata.
+     */
     async removeEmbedding(id: string): Promise<boolean> {
         this.logger.log(`Removing embedding for media ID: ${id}`);
         try {
-            // Delete from media_embeddings table
-            const { error, count } = await this.supabase.getAdminClient()
+            // 1. Get media metadata to find RAGFlow doc ID
+            const { data: mediaRecord } = await this.supabase.getAdminClient()
+                .from('media')
+                .select('metadata')
+                .eq('id', id)
+                .single();
+
+            const meta = mediaRecord?.metadata || {};
+
+            // 2. Remove from RAGFlow if exists
+            if (meta.ragflow_doc_id && meta.ragflow_dataset_id) {
+                try {
+                    await this.ragflowService.removeDocument(
+                        meta.ragflow_dataset_id,
+                        [meta.ragflow_doc_id],
+                    );
+                    this.logger.log(`Removed RAGFlow doc ${meta.ragflow_doc_id}`);
+                } catch (e) {
+                    this.logger.warn(`Failed to remove RAGFlow doc: ${e.message}`);
+                }
+            }
+
+            // 3. Also clean up legacy pgvector embeddings if they exist
+            await this.supabase.getAdminClient()
                 .from('media_embeddings')
                 .delete()
                 .eq('id', id);
 
-            if (error) {
-                this.logger.error(`Failed to delete from media_embeddings for ${id}:`, error.message);
-                return false;
-            }
-            this.logger.log(`Successfully deleted record in media_embeddings for media ID: ${id}. Rows affected: ${count}`);
+            // 4. Clear embedding metadata from media record
+            const cleanMeta = { ...meta };
+            delete cleanMeta.ragflow_doc_id;
+            delete cleanMeta.ragflow_dataset_id;
+            delete cleanMeta.embedding_status;
+            delete cleanMeta.embedding_progress;
+            delete cleanMeta.embedding_chunk_count;
+            delete cleanMeta.embedding_error;
 
-            // Also null out the embedding column in media table just in case (though findOne joins media_embeddings)
             await this.supabase.getAdminClient()
                 .from('media')
-                .update({ embedding: null })
+                .update({ metadata: cleanMeta, embedding: null })
                 .eq('id', id);
 
+            this.logger.log(`Successfully removed embedding for media ID: ${id}`);
             return true;
         } catch (err) {
             this.logger.error(`Exception removing embedding for ${id}:`, err);
             return false;
         }
+    }
+
+    /**
+     * Helper to get file buffer via MinIO for embedding purposes.
+     */
+    private async getFileBufferForEmbedding(fileKey: string, bucketName: string): Promise<Buffer | null> {
+        return new Promise((resolve) => {
+            (this.minioClient as any).getObject(bucketName, fileKey, (err: any, dataStream: any) => {
+                if (err) {
+                    this.logger.error(`MinIO getObject failed for ${fileKey}: ${err.message}`);
+                    resolve(null);
+                    return;
+                }
+                const chunks: Buffer[] = [];
+                dataStream.on('data', (chunk: any) => chunks.push(chunk));
+                dataStream.on('end', () => resolve(Buffer.concat(chunks)));
+                dataStream.on('error', (streamErr: any) => {
+                    this.logger.error(`MinIO stream error for ${fileKey}`, streamErr);
+                    resolve(null);
+                });
+            });
+        });
     }
 
     // ---------------------------------------------------------

@@ -2,17 +2,21 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { Table, Tag, Button, Space, message, Tabs, Progress, Drawer, Descriptions, Badge, Tooltip, Modal, Form, Input, InputNumber, Select, DatePicker, Row, Col, Card, Typography } from 'antd';
-import { PlusOutlined, ReloadOutlined, SearchOutlined, ToolOutlined, CheckCircleOutlined, WarningOutlined, DollarOutlined, SwapOutlined, ClockCircleOutlined, CarOutlined, EyeOutlined, UserOutlined, CalendarOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined, SearchOutlined, ToolOutlined, CheckCircleOutlined, WarningOutlined, DollarOutlined, SwapOutlined, ClockCircleOutlined, CarOutlined, EyeOutlined, UserOutlined, CalendarOutlined , FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
+import RbacGuard from '@/components/common/RbacGuard';
 import { inventoryService, RentalAsset, RentalContract, RentalStatsType } from '@/lib/inventoryService';
 import dayjs from 'dayjs';
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const CONDITION_COLORS: Record<string, string> = { excellent: 'green', good: 'blue', fair: 'orange', poor: 'red' };
 const STATUS_COLORS: Record<string, string> = { available: 'green', rented: 'blue', maintenance: 'orange', retired: 'default', active: 'blue', returned: 'green', overdue: 'red', lost: 'volcano', cancelled: 'default' };
@@ -39,6 +43,7 @@ export default function RentalsPage() {
     const [contracts, setContracts] = useState<RentalContract[]>([]);
     const [stats, setStats] = useState<RentalStatsType | null>(null);
     const [detailContract, setDetailContract] = useState<RentalContract | null>(null);
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(false);
     const [tab, setTab] = useState('assets');
     const [search, setSearch] = useState('');
@@ -73,7 +78,7 @@ export default function RentalsPage() {
     const handleCancelContract = async (contractId: string) => {
         try {
             await inventoryService.cancelRentalContract(contractId);
-            message.success('Contract cancelled — asset released');
+            message.success('Contract cancelled â€” asset released');
             load();
         } catch (e: any) { message.error(e.message); }
     };
@@ -140,7 +145,7 @@ export default function RentalsPage() {
     const fmt = (v: number) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 
     const kpis = [
-        { label: 'Total Assets', value: stats?.totalAssets || 0, icon: <CarOutlined />, color: '#7c3aed' },
+        { label: 'Total Assets', value: stats?.totalAssets || 0, icon: <CarOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { label: 'Available', value: stats?.available || 0, icon: <CheckCircleOutlined />, color: '#16a34a' },
         { label: 'Rented', value: stats?.rented || 0, icon: <SwapOutlined />, color: '#2563eb' },
         { label: 'Maintenance', value: stats?.maintenance || 0, icon: <ToolOutlined />, color: '#d97706' },
@@ -152,7 +157,7 @@ export default function RentalsPage() {
         { title: 'Code', dataIndex: 'assetCode', render: (v: string) => <Tag style={{ fontFamily: 'monospace' }}>{v}</Tag> },
         { title: 'Asset Name', dataIndex: 'assetName', ellipsis: true, render: (v: string) => <strong>{v}</strong> },
         { title: 'Category', dataIndex: 'category', render: (v: string) => <Tag color="purple">{v}</Tag> },
-        { title: 'Serial No.', dataIndex: 'serialNumber', render: (v: string) => v ? <Tag style={{ fontFamily: 'monospace', fontSize: 11 }}>{v}</Tag> : '—' },
+        { title: 'Serial No.', dataIndex: 'serialNumber', render: (v: string) => v ? <Tag style={{ fontFamily: 'monospace', fontSize: 11 }}>{v}</Tag> : 'â€”' },
         { title: 'Condition', dataIndex: 'condition', render: (v: string) => <Tag color={CONDITION_COLORS[v] || 'default'}>{v}</Tag> },
         { title: 'Location', dataIndex: 'currentLocation', ellipsis: true },
         { title: 'Daily Rate', dataIndex: 'dailyRate', render: fmt },
@@ -160,11 +165,11 @@ export default function RentalsPage() {
         { title: 'Rentals', dataIndex: 'totalRentals', render: (v: number) => <strong>{v}</strong> },
         { title: 'Revenue', dataIndex: 'totalRevenue', render: fmt },
         { title: 'Next Maint.', dataIndex: 'nextMaintenanceDate', render: (v: string) => {
-            if (!v) return '—';
+            if (!v) return 'â€”';
             const d = new Date(v);
             const now = new Date();
             const isOverdue = d < now;
-            return <span style={{ color: isOverdue ? '#f5222d' : undefined }}>{d.toLocaleDateString('id-ID')}{isOverdue ? ' ⚠️' : ''}</span>;
+            return <span style={{ color: isOverdue ? '#f5222d' : undefined }}>{d.toLocaleDateString('id-ID')}{isOverdue ? ' âš ï¸' : ''}</span>;
         }},
         { title: 'Status', dataIndex: 'status', render: (v: string) => <Tag color={STATUS_COLORS[v] || 'default'}>{v}</Tag> },
     ];
@@ -178,8 +183,8 @@ export default function RentalsPage() {
         { title: 'Actual Return', dataIndex: 'actualReturnDate', render: (v: string) => v ? new Date(v).toLocaleDateString('id-ID') : <Tag color="blue">Ongoing</Tag> },
         { title: 'Days', dataIndex: 'rentalDays', render: (v: number) => <strong>{v}</strong> },
         { title: 'Subtotal', dataIndex: 'subtotal', render: fmt },
-        { title: 'Late Fee', dataIndex: 'lateFee', render: (v: number) => v > 0 ? <span style={{ color: '#f5222d', fontWeight: 600 }}>{fmt(v)}</span> : '—' },
-        { title: 'Damage Fee', dataIndex: 'damageFee', render: (v: number) => v > 0 ? <span style={{ color: '#fa8c16', fontWeight: 600 }}>{fmt(v)}</span> : '—' },
+        { title: 'Late Fee', dataIndex: 'lateFee', render: (v: number) => v > 0 ? <span style={{ color: '#f5222d', fontWeight: 600 }}>{fmt(v)}</span> : 'â€”' },
+        { title: 'Damage Fee', dataIndex: 'damageFee', render: (v: number) => v > 0 ? <span style={{ color: '#fa8c16', fontWeight: 600 }}>{fmt(v)}</span> : 'â€”' },
         { title: 'Total', dataIndex: 'totalCharge', render: (v: number) => <strong>{fmt(v)}</strong> },
         { title: 'Status', dataIndex: 'status', render: (v: string) => <Tag color={STATUS_COLORS[v] || 'default'}>{v}</Tag> },
         { title: 'Actions', render: (_: any, r: RentalContract) => (
@@ -223,7 +228,7 @@ export default function RentalsPage() {
                                     filterOption={(input, option) => (option?.label as string || '').toLowerCase().includes(input.toLowerCase())}
                                     onChange={onAssetChange}
                                     options={assets.filter(a => a.status === 'available').map(a => ({
-                                        value: a.id, label: `${a.assetCode} — ${a.assetName} (${a.category || '—'})`
+                                        value: a.id, label: `${a.assetCode} â€” ${a.assetName} (${a.category || 'â€”'})`
                                     }))} />
                             </Form.Item>
                         </Col>
@@ -336,7 +341,7 @@ export default function RentalsPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 14, marginBottom: 24 }}>
                     {kpis.map((k, i) => (
                         <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                            style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.5)' }}>
+                            style={{ ...glass, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.5)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                                 <span style={{ color: k.color, fontSize: 16 }}>{k.icon}</span>
                                 <span style={{ color: '#999', fontSize: 12 }}>{k.label}</span>
@@ -351,6 +356,7 @@ export default function RentalsPage() {
                     <Input prefix={<SearchOutlined />} placeholder="Search assets, contracts..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 320 }} allowClear />
                     <Space>
                         <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Refresh</Button>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_rentals', title: 'Rental Assets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Category', key: 'category' }, { header: 'Status', key: 'status' }, { header: 'Daily Rate', key: 'dailyRate' }], data: assets })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_rentals', title: 'Rental Assets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Category', key: 'category' }, { header: 'Status', key: 'status' }, { header: 'Daily Rate', key: 'dailyRate' }], data: assets })} /></Tooltip></RbacGuard>
                         <Button type="primary" icon={<PlusOutlined />}
                             onClick={() => { contractForm.resetFields(); setContractModalOpen(true); setTab('contracts'); }}
                             style={{ background: 'linear-gradient(135deg, #d97706, #dc2626)', border: 'none', borderRadius: 8 }}>
@@ -359,14 +365,14 @@ export default function RentalsPage() {
                     </Space>
                 </div>
 
-                <Card size="small" style={{ flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)' }}>
+                <Card size="small" style={{ flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)' }}>
                     {/* Tabs */}
                     <Tabs activeKey={tab} onChange={setTab} items={[
-                        { key: 'assets', label: `🏷️ Assets (${assets.length})`, children: (
+                        { key: 'assets', label: `ðŸ·ï¸ Assets (${assets.length})`, children: (
                             <Table dataSource={filteredAssets} columns={assetColumns} rowKey="id" size="middle" loading={loading}
                                 pagination={{ pageSize: 10 }} scroll={{ x: 1400 }} />
                         )},
-                        { key: 'contracts', label: `📋 Contracts (${contracts.length})`, children: (
+                        { key: 'contracts', label: `ðŸ“‹ Contracts (${contracts.length})`, children: (
                             <Table dataSource={filteredContracts} columns={contractColumns} rowKey="id" size="middle" loading={loading}
                                 pagination={{ pageSize: 10 }} scroll={{ x: 1500 }} />
                         )},
@@ -374,15 +380,15 @@ export default function RentalsPage() {
                 </Card>
 
                 {/* Contract Detail Drawer */}
-                <Drawer title={`Contract Detail — ${detailContract?.contractCode}`} open={!!detailContract} onClose={() => setDetailContract(null)} width={560}>
+                <Drawer title={`Contract Detail â€” ${detailContract?.contractCode}`} open={!!detailContract} onClose={() => setDetailContract(null)} width={560}>
                     {detailContract && (
                         <Descriptions column={1} bordered size="small">
                             <Descriptions.Item label="Contract Code"><Tag style={{ fontFamily: 'monospace' }}>{detailContract.contractCode}</Tag></Descriptions.Item>
                             <Descriptions.Item label="Asset">{detailContract.assetName}</Descriptions.Item>
                             <Descriptions.Item label="Customer">{detailContract.customerName}</Descriptions.Item>
-                            <Descriptions.Item label="Email">{detailContract.customerEmail || '—'}</Descriptions.Item>
-                            <Descriptions.Item label="Phone">{detailContract.customerPhone || '—'}</Descriptions.Item>
-                            <Descriptions.Item label="ID Number">{detailContract.customerIdNumber || '—'}</Descriptions.Item>
+                            <Descriptions.Item label="Email">{detailContract.customerEmail || 'â€”'}</Descriptions.Item>
+                            <Descriptions.Item label="Phone">{detailContract.customerPhone || 'â€”'}</Descriptions.Item>
+                            <Descriptions.Item label="ID Number">{detailContract.customerIdNumber || 'â€”'}</Descriptions.Item>
                             <Descriptions.Item label="Checkout Date">{new Date(detailContract.checkoutDate).toLocaleDateString('id-ID')}</Descriptions.Item>
                             <Descriptions.Item label="Expected Return">{new Date(detailContract.expectedReturnDate).toLocaleDateString('id-ID')}</Descriptions.Item>
                             <Descriptions.Item label="Actual Return">{detailContract.actualReturnDate ? new Date(detailContract.actualReturnDate).toLocaleDateString('id-ID') : <Tag color="blue">Ongoing</Tag>}</Descriptions.Item>
@@ -391,19 +397,19 @@ export default function RentalsPage() {
                             <Descriptions.Item label="Deposit">{fmt(detailContract.depositAmount || 0)}</Descriptions.Item>
                             <Descriptions.Item label="Deposit Returned">{fmt(detailContract.depositReturned || 0)}</Descriptions.Item>
                             <Descriptions.Item label="Subtotal">{fmt(detailContract.subtotal || 0)}</Descriptions.Item>
-                            <Descriptions.Item label="Late Fee">{detailContract.lateFee ? <span style={{ color: '#f5222d' }}>{fmt(detailContract.lateFee)}</span> : '—'}</Descriptions.Item>
-                            <Descriptions.Item label="Damage Fee">{detailContract.damageFee ? <span style={{ color: '#fa8c16' }}>{fmt(detailContract.damageFee)}</span> : '—'}</Descriptions.Item>
+                            <Descriptions.Item label="Late Fee">{detailContract.lateFee ? <span style={{ color: '#f5222d' }}>{fmt(detailContract.lateFee)}</span> : 'â€”'}</Descriptions.Item>
+                            <Descriptions.Item label="Damage Fee">{detailContract.damageFee ? <span style={{ color: '#fa8c16' }}>{fmt(detailContract.damageFee)}</span> : 'â€”'}</Descriptions.Item>
                             <Descriptions.Item label="Total Charge"><strong style={{ fontSize: 16 }}>{fmt(detailContract.totalCharge || 0)}</strong></Descriptions.Item>
-                            <Descriptions.Item label="Checkout Condition"><Tag color={CONDITION_COLORS[detailContract.checkoutCondition || ''] || 'default'}>{detailContract.checkoutCondition || '—'}</Tag></Descriptions.Item>
-                            <Descriptions.Item label="Return Condition">{detailContract.returnCondition ? <Tag color={CONDITION_COLORS[detailContract.returnCondition] || 'default'}>{detailContract.returnCondition}</Tag> : '—'}</Descriptions.Item>
-                            <Descriptions.Item label="Checkout Notes">{detailContract.checkoutNotes || '—'}</Descriptions.Item>
-                            <Descriptions.Item label="Return Notes">{detailContract.returnNotes || '—'}</Descriptions.Item>
+                            <Descriptions.Item label="Checkout Condition"><Tag color={CONDITION_COLORS[detailContract.checkoutCondition || ''] || 'default'}>{detailContract.checkoutCondition || 'â€”'}</Tag></Descriptions.Item>
+                            <Descriptions.Item label="Return Condition">{detailContract.returnCondition ? <Tag color={CONDITION_COLORS[detailContract.returnCondition] || 'default'}>{detailContract.returnCondition}</Tag> : 'â€”'}</Descriptions.Item>
+                            <Descriptions.Item label="Checkout Notes">{detailContract.checkoutNotes || 'â€”'}</Descriptions.Item>
+                            <Descriptions.Item label="Return Notes">{detailContract.returnNotes || 'â€”'}</Descriptions.Item>
                             <Descriptions.Item label="Status"><Tag color={STATUS_COLORS[detailContract.status || ''] || 'default'}>{detailContract.status}</Tag></Descriptions.Item>
                         </Descriptions>
                     )}
                 </Drawer>
 
-                {/* ─── Rental Contract SteppedFormModal ─────────── */}
+                {/* â”€â”€â”€ Rental Contract SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 <SteppedFormModal
                     open={contractModalOpen}
                     onCancel={() => { setContractModalOpen(false); contractForm.resetFields(); }}
@@ -422,3 +428,6 @@ export default function RentalsPage() {
         </CMSLayout>
     );
 }
+
+
+

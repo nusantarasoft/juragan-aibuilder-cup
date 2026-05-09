@@ -3,19 +3,18 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
-import {
-    Table, Button, Space, Tag, Card, Typography, message,
-    Row, Col, Modal, Form, Input, InputNumber, Select, Tabs,
-    Badge, Tooltip, Descriptions, Empty, Spin
-} from "antd";
+import RbacGuard from "@/components/common/RbacGuard";
+import { Badge, Button, Card, Col, Descriptions, Empty, Form, Input, InputNumber, message, Modal, Row, Select, Space, Spin, Table, Tabs, Tag, Tooltip, Typography } from "antd";
 import {
     HomeOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
     EnvironmentOutlined, AppstoreOutlined, InboxOutlined,
     SwapOutlined, CheckCircleOutlined, ClockCircleOutlined,
     ExclamationCircleOutlined, DeleteOutlined, EditOutlined,
-    EyeOutlined, ColumnHeightOutlined
-} from "@ant-design/icons";
+    EyeOutlined, ColumnHeightOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import {
     inventoryService, InvWarehouse, InvZone, InvBin,
@@ -26,6 +25,7 @@ import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Title, Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const WAREHOUSE_TYPES: Record<string, { label: string; color: string }> = {
     general: { label: 'General', color: 'blue' },
@@ -76,6 +76,8 @@ const WAREHOUSE_FIELDS: FieldDef[] = [
 
 export default function WarehousesPage() {
     const [stats, setStats] = useState<WarehouseStats | null>(null);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [warehouses, setWarehouses] = useState<InvWarehouse[]>([]);
     const [zones, setZones] = useState<InvZone[]>([]);
     const [bins, setBins] = useState<InvBin[]>([]);
@@ -140,7 +142,7 @@ export default function WarehousesPage() {
         [bins, selectedZoneId]
     );
 
-    // ─── Warehouse CRUD ────────────────────────────
+    // â”€â”€â”€ Warehouse CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const handleSaveWarehouse = async (values: any) => {
         if (whEditId) {
             await inventoryService.updateWarehouse(whEditId, values);
@@ -183,7 +185,7 @@ export default function WarehousesPage() {
         } catch { message.error("Failed to delete"); }
     };
 
-    // ─── Zone CRUD ─────────────────────────────────
+    // â”€â”€â”€ Zone CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const handleSaveZone = async () => {
         try {
             const values = await zoneForm.validateFields();
@@ -193,7 +195,7 @@ export default function WarehousesPage() {
         } catch { message.error("Failed"); }
     };
 
-    // ─── Bin CRUD ──────────────────────────────────
+    // â”€â”€â”€ Bin CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const handleSaveBin = async () => {
         try {
             const values = await binForm.validateFields();
@@ -203,7 +205,7 @@ export default function WarehousesPage() {
         } catch { message.error("Failed"); }
     };
 
-    // ─── Transfer CRUD ─────────────────────────────
+    // â”€â”€â”€ Transfer CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const handleCreateTransfer = async () => {
         try {
             const values = await trfForm.validateFields();
@@ -229,17 +231,17 @@ export default function WarehousesPage() {
         } catch { message.error("Failed to complete"); }
     };
 
-    // ─── KPI Cards ─────────────────────────────────
+    // â”€â”€â”€ KPI Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const kpiCards = [
-        { title: 'Warehouses', value: stats?.totalWarehouses || 0, icon: <HomeOutlined />, color: '#7c3aed' },
+        { title: 'Warehouses', value: stats?.totalWarehouses || 0, icon: <HomeOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { title: 'Zones', value: stats?.totalZones || 0, icon: <AppstoreOutlined />, color: '#0ea5e9' },
         { title: 'Bins', value: stats?.totalBins || 0, icon: <InboxOutlined />, color: '#10b981' },
         { title: 'Active Transfers', value: stats?.activeTransfers || 0, icon: <SwapOutlined />, color: '#f59e0b' },
-        { title: 'Total Capacity', value: stats?.totalCapacity || 0, icon: <ColumnHeightOutlined />, color: '#6366f1' },
+        { title: 'Total Capacity', value: stats?.totalCapacity || 0, icon: <ColumnHeightOutlined />, color: themeColor },
         { title: 'Used Capacity', value: stats?.usedCapacity || 0, icon: <ColumnHeightOutlined />, color: '#ef4444' },
     ];
 
-    // ─── Warehouse Columns ─────────────────────────
+    // â”€â”€â”€ Warehouse Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const warehouseColumns = [
         { title: 'Code', dataIndex: 'code', width: 120, render: (v: string) => <Text code className="text-xs">{v}</Text> },
         { title: 'Name', dataIndex: 'name', render: (v: string) => <Text strong className="text-sm">{v}</Text> },
@@ -285,7 +287,7 @@ export default function WarehousesPage() {
         },
     ];
 
-    // ─── Zone Columns ──────────────────────────────
+    // â”€â”€â”€ Zone Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const zoneColumns = [
         { title: 'Code', dataIndex: 'code', width: 100, render: (v: string) => <Text code className="text-xs">{v}</Text> },
         { title: 'Name', dataIndex: 'name', render: (v: string) => <Text strong className="text-sm">{v}</Text> },
@@ -308,7 +310,7 @@ export default function WarehousesPage() {
         },
     ];
 
-    // ─── Bin Columns ───────────────────────────────
+    // â”€â”€â”€ Bin Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const binColumns = [
         { title: 'Code', dataIndex: 'code', width: 130, render: (v: string) => <Text code className="text-xs">{v}</Text> },
         {
@@ -337,7 +339,7 @@ export default function WarehousesPage() {
         },
     ];
 
-    // ─── Transfer Columns ──────────────────────────
+    // â”€â”€â”€ Transfer Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const transferColumns = [
         {
             title: 'Transfer #', dataIndex: 'transferNumber', width: 130,
@@ -461,7 +463,7 @@ export default function WarehousesPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>Warehouses</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Warehouses</AuroraText>}
             subTitle={
                 <DecryptedText
                     text="Manage warehouses, zones, bins, and stock transfers"
@@ -476,8 +478,7 @@ export default function WarehousesPage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                                    ...glass,
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -497,8 +498,7 @@ export default function WarehousesPage() {
 
                 {/* Tabs */}
                 <Card size="small" style={{
-                    flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)',
-                    backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)',
+                    flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)',
                 }}>
                     <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
                         {
@@ -513,9 +513,10 @@ export default function WarehousesPage() {
                                             style={{ maxWidth: 280, borderRadius: 8 }} />
                                         <Space>
                                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_warehouses', title: 'Warehouses', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Location', key: 'location' }, { header: 'Type', key: 'warehouseType' }, { header: 'Status', key: 'status' }], data: warehouses })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_warehouses', title: 'Warehouses', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Location', key: 'location' }, { header: 'Type', key: 'warehouseType' }, { header: 'Status', key: 'status' }], data: warehouses })} /></Tooltip></RbacGuard>
                                             <Button type="primary" icon={<PlusOutlined />}
                                                 onClick={() => { whForm.resetFields(); setWhEditId(null); setWhModalOpen(true); }}
-                                                style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', borderRadius: 8, border: 'none' }}>
+                                                style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', borderRadius: 8, border: 'none' }}>
                                                 Add Warehouse
                                             </Button>
                                         </Space>
@@ -551,12 +552,12 @@ export default function WarehousesPage() {
                                         <Space>
                                             <Button icon={<PlusOutlined />}
                                                 onClick={() => { zoneForm.resetFields(); setZoneModalOpen(true); }}
-                                                style={{ borderColor: '#7c3aed', color: '#7c3aed' }}>
+                                                style={{ borderColor: 'var(--theme-color, #7c3aed)', color: 'var(--theme-color, #7c3aed)' }}>
                                                 Add Zone
                                             </Button>
                                             <Button type="primary" icon={<PlusOutlined />}
                                                 onClick={() => { binForm.resetFields(); setBinModalOpen(true); }}
-                                                style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', borderRadius: 8, border: 'none' }}>
+                                                style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', borderRadius: 8, border: 'none' }}>
                                                 Add Bin
                                             </Button>
                                         </Space>
@@ -565,7 +566,7 @@ export default function WarehousesPage() {
                                     <Row gutter={16}>
                                         <Col xs={24} lg={10}>
                                             <Text strong className="text-sm mb-2 block"
-                                                style={{ background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                                style={{ background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                                                 Zones
                                             </Text>
                                             <Table dataSource={filteredZones} columns={zoneColumns}
@@ -580,7 +581,7 @@ export default function WarehousesPage() {
                                         </Col>
                                         <Col xs={24} lg={14}>
                                             <Text strong className="text-sm mb-2 block"
-                                                style={{ background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                                style={{ background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                                                 Bins {selectedZoneId ? `(${zoneMap.get(selectedZoneId)?.name || ''})` : '(All)'}
                                             </Text>
                                             <Table dataSource={filteredBins} columns={binColumns}
@@ -604,7 +605,7 @@ export default function WarehousesPage() {
                                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
                                             <Button type="primary" icon={<PlusOutlined />}
                                                 onClick={() => { trfForm.resetFields(); setTrfModalOpen(true); }}
-                                                style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', borderRadius: 8, border: 'none' }}>
+                                                style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', borderRadius: 8, border: 'none' }}>
                                                 New Transfer
                                             </Button>
                                         </Space>
@@ -621,7 +622,7 @@ export default function WarehousesPage() {
                 </Card>
             </div>
 
-            {/* ─── Warehouse SteppedFormModal ─────────────── */}
+            {/* â”€â”€â”€ Warehouse SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <SteppedFormModal
                 open={whModalOpen}
                 onCancel={() => { setWhModalOpen(false); setWhEditId(null); whForm.resetFields(); }}
@@ -634,11 +635,11 @@ export default function WarehousesPage() {
                 width={600}
                 loading={false}
                 onBatchCreate={handleBatchCreateWarehouse}
-                gradient={["#7c3aed", "#6366f1"]}
+                gradient={["var(--theme-color, #7c3aed)", "#6366f1"]}
                 editMode={!!whEditId}
             />
 
-            {/* ─── Zone Modal ──────────────────────────── */}
+            {/* â”€â”€â”€ Zone Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <Modal title="Add Zone" open={zoneModalOpen} onCancel={() => setZoneModalOpen(false)}
                 onOk={handleSaveZone} okText="Create">
                 <Form form={zoneForm} layout="vertical">
@@ -676,7 +677,7 @@ export default function WarehousesPage() {
                 </Form>
             </Modal>
 
-            {/* ─── Bin Modal ───────────────────────────── */}
+            {/* â”€â”€â”€ Bin Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <Modal title="Add Bin" open={binModalOpen} onCancel={() => setBinModalOpen(false)}
                 onOk={handleSaveBin} okText="Create">
                 <Form form={binForm} layout="vertical">
@@ -719,7 +720,7 @@ export default function WarehousesPage() {
                 </Form>
             </Modal>
 
-            {/* ─── Transfer Modal ──────────────────────── */}
+            {/* â”€â”€â”€ Transfer Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <Modal title="New Stock Transfer" open={trfModalOpen} onCancel={() => setTrfModalOpen(false)}
                 onOk={handleCreateTransfer} okText="Create Transfer" width={600}>
                 <Form form={trfForm} layout="vertical">
@@ -784,3 +785,7 @@ export default function WarehousesPage() {
         </CMSLayout>
     );
 }
+
+
+
+

@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Table,
     Button,
@@ -15,7 +18,9 @@ import {
     Popconfirm,
     Dropdown,
     Empty,
+    Card, Row, Col, Statistic, Tooltip,
 } from "antd";
+import { motion } from "framer-motion";
 import {
     PlusOutlined,
     EditOutlined,
@@ -28,7 +33,13 @@ import {
     CloudUploadOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
+import { FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import RbacGuard from "@/components/common/RbacGuard";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 import pageService, { CMSPage } from "@/lib/pageService";
+
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 // Sample data for development (when Supabase is not connected)
 const samplePages: CMSPage[] = [
@@ -79,6 +90,8 @@ const samplePages: CMSPage[] = [
 ];
 
 export default function PagesListPage() {
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const router = useRouter();
     const [pages, setPages] = useState<CMSPage[]>([]);
     const [loading, setLoading] = useState(true);
@@ -286,8 +299,8 @@ export default function PagesListPage() {
 
     return (
         <CMSLayout
-            title="Pages"
-            subTitle="Manage your website pages"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Pages</AuroraText>}
+            subTitle={<DecryptedText text="Manage your website pages" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 <Button
                     key="create"
@@ -299,7 +312,22 @@ export default function PagesListPage() {
                 </Button>,
             ]}
         >
-            <Table
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Pages', value: pages.length, icon: <FileTextOutlined />, color: '#3b82f6' },
+                    { title: 'Published', value: pages.filter(p => p.status === 'published').length, icon: <GlobalOutlined />, color: '#10b981' },
+                    { title: 'Draft', value: pages.filter(p => p.status === 'draft').length, icon: <FileTextOutlined />, color: '#f59e0b' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={8}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
+            <Table scroll={{ x: 900 }}
                 columns={columns}
                 dataSource={pages}
                 rowKey="id"

@@ -153,7 +153,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
 
     const glassHeaderStyle = {
         background: 'rgba(255, 255, 255, 0.1)',
-        borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+        borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
     };
 
     const renderGridItem = (item: CatalogItem) => {
@@ -163,7 +163,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
             <div
                 key={item.id}
                 onClick={() => handleItemClick(item)}
-                className="group relative flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900/40 shadow-sm hover:border-violet-200 dark:hover:border-violet-900/50 hover:shadow-md hover:shadow-violet-500/10 transition-all cursor-pointer aspect-square"
+                className="group relative flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900/40 shadow-sm hover:border-[rgba(var(--theme-color-rgb,139,92,246),0.3)] dark:hover:border-[rgba(var(--theme-color-rgb,139,92,246),0.5)] hover:shadow-md hover:shadow-[rgba(var(--theme-color-rgb,139,92,246),0.1)] transition-all cursor-pointer aspect-square"
             >
                 <div className="mb-3 transform group-hover:scale-110 transition-transform duration-300">
                     <span className="flex text-[32px]">
@@ -171,7 +171,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
                     </span>
                 </div>
                 <Text
-                    className="text-center font-medium text-gray-700 dark:text-gray-300 group-hover:text-violet-600 dark:group-hover:text-violet-400 w-full truncate px-2"
+                    className="text-center font-medium text-gray-700 dark:text-gray-300 group-hover:text-[color:var(--theme-color, #7c3aed)] dark:group-hover:text-[color:var(--theme-color, #7c3aed)] w-full truncate px-2"
                     style={{ fontSize: 13 }}
                 >
                     {name}
@@ -195,7 +195,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
                 <List.Item.Meta
                     avatar={<div className="mt-1">{getTypeIcon(item.type, (item as any).containerType)}</div>}
                     title={
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-200 group-hover:text-violet-600">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-200 group-hover:text-[color:var(--theme-color, #7c3aed)]">
                             {name}
                         </span>
                     }
@@ -215,7 +215,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
             <Card
                 size="small"
                 style={glassCardStyle}
-                className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-purple-500/20"
+                className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)]"
                 styles={{ header: glassHeaderStyle }}
                 title={
                     <div className="flex items-center gap-3">
@@ -224,10 +224,10 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
                                 type="text"
                                 icon={sidebarOpen ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
                                 onClick={onToggleSidebar}
-                                className="text-gray-500 hover:text-violet-600"
+                                className="text-gray-500 hover:text-[color:var(--theme-color, #7c3aed)]"
                             />
                         )}
-                        <span style={{ background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600 }}>
+                        <span style={{ background: 'linear-gradient(to right, var(--theme-color, #8b5cf6), var(--theme-secondary, #6366f1))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600 }}>
                             {path[path.length - 1] || 'Catalog'}
                         </span>
                     </div>
@@ -235,7 +235,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
                 extra={
                     <Space size={8}>
                         {/* Sources Count */}
-                        <Tag icon={<CloudServerOutlined />} color="purple" bordered={false} className="px-2 py-0.5 text-[11px] bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 rounded-md m-0">
+                        <Tag icon={<CloudServerOutlined />}  bordered={false} className="px-2 py-0.5 text-[11px] bg-[rgba(var(--theme-color-rgb,139,92,246),0.05)] text-[color:var(--theme-color, #7c3aed)] dark:bg-[rgba(var(--theme-color-rgb,139,92,246),0.2)] dark:text-[color:var(--theme-color, #7c3aed)] rounded-md m-0">
                             {sourcesCount} Sources
                         </Tag>
 
@@ -245,7 +245,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
                             placeholder="Filter..."
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            className="w-32 md:w-48 !bg-transparent border-b !border-0 focus:border-b-violet-500 transition-colors"
+                            className="w-32 md:w-48 !bg-transparent border-b !border-0 focus:border-b-[var(--theme-color,#7c3aed)] transition-colors"
                             bordered={false}
                             size="small"
                         />
@@ -275,7 +275,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
                                 size="small"
                                 icon={sortOrder === 'asc' ? <SortAscendingOutlined /> : <SortDescendingOutlined />}
                                 onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                                className="text-gray-400 hover:text-violet-600"
+                                className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)]"
                             />
                         </Tooltip>
 
@@ -287,7 +287,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
                                 type="text"
                                 size="small"
                                 icon={<AppstoreOutlined style={{ fontSize: 12 }} />}
-                                className={viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-violet-600' : 'text-gray-400'}
+                                className={viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-[color:var(--theme-color, #7c3aed)]' : 'text-gray-400'}
                                 onClick={() => setViewMode('grid')}
                                 style={{ width: 24, height: 24, minWidth: 24 }}
                             />
@@ -295,7 +295,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
                                 type="text"
                                 size="small"
                                 icon={<UnorderedListOutlined style={{ fontSize: 12 }} />}
-                                className={viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-violet-600' : 'text-gray-400'}
+                                className={viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-[color:var(--theme-color, #7c3aed)]' : 'text-gray-400'}
                                 onClick={() => setViewMode('list')}
                                 style={{ width: 24, height: 24, minWidth: 24 }}
                             />
@@ -328,7 +328,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
             <Card
                 size="small"
                 style={glassCardStyle}
-                className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-purple-500/20"
+                className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)]"
                 bodyStyle={{ padding: 12 }}
             >
                 <Row gutter={16} align="middle" justify="start">
@@ -336,7 +336,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
                         <Statistic
                             title={<span className="text-[10px] text-gray-500 uppercase tracking-wider">Items</span>}
                             value={items.length}
-                            valueStyle={{ color: '#8b5cf6', fontWeight: 600, fontSize: 16 }}
+                            valueStyle={{ color: 'var(--theme-color, #8b5cf6)', fontWeight: 600, fontSize: 16 }}
                             suffix={<span className="text-xs text-gray-400">total</span>}
                         />
                     </Col>

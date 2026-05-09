@@ -143,6 +143,6 @@ export const globeConfig = {
 // Demo data for arcs
 export const sampleArcs = [
     { startLat: 40.7128, startLng: -74.006, endLat: 51.5074, endLng: -0.1278, color: "#06b6d4" },
-    { startLat: 35.6762, startLng: 139.6503, endLat: -33.8688, endLng: 151.2093, color: "#8b5cf6" },
+    { startLat: 35.6762, startLng: 139.6503, endLat: -33.8688, endLng: 151.2093, color: "var(--theme-color, #8b5cf6)" },
     { startLat: 37.7749, startLng: -122.4194, endLat: 22.3193, endLng: 114.1694, color: "#22c55e" },
 ];

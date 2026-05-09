@@ -173,7 +173,7 @@ export function FloatingPanel({
                             <Space size={8}>
                                 <span style={{ fontSize: 14 }} className="text-violet-500">{icon}</span>
                                 <span style={{
-                                    background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                    background: 'linear-gradient(to right, var(--theme-color, #8b5cf6), #6366f1)',
                                     WebkitBackgroundClip: 'text',
                                     WebkitTextFillColor: 'transparent',
                                     fontWeight: 600,

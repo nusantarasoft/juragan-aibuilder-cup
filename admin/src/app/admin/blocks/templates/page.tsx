@@ -2,13 +2,19 @@
 
 import React from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
-import { Card, Row, Col, Tag, Button, Space, Input, Tabs } from "antd";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { Card, Row, Col, Tag, Button, Space, Input, Tabs, Statistic } from "antd";
+import { motion } from "framer-motion";
 import {
     AppstoreOutlined,
     EditOutlined,
     SearchOutlined,
     PlusOutlined,
 } from "@ant-design/icons";
+
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface BlockItem {
     id: string;
@@ -87,6 +93,7 @@ const BlockGrid = ({ blocks }: { blocks: BlockItem[] }) => (
 );
 
 export default function BlocksTemplatesPage() {
+    const { themeColor } = usePreferencesStore();
     const items = [
         {
             key: "templates",
@@ -111,14 +118,29 @@ export default function BlocksTemplatesPage() {
 
     return (
         <CMSLayout
-            title="Blocks Library"
-            subTitle="Manage reusable page builder blocks"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Blocks Library</AuroraText>}
+            subTitle={<DecryptedText text="Manage reusable page builder blocks" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 <Button key="add" type="primary" icon={<PlusOutlined />}>
                     Create Custom Block
                 </Button>,
             ]}
         >
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Templates', value: templateBlocks.length, icon: <AppstoreOutlined />, color: '#3b82f6' },
+                    { title: 'Content', value: contentBlocks.length, icon: <EditOutlined />, color: '#10b981' },
+                    { title: 'Widgets', value: widgetBlocks.length, icon: <AppstoreOutlined />, color: '#8b5cf6' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={8}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <Space style={{ marginBottom: 16 }}>
                 <Input
                     placeholder="Search blocks..."

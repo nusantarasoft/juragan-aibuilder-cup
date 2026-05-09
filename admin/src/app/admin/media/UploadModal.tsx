@@ -163,8 +163,8 @@ export default function UploadModal({ visible, onClose, onUploadSuccess, current
         <Modal
             title={
                 <div className="flex items-center gap-2">
-                    <InboxOutlined style={{ color: '#8b5cf6' }} />
-                    <span style={{ background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600 }}>
+                    <InboxOutlined style={{ color: 'var(--theme-color, #8b5cf6)' }} />
+                    <span style={{ background: 'linear-gradient(to right, var(--theme-color, #8b5cf6), var(--theme-secondary, #6366f1))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600 }}>
                         Upload Media
                     </span>
                 </div>
@@ -175,7 +175,7 @@ export default function UploadModal({ visible, onClose, onUploadSuccess, current
             width={600}
             okText="Done"
             okButtonProps={{
-                style: { background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)', border: 'none' }
+                style: { background: 'linear-gradient(135deg, var(--theme-color, #8b5cf6) 0%, var(--theme-secondary, #6366f1) 100%)', border: 'none' }
             }}
             styles={{
                 header: {
@@ -183,7 +183,7 @@ export default function UploadModal({ visible, onClose, onUploadSuccess, current
                     backdropFilter: 'blur(16px)',
                     WebkitBackdropFilter: 'blur(16px)',
                     padding: '16px 24px',
-                    borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+                    borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
                     marginBottom: 0
                 },
                 mask: {
@@ -204,7 +204,7 @@ export default function UploadModal({ visible, onClose, onUploadSuccess, current
                         }
                         :global(.dark) .custom-modal-wrapper .ant-modal-content {
                             background: rgba(15, 23, 42, 0.85) !important;
-                            border: 1px solid rgba(139, 92, 246, 0.2) !important;
+                            border: 1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2) !important;
                         }
                     `}</style>
                     {modal}

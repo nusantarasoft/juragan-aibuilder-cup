@@ -1,24 +1,59 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { ProTable, ProColumns, ModalForm, ProFormText, ProFormTextArea, ProFormSelect } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Typography } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, AppstoreOutlined } from "@ant-design/icons";
+import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
+import { ProTable, ProColumns } from "@ant-design/pro-components";
+import { Button, message, Tag, Popconfirm, Space, Typography, Form, Input, Select, Row, Col, Card, Statistic, Badge, Tooltip } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, AppstoreOutlined, InfoCircleOutlined, SettingOutlined, CheckCircleOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import SteppedFormModal from "@/components/common/SteppedFormModal";
+import type { FieldDef } from "@/components/common/DataImportExport";
+import { AuroraText } from "@/components/magicui/aurora-text";
+import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const GET_CATEGORIES = `query { itsmCategories { id name description parentId icon status createdAt } }`;
 const CREATE_CATEGORY = `mutation($tenantId: String!, $input: CreateItsmCategoryInput!) { createItsmCategory(tenantId: $tenantId, input: $input) { id } }`;
 const UPDATE_CATEGORY = `mutation($id: ID!, $input: UpdateItsmCategoryInput!) { updateItsmCategory(id: $id, input: $input) { id } }`;
 const DELETE_CATEGORY = `mutation($id: ID!) { deleteItsmCategory(id: $id) }`;
 
+const iconOptions = [
+    { value: 'DesktopOutlined', label: 'ðŸ–¥ï¸ Hardware' },
+    { value: 'CodeOutlined', label: 'ðŸ’» Software' },
+    { value: 'WifiOutlined', label: 'ðŸ“¶ Network' },
+    { value: 'SafetyOutlined', label: 'ðŸ” Security' },
+    { value: 'MailOutlined', label: 'ðŸ“§ Email' },
+    { value: 'DatabaseOutlined', label: 'ðŸ—„ï¸ Database' },
+    { value: 'CloudServerOutlined', label: 'â˜ï¸ Cloud' },
+    { value: 'QuestionCircleOutlined', label: 'â“ General' },
+    { value: 'PrinterOutlined', label: 'ðŸ–¨ï¸ Printer' },
+    { value: 'MobileOutlined', label: 'ðŸ“± Mobile' },
+];
+
+const CATEGORY_FIELDS: FieldDef[] = [
+    { name: "name", label: "Category Name", required: true },
+    { name: "description", label: "Description" },
+    { name: "parentId", label: "Parent Category" },
+    { name: "icon", label: "Icon" },
+    { name: "status", label: "Status" },
+];
+
 export default function ItsmCategoriesPage() {
     const [messageApi, contextHolder] = message.useMessage();
     const [categories, setCategories] = useState<any[]>([]);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<any>(null);
+    const [form] = Form.useForm();
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -41,9 +76,10 @@ export default function ItsmCategoriesPage() {
                 messageApi.success("Category created.");
             }
             setModalOpen(false);
+            form.resetFields();
+            setEditing(null);
             loadData();
-            return true;
-        } catch (err: any) { messageApi.error(err.message); return false; }
+        } catch (err: any) { messageApi.error(err.message); }
     };
 
     const handleDelete = async (id: string) => {
@@ -51,25 +87,12 @@ export default function ItsmCategoriesPage() {
         catch (err: any) { messageApi.error(err.message); }
     };
 
-    const iconOptions = [
-        { value: 'DesktopOutlined', label: '🖥️ Hardware' },
-        { value: 'CodeOutlined', label: '💻 Software' },
-        { value: 'WifiOutlined', label: '📶 Network' },
-        { value: 'SafetyOutlined', label: '🔐 Security' },
-        { value: 'MailOutlined', label: '📧 Email' },
-        { value: 'DatabaseOutlined', label: '🗄️ Database' },
-        { value: 'CloudServerOutlined', label: '☁️ Cloud' },
-        { value: 'QuestionCircleOutlined', label: '❓ General' },
-        { value: 'PrinterOutlined', label: '🖨️ Printer' },
-        { value: 'MobileOutlined', label: '📱 Mobile' },
-    ];
-
     const columns: ProColumns<any>[] = [
         {
             title: 'Icon', dataIndex: 'icon', width: 60,
             render: (_, r) => {
                 const match = iconOptions.find(o => o.value === r.icon);
-                return <Text style={{ fontSize: 20 }}>{match?.label?.split(' ')[0] || '📁'}</Text>;
+                return <Text style={{ fontSize: 20 }}>{match?.label?.split(' ')[0] || 'ðŸ“'}</Text>;
             }
         },
         { title: 'Name', dataIndex: 'name', render: (_, r) => <Text strong>{r.name}</Text> },
@@ -83,52 +106,117 @@ export default function ItsmCategoriesPage() {
         },
         {
             title: 'Status', dataIndex: 'status', width: 100,
-            render: (v: string) => <Tag color={v === 'active' ? 'green' : 'default'}>{(v || '').toUpperCase()}</Tag>
+            render: (_, r) => <Tag color={r.status === 'active' ? 'green' : 'default'}>{(r.status || '').toUpperCase()}</Tag>
         },
         {
             title: 'Actions', valueType: 'option', width: 100,
             render: (_, record) => [
-                <Button key="edit" type="text" icon={<EditOutlined />} onClick={() => { setEditing(record); setModalOpen(true); }} />,
+                <Button key="edit" type="text" icon={<EditOutlined />} onClick={() => {
+                    setEditing(record);
+                    form.setFieldsValue({
+                        name: record.name, description: record.description,
+                        parentId: record.parentId, icon: record.icon, status: record.status,
+                    });
+                    setModalOpen(true);
+                }} />,
                 <Popconfirm key="del" title="Delete?" onConfirm={() => handleDelete(record.id)}><Button type="text" danger icon={<DeleteOutlined />} /></Popconfirm>,
             ]
         }
     ];
 
     return (
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Service Categories</AuroraText>}
+            subTitle={<DecryptedText text="Manage ITSM ticket categories" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Categories', value: categories.length, icon: <AppstoreOutlined />, color: '#3b82f6' },
+                    { title: 'Active', value: categories.filter((c: any) => c.status === 'active').length, icon: <CheckCircleOutlined />, color: '#10b981' },
+                    { title: 'With SLA', value: categories.filter((c: any) => c.defaultSla).length, icon: <SettingOutlined />, color: '#8b5cf6' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={8}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <ProTable
-                headerTitle={<Space><AppstoreOutlined /> Service Categories</Space>}
+                headerTitle={<Space><AppstoreOutlined /> Service Categories <Badge count={categories.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id"
                 dataSource={categories}
                 loading={loading}
                 columns={columns}
                 search={false}
                 toolBarRender={() => [
-                    <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setModalOpen(true); }}>
+                    <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_categories', title: 'ITSM Categories', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Description', key: 'description' }], data: categories })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_categories', title: 'ITSM Categories', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Description', key: 'description' }], data: categories })} /></Tooltip></RbacGuard>,
+                    <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>
                         New Category
                     </Button>,
                 ]}
             />
 
-            <ModalForm
-                title={editing ? "Edit Category" : "New Category"}
+            {/* â”€â”€â”€ Category SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            <SteppedFormModal
                 open={modalOpen}
-                onOpenChange={setModalOpen}
-                onFinish={handleSave}
-                initialValues={editing || { status: 'active' }}
-                modalProps={{ destroyOnClose: true, width: 520 }}
-            >
-                <ProFormText name="name" label="Category Name" rules={[{ required: true }]} placeholder="e.g., Hardware, Software, Network" />
-                <ProFormTextArea name="description" label="Description" placeholder="What types of issues fall under this category?" />
-                <ProFormSelect name="parentId" label="Parent Category" allowClear
-                    options={categories.filter(c => c.id !== editing?.id).map(c => ({ value: c.id, label: c.name }))}
-                />
-                <ProFormSelect name="icon" label="Icon" options={iconOptions} />
-                <ProFormSelect name="status" label="Status"
-                    options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]}
-                />
-            </ModalForm>
+                onCancel={() => { setModalOpen(false); setEditing(null); form.resetFields(); }}
+                onSubmit={handleSave}
+                form={form}
+                title={editing ? "Edit Category" : "New Category"}
+                entityName="category"
+                steps={[
+                    {
+                        title: "Basic Info",
+                        icon: <InfoCircleOutlined />,
+                        fields: ["name", "description"],
+                        content: (
+                            <>
+                                <Form.Item name="name" label="Category Name" rules={[{ required: true }]}>
+                                    <Input placeholder="e.g., Hardware, Software, Network" />
+                                </Form.Item>
+                                <Form.Item name="description" label="Description">
+                                    <Input.TextArea rows={3} placeholder="What types of issues fall under this category?" />
+                                </Form.Item>
+                            </>
+                        ),
+                    },
+                    {
+                        title: "Settings",
+                        icon: <SettingOutlined />,
+                        fields: ["parentId", "icon", "status"],
+                        content: (
+                            <>
+                                <Form.Item name="parentId" label="Parent Category">
+                                    <Select allowClear placeholder="Select parent (optional)"
+                                        options={categories.filter(c => c.id !== editing?.id).map(c => ({ value: c.id, label: c.name }))} />
+                                </Form.Item>
+                                <Row gutter={16}>
+                                    <Col span={12}>
+                                        <Form.Item name="icon" label="Icon">
+                                            <Select options={iconOptions} placeholder="Select icon" />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Form.Item name="status" label="Status">
+                                            <Select options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                            </>
+                        ),
+                    },
+                ]}
+                fields={CATEGORY_FIELDS}
+                width={600}
+                gradient={["#13c2c2", "#36cfc9"]}
+                editMode={!!editing}
+                initialValues={{ status: 'active' }}
+            />
         </div>
+        </CMSLayout>
     );
 }
+

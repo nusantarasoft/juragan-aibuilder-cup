@@ -34,6 +34,7 @@ import {
 } from "@ant-design/icons";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useSearchParams, useRouter } from "next/navigation";
 import dayjs from "dayjs";
@@ -64,6 +65,7 @@ import GovernanceTab from "./components/GovernanceTab";
 import SustainabilityTab from "./components/SustainabilityTab";
 
 const { Text, Title } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 // --- GRAPHQL ---
 const GET_PROJECT = `
@@ -202,6 +204,7 @@ function PmDashboardContent() {
     const [messageApi, contextHolder] = message.useMessage();
     const { resolvedTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
+    const { themeColor } = usePreferencesStore();
     useEffect(() => setMounted(true), []);
     const isDark = mounted && resolvedTheme === 'dark';
 
@@ -294,7 +297,7 @@ function PmDashboardContent() {
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.5 }}
                 >
-                    <ProjectOutlined style={{ fontSize: 64, color: '#8b5cf6', opacity: 0.4 }} />
+                    <ProjectOutlined style={{ fontSize: 64, color: themeColor, opacity: 0.4 }} />
                 </motion.div>
                 <Title level={4} style={{ color: isDark ? '#a78bfa' : '#6d28d9', margin: 0 }}>No Project Selected</Title>
                 <Text type="secondary">Select a project from the Projects list to view its dashboard.</Text>
@@ -303,7 +306,7 @@ function PmDashboardContent() {
                     icon={<ProjectOutlined />}
                     onClick={() => router.push('/admin/pm/projects')}
                     style={{
-                        background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                        background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`,
                         border: 'none',
                         borderRadius: 8,
                         height: 40,
@@ -317,7 +320,7 @@ function PmDashboardContent() {
 
     // Kanban
     const taskStatusMap = {
-        todo: { title: "To Do", color: "#8b5cf6", gradient: "linear-gradient(135deg, #8b5cf620, #8b5cf610)" },
+        todo: { title: "To Do", color: themeColor, gradient: "linear-gradient(135deg, var(--theme-color, #8b5cf6)20, #8b5cf610)" },
         in_progress: { title: "In Progress", color: "#3b82f6", gradient: "linear-gradient(135deg, #3b82f620, #3b82f610)" },
         review: { title: "In Review", color: "#f59e0b", gradient: "linear-gradient(135deg, #f59e0b20, #f59e0b10)" },
         done: { title: "Done", color: "#10b981", gradient: "linear-gradient(135deg, #10b98120, #10b98110)" }
@@ -435,7 +438,7 @@ function PmDashboardContent() {
                 padding: 14,
                 marginBottom: 10,
                 borderRadius: 10,
-                border: isDark ? '1px solid rgba(139, 92, 246, 0.15)' : '1px solid rgba(0,0,0,0.06)',
+                border: isDark ? '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.15)' : '1px solid rgba(0,0,0,0.06)',
                 borderLeft: `3px solid ${getPriorityBorder(t.priority)}`,
                 cursor: "grab",
                 boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.06)',
@@ -451,7 +454,7 @@ function PmDashboardContent() {
                         { key: 'del', label: 'Delete', danger: true },
                     ]
                 }}>
-                    <MoreOutlined style={{ color: isDark ? '#a78bfa' : '#8b5cf6', cursor: 'pointer' }} />
+                    <MoreOutlined style={{ color: isDark ? '#a78bfa' : 'var(--theme-color, #8b5cf6)', cursor: 'pointer' }} />
                 </Dropdown>
             </div>
             <Space size={4} style={{ marginBottom: 8 }}>
@@ -465,7 +468,7 @@ function PmDashboardContent() {
                     <ClockCircleOutlined /> {t.loggedHours || 0} / {t.estimatedHours || 0}h
                 </span>
                 <Avatar size="small" icon={<UserOutlined />} src={t.assignee?.avatarUrl}
-                    style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }} />
+                    style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)` }} />
             </div>
         </motion.div>
     );
@@ -488,7 +491,7 @@ function PmDashboardContent() {
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <Space align="center" size="large">
-                                    <span style={{ fontWeight: 600, fontSize: 13, background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                    <span style={{ fontWeight: 600, fontSize: 13, background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                                         Active Sprint:
                                     </span>
                                     <Select
@@ -520,14 +523,14 @@ function PmDashboardContent() {
                             border: isDark ? '1px solid rgba(139,92,246,0.1)' : '1px solid rgba(139,92,246,0.1)',
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                                <span style={{ fontWeight: 600, fontSize: 14, background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                <span style={{ fontWeight: 600, fontSize: 14, background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                                     Sprint Kanban Board
                                 </span>
                                 <Space>
                                     <Button size="small" type="text" icon={<ReloadOutlined />} onClick={loadTasks} />
                                     <Button size="small" onClick={() => setIsSprintModal(true)}>New Sprint</Button>
                                     <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setIsTaskModal(true)}
-                                        style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', border: 'none', borderRadius: 8 }}>
+                                        style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, border: 'none', borderRadius: 8 }}>
                                         Create Task
                                     </Button>
                                 </Space>
@@ -652,7 +655,7 @@ function PmDashboardContent() {
                                     title={
                                         <div className="flex items-center gap-2">
                                             <span style={{
-                                                background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                                background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                                 WebkitBackgroundClip: 'text',
                                                 WebkitTextFillColor: 'transparent',
                                                 fontWeight: 600,
@@ -668,7 +671,7 @@ function PmDashboardContent() {
                                                 type="text" size="small"
                                                 icon={<MenuFoldOutlined style={{ fontSize: 14 }} />}
                                                 onClick={() => setShowExplorer(false)}
-                                                className="text-gray-400 hover:text-violet-500"
+                                                className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)]"
                                             />
                                         </Tooltip>
                                     }
@@ -683,7 +686,7 @@ function PmDashboardContent() {
                                     styles={{
                                         header: {
                                             background: 'transparent',
-                                            borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+                                            borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
                                             minHeight: 40,
                                             padding: '0 12px'
                                         },
@@ -695,16 +698,16 @@ function PmDashboardContent() {
                                         <div style={{
                                             padding: '10px 12px',
                                             marginBottom: 8,
-                                            background: isDark ? 'rgba(139, 92, 246, 0.08)' : 'rgba(139, 92, 246, 0.05)',
+                                            background: isDark ? 'rgba(var(--theme-color-rgb, 139, 92, 246), 0.08)' : 'rgba(var(--theme-color-rgb, 139, 92, 246), 0.05)',
                                             borderRadius: 8,
                                             margin: '0 8px 12px',
                                         }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                                <ProjectOutlined style={{ color: '#8b5cf6', fontSize: 13 }} />
+                                                <ProjectOutlined style={{ color: themeColor, fontSize: 13 }} />
                                                 <Text strong style={{ fontSize: 12, lineHeight: 1.2 }}>{project.name}</Text>
                                             </div>
                                             <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                                                <Tag bordered={false} style={{ fontSize: 10, borderRadius: 6, padding: '0 6px', margin: 0, background: isDark ? 'rgba(139,92,246,0.15)' : 'rgba(139,92,246,0.1)', color: '#8b5cf6' }}>
+                                                <Tag bordered={false} style={{ fontSize: 10, borderRadius: 6, padding: '0 6px', margin: 0, background: isDark ? 'rgba(139,92,246,0.15)' : 'rgba(139,92,246,0.1)', color: themeColor }}>
                                                     {project.projectNumber}
                                                 </Tag>
                                                 <Tag bordered={false} color={project.status === 'active' ? 'green' : 'default'} style={{ fontSize: 10, borderRadius: 6, padding: '0 6px', margin: 0 }}>
@@ -735,7 +738,7 @@ function PmDashboardContent() {
                                                         <span style={{
                                                             fontSize: 9, padding: '1px 6px', borderRadius: 10,
                                                             background: isDark ? 'rgba(139,92,246,0.15)' : 'rgba(139,92,246,0.1)',
-                                                            color: '#8b5cf6', fontWeight: 600,
+                                                            color: themeColor, fontWeight: 600,
                                                         }}>
                                                             {section.badge}
                                                         </span>
@@ -768,20 +771,20 @@ function PmDashboardContent() {
                                                                 cursor: isDisabled ? 'not-allowed' : 'pointer',
                                                                 opacity: isDisabled ? 0.4 : 1,
                                                                 background: isActive
-                                                                    ? (isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.08)')
+                                                                    ? (isDark ? 'rgba(var(--theme-color-rgb, 139, 92, 246), 0.15)' : 'rgba(var(--theme-color-rgb, 139, 92, 246), 0.08)')
                                                                     : 'transparent',
-                                                                borderLeft: isActive ? '3px solid #8b5cf6' : '3px solid transparent',
+                                                                borderLeft: isActive ? `3px solid ${themeColor}` : '3px solid transparent',
                                                                 transition: 'all 0.15s ease',
                                                                 fontSize: 12,
                                                                 fontWeight: isActive ? 600 : 400,
                                                                 color: isActive
-                                                                    ? '#8b5cf6'
+                                                                    ? 'var(--theme-color, #8b5cf6)'
                                                                     : (isDark ? '#94a3b8' : '#64748b'),
                                                             }}
                                                         >
                                                             <span style={{
                                                                 fontSize: 14,
-                                                                color: isActive ? '#8b5cf6' : (isDark ? '#64748b' : '#94a3b8'),
+                                                                color: isActive ? 'var(--theme-color, #8b5cf6)' : (isDark ? '#64748b' : '#94a3b8'),
                                                                 transition: 'color 0.15s ease',
                                                             }}>
                                                                 {item.icon}
@@ -795,7 +798,7 @@ function PmDashboardContent() {
                                     </div>
 
                                     {/* Back to Projects */}
-                                    <div style={{ padding: '8px 12px', borderTop: '1px solid rgba(139, 92, 246, 0.1)', marginTop: 'auto' }}>
+                                    <div style={{ padding: '8px 12px', borderTop: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.1)', marginTop: 'auto' }}>
                                         <Button
                                             type="text"
                                             block
@@ -835,7 +838,7 @@ function PmDashboardContent() {
                                 </Tooltip>
                             )}
                             <span style={{
-                                background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                 WebkitBackgroundClip: 'text',
                                 WebkitTextFillColor: 'transparent',
                                 fontWeight: 600, fontSize: 16,
@@ -843,7 +846,7 @@ function PmDashboardContent() {
                                 {activeItem?.label || 'Dashboard'}
                             </span>
                             {activeItem && (
-                                <span style={{ color: activeItem.key === activeTab ? '#8b5cf6' : '#94a3b8', fontSize: 16 }}>
+                                <span style={{ color: activeItem.key === activeTab ? 'var(--theme-color, #8b5cf6)' : '#94a3b8', fontSize: 16 }}>
                                     {activeItem.icon}
                                 </span>
                             )}
@@ -852,7 +855,7 @@ function PmDashboardContent() {
                         <Space>
                             <Button size="small" type="text" icon={<ReloadOutlined />}
                                 onClick={() => { loadProjectAndSprints(); loadTasks(); }}
-                                className="text-gray-400 hover:text-violet-500" />
+                                className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)]" />
                         </Space>
                     </div>
 
@@ -906,11 +909,11 @@ function PmDashboardContent() {
 
             {/* AI Sprint Analysis Modal */}
             <Modal
-                title={<Space><RobotOutlined style={{ color: '#8b5cf6' }} /><span>AI Sprint Risk Analysis</span></Space>}
+                title={<Space><RobotOutlined style={{ color: themeColor }} /><span>AI Sprint Risk Analysis</span></Space>}
                 open={isAnalysisModal}
                 onCancel={() => setIsAnalysisModal(false)}
                 footer={[<Button key="close" type="primary" onClick={() => setIsAnalysisModal(false)}
-                    style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', border: 'none' }}>Got it</Button>]}
+                    style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, border: 'none' }}>Got it</Button>]}
                 width={700}
             >
                 {sprintAnalysis && (
@@ -955,11 +958,11 @@ function PmDashboardContent() {
 
             {/* AI Sprint Retrospective Modal */}
             <Modal
-                title={<Space><RobotOutlined style={{ color: '#8b5cf6' }} /><span>AI Sprint Retrospective</span></Space>}
+                title={<Space><RobotOutlined style={{ color: themeColor }} /><span>AI Sprint Retrospective</span></Space>}
                 open={isRetroModal}
                 onCancel={() => setIsRetroModal(false)}
                 footer={[<Button key="close" type="primary" onClick={() => setIsRetroModal(false)}
-                    style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', border: 'none' }}>Got it</Button>]}
+                    style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, border: 'none' }}>Got it</Button>]}
                 width={800}
             >
                 <div style={{
@@ -976,9 +979,10 @@ function PmDashboardContent() {
 }
 
 export default function PmDashboardPage() {
+    const { themeColor } = usePreferencesStore();
     return (
         <CMSLayout
-            title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>Project Management</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Project Management</AuroraText>}
             subTitle={
                 <DecryptedText
                     text="PMBOK Dashboard — Sprint & Task Tracking"

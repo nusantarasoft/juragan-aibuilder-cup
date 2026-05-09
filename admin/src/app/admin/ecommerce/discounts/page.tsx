@@ -2,18 +2,23 @@
 
 import React, { useState, useEffect } from "react";
 import { Table, Tag, Card, Typography, Input, Space, Button, Tooltip, Row, Col, message, Modal, Select, Form, InputNumber, Switch, DatePicker } from "antd";
-import { PercentageOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, PlusOutlined, EditOutlined, CopyOutlined, ThunderboltOutlined } from "@ant-design/icons";
+import { PercentageOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, PlusOutlined, EditOutlined, CopyOutlined, ThunderboltOutlined , FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { inventoryService, EcomDiscount, EcomDiscountStatsType } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import dayjs from "dayjs";
 
 const { Text } = Typography;
-const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : '—';
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
+const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : 'â€”';
 
 const DISCOUNT_FIELDS: FieldDef[] = [
     { name: 'name', label: 'Discount Name', required: true },
@@ -35,6 +40,8 @@ const DISCOUNT_FIELDS: FieldDef[] = [
 
 export default function DiscountsPage() {
     const [stats, setStats] = useState<EcomDiscountStatsType | null>(null);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [discounts, setDiscounts] = useState<EcomDiscount[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -124,7 +131,7 @@ export default function DiscountsPage() {
     const kpiCards = [
         { title: 'Total Discounts', value: stats?.totalDiscounts || 0, icon: <PercentageOutlined />, color: '#10b981' },
         { title: 'Active', value: stats?.active || 0, icon: <CheckCircleOutlined />, color: '#3b82f6' },
-        { title: 'Coupons', value: stats?.coupons || 0, icon: <CopyOutlined />, color: '#8b5cf6' },
+        { title: 'Coupons', value: stats?.coupons || 0, icon: <CopyOutlined />, color: themeColor },
         { title: 'Auto-Apply', value: stats?.autoApply || 0, icon: <ThunderboltOutlined />, color: '#f59e0b' },
         { title: 'Expired', value: stats?.expired || 0, icon: <ClockCircleOutlined />, color: '#94a3b8' },
         { title: 'Total Used', value: stats?.totalUsed || 0, icon: <DollarOutlined />, color: '#ef4444' },
@@ -150,11 +157,11 @@ export default function DiscountsPage() {
                 </Text>
             ),
         },
-        { title: 'Min Order', dataIndex: 'minOrderAmount', width: 130, render: (v: number) => v ? fmtCurrency(v) : '—' },
+        { title: 'Min Order', dataIndex: 'minOrderAmount', width: 130, render: (v: number) => v ? fmtCurrency(v) : 'â€”' },
         { title: 'Uses', key: 'uses', width: 100,
             render: (_: any, r: EcomDiscount) => <Text>{r.timesUsed || 0}{r.usageLimit ? ` / ${r.usageLimit}` : ''}</Text> },
         { title: 'Valid Until', dataIndex: 'validUntil', width: 120,
-            render: (v: string) => v ? new Date(v).toLocaleDateString() : '∞' },
+            render: (v: string) => v ? new Date(v).toLocaleDateString() : 'âˆž' },
         { title: 'Features', key: 'features', width: 140,
             render: (_: any, r: EcomDiscount) => (
                 <Space size={4}>
@@ -222,7 +229,7 @@ export default function DiscountsPage() {
                     <Row gutter={16}>
                         <Col span={8}><Form.Item name="validFrom" label="Valid From"><DatePicker showTime style={{ width: '100%' }} /></Form.Item></Col>
                         <Col span={8}><Form.Item name="validUntil" label="Valid Until"><DatePicker showTime style={{ width: '100%' }} /></Form.Item></Col>
-                        <Col span={4}><Form.Item name="usageLimit" label="Usage Limit"><InputNumber min={0} style={{ width: '100%' }} placeholder="0=∞" /></Form.Item></Col>
+                        <Col span={4}><Form.Item name="usageLimit" label="Usage Limit"><InputNumber min={0} style={{ width: '100%' }} placeholder="0=âˆž" /></Form.Item></Col>
                         <Col span={4}><Form.Item name="appliesTo" label="Applies To" initialValue="order">
                             <Select options={[{ value: 'order', label: 'Order' }, { value: 'item', label: 'Item' }, { value: 'shipping', label: 'Shipping' }]} />
                         </Form.Item></Col>
@@ -248,8 +255,7 @@ export default function DiscountsPage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                                    ...glass,
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -265,7 +271,7 @@ export default function DiscountsPage() {
                     ))}
                 </Row>
 
-                <Card size="small" style={{ flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)' }}>
+                <Card size="small" style={{ flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)' }}>
                     <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                         <div className="flex items-center gap-3">
                             <Input prefix={<SearchOutlined className="text-gray-400" />} placeholder="Search discounts or codes..."
@@ -275,6 +281,7 @@ export default function DiscountsPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_discounts', title: 'eCommerce Discounts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Type', key: 'discountType' }, { header: 'Value', key: 'value' }, { header: 'Status', key: 'status' }], data: discounts })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_discounts', title: 'eCommerce Discounts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'code' }, { header: 'Type', key: 'discountType' }, { header: 'Value', key: 'value' }, { header: 'Status', key: 'status' }], data: discounts })} /></Tooltip></RbacGuard>
                             <Button type="primary" icon={<PlusOutlined />} onClick={openNew}
                                 style={{ background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: 8 }}>
                                 New Discount
@@ -303,3 +310,5 @@ export default function DiscountsPage() {
         </CMSLayout>
     );
 }
+
+

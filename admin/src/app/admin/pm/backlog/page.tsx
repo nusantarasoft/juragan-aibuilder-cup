@@ -2,21 +2,24 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
-import {
-    Typography, Space, Spin, Tag, Card, Row, Col, Statistic, Input,
-    Table, Empty, Select, Tooltip, Progress, Badge, Button, Drawer, Descriptions
-} from "antd";
+import { motion } from "framer-motion";
+import RbacGuard from "@/components/common/RbacGuard";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { Badge, Button, Card, Col, Descriptions, Drawer, Empty, Input, Progress, Row, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography } from "antd";
 import {
     UnorderedListOutlined, SearchOutlined, FilterOutlined,
     ProjectOutlined, ClockCircleOutlined, CheckCircleOutlined,
     ExclamationCircleOutlined, UserOutlined, FireOutlined,
     ThunderboltOutlined, CalendarOutlined, DashboardOutlined,
-    ArrowUpOutlined, MinusOutlined, ArrowDownOutlined
-} from "@ant-design/icons";
+    ArrowUpOutlined, MinusOutlined, ArrowDownOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text } = Typography;
 
@@ -52,7 +55,7 @@ const GET_PROJECTS = `
 const STATUS_CONFIG: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
     todo: { color: '#64748b', icon: <UnorderedListOutlined />, label: 'To Do' },
     in_progress: { color: '#3b82f6', icon: <ClockCircleOutlined />, label: 'In Progress' },
-    in_review: { color: '#8b5cf6', icon: <ThunderboltOutlined />, label: 'In Review' },
+    in_review: { color: 'var(--theme-color, #8b5cf6)', icon: <ThunderboltOutlined />, label: 'In Review' },
     done: { color: '#10b981', icon: <CheckCircleOutlined />, label: 'Done' },
     blocked: { color: '#ef4444', icon: <ExclamationCircleOutlined />, label: 'Blocked' },
 };
@@ -67,6 +70,8 @@ const PRIORITY_CONFIG: Record<string, { color: string; icon: React.ReactNode }> 
 export default function BacklogPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [tasks, setTasks] = useState<any[]>([]);
     const [projects, setProjects] = useState<any[]>([]);
     const [search, setSearch] = useState("");
@@ -214,7 +219,7 @@ export default function BacklogPage() {
             width: 130,
             render: (_: any, record: any) => record.assignee ? (
                 <Space size={4}>
-                    <UserOutlined style={{ color: '#8b5cf6' }} />
+                    <UserOutlined style={{ color: themeColor }} />
                     <Text style={{ fontSize: 12 }}>{record.assignee.firstName} {record.assignee.lastName}</Text>
                 </Space>
             ) : <Text type="secondary" style={{ fontSize: 11 }}>Unassigned</Text>,
@@ -268,7 +273,8 @@ export default function BacklogPage() {
 
     if (loading) {
         return (
-            <CMSLayout title="Backlog" subTitle="All tasks across all projects">
+            <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Backlog</AuroraText>}
+            subTitle={<DecryptedText text="All tasks across all projects" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_backlog', title: 'PM Backlog Tasks', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Project', key: 'projectName' }], data: tasks })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_backlog', title: 'PM Backlog Tasks', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Project', key: 'projectName' }], data: tasks })} /></Tooltip></RbacGuard>]}>
                 <div style={{ textAlign: 'center', padding: 120 }}>
                     <Spin size="large" />
                 </div>
@@ -277,68 +283,26 @@ export default function BacklogPage() {
     }
 
     return (
-        <CMSLayout title="Backlog" subTitle="All tasks across all projects">
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Backlog</AuroraText>}
+            subTitle={<DecryptedText text="All tasks across all projects" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_backlog', title: 'PM Backlog Tasks', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Project', key: 'projectName' }], data: tasks })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_backlog', title: 'PM Backlog Tasks', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Project', key: 'projectName' }], data: tasks })} /></Tooltip></RbacGuard>]}>
             {/* ── Stats Row ── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #6366f1' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 12 }}>Total Tasks</span>}
-                            value={totalTasks}
-                            prefix={<UnorderedListOutlined style={{ color: '#6366f1' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 700 }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #64748b' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 12 }}>To Do</span>}
-                            value={todoCount}
-                            valueStyle={{ fontSize: 24, fontWeight: 700, color: '#64748b' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #3b82f6' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 12 }}>In Progress</span>}
-                            value={inProgressCount}
-                            prefix={<ClockCircleOutlined style={{ color: '#3b82f6' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 700, color: '#3b82f6' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #10b981' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 12 }}>Done</span>}
-                            value={doneCount}
-                            prefix={<CheckCircleOutlined style={{ color: '#10b981' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #ef4444' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 12 }}>Overdue</span>}
-                            value={overdueCount}
-                            prefix={<ExclamationCircleOutlined style={{ color: '#ef4444' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 700, color: '#ef4444' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #f59e0b' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 12 }}>Unassigned</span>}
-                            value={unassignedCount}
-                            prefix={<UserOutlined style={{ color: '#f59e0b' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 700, color: '#f59e0b' }}
-                        />
-                    </Card>
-                </Col>
+                {[
+                    { title: 'Total Tasks', value: totalTasks, icon: <UnorderedListOutlined style={{ color: themeColor }} />, color: '#6366f1' },
+                    { title: 'To Do', value: todoCount, color: '#64748b' },
+                    { title: 'In Progress', value: inProgressCount, icon: <ClockCircleOutlined style={{ color: '#3b82f6' }} />, color: '#3b82f6' },
+                    { title: 'Done', value: doneCount, icon: <CheckCircleOutlined style={{ color: '#10b981' }} />, color: '#10b981' },
+                    { title: 'Overdue', value: overdueCount, icon: <ExclamationCircleOutlined style={{ color: '#ef4444' }} />, color: '#ef4444' },
+                    { title: 'Unassigned', value: unassignedCount, icon: <UserOutlined style={{ color: '#f59e0b' }} />, color: '#f59e0b' },
+                ].map((s, i) => (
+                    <Col key={i} xs={24} sm={12} lg={4}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card style={{ ...glassCard, borderTop: `3px solid ${s.color}` }} size="small">
+                                <Statistic title={<span style={{ fontSize: 12 }}>{s.title}</span>} value={s.value} prefix={s.icon} valueStyle={{ fontSize: 24, fontWeight: 700, color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
             </Row>
 
             {/* ── Effort Summary ── */}
@@ -353,7 +317,7 @@ export default function BacklogPage() {
                         <Progress
                             percent={totalEstimated > 0 ? Math.round((totalLogged / totalEstimated) * 100) : 0}
                             size="small"
-                            strokeColor={{ '0%': '#8b5cf6', '100%': '#6366f1' }}
+                            strokeColor={{ '0%': 'var(--theme-color, #8b5cf6)', '100%': 'var(--theme-secondary, #6366f1)' }}
                             trailColor={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}
                         />
                     </Col>
@@ -426,7 +390,7 @@ export default function BacklogPage() {
             <Card
                 title={
                     <Space>
-                        <UnorderedListOutlined style={{ color: '#8b5cf6' }} />
+                        <UnorderedListOutlined style={{ color: themeColor }} />
                         <span style={{ fontWeight: 600 }}>All Tasks</span>
                         <Tag color="purple">{filtered.length}</Tag>
                     </Space>
@@ -442,7 +406,7 @@ export default function BacklogPage() {
                         }
                     />
                 ) : (
-                    <Table
+                    <Table scroll={{ x: 900 }}
                         dataSource={filtered}
                         columns={columns}
                         rowKey="id"
@@ -461,7 +425,7 @@ export default function BacklogPage() {
             <Drawer
                 title={
                     <Space>
-                        <UnorderedListOutlined style={{ color: '#8b5cf6' }} />
+                        <UnorderedListOutlined style={{ color: themeColor }} />
                         <span>Task Details</span>
                     </Space>
                 }
@@ -526,7 +490,7 @@ export default function BacklogPage() {
                         </Descriptions>
 
                         {viewingTask.description && (
-                            <Card size="small" title="Description" style={{ marginTop: 16, borderLeft: '3px solid #8b5cf6' }}>
+                            <Card size="small" title="Description" style={{ marginTop: 16, borderLeft: `3px solid ${themeColor}` }}>
                                 <div style={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>{viewingTask.description}</div>
                             </Card>
                         )}
@@ -547,3 +511,8 @@ export default function BacklogPage() {
         </CMSLayout>
     );
 }
+
+
+
+
+

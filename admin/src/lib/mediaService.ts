@@ -1008,6 +1008,34 @@ export const mediaService = {
         }
     },
 
+    async getEmbeddingStatus(id: string): Promise<{
+        status: string;
+        progress: number;
+        chunkCount: number;
+        ragflowDocId: string | null;
+        progressMsg: string;
+    }> {
+        const query = `
+            query EmbeddingStatus($id: String!) {
+                embeddingStatus(id: $id) {
+                    status
+                    progress
+                    chunkCount
+                    ragflowDocId
+                    progressMsg
+                }
+            }
+        `;
+
+        try {
+            const data = await graphqlRequest<{ embeddingStatus: any }>(query, { id });
+            return data.embeddingStatus;
+        } catch (error) {
+            console.error("[mediaService] Error getting embedding status:", error);
+            return { status: 'error', progress: 0, chunkCount: 0, ragflowDocId: null, progressMsg: 'Failed to fetch status' };
+        }
+    },
+
     async autoLabelMedia(id: string): Promise<string[]> {
         const mutation = `
             mutation AutoLabelMedia($id: String!) {

@@ -48,10 +48,13 @@ import {
     Divider,
 } from "antd";
 import AIStudioDrawer from "./AIStudioDrawer";
+import ThemeDrawer from "./ThemeDrawer";
 import { useRouter, usePathname } from "next/navigation";
 import menuConfig from "@/config/menuConfig";
 import GlitchText from "@/components/react-bits/GlitchText";
-import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { usePreferencesStore, hexToRgb } from "@/store/usePreferencesStore";
+import GlobalDateRangePicker from "@/components/common/GlobalDateRangePicker";
+import NotificationBell from "@/components/common/NotificationBell";
 // Dynamic import for MetaBalls to prevent SSR crash (ogl WebGL library requires browser)
 const MetaBalls = dynamic(
     () => import("@/components/react-bits/MetaBalls"),
@@ -335,6 +338,9 @@ export default function CMSLayout({
     const [appListOpen, setAppListOpen] = useState(false);
     const [showBackground, setShowBackground] = useState(true);
     const [aiStudioVisible, setAIStudioVisible] = useState(false);
+    const [themeDrawerVisible, setThemeDrawerVisible] = useState(false);
+    const { themePalette } = usePreferencesStore();
+    const themeColor = themePalette.primary;
 
     // Controlled openKeys to prevent submenu collapse on navigation
     const [openKeys, setOpenKeys] = useState<string[]>(() => {
@@ -515,7 +521,7 @@ export default function CMSLayout({
                         icon={
                             <ShareAltOutlined 
                                 style={{ 
-                                    color: "#8b5cf6", // Purple color
+                                    color: themeColor, // Theme color
                                     fontSize: 18 
                                 }} 
                             />
@@ -632,7 +638,7 @@ export default function CMSLayout({
         }, 500);
     };
 
-    // Sync dark class on initial hydration
+    // Sync dark class and theme color CSS variable on initial hydration
     React.useEffect(() => {
         if (darkMode) {
             document.documentElement.classList.add("dark");
@@ -641,9 +647,25 @@ export default function CMSLayout({
         }
     }, [darkMode]);
 
+    // Sync full theme palette as CSS variables on documentElement
+    React.useEffect(() => {
+        const root = document.documentElement;
+        root.style.setProperty('--theme-color', themePalette.primary);
+        root.style.setProperty('--theme-secondary', themePalette.secondary);
+        root.style.setProperty('--theme-accent', themePalette.accent);
+        root.style.setProperty('--theme-sidebar-bg', themePalette.sidebarBg);
+        root.style.setProperty('--theme-header-bg', themePalette.headerBg);
+        // RGB variants for rgba() usage
+        const pRgb = hexToRgb(themePalette.primary);
+        root.style.setProperty('--theme-color-rgb', `${pRgb.r}, ${pRgb.g}, ${pRgb.b}`);
+        const sRgb = hexToRgb(themePalette.secondary);
+        root.style.setProperty('--theme-secondary-rgb', `${sRgb.r}, ${sRgb.g}, ${sRgb.b}`);
+        const aRgb = hexToRgb(themePalette.accent);
+        root.style.setProperty('--theme-accent-rgb', `${aRgb.r}, ${aRgb.g}, ${aRgb.b}`);
+    }, [themePalette]);
+
     // Force sticky sidebar for inner layout
     React.useEffect(() => {
-        // Function to apply sticky styles with !important
         const applySticky = () => {
             const sider = document.querySelector(".cms-inner-sider");
             if (sider instanceof HTMLElement) {
@@ -655,15 +677,17 @@ export default function CMSLayout({
             }
         };
 
-        // Apply immediately
-        console.log("Run Stick Fix - Attempting to apply sticky styles...");
         applySticky();
 
-        // Re-apply periodically to fight against AntD re-renders
-        const intervalId = setInterval(applySticky, 500);
+        // Re-apply periodically (less aggressively)
+        const intervalId = setInterval(applySticky, 2000);
 
-        // And observe for changes
-        const observer = new MutationObserver(applySticky);
+        // Debounced observer to reduce DOM thrashing  
+        let debounceTimer: ReturnType<typeof setTimeout>;
+        const observer = new MutationObserver(() => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(applySticky, 100);
+        });
         const container = document.querySelector(".cms-inner-layout");
         if (container) {
             observer.observe(container, { childList: true, subtree: true });
@@ -671,9 +695,142 @@ export default function CMSLayout({
 
         return () => {
             clearInterval(intervalId);
+            clearTimeout(debounceTimer);
             observer.disconnect();
         };
     }, [pathname, innerCollapsed]);
+    // Force menu icons visible in collapsed mode for OUTER sidebar.
+    // Ant's CSS-in-JS hides .ant-menu-title-content (opacity:0, max-width:0px, overflow:hidden)
+    // for collapsed menus. We override with element.style.setProperty which beats all CSS.
+    const collapsedFixProps = ['overflow', 'display', 'align-items', 'justify-content', 'padding-inline', 'opacity', 'max-width', 'gap'];
+    React.useEffect(() => {
+        if (!outerCollapsed) {
+            // Clean up only the properties we added, not React inline styles
+            document.querySelectorAll('[data-collapsed-fix]').forEach(el => {
+                const s = (el as HTMLElement).style;
+                collapsedFixProps.forEach(p => s.removeProperty(p));
+                (el as HTMLElement).removeAttribute('data-collapsed-fix');
+            });
+            // Also clean up child elements
+            document.querySelectorAll('[data-collapsed-child-fix]').forEach(el => {
+                const s = (el as HTMLElement).style;
+                collapsedFixProps.forEach(p => s.removeProperty(p));
+                s.removeProperty('width');
+                (el as HTMLElement).removeAttribute('data-collapsed-child-fix');
+            });
+            return;
+        }
+
+        const fixTitleContent = (tc: HTMLElement) => {
+            tc.style.setProperty('opacity', '1', 'important');
+            tc.style.setProperty('max-width', 'none', 'important');
+            tc.style.setProperty('overflow', 'visible', 'important');
+            tc.style.setProperty('display', 'inline-flex', 'important');
+            tc.style.setProperty('align-items', 'center', 'important');
+            tc.style.setProperty('justify-content', 'center', 'important');
+            tc.dataset.collapsedChildFix = '1';
+        };
+
+        const fix = () => {
+            const root = document.getElementById('cms-pro-layout');
+            if (!root) return;
+
+            // Fix SUBMENU items (parents with children)
+            root.querySelectorAll('.ant-menu-submenu > .ant-menu-submenu-title').forEach(title => {
+                const t = title as HTMLElement;
+                if (t.closest('.cms-inner-sider')) return;
+                t.style.setProperty('overflow', 'visible', 'important');
+                t.style.setProperty('display', 'flex', 'important');
+                t.style.setProperty('align-items', 'center', 'important');
+                t.style.setProperty('justify-content', 'center', 'important');
+                t.style.setProperty('padding-inline', 'calc(50% - 8px)', 'important');
+                t.dataset.collapsedFix = '1';
+
+                t.querySelectorAll('.ant-menu-title-content').forEach(tc => fixTitleContent(tc as HTMLElement));
+                t.querySelectorAll('.submenu-text-el').forEach(txt => {
+                    (txt as HTMLElement).style.setProperty('display', 'none', 'important');
+                    (txt as HTMLElement).dataset.collapsedChildFix = '1';
+                });
+                t.querySelectorAll('.submenu-item-wrapper').forEach(w => {
+                    const s = (w as HTMLElement).style;
+                    s.setProperty('justify-content', 'center', 'important');
+                    s.setProperty('gap', '0', 'important');
+                    (w as HTMLElement).dataset.collapsedChildFix = '1';
+                });
+                t.querySelectorAll('.ant-menu-submenu-arrow').forEach(a => {
+                    (a as HTMLElement).style.setProperty('display', 'none', 'important');
+                    (a as HTMLElement).dataset.collapsedChildFix = '1';
+                });
+            });
+
+            // Fix LEAF menu items (no children, e.g. Dashboard, Media Library, AI Studio)
+            root.querySelectorAll('.cms-outer-sider .ant-menu-item').forEach(menuItem => {
+                const mi = menuItem as HTMLElement;
+                if (mi.closest('.cms-inner-sider')) return;
+                mi.style.setProperty('overflow', 'visible', 'important');
+                mi.style.setProperty('display', 'flex', 'important');
+                mi.style.setProperty('align-items', 'center', 'important');
+                mi.style.setProperty('justify-content', 'center', 'important');
+                mi.style.setProperty('padding-inline', 'calc(50% - 8px)', 'important');
+                mi.dataset.collapsedFix = '1';
+
+                mi.querySelectorAll('.ant-menu-title-content').forEach(tc => fixTitleContent(tc as HTMLElement));
+                mi.querySelectorAll('.menuitem-text-el').forEach(txt => {
+                    (txt as HTMLElement).style.setProperty('display', 'none', 'important');
+                    (txt as HTMLElement).dataset.collapsedChildFix = '1';
+                });
+                mi.querySelectorAll('.menuitem-wrapper').forEach(w => {
+                    const s = (w as HTMLElement).style;
+                    s.setProperty('justify-content', 'center', 'important');
+                    s.setProperty('gap', '0', 'important');
+                    (w as HTMLElement).dataset.collapsedChildFix = '1';
+                });
+            });
+        };
+
+        const id = setInterval(fix, 300);
+        fix();
+        return () => clearInterval(id);
+    }, [outerCollapsed]);
+
+    // Force inner sidebar icons visible in collapsed mode
+    React.useEffect(() => {
+        if (!innerCollapsed) {
+            document.querySelectorAll('[data-inner-collapsed-fix]').forEach(el => {
+                const s = (el as HTMLElement).style;
+                collapsedFixProps.forEach(p => s.removeProperty(p));
+                (el as HTMLElement).removeAttribute('data-inner-collapsed-fix');
+            });
+            return;
+        }
+
+        const fixInner = () => {
+            const innerSider = document.querySelector('.cms-inner-sider');
+            if (!innerSider) return;
+            innerSider.querySelectorAll('.ant-menu-item').forEach(menuItem => {
+                const mi = menuItem as HTMLElement;
+                mi.style.setProperty('overflow', 'visible', 'important');
+                mi.style.setProperty('display', 'flex', 'important');
+                mi.style.setProperty('align-items', 'center', 'important');
+                mi.style.setProperty('justify-content', 'center', 'important');
+                mi.dataset.innerCollapsedFix = '1';
+                mi.querySelectorAll('.ant-menu-title-content').forEach(tc => {
+                    const s = (tc as HTMLElement).style;
+                    s.setProperty('opacity', '1', 'important');
+                    s.setProperty('max-width', 'none', 'important');
+                    s.setProperty('overflow', 'visible', 'important');
+                    s.setProperty('display', 'inline-flex', 'important');
+                    s.setProperty('align-items', 'center', 'important');
+                    s.setProperty('justify-content', 'center', 'important');
+                    (tc as HTMLElement).dataset.innerCollapsedFix = '1';
+                });
+            });
+        };
+
+        const id = setInterval(fixInner, 300);
+        fixInner();
+        return () => clearInterval(id);
+    }, [innerCollapsed]);
 
     // Auto-generate breadcrumb if not provided
     const breadcrumbItems = breadcrumb || generateBreadcrumb(currentPath || "/admin/dashboard");
@@ -711,6 +868,13 @@ export default function CMSLayout({
                     }}
                     theme={{
                         algorithm: darkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
+                        cssVar: { prefix: 'cms' },
+                        hashed: false,
+                        token: {
+                            colorPrimary: themePalette.primary,
+                            colorLink: themePalette.accent,
+                            colorInfo: themePalette.secondary,
+                        },
                     }}
                 >
                     {/* OUTER PROLAYOUT - Main section navigation */}
@@ -728,12 +892,35 @@ export default function CMSLayout({
                         headerRender={false}
                         siderWidth={260}
                         navTheme={darkMode ? "realDark" : "light"}
+                        token={{ sider: { colorMenuBackground: darkMode ? themePalette.sidebarBg : undefined, colorTextMenu: darkMode ? 'rgba(255,255,255,0.75)' : undefined, colorTextMenuSelected: darkMode ? '#fff' : themePalette.primary, colorBgMenuItemSelected: `${themePalette.primary}${darkMode ? '40' : '15'}`, colorTextMenuItemHover: darkMode ? '#fff' : themePalette.primary, colorBgMenuItemHover: `${themePalette.primary}${darkMode ? '20' : '08'}` } }}
                         layout="side"
                         contentStyle={{
                             padding: 0,
                             margin: 0,
                         }}
                         menuHeaderRender={false}
+
+                        menuDataRender={(menuData) => {
+                            // Ensure icons from menuConfig are preserved on all items
+                            // ProLayout may strip icons from submenu parents during transformation
+                            const attachIcons = (items: any[]): any[] => {
+                                return items.map(item => {
+                                    const route = findMenuItemByPath(menuConfig.route.routes, item.path || '');
+                                    const result = { ...item };
+                                    if (route?.icon && !result.icon) {
+                                        result.icon = route.icon;
+                                    }
+                                    if (result.children) {
+                                        result.children = attachIcons(result.children);
+                                    }
+                                    if (result.routes) {
+                                        result.routes = attachIcons(result.routes);
+                                    }
+                                    return result;
+                                });
+                            };
+                            return attachIcons(menuData);
+                        }}
                         menuProps={{
                             openKeys,
                             onOpenChange: (keys) => setOpenKeys(keys as string[]),
@@ -771,8 +958,8 @@ export default function CMSLayout({
                                                 speed={0.5}
                                                 enableShadows={true}
                                                 color={darkMode ? '#ffffff' : '#333333'}
-                                                glitchColor1="#00ffff"
-                                                glitchColor2="#ff00ff"
+                                                glitchColor1={themePalette.accent}
+                                                glitchColor2={themePalette.secondary}
                                             >
                                                 NS
                                             </GlitchText>
@@ -853,15 +1040,16 @@ export default function CMSLayout({
                                                     speed={0.5}
                                                     enableShadows={true}
                                                     color={darkMode ? '#ffffff' : '#333333'}
-                                                    glitchColor1="#00ffff"
-                                                    glitchColor2="#ff00ff"
+                                                    glitchColor1={themePalette.accent}
+                                                    glitchColor2={themePalette.secondary}
                                                 >
                                                     NS
                                                 </GlitchText>
                                             </div>
                                         </div>
-                                        {/* Right: Dark/Light Toggle */}
-                                        <div style={{ marginLeft: 16, flexShrink: 0 }}>
+                                        {/* Right: Notification Bell + Dark/Light Toggle */}
+                                        <div style={{ marginLeft: 16, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <NotificationBell />
                                             <AnimatedThemeToggler
                                                 isDark={darkMode}
                                                 onThemeChange={handleDarkModeChange}
@@ -875,39 +1063,96 @@ export default function CMSLayout({
                                 )}
                             </div>
                         )}
-                        menuItemRender={(item, dom) => (
-                            <div
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    const targetPath = item.path || "/admin/dashboard";
-                                    setPathname(targetPath);
-                                    router.push(targetPath);
-                                }}
-                                onClickCapture={(e) => {
-                                    // Intercept <a> tag clicks before they cause navigation
-                                    const target = e.target as HTMLElement;
-                                    if (target.tagName === 'A' || target.closest('a')) {
+                        menuItemRender={(item, dom) => {
+                            // Unified rendering for both collapsed and expanded modes.
+                            // Uses classes so the useEffect can target elements precisely.
+                            const route = findMenuItemByPath(menuConfig.route.routes, item.path || '');
+                            const icon = route?.icon;
+
+                            if (icon) {
+                                return (
+                                    <div
+                                        className="menuitem-wrapper"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            const targetPath = item.path || "/admin/dashboard";
+                                            setPathname(targetPath);
+                                            router.push(targetPath);
+                                        }}
+                                        onClickCapture={(e) => {
+                                            const target = e.target as HTMLElement;
+                                            if (target.tagName === 'A' || target.closest('a')) {
+                                                e.preventDefault();
+                                            }
+                                        }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+                                    >
+                                        <span className="anticon menuitem-icon-el" style={{ display: 'inline-flex', fontSize: 16, flexShrink: 0 }}>{icon}</span>
+                                        <span className="menuitem-text-el">{item.name}</span>
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div
+                                    onClick={(e) => {
                                         e.preventDefault();
-                                    }
-                                }}
-                                style={{ cursor: "pointer" }}
-                            >
-                                {dom}
-                            </div>
-                        )}
-                        subMenuItemRender={(item, dom) => (
-                            <div
-                                onClickCapture={(e) => {
-                                    const target = e.target as HTMLElement;
-                                    if (target.tagName === 'A' || target.closest('a')) {
-                                        e.preventDefault();
-                                    }
-                                }}
-                            >
-                                {dom}
-                            </div>
-                        )}
+                                        e.stopPropagation();
+                                        const targetPath = item.path || "/admin/dashboard";
+                                        setPathname(targetPath);
+                                        router.push(targetPath);
+                                    }}
+                                    onClickCapture={(e) => {
+                                        const target = e.target as HTMLElement;
+                                        if (target.tagName === 'A' || target.closest('a')) {
+                                            e.preventDefault();
+                                        }
+                                    }}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    {dom}
+                                </div>
+                            );
+                        }}
+                        subMenuItemRender={(item, dom) => {
+                            const route = findMenuItemByPath(menuConfig.route.routes, item.path || '');
+                            const icon = route?.icon;
+
+                            // Render a consistent structure for both collapsed and expanded modes.
+                            // The useEffect handles hiding text in collapsed mode via inline styles.
+                            if (icon) {
+                                return (
+                                    <div
+                                        className="submenu-item-wrapper"
+                                        onClickCapture={(e) => {
+                                            const target = e.target as HTMLElement;
+                                            if (target.tagName === 'A' || target.closest('a')) {
+                                                e.preventDefault();
+                                            }
+                                        }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                                    >
+                                        <span className="anticon submenu-icon-el" style={{ display: 'inline-flex', fontSize: 16, flexShrink: 0 }}>{icon}</span>
+                                        <span className="submenu-text-el">{item.name}</span>
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div
+                                    onClickCapture={(e) => {
+                                        const target = e.target as HTMLElement;
+                                        if (target.tagName === 'A' || target.closest('a')) {
+                                            e.preventDefault();
+                                        }
+                                    }}
+                                >
+                                    {dom}
+                                </div>
+                            );
+                        }}
+
 
                     >
                         {/* INNER PROLAYOUT - Sub-navigation with segmented header */}
@@ -926,6 +1171,7 @@ export default function CMSLayout({
                             onCollapse={handleInnerCollapse}
                             siderWidth={240}
                             navTheme={darkMode ? "realDark" : "light"}
+                            token={{ sider: { colorMenuBackground: darkMode ? 'rgba(0,0,0,0.2)' : '#fff', colorTextMenuSelected: themePalette.primary, colorBgMenuItemSelected: `${themePalette.primary}15`, colorTextMenuItemHover: themePalette.primary, colorBgMenuItemHover: `${themePalette.primary}08` } }}
                             layout="side"
                             contentStyle={{
                                 padding: 0,
@@ -950,8 +1196,8 @@ export default function CMSLayout({
                                         vertical={innerCollapsed}
                                         options={segmentedOptions}
                                         style={{
-                                            background: darkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.08)',
-                                            border: darkMode ? '1px solid rgba(139, 92, 246, 0.3)' : '1px solid rgba(139, 92, 246, 0.2)',
+                                            background: darkMode ? `rgba(var(--theme-color-rgb, 139, 92, 246), 0.15)` : `rgba(var(--theme-color-rgb, 139, 92, 246), 0.08)`,
+                                            border: darkMode ? `1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.3)` : `1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)`,
                                         }}
                                     />
                                 </div>
@@ -1019,7 +1265,7 @@ export default function CMSLayout({
                             <PageContainer
                                 title={title}
                                 subTitle={subTitle}
-                                extra={[...(extra || []), <HeaderActions key="pin-star-actions" />]}
+                                extra={[<GlobalDateRangePicker key="global-date" compact />, ...(extra || []), <HeaderActions key="pin-star-actions" />]}
                                 breadcrumb={{
                                     items: breadcrumbItems.map((item, index) => ({
                                         key: index,
@@ -1041,14 +1287,17 @@ export default function CMSLayout({
             {/* AI Studio Drawer */}
             <AIStudioDrawer visible={aiStudioVisible} onClose={() => setAIStudioVisible(false)} />
 
+            {/* Theme Customizer Drawer */}
+            <ThemeDrawer visible={themeDrawerVisible} onClose={() => setThemeDrawerVisible(false)} darkMode={darkMode} />
+
             {/* SpeedDial Quarter Circle with MetaBalls - Bottom Right */}
             <div className="fixed bottom-0 right-0 z-50 w-48 h-48 hidden md:block">
                 {/* MetaBalls animation - purely decorative, non-interactive */}
                 {showBackground && (
                     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', zIndex: 1 }}>
                         <MetaBalls
-                            color={darkMode ? "#ffffff" : "#8b5cf6"}
-                            cursorBallColor={darkMode ? "#e0e7ff" : "#6366f1"}
+                            color={themeColor}
+                            cursorBallColor={themeColor}
                             enableTransparency={true}
                             enableMouseInteraction={true}
                             hoverSmoothness={0.05}
@@ -1069,6 +1318,11 @@ export default function CMSLayout({
                                     label: 'AI Studio',
                                     icon: 'pi pi-sparkles',
                                     command: () => setAIStudioVisible(true),
+                                },
+                                {
+                                    label: 'Theme',
+                                    icon: 'pi pi-palette',
+                                    command: () => setThemeDrawerVisible(true),
                                 },
                                 {
                                     label: showBackground ? 'Disable Background' : 'Enable Background',
@@ -1186,15 +1440,15 @@ export default function CMSLayout({
                 .speeddial-metaballs-btn {
                     width: 2.5rem !important;
                     height: 2.5rem !important;
-                    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%) !important;
+                    background: linear-gradient(135deg, ${themeColor} 0%, ${themeColor}dd 100%) !important;
                     border: none !important;
-                    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4) !important;
+                    box-shadow: 0 4px 15px ${themeColor}66 !important;
                     transition: all 0.3s ease !important;
                 }
                 
                 .speeddial-metaballs-btn:hover {
                     transform: scale(1.1) !important;
-                    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.6) !important;
+                    box-shadow: 0 6px 20px ${themeColor}99 !important;
                 }
                 
                 .speeddial-metaballs-btn .pi {
@@ -1206,13 +1460,13 @@ export default function CMSLayout({
                 .p-speeddial-action {
                     width: 2.25rem !important;
                     height: 2.25rem !important;
-                    background: linear-gradient(135deg, #a78bfa 0%, #818cf8 100%) !important;
+                    background: linear-gradient(135deg, ${themeColor}cc 0%, ${themeColor}99 100%) !important;
                     border: none !important;
-                    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3) !important;
+                    box-shadow: 0 2px 8px ${themeColor}4d !important;
                 }
                 
                 .p-speeddial-action:hover {
-                    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%) !important;
+                    background: linear-gradient(135deg, ${themeColor} 0%, ${themeColor}dd 100%) !important;
                     transform: scale(1.15) !important;
                 }
                 

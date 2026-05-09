@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import {
     Table, Button, Space, Tag, Card, Typography, message,
     Row, Col, Modal, Form, Input, InputNumber, Select, Progress, Tooltip
@@ -12,9 +13,13 @@ import {
     FileTextOutlined, CheckCircleOutlined, ClockCircleOutlined,
     ExclamationCircleOutlined, DeleteOutlined, EditOutlined,
     EyeOutlined, WarningOutlined, ArrowRightOutlined,
-    CalendarOutlined, TeamOutlined
+    CalendarOutlined, TeamOutlined,
+    FileExcelOutlined, FilePdfOutlined,
 } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import {
     inventoryService, OpnameSession, OpnameLine, OpnameStatsType, InvWarehouse
@@ -24,6 +29,7 @@ import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const SESSION_STATUSES: Record<string, { color: string; icon: React.ReactNode }> = {
     draft: { color: 'default', icon: <FileTextOutlined /> },
@@ -53,6 +59,8 @@ const SESSION_FIELDS: FieldDef[] = [
 
 export default function StockOpnamePage() {
     const [stats, setStats] = useState<OpnameStatsType | null>(null);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [sessions, setSessions] = useState<OpnameSession[]>([]);
     const [warehouses, setWarehouses] = useState<InvWarehouse[]>([]);
     const [opnameLines, setOpnameLines] = useState<Record<string, OpnameLine[]>>({});
@@ -96,7 +104,7 @@ export default function StockOpnamePage() {
         } catch { console.error("Failed to load lines"); }
     };
 
-    // ─── Session CRUD ──────────────────────────────
+    // â”€â”€â”€ Session CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const handleCreateSession = async (values: any) => {
         const wh = warehouses.find(w => w.id === values.warehouseId);
         const input = { ...values, warehouseName: wh?.name || '' };
@@ -122,7 +130,7 @@ export default function StockOpnamePage() {
     const handleStatusChange = async (id: string, newStatus: string) => {
         try {
             await inventoryService.updateOpnameSessionStatus(id, newStatus);
-            message.success(`Status → ${newStatus}`);
+            message.success(`Status â†’ ${newStatus}`);
             loadAll();
         } catch { message.error("Failed to update status"); }
     };
@@ -134,7 +142,7 @@ export default function StockOpnamePage() {
         } catch { message.error("Failed to delete"); }
     };
 
-    // ─── Line CRUD ─────────────────────────────────
+    // â”€â”€â”€ Line CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const handleAddLine = async () => {
         try {
             const values = await lineForm.validateFields();
@@ -145,9 +153,9 @@ export default function StockOpnamePage() {
         } catch { message.error("Failed to add item"); }
     };
 
-    // ─── KPI Cards ─────────────────────────────────
+    // â”€â”€â”€ KPI Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const kpiCards = [
-        { title: 'Total Sessions', value: stats?.totalSessions || 0, icon: <AuditOutlined />, color: '#7c3aed' },
+        { title: 'Total Sessions', value: stats?.totalSessions || 0, icon: <AuditOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { title: 'Draft', value: stats?.draft || 0, icon: <FileTextOutlined />, color: '#94a3b8' },
         { title: 'Counting', value: stats?.counting || 0, icon: <ClockCircleOutlined />, color: '#3b82f6' },
         { title: 'In Review', value: stats?.review || 0, icon: <EyeOutlined />, color: '#f59e0b' },
@@ -155,7 +163,7 @@ export default function StockOpnamePage() {
         { title: 'Total Variance', value: fmtCurrency(stats?.totalVariance), icon: <WarningOutlined />, color: stats?.totalVariance && stats.totalVariance < 0 ? '#ef4444' : '#10b981' },
     ];
 
-    // ─── Session Columns ───────────────────────────
+    // â”€â”€â”€ Session Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const sessionColumns = [
         { title: 'Code', dataIndex: 'sessionCode', width: 140, render: (v: string) => <Text code className="text-xs">{v}</Text> },
         { title: 'Title', dataIndex: 'title', ellipsis: true, render: (v: string) => <Text strong className="text-sm">{v}</Text> },
@@ -176,13 +184,13 @@ export default function StockOpnamePage() {
         { title: 'Counted By', dataIndex: 'countedBy', width: 130 },
         {
             title: 'Scheduled', dataIndex: 'scheduledDate', width: 110,
-            render: (v: string) => v ? new Date(v).toLocaleDateString() : '—',
+            render: (v: string) => v ? new Date(v).toLocaleDateString() : 'â€”',
         },
         {
             title: 'Variance', key: 'variance', width: 130,
             render: (_: any, r: OpnameSession) => {
                 const v = r.totalVarianceValue || 0;
-                if (v === 0) return <Text className="text-xs">—</Text>;
+                if (v === 0) return <Text className="text-xs">â€”</Text>;
                 return <Text strong className="text-sm" style={{ color: v < 0 ? '#ef4444' : '#10b981' }}>{fmtCurrency(v)}</Text>;
             },
         },
@@ -219,12 +227,12 @@ export default function StockOpnamePage() {
         },
     ];
 
-    // ─── Line Columns ──────────────────────────────
+    // â”€â”€â”€ Line Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const lineColumns = [
         { title: '#', dataIndex: 'sortOrder', width: 40 },
         { title: 'Item', dataIndex: 'itemName', render: (v: string) => <Text strong className="text-sm">{v}</Text> },
         { title: 'SKU', dataIndex: 'itemSku', width: 130, render: (v: string) => v ? <Text code className="text-xs">{v}</Text> : '-' },
-        { title: 'Zone / Bin', key: 'location', width: 170, render: (_: any, r: OpnameLine) => `${r.zoneName || '—'} / ${r.binCode || '—'}` },
+        { title: 'Zone / Bin', key: 'location', width: 170, render: (_: any, r: OpnameLine) => `${r.zoneName || 'â€”'} / ${r.binCode || 'â€”'}` },
         {
             title: 'System Qty', dataIndex: 'systemQty', width: 100,
             render: (v: number, r: OpnameLine) => `${v} ${r.uom}`,
@@ -237,7 +245,7 @@ export default function StockOpnamePage() {
         {
             title: 'Variance', key: 'variance', width: 100,
             render: (_: any, r: OpnameLine) => {
-                if (r.varianceQty === null || r.varianceQty === undefined || r.actualQty === null || r.actualQty === undefined) return '—';
+                if (r.varianceQty === null || r.varianceQty === undefined || r.actualQty === null || r.actualQty === undefined) return 'â€”';
                 const color = r.varianceQty < 0 ? '#ef4444' : r.varianceQty > 0 ? '#f59e0b' : '#10b981';
                 return <Text strong style={{ color }}>{r.varianceQty > 0 ? '+' : ''}{r.varianceQty} {r.uom}</Text>;
             },
@@ -245,7 +253,7 @@ export default function StockOpnamePage() {
         {
             title: 'Value Impact', dataIndex: 'varianceValue', width: 120,
             render: (v: number | null) => {
-                if (v === null || v === undefined) return '—';
+                if (v === null || v === undefined) return 'â€”';
                 const color = v < 0 ? '#ef4444' : v > 0 ? '#f59e0b' : '#10b981';
                 return <Text strong style={{ color, fontSize: 12 }}>{fmtCurrency(v)}</Text>;
             },
@@ -282,7 +290,7 @@ export default function StockOpnamePage() {
                     </Row>
                     <Form.Item name="warehouseId" label="Warehouse" rules={[{ required: true }]}>
                         <Select placeholder="Select warehouse"
-                            options={warehouses.map(w => ({ value: w.id, label: `${w.code} — ${w.name}` }))} />
+                            options={warehouses.map(w => ({ value: w.id, label: `${w.code} â€” ${w.name}` }))} />
                     </Form.Item>
                 </>
             ),
@@ -315,7 +323,7 @@ export default function StockOpnamePage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>Stock Opname</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Stock Opname</AuroraText>}
             subTitle={
                 <DecryptedText
                     text="Physical stock counting, auditing, and variance tracking"
@@ -330,8 +338,7 @@ export default function StockOpnamePage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                                    ...glass,
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -351,13 +358,12 @@ export default function StockOpnamePage() {
 
                 {/* Main Table Card */}
                 <Card size="small" style={{
-                    flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)',
-                    backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)',
+                    flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)',
                 }}>
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
                             <Text strong style={{
-                                background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                 WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: 15,
                             }}>
                                 <AuditOutlined /> Counting Sessions ({sessions.length})
@@ -369,9 +375,10 @@ export default function StockOpnamePage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_stock_opname', title: 'Stock Opname', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'sessionNumber' }, { header: 'Warehouse', key: 'warehouseName' }, { header: 'Status', key: 'status' }], data: sessions })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_stock_opname', title: 'Stock Opname', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'sessionNumber' }, { header: 'Warehouse', key: 'warehouseName' }, { header: 'Status', key: 'status' }], data: sessions })} /></Tooltip></RbacGuard>
                             <Button type="primary" icon={<PlusOutlined />}
                                 onClick={() => { sessionForm.resetFields(); setSessionModalOpen(true); }}
-                                style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', borderRadius: 8, border: 'none' }}>
+                                style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', borderRadius: 8, border: 'none' }}>
                                 New Session
                             </Button>
                         </Space>
@@ -392,13 +399,13 @@ export default function StockOpnamePage() {
                                 <div className="p-2">
                                     <div className="flex items-center justify-between mb-2">
                                         <Text strong style={{
-                                            background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                            background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                                        }}>Count Items — {record.title}</Text>
+                                        }}>Count Items â€” {record.title}</Text>
                                         <Button size="small" icon={<PlusOutlined />}
                                             onClick={() => { setLineSessionId(record.id); lineForm.resetFields(); setLineModalOpen(true); }}
                                             disabled={record.status === 'completed' || record.status === 'cancelled'}
-                                            style={{ borderColor: '#7c3aed', color: '#7c3aed' }}>
+                                            style={{ borderColor: 'var(--theme-color, #7c3aed)', color: 'var(--theme-color, #7c3aed)' }}>
                                             Add Item
                                         </Button>
                                     </div>
@@ -416,7 +423,7 @@ export default function StockOpnamePage() {
                 </Card>
             </div>
 
-            {/* ─── Session SteppedFormModal ───────────────── */}
+            {/* â”€â”€â”€ Session SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <SteppedFormModal
                 open={sessionModalOpen}
                 onCancel={() => { setSessionModalOpen(false); sessionForm.resetFields(); }}
@@ -429,10 +436,10 @@ export default function StockOpnamePage() {
                 width={580}
                 loading={false}
                 onBatchCreate={handleBatchCreateSession}
-                gradient={["#7c3aed", "#6366f1"]}
+                gradient={["var(--theme-color, #7c3aed)", "#6366f1"]}
             />
 
-            {/* ─── Add Line Item Modal ──────────────────── */}
+            {/* â”€â”€â”€ Add Line Item Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <Modal title="Add Count Item" open={lineModalOpen}
                 onCancel={() => setLineModalOpen(false)} onOk={handleAddLine} okText="Add">
                 <Form form={lineForm} layout="vertical">
@@ -496,3 +503,4 @@ export default function StockOpnamePage() {
         </CMSLayout>
     );
 }
+

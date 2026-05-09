@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Card,
     Form,
@@ -15,13 +18,17 @@ import {
     Divider,
     Tag,
     Space,
+    Row, Col, Statistic,
 } from "antd";
+import { motion } from "framer-motion";
 import {
     SaveOutlined,
     UploadOutlined,
     ThunderboltOutlined,
     DatabaseOutlined,
 } from "@ant-design/icons";
+
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
 
@@ -37,6 +44,7 @@ async function graphqlRequest(query: string, variables?: Record<string, unknown>
 }
 
 export default function GeneralSettingsPage() {
+    const { themeColor } = usePreferencesStore();
     const [form] = Form.useForm();
     const [dremioForm] = Form.useForm();
     const [dremioTestResult, setDremioTestResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -226,14 +234,29 @@ export default function GeneralSettingsPage() {
 
     return (
         <CMSLayout
-            title="Settings"
-            subTitle="Configure your CMS"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Settings</AuroraText>}
+            subTitle={<DecryptedText text="Configure your CMS" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 <Button key="save" type="primary" icon={<SaveOutlined />} onClick={handleSave}>
                     Save Changes
                 </Button>,
             ]}
         >
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Config Sections', value: 4, icon: <SaveOutlined />, color: '#3b82f6' },
+                    { title: 'Integrations', value: 1, icon: <DatabaseOutlined />, color: '#10b981' },
+                    { title: 'Social Links', value: 5, icon: <ThunderboltOutlined />, color: '#8b5cf6' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={8}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <Card>
                 <Tabs items={items} />
             </Card>

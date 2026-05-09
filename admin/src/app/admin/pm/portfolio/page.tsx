@@ -2,22 +2,25 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
-import {
-    Typography, Space, Spin, Tag, Progress, Card, Row, Col, Statistic,
-    Table, Tooltip, Button, Empty, Badge, message
-} from "antd";
+import { motion } from "framer-motion";
+import RbacGuard from "@/components/common/RbacGuard";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { Badge, Button, Card, Col, Empty, message, Progress, Row, Space, Spin, Statistic, Table, Tag, Tooltip, Typography } from "antd";
 import {
     ProjectOutlined, DashboardOutlined, FundProjectionScreenOutlined,
     CheckCircleOutlined, ClockCircleOutlined, PauseCircleOutlined,
     ExclamationCircleOutlined, DollarOutlined, BarChartOutlined,
     TeamOutlined, ArrowUpOutlined, ArrowDownOutlined, ThunderboltOutlined,
     RocketOutlined, ReloadOutlined, BulbOutlined, AimOutlined,
-    FireOutlined, WarningOutlined, SafetyCertificateOutlined
-} from "@ant-design/icons";
+    FireOutlined, WarningOutlined, SafetyCertificateOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text, Title } = Typography;
 
@@ -51,6 +54,8 @@ const PRIORITY_COLORS: Record<string, string> = {
 export default function PortfolioOverviewPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [projects, setProjects] = useState<any[]>([]);
     const [aiAnalysis, setAiAnalysis] = useState<any>(null);
     const [aiLoading, setAiLoading] = useState(false);
@@ -331,7 +336,8 @@ export default function PortfolioOverviewPage() {
 
     if (loading) {
         return (
-            <CMSLayout title="Portfolio Overview" subTitle="Aggregate view of all projects">
+            <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Portfolio Overview</AuroraText>}
+            subTitle={<DecryptedText text="Aggregate view of all projects" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
                 <div style={{ textAlign: 'center', padding: 120 }}>
                     <Spin size="large" />
                 </div>
@@ -340,16 +346,18 @@ export default function PortfolioOverviewPage() {
     }
 
     return (
-        <CMSLayout title="Portfolio Overview" subTitle="Aggregate view of all projects">
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Portfolio Overview</AuroraText>}
+            subTitle={<DecryptedText text="Aggregate view of all projects" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
             {contextHolder}
 
             {/* ── Hero Stats Row ── */}
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={6}>
                     <StatCard
                         title="Total Projects" value={totalProjects}
                         icon={<ProjectOutlined />}
-                        gradient="linear-gradient(135deg, #6366f1, #8b5cf6)"
+                        gradient={`linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`}
                         extra={
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                                 {statusBuckets.filter(s => s.count > 0).map(s => (
@@ -404,7 +412,7 @@ export default function PortfolioOverviewPage() {
                     <StatCard
                         title="Active Projects" value={activeProjects}
                         icon={<FundProjectionScreenOutlined />}
-                        gradient="linear-gradient(135deg, #8b5cf6, #a78bfa)"
+                        gradient="linear-gradient(135deg, var(--theme-color, #8b5cf6), #a78bfa)"
                         extra={
                             <Text type="secondary" style={{ fontSize: 11 }}>
                                 {completedProjects} completed • {projects.filter(p => p.status === 'paused').length} paused
@@ -431,7 +439,7 @@ export default function PortfolioOverviewPage() {
                                     background: isDark ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.05)',
                                     border: '1px solid rgba(99,102,241,0.15)',
                                 }}>
-                                    <div style={{ fontSize: 24, fontWeight: 800, color: '#6366f1' }}>
+                                    <div style={{ fontSize: 24, fontWeight: 800, color: themeColor }}>
                                         {sprintSummary.inProgressTasks}
                                     </div>
                                     <Text type="secondary" style={{ fontSize: 10 }}>In Progress</Text>
@@ -512,7 +520,7 @@ export default function PortfolioOverviewPage() {
                             border: '1px solid rgba(139,92,246,0.12)',
                         }}>
                             <Text style={{ fontSize: 11 }}>Avg. tasks completed per project</Text>
-                            <Text strong style={{ fontSize: 14, color: '#8b5cf6' }}>{sprintSummary.velocity}</Text>
+                            <Text strong style={{ fontSize: 14, color: themeColor }}>{sprintSummary.velocity}</Text>
                         </div>
                     </Card>
                 </Col>
@@ -616,7 +624,7 @@ export default function PortfolioOverviewPage() {
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} lg={14}>
                     <Card
-                        title={<Space><BarChartOutlined style={{ color: '#8b5cf6' }} /> Status Distribution</Space>}
+                        title={<Space><BarChartOutlined style={{ color: themeColor }} /> Status Distribution</Space>}
                         size="small"
                         style={glassCard}
                     >
@@ -784,18 +792,18 @@ export default function PortfolioOverviewPage() {
             <Card
                 title={
                     <Space>
-                        <ProjectOutlined style={{ color: '#8b5cf6' }} />
+                        <ProjectOutlined style={{ color: themeColor }} />
                         <span style={{ fontWeight: 600 }}>All Projects</span>
                         <Tag color="blue">{totalProjects}</Tag>
                     </Space>
                 }
                 style={glassCard}
-                extra={<Button icon={<ReloadOutlined />} onClick={loadData} size="small">Reload</Button>}
+                extra={<Space><Button icon={<ReloadOutlined />} onClick={loadData} size="small">Reload</Button><RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_portfolio', title: 'PM Portfolio', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip><Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_portfolio', title: 'PM Portfolio', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip></RbacGuard></Space>}
             >
                 {projects.length === 0 ? (
                     <Empty description="No projects found. Create one from the Projects page." />
                 ) : (
-                    <Table
+                    <Table scroll={{ x: 900 }}
                         dataSource={projects}
                         columns={columns}
                         rowKey="id"
@@ -805,6 +813,12 @@ export default function PortfolioOverviewPage() {
                     />
                 )}
             </Card>
+            </motion.div>
         </CMSLayout>
     );
 }
+
+
+
+
+

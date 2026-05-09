@@ -142,7 +142,7 @@ export default function DataPreview({ path, limit = 100 }: DataPreviewProps) {
             title={
                 <Space size={16}>
                     <Space size={4}>
-                        <TableOutlined style={{ color: '#7c3aed' }} />
+                        <TableOutlined style={{ color: 'var(--theme-color, #7c3aed)' }} />
                         <span style={{ fontWeight: 600 }}>{path[path.length - 1]}</span>
                     </Space>
                     <Space size={12} split={<span style={{ color: '#e5e7eb' }}>|</span>}>
@@ -192,8 +192,8 @@ export default function DataPreview({ path, limit = 100 }: DataPreviewProps) {
                     .custom-pagination-wrapper .ant-pagination-jump-next .ant-pagination-item-container,
                     .custom-pagination-wrapper .ant-pagination-prev button,
                     .custom-pagination-wrapper .ant-pagination-next button {
-                        background-color: rgba(139, 92, 246, 0.1) !important;
-                        color: #7c3aed !important;
+                        background-color: rgba(var(--theme-color-rgb, 139, 92, 246), 0.1) !important;
+                        color: var(--theme-color, #7c3aed) !important;
                         border-radius: 50% !important;
                         border: none !important;
                         display: flex !important;
@@ -210,7 +210,7 @@ export default function DataPreview({ path, limit = 100 }: DataPreviewProps) {
                     .custom-pagination-wrapper .ant-pagination-jump-next:hover .ant-pagination-item-container,
                     .custom-pagination-wrapper .ant-pagination-prev:hover button,
                     .custom-pagination-wrapper .ant-pagination-next:hover button {
-                        background-color: rgba(139, 92, 246, 0.2) !important;
+                        background-color: rgba(var(--theme-color-rgb, 139, 92, 246), 0.2) !important;
                     }
                     .custom-pagination-wrapper .ant-pagination-disabled .ant-pagination-item-link,
                     .custom-pagination-wrapper .ant-pagination-disabled button {

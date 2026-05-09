@@ -2,18 +2,23 @@
 
 import React, { useState, useEffect } from "react";
 import { Table, Tag, Card, Typography, Input, Space, Button, Tooltip, Row, Col, Drawer, message, Modal, Select, Form, InputNumber, Divider } from "antd";
-import { GiftOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, EyeOutlined, DeleteOutlined, PlusOutlined, MinusCircleOutlined, ShoppingOutlined, EditOutlined } from "@ant-design/icons";
+import { GiftOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, EyeOutlined, DeleteOutlined, PlusOutlined, MinusCircleOutlined, ShoppingOutlined, EditOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { inventoryService, EcomPackage, EcomPackageItem, EcomPackageStatsType } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import ItemPicker from "@/components/inventory/ItemPicker";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
-const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : '—';
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
+const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : 'â€”';
 
 const PACKAGE_FIELDS: FieldDef[] = [
     { name: 'name', label: 'Package Name', required: true },
@@ -27,6 +32,8 @@ const PACKAGE_FIELDS: FieldDef[] = [
 
 export default function PackagesPage() {
     const [stats, setStats] = useState<EcomPackageStatsType | null>(null);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [packages, setPackages] = useState<EcomPackage[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -123,7 +130,7 @@ export default function PackagesPage() {
     };
 
     const kpiCards = [
-        { title: 'Total Packages', value: stats?.totalPackages || 0, icon: <GiftOutlined />, color: '#8b5cf6' },
+        { title: 'Total Packages', value: stats?.totalPackages || 0, icon: <GiftOutlined />, color: themeColor },
         { title: 'Active', value: stats?.active || 0, icon: <CheckCircleOutlined />, color: '#10b981' },
         { title: 'Inactive', value: stats?.inactive || 0, icon: <GiftOutlined />, color: '#94a3b8' },
         { title: 'Total Sold', value: stats?.totalSold || 0, icon: <ShoppingOutlined />, color: '#3b82f6' },
@@ -138,7 +145,7 @@ export default function PackagesPage() {
 
     const columns = [
         { title: 'Package', dataIndex: 'name', render: (v: string, r: EcomPackage) => (<div><Text strong className="text-sm">{v}</Text>{r.sku && <Text type="secondary" className="text-xs block">{r.sku}</Text>}</div>) },
-        { title: 'Package Price', dataIndex: 'packagePrice', width: 140, render: (v: number) => <Text strong style={{ color: '#8b5cf6' }}>{fmtCurrency(v)}</Text> },
+        { title: 'Package Price', dataIndex: 'packagePrice', width: 140, render: (v: number) => <Text strong style={{ color: themeColor }}>{fmtCurrency(v)}</Text> },
         { title: 'Regular Price', dataIndex: 'regularPrice', width: 140, render: (v: number) => <Text type="secondary" style={{ textDecoration: 'line-through' }}>{fmtCurrency(v)}</Text> },
         { title: 'Savings', dataIndex: 'savings', width: 120, render: (v: number) => <Tag color="green" className="rounded-full">{fmtCurrency(v)}</Tag> },
         { title: 'Sold', dataIndex: 'timesSold', width: 70, render: (v: number) => v || 0 },
@@ -200,7 +207,7 @@ export default function PackagesPage() {
                             ))}
                             <Button type="dashed" onClick={addLine} icon={<PlusOutlined />} style={{ width: '100%' }}>Add Item</Button>
                             {lineItems.length > 0 && (
-                                <div style={{ textAlign: 'right', marginTop: 8, fontWeight: 700, color: '#8b5cf6' }}>
+                                <div style={{ textAlign: 'right', marginTop: 8, fontWeight: 700, color: themeColor }}>
                                     Regular Total: {fmtCurrency(calcRegular())}
                                 </div>
                             )}
@@ -214,7 +221,7 @@ export default function PackagesPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#8b5cf6", "#a78bfa", "#6366f1", "#c084fc", "#ff00ff"]}>Packages</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Packages</AuroraText>}
             subTitle={<DecryptedText text="Bundle products into packages with special pricing" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
@@ -223,8 +230,7 @@ export default function PackagesPage() {
                         <Col key={i} xs={12} sm={8} md={Math.floor(24 / kpiCards.length)}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                                    ...glass,
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -240,7 +246,7 @@ export default function PackagesPage() {
                     ))}
                 </Row>
 
-                <Card size="small" style={{ flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)' }}>
+                <Card size="small" style={{ flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)' }}>
                     <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                         <div className="flex items-center gap-3">
                             <Input prefix={<SearchOutlined className="text-gray-400" />} placeholder="Search packages..."
@@ -250,8 +256,9 @@ export default function PackagesPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_packages', title: 'eCommerce Packages', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Price', key: 'price' }, { header: 'Status', key: 'status' }], data: packages })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_packages', title: 'eCommerce Packages', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Price', key: 'price' }, { header: 'Status', key: 'status' }], data: packages })} /></Tooltip></RbacGuard>
                             <Button type="primary" icon={<PlusOutlined />} onClick={openNew}
-                                style={{ background: 'linear-gradient(135deg, #8b5cf6, #a78bfa)', border: 'none', borderRadius: 8 }}>
+                                style={{ background: 'linear-gradient(135deg, var(--theme-color, #8b5cf6), #a78bfa)', border: 'none', borderRadius: 8 }}>
                                 New Package
                             </Button>
                         </Space>
@@ -268,7 +275,7 @@ export default function PackagesPage() {
                     <div className="space-y-4">
                         <Card size="small" style={{ borderRadius: 10 }}>
                             <Row gutter={16}>
-                                <Col span={8}><Text type="secondary" className="text-xs block">Package Price</Text><Text strong style={{ color: '#8b5cf6', fontSize: 18 }}>{fmtCurrency(selected.packagePrice)}</Text></Col>
+                                <Col span={8}><Text type="secondary" className="text-xs block">Package Price</Text><Text strong style={{ color: themeColor, fontSize: 18 }}>{fmtCurrency(selected.packagePrice)}</Text></Col>
                                 <Col span={8}><Text type="secondary" className="text-xs block">Regular Price</Text><Text style={{ textDecoration: 'line-through' }}>{fmtCurrency(selected.regularPrice)}</Text></Col>
                                 <Col span={8}><Text type="secondary" className="text-xs block">Savings</Text><Tag color="green">{fmtCurrency(selected.savings)}</Tag></Col>
                             </Row>
@@ -278,7 +285,7 @@ export default function PackagesPage() {
                             <Table dataSource={pkgItems} rowKey="id" size="small" pagination={false}
                                 columns={[
                                     { title: 'Item', dataIndex: 'itemName', render: (v: string) => <Text strong className="text-sm">{v}</Text> },
-                                    { title: 'SKU', dataIndex: 'itemSku', width: 100, render: (v: string) => <Text code className="text-xs">{v || '—'}</Text> },
+                                    { title: 'SKU', dataIndex: 'itemSku', width: 100, render: (v: string) => <Text code className="text-xs">{v || 'â€”'}</Text> },
                                     { title: 'Qty', dataIndex: 'quantity', width: 50 },
                                     { title: 'Unit Price', dataIndex: 'unitPrice', width: 120, render: (v: number) => fmtCurrency(v) },
                                 ]}
@@ -299,9 +306,10 @@ export default function PackagesPage() {
                 fields={PACKAGE_FIELDS}
                 loading={saving}
                 onBatchCreate={handleBatchCreate}
-                gradient={["#8b5cf6", "#a78bfa"]}
+                gradient={["var(--theme-color, #8b5cf6)", "#a78bfa"]}
                 editMode={editMode}
             />
         </CMSLayout>
     );
 }
+

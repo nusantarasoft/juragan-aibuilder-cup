@@ -2,20 +2,23 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
-import {
-    Typography, Space, Spin, Tag, Card, Row, Col, Statistic, Input,
-    Table, Empty, Select, Drawer, Descriptions, Button, Tooltip
-} from "antd";
+import { motion } from "framer-motion";
+import RbacGuard from "@/components/common/RbacGuard";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { Button, Card, Col, Descriptions, Drawer, Empty, Input, Row, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography } from "antd";
 import {
     BookOutlined, BulbOutlined, SearchOutlined, FilterOutlined,
     FolderOpenOutlined, TagOutlined, CalendarOutlined,
     ExclamationCircleOutlined, CheckCircleOutlined,
-    InfoCircleOutlined, WarningOutlined
-} from "@ant-design/icons";
+    InfoCircleOutlined, WarningOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text, Paragraph } = Typography;
 
@@ -26,9 +29,9 @@ const GET_ALL_LESSONS = `
 `;
 
 const CATEGORY_CONFIG: Record<string, { color: string; icon: React.ReactNode }> = {
-    process: { color: '#6366f1', icon: <BookOutlined /> },
+    process: { color: 'var(--theme-color, #8b5cf6)', icon: <BookOutlined /> },
     technical: { color: '#3b82f6', icon: <BulbOutlined /> },
-    management: { color: '#8b5cf6', icon: <FolderOpenOutlined /> },
+    management: { color: '#6366f1', icon: <FolderOpenOutlined /> },
     communication: { color: '#10b981', icon: <InfoCircleOutlined /> },
     risk: { color: '#f59e0b', icon: <WarningOutlined /> },
     quality: { color: '#22c55e', icon: <CheckCircleOutlined /> },
@@ -38,6 +41,8 @@ const CATEGORY_CONFIG: Record<string, { color: string; icon: React.ReactNode }> 
 export default function KnowledgeBasePage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [lessons, setLessons] = useState<any[]>([]);
     const [search, setSearch] = useState("");
     const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
@@ -220,7 +225,8 @@ export default function KnowledgeBasePage() {
 
     if (loading) {
         return (
-            <CMSLayout title="Knowledge Base" subTitle="Cross-project lessons learned repository">
+            <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Knowledge Base</AuroraText>}
+            subTitle={<DecryptedText text="Cross-project lessons learned repository" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_knowledge_base', title: 'Lessons Learned', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Project', key: 'projectName' }, { header: 'Category', key: 'category' }, { header: 'Impact', key: 'impact' }], data: lessons })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_knowledge_base', title: 'Lessons Learned', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Project', key: 'projectName' }, { header: 'Category', key: 'category' }, { header: 'Impact', key: 'impact' }], data: lessons })} /></Tooltip></RbacGuard>]}>
                 <div style={{ textAlign: 'center', padding: 120 }}>
                     <Spin size="large" />
                 </div>
@@ -229,20 +235,24 @@ export default function KnowledgeBasePage() {
     }
 
     return (
-        <CMSLayout title="Knowledge Base" subTitle="Cross-project lessons learned repository">
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Knowledge Base</AuroraText>}
+            subTitle={<DecryptedText text="Cross-project lessons learned repository" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_knowledge_base', title: 'Lessons Learned', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Project', key: 'projectName' }, { header: 'Category', key: 'category' }, { header: 'Impact', key: 'impact' }], data: lessons })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_knowledge_base', title: 'Lessons Learned', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Title', key: 'title' }, { header: 'Project', key: 'projectName' }, { header: 'Category', key: 'category' }, { header: 'Impact', key: 'impact' }], data: lessons })} /></Tooltip></RbacGuard>]}>
             {/* ── Stats Row ── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={8} lg={6}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #8b5cf6' }} size="small">
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
+                    <Card style={{ ...glassCard, borderTop: `3px solid ${themeColor}` }} size="small">
                         <Statistic
                             title={<span style={{ fontSize: 12 }}>Total Lessons</span>}
                             value={lessons.length}
-                            prefix={<BookOutlined style={{ color: '#8b5cf6' }} />}
-                            valueStyle={{ fontSize: 28, fontWeight: 700, color: '#8b5cf6' }}
+                            prefix={<BookOutlined style={{ color: themeColor }} />}
+                            valueStyle={{ fontSize: 28, fontWeight: 700, color: themeColor }}
                         />
                     </Card>
+                        </motion.div>
                 </Col>
                 <Col xs={24} sm={8} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #3b82f6' }} size="small">
                         <Statistic
                             title={<span style={{ fontSize: 12 }}>Contributing Projects</span>}
@@ -251,8 +261,10 @@ export default function KnowledgeBasePage() {
                             valueStyle={{ fontSize: 28, fontWeight: 700, color: '#3b82f6' }}
                         />
                     </Card>
+                        </motion.div>
                 </Col>
                 <Col xs={24} sm={8} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #10b981' }} size="small">
                         <Statistic
                             title={<span style={{ fontSize: 12 }}>Categories</span>}
@@ -261,8 +273,10 @@ export default function KnowledgeBasePage() {
                             valueStyle={{ fontSize: 28, fontWeight: 700, color: '#10b981' }}
                         />
                     </Card>
+                        </motion.div>
                 </Col>
                 <Col xs={24} sm={8} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #f59e0b' }} size="small">
                         <Statistic
                             title={<span style={{ fontSize: 12 }}>Unique Tags</span>}
@@ -271,13 +285,14 @@ export default function KnowledgeBasePage() {
                             valueStyle={{ fontSize: 28, fontWeight: 700, color: '#f59e0b' }}
                         />
                     </Card>
+                        </motion.div>
                 </Col>
             </Row>
 
             {/* ── Category Distribution ── */}
             {categoryDistribution.length > 0 && (
                 <Card
-                    title={<Space><TagOutlined style={{ color: '#8b5cf6' }} /> Category Distribution</Space>}
+                    title={<Space><TagOutlined style={{ color: themeColor }} /> Category Distribution</Space>}
                     size="small"
                     style={{ ...glassCard, marginBottom: 24 }}
                 >
@@ -347,7 +362,7 @@ export default function KnowledgeBasePage() {
             <Card
                 title={
                     <Space>
-                        <BookOutlined style={{ color: '#8b5cf6' }} />
+                        <BookOutlined style={{ color: themeColor }} />
                         <span style={{ fontWeight: 600 }}>Lessons Learned</span>
                         <Tag color="purple">{filtered.length}</Tag>
                     </Space>
@@ -363,7 +378,7 @@ export default function KnowledgeBasePage() {
                         }
                     />
                 ) : (
-                    <Table
+                    <Table scroll={{ x: 900 }}
                         dataSource={filtered}
                         columns={columns}
                         rowKey="id"
@@ -454,9 +469,9 @@ export default function KnowledgeBasePage() {
                         </Card>
 
                         <Card
-                            title={<Space><BulbOutlined style={{ color: '#8b5cf6' }} /> Lesson</Space>}
+                            title={<Space><BulbOutlined style={{ color: themeColor }} /> Lesson</Space>}
                             size="small"
-                            style={{ marginTop: 12, borderLeft: '3px solid #8b5cf6' }}
+                            style={{ marginTop: 12, borderLeft: `3px solid ${themeColor}` }}
                         >
                             <Paragraph style={{ margin: 0 }}>
                                 {viewingLesson.lesson || 'No lesson documented.'}
@@ -491,3 +506,8 @@ export default function KnowledgeBasePage() {
         </CMSLayout>
     );
 }
+
+
+
+
+

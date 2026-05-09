@@ -102,7 +102,7 @@ export default function SQLEditor({ defaultSQL, context }: SQLEditorProps) {
                 }}
                 title={
                     <Space size={8}>
-                        <CodeOutlined style={{ color: '#7c3aed' }} />
+                        <CodeOutlined style={{ color: 'var(--theme-color, #7c3aed)' }} />
                         <span style={{ fontSize: 13, fontWeight: 600 }}>Query Editor</span>
                     </Space>
                 }
@@ -172,7 +172,7 @@ export default function SQLEditor({ defaultSQL, context }: SQLEditorProps) {
                             loading={loading}
                             shape="round"
                             style={{
-                                background: "linear-gradient(135deg, #7c3aed, #6366f1)", // Violet gradient
+                                background: "linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))", // Violet gradient
                                 border: "none",
                                 boxShadow: "0 4px 12px rgba(124, 58, 237, 0.3)",
                                 height: 32,

@@ -2,10 +2,14 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Card, Button, Space, Modal, Form, Input, Select, Tree, Tag,
-    message, Typography, Empty, Descriptions,
+    message, Typography, Empty, Descriptions, Row, Col, Statistic,
 } from "antd";
+import { motion } from "framer-motion";
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     ApartmentOutlined, CrownOutlined, FileTextOutlined,
@@ -16,6 +20,7 @@ import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface Role {
     id: string;
@@ -33,6 +38,7 @@ const ROLE_FIELDS: FieldDef[] = [
 ];
 
 export default function RolesPage() {
+    const { themeColor } = usePreferencesStore();
     const [roles, setRoles] = useState<Role[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -178,8 +184,8 @@ export default function RolesPage() {
 
     return (
         <CMSLayout
-            title="Roles & Hierarchy"
-            subTitle="Define organizational hierarchy for vertical data access"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Roles & Hierarchy</AuroraText>}
+            subTitle={<DecryptedText text="Define organizational hierarchy for vertical data access" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 <Button key="reload" icon={<ReloadOutlined />} onClick={loadRoles} />,
                 <Button
@@ -197,6 +203,21 @@ export default function RolesPage() {
                 </Button>,
             ]}
         >
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Roles', value: roles.length, icon: <ApartmentOutlined />, color: '#3b82f6' },
+                    { title: 'Root Roles', value: roles.filter(r => !r.parentRoleId).length, icon: <CrownOutlined />, color: '#f59e0b' },
+                    { title: 'Max Depth', value: roles.length > 0 ? Math.max(...roles.map(r => r.level)) + 1 : 0, icon: <ApartmentOutlined />, color: '#8b5cf6' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={8}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <div style={{ display: 'flex', gap: 16 }}>
                 <Card
                     title={<Space><ApartmentOutlined /> Role Hierarchy</Space>}

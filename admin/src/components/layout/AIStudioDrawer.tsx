@@ -1,278 +1,398 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { mediaService, MediaFile } from "@/lib/mediaService";
+import { studioService, StudioNotebook, StudioSource, ChatResponse } from "@/lib/studioService";
 import {
-    Card, Row, Col, List, Checkbox, Typography, Input, Button, Avatar, Space, Spin, message,
-    Tag, Image as AntImage, Segmented, Drawer, Empty, FloatButton, Alert
+    List, Typography, Input, Button, Avatar, Spin, message, Tag, Progress,
+    Modal, Upload, Drawer, Empty, Space, Popconfirm
 } from "antd";
+import type { UploadProps } from "antd";
 import {
-    RobotOutlined, UserOutlined, SendOutlined, FileImageOutlined, FileOutlined, LoadingOutlined,
-    FileTextOutlined, FundProjectionScreenOutlined, PictureOutlined, DownloadOutlined,
-    AudioOutlined, PlayCircleOutlined, PauseCircleOutlined, PlusOutlined, DeleteOutlined
+    RobotOutlined, SendOutlined, FileOutlined, LoadingOutlined,
+    FileTextOutlined, PlusOutlined, DeleteOutlined, CloseOutlined,
+    BookOutlined, CloudUploadOutlined, CheckCircleFilled, ClockCircleOutlined,
+    SyncOutlined, ExclamationCircleOutlined, AppstoreAddOutlined,
+    MenuFoldOutlined, MenuUnfoldOutlined, MessageOutlined
 } from "@ant-design/icons";
 import ReactMarkdown from 'react-markdown';
-import FileSelectorDrawer from "./FileSelectorDrawer";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { AnimatePresence, motion } from "framer-motion";
 
-const { Title, Text, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
-interface ChatMessage { role: 'user' | 'ai'; content: string; timestamp: number; }
-interface PresentationSlide { title: string; bullets: string[]; speakerNotes?: string; }
-interface PodcastLine { speaker: string; text: string; }
+const CURRENT_USER_ID = "00000000-0000-0000-0000-000000000001";
 
-interface AIStudioDrawerProps {
-    visible: boolean;
-    onClose: () => void;
-}
+interface AIStudioDrawerProps { visible: boolean; onClose: () => void; }
 
 export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps) {
-    // Media Source State
-    const [selectedFiles, setSelectedFiles] = useState<MediaFile[]>([]);
-    const [fileSelectorVisible, setFileSelectorVisible] = useState(false);
-
-    // Mode State
-    const [mode, setMode] = useState<'chat' | 'report' | 'slides' | 'image' | 'audio'>('chat');
-
-    // Chat State
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-    const [chatInput, setChatInput] = useState("");
-    const [isChatting, setIsChatting] = useState(false);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-
-    // Report State
-    const [reportQuery, setReportQuery] = useState("");
-    const [generatedReport, setGeneratedReport] = useState("");
-    const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-
-    // Slides State
-    const [slidesQuery, setSlidesQuery] = useState("");
-    const [generatedSlides, setGeneratedSlides] = useState<PresentationSlide[]>([]);
-    const [isGeneratingSlides, setIsGeneratingSlides] = useState(false);
-    const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-
-    // Image State
-    const [imagePrompt, setImagePrompt] = useState("");
-    const [generatedImage, setGeneratedImage] = useState("");
-    const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-
-    // Audio (Podcast) State
-    const [podcastScript, setPodcastScript] = useState<PodcastLine[]>([]);
-    const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [currentLineIndex, setCurrentLineIndex] = useState(-1);
-    const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
+    const { themeColor } = usePreferencesStore();
+    const [isDark, setIsDark] = useState(false);
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [chatHistory]);
-
-    useEffect(() => {
-        return () => window.speechSynthesis.cancel();
+        const check = () => setIsDark(document.documentElement.classList.contains('dark'));
+        check();
+        const obs = new MutationObserver(check);
+        obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        return () => obs.disconnect();
     }, []);
 
-    const handleFileSelectionChange = (ids: Set<string>, files: MediaFile[]) => {
-        // Merge with existing or replace? Replace seems cleaner for "Selection"
-        // But maybe user wants to add. Let's merge if we want, but for now simple replacement or merge
-        // Let's rely on the callback providing THE selected files.
-        // But FileSelectorDrawer mostly loads recent files, so it might not know about ALL previously selected files if they are not in the recent list.
-        // So we should probably merge based on ID.
+    // Theme-aware colors
+    const bg = isDark ? '#141414' : '#ffffff';
+    const textColor = isDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.88)';
+    const textSecondary = isDark ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)';
+    const bgSoft = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
+    const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+    const textMuted = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.4)';
+    const textFaint = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)';
+    const refBg = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)';
+    const aiBubbleBg = isDark ? `${themeColor}18` : `${themeColor}0a`;
 
-        // Actually FileSelectorDrawer in my impl passed `localSelectedIds` which was initialized from `selectedIds`.
-        // So it captures the full state IF FileSelectorDrawer had all files loaded.
-        // If FileSelectorDrawer only loads 100, and we selected 101st, we might lose it if we just blindly replace.
-        // For MVP: assume files are in the list or we just union new selections. 
-        // But simpler: just set the new list.
-        setSelectedFiles(files);
+    // Notebook
+    const [notebooks, setNotebooks] = useState<StudioNotebook[]>([]);
+    const [activeNotebook, setActiveNotebook] = useState<StudioNotebook | null>(null);
+    const [loadingNotebooks, setLoadingNotebooks] = useState(true);
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [newNotebookName, setNewNotebookName] = useState("");
+    const [creatingNotebook, setCreatingNotebook] = useState(false);
+
+    // Sources
+    const [sources, setSources] = useState<StudioSource[]>([]);
+    const [loadingSources, setLoadingSources] = useState(false);
+    const [showAddMediaModal, setShowAddMediaModal] = useState(false);
+    const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
+    const [loadingMedia, setLoadingMedia] = useState(false);
+    const [addingMedia, setAddingMedia] = useState<Set<string>>(new Set());
+
+    // Chat
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant'; content: string; references?: any[]; timestamp: number }[]>([]);
+    const [chatInput, setChatInput] = useState("");
+    const [isChatting, setIsChatting] = useState(false);
+    const [conversationId, setConversationId] = useState<string | undefined>();
+    const [showReferences, setShowReferences] = useState<number | null>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Layout
+    const [showSources, setShowSources] = useState(true);
+
+    // Poll
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    useEffect(() => { if (visible) loadNotebooks(); return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, [visible]);
+    useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
+
+    const loadNotebooks = async () => {
+        setLoadingNotebooks(true);
+        try { setNotebooks(await studioService.getNotebooks(CURRENT_USER_ID)); } catch { }
+        finally { setLoadingNotebooks(false); }
     };
 
-    const removeFile = (id: string) => {
-        setSelectedFiles(prev => prev.filter(f => f.id !== id));
+    const selectNotebook = async (nb: StudioNotebook) => {
+        setActiveNotebook(nb); setChatHistory([]); setConversationId(undefined); setShowReferences(null);
+        loadSourceStatus(nb.id);
     };
 
-    // --- ACTIONS (Copied & Adapted) ---
-    const handleChatSend = async () => {
-        if (!chatInput.trim()) return;
-        if (selectedFiles.length === 0) { message.warning("Select media sources first."); return; }
-        const userMsg: ChatMessage = { role: 'user', content: chatInput, timestamp: Date.now() };
-        setChatHistory(prev => [...prev, userMsg]);
-        setChatInput("");
-        setIsChatting(true);
+    const loadSourceStatus = async (notebookId: string) => {
+        setLoadingSources(true);
         try {
-            const response = await mediaService.chatWithSources(userMsg.content, selectedFiles.map(f => f.id));
-            setChatHistory(prev => [...prev, { role: 'ai', content: response, timestamp: Date.now() }]);
-        } catch (e) { message.error("Failed to chat."); }
+            const list = await studioService.getSourceStatus(notebookId);
+            setSources(list);
+            if (list.some((s: StudioSource) => s.parse_status === 'parsing')) startPolling(notebookId);
+        } catch { } finally { setLoadingSources(false); }
+    };
+
+    const startPolling = (notebookId: string) => {
+        if (pollRef.current) clearInterval(pollRef.current);
+        pollRef.current = setInterval(async () => {
+            try {
+                const list = await studioService.getSourceStatus(notebookId);
+                setSources(list);
+                if (!list.some((s: StudioSource) => s.parse_status === 'parsing') && pollRef.current) clearInterval(pollRef.current);
+            } catch { }
+        }, 5000);
+    };
+
+    const handleCreateNotebook = async () => {
+        if (!newNotebookName.trim()) return;
+        setCreatingNotebook(true);
+        try {
+            const nb = await studioService.createNotebook(newNotebookName, "", CURRENT_USER_ID);
+            message.success(`Notebook "${newNotebookName}" created`);
+            setNewNotebookName(""); setShowCreateModal(false);
+            await loadNotebooks(); selectNotebook(nb);
+        } catch (e: any) { message.error(e.message || "Failed"); }
+        finally { setCreatingNotebook(false); }
+    };
+
+    const handleDeleteNotebook = async (id: string) => {
+        try {
+            await studioService.deleteNotebook(id); message.success("Deleted");
+            if (activeNotebook?.id === id) { setActiveNotebook(null); setSources([]); setChatHistory([]); }
+            loadNotebooks();
+        } catch (e: any) { message.error(e.message || "Failed"); }
+    };
+
+    const openMediaModal = async () => {
+        setShowAddMediaModal(true); setLoadingMedia(true);
+        try { setMediaFiles(await mediaService.getMedia({ limit: 50 })); } catch { message.error("Failed to load media"); }
+        finally { setLoadingMedia(false); }
+    };
+
+    const handleAddMedia = async (mediaId: string) => {
+        if (!activeNotebook) return;
+        setAddingMedia(prev => new Set(prev).add(mediaId));
+        try { await studioService.addMediaToNotebook(activeNotebook.id, mediaId); message.success("Source added"); loadSourceStatus(activeNotebook.id); }
+        catch (e: any) { message.error(e.message || "Failed"); }
+        finally { setAddingMedia(prev => { const s = new Set(prev); s.delete(mediaId); return s; }); }
+    };
+
+    const handleUploadFile: UploadProps['customRequest'] = async (options) => {
+        if (!activeNotebook) return;
+        const { file, onSuccess, onError } = options as any;
+        try { await studioService.uploadFileToNotebook(activeNotebook.id, file); onSuccess?.({}, file); message.success(`"${(file as File).name}" uploaded`); loadSourceStatus(activeNotebook.id); }
+        catch (e: any) { onError?.(e); message.error(e.message || "Upload failed"); }
+    };
+
+    const handleRemoveSource = async (sourceId: string) => {
+        if (!activeNotebook) return;
+        try { await studioService.removeSource(activeNotebook.id, sourceId); message.success("Removed"); loadSourceStatus(activeNotebook.id); }
+        catch (e: any) { message.error(e.message || "Failed"); }
+    };
+
+    const handleChatSend = async () => {
+        if (!chatInput.trim() || !activeNotebook) return;
+        if (sources.filter(s => s.parse_status === 'done').length === 0) { message.warning("No parsed sources yet."); return; }
+        const userMsg = { role: 'user' as const, content: chatInput, timestamp: Date.now() };
+        setChatHistory(prev => [...prev, userMsg]); setChatInput(""); setIsChatting(true);
+        try {
+            const result: ChatResponse = await studioService.chat(activeNotebook.id, userMsg.content, conversationId, CURRENT_USER_ID);
+            setConversationId(result.conversationId);
+            setChatHistory(prev => [...prev, { role: 'assistant', content: result.answer, references: result.references, timestamp: Date.now() }]);
+        } catch (e: any) { message.error(e.message || "Chat failed"); }
         finally { setIsChatting(false); }
     };
 
-    const handleGenerateReport = async () => {
-        if (!reportQuery.trim()) return;
-        if (selectedFiles.length === 0) { message.warning("Select media sources."); return; }
-        setIsGeneratingReport(true);
-        try {
-            const response = await mediaService.generateReport(reportQuery, selectedFiles.map(f => f.id));
-            setGeneratedReport(response);
-        } catch (e) { message.error("Failed to generate report."); }
-        finally { setIsGeneratingReport(false); }
+    const getStatusIcon = (status: string) => {
+        if (status === 'done') return <CheckCircleFilled style={{ color: '#52c41a', fontSize: 12 }} />;
+        if (status === 'parsing') return <SyncOutlined spin style={{ color: themeColor, fontSize: 12 }} />;
+        if (status === 'error') return <ExclamationCircleOutlined style={{ color: '#ff4d4f', fontSize: 12 }} />;
+        return <ClockCircleOutlined style={{ color: '#8c8c8c', fontSize: 12 }} />;
     };
 
-    const handleGenerateSlides = async () => {
-        if (!slidesQuery.trim()) return;
-        if (selectedFiles.length === 0) { message.warning("Select media sources."); return; }
-        setIsGeneratingSlides(true);
-        try {
-            const response = await mediaService.generatePresentation(slidesQuery, selectedFiles.map(f => f.id));
-            const cleanJson = response.replace(/```json|```/g, '').trim();
-            const slides = JSON.parse(cleanJson);
-            if (Array.isArray(slides)) { setGeneratedSlides(slides); setCurrentSlideIndex(0); }
-        } catch (e) { message.error("Failed to generate slides."); }
-        finally { setIsGeneratingSlides(false); }
-    };
-
-    const handleGenerateImage = async () => {
-        if (!imagePrompt.trim()) return;
-        setIsGeneratingImage(true);
-        try {
-            const b64 = await mediaService.generateImage(imagePrompt);
-            if (b64) setGeneratedImage(b64);
-        } catch (e) { message.error("Failed to generate image."); }
-        finally { setIsGeneratingImage(false); }
-    };
-
-    const handleGeneratePodcast = async () => {
-        if (selectedFiles.length === 0) { message.warning("Select media sources."); return; }
-        setIsGeneratingPodcast(true);
-        try {
-            const response = await mediaService.generatePodcastScript(selectedFiles.map(f => f.id));
-            const cleanJson = response.replace(/```json|```/g, '').trim();
-            const script = JSON.parse(cleanJson);
-            if (Array.isArray(script)) { setPodcastScript(script); setIsPlaying(false); }
-        } catch (e) { message.error("Failed to generate podcast."); }
-        finally { setIsGeneratingPodcast(false); }
-    };
-
-    // --- RENDERERS ---
-    const renderSidebar = () => (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 12, borderRight: '1px solid #f0f0f0' }}>
-            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text strong>Context Sources ({selectedFiles.length})</Text>
-                <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => setFileSelectorVisible(true)}>Add</Button>
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-                <List
-                    dataSource={selectedFiles}
-                    size="small"
-                    renderItem={item => (
-                        <List.Item actions={[<Button type="text" danger icon={<DeleteOutlined />} size="small" onClick={() => removeFile(item.id)} />]}>
-                            <List.Item.Meta
-                                avatar={<Avatar shape="square" src={item.mime_type?.startsWith('image/') ? item.url : undefined} icon={<FileOutlined />} size="small" />}
-                                title={<Text ellipsis style={{ maxWidth: 120, fontSize: 12 }}>{item.filename}</Text>}
-                            />
-                        </List.Item>
-                    )}
-                />
-            </div>
-
-            {/* Nested Drawer for File Selection */}
-            <FileSelectorDrawer
-                visible={fileSelectorVisible}
-                onClose={() => setFileSelectorVisible(false)}
-                selectedIds={new Set(selectedFiles.map(f => f.id))}
-                onSelectionChange={handleFileSelectionChange}
-            />
-        </div>
-    );
-
-    const renderContent = () => {
-        // Reuse render logic from page.tsx but simplified layout
-        if (mode === 'chat') {
-            return (
-                <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-                        {chatHistory.length === 0 && <Empty description="Ask questions about your files." image={Empty.PRESENTED_IMAGE_SIMPLE} />}
-                        {chatHistory.map((msg, i) => (
-                            <div key={i} style={{ marginBottom: 12, textAlign: msg.role === 'user' ? 'right' : 'left' }}>
-                                <div style={{ display: 'inline-block', padding: '8px 12px', borderRadius: 8, background: msg.role === 'user' ? '#1890ff' : '#f0f0f0', color: msg.role === 'user' ? '#fff' : '#000', maxWidth: '85%', textAlign: 'left' }}>
-                                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                                </div>
-                            </div>
-                        ))}
-                        {isChatting && <Spin />}
-                        <div ref={messagesEndRef} />
-                    </div>
-                    <div style={{ padding: 12, borderTop: '1px solid #eee' }}>
-                        <Space.Compact style={{ width: '100%' }}>
-                            <Input value={chatInput} onChange={e => setChatInput(e.target.value)} onPressEnter={handleChatSend} placeholder="Ask..." disabled={isChatting} />
-                            <Button type="primary" icon={<SendOutlined />} onClick={handleChatSend} loading={isChatting} />
-                        </Space.Compact>
-                    </div>
-                </div>
-            );
-        }
-        // ... (Other modes simplified for brevity but functional)
-        return (
-            <div style={{ padding: 20, textAlign: 'center' }}>
-                {/* Placeholders for other modes reusing the logic from page.tsx (omitted for brevity in this artifact but would assume similar implementation) */}
-                {mode === 'report' && (
-                    <>
-                        <TextArea value={reportQuery} onChange={e => setReportQuery(e.target.value)} rows={4} placeholder="Report requirements..." />
-                        <Button style={{ marginTop: 8 }} type="primary" onClick={handleGenerateReport} loading={isGeneratingReport}>Generate Report</Button>
-                        {generatedReport && <Card style={{ marginTop: 16, textAlign: 'left' }}><ReactMarkdown>{generatedReport}</ReactMarkdown></Card>}
-                    </>
-                )}
-                {mode === 'image' && (
-                    <>
-                        <Input value={imagePrompt} onChange={e => setImagePrompt(e.target.value)} placeholder="Image prompt..." />
-                        <Button style={{ marginTop: 8 }} type="primary" onClick={handleGenerateImage} loading={isGeneratingImage}>Generate</Button>
-                        {generatedImage && <AntImage src={generatedImage} style={{ marginTop: 16 }} />}
-                    </>
-                )}
-                {mode === 'slides' && (
-                    <>
-                        <TextArea value={slidesQuery} onChange={e => setSlidesQuery(e.target.value)} rows={4} placeholder="Slide topic..." />
-                        <Button style={{ marginTop: 8 }} type="primary" onClick={handleGenerateSlides} loading={isGeneratingSlides}>Generate Slides</Button>
-                        {generatedSlides.length > 0 && <Alert message={`Generated ${generatedSlides.length} slides`} type="success" style={{ marginTop: 8 }} />}
-                    </>
-                )}
-                {mode === 'audio' && (
-                    <>
-                        <Button type="primary" onClick={handleGeneratePodcast} loading={isGeneratingPodcast}>Generate Podcast</Button>
-                        {podcastScript.length > 0 && <List dataSource={podcastScript} renderItem={item => <List.Item><List.Item.Meta title={item.speaker} description={item.text} /></List.Item>} />}
-                    </>
-                )}
-            </div>
-        );
+    const formatBytes = (bytes: number) => {
+        if (bytes === 0) return '0 B'; const k = 1024; const s = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + s[i];
     };
 
     return (
-        <Drawer
-            title="AI Studio"
-            width={800}
-            onClose={onClose}
-            open={visible}
-            bodyStyle={{ padding: 0 }}
-        >
-            <Row style={{ height: '100%' }}>
-                <Col span={6} style={{ height: '100%' }}>
-                    {renderSidebar()}
-                </Col>
-                <Col span={18} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ padding: '8px 16px', borderBottom: '1px solid #f0f0f0', background: '#fff' }}>
-                        <Segmented
-                            options={[
-                                { value: 'chat', icon: <RobotOutlined /> },
-                                { value: 'report', icon: <FileTextOutlined /> },
-                                { value: 'slides', icon: <FundProjectionScreenOutlined /> },
-                                { value: 'image', icon: <PictureOutlined /> },
-                                { value: 'audio', icon: <AudioOutlined /> }
-                            ]}
-                            value={mode}
-                            onChange={(v: any) => setMode(v)}
-                        />
+        <Drawer title={null} width={760} onClose={onClose} open={visible} closable={false}
+            styles={{ header: { display: 'none' }, body: { padding: 0, overflow: 'hidden', background: bg, color: textColor } }}>
+            <div style={{ display: 'flex', height: '100%', overflow: 'hidden', color: textColor }}>
+
+                {/* LEFT: Notebooks + Sources */}
+                <AnimatePresence mode="wait">
+                    {showSources && (
+                        <motion.div
+                            initial={{ width: 0, opacity: 0 }} animate={{ width: 220, opacity: 1 }} exit={{ width: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: `1px solid ${border}`, overflow: 'hidden', height: '100%' }}
+                        >
+                            {/* Header */}
+                            <div style={{ padding: '12px 12px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${border}`, flexShrink: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <RobotOutlined style={{ fontSize: 14, color: themeColor }} />
+                                    <Text strong style={{ fontSize: 13, color: textColor }}>AI Studio</Text>
+                                </div>
+                                <button onClick={onClose} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: bgSoft, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: textMuted }}>
+                                    <CloseOutlined />
+                                </button>
+                            </div>
+
+                            {/* Notebooks Section */}
+                            <div style={{ padding: '8px 10px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                                <Text style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: textMuted }}>Notebooks</Text>
+                                <Button type="text" size="small" icon={<PlusOutlined style={{ fontSize: 11 }} />} onClick={() => setShowCreateModal(true)}
+                                    style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', color: textFaint }} />
+                            </div>
+                            <div style={{ flex: activeNotebook ? '0 0 auto' : '1', maxHeight: activeNotebook ? 180 : undefined, overflowY: 'auto', padding: '0 6px' }} className="custom-scrollbar">
+                                {loadingNotebooks ? <div style={{ textAlign: 'center', padding: 16 }}><Spin size="small" /></div> :
+                                    notebooks.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span style={{ fontSize: 10, opacity: 0.4 }}>No notebooks</span>} style={{ margin: '16px 0' }} /> :
+                                        notebooks.map(nb => (
+                                            <div key={nb.id} onClick={() => selectNotebook(nb)}
+                                                style={{
+                                                    padding: '6px 8px', borderRadius: 8, cursor: 'pointer', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 8,
+                                                    background: activeNotebook?.id === nb.id ? `${themeColor}14` : 'transparent',
+                                                    border: activeNotebook?.id === nb.id ? `1px solid ${themeColor}33` : '1px solid transparent',
+                                                }}>
+                                                <span style={{ fontSize: 14 }}>{nb.icon || '📓'}</span>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <Text ellipsis style={{ fontSize: 11, fontWeight: 500, display: 'block', color: textColor }}>{nb.name}</Text>
+                                                    <Text style={{ fontSize: 9, color: textMuted }}>{nb.source_count || 0} sources</Text>
+                                                </div>
+                                                <Popconfirm title="Delete?" onConfirm={(e) => { e?.stopPropagation(); handleDeleteNotebook(nb.id); }} onCancel={e => e?.stopPropagation()}>
+                                                    <Button type="text" size="small" danger icon={<DeleteOutlined style={{ fontSize: 10 }} />}
+                                                        onClick={e => e.stopPropagation()} style={{ width: 20, height: 20, opacity: 0.3 }} />
+                                                </Popconfirm>
+                                            </div>
+                                        ))
+                                }
+                            </div>
+
+                            {/* Sources Section (when notebook selected) */}
+                            {activeNotebook && (
+                                <>
+                                    <div style={{ padding: '8px 10px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${border}`, flexShrink: 0 }}>
+                                        <Text style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: textMuted }}>Sources ({sources.length})</Text>
+                                        <Space size={2}>
+                                            <Button type="text" size="small" icon={<AppstoreAddOutlined style={{ fontSize: 11 }} />} onClick={openMediaModal}
+                                                style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', color: textFaint }} />
+                                            <Upload customRequest={handleUploadFile} showUploadList={false} multiple>
+                                                <Button type="text" size="small" icon={<CloudUploadOutlined style={{ fontSize: 11 }} />}
+                                                    style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', color: textFaint }} />
+                                            </Upload>
+                                        </Space>
+                                    </div>
+                                    <div style={{ flex: 1, overflowY: 'auto', padding: '0 6px 6px' }} className="custom-scrollbar">
+                                        {loadingSources ? <div style={{ textAlign: 'center', padding: 12 }}><Spin size="small" /></div> :
+                                            sources.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span style={{ fontSize: 10, opacity: 0.4 }}>Add sources</span>} style={{ margin: '12px 0' }} /> :
+                                                sources.map(s => (
+                                                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 6, marginBottom: 1 }} className="group">
+                                                        {getStatusIcon(s.parse_status)}
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <Text ellipsis style={{ fontSize: 10, display: 'block', color: textSecondary }}>{s.filename}</Text>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                                <Text style={{ fontSize: 9, color: textMuted }}>{formatBytes(s.file_size)}</Text>
+                                                                {s.chunk_count > 0 && <Text style={{ fontSize: 9, color: textMuted }}>· {s.chunk_count} chunks</Text>}
+                                                            </div>
+                                                            {s.parse_status === 'parsing' && <Progress percent={Math.round(s.parse_progress * 100)} size="small" strokeColor={themeColor} style={{ marginTop: 2 }} />}
+                                                        </div>
+                                                        <Button type="text" size="small" danger icon={<DeleteOutlined style={{ fontSize: 9 }} />}
+                                                            onClick={() => handleRemoveSource(s.id)} style={{ width: 18, height: 18, opacity: 0 }} className="group-hover:!opacity-100" />
+                                                    </div>
+                                                ))
+                                        }
+                                    </div>
+                                </>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* RIGHT: Chat */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', minWidth: 0 }}>
+                    {/* Chat Header */}
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Button type="text" size="small" icon={showSources ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
+                                onClick={() => setShowSources(!showSources)} style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+                            <Text strong style={{ fontSize: 12, color: textColor }}>{activeNotebook ? activeNotebook.name : 'Select a notebook'}</Text>
+                            {activeNotebook && sources.some(s => s.parse_status === 'parsing') && <Tag color="processing" icon={<SyncOutlined spin />} style={{ fontSize: 9, margin: 0, lineHeight: '16px', padding: '0 4px' }}>Parsing</Tag>}
+                        </div>
+                        {conversationId && (
+                            <Button type="text" size="small" style={{ fontSize: 10, color: textMuted }}
+                                onClick={() => { setChatHistory([]); setConversationId(undefined); }}>New Chat</Button>
+                        )}
                     </div>
-                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                        {renderContent()}
+
+                    {/* Chat Messages */}
+                    <div style={{ flex: 1, overflowY: 'auto', padding: 14 }} className="custom-scrollbar">
+                        {!activeNotebook ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, opacity: 0.5 }}>
+                                <BookOutlined style={{ fontSize: 36, color: themeColor }} />
+                                <Text style={{ fontSize: 11, textAlign: 'center', maxWidth: 200, color: textSecondary }}>Select or create a notebook to start chatting with your documents.</Text>
+                            </div>
+                        ) : chatHistory.length === 0 ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, opacity: 0.5 }}>
+                                <RobotOutlined style={{ fontSize: 36, color: themeColor }} />
+                                <div style={{ textAlign: 'center' }}>
+                                    <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4, color: textColor }}>Ask about your sources</Text>
+                                    <Text style={{ fontSize: 10, color: textMuted, maxWidth: 220, display: 'block' }}>AI will reference parsed documents to answer your questions.</Text>
+                                </div>
+                            </div>
+                        ) : (
+                            chatHistory.map((msg, i) => (
+                                <div key={i} style={{ marginBottom: 14, display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                                    <div style={{ maxWidth: '85%' }}>
+                                        <div style={{
+                                            padding: '10px 14px', fontSize: 12, lineHeight: 1.6, wordBreak: 'break-word',
+                                            borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                                            background: msg.role === 'user' ? themeColor : aiBubbleBg,
+                                            color: msg.role === 'user' ? '#fff' : textColor,
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                                        }}>
+                                            <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:m-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0">
+                                                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                            </div>
+                                        </div>
+                                        {msg.references && msg.references.length > 0 && (
+                                            <div style={{ marginTop: 4 }}>
+                                                <button onClick={() => setShowReferences(showReferences === i ? null : i)}
+                                                    style={{ fontSize: 9, color: textMuted, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                                                    📄 {msg.references.length} source{msg.references.length > 1 ? 's' : ''} cited
+                                                </button>
+                                                <AnimatePresence>
+                                                    {showReferences === i && (
+                                                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden' }}>
+                                                            <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                                {msg.references.map((ref: any, ri: number) => (
+                                                                    <div key={ri} style={{ padding: '6px 8px', borderRadius: 6, background: refBg, fontSize: 10 }}>
+                                                                        <Text strong style={{ fontSize: 9, color: themeColor, display: 'block', marginBottom: 2 }}>{ref.docName}</Text>
+                                                                        <Text style={{ fontSize: 9, color: textMuted }} className="line-clamp-2">{ref.content}</Text>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                        {isChatting && <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 14 }}><div style={{ padding: 10, borderRadius: 14, background: `${themeColor}08` }}><Spin indicator={<LoadingOutlined spin />} size="small" /></div></div>}
+                        <div ref={messagesEndRef} />
                     </div>
-                </Col>
-            </Row>
+
+                    {/* Chat Input */}
+                    <div style={{ padding: '10px 14px', borderTop: `1px solid ${border}`, display: 'flex', gap: 8, flexShrink: 0 }}>
+                        <Input value={chatInput} onChange={e => setChatInput(e.target.value)} onPressEnter={handleChatSend}
+                            placeholder={activeNotebook ? "Ask about your sources..." : "Select a notebook"} disabled={isChatting || !activeNotebook}
+                            style={{ borderRadius: 10, flex: 1 }} />
+                        <Button type="primary" icon={<SendOutlined />} onClick={handleChatSend} loading={isChatting} disabled={!activeNotebook}
+                            style={{ borderRadius: 10, backgroundColor: themeColor, borderColor: themeColor }} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Create Notebook Modal */}
+            <Modal title={<span><BookOutlined style={{ color: themeColor, marginRight: 8 }} />Create Notebook</span>}
+                open={showCreateModal} onCancel={() => setShowCreateModal(false)} onOk={handleCreateNotebook}
+                confirmLoading={creatingNotebook} okText="Create" okButtonProps={{ style: { backgroundColor: themeColor } }} centered>
+                <div style={{ paddingTop: 16 }}>
+                    <Input size="large" value={newNotebookName} onChange={e => setNewNotebookName(e.target.value)}
+                        placeholder="e.g. Q4 Research Analysis" onPressEnter={handleCreateNotebook} />
+                </div>
+            </Modal>
+
+            {/* Add from Media Library Modal */}
+            <Modal title={<span><AppstoreAddOutlined style={{ color: themeColor, marginRight: 8 }} />Add from Media Library</span>}
+                open={showAddMediaModal} onCancel={() => setShowAddMediaModal(false)} footer={null} width={500} centered>
+                {loadingMedia ? <div style={{ textAlign: 'center', padding: 40 }}><Spin size="large" /></div> : (
+                    <List className="max-h-[350px] overflow-y-auto" dataSource={mediaFiles} renderItem={item => {
+                        const added = sources.some(s => s.media_id === item.id);
+                        return (
+                            <List.Item actions={[added ? <Tag key="a" color="success">Added</Tag> :
+                                <Button key="b" type="primary" size="small" icon={<PlusOutlined />} loading={addingMedia.has(item.id)}
+                                    onClick={() => handleAddMedia(item.id)} style={{ backgroundColor: themeColor }}>Add</Button>]}>
+                                <List.Item.Meta
+                                    avatar={<Avatar icon={<FileOutlined />} shape="square" style={{ backgroundColor: `${themeColor}22`, color: themeColor }} />}
+                                    title={<Text style={{ fontSize: 12, color: textColor }}>{item.filename}</Text>}
+                                    description={<Text style={{ fontSize: 10, color: textMuted }}>{item.mime_type}</Text>} />
+                            </List.Item>);
+                    }} />
+                )}
+            </Modal>
         </Drawer>
     );
 }

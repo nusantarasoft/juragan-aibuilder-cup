@@ -2,16 +2,20 @@
 
 import React, { useState, useEffect } from "react";
 import { Table, Tag, Card, Typography, Input, Space, Button, Tooltip, Row, Col, Drawer, message, Modal, Select, Form, InputNumber, Divider } from "antd";
-import { RollbackOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, EyeOutlined, DeleteOutlined, PlusOutlined, MinusCircleOutlined } from "@ant-design/icons";
+import { RollbackOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, EyeOutlined, DeleteOutlined, PlusOutlined, MinusCircleOutlined , FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { inventoryService, EcomReturn, EcomReturnItem, EcomReturnStatsType, EcomOrder } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const STATUS_CONFIG: Record<string, { color: string; icon: React.ReactNode }> = {
     requested: { color: 'orange', icon: <ClockCircleOutlined /> },
@@ -37,7 +41,7 @@ const RESOLUTION_OPTIONS = [
     { value: 'store_credit', label: 'Store Credit' },
 ];
 
-const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : '—';
+const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : 'â€”';
 
 const TRANSITIONS: Record<string, { label: string; color: string; next: string }> = {
     requested: { label: 'Approve', color: '#3b82f6', next: 'approved' },
@@ -61,6 +65,7 @@ const RETURN_FIELDS: FieldDef[] = [
 export default function ReturnsPage() {
     const [stats, setStats] = useState<EcomReturnStatsType | null>(null);
     const [returns, setReturns] = useState<EcomReturn[]>([]);
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<string | undefined>();
@@ -98,7 +103,7 @@ export default function ReturnsPage() {
     };
 
     const handleStatusChange = async (id: string, newStatus: string) => {
-        try { await inventoryService.updateEcomReturnStatus(id, newStatus); message.success(`Status → ${newStatus}`); load(); }
+        try { await inventoryService.updateEcomReturnStatus(id, newStatus); message.success(`Status â†’ ${newStatus}`); load(); }
         catch { message.error("Failed to update status"); }
     };
 
@@ -173,13 +178,13 @@ export default function ReturnsPage() {
 
     const columns = [
         { title: 'Return #', dataIndex: 'returnNumber', width: 140, render: (v: string) => <Text code className="text-xs">{v}</Text> },
-        { title: 'Order', dataIndex: 'orderNumber', width: 130, render: (v: string) => <Text className="text-xs">{v || '—'}</Text> },
-        { title: 'Customer', dataIndex: 'customerName', ellipsis: true, render: (v: string) => <Text strong className="text-sm">{v || '—'}</Text> },
-        { title: 'Reason', dataIndex: 'reason', width: 130, render: (v: string) => <Tag className="rounded-full text-xs capitalize">{v?.replace(/_/g, ' ') || '—'}</Tag> },
+        { title: 'Order', dataIndex: 'orderNumber', width: 130, render: (v: string) => <Text className="text-xs">{v || 'â€”'}</Text> },
+        { title: 'Customer', dataIndex: 'customerName', ellipsis: true, render: (v: string) => <Text strong className="text-sm">{v || 'â€”'}</Text> },
+        { title: 'Reason', dataIndex: 'reason', width: 130, render: (v: string) => <Tag className="rounded-full text-xs capitalize">{v?.replace(/_/g, ' ') || 'â€”'}</Tag> },
         { title: 'Refund', dataIndex: 'refundAmount', width: 130, render: (v: number) => <Text strong style={{ color: '#ef4444' }}>{fmtCurrency(v)}</Text> },
         { title: 'Refund Status', dataIndex: 'refundStatus', width: 110,
             render: (v: string) => <Tag color={v === 'refunded' ? 'green' : v === 'pending' ? 'orange' : 'default'} className="rounded-full text-xs capitalize">{v}</Tag> },
-        { title: 'Date', dataIndex: 'createdAt', width: 100, render: (v: string) => v ? new Date(v).toLocaleDateString() : '—' },
+        { title: 'Date', dataIndex: 'createdAt', width: 100, render: (v: string) => v ? new Date(v).toLocaleDateString() : 'â€”' },
         { title: 'Status', dataIndex: 'status', width: 110,
             render: (v: string) => { const s = STATUS_CONFIG[v] || { color: 'default', icon: null }; return <Tag icon={s.icon} color={s.color} className="rounded-full text-xs capitalize">{v}</Tag>; }
         },
@@ -214,7 +219,7 @@ export default function ReturnsPage() {
                         <Form.Item name="orderId" label="Order" rules={[{ required: true }]}>
                             <Select placeholder="Select order" showSearch allowClear onChange={onOrderChange}
                                 filterOption={(input, option) => (option?.label as string || '').toLowerCase().includes(input.toLowerCase())}
-                                options={orders.map(o => ({ value: o.id, label: `${o.orderNumber} — ${o.customerName || ''}` }))} />
+                                options={orders.map(o => ({ value: o.id, label: `${o.orderNumber} â€” ${o.customerName || ''}` }))} />
                         </Form.Item>
                     </Col>
                     <Col span={6}><Form.Item name="orderNumber" label="Order #"><Input disabled /></Form.Item></Col>
@@ -274,8 +279,7 @@ export default function ReturnsPage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                                    ...glass,
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -291,7 +295,7 @@ export default function ReturnsPage() {
                     ))}
                 </Row>
 
-                <Card size="small" style={{ flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)' }}>
+                <Card size="small" style={{ flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)' }}>
                     <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                         <div className="flex items-center gap-3">
                             <Input prefix={<SearchOutlined className="text-gray-400" />} placeholder="Search returns..."
@@ -301,6 +305,7 @@ export default function ReturnsPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_returns', title: 'eCommerce Returns', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Return #', key: 'returnNumber' }, { header: 'Order #', key: 'orderNumber' }, { header: 'Reason', key: 'reason' }, { header: 'Status', key: 'status' }], data: returns })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_returns', title: 'eCommerce Returns', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Return #', key: 'returnNumber' }, { header: 'Order #', key: 'orderNumber' }, { header: 'Reason', key: 'reason' }, { header: 'Status', key: 'status' }], data: returns })} /></Tooltip></RbacGuard>
                             <Button type="primary" icon={<PlusOutlined />} onClick={openNewReturn}
                                 style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)', border: 'none', borderRadius: 8 }}>
                                 New Return
@@ -358,3 +363,6 @@ export default function ReturnsPage() {
         </CMSLayout>
     );
 }
+
+
+

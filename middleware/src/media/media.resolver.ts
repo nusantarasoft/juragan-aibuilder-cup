@@ -1,4 +1,4 @@
-import { Resolver, Query, Mutation, Args, ID, Int } from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Args, ID, Int, Float } from '@nestjs/graphql';
 import { ObjectType, Field, InputType } from '@nestjs/graphql';
 import { MediaService, MediaFile } from './media.service';
 import { RagService } from '../rag/rag.service';
@@ -14,6 +14,20 @@ export class S3Bucket {
     creationDate?: string;
     @Field({ nullable: true })
     isPublic?: boolean;
+}
+
+@ObjectType()
+export class EmbeddingStatusType {
+    @Field()
+    status: string;
+    @Field(() => Float)
+    progress: number;
+    @Field(() => Int)
+    chunkCount: number;
+    @Field({ nullable: true })
+    ragflowDocId?: string;
+    @Field({ nullable: true })
+    progressMsg?: string;
 }
 
 @ObjectType()
@@ -496,7 +510,12 @@ export class MediaResolver {
         @Args('id') id: string,
         @Args('content', { nullable: true }) content?: string
     ): Promise<boolean> {
-        return this.ragService.generateMediaEmbeddings(id, content || '');
+        return this.mediaService.resolveEmbedding(id);
+    }
+
+    @Query(() => EmbeddingStatusType, { name: 'embeddingStatus' })
+    async embeddingStatus(@Args('id') id: string) {
+        return this.mediaService.checkEmbeddingStatus(id);
     }
 
     @Mutation(() => Boolean, { name: 'regenerateThumbnails' })

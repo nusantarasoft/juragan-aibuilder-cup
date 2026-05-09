@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Layout,
     Button,
@@ -29,12 +31,15 @@ import { MagicButton } from "@/components/custom/MagicButton";
 import CatalogTree from "@/app/admin/datasets/CatalogTreeStyled";
 import SQLEditor from "@/app/admin/datasets/SQLEditor";
 import { dremioService } from "@/lib/dremioService";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Content, Sider } = Layout;
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 export default function SQLRunnerPage() {
     const [showExplorer, setShowExplorer] = useState(true);
+    const { themeColor } = usePreferencesStore();
     const [selectedPath, setSelectedPath] = useState<string[]>([]);
     const [queryContext, setQueryContext] = useState<string[]>([]);
     const [initialSQL, setInitialSQL] = useState("");
@@ -59,18 +64,9 @@ export default function SQLRunnerPage() {
     return (
         <CMSLayout
             title={
-                <div className="flex items-center gap-3">
-                    <span style={{
-                        background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        fontWeight: 700
-                    }}>
-                        SQL Runner
-                    </span>
-                </div>
+                <AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>SQL Runner</AuroraText>
             }
-            subTitle="Execute queries and analyze data"
+            subTitle={<DecryptedText text="Execute queries and analyze data" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 <Space key="actions" size={16}>
                     <Select

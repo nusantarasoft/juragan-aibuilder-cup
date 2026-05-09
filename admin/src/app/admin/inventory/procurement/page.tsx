@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
@@ -11,20 +11,26 @@ import {
     ShoppingCartOutlined, CheckCircleOutlined, InboxOutlined,
     TeamOutlined, DollarOutlined, ClockCircleOutlined,
     SendOutlined, EyeOutlined, DeleteOutlined, CheckOutlined, CloseOutlined,
-    ReloadOutlined, GlobalOutlined,
+    ReloadOutlined, GlobalOutlined, FileExcelOutlined, FilePdfOutlined,
 } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { inventoryService } from "@/lib/inventoryService";
 import { CrmAccountPicker } from "@/components/inventory/CrmPicker";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import dayjs from "dayjs";
 
 const { TabPane } = Tabs;
 const { Text, Title } = Typography;
 const TENANT = "default";
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const SUPPLIER_FIELDS: FieldDef[] = [
     { name: 'code', label: 'Supplier Code', required: true },
@@ -60,6 +66,8 @@ const PRIORITY_ICONS: Record<string, string> = {
 
 export default function ProcurementPage() {
     const [activeTab, setActiveTab] = useState("suppliers");
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState("");
     const [stats, setStats] = useState<any>(null);
@@ -318,41 +326,59 @@ export default function ProcurementPage() {
                     animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential
                 />
             }
+            extra={[
+                <Tooltip key="excel" title="Export suppliers to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => {
+                    exportToExcel({
+                        fileName: 'procurement_suppliers',
+                        title: 'Suppliers Report',
+                        dateRange: { start: startDate, end: endDate },
+                        columns: [
+                            { header: 'Code', key: 'code' },
+                            { header: 'Name', key: 'name' },
+                            { header: 'Contact', key: 'contactPerson' },
+                            { header: 'City', key: 'city' },
+                            { header: 'Rating', key: 'rating' },
+                            { header: 'Status', key: 'status' },
+                        ],
+                        data: suppliers,
+                    });
+                }} /></Tooltip>, <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => {
+                    exportToPdf({
+                        fileName: 'procurement_report',
+                        title: 'Procurement Report',
+                        dateRange: { start: startDate, end: endDate },
+                        columns: [
+                            { header: 'Code', key: 'code' },
+                            { header: 'Name', key: 'name' },
+                            { header: 'Contact', key: 'contactPerson' },
+                            { header: 'City', key: 'city' },
+                            { header: 'Rating', key: 'rating' },
+                            { header: 'Status', key: 'status' },
+                        ],
+                        data: suppliers,
+                    });
+                }} /></Tooltip>,
+            ]}
         >
         <div style={{ padding: 0 }}>
             {/* Stat Cards */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-                <Col xs={12} sm={8} md={4}>
-                    <Card size="small" style={{ borderRadius: 12 }}>
-                        <Statistic title="Suppliers" value={stats?.totalSuppliers || 0} prefix={<TeamOutlined style={{ color: "#1890ff" }} />} />
-                    </Card>
-                </Col>
-                <Col xs={12} sm={8} md={4}>
-                    <Card size="small" style={{ borderRadius: 12 }}>
-                        <Statistic title="Pending PRs" value={stats?.pendingPRs || 0} prefix={<ClockCircleOutlined style={{ color: "#fa8c16" }} />} valueStyle={stats?.pendingPRs > 0 ? { color: "#fa8c16" } : undefined} />
-                    </Card>
-                </Col>
-                <Col xs={12} sm={8} md={4}>
-                    <Card size="small" style={{ borderRadius: 12 }}>
-                        <Statistic title="Total PRs" value={stats?.totalPRs || 0} prefix={<FileTextOutlined style={{ color: "#722ed1" }} />} />
-                    </Card>
-                </Col>
-                <Col xs={12} sm={8} md={4}>
-                    <Card size="small" style={{ borderRadius: 12 }}>
-                        <Statistic title="Active POs" value={stats?.activePOs || 0} prefix={<ShoppingCartOutlined style={{ color: "#13c2c2" }} />} />
-                    </Card>
-                </Col>
-                <Col xs={12} sm={8} md={4}>
-                    <Card size="small" style={{ borderRadius: 12 }}>
-                        <Statistic title="Total POs" value={stats?.totalPOs || 0} prefix={<ShoppingCartOutlined style={{ color: "#1890ff" }} />} />
-                    </Card>
-                </Col>
-                <Col xs={12} sm={8} md={4}>
-                    <Card size="small" style={{ borderRadius: 12 }}>
-                        <Statistic title="PO Value" value={stats?.totalPoValue || 0} prefix={<DollarOutlined style={{ color: "#52c41a" }} />}
-                            formatter={(v) => fmtMoney(Number(v))} />
-                    </Card>
-                </Col>
+            <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
+                {[
+                    { title: 'Suppliers', value: stats?.totalSuppliers || 0, icon: <TeamOutlined />, color: '#3b82f6' },
+                    { title: 'Pending PRs', value: stats?.pendingPRs || 0, icon: <ClockCircleOutlined />, color: '#f59e0b' },
+                    { title: 'Total PRs', value: stats?.totalPRs || 0, icon: <FileTextOutlined />, color: themeColor },
+                    { title: 'Active POs', value: stats?.activePOs || 0, icon: <ShoppingCartOutlined />, color: '#06b6d4' },
+                    { title: 'Total POs', value: stats?.totalPOs || 0, icon: <ShoppingCartOutlined />, color: '#8b5cf6' },
+                    { title: 'PO Value', value: stats?.totalPoValue ? fmtMoney(stats.totalPoValue) : '—', icon: <DollarOutlined />, color: '#10b981' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} sm={8} md={4}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
             </Row>
 
             {/* Tabs */}

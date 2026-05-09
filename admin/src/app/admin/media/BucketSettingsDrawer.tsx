@@ -42,12 +42,12 @@ const glassCardStyle = {
     background: 'rgba(255, 255, 255, 0.6)',
     backdropFilter: 'blur(16px)',
     WebkitBackdropFilter: 'blur(16px)',
-    boxShadow: '0 8px 32px rgba(139, 92, 246, 0.1)',
-    border: '1px solid rgba(139, 92, 246, 0.15)'
+    boxShadow: '0 8px 32px rgba(var(--theme-color-rgb, 139, 92, 246), 0.1)',
+    border: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.15)'
 };
 
 const glassHeaderStyle = {
-    background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 50%, #6366f1 100%)',
+    background: 'linear-gradient(135deg, var(--theme-color, #9333ea) 0%, var(--theme-color, #7c3aed) 50%, #6366f1 100%)',
     borderBottom: 'none',
     color: 'white'
 };
@@ -326,17 +326,17 @@ export default function BucketSettingsDrawer({
                     {/* Bucket Info */}
                     <Card
                         size="small"
-                        className="shadow-sm dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20"
+                        className="shadow-sm dark:!bg-[rgba(15,15,23,0.7)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)]"
                         style={glassCardStyle}
                         styles={{ header: glassHeaderStyle }}
                         title={<span className="font-semibold flex items-center gap-2 text-white"><InfoCircleOutlined /> Bucket Information</span>}
                     >
                         <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-md bg-gradient-to-br from-violet-500 to-indigo-600">
+                            <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-md bg-gradient-to-br from-[var(--theme-color,#8b5cf6)] to-[var(--theme-secondary,#4f46e5)]">
                                 <DatabaseOutlined style={{ fontSize: 32, color: '#fff' }} />
                             </div>
                             <div className="flex-1">
-                                <Title level={3} style={{ margin: 0, background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                <Title level={3} style={{ margin: 0, background: 'linear-gradient(to right, var(--theme-color, #8b5cf6), var(--theme-secondary, #6366f1))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                                     {bucket}
                                 </Title>
                                 <Space direction="vertical" size={0}>
@@ -391,12 +391,12 @@ export default function BucketSettingsDrawer({
                     {/* Storage Stats */}
                     <Row gutter={[16, 16]}>
                         <Col span={12}>
-                            <Card size="small" className="shadow-sm h-full dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20" style={glassCardStyle}>
-                                <Statistic title="Total Files" value={storageStats?.totalFiles || 0} prefix={<InfoCircleOutlined style={{ color: '#8b5cf6' }} />} valueStyle={{ fontWeight: 600 }} />
+                            <Card size="small" className="shadow-sm h-full dark:!bg-[rgba(15,15,23,0.7)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)]" style={glassCardStyle}>
+                                <Statistic title="Total Files" value={storageStats?.totalFiles || 0} prefix={<InfoCircleOutlined style={{ color: 'var(--theme-color, #8b5cf6)' }} />} valueStyle={{ fontWeight: 600 }} />
                             </Card>
                         </Col>
                         <Col span={12}>
-                            <Card size="small" className="shadow-sm h-full dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20" style={glassCardStyle}>
+                            <Card size="small" className="shadow-sm h-full dark:!bg-[rgba(15,15,23,0.7)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)]" style={glassCardStyle}>
                                 <Statistic title="Total Size" value={storageStats ? formatFileSize(storageStats.totalSizeBytes) : '0 B'} prefix={<DatabaseOutlined style={{ color: '#6366f1' }} />} valueStyle={{ fontWeight: 600 }} />
                             </Card>
                         </Col>
@@ -408,7 +408,7 @@ export default function BucketSettingsDrawer({
                     <Card
                         size="small"
                         title={<span className="text-white font-semibold flex items-center gap-2"><ThunderboltOutlined /> Actions</span>}
-                        className="shadow-sm dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20"
+                        className="shadow-sm dark:!bg-[rgba(15,15,23,0.7)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)]"
                         style={glassCardStyle}
                         styles={{ header: glassHeaderStyle }}
                     >
@@ -574,7 +574,7 @@ export default function BucketSettingsDrawer({
                                 </Button>
                             </Space>
                         }
-                        className="shadow-sm dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20"
+                        className="shadow-sm dark:!bg-[rgba(15,15,23,0.7)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)]"
                         style={glassCardStyle}
                         styles={{ header: glassHeaderStyle }}
                     >
@@ -617,7 +617,7 @@ export default function BucketSettingsDrawer({
                     {/* Header Card */}
                     <Card
                         size="small"
-                        className="shadow-sm dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20"
+                        className="shadow-sm dark:!bg-[rgba(15,15,23,0.7)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)]"
                         style={glassCardStyle}
                     >
                         <div className="flex justify-between items-center">
@@ -649,7 +649,7 @@ export default function BucketSettingsDrawer({
                                 <Card
                                     key={rule.id}
                                     size="small"
-                                    className="shadow-sm hover:shadow-md transition-shadow dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20"
+                                    className="shadow-sm hover:shadow-md transition-shadow dark:!bg-[rgba(15,15,23,0.7)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)]"
                                     style={glassCardStyle}
                                 >
                                     <div className="flex justify-between items-start">
@@ -708,7 +708,7 @@ export default function BucketSettingsDrawer({
                 <div className="flex flex-col gap-4">
                     {/* Status Card */}
                     <Card
-                        className="shadow-sm dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20"
+                        className="shadow-sm dark:!bg-[rgba(15,15,23,0.7)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)]"
                         style={glassCardStyle}
                     >
                         <Row gutter={24} align="middle">
@@ -753,7 +753,7 @@ export default function BucketSettingsDrawer({
                         <Col span={12}>
                             <Card
                                 size="small"
-                                className="shadow-sm h-full dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20"
+                                className="shadow-sm h-full dark:!bg-[rgba(15,15,23,0.7)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)]"
                                 style={glassCardStyle}
                             >
                                 <Statistic
@@ -770,7 +770,7 @@ export default function BucketSettingsDrawer({
                         <Col span={12}>
                             <Card
                                 size="small"
-                                className="shadow-sm h-full dark:!bg-[rgba(15,15,23,0.7)] dark:!border-purple-500/20"
+                                className="shadow-sm h-full dark:!bg-[rgba(15,15,23,0.7)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)]"
                                 style={glassCardStyle}
                             >
                                 <Statistic

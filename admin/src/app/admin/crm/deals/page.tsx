@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { motion } from "framer-motion";
+import RbacGuard from "@/components/common/RbacGuard";
 import {
     Table, Button, Space, Modal, Form, Input, Select, Tag, Card,
     message, Typography, Tooltip, Drawer, Descriptions, Row, Col,
@@ -11,15 +13,20 @@ import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, DollarOutlined,
     AppstoreOutlined, UnorderedListOutlined, RocketOutlined,
-    TrophyOutlined, FunnelPlotOutlined, FileTextOutlined,
-} from "@ant-design/icons";
+    TrophyOutlined, FunnelPlotOutlined, FileTextOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import dayjs from "dayjs";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const { TextArea } = Input;
 
 interface Deal {
@@ -33,7 +40,7 @@ interface Deal {
 
 const STAGES = [
     { value: "prospecting", label: "Prospecting", color: "#1677ff", prob: 10 },
-    { value: "qualification", label: "Qualification", color: "#722ed1", prob: 25 },
+    { value: "qualification", label: "Qualification", color: "var(--theme-color, #8b5cf6)", prob: 25 },
     { value: "proposal", label: "Proposal", color: "#eb2f96", prob: 50 },
     { value: "negotiation", label: "Negotiation", color: "#fa8c16", prob: 75 },
     { value: "closed_won", label: "Closed Won", color: "#52c41a", prob: 100 },
@@ -52,6 +59,8 @@ const DEAL_FIELDS: FieldDef[] = [
 
 export default function DealsPage() {
     const [deals, setDeals] = useState<Deal[]>([]);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Deal | null>(null);
@@ -123,7 +132,7 @@ export default function DealsPage() {
             {pipelineStages.map(stage => {
                 const stageDeals = deals.filter(d => d.stage === stage.value);
                 const stageTotal = stageDeals.reduce((s, d) => s + (d.amount || 0), 0);
-                return (<div key={stage.value} style={{ minWidth: 260, maxWidth: 280, flex: '0 0 auto', background: '#fafafa', borderRadius: 8, padding: 12, borderTop: `3px solid ${stage.color}` }}>
+                return (<div key={stage.value} style={{ minWidth: 260, maxWidth: 280, flex: '0 0 auto', background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(8px)', borderRadius: 8, padding: 12, borderTop: `3px solid ${stage.color}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}><div><Text strong style={{ fontSize: 13 }}>{stage.label}</Text><br /><Text type="secondary" style={{ fontSize: 11 }}>{stageDeals.length} deals · {formatAmount(stageTotal)}</Text></div></div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {stageDeals.length === 0 && <Text type="secondary" style={{ fontSize: 12, textAlign: 'center', padding: 16 }}>No deals</Text>}
@@ -159,23 +168,25 @@ export default function DealsPage() {
     ];
 
     return (
-        <CMSLayout title="Deals" subTitle="Track your sales pipeline and opportunities" extra={[
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Deals</AuroraText>}
+            subTitle={<DecryptedText text="Track your sales pipeline and opportunities" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[
             <Segmented key="view" options={[{ value: 'board', icon: <AppstoreOutlined /> }, { value: 'list', icon: <UnorderedListOutlined /> }]} value={viewMode} onChange={(v) => setViewMode(v as string)} />,
             <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
             <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>New Deal</Button>,
+                <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_deals', title: 'CRM Deals', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Deal', key: 'dealName' }, { header: 'Amount', key: 'amount' }, { header: 'Stage', key: 'stage' }, { header: 'Win %', key: 'probability' }, { header: 'Account', key: 'accountName' }], data: deals })} /></Tooltip> <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_deals', title: 'CRM Deals', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Deal', key: 'dealName' }, { header: 'Amount', key: 'amount' }, { header: 'Stage', key: 'stage' }, { header: 'Win %', key: 'probability' }, { header: 'Account', key: 'accountName' }], data: deals })} /></Tooltip></RbacGuard>,
         ]}>
             <Row gutter={16} style={{ marginBottom: 16 }}>
-                <Col span={6}><Card><Statistic title="Pipeline Value (Open)" value={totalPipeline} prefix={<DollarOutlined />} precision={0} formatter={(v) => formatAmount(Number(v))} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Expected Revenue (Open)" value={weightedPipeline} prefix={<FunnelPlotOutlined />} precision={0} valueStyle={{ color: '#52c41a' }} formatter={(v) => formatAmount(Number(v))} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Won Revenue" value={wonAmount} prefix={<TrophyOutlined />} precision={0} valueStyle={{ color: '#52c41a' }} formatter={(v) => formatAmount(Number(v))} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Open Deals" value={openDeals.length} prefix={<FunnelPlotOutlined />} /></Card></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}><Card style={{ ...glass }}><Statistic title="Pipeline Value (Open)" value={totalPipeline} prefix={<DollarOutlined />} precision={0} formatter={(v) => formatAmount(Number(v))} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}><Card style={{ ...glass }}><Statistic title="Expected Revenue (Open)" value={weightedPipeline} prefix={<FunnelPlotOutlined />} precision={0} valueStyle={{ color: '#52c41a' }} formatter={(v) => formatAmount(Number(v))} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Card style={{ ...glass }}><Statistic title="Won Revenue" value={wonAmount} prefix={<TrophyOutlined />} precision={0} valueStyle={{ color: '#52c41a' }} formatter={(v) => formatAmount(Number(v))} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}><Card style={{ ...glass }}><Statistic title="Open Deals" value={openDeals.length} prefix={<FunnelPlotOutlined />} /></Card></motion.div></Col>
             </Row>
-            <Card style={{ marginBottom: 16 }}><Space wrap>
+            <Card style={{ ...glass, marginBottom: 16 }}><Space wrap>
                 <Input prefix={<SearchOutlined />} placeholder="Search deals..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />
                 <Select placeholder="Stage" value={stageFilter} onChange={setStageFilter} allowClear style={{ width: 160 }} options={STAGES.map(s => ({ value: s.value, label: s.label }))} />
             </Space></Card>
 
-            {viewMode === 'board' ? renderBoard() : (<Card><Table columns={columns} dataSource={deals.map(d => ({ ...d, key: d.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>)}
+            {viewMode === 'board' ? renderBoard() : (<Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table scroll={{ x: 900 }} columns={columns} dataSource={deals.map(d => ({ ...d, key: d.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>)}
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Deal" : "New Deal"} entityName="deal" steps={formSteps} fields={DEAL_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["#f59e0b", "#ef4444"]} editMode={!!editing} />
 
@@ -195,10 +206,12 @@ export default function DealsPage() {
                         {selected.lossReason && <Descriptions.Item label="Loss Reason">{selected.lossReason}</Descriptions.Item>}
                         <Descriptions.Item label="Description">{selected.description || '—'}</Descriptions.Item>
                     </Descriptions>) },
-                    { key: "quotes", label: `Quotes (${selected.quotes?.length || 0})`, children: (<Table dataSource={selected.quotes || []} rowKey="id" pagination={false} size="small" columns={[{ title: 'Quote #', dataIndex: 'quoteNumber', render: t => <Text strong>{t}</Text> }, { title: 'Name', dataIndex: 'name' }, { title: 'Status', dataIndex: 'status', render: t => <Tag>{t}</Tag> }, { title: 'Total', dataIndex: 'total', render: t => formatAmount(t) }, { title: 'Date', dataIndex: 'createdAt', render: t => dayjs(t).format('MMM D, YY') }]} />) },
+                    { key: "quotes", label: `Quotes (${selected.quotes?.length || 0})`, children: (<Table scroll={{ x: 900 }} dataSource={selected.quotes || []} rowKey="id" pagination={false} size="small" columns={[{ title: 'Quote #', dataIndex: 'quoteNumber', render: t => <Text strong>{t}</Text> }, { title: 'Name', dataIndex: 'name' }, { title: 'Status', dataIndex: 'status', render: t => <Tag>{t}</Tag> }, { title: 'Total', dataIndex: 'total', render: t => formatAmount(t) }, { title: 'Date', dataIndex: 'createdAt', render: t => dayjs(t).format('MMM D, YY') }]} />) },
                     { key: "ai", label: "AI Insights", children: (<Spin spinning={aiLoading}><div style={{ marginBottom: 16 }}><Text>Use Gemini 2.5 Pro to analyze the deal and get an actionable recommendation.</Text></div><Button type="primary" onClick={handleGenerateAI} style={{ marginBottom: 16 }} icon={<RocketOutlined />}>Generate Next Best Action</Button>{aiAction && (<Card size="small" style={{ background: '#f6ffed', borderColor: '#b7eb8f' }}><p style={{ margin: 0 }}>{aiAction}</p></Card>)}</Spin>) }
                 ]} />)}
             </Drawer>
         </CMSLayout>
     );
 }
+
+

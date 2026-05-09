@@ -3,20 +3,19 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
-import {
-    Table, Button, Space, Tag, Card, Typography, message,
-    Row, Col, Statistic, Empty, Spin, Select, Input,
-    Form, InputNumber, Descriptions, Divider, Tooltip, Badge
-} from "antd";
+import RbacGuard from "@/components/common/RbacGuard";
+import { Badge, Button, Card, Col, Descriptions, Divider, Empty, Form, Input, InputNumber, message, Row, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography } from "antd";
 import {
     ArrowUpOutlined, ArrowDownOutlined, SwapOutlined,
     WarningOutlined, ReloadOutlined, PlusOutlined,
     SearchOutlined, ThunderboltOutlined, BarChartOutlined,
     RobotOutlined, DashboardOutlined, CheckCircleOutlined,
     ClockCircleOutlined, ExclamationCircleOutlined,
-    FileTextOutlined, UnorderedListOutlined
-} from "@ant-design/icons";
+    FileTextOutlined, UnorderedListOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { TooltipWrapper as AnimatedTooltip } from "@/components/mvpblocks/AnimatedTooltip";
 import {
@@ -27,6 +26,7 @@ import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Title, Text, Paragraph } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const MOVEMENT_FIELDS: FieldDef[] = [
     { name: 'itemId', label: 'Item ID', required: true },
@@ -54,6 +54,8 @@ const MOVEMENT_ICONS: Record<string, React.ReactNode> = {
 
 export default function StockDashboardPage() {
     const [stats, setStats] = useState<InvStockStats | null>(null);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [ledger, setLedger] = useState<StockLedgerEntry[]>([]);
     const [movements, setMovements] = useState<StockMovement[]>([]);
     const [items, setItems] = useState<InvItem[]>([]);
@@ -240,17 +242,17 @@ export default function StockDashboardPage() {
     ];
 
     const kpiCards = [
-        { title: 'Total Items', value: stats?.totalItems || 0, icon: <DashboardOutlined />, color: '#7c3aed' },
+        { title: 'Total Items', value: stats?.totalItems || 0, icon: <DashboardOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { title: 'Total On-Hand', value: stats?.totalOnHand || 0, icon: <BarChartOutlined />, color: '#0ea5e9' },
         { title: 'Total Reserved', value: stats?.totalReserved || 0, icon: <ClockCircleOutlined />, color: '#f59e0b' },
         { title: 'Low Stock', value: stats?.lowStockCount || 0, icon: <WarningOutlined />, color: '#ef4444' },
         { title: 'Movements', value: stats?.totalMovements || 0, icon: <SwapOutlined />, color: '#10b981' },
-        { title: 'Active Items', value: stats?.activeItems || 0, icon: <CheckCircleOutlined />, color: '#6366f1' },
+        { title: 'Active Items', value: stats?.activeItems || 0, icon: <CheckCircleOutlined />, color: themeColor },
     ];
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>Stock Dashboard</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Stock Dashboard</AuroraText>}
             subTitle={
                 <DecryptedText
                     text="Real-time inventory levels, stock movements, and AI-powered anomaly detection"
@@ -265,8 +267,7 @@ export default function StockDashboardPage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                                    ...glass,
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -286,8 +287,7 @@ export default function StockDashboardPage() {
 
                 {/* Toolbar */}
                 <Card size="small" style={{
-                    background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                    ...glass,
                 }}>
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div className="flex items-center gap-2">
@@ -302,15 +302,16 @@ export default function StockDashboardPage() {
                         <div className="flex items-center gap-2">
                             <Button icon={<RobotOutlined />} onClick={handleAnomalyDetection}
                                 loading={anomalyLoading}
-                                style={{ borderColor: '#7c3aed', color: '#7c3aed' }}>
+                                style={{ borderColor: 'var(--theme-color, #7c3aed)', color: 'var(--theme-color, #7c3aed)' }}>
                                 AI Anomaly Detection
                             </Button>
                             <AnimatedTooltip content="Reload">
                                 <Button icon={<ReloadOutlined />} onClick={loadAll} />
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_stock', title: 'Stock Ledger', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Item', key: 'itemName' }, { header: 'Warehouse', key: 'warehouseName' }, { header: 'Type', key: 'transactionType' }, { header: 'Qty', key: 'quantity' }, { header: 'Balance', key: 'balanceAfter' }], data: ledger })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_stock', title: 'Stock Ledger', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Item', key: 'itemName' }, { header: 'Warehouse', key: 'warehouseName' }, { header: 'Type', key: 'transactionType' }, { header: 'Qty', key: 'quantity' }, { header: 'Balance', key: 'balanceAfter' }], data: ledger })} /></Tooltip></RbacGuard>
                             </AnimatedTooltip>
                             <Button type="primary" icon={<PlusOutlined />}
                                 onClick={() => { movementForm.resetFields(); setMovementModalOpen(true); }}
-                                style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', borderRadius: 8, border: 'none' }}>
+                                style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', borderRadius: 8, border: 'none' }}>
                                 Record Movement
                             </Button>
                         </div>
@@ -326,7 +327,7 @@ export default function StockDashboardPage() {
                             borderRadius: 12,
                         }}>
                             <div className="flex items-start gap-3">
-                                <RobotOutlined style={{ fontSize: 20, color: '#7c3aed' }} />
+                                <RobotOutlined style={{ fontSize: 20, color: 'var(--theme-color, #7c3aed)' }} />
                                 <div className="flex-1">
                                     <Text strong className="text-sm block mb-1">AI Anomaly Analysis</Text>
                                     <Text className="text-xs">{anomalyResult.summary || anomalyResult.message}</Text>
@@ -343,7 +344,7 @@ export default function StockDashboardPage() {
                                         </div>
                                     )}
                                 </div>
-                                <Button type="text" size="small" onClick={() => setAnomalyResult(null)}>✕</Button>
+                                <Button type="text" size="small" onClick={() => setAnomalyResult(null)}>âœ•</Button>
                             </div>
                         </Card>
                     </motion.div>
@@ -353,10 +354,10 @@ export default function StockDashboardPage() {
                 <Row gutter={16} style={{ flex: 1, minHeight: 0 }}>
                     <Col xs={24} lg={14}>
                         <Card size="small" title={
-                            <span style={{ background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600, fontSize: 14 }}>
+                            <span style={{ background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600, fontSize: 14 }}>
                                 Stock Levels
                             </span>
-                        } style={{ height: '100%', borderRadius: 12, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)' }}>
+                        } style={{ height: '100%', ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)' }}>
                             <Table
                                 dataSource={ledger}
                                 columns={ledgerColumns}
@@ -370,10 +371,10 @@ export default function StockDashboardPage() {
                     </Col>
                     <Col xs={24} lg={10}>
                         <Card size="small" title={
-                            <span style={{ background: 'linear-gradient(to right, #8b5cf6, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600, fontSize: 14 }}>
+                            <span style={{ background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600, fontSize: 14 }}>
                                 Recent Movements
                             </span>
-                        } style={{ height: '100%', borderRadius: 12, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)' }}>
+                        } style={{ height: '100%', ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)' }}>
                             <Table
                                 dataSource={movements}
                                 columns={movementColumns}
@@ -388,7 +389,7 @@ export default function StockDashboardPage() {
                 </Row>
             </div>
 
-            {/* ─── Record Movement SteppedFormModal ──────── */}
+            {/* â”€â”€â”€ Record Movement SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <SteppedFormModal
                 open={movementModalOpen}
                 onCancel={() => { setMovementModalOpen(false); movementForm.resetFields(); }}
@@ -411,14 +412,14 @@ export default function StockDashboardPage() {
                                     <Col span={12}>
                                         <Form.Item name="movementType" label="Movement Type" rules={[{ required: true }]}>
                                             <Select options={[
-                                                { value: 'IN', label: '📥 Stock In' },
-                                                { value: 'OUT', label: '📤 Stock Out' },
-                                                { value: 'ADJUST_IN', label: '🔼 Adjust In' },
-                                                { value: 'ADJUST_OUT', label: '🔽 Adjust Out' },
-                                                { value: 'TRANSFER', label: '🔄 Transfer' },
-                                                { value: 'RETURN_IN', label: '↩️ Return In' },
-                                                { value: 'PRODUCTION', label: '🏭 Production' },
-                                                { value: 'CONSUMPTION', label: '🔧 Consumption' },
+                                                { value: 'IN', label: 'ðŸ“¥ Stock In' },
+                                                { value: 'OUT', label: 'ðŸ“¤ Stock Out' },
+                                                { value: 'ADJUST_IN', label: 'ðŸ”¼ Adjust In' },
+                                                { value: 'ADJUST_OUT', label: 'ðŸ”½ Adjust Out' },
+                                                { value: 'TRANSFER', label: 'ðŸ”„ Transfer' },
+                                                { value: 'RETURN_IN', label: 'â†©ï¸ Return In' },
+                                                { value: 'PRODUCTION', label: 'ðŸ­ Production' },
+                                                { value: 'CONSUMPTION', label: 'ðŸ”§ Consumption' },
                                             ]} />
                                         </Form.Item>
                                     </Col>
@@ -472,8 +473,12 @@ export default function StockDashboardPage() {
                 width={640}
                 loading={false}
                 onBatchCreate={handleBatchCreateMovement}
-                gradient={["#7c3aed", "#6366f1"]}
+                gradient={["var(--theme-color, #7c3aed)", "#6366f1"]}
             />
         </CMSLayout>
     );
 }
+
+
+
+

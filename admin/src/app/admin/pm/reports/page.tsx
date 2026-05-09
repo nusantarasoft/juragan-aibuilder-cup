@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
-import {
-    Typography, Space, Spin, Tag, Card, Row, Col, Statistic, Table,
-    Empty, Select, Tooltip, Progress, Divider, Button, message
-} from "antd";
+import { motion } from "framer-motion";
+import RbacGuard from "@/components/common/RbacGuard";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { Button, Card, Col, Divider, Empty, message, Progress, Row, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography } from "antd";
 import {
     BarChartOutlined, ProjectOutlined, CheckCircleOutlined,
     ClockCircleOutlined, ExclamationCircleOutlined, DollarOutlined,
@@ -13,12 +14,14 @@ import {
     FireOutlined, AimOutlined, TrophyOutlined, WarningOutlined,
     RiseOutlined, FallOutlined, BulbOutlined, ThunderboltOutlined,
     NodeIndexOutlined, FileTextOutlined, SafetyCertificateOutlined,
-    AlertOutlined, RocketOutlined, ForkOutlined
-} from "@ant-design/icons";
+    AlertOutlined, RocketOutlined, ForkOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text, Title } = Typography;
 
@@ -61,6 +64,8 @@ const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
 export default function ReportsPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [projects, setProjects] = useState<any[]>([]);
     const [tasks, setTasks] = useState<any[]>([]);
     const { resolvedTheme } = useTheme();
@@ -326,7 +331,8 @@ export default function ReportsPage() {
 
     if (loading) {
         return (
-            <CMSLayout title="Reports" subTitle="Portfolio analytics & insights">
+            <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Reports</AuroraText>}
+            subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip></RbacGuard>]}>
                 <div style={{ textAlign: 'center', padding: 120 }}>
                     <Spin size="large" />
                 </div>
@@ -335,17 +341,19 @@ export default function ReportsPage() {
     }
 
     return (
-        <CMSLayout title="Reports" subTitle="Portfolio analytics & insights">
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Reports</AuroraText>}
+            subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip></RbacGuard>]}>
             {contextHolder}
 
             {/* ── Executive Summary ── */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={4}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #6366f1' }} size="small">
                         <Statistic
                             title={<span style={{ fontSize: 11 }}>Total Projects</span>}
                             value={totalProjects}
-                            prefix={<ProjectOutlined style={{ color: '#6366f1' }} />}
+                            prefix={<ProjectOutlined style={{ color: themeColor }} />}
                             valueStyle={{ fontSize: 22, fontWeight: 700 }}
                         />
                     </Card>
@@ -383,7 +391,7 @@ export default function ReportsPage() {
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #8b5cf6' }} size="small">
+                    <Card style={{ ...glassCard, borderTop: `3px solid ${themeColor}` }} size="small">
                         <Statistic
                             title={<span style={{ fontSize: 11 }}>Effort Variance</span>}
                             value={effortVariance}
@@ -404,12 +412,13 @@ export default function ReportsPage() {
                     </Card>
                 </Col>
             </Row>
+            </motion.div>
 
             {/* ── Task Flow & Priority Distribution ── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} lg={14}>
                     <Card
-                        title={<Space><BarChartOutlined style={{ color: '#8b5cf6' }} /> Task Status Flow</Space>}
+                        title={<Space><BarChartOutlined style={{ color: themeColor }} /> Task Status Flow</Space>}
                         size="small"
                         style={glassCard}
                     >
@@ -495,7 +504,7 @@ export default function ReportsPage() {
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} lg={12}>
                     <Card
-                        title={<Space><ClockCircleOutlined style={{ color: '#8b5cf6' }} /> Effort Analytics</Space>}
+                        title={<Space><ClockCircleOutlined style={{ color: themeColor }} /> Effort Analytics</Space>}
                         size="small"
                         style={glassCard}
                     >
@@ -519,7 +528,7 @@ export default function ReportsPage() {
                         </Row>
                         <Progress
                             percent={totalEstimated > 0 ? Math.min(100, Math.round((totalLogged / totalEstimated) * 100)) : 0}
-                            strokeColor={totalLogged > totalEstimated ? '#ef4444' : { '0%': '#8b5cf6', '100%': '#6366f1' }}
+                            strokeColor={totalLogged > totalEstimated ? '#ef4444' : { '0%': 'var(--theme-color, #8b5cf6)', '100%': 'var(--theme-secondary, #6366f1)' }}
                             trailColor={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}
                             style={{ marginTop: 12 }}
                         />
@@ -599,7 +608,7 @@ export default function ReportsPage() {
             <Card
                 title={
                     <Space>
-                        <AimOutlined style={{ color: '#8b5cf6' }} />
+                        <AimOutlined style={{ color: themeColor }} />
                         <span style={{ fontWeight: 600 }}>Project Health Scorecard</span>
                         <Tag color="purple">{projectHealth.length}</Tag>
                     </Space>
@@ -609,7 +618,7 @@ export default function ReportsPage() {
                 {projectHealth.length === 0 ? (
                     <Empty description="No active projects to score." />
                 ) : (
-                    <Table
+                    <Table scroll={{ x: 900 }}
                         dataSource={projectHealth}
                         columns={healthColumns}
                         rowKey="id"
@@ -627,13 +636,13 @@ export default function ReportsPage() {
             {/* ── Type Distribution ── */}
             {Object.keys(typeDist).length > 0 && (
                 <Card
-                    title={<Space><FundProjectionScreenOutlined style={{ color: '#6366f1' }} /> Task Type Distribution</Space>}
+                    title={<Space><FundProjectionScreenOutlined style={{ color: themeColor }} /> Task Type Distribution</Space>}
                     size="small"
                     style={{ ...glassCard, marginTop: 16 }}
                 >
                     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                         {Object.entries(typeDist).sort((a, b) => b[1] - a[1]).map(([type, count]) => {
-                            const color = type === 'bug' ? '#ef4444' : type === 'story' ? '#10b981' : type === 'epic' ? '#8b5cf6' : '#3b82f6';
+                            const color = type === 'bug' ? '#ef4444' : type === 'story' ? '#10b981' : type === 'epic' ? 'var(--theme-color, #8b5cf6)' : '#3b82f6';
                             const pct = totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0;
                             return (
                                 <Card key={type} size="small" hoverable style={{
@@ -666,7 +675,7 @@ export default function ReportsPage() {
             {/* ── Project Selector for AI ── */}
             <Card
                 size="small"
-                style={{ ...glassCard, marginBottom: 20, borderTop: '3px solid #8b5cf6' }}
+                style={{ ...glassCard, marginBottom: 20, borderTop: `3px solid ${themeColor}` }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                     <BulbOutlined style={{ fontSize: 18, color: '#f59e0b' }} />
@@ -694,7 +703,7 @@ export default function ReportsPage() {
                         loading={statusReportLoading}
                         onClick={handleGenerateStatusReport}
                         disabled={!selectedProjectId}
-                        style={{ borderRadius: 8, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+                        style={{ borderRadius: 8, background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)` }}
                     >
                         Generate Status Report
                     </Button>
@@ -715,7 +724,7 @@ export default function ReportsPage() {
                 <Card
                     title={
                         <Space>
-                            <FileTextOutlined style={{ color: '#6366f1' }} />
+                            <FileTextOutlined style={{ color: themeColor }} />
                             <span style={{ fontWeight: 600 }}>AI Status Report</span>
                             {selectedProjectName && (
                                 <Tag color="purple" style={{ fontSize: 10, borderRadius: 8 }}>{selectedProjectName}</Tag>
@@ -812,13 +821,13 @@ export default function ReportsPage() {
                                     border: '1px solid rgba(99,102,241,0.12)',
                                     height: '100%',
                                 }}>
-                                    <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 8, color: '#6366f1' }}>
+                                    <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 8, color: themeColor }}>
                                         <RocketOutlined style={{ marginRight: 6 }} />
                                         Next Period Goals
                                     </Text>
                                     {statusReport.nextPeriodGoals.map((item: string, idx: number) => (
                                         <div key={idx} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'flex-start' }}>
-                                            <span style={{ color: '#6366f1', fontWeight: 700, fontSize: 11 }}>→</span>
+                                            <span style={{ color: themeColor, fontWeight: 700, fontSize: 11 }}>→</span>
                                             <Text style={{ fontSize: 11 }}>{item}</Text>
                                         </div>
                                     ))}
@@ -903,7 +912,7 @@ export default function ReportsPage() {
                                         border: '1px solid rgba(139,92,246,0.1)',
                                         display: 'flex', gap: 8, alignItems: 'flex-start',
                                     }}>
-                                        <span style={{ color: '#8b5cf6', fontWeight: 700, fontSize: 11 }}>💡</span>
+                                        <span style={{ color: themeColor, fontWeight: 700, fontSize: 11 }}>💡</span>
                                         <Text style={{ fontSize: 11 }}>{rec}</Text>
                                     </div>
                                 ))}
@@ -918,7 +927,7 @@ export default function ReportsPage() {
                 <Card
                     title={
                         <Space>
-                            <ForkOutlined style={{ color: '#8b5cf6' }} />
+                            <ForkOutlined style={{ color: themeColor }} />
                             <span style={{ fontWeight: 600 }}>Critical Path Analysis</span>
                             {selectedProjectName && (
                                 <Tag color="purple" style={{ fontSize: 10, borderRadius: 8 }}>{selectedProjectName}</Tag>
@@ -965,7 +974,7 @@ export default function ReportsPage() {
                         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                             {criticalPath.totalCriticalPathDuration !== undefined && (
                                 <div style={{ textAlign: 'center' }}>
-                                    <div style={{ fontSize: 20, fontWeight: 800, color: '#8b5cf6' }}>
+                                    <div style={{ fontSize: 20, fontWeight: 800, color: themeColor }}>
                                         {criticalPath.totalCriticalPathDuration}
                                     </div>
                                     <Text type="secondary" style={{ fontSize: 10 }}>Critical Days</Text>
@@ -1111,13 +1120,13 @@ export default function ReportsPage() {
                                         background: isDark ? 'rgba(139,92,246,0.06)' : 'rgba(139,92,246,0.03)',
                                         border: '1px solid rgba(139,92,246,0.1)',
                                     }}>
-                                        <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 8, color: '#8b5cf6' }}>
+                                        <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 8, color: themeColor }}>
                                             <BulbOutlined style={{ marginRight: 6 }} />
                                             Schedule Optimization
                                         </Text>
                                         {criticalPath.recommendations.map((rec: string, idx: number) => (
                                             <div key={idx} style={{ display: 'flex', gap: 6, marginBottom: 3 }}>
-                                                <span style={{ color: '#8b5cf6', fontWeight: 700, fontSize: 11 }}>💡</span>
+                                                <span style={{ color: themeColor, fontWeight: 700, fontSize: 11 }}>💡</span>
                                                 <Text style={{ fontSize: 11 }}>{rec}</Text>
                                             </div>
                                         ))}
@@ -1148,3 +1157,8 @@ export default function ReportsPage() {
         </CMSLayout>
     );
 }
+
+
+
+
+

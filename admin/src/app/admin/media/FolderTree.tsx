@@ -546,10 +546,10 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
             theme={{
                 components: {
                     Tree: {
-                        controlItemBgActive: 'rgba(139, 92, 246, 0.12)', // Violet-500 @ 12%
-                        controlItemBgHover: 'rgba(139, 92, 246, 0.04)',
-                        colorText: '#374151', // Gray-700
-                        colorPrimary: '#7c3aed', // Violet-600
+                        controlItemBgActive: 'rgba(var(--theme-color-rgb, 139, 92, 246), 0.12)',
+                        controlItemBgHover: 'rgba(var(--theme-color-rgb, 139, 92, 246), 0.04)',
+                        colorText: '#374151',
+                        colorPrimary: 'var(--theme-color, #7c3aed)',
                     }
                 }
             }}
@@ -596,9 +596,9 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
 
                 /* Active State Styling via ConfigProvider + CSS Polish - FIXED VISIBILITY */
                 
-                /* Force Solid Violet Background on Selection */
+                /* Force Theme-colored Background on Selection */
                 .ant-tree .ant-tree-treenode-selected .ant-tree-node-content-wrapper {
-                    background-color: #7c3aed !important; /* Violet-600 */
+                    background-color: var(--theme-color, #7c3aed) !important;
                     border-radius: 6px !important;
                 }
 
@@ -653,7 +653,7 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
 
                 /* Hover State (Non-selected) */
                 .ant-tree .ant-tree-node-content-wrapper:hover {
-                    background: rgba(139, 92, 246, 0.05) !important;
+                    background: rgba(var(--theme-color-rgb, 139, 92, 246), 0.05) !important;
                 }
 
                 /* Remove default AntD directory highlights */
@@ -674,8 +674,8 @@ const FolderTree = forwardRef<FolderTreeRef, FolderTreeProps>(({
                 /* Drop Indicator */
                 .ant-tree-drop-indicator {
                     height: 2px !important;
-                    background-color: #8b5cf6 !important;
-                    box-shadow: 0 0 8px rgba(139, 92, 246, 0.6);
+                    background-color: var(--theme-color, #8b5cf6) !important;
+                    box-shadow: 0 0 8px rgba(var(--theme-color-rgb, 139, 92, 246), 0.6);
                     z-index: 9999 !important;
                     pointer-events: none;
                     border-radius: 1px;

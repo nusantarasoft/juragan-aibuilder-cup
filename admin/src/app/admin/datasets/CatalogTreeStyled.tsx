@@ -246,7 +246,7 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
             {onAdd && (
                 <PlusOutlined
                     onClick={(e) => { e.stopPropagation(); onAdd(); }}
-                    className="ml-auto text-[12px] text-gray-400 hover:text-violet-500 opacity-0 group-hover/header:opacity-100 transition-opacity p-1 cursor-pointer"
+                    className="ml-auto text-[12px] text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] opacity-0 group-hover/header:opacity-100 transition-opacity p-1 cursor-pointer"
                 />
             )}
         </div>
@@ -289,7 +289,7 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
             title={
                 <div className="flex items-center gap-2">
                     <span style={{
-                        background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                        background: 'linear-gradient(to right, var(--theme-color, #8b5cf6), var(--theme-secondary, #6366f1))',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         fontWeight: 600,
@@ -307,7 +307,7 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
                             icon={<ExpandAltOutlined style={{ fontSize: 14 }} />}
                             onClick={handleExpandAll}
                             size="small"
-                            className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                            className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] flex items-center justify-center w-7 h-7"
                         />
                     </AnimatedTooltip>
                     <AnimatedTooltip content="Collapse All">
@@ -316,7 +316,7 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
                             icon={<CompressOutlined style={{ fontSize: 14 }} />}
                             onClick={handleCollapseAll}
                             size="small"
-                            className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                            className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] flex items-center justify-center w-7 h-7"
                         />
                     </AnimatedTooltip>
 
@@ -329,7 +329,7 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
                                 icon={<FolderAddOutlined style={{ fontSize: 14 }} />}
                                 onClick={onCreateSpace}
                                 size="small"
-                                className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                                className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] flex items-center justify-center w-7 h-7"
                             />
                         </AnimatedTooltip>
                     )}
@@ -340,7 +340,7 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
                                 icon={<PlusOutlined style={{ fontSize: 14 }} />}
                                 onClick={onAddSource}
                                 size="small"
-                                className="text-gray-400 hover:text-violet-500 flex items-center justify-center w-7 h-7"
+                                className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)] flex items-center justify-center w-7 h-7"
                             />
                         </AnimatedTooltip>
                     )}
@@ -361,7 +361,7 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
             styles={{
                 header: {
                     background: 'transparent',
-                    borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+                    borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
                     minHeight: 40,
                     padding: '0 12px'
                 },
@@ -388,7 +388,7 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
                         icon={<ReloadOutlined style={{ fontSize: 13 }} />}
                         onClick={loadData}
                         size="small"
-                        className="text-gray-400 hover:text-violet-500"
+                        className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)]"
                     />
                 </AnimatedTooltip>
             </div>
@@ -397,8 +397,8 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
                 theme={{
                     components: {
                         Tree: {
-                            controlItemBgActive: '#7c3aed',
-                            controlItemBgHover: 'rgba(139, 92, 246, 0.05)',
+                            controlItemBgActive: 'var(--theme-color, #7c3aed)',
+                            controlItemBgHover: 'rgba(var(--theme-color-rgb, 139, 92, 246), 0.05)',
                             paddingXS: 4
                         }
                     }
@@ -472,7 +472,7 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
                         width: 16px !important;
                     }
                     .custom-dremio-tree .ant-tree-node-content-wrapper:hover {
-                        background: rgba(124, 58, 237, 0.08) !important;
+                        background: rgba(var(--theme-color-rgb, 124, 58, 237), 0.08) !important;
                     }
                     .custom-dremio-tree .ant-tree-node-selected {
                         background: none !important;

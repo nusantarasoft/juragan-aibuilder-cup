@@ -3,19 +3,18 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
-import {
-    Table, Button, Space, Tag, Card, Typography, message,
-    Row, Col, Modal, Form, Input, InputNumber, Select, Tooltip,
-    Drawer, Descriptions, Divider, Progress
-} from "antd";
+import RbacGuard from "@/components/common/RbacGuard";
+import { Button, Card, Col, Descriptions, Divider, Drawer, Form, Input, InputNumber, message, Modal, Progress, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
 import {
     CarOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
     DeleteOutlined, EditOutlined, EyeOutlined,
     ToolOutlined, DollarOutlined, ExclamationCircleOutlined,
     CheckCircleOutlined, WarningOutlined, CloseCircleOutlined,
-    ThunderboltOutlined, CalendarOutlined
-} from "@ant-design/icons";
+    ThunderboltOutlined, CalendarOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import {
     inventoryService, FixedAsset, FixedAssetStatsType
@@ -24,6 +23,7 @@ import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const ASSET_STATUSES: Record<string, { color: string; icon: React.ReactNode }> = {
     active: { color: 'green', icon: <CheckCircleOutlined /> },
@@ -55,7 +55,7 @@ const DEP_METHODS = [
 ];
 
 const fmtCurrency = (v?: number) => v != null ? `Rp ${v.toLocaleString()}` : '-';
-const fmtDate = (v?: string) => v ? new Date(v).toLocaleDateString() : '—';
+const fmtDate = (v?: string) => v ? new Date(v).toLocaleDateString() : 'â€”';
 
 const ASSET_FIELDS: FieldDef[] = [
     { name: 'assetName', label: 'Asset Name', required: true },
@@ -77,6 +77,8 @@ const ASSET_FIELDS: FieldDef[] = [
 
 export default function FixedAssetsPage() {
     const [stats, setStats] = useState<FixedAssetStatsType | null>(null);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [assets, setAssets] = useState<FixedAsset[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -187,9 +189,9 @@ export default function FixedAssetsPage() {
         }
     };
 
-    // ─── KPI Cards ─────────────────────────────────
+    // â”€â”€â”€ KPI Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const kpiCards = [
-        { title: 'Total Assets', value: stats?.totalAssets || 0, icon: <CarOutlined />, color: '#7c3aed' },
+        { title: 'Total Assets', value: stats?.totalAssets || 0, icon: <CarOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { title: 'Active', value: stats?.active || 0, icon: <CheckCircleOutlined />, color: '#10b981' },
         { title: 'Maintenance', value: stats?.maintenance || 0, icon: <ToolOutlined />, color: '#f59e0b' },
         { title: 'Disposed', value: stats?.disposed || 0, icon: <CloseCircleOutlined />, color: '#94a3b8' },
@@ -197,12 +199,12 @@ export default function FixedAssetsPage() {
         { title: 'Current Value', value: fmtCurrency(stats?.totalCurrentValue), icon: <DollarOutlined />, color: '#059669' },
     ];
 
-    // ─── Depreciation Bar ──────────────────────────
+    // â”€â”€â”€ Depreciation Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const depPct = stats && stats.totalPurchaseValue
         ? Math.round((stats.totalAccumulatedDep / stats.totalPurchaseValue) * 100)
         : 0;
 
-    // ─── Columns ───────────────────────────────────
+    // â”€â”€â”€ Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const columns = [
         {
             title: 'Asset #', dataIndex: 'assetNumber', width: 140,
@@ -212,13 +214,13 @@ export default function FixedAssetsPage() {
             title: 'Name', dataIndex: 'assetName', ellipsis: true,
             render: (v: string, r: FixedAsset) => (
                 <a onClick={() => openDetail(r)} className="cursor-pointer">
-                    <Text strong className="text-sm" style={{ color: '#6366f1' }}>{v}</Text>
+                    <Text strong className="text-sm" style={{ color: themeColor }}>{v}</Text>
                 </a>
             ),
         },
         {
             title: 'Category', dataIndex: 'assetCategory', width: 120,
-            render: (v: string) => v ? <Tag className="rounded-full text-xs capitalize">{v}</Tag> : '—',
+            render: (v: string) => v ? <Tag className="rounded-full text-xs capitalize">{v}</Tag> : 'â€”',
         },
         {
             title: 'Purchase Price', dataIndex: 'purchasePrice', width: 140,
@@ -244,7 +246,7 @@ export default function FixedAssetsPage() {
         },
         {
             title: 'Condition', dataIndex: 'condition', width: 100,
-            render: (v: string) => v ? <Tag color={CONDITIONS[v] || 'default'} className="rounded-full text-xs capitalize">{v}</Tag> : '—',
+            render: (v: string) => v ? <Tag color={CONDITIONS[v] || 'default'} className="rounded-full text-xs capitalize">{v}</Tag> : 'â€”',
         },
         {
             title: 'Location', dataIndex: 'location', width: 130, ellipsis: true,
@@ -407,7 +409,7 @@ export default function FixedAssetsPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#6366f1", "#7c3aed", "#8b5cf6", "#00ffff", "#ff00ff"]}>Fixed Assets</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Fixed Assets</AuroraText>}
             subTitle={
                 <DecryptedText
                     text="Track, depreciate, and manage company-owned assets and equipment"
@@ -422,8 +424,7 @@ export default function FixedAssetsPage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                                    ...glass,
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -451,7 +452,7 @@ export default function FixedAssetsPage() {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                                        style={{ background: 'rgba(99,102,241,0.12)', color: '#6366f1', fontSize: 20 }}>
+                                        style={{ background: 'rgba(99,102,241,0.12)', color: themeColor, fontSize: 20 }}>
                                         <ThunderboltOutlined />
                                     </div>
                                     <div>
@@ -471,7 +472,7 @@ export default function FixedAssetsPage() {
                                         content: 'This will calculate and apply depreciation for all active assets.',
                                         onOk: handleRunDepreciation,
                                     })}
-                                    style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)', border: 'none', borderRadius: 8 }}>
+                                    style={{ background: 'linear-gradient(135deg, #6366f1, var(--theme-color, #7c3aed))', border: 'none', borderRadius: 8 }}>
                                     Run Depreciation
                                 </Button>
                             </div>
@@ -481,13 +482,12 @@ export default function FixedAssetsPage() {
 
                 {/* Main Table Card */}
                 <Card size="small" style={{
-                    flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)',
-                    backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)',
+                    flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)',
                 }}>
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
                             <Text strong style={{
-                                background: 'linear-gradient(to right, #6366f1, #7c3aed)',
+                                background: 'linear-gradient(to right, #6366f1, var(--theme-color, #7c3aed))',
                                 WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: 15,
                             }}>
                                 <CarOutlined /> Assets ({filteredAssets.length})
@@ -509,9 +509,10 @@ export default function FixedAssetsPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_fixed-assets', title: 'Fixed Assets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'assetCode' }, { header: 'Category', key: 'category' }, { header: 'Status', key: 'status' }, { header: 'Value', key: 'acquisitionCost' }], data: assets })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_fixed-assets', title: 'Fixed Assets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Code', key: 'assetCode' }, { header: 'Category', key: 'category' }, { header: 'Status', key: 'status' }, { header: 'Value', key: 'acquisitionCost' }], data: assets })} /></Tooltip></RbacGuard>
                             <Button type="primary" icon={<PlusOutlined />}
                                 onClick={() => { setEditingAsset(null); form.resetFields(); setModalOpen(true); }}
-                                style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)', borderRadius: 8, border: 'none' }}>
+                                style={{ background: 'linear-gradient(135deg, #6366f1, var(--theme-color, #7c3aed))', borderRadius: 8, border: 'none' }}>
                                 New Asset
                             </Button>
                         </Space>
@@ -526,7 +527,7 @@ export default function FixedAssetsPage() {
                 </Card>
             </div>
 
-            {/* ─── Stepped Form Modal for Create/Edit ────── */}
+            {/* â”€â”€â”€ Stepped Form Modal for Create/Edit â”€â”€â”€â”€â”€â”€ */}
             <SteppedFormModal
                 open={modalOpen}
                 onCancel={() => { setModalOpen(false); setEditingAsset(null); form.resetFields(); }}
@@ -539,12 +540,12 @@ export default function FixedAssetsPage() {
                 width={700}
                 loading={false}
                 onBatchCreate={handleBatchCreate}
-                gradient={["#6366f1", "#7c3aed"]}
+                gradient={["#6366f1", "var(--theme-color, #7c3aed)"]}
                 editMode={!!editingAsset}
                 initialValues={editingAsset || undefined}
             />
 
-            {/* ─── Dispose Modal ─────────────────────────── */}
+            {/* â”€â”€â”€ Dispose Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <Modal title="Dispose Asset" open={disposeModalOpen}
                 onCancel={() => setDisposeModalOpen(false)} onOk={handleDispose}
                 okText="Dispose" okButtonProps={{ danger: true }}>
@@ -563,7 +564,7 @@ export default function FixedAssetsPage() {
                 </Form>
             </Modal>
 
-            {/* ─── Detail Drawer ─────────────────────────── */}
+            {/* â”€â”€â”€ Detail Drawer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <Drawer title={selectedAsset?.assetName || 'Asset Detail'} open={drawerOpen}
                 onClose={() => setDrawerOpen(false)} width={520}
                 extra={selectedAsset && (
@@ -580,10 +581,10 @@ export default function FixedAssetsPage() {
                             <Descriptions.Item label="Category" span={1}>
                                 <Tag className="capitalize">{selectedAsset.assetCategory || 'N/A'}</Tag>
                             </Descriptions.Item>
-                            <Descriptions.Item label="Serial #" span={1}>{selectedAsset.serialNumber || '—'}</Descriptions.Item>
+                            <Descriptions.Item label="Serial #" span={1}>{selectedAsset.serialNumber || 'â€”'}</Descriptions.Item>
                             <Descriptions.Item label="Condition" span={1}>
                                 <Tag color={CONDITIONS[selectedAsset.condition || ''] || 'default'} className="capitalize">
-                                    {selectedAsset.condition || '—'}
+                                    {selectedAsset.condition || 'â€”'}
                                 </Tag>
                             </Descriptions.Item>
                             <Descriptions.Item label="Status" span={2}>
@@ -607,10 +608,10 @@ export default function FixedAssetsPage() {
                         <Divider className="!my-3"><Text type="secondary" className="text-xs">Depreciation</Text></Divider>
                         <Descriptions column={2} size="small" bordered>
                             <Descriptions.Item label="Method" span={1}>
-                                {selectedAsset.depreciationMethod?.replace(/_/g, ' ') || '—'}
+                                {selectedAsset.depreciationMethod?.replace(/_/g, ' ') || 'â€”'}
                             </Descriptions.Item>
                             <Descriptions.Item label="Useful Life" span={1}>
-                                {selectedAsset.usefulLifeMonths ? `${selectedAsset.usefulLifeMonths} months` : '—'}
+                                {selectedAsset.usefulLifeMonths ? `${selectedAsset.usefulLifeMonths} months` : 'â€”'}
                             </Descriptions.Item>
                             <Descriptions.Item label="Accumulated Dep." span={1}>
                                 <Text style={{ color: '#ef4444' }}>{fmtCurrency(selectedAsset.accumulatedDepreciation)}</Text>
@@ -631,17 +632,17 @@ export default function FixedAssetsPage() {
 
                         <Divider className="!my-3"><Text type="secondary" className="text-xs">Location & Assignment</Text></Divider>
                         <Descriptions column={2} size="small" bordered>
-                            <Descriptions.Item label="Location">{selectedAsset.location || '—'}</Descriptions.Item>
-                            <Descriptions.Item label="Assigned To">{selectedAsset.assignedTo || '—'}</Descriptions.Item>
+                            <Descriptions.Item label="Location">{selectedAsset.location || 'â€”'}</Descriptions.Item>
+                            <Descriptions.Item label="Assigned To">{selectedAsset.assignedTo || 'â€”'}</Descriptions.Item>
                             <Descriptions.Item label="Warranty" span={2}>{fmtDate(selectedAsset.warrantyExpiry)}</Descriptions.Item>
                         </Descriptions>
 
                         <Divider className="!my-3"><Text type="secondary" className="text-xs">Maintenance</Text></Divider>
                         <Descriptions column={2} size="small" bordered>
-                            <Descriptions.Item label="Schedule">{selectedAsset.maintenanceSchedule || '—'}</Descriptions.Item>
+                            <Descriptions.Item label="Schedule">{selectedAsset.maintenanceSchedule || 'â€”'}</Descriptions.Item>
                             <Descriptions.Item label="Last Maint.">{fmtDate(selectedAsset.lastMaintenanceDate)}</Descriptions.Item>
                             <Descriptions.Item label="Next Maint.">{fmtDate(selectedAsset.nextMaintenanceDate)}</Descriptions.Item>
-                            <Descriptions.Item label="Insurance">{selectedAsset.insurancePolicy || '—'}</Descriptions.Item>
+                            <Descriptions.Item label="Insurance">{selectedAsset.insurancePolicy || 'â€”'}</Descriptions.Item>
                         </Descriptions>
 
                         {selectedAsset.status === 'disposed' && (
@@ -649,7 +650,7 @@ export default function FixedAssetsPage() {
                                 <Divider className="!my-3"><Text type="secondary" className="text-xs">Disposal</Text></Divider>
                                 <Descriptions column={2} size="small" bordered>
                                     <Descriptions.Item label="Disposed Date">{fmtDate(selectedAsset.disposedDate)}</Descriptions.Item>
-                                    <Descriptions.Item label="Method">{selectedAsset.disposalMethod || '—'}</Descriptions.Item>
+                                    <Descriptions.Item label="Method">{selectedAsset.disposalMethod || 'â€”'}</Descriptions.Item>
                                     <Descriptions.Item label="Disposal Value" span={2}>{fmtCurrency(selectedAsset.disposalValue)}</Descriptions.Item>
                                 </Descriptions>
                             </>
@@ -668,3 +669,7 @@ export default function FixedAssetsPage() {
         </CMSLayout>
     );
 }
+
+
+
+

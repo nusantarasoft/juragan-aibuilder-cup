@@ -51,6 +51,7 @@ import pageService from "@/lib/pageService";
 import { FloatingPanel, DockPosition } from "@/components/builder/FloatingPanel";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 // Import types and upgraded components
 import { PageBlock, BlockProps, blockDefaults } from "./types";
@@ -217,6 +218,7 @@ function PageBuilderContent() {
     const pageId = searchParams.get("id");
 
     const [blocks, setBlocks] = useState<PageBlock[]>([]);
+    const { themeColor } = usePreferencesStore();
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
     const [selectedElement, setSelectedElement] = useState<string | null>(null);
     const [previewMode, setPreviewMode] = useState(false);
@@ -661,15 +663,15 @@ function PageBuilderContent() {
                         }}
                         onBlur={() => setIsEditingTitle(false)}
                         onPressEnter={() => setIsEditingTitle(false)}
-                        style={{ fontSize: 20, fontWeight: 600, width: 250, borderBottom: '1px solid #8b5cf6', borderRadius: 0, padding: 0 }}
+                        style={{ fontSize: 20, fontWeight: 600, width: 250, borderBottom: '1px solid var(--theme-color, #8b5cf6)', borderRadius: 0, padding: 0 }}
                         placeholder="Enter page name..."
                     />
                 ) : (
                     <Space align="center" size={8} style={{ cursor: 'text' }} onClick={() => setIsEditingTitle(true)}>
-                        <AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>
+                        <AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>
                             {pageTitle || "Untitled Page"}
                         </AuroraText>
-                        <EditOutlined style={{ color: '#8b5cf6', fontSize: 16, cursor: 'pointer' }} />
+                        <EditOutlined style={{ color: themeColor, fontSize: 16, cursor: 'pointer' }} />
                     </Space>
                 )
             }
@@ -746,7 +748,7 @@ function PageBuilderContent() {
             title={
                 <Space size={16}>
                     <span style={{
-                        background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                        background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         fontWeight: 600,
@@ -798,7 +800,7 @@ function PageBuilderContent() {
                     }}
                     headStyle={{
                         background: 'rgba(255, 255, 255, 0.1)',
-                        borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+                        borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
                         minHeight: 40,
                     }}
                     extra={
@@ -809,7 +811,7 @@ function PageBuilderContent() {
                                     size="small"
                                     icon={<PlusOutlined />}
                                     onClick={() => setLibraryVisible(!libraryVisible)}
-                                    className={`w-6 h-6 flex items-center justify-center p-0 ${libraryVisible ? "text-violet-500 hover:text-violet-600" : "text-gray-400 hover:text-violet-500"}`}
+                                    className={`w-6 h-6 flex items-center justify-center p-0 ${libraryVisible ? "text-violet-500 hover:text-[color:var(--theme-color, #7c3aed)]" : "text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)]"}`}
                                 />
                             </Tooltip>
                             <Tooltip title={structureVisible ? "Hide Page Structure" : "Show Page Structure"}>
@@ -818,7 +820,7 @@ function PageBuilderContent() {
                                     size="small"
                                     icon={<AppstoreOutlined />}
                                     onClick={() => setStructureVisible(!structureVisible)}
-                                    className={`w-6 h-6 flex items-center justify-center p-0 ${structureVisible ? "text-violet-500 hover:text-violet-600" : "text-gray-400 hover:text-violet-500"}`}
+                                    className={`w-6 h-6 flex items-center justify-center p-0 ${structureVisible ? "text-violet-500 hover:text-[color:var(--theme-color, #7c3aed)]" : "text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)]"}`}
                                 />
                             </Tooltip>
                         </Space>

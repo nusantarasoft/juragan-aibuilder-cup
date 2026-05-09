@@ -2,20 +2,28 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
-    Table, Button, Space, Modal, Form, Input, Card, Tag,
-    message, Typography, Checkbox, Spin,
+    Table, Button, Space, Modal, Form, Input, Card, Tag, Tooltip,
+    message, Typography, Checkbox, Spin, Row, Col, Statistic,
 } from "antd";
+import { motion } from "framer-motion";
 import {
     PlusOutlined, DeleteOutlined, ReloadOutlined,
-    KeyOutlined, SettingOutlined,
+    KeyOutlined, SettingOutlined, FileExcelOutlined, FilePdfOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import RbacGuard from "@/components/common/RbacGuard";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface PermissionSet {
     id: string;
@@ -48,6 +56,8 @@ const PS_FIELDS: FieldDef[] = [
 ];
 
 export default function PermissionSetsPage() {
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [sets, setSets] = useState<PermissionSet[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -232,15 +242,31 @@ export default function PermissionSetsPage() {
 
     return (
         <CMSLayout
-            title="Permission Sets"
-            subTitle="Additive permissions assigned to individual users"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Permission Sets</AuroraText>}
+            subTitle={<DecryptedText text="Additive permissions assigned to individual users" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
+                <RbacGuard key="exports" requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'permission_sets', title: 'Permission Sets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Description', key: 'description' }, { header: 'System', key: 'isSystem', format: (v: boolean) => v ? 'Yes' : 'No' }], data: sets })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'permission_sets', title: 'Permission Sets', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Description', key: 'description' }, { header: 'System', key: 'isSystem', format: (v: boolean) => v ? 'Yes' : 'No' }], data: sets })} /></Tooltip></RbacGuard>,
                 <Button key="reload" icon={<ReloadOutlined />} onClick={loadSets} />,
                 <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setIsModalOpen(true); }}>
                     Create Permission Set
                 </Button>,
             ]}
         >
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Sets', value: sets.length, icon: <KeyOutlined />, color: '#3b82f6' },
+                    { title: 'System Sets', value: sets.filter(s => s.isSystem).length, icon: <SettingOutlined />, color: '#f59e0b' },
+                    { title: 'Custom Sets', value: sets.filter(s => !s.isSystem).length, icon: <KeyOutlined />, color: '#10b981' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={8}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <Card>
                 <Table columns={columns} dataSource={sets.map(s => ({ ...s, key: s.id }))} loading={loading} pagination={false} size="middle" />
             </Card>

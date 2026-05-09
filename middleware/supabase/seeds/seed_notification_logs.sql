@@ -1,0 +1,14 @@
+INSERT INTO notification_logs (tenant_id, rule_id, channel_type, recipient, subject, body, status, error_message, sent_at, created_at)
+VALUES
+('00000000-0000-0000-0000-000000000010', NULL, 'email', 'admin@nusantarasoft.id', 'Daily Health Check Complete', 'All 5 playbooks executed successfully.', 'sent', NULL, now() - interval '30 minutes', now() - interval '35 minutes'),
+('00000000-0000-0000-0000-000000000010', NULL, 'email', 'hr@nusantarasoft.id', 'Payroll Processing Due', 'Monthly payroll for May 2026 is due in 3 days.', 'sent', NULL, now() - interval '2 hours', now() - interval '2 hours 5 minutes'),
+('00000000-0000-0000-0000-000000000010', NULL, 'whatsapp', '+628123456789', 'Ticket Escalated to P1', 'ITSM ticket 1042 has been escalated to P1.', 'sent', NULL, now() - interval '3 hours', now() - interval '3 hours 2 minutes'),
+('00000000-0000-0000-0000-000000000010', NULL, 'webhook', 'https://hooks.slack.com/services/T01/B02/abc', 'CRM Deal Closed', 'Enterprise Contract closed for 150000', 'sent', NULL, now() - interval '5 hours', now() - interval '5 hours 1 minute'),
+('00000000-0000-0000-0000-000000000010', NULL, 'in_app', 'system', 'Operations Module Deployed', 'The Operations module is now live.', 'sent', NULL, now() - interval '6 hours', now() - interval '6 hours'),
+('00000000-0000-0000-0000-000000000010', NULL, 'email', 'finance@nusantarasoft.id', 'Invoice Overdue Alert', 'Invoice INV-2026-0421 is 7 days overdue.', 'sent', NULL, now() - interval '1 day', now() - interval '1 day'),
+('00000000-0000-0000-0000-000000000010', NULL, 'whatsapp', '+628198765432', 'Inventory Low Stock', 'SKU-A100 is below minimum threshold.', 'failed', 'WhatsApp session not paired', NULL, now() - interval '1 day 2 hours'),
+('00000000-0000-0000-0000-000000000010', NULL, 'email', 'ops@nusantarasoft.id', 'Weekly Security Audit', 'Audit completed with 2 warnings.', 'sent', NULL, now() - interval '2 days', now() - interval '2 days'),
+('00000000-0000-0000-0000-000000000010', NULL, 'webhook', 'https://api.company.com/webhooks/notify', 'Employee Onboarded', 'Dewi Sartika joined Engineering', 'failed', 'Webhook returned 502', NULL, now() - interval '2 days 4 hours'),
+('00000000-0000-0000-0000-000000000010', NULL, 'in_app', 'system', 'Export Audit Ready', 'Export Audit Log is now tracking all exports.', 'sent', NULL, now() - interval '3 days', now() - interval '3 days'),
+('00000000-0000-0000-0000-000000000010', NULL, 'email', 'admin@nusantarasoft.id', 'Monthly Compliance Report', 'April 2026 compliance report is ready.', 'sent', NULL, now() - interval '4 days', now() - interval '4 days'),
+('00000000-0000-0000-0000-000000000010', NULL, 'whatsapp', '+628111222333', 'Attendance Anomaly', 'Employee 1047 missed check-in 3 days.', 'sent', NULL, now() - interval '5 days', now() - interval '5 days');

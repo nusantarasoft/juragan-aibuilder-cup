@@ -2,19 +2,22 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
-import {
-    Typography, Space, Spin, Tag, Card, Row, Col, Statistic, Select,
-    Tooltip, Progress, Empty, Badge
-} from "antd";
+import { motion } from "framer-motion";
+import RbacGuard from "@/components/common/RbacGuard";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { Badge, Button, Card, Col, Empty, Progress, Row, Select, Space, Spin, Statistic, Tag, Tooltip, Typography } from "antd";
 import {
     CalendarOutlined, ProjectOutlined, CheckCircleOutlined,
     ClockCircleOutlined, FlagOutlined, ExclamationCircleOutlined,
-    AimOutlined, ThunderboltOutlined, FieldTimeOutlined
-} from "@ant-design/icons";
+    AimOutlined, ThunderboltOutlined, FieldTimeOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text, Title } = Typography;
 
@@ -50,6 +53,8 @@ const PRIORITY_COLOR: Record<string, string> = {
 export default function TimelinePage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [projects, setProjects] = useState<any[]>([]);
     const [portfolio, setPortfolio] = useState<any[]>([]);
     const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -145,7 +150,8 @@ export default function TimelinePage() {
 
     if (loading) {
         return (
-            <CMSLayout title="Timeline" subTitle="Cross-project Gantt-style timeline view">
+            <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Timeline</AuroraText>}
+            subTitle={<DecryptedText text="Cross-project Gantt-style timeline view" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_timeline', title: 'PM Timeline', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Start', key: 'startDate' }, { header: 'End', key: 'endDate' }, { header: 'Progress', key: 'progress' }], data: projects })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_timeline', title: 'PM Timeline', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Start', key: 'startDate' }, { header: 'End', key: 'endDate' }, { header: 'Progress', key: 'progress' }], data: projects })} /></Tooltip></RbacGuard>]}>
                 <div style={{ textAlign: 'center', padding: 120 }}>
                     <Spin size="large" />
                 </div>
@@ -154,21 +160,25 @@ export default function TimelinePage() {
     }
 
     return (
-        <CMSLayout title="Timeline" subTitle="Cross-project Gantt-style timeline view">
-            {/* ── Stats ── */}
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Timeline</AuroraText>}
+            subTitle={<DecryptedText text="Cross-project Gantt-style timeline view" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_timeline', title: 'PM Timeline', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Start', key: 'startDate' }, { header: 'End', key: 'endDate' }, { header: 'Progress', key: 'progress' }], data: projects })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_timeline', title: 'PM Timeline', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Start', key: 'startDate' }, { header: 'End', key: 'endDate' }, { header: 'Progress', key: 'progress' }], data: projects })} /></Tooltip></RbacGuard>]}>
+            {/* â”€â”€ Stats â”€â”€ */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={6}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #8b5cf6' }} size="small">
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
+                    <Card style={{ ...glassCard, borderTop: `3px solid ${themeColor}` }} size="small">
                         <Statistic
                             title={<span style={{ fontSize: 12 }}>Projects with Timeline</span>}
                             value={withDates.length}
                             suffix={<Text type="secondary" style={{ fontSize: 12 }}>/ {projects.length}</Text>}
-                            prefix={<CalendarOutlined style={{ color: '#8b5cf6' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 700, color: '#8b5cf6' }}
+                            prefix={<CalendarOutlined style={{ color: themeColor }} />}
+                            valueStyle={{ fontSize: 24, fontWeight: 700, color: themeColor }}
                         />
                     </Card>
+                        </motion.div>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #10b981' }} size="small">
                         <Statistic
                             title={<span style={{ fontSize: 12 }}>Active Projects</span>}
@@ -177,8 +187,10 @@ export default function TimelinePage() {
                             valueStyle={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}
                         />
                     </Card>
+                        </motion.div>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #ef4444' }} size="small">
                         <Statistic
                             title={<span style={{ fontSize: 12 }}>Overdue</span>}
@@ -187,8 +199,10 @@ export default function TimelinePage() {
                             valueStyle={{ fontSize: 24, fontWeight: 700, color: '#ef4444' }}
                         />
                     </Card>
+                        </motion.div>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #f59e0b' }} size="small">
                         <Statistic
                             title={<span style={{ fontSize: 12 }}>Due in 30 Days</span>}
@@ -197,10 +211,11 @@ export default function TimelinePage() {
                             valueStyle={{ fontSize: 24, fontWeight: 700, color: '#f59e0b' }}
                         />
                     </Card>
+                        </motion.div>
                 </Col>
             </Row>
 
-            {/* ── Filter ── */}
+            {/* â”€â”€ Filter â”€â”€ */}
             <Card style={{ ...glassCard, marginBottom: 16 }} size="small">
                 <Space size={12} wrap>
                     <Select
@@ -223,11 +238,11 @@ export default function TimelinePage() {
                 </Space>
             </Card>
 
-            {/* ── Timeline Chart ── */}
+            {/* â”€â”€ Timeline Chart â”€â”€ */}
             <Card
                 title={
                     <Space>
-                        <FieldTimeOutlined style={{ color: '#8b5cf6' }} />
+                        <FieldTimeOutlined style={{ color: themeColor }} />
                         <span style={{ fontWeight: 600 }}>Project Timeline</span>
                         <Tag color="purple">{enrichedProjects.length}</Tag>
                     </Space>
@@ -238,7 +253,7 @@ export default function TimelinePage() {
                     <Empty description="No projects with timeline data. Set start and end dates on your projects." />
                 ) : (
                     <div style={{ position: 'relative', minHeight: 100 }}>
-                        {/* ── Month Headers ── */}
+                        {/* â”€â”€ Month Headers â”€â”€ */}
                         <div style={{
                             position: 'relative',
                             height: 32,
@@ -265,7 +280,7 @@ export default function TimelinePage() {
                             ))}
                         </div>
 
-                        {/* ── Today Line ── */}
+                        {/* â”€â”€ Today Line â”€â”€ */}
                         <div style={{
                             position: 'absolute',
                             left: `calc(220px + ${todayPct}% * (100% - 220px) / 100%)`,
@@ -293,7 +308,7 @@ export default function TimelinePage() {
                             </div>
                         </div>
 
-                        {/* ── Project Bars ── */}
+                        {/* â”€â”€ Project Bars â”€â”€ */}
                         {enrichedProjects.map((project, idx) => {
                             const start = dayjs(project.startDate);
                             const end = dayjs(project.endDate);
@@ -367,11 +382,11 @@ export default function TimelinePage() {
                                             title={
                                                 <div style={{ fontSize: 12 }}>
                                                     <div><strong>{project.name}</strong></div>
-                                                    <div>{start.format('MMM D, YYYY')} — {end.format('MMM D, YYYY')}</div>
+                                                    <div>{start.format('MMM D, YYYY')} â€” {end.format('MMM D, YYYY')}</div>
                                                     <div>Status: {project.status} | Priority: {project.priority}</div>
                                                     <div>Tasks: {tc.done}/{tc.total} ({taskPct}%)</div>
                                                     {isOverdue
-                                                        ? <div style={{ color: '#ef4444' }}>⚠ Overdue by {Math.abs(daysRemaining)} days</div>
+                                                        ? <div style={{ color: '#ef4444' }}>âš  Overdue by {Math.abs(daysRemaining)} days</div>
                                                         : project.status !== 'completed' && <div>{daysRemaining} days remaining</div>
                                                     }
                                                 </div>
@@ -441,7 +456,7 @@ export default function TimelinePage() {
                             );
                         })}
 
-                        {/* ── Month grid lines ── */}
+                        {/* â”€â”€ Month grid lines â”€â”€ */}
                         {monthMarkers.map((m, i) => (
                             <div
                                 key={`grid-${i}`}
@@ -460,7 +475,7 @@ export default function TimelinePage() {
                 )}
             </Card>
 
-            {/* ── Legend ── */}
+            {/* â”€â”€ Legend â”€â”€ */}
             <Card style={{ ...glassCard, marginTop: 16 }} size="small">
                 <Space size={16} wrap>
                     <Text strong style={{ fontSize: 12 }}>Legend:</Text>
@@ -484,3 +499,8 @@ export default function TimelinePage() {
         </CMSLayout>
     );
 }
+
+
+
+
+

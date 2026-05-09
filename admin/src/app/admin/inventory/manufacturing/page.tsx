@@ -3,20 +3,19 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
-import {
-    Table, Button, Space, Tag, Card, Typography, message,
-    Row, Col, Modal, Form, Input, InputNumber, Select, Tabs,
-    Tooltip, Progress
-} from "antd";
+import RbacGuard from "@/components/common/RbacGuard";
+import { Button, Card, Col, Form, Input, InputNumber, message, Modal, Progress, Row, Select, Space, Table, Tabs, Tag, Tooltip, Typography } from "antd";
 import {
     ToolOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
     FileTextOutlined, ScheduleOutlined, CheckCircleOutlined,
     ClockCircleOutlined, ExclamationCircleOutlined, DeleteOutlined,
     EditOutlined, PlayCircleOutlined, PauseCircleOutlined,
     RocketOutlined, UnorderedListOutlined, DollarOutlined,
-    CalendarOutlined
-} from "@ant-design/icons";
+    CalendarOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import {
     inventoryService, MfgBom, MfgBomLine, MfgWorkOrder,
@@ -27,6 +26,7 @@ import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const BOM_STATUSES: Record<string, { color: string }> = {
     draft: { color: 'default' },
@@ -81,6 +81,8 @@ const WO_FIELDS: FieldDef[] = [
 
 export default function ManufacturingPage() {
     const [stats, setStats] = useState<ManufacturingStats | null>(null);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [boms, setBoms] = useState<MfgBom[]>([]);
     const [workOrders, setWorkOrders] = useState<MfgWorkOrder[]>([]);
     const [warehouses, setWarehouses] = useState<InvWarehouse[]>([]);
@@ -133,7 +135,7 @@ export default function ManufacturingPage() {
         } catch { console.error("Failed to load BOM lines"); }
     };
 
-    // ─── BOM CRUD ──────────────────────────────────
+    // â”€â”€â”€ BOM CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const handleSaveBom = async (values: any) => {
         if (bomEditId) {
             await inventoryService.updateBom(bomEditId, values);
@@ -174,7 +176,7 @@ export default function ManufacturingPage() {
         catch { message.error("Failed to delete"); }
     };
 
-    // ─── BOM Line CRUD ─────────────────────────────
+    // â”€â”€â”€ BOM Line CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const handleAddBomLine = async () => {
         try {
             const values = await lineForm.validateFields();
@@ -185,7 +187,7 @@ export default function ManufacturingPage() {
         } catch { message.error("Failed"); }
     };
 
-    // ─── Work Order CRUD ───────────────────────────
+    // â”€â”€â”€ Work Order CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const handleCreateWo = async (values: any) => {
         const bom = boms.find(b => b.id === values.bomId);
         const wh = warehouses.find(w => w.id === values.warehouseId);
@@ -217,14 +219,14 @@ export default function ManufacturingPage() {
     const handleWoStatusChange = async (id: string, newStatus: string) => {
         try {
             await inventoryService.updateWorkOrderStatus(id, newStatus);
-            message.success(`Status → ${newStatus.replace('_', ' ')}`);
+            message.success(`Status â†’ ${newStatus.replace('_', ' ')}`);
             loadAll();
         } catch { message.error("Failed to update status"); }
     };
 
-    // ─── KPI Cards ─────────────────────────────────
+    // â”€â”€â”€ KPI Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const kpiCards = [
-        { title: 'Total BOMs', value: stats?.totalBoms || 0, icon: <FileTextOutlined />, color: '#7c3aed' },
+        { title: 'Total BOMs', value: stats?.totalBoms || 0, icon: <FileTextOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { title: 'Work Orders', value: stats?.totalWorkOrders || 0, icon: <ToolOutlined />, color: '#0ea5e9' },
         { title: 'Draft', value: stats?.draftWos || 0, icon: <FileTextOutlined />, color: '#94a3b8' },
         { title: 'Planned', value: stats?.plannedWos || 0, icon: <ScheduleOutlined />, color: '#3b82f6' },
@@ -232,7 +234,7 @@ export default function ManufacturingPage() {
         { title: 'Completed', value: stats?.completedWos || 0, icon: <CheckCircleOutlined />, color: '#10b981' },
     ];
 
-    // ─── BOM Columns ───────────────────────────────
+    // â”€â”€â”€ BOM Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const bomColumns = [
         { title: 'Code', dataIndex: 'code', width: 140, render: (v: string) => <Text code className="text-xs">{v}</Text> },
         { title: 'Name', dataIndex: 'name', render: (v: string) => <Text strong className="text-sm">{v}</Text> },
@@ -262,7 +264,7 @@ export default function ManufacturingPage() {
         },
     ];
 
-    // ─── BOM Line Columns ──────────────────────────
+    // â”€â”€â”€ BOM Line Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const bomLineColumns = [
         { title: '#', dataIndex: 'sortOrder', width: 50 },
         { title: 'Item', dataIndex: 'itemName', render: (v: string) => <Text strong className="text-sm">{v}</Text> },
@@ -273,7 +275,7 @@ export default function ManufacturingPage() {
         { title: 'Scrap %', dataIndex: 'scrapPct', width: 80, render: (v: number) => v ? `${v}%` : '-' },
     ];
 
-    // ─── Work Order Columns ────────────────────────
+    // â”€â”€â”€ Work Order Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const woColumns = [
         {
             title: 'WO #', dataIndex: 'woNumber', width: 140,
@@ -303,8 +305,8 @@ export default function ManufacturingPage() {
             title: 'Schedule', key: 'schedule', width: 180,
             render: (_: any, r: MfgWorkOrder) => (
                 <Text className="text-xs">
-                    {r.plannedStart ? new Date(r.plannedStart).toLocaleDateString() : '—'} →{' '}
-                    {r.plannedEnd ? new Date(r.plannedEnd).toLocaleDateString() : '—'}
+                    {r.plannedStart ? new Date(r.plannedStart).toLocaleDateString() : 'â€”'} â†’{' '}
+                    {r.plannedEnd ? new Date(r.plannedEnd).toLocaleDateString() : 'â€”'}
                 </Text>
             ),
         },
@@ -339,7 +341,7 @@ export default function ManufacturingPage() {
         },
     ];
 
-    // ─── Step Definitions ────────────────────────────
+    // â”€â”€â”€ Step Definitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const bomSteps = [
         {
             title: "Basic Info",
@@ -432,7 +434,7 @@ export default function ManufacturingPage() {
                             <Form.Item name="bomId" label="BOM" rules={[{ required: true }]}>
                                 <Select placeholder="Select BOM"
                                     options={boms.filter(b => b.status === 'active').map(b => ({
-                                        value: b.id, label: `${b.code} — ${b.name}`
+                                        value: b.id, label: `${b.code} â€” ${b.name}`
                                     }))} />
                             </Form.Item>
                         </Col>
@@ -442,7 +444,7 @@ export default function ManufacturingPage() {
                             <Form.Item name="warehouseId" label="Warehouse">
                                 <Select placeholder="Select warehouse"
                                     options={warehouses.map(w => ({
-                                        value: w.id, label: `${w.code} — ${w.name}`
+                                        value: w.id, label: `${w.code} â€” ${w.name}`
                                     }))} />
                             </Form.Item>
                         </Col>
@@ -496,7 +498,7 @@ export default function ManufacturingPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>Manufacturing</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Manufacturing</AuroraText>}
             subTitle={
                 <DecryptedText
                     text="Bill of Materials, work orders, and production tracking"
@@ -511,8 +513,7 @@ export default function ManufacturingPage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                                    ...glass,
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -532,8 +533,7 @@ export default function ManufacturingPage() {
 
                 {/* Tabs */}
                 <Card size="small" style={{
-                    flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)',
-                    backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)',
+                    flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)',
                 }}>
                     <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
                         {
@@ -548,9 +548,10 @@ export default function ManufacturingPage() {
                                             style={{ maxWidth: 280, borderRadius: 8 }} />
                                         <Space>
                                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_manufacturing', title: 'Manufacturing BOMs', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Product', key: 'productName' }, { header: 'Status', key: 'status' }, { header: 'Quantity', key: 'outputQuantity' }], data: boms })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_manufacturing', title: 'Manufacturing BOMs', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Product', key: 'productName' }, { header: 'Status', key: 'status' }, { header: 'Quantity', key: 'outputQuantity' }], data: boms })} /></Tooltip></RbacGuard>
                                             <Button type="primary" icon={<PlusOutlined />}
                                                 onClick={() => { bomForm.resetFields(); setBomEditId(null); setBomModalOpen(true); }}
-                                                style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', borderRadius: 8, border: 'none' }}>
+                                                style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', borderRadius: 8, border: 'none' }}>
                                                 Add BOM
                                             </Button>
                                         </Space>
@@ -573,12 +574,12 @@ export default function ManufacturingPage() {
                                                 <div className="p-2">
                                                     <div className="flex items-center justify-between mb-2">
                                                         <Text strong style={{
-                                                            background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+                                                            background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                                             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                                                        }}>Components — {record.name}</Text>
+                                                        }}>Components â€” {record.name}</Text>
                                                         <Button size="small" icon={<PlusOutlined />}
                                                             onClick={() => { setLineBomId(record.id); lineForm.resetFields(); setLineModalOpen(true); }}
-                                                            style={{ borderColor: '#7c3aed', color: '#7c3aed' }}>
+                                                            style={{ borderColor: 'var(--theme-color, #7c3aed)', color: 'var(--theme-color, #7c3aed)' }}>
                                                             Add Component
                                                         </Button>
                                                     </div>
@@ -602,7 +603,7 @@ export default function ManufacturingPage() {
                                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
                                             <Button type="primary" icon={<PlusOutlined />}
                                                 onClick={() => { woForm.resetFields(); setWoModalOpen(true); }}
-                                                style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', borderRadius: 8, border: 'none' }}>
+                                                style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', borderRadius: 8, border: 'none' }}>
                                                 New Work Order
                                             </Button>
                                         </Space>
@@ -678,7 +679,7 @@ export default function ManufacturingPage() {
                 </Card>
             </div>
 
-            {/* ─── BOM SteppedFormModal ────────────────── */}
+            {/* â”€â”€â”€ BOM SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <SteppedFormModal
                 open={bomModalOpen}
                 onCancel={() => { setBomModalOpen(false); setBomEditId(null); bomForm.resetFields(); }}
@@ -691,11 +692,11 @@ export default function ManufacturingPage() {
                 width={640}
                 loading={false}
                 onBatchCreate={handleBatchCreateBom}
-                gradient={["#7c3aed", "#6366f1"]}
+                gradient={["var(--theme-color, #7c3aed)", "#6366f1"]}
                 editMode={!!bomEditId}
             />
 
-            {/* ─── BOM Line Modal ──────────────────────── */}
+            {/* â”€â”€â”€ BOM Line Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <Modal title="Add Component" open={lineModalOpen}
                 onCancel={() => setLineModalOpen(false)} onOk={handleAddBomLine} okText="Add">
                 <Form form={lineForm} layout="vertical">
@@ -752,7 +753,7 @@ export default function ManufacturingPage() {
                 </Form>
             </Modal>
 
-            {/* ─── Work Order SteppedFormModal ─────────── */}
+            {/* â”€â”€â”€ Work Order SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <SteppedFormModal
                 open={woModalOpen}
                 onCancel={() => { setWoModalOpen(false); woForm.resetFields(); }}
@@ -765,8 +766,12 @@ export default function ManufacturingPage() {
                 width={640}
                 loading={false}
                 onBatchCreate={handleBatchCreateWo}
-                gradient={["#7c3aed", "#6366f1"]}
+                gradient={["var(--theme-color, #7c3aed)", "#6366f1"]}
             />
         </CMSLayout>
     );
 }
+
+
+
+

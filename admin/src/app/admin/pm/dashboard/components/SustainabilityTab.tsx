@@ -58,7 +58,7 @@ const DIMENSION_OPTIONS = [
     { label: '🌍 Environmental', value: 'environmental', color: '#10b981', icon: <ThunderboltOutlined /> },
     { label: '👥 Social', value: 'social', color: '#3b82f6', icon: <TeamOutlined /> },
     { label: '💰 Economic', value: 'economic', color: '#f59e0b', icon: <HeartOutlined /> },
-    { label: '🏢 Governance', value: 'governance', color: '#8b5cf6', icon: <GlobalOutlined /> },
+    { label: '🏢 Governance', value: 'governance', color: 'var(--theme-color, #8b5cf6)', icon: <GlobalOutlined /> },
 ];
 
 const STATUS_OPTIONS = [
@@ -291,7 +291,7 @@ export default function SustainabilityTab({ projectId }: { projectId: string }) 
             <ProTable
                 headerTitle={
                     <Space>
-                        <GlobalOutlined style={{ color: '#8b5cf6' }} />
+                        <GlobalOutlined style={{ color: 'var(--theme-color, #8b5cf6)' }} />
                         <span>Sustainability Metrics</span>
                     </Space>
                 }
@@ -307,7 +307,7 @@ export default function SustainabilityTab({ projectId }: { projectId: string }) 
                     </Button>,
                     <Button key="add" type="primary" icon={<PlusOutlined />}
                         onClick={() => { setEditing(null); setIsModalOpen(true); }}
-                        style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', border: 'none', borderRadius: 8 }}
+                        style={{ background: 'linear-gradient(135deg, var(--theme-color, #8b5cf6), var(--theme-secondary, #6366f1))', border: 'none', borderRadius: 8 }}
                     >
                         Add Metric
                     </Button>

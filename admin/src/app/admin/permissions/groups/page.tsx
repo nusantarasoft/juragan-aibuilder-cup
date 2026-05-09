@@ -2,20 +2,28 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     Card, Tabs, Table, Button, Space, Modal, Form, Input,
-    message, Typography,
+    message, Typography, Row, Col, Statistic, Badge, Tooltip,
 } from "antd";
+import { motion } from "framer-motion";
 import {
     PlusOutlined, DeleteOutlined, ReloadOutlined,
-    TeamOutlined, UsergroupAddOutlined,
+    TeamOutlined, UsergroupAddOutlined, FileExcelOutlined, FilePdfOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import RbacGuard from "@/components/common/RbacGuard";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface Team {
     id: string;
@@ -40,6 +48,8 @@ const GROUP_FIELDS: FieldDef[] = [
 ];
 
 export default function GroupsTeamsPage() {
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [teams, setTeams] = useState<Team[]>([]);
     const [teamsLoading, setTeamsLoading] = useState(true);
     const [teamModalOpen, setTeamModalOpen] = useState(false);
@@ -257,7 +267,7 @@ export default function GroupsTeamsPage() {
                             Create Team
                         </Button>
                     </div>
-                    <Table columns={teamColumns} dataSource={teams.map(t => ({ ...t, key: t.id }))} loading={teamsLoading}
+                    <Table scroll={{ x: 900 }} columns={teamColumns} dataSource={teams.map(t => ({ ...t, key: t.id }))} loading={teamsLoading}
                         pagination={false} size="middle" locale={{ emptyText: "No teams yet" }} />
                 </>
             ),
@@ -272,7 +282,7 @@ export default function GroupsTeamsPage() {
                             Create Public Group
                         </Button>
                     </div>
-                    <Table columns={groupColumns} dataSource={groups.map(g => ({ ...g, key: g.id }))} loading={groupsLoading}
+                    <Table scroll={{ x: 900 }} columns={groupColumns} dataSource={groups.map(g => ({ ...g, key: g.id }))} loading={groupsLoading}
                         pagination={false} size="middle" locale={{ emptyText: "No public groups yet" }} />
                 </>
             ),
@@ -281,10 +291,28 @@ export default function GroupsTeamsPage() {
 
     return (
         <CMSLayout
-            title="Groups & Teams"
-            subTitle="Manage teams for record-level access and public groups for sharing"
-            extra={[<Button key="reload" icon={<ReloadOutlined />} onClick={() => { loadTeams(); loadGroups(); }} />]}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Groups & Teams</AuroraText>}
+            subTitle={<DecryptedText text="Manage teams for record-level access and public groups for sharing" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
+            extra={[
+                <RbacGuard key="exports" requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'groups_teams', title: 'Groups & Teams', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Type', key: 'type' }, { header: 'Name', key: 'name' }, { header: 'Description', key: 'description' }], data: [...teams.map(t => ({ ...t, type: 'Team' })), ...groups.map(g => ({ ...g, type: 'Public Group' }))] })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'groups_teams', title: 'Groups & Teams', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Type', key: 'type' }, { header: 'Name', key: 'name' }, { header: 'Description', key: 'description' }], data: [...teams.map(t => ({ ...t, type: 'Team' })), ...groups.map(g => ({ ...g, type: 'Public Group' }))] })} /></Tooltip></RbacGuard>,
+                <Button key="reload" icon={<ReloadOutlined />} onClick={() => { loadTeams(); loadGroups(); }} />,
+            ]}
         >
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Teams', value: teams.length, icon: <TeamOutlined />, color: '#3b82f6' },
+                    { title: 'Public Groups', value: groups.length, icon: <UsergroupAddOutlined />, color: '#10b981' },
+                    { title: 'Total Entities', value: teams.length + groups.length, icon: <TeamOutlined />, color: '#8b5cf6' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={8}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <Card><Tabs items={tabItems} /></Card>
 
             <SteppedFormModal

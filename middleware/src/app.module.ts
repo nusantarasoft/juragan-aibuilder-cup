@@ -15,7 +15,6 @@ import { MediaModule } from './media/media.module';
 import { RagModule } from './rag/rag.module';
 import { MLBackendModule } from './ml-backend/ml-backend.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
-import { DremioModule } from './dremio/dremio.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { CrmModule } from './crm/crm.module';
@@ -24,6 +23,11 @@ import { PmModule } from './pm/pm.module';
 import { StarsModule } from './stars/stars.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { ItsmModule } from './itsm/itsm.module';
+import { StudioModule } from './studio/studio.module';
+import { AccountingModule } from './accounting/accounting.module';
+import { HrModule } from './hr/hr.module';
+import { OpsModule } from './ops/ops.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
     imports: [
@@ -56,7 +60,6 @@ import { ItsmModule } from './itsm/itsm.module';
         RagModule,
         MLBackendModule,
         WebhooksModule,
-        DremioModule,
         TenantsModule,
         PermissionsModule,
         CrmModule,
@@ -65,6 +68,11 @@ import { ItsmModule } from './itsm/itsm.module';
         StarsModule,
         InventoryModule,
         ItsmModule,
+        StudioModule,
+        AccountingModule,
+        HrModule,
+        OpsModule,
+        NotificationsModule,
     ],
 })
 export class AppModule { }

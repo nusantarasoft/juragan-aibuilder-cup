@@ -2,20 +2,29 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
-    Card, Tabs, Table, Button, Space, Modal, Form, Input, Select, Tag,
-    message, Typography, Spin, Row, Col,
+    Card, Tabs, Table, Button, Space, Modal, Form, Input, Select, Tag, Tooltip,
+    message, Typography, Spin, Row, Col, Statistic,
 } from "antd";
+import { motion } from "framer-motion";
 import {
     PlusOutlined, DeleteOutlined, ReloadOutlined,
     LockOutlined, ShareAltOutlined, EyeOutlined,
+    FileExcelOutlined, FilePdfOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import RbacGuard from "@/components/common/RbacGuard";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface OrgWideDefault {
     id: string;
@@ -61,6 +70,8 @@ const RULE_FIELDS: FieldDef[] = [
 ];
 
 export default function SharingPage() {
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [owds, setOwds] = useState<OrgWideDefault[]>([]);
     const [owdLoading, setOwdLoading] = useState(true);
 
@@ -313,7 +324,7 @@ export default function SharingPage() {
             label: <Space><LockOutlined /> Org-Wide Defaults</Space>,
             children: (
                 <Spin spinning={owdLoading}>
-                    <Table columns={owdColumns} dataSource={SYSTEM_OBJECTS.map(obj => ({ key: obj, object: obj }))} pagination={false} size="small" bordered />
+                    <Table scroll={{ x: 900 }} columns={owdColumns} dataSource={SYSTEM_OBJECTS.map(obj => ({ key: obj, object: obj }))} pagination={false} size="small" bordered />
                 </Spin>
             ),
         },
@@ -327,7 +338,7 @@ export default function SharingPage() {
                             Create Sharing Rule
                         </Button>
                     </div>
-                    <Table columns={rulesColumns} dataSource={rules.map(r => ({ ...r, key: r.id }))} loading={rulesLoading}
+                    <Table scroll={{ x: 900 }} columns={rulesColumns} dataSource={rules.map(r => ({ ...r, key: r.id }))} loading={rulesLoading}
                         pagination={false} size="middle" locale={{ emptyText: "No sharing rules yet" }} />
                 </>
             ),
@@ -348,7 +359,7 @@ export default function SharingPage() {
                         />
                     </Space>
                     <Spin spinning={flsLoading}>
-                        <Table columns={flsColumns} dataSource={fieldPerms.map(f => ({ ...f, key: f.id }))} pagination={false}
+                        <Table scroll={{ x: 900 }} columns={flsColumns} dataSource={fieldPerms.map(f => ({ ...f, key: f.id }))} pagination={false}
                             size="small" bordered locale={{ emptyText: "Select a profile and object to view field-level security" }} />
                     </Spin>
                 </>
@@ -358,10 +369,28 @@ export default function SharingPage() {
 
     return (
         <CMSLayout
-            title="Sharing & Security"
-            subTitle="Configure organization-wide defaults, sharing rules, and field-level security"
-            extra={[<Button key="reload" icon={<ReloadOutlined />} onClick={() => { loadOwds(); loadRules(); }} />]}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Sharing & Security</AuroraText>}
+            subTitle={<DecryptedText text="Configure organization-wide defaults, sharing rules, and field-level security" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
+            extra={[
+                <RbacGuard key="exports" requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'sharing_rules', title: 'Sharing Rules', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Object', key: 'objectName' }, { header: 'Type', key: 'ruleType' }, { header: 'Access Level', key: 'accessLevel' }, { header: 'Active', key: 'isActive', format: (v: boolean) => v ? 'Yes' : 'No' }], data: rules })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'sharing_rules', title: 'Sharing Rules', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Object', key: 'objectName' }, { header: 'Type', key: 'ruleType' }, { header: 'Access Level', key: 'accessLevel' }, { header: 'Active', key: 'isActive', format: (v: boolean) => v ? 'Yes' : 'No' }], data: rules })} /></Tooltip></RbacGuard>,
+                <Button key="reload" icon={<ReloadOutlined />} onClick={() => { loadOwds(); loadRules(); }} />,
+            ]}
         >
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'OWD Settings', value: owds.length, icon: <LockOutlined />, color: '#3b82f6' },
+                    { title: 'Sharing Rules', value: rules.length, icon: <ShareAltOutlined />, color: '#10b981' },
+                    { title: 'Active Rules', value: rules.filter(r => r.isActive).length, icon: <ShareAltOutlined />, color: '#8b5cf6' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={8}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <Card><Tabs items={tabItems} /></Card>
 
             <SteppedFormModal
@@ -375,7 +404,7 @@ export default function SharingPage() {
                 fields={RULE_FIELDS}
                 width={580}
                 onBatchCreate={handleBatchCreateRules}
-                gradient={["#ec4899", "#a855f7"]}
+                gradient={["#ec4899", "var(--theme-accent, #a855f7)"]}
             />
         </CMSLayout>
     );

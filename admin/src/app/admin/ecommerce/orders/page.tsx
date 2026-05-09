@@ -2,15 +2,20 @@
 
 import React, { useState, useEffect } from "react";
 import { Table, Tag, Card, Typography, Input, Space, Button, Tooltip, Row, Col, Drawer, message, Modal, Select, Form, InputNumber, Divider } from "antd";
-import { ShoppingCartOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, SendOutlined, EyeOutlined, CarOutlined, DeleteOutlined, InboxOutlined, PlusOutlined, MinusCircleOutlined } from "@ant-design/icons";
+import { ShoppingCartOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, SendOutlined, EyeOutlined, CarOutlined, DeleteOutlined, InboxOutlined, PlusOutlined, MinusCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { inventoryService, EcomOrder, EcomOrderItem, EcomStatsType, EcomCustomer } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import ItemPicker from "@/components/inventory/ItemPicker";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const ORDER_STATUS: Record<string, { color: string; icon: React.ReactNode }> = {
     pending: { color: 'default', icon: <ClockCircleOutlined /> },
@@ -26,7 +31,7 @@ const ORDER_STATUS: Record<string, { color: string; icon: React.ReactNode }> = {
 const PAYMENT_COLORS: Record<string, string> = { unpaid: 'red', partial: 'orange', paid: 'green', refunded: 'volcano' };
 const FULFILLMENT_COLORS: Record<string, string> = { physical: 'blue', ticket: 'purple', scheduled: 'cyan', rental: 'orange' };
 
-const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : '—';
+const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : 'â€”';
 
 interface OrderLineItem {
     key: number;
@@ -41,6 +46,8 @@ interface OrderLineItem {
 
 export default function OrdersPage() {
     const [stats, setStats] = useState<EcomStatsType | null>(null);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [orders, setOrders] = useState<EcomOrder[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -82,7 +89,7 @@ export default function OrdersPage() {
     const handleStatusChange = async (id: string, newStatus: string) => {
         try {
             await inventoryService.updateEcomOrderStatus(id, newStatus);
-            message.success(`Status → ${newStatus}`);
+            message.success(`Status â†’ ${newStatus}`);
             load();
         } catch { message.error("Failed to update status"); }
     };
@@ -95,7 +102,7 @@ export default function OrdersPage() {
         } catch { message.error("Failed to delete"); }
     };
 
-    // ─── New Order helpers ────────────────────────────────
+    // â”€â”€â”€ New Order helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const openNewOrder = async () => {
         orderForm.resetFields();
         setLineItems([]);
@@ -184,7 +191,7 @@ export default function OrdersPage() {
     };
 
     const kpiCards = [
-        { title: 'Total Orders', value: stats?.totalOrders || 0, icon: <ShoppingCartOutlined />, color: '#6366f1' },
+        { title: 'Total Orders', value: stats?.totalOrders || 0, icon: <ShoppingCartOutlined />, color: themeColor },
         { title: 'Pending', value: stats?.pending || 0, icon: <ClockCircleOutlined />, color: '#94a3b8' },
         { title: 'Processing', value: stats?.processing || 0, icon: <InboxOutlined />, color: '#3b82f6' },
         { title: 'Shipped', value: stats?.shipped || 0, icon: <SendOutlined />, color: '#06b6d4' },
@@ -194,7 +201,7 @@ export default function OrdersPage() {
 
     const TRANSITIONS: Record<string, { label: string; color: string; next: string }> = {
         pending: { label: 'Confirm', color: '#3b82f6', next: 'confirmed' },
-        confirmed: { label: 'Process', color: '#8b5cf6', next: 'processing' },
+        confirmed: { label: 'Process', color: themeColor, next: 'processing' },
         processing: { label: 'Ship', color: '#06b6d4', next: 'shipped' },
         shipped: { label: 'Delivered', color: '#10b981', next: 'delivered' },
         delivered: { label: 'Complete', color: '#059669', next: 'completed' },
@@ -210,12 +217,12 @@ export default function OrdersPage() {
 
     const columns = [
         { title: 'Order #', dataIndex: 'orderNumber', width: 140, render: (v: string) => <Text code className="text-xs">{v}</Text> },
-        { title: 'Customer', dataIndex: 'customerName', ellipsis: true, render: (v: string) => <Text strong className="text-sm">{v || '—'}</Text> },
-        { title: 'Total', dataIndex: 'totalAmount', width: 140, render: (v: number) => <Text strong style={{ color: '#6366f1' }}>{fmtCurrency(v)}</Text> },
+        { title: 'Customer', dataIndex: 'customerName', ellipsis: true, render: (v: string) => <Text strong className="text-sm">{v || 'â€”'}</Text> },
+        { title: 'Total', dataIndex: 'totalAmount', width: 140, render: (v: number) => <Text strong style={{ color: themeColor }}>{fmtCurrency(v)}</Text> },
         { title: 'Payment', dataIndex: 'paymentStatus', width: 100,
             render: (v: string) => <Tag color={PAYMENT_COLORS[v] || 'default'} className="rounded-full text-xs capitalize">{v}</Tag> },
         { title: 'Source', dataIndex: 'source', width: 80, render: (v: string) => <Tag className="rounded-full text-xs capitalize">{v}</Tag> },
-        { title: 'Date', dataIndex: 'createdAt', width: 100, render: (v: string) => v ? new Date(v).toLocaleDateString() : '—' },
+        { title: 'Date', dataIndex: 'createdAt', width: 100, render: (v: string) => v ? new Date(v).toLocaleDateString() : 'â€”' },
         { title: 'Status', dataIndex: 'status', width: 120,
             render: (v: string) => {
                 const s = ORDER_STATUS[v] || { color: 'default', icon: null };
@@ -254,7 +261,7 @@ export default function OrdersPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#6366f1", "#8b5cf6", "#a78bfa", "#00ffff", "#ff00ff"]}>Orders</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Orders</AuroraText>}
             subTitle={<DecryptedText text="Order management across all fulfillment types" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
@@ -263,8 +270,7 @@ export default function OrdersPage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                                    ...glass,
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -280,7 +286,7 @@ export default function OrdersPage() {
                     ))}
                 </Row>
 
-                <Card size="small" style={{ flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)' }}>
+                <Card size="small" style={{ flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)' }}>
                     <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                         <div className="flex items-center gap-3">
                             <Input prefix={<SearchOutlined className="text-gray-400" />} placeholder="Search orders..."
@@ -290,8 +296,9 @@ export default function OrdersPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_orders', title: 'eCommerce Orders', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Order #', key: 'orderNumber' }, { header: 'Customer', key: 'customerName' }, { header: 'Total', key: 'totalAmount' }, { header: 'Payment', key: 'paymentStatus' }, { header: 'Status', key: 'status' }, { header: 'Date', key: 'createdAt' }], data: filteredOrders })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_orders', title: 'eCommerce Orders', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Order #', key: 'orderNumber' }, { header: 'Customer', key: 'customerName' }, { header: 'Total', key: 'totalAmount' }, { header: 'Payment', key: 'paymentStatus' }, { header: 'Status', key: 'status' }, { header: 'Date', key: 'createdAt' }], data: filteredOrders })} /></Tooltip></RbacGuard>
                             <Button type="primary" icon={<PlusOutlined />} onClick={openNewOrder}
-                                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8 }}>
+                                style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, border: 'none', borderRadius: 8 }}>
                                 New Order
                             </Button>
                         </Space>
@@ -309,14 +316,14 @@ export default function OrdersPage() {
                         <Card size="small" style={{ borderRadius: 10 }}>
                             <Row gutter={16}>
                                 <Col span={12}><Text type="secondary" className="text-xs block">Customer</Text><Text strong>{selectedOrder.customerName}</Text></Col>
-                                <Col span={12}><Text type="secondary" className="text-xs block">Email</Text><Text>{selectedOrder.customerEmail || '—'}</Text></Col>
+                                <Col span={12}><Text type="secondary" className="text-xs block">Email</Text><Text>{selectedOrder.customerEmail || 'â€”'}</Text></Col>
                             </Row>
                             <Row gutter={16} className="mt-2">
-                                <Col span={12}><Text type="secondary" className="text-xs block">Total</Text><Text strong style={{ color: '#6366f1', fontSize: 16 }}>{fmtCurrency(selectedOrder.totalAmount)}</Text></Col>
-                                <Col span={12}><Text type="secondary" className="text-xs block">Payment</Text><Tag color={PAYMENT_COLORS[selectedOrder.paymentStatus || ''] || 'default'}>{selectedOrder.paymentStatus} ({selectedOrder.paymentMethod || '—'})</Tag></Col>
+                                <Col span={12}><Text type="secondary" className="text-xs block">Total</Text><Text strong style={{ color: themeColor, fontSize: 16 }}>{fmtCurrency(selectedOrder.totalAmount)}</Text></Col>
+                                <Col span={12}><Text type="secondary" className="text-xs block">Payment</Text><Tag color={PAYMENT_COLORS[selectedOrder.paymentStatus || ''] || 'default'}>{selectedOrder.paymentStatus} ({selectedOrder.paymentMethod || 'â€”'})</Tag></Col>
                             </Row>
                             <Row gutter={16} className="mt-2">
-                                <Col span={12}><Text type="secondary" className="text-xs block">Shipping</Text><Text>{selectedOrder.shippingMethod || '—'} → {selectedOrder.shippingCity || '—'}</Text></Col>
+                                <Col span={12}><Text type="secondary" className="text-xs block">Shipping</Text><Text>{selectedOrder.shippingMethod || 'â€”'} â†’ {selectedOrder.shippingCity || 'â€”'}</Text></Col>
                                 <Col span={12}><Text type="secondary" className="text-xs block">Source</Text><Tag>{selectedOrder.source}</Tag></Col>
                             </Row>
                         </Card>
@@ -337,7 +344,7 @@ export default function OrdersPage() {
                 )}
             </Drawer>
 
-            {/* ─── New Order Modal ──────────────────────── */}
+            {/* â”€â”€â”€ New Order Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <Modal title="New Order" open={orderModalOpen} onCancel={() => setOrderModalOpen(false)}
                 onOk={handleCreateOrder} okText="Create Order" width={720}>
                 <Form form={orderForm} layout="vertical">
@@ -353,7 +360,7 @@ export default function OrdersPage() {
                                     filterOption={(input, option) => (option?.label as string || '').toLowerCase().includes(input.toLowerCase())}
                                     onChange={onCustomerChange}
                                     options={customers.map(c => ({
-                                        value: c.id, label: `${c.customerCode} — ${c.firstName} ${c.lastName || ''}`
+                                        value: c.id, label: `${c.customerCode} â€” ${c.firstName} ${c.lastName || ''}`
                                     }))} />
                             </Form.Item>
                         </Col>
@@ -445,7 +452,7 @@ export default function OrdersPage() {
                             </Form.Item>
                         </Col>
                     </Row>
-                    <div style={{ textAlign: 'right', fontSize: 16, fontWeight: 700, color: '#6366f1' }}>
+                    <div style={{ textAlign: 'right', fontSize: 16, fontWeight: 700, color: themeColor }}>
                         Subtotal: {fmtCurrency(orderSubtotal)} | Total: {fmtCurrency(orderSubtotal + (orderForm.getFieldValue('shippingCost') || 0))}
                     </div>
                 </Form>
@@ -453,4 +460,6 @@ export default function OrdersPage() {
         </CMSLayout>
     );
 }
+
+
 

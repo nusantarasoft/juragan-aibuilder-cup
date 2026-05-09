@@ -4,12 +4,17 @@ import React from 'react';
 import { Card, Button, Typography, Alert } from 'antd';
 import { GlobalOutlined, ExportOutlined } from '@ant-design/icons';
 import CMSLayout from '@/components/layout/CMSLayout';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 
 export default function Bind9Page() {
+    const { themeColor } = usePreferencesStore();
     const dashboardUrl = "http://127.0.0.1:10000";
 
     return (
-        <CMSLayout title="BIND9 DNS Manager" subTitle="Infrastructure > BIND9">
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>BIND9 DNS Manager</AuroraText>}
+            subTitle={<DecryptedText text="Infrastructure > BIND9" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
             <div className="flex flex-col gap-6">
                 <Alert
                     message="Webmin Credentials"

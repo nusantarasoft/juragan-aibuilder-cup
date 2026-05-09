@@ -312,6 +312,67 @@ function mapTenantUser(d: any): TenantUser {
     };
 }
 
+// ─── Export Audit Log Types ─────────────────────────────
+
+@ObjectType()
+class DataExportLog {
+    @Field(() => ID) id: string;
+    @Field() tenantId: string;
+    @Field() userId: string;
+    @Field({ nullable: true }) userEmail?: string;
+    @Field({ nullable: true }) userName?: string;
+    @Field() exportType: string;
+    @Field() module: string;
+    @Field() fileName: string;
+    @Field() recordCount: number;
+    @Field({ nullable: true }) dateRangeStart?: string;
+    @Field({ nullable: true }) dateRangeEnd?: string;
+    @Field({ nullable: true }) ipAddress?: string;
+    @Field({ nullable: true }) userAgent?: string;
+    @Field() createdAt: string;
+}
+
+@ObjectType()
+class DataExportLogResult {
+    @Field(() => [DataExportLog]) logs: DataExportLog[];
+    @Field() total: number;
+}
+
+@InputType()
+class LogDataExportInput {
+    @Field() tenantId: string;
+    @Field() userId: string;
+    @Field({ nullable: true }) userEmail?: string;
+    @Field({ nullable: true }) userName?: string;
+    @Field() exportType: string;
+    @Field() module: string;
+    @Field() fileName: string;
+    @Field({ nullable: true }) recordCount?: number;
+    @Field({ nullable: true }) dateRangeStart?: string;
+    @Field({ nullable: true }) dateRangeEnd?: string;
+    @Field({ nullable: true }) ipAddress?: string;
+    @Field({ nullable: true }) userAgent?: string;
+}
+
+function mapExportLog(d: any): DataExportLog {
+    return {
+        id: d.id,
+        tenantId: d.tenant_id,
+        userId: d.user_id,
+        userEmail: d.user_email,
+        userName: d.user_name,
+        exportType: d.export_type,
+        module: d.module,
+        fileName: d.file_name,
+        recordCount: d.record_count || 0,
+        dateRangeStart: d.date_range_start,
+        dateRangeEnd: d.date_range_end,
+        ipAddress: d.ip_address,
+        userAgent: d.user_agent,
+        createdAt: d.created_at,
+    };
+}
+
 // ─── Resolver ───────────────────────────────────────────
 
 @Resolver()
@@ -676,5 +737,23 @@ export class PermissionsResolver {
         @Args('permissionKey') permissionKey: string,
     ) {
         return this.permissionEngine.hasSystemPermission(tenantUserId, permissionKey);
+    }
+
+    // ─── Data Export Audit Logs ───
+
+    @Mutation(() => DataExportLog)
+    async logDataExport(@Args('input') input: LogDataExportInput) {
+        const d = await this.permissionsService.logDataExport(input);
+        return mapExportLog(d);
+    }
+
+    @Query(() => DataExportLogResult)
+    async dataExportLogs(
+        @Args('tenantId') tenantId: string,
+        @Args('limit', { nullable: true, defaultValue: 50 }) limit?: number,
+        @Args('offset', { nullable: true, defaultValue: 0 }) offset?: number,
+    ) {
+        const result = await this.permissionsService.getDataExportLogs(tenantId, limit, offset);
+        return { logs: result.logs.map(mapExportLog), total: result.total };
     }
 }

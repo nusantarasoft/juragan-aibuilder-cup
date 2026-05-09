@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { motion } from "framer-motion";
+import RbacGuard from "@/components/common/RbacGuard";
 import {
     Table, Button, Space, Modal, Form, Input, Select, Tag, Card,
     message, Typography, Tooltip, Drawer, Descriptions, Row, Col, Switch,
@@ -9,14 +11,19 @@ import {
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, UserOutlined, BankOutlined,
-    PhoneOutlined, MailOutlined,
-} from "@ant-design/icons";
+    PhoneOutlined, MailOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface Contact {
     id: string;
@@ -67,6 +74,8 @@ const CONTACT_FIELDS: FieldDef[] = [
 
 export default function ContactsPage() {
     const [contacts, setContacts] = useState<Contact[]>([]);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Contact | null>(null);
@@ -226,16 +235,17 @@ export default function ContactsPage() {
 
     return (
         <CMSLayout
-            title="Contacts"
-            subTitle="Link individuals to accounts with role context"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Contacts</AuroraText>}
+            subTitle={<DecryptedText text="Link individuals to accounts with role context" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
                 <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>
+                <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_contacts', title: 'CRM Contacts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'First Name', key: 'firstName' }, { header: 'Last Name', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Company', key: 'company' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'leadStatus' }], data: contacts })} /></Tooltip> <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_contacts', title: 'CRM Contacts', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'First Name', key: 'firstName' }, { header: 'Last Name', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Company', key: 'company' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'leadStatus' }], data: contacts })} /></Tooltip></RbacGuard>,
                     Add Contact
                 </Button>,
             ]}
         >
-            <Card style={{ marginBottom: 16 }}>
+            <Card style={{ ...glass, marginBottom: 16 }}>
                 <Space wrap>
                     <Input prefix={<SearchOutlined />} placeholder="Search by email or title..." value={search}
                         onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />
@@ -246,7 +256,7 @@ export default function ContactsPage() {
             </Card>
 
             <Card>
-                <Table columns={columns} dataSource={contacts.map(c => ({ ...c, key: c.id }))}
+                <Table scroll={{ x: 900 }} columns={columns} dataSource={contacts.map(c => ({ ...c, key: c.id }))}
                     loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" />
             </Card>
 
@@ -332,3 +342,5 @@ export default function ContactsPage() {
         </CMSLayout>
     );
 }
+
+

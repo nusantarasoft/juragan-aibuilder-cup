@@ -138,7 +138,7 @@ export default function ItemPicker({
             allowClear={allowClear}
             size={size}
             style={{ width: "100%", ...style }}
-            suffixIcon={<ShoppingOutlined style={{ color: "#8b5cf6" }} />}
+            suffixIcon={<ShoppingOutlined style={{ color: "var(--theme-color, #8b5cf6)" }} />}
             filterOption={(input, option) =>
                 (option as any)?.searchText?.includes(input.toLowerCase()) ?? false
             }

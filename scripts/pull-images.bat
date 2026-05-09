@@ -21,7 +21,6 @@ docker pull dremio/dremio-oss:latest
 docker pull alexmerced/dremio-superset:latest
 docker pull projectnessie/nessie:latest
 docker pull dpage/pgadmin4:latest
-docker pull mindsdb/mindsdb:latest
 docker pull mintplexlabs/anythingllm:latest
 
 echo.

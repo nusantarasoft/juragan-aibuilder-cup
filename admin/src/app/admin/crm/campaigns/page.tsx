@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { motion } from "framer-motion";
+import RbacGuard from "@/components/common/RbacGuard";
 import {
     Table, Button, Space, Modal, Form, Input, Select, Tag, Card,
     message, Typography, Tooltip, Drawer, Descriptions, Row, Col,
@@ -11,15 +13,20 @@ import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, RocketOutlined,
     DollarOutlined, PercentageOutlined, CalendarOutlined,
-    FileTextOutlined,
-} from "@ant-design/icons";
+    FileTextOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import dayjs from "dayjs";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const { TextArea } = Input;
 
 interface Campaign {
@@ -46,6 +53,8 @@ const CAMPAIGN_FIELDS: FieldDef[] = [
 
 export default function CampaignsPage() {
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Campaign | null>(null);
@@ -138,21 +147,23 @@ export default function CampaignsPage() {
     ];
 
     return (
-        <CMSLayout title="Campaigns" subTitle="Marketing campaigns and outreach" extra={[
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Campaigns</AuroraText>}
+            subTitle={<DecryptedText text="Marketing campaigns and outreach" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[
             <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
             <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>New Campaign</Button>,
+                <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_campaigns', title: 'CRM Campaigns', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'type' }, { header: 'Status', key: 'status' }, { header: 'Budget', key: 'budget' }], data: campaigns })} /></Tooltip> <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_campaigns', title: 'CRM Campaigns', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'type' }, { header: 'Status', key: 'status' }, { header: 'Budget', key: 'budget' }], data: campaigns })} /></Tooltip></RbacGuard>,
         ]}>
             <Row gutter={16} style={{ marginBottom: 16 }}>
-                <Col span={6}><Card><Statistic title="Total Budget" value={totalBudget} prefix={<DollarOutlined />} precision={0} formatter={v => fmt(Number(v))} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Total Spent" value={totalSpent} prefix={<DollarOutlined />} precision={0} formatter={v => fmt(Number(v))} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Expected Revenue" value={totalExpected} prefix={<DollarOutlined />} precision={0} formatter={v => fmt(Number(v))} valueStyle={{ color: '#52c41a' }} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Expected ROI" value={roi} prefix={<PercentageOutlined />} precision={1} suffix="%" valueStyle={{ color: roi > 0 ? '#52c41a' : (roi < 0 ? '#cf1322' : 'inherit') }} /></Card></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}><Card style={{ ...glass }}><Statistic title="Total Budget" value={totalBudget} prefix={<DollarOutlined />} precision={0} formatter={v => fmt(Number(v))} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}><Card style={{ ...glass }}><Statistic title="Total Spent" value={totalSpent} prefix={<DollarOutlined />} precision={0} formatter={v => fmt(Number(v))} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Card style={{ ...glass }}><Statistic title="Expected Revenue" value={totalExpected} prefix={<DollarOutlined />} precision={0} formatter={v => fmt(Number(v))} valueStyle={{ color: '#52c41a' }} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}><Card style={{ ...glass }}><Statistic title="Expected ROI" value={roi} prefix={<PercentageOutlined />} precision={1} suffix="%" valueStyle={{ color: roi > 0 ? '#52c41a' : (roi < 0 ? '#cf1322' : 'inherit') }} /></Card></motion.div></Col>
             </Row>
-            <Card style={{ marginBottom: 16 }}><Space wrap>
+            <Card style={{ ...glass, marginBottom: 16 }}><Space wrap>
                 <Input prefix={<SearchOutlined />} placeholder="Search campaigns..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />
                 <Select placeholder="Status" value={statusFilter} onChange={setStatusFilter} allowClear style={{ width: 150 }} options={STATUSES} />
             </Space></Card>
-            <Card><Table columns={columns} dataSource={campaigns.map(c => ({ ...c, key: c.id }))} loading={loading} pagination={{ pageSize: 20 }} size="middle" /></Card>
+            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table scroll={{ x: 900 }} columns={columns} dataSource={campaigns.map(c => ({ ...c, key: c.id }))} loading={loading} pagination={{ pageSize: 20 }} size="middle" /></Card>
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Campaign" : "New Campaign"} entityName="campaign" steps={formSteps} fields={CAMPAIGN_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["#f59e0b", "#ea580c"]} editMode={!!editing} />
 
@@ -168,10 +179,12 @@ export default function CampaignsPage() {
                         <Descriptions.Item label="Dates">{selected.startDate ? dayjs(selected.startDate).format('MMM D, YYYY') : '—'} → {selected.endDate ? dayjs(selected.endDate).format('MMM D, YYYY') : 'Ongoing'}</Descriptions.Item>
                         <Descriptions.Item label="Description">{selected.description || '—'}</Descriptions.Item>
                     </Descriptions>) },
-                    { key: "members", label: "Members", children: (<Table columns={memberColumns} dataSource={members} rowKey="id" pagination={{ pageSize: 15 }} size="small" loading={membersLoading} />) },
+                    { key: "members", label: "Members", children: (<Table scroll={{ x: 900 }} columns={memberColumns} dataSource={members} rowKey="id" pagination={{ pageSize: 15 }} size="small" loading={membersLoading} />) },
                     { key: "ai", label: "AI Copy Generator", children: (<Spin spinning={aiLoading}><div style={{ marginBottom: 16 }}><Text>Use Gemini 2.5 Pro to generate optimized copy for this campaign.</Text></div><Button type="primary" onClick={handleGenerateAI} style={{ marginBottom: 16 }} icon={<RocketOutlined />}>Generate {selected.type ? selected.type.replace(/^\w/, c => c.toUpperCase()) : 'Campaign'} Draft</Button>{aiContent && (<TextArea rows={12} value={aiContent} onChange={e => setAiContent(e.target.value)} />)}</Spin>) }
                 ]} />)}
             </Drawer>
         </CMSLayout>
     );
 }
+
+

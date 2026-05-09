@@ -3,12 +3,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
-import {
-    Table, Button, Space, Tag, Input, Select, Modal, Form, Card,
-    Statistic, Typography, message, Empty, Spin, Tabs, Tooltip,
-    Drawer, Descriptions, Segmented, Badge, Row, Col, Popconfirm,
-    InputNumber, Divider, Switch, Steps, Image, Progress
-} from "antd";
+import RbacGuard from "@/components/common/RbacGuard";
+import { Badge, Button, Card, Col, Descriptions, Divider, Drawer, Empty, Form, Image, Input, InputNumber, message, Modal, Popconfirm, Progress, Row, Segmented, Select, Space, Spin, Statistic, Steps, Switch, Table, Tabs, Tag, Tooltip, Typography } from "antd";
 import {
     PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined,
     DropboxOutlined, ShoppingCartOutlined, CalendarOutlined,
@@ -18,18 +14,21 @@ import {
     ScheduleOutlined, ShoppingOutlined, ToolOutlined,
     ExportOutlined, ImportOutlined, EyeOutlined,
     CheckCircleOutlined, ArrowLeftOutlined, ArrowRightOutlined,
-    DollarOutlined, InboxOutlined, SafetyCertificateOutlined, PictureOutlined,
-} from "@ant-design/icons";
+    DollarOutlined, InboxOutlined, SafetyCertificateOutlined, PictureOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { TooltipWrapper as AnimatedTooltip } from "@/components/mvpblocks/AnimatedTooltip";
 import ItemMediaGallery, { ProductGallery, MediaInfo } from "@/components/inventory/ItemMediaGallery";
 import { inventoryService, InvItem, InvCategory, InvStockStats, AiClassification } from "@/lib/inventoryService";
 
 const { Title, Text, Paragraph } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const SELLABLE_FULFILLMENT_TYPES = [
-    { value: 'physical', label: 'Physical Goods', icon: <DropboxOutlined />, color: '#7c3aed', desc: 'Tangible products with stock tracking', example: 'Laptop, T-shirt, Bolt', sellable: true },
+    { value: 'physical', label: 'Physical Goods', icon: <DropboxOutlined />, color: 'var(--theme-color, #7c3aed)', desc: 'Tangible products with stock tracking', example: 'Laptop, T-shirt, Bolt', sellable: true },
     { value: 'ticket', label: 'Ticket / Event', icon: <TagOutlined />, color: '#f59e0b', desc: 'One-time events with capacity & seats', example: 'Concert, Museum entry', sellable: true },
     { value: 'scheduled', label: 'Scheduled Service', icon: <ScheduleOutlined />, color: '#0ea5e9', desc: 'Recurring routes with timetables', example: 'Ship route, Bus line', sellable: true },
     { value: 'rental', label: 'Rental Asset', icon: <SwapOutlined />, color: '#10b981', desc: 'Items rented out & returned', example: 'Camera, Projector, Vehicle', sellable: true },
@@ -74,6 +73,8 @@ const WIZARD_STEPS = [
 
 export default function ItemMasterPage() {
     const [items, setItems] = useState<InvItem[]>([]);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [categories, setCategories] = useState<InvCategory[]>([]);
     const [stats, setStats] = useState<InvStockStats | null>(null);
     const [loading, setLoading] = useState(true);
@@ -268,7 +269,7 @@ export default function ItemMasterPage() {
         finally { setSellableSaving(false); }
     };
 
-    // ─── Table Columns ──────────────────────────────────
+    // â”€â”€â”€ Table Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     const columns = [
         {
@@ -285,12 +286,12 @@ export default function ItemMasterPage() {
                                 style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
                         ) : (
                             <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
-                                style={{ background: `${FULFILLMENT_TYPES.find(f => f.value === r.fulfillmentType)?.color || '#7c3aed'}15` }}>
+                                style={{ background: `${FULFILLMENT_TYPES.find(f => f.value === r.fulfillmentType)?.color || 'var(--theme-color, #7c3aed)'}15` }}>
                                 {FULFILLMENT_TYPES.find(f => f.value === r.fulfillmentType)?.icon || <DropboxOutlined />}
                             </div>
                         )}
                         <div>
-                            <Text strong className="block text-sm cursor-pointer hover:text-violet-500"
+                            <Text strong className="block text-sm cursor-pointer hover:text-[color:var(--theme-color, #7c3aed)]"
                                 onClick={() => setDetailDrawer(r)}>{r.name}</Text>
                             <Text type="secondary" className="text-xs">{r.sku}</Text>
                         </div>
@@ -350,7 +351,7 @@ export default function ItemMasterPage() {
                 <Space size={4}>
                     <AnimatedTooltip content="View">
                         <Button type="text" size="small" icon={<EyeOutlined />}
-                            className="text-gray-400 hover:text-violet-500"
+                            className="text-gray-400 hover:text-[color:var(--theme-color, #7c3aed)]"
                             onClick={() => setDetailDrawer(r)} />
                     </AnimatedTooltip>
                     <AnimatedTooltip content="Edit">
@@ -376,11 +377,11 @@ export default function ItemMasterPage() {
         },
     ];
 
-    // ─── Stats Cards ────────────────────────────────────
+    // â”€â”€â”€ Stats Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     const statsCards = [
-        { title: 'Total Items', value: stats?.totalItems || 0, icon: <DropboxOutlined />, color: '#7c3aed' },
-        { title: 'Physical', value: stats?.physicalCount || 0, icon: <BoxPlotOutlined />, color: '#7c3aed' },
+        { title: 'Total Items', value: stats?.totalItems || 0, icon: <DropboxOutlined />, color: 'var(--theme-color, #7c3aed)' },
+        { title: 'Physical', value: stats?.physicalCount || 0, icon: <BoxPlotOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { title: 'Tickets', value: stats?.ticketCount || 0, icon: <TagOutlined />, color: '#f59e0b' },
         { title: 'Scheduled', value: stats?.scheduledCount || 0, icon: <ScheduleOutlined />, color: '#0ea5e9' },
         { title: 'Rental', value: stats?.rentalCount || 0, icon: <SwapOutlined />, color: '#10b981' },
@@ -389,7 +390,7 @@ export default function ItemMasterPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#9333ea", "#7c3aed", "#6366f1", "#00ffff", "#ff00ff"]}>Item Master</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Item Master</AuroraText>}
             subTitle={
                 <DecryptedText
                     text="Unified registry for physical goods, services, tickets, schedules, and rental items"
@@ -404,8 +405,7 @@ export default function ItemMasterPage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                                    ...glass,
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -425,8 +425,7 @@ export default function ItemMasterPage() {
 
                 {/* Toolbar */}
                 <Card size="small" style={{
-                    background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                    ...glass,
                 }}>
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -472,12 +471,13 @@ export default function ItemMasterPage() {
                             />
                             <AnimatedTooltip content="Reload">
                                 <Button icon={<ReloadOutlined />} onClick={loadAll} />
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_items', title: 'Inventory Items', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'SKU', key: 'sku' }, { header: 'Category', key: 'category' }, { header: 'Stock', key: 'quantityOnHand' }, { header: 'Unit Cost', key: 'unitCost' }], data: items })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_items', title: 'Inventory Items', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'SKU', key: 'sku' }, { header: 'Category', key: 'category' }, { header: 'Stock', key: 'quantityOnHand' }, { header: 'Unit Cost', key: 'unitCost' }], data: items })} /></Tooltip></RbacGuard>
                             </AnimatedTooltip>
                             <AnimatedTooltip content="New Category">
                                 <Button icon={<AppstoreOutlined />} onClick={() => setCategoryModalOpen(true)} />
                             </AnimatedTooltip>
                             <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}
-                                style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', borderRadius: 8, border: 'none' }}>
+                                style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', borderRadius: 8, border: 'none' }}>
                                 New Item
                             </Button>
                         </div>
@@ -486,8 +486,8 @@ export default function ItemMasterPage() {
 
                 {/* Table / Grid */}
                 <Card size="small" style={{
-                    flex: 1, minHeight: 0, borderRadius: 12,
-                    background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)',
+                    flex: 1, minHeight: 0,
+                    ...glass, borderRadius: 12,
                     border: '1px solid rgba(255,255,255,0.5)',
                 }}>
                     {viewMode === 'table' ? (
@@ -509,10 +509,10 @@ export default function ItemMasterPage() {
                                         return (
                                             <motion.div key={item.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}>
                                                 <Card size="small" hoverable className="rounded-xl cursor-pointer" onClick={() => setDetailDrawer(item)}
-                                                    style={{ borderColor: `${ft?.color || '#7c3aed'}30` }}>
+                                                    style={{ borderColor: `${ft?.color || 'var(--theme-color, #7c3aed)'}30` }}>
                                                     <div className="flex items-start gap-3 mb-2">
                                                         <div className="w-10 h-10 rounded-lg flex items-center justify-center"
-                                                            style={{ background: `${ft?.color || '#7c3aed'}15`, fontSize: 18 }}>
+                                                            style={{ background: `${ft?.color || 'var(--theme-color, #7c3aed)'}15`, fontSize: 18 }}>
                                                             {ft?.icon || <DropboxOutlined />}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
@@ -534,7 +534,7 @@ export default function ItemMasterPage() {
                 </Card>
             </div>
 
-            {/* ═══ Wizard Modal ═══ */}
+            {/* â•â•â• Wizard Modal â•â•â• */}
             <Modal
                 title={null}
                 open={formOpen}
@@ -549,12 +549,12 @@ export default function ItemMasterPage() {
                 <div style={{ padding: '20px 28px 0', borderBottom: '1px solid #f0f0f0', paddingBottom: 20 }}>
                     <div className="flex items-center justify-between mb-4">
                         <div>
-                            <Title level={4} className="!m-0" style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                            <Title level={4} className="!m-0" style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                                 {editingItem ? 'Edit Item' : 'Create New Item'}
                             </Title>
-                            <Text type="secondary" className="text-xs">{WIZARD_STEPS[wizardStep]?.title} — Step {wizardStep + 1} of {WIZARD_STEPS.length}</Text>
+                            <Text type="secondary" className="text-xs">{WIZARD_STEPS[wizardStep]?.title} â€” Step {wizardStep + 1} of {WIZARD_STEPS.length}</Text>
                         </div>
-                        <Button type="text" onClick={() => setFormOpen(false)} style={{ fontSize: 18 }}>✕</Button>
+                        <Button type="text" onClick={() => setFormOpen(false)} style={{ fontSize: 18 }}>âœ•</Button>
                     </div>
                     <Steps current={wizardStep} size="small" onChange={s => { if (editingItem || s < wizardStep) setWizardStep(s); }}
                         items={WIZARD_STEPS.map(s => ({ title: s.title, icon: s.icon }))}
@@ -565,13 +565,13 @@ export default function ItemMasterPage() {
                 <div style={{ maxHeight: '55vh', overflow: 'auto', padding: '24px 28px' }}>
                     <Form form={form} layout="vertical" size="middle">
                         <AnimatePresence mode="wait">
-                            {/* ── Step 0: Type Selection ── */}
+                            {/* â”€â”€ Step 0: Type Selection â”€â”€ */}
                             {wizardStep === 0 && (
                                 <motion.div key="step0" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.2 }}>
                                     <Text strong className="text-base block mb-1">What kind of item are you creating?</Text>
                                     <Text type="secondary" className="text-xs block mb-4">Choose the fulfillment model that best describes this item.</Text>
 
-                                    <Text type="secondary" className="text-xs uppercase tracking-wider block mb-2" style={{ color: '#16a34a' }}>📦 Sellable — appears in product catalog</Text>
+                                    <Text type="secondary" className="text-xs uppercase tracking-wider block mb-2" style={{ color: '#16a34a' }}>ðŸ“¦ Sellable â€” appears in product catalog</Text>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
                                         {SELLABLE_FULFILLMENT_TYPES.map((ft, i) => {
                                             const isActive = selectedFulfillment === ft.value;
@@ -618,16 +618,16 @@ export default function ItemMasterPage() {
                                 </motion.div>
                             )}
 
-                            {/* ── Step 1: Details ── */}
+                            {/* â”€â”€ Step 1: Details â”€â”€ */}
                             {wizardStep === 1 && (
                                 <motion.div key="step1" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.2 }}>
                                     <Text strong className="text-base block mb-1">Item Details</Text>
                                     <Text type="secondary" className="text-xs block mb-5">Give your item a name, description, and let AI help classify it.</Text>
 
                                     <Form.Item name="name" label="Item Name" rules={[{ required: true, message: 'Item name is required' }]}>
-                                        <Input placeholder={selectedFulfillment === 'physical' ? 'e.g. MacBook Pro 14" M3' : selectedFulfillment === 'ticket' ? 'e.g. Concert VIP Ticket' : selectedFulfillment === 'scheduled' ? 'e.g. Jakarta → Surabaya Ferry' : 'e.g. Canon EOS R5 Camera'}
+                                        <Input placeholder={selectedFulfillment === 'physical' ? 'e.g. MacBook Pro 14" M3' : selectedFulfillment === 'ticket' ? 'e.g. Concert VIP Ticket' : selectedFulfillment === 'scheduled' ? 'e.g. Jakarta â†’ Surabaya Ferry' : 'e.g. Canon EOS R5 Camera'}
                                             size="large" style={{ borderRadius: 10 }}
-                                            suffix={<Button type="link" icon={<RobotOutlined />} loading={aiClassifying} onClick={handleAiClassify} style={{ color: '#7c3aed', padding: 0 }}>AI Classify</Button>}
+                                            suffix={<Button type="link" icon={<RobotOutlined />} loading={aiClassifying} onClick={handleAiClassify} style={{ color: 'var(--theme-color, #7c3aed)', padding: 0 }}>AI Classify</Button>}
                                         />
                                     </Form.Item>
 
@@ -635,10 +635,10 @@ export default function ItemMasterPage() {
                                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
                                             <Card size="small" className="mb-4" style={{ background: 'linear-gradient(135deg, #faf5ff, #f0f0ff)', borderColor: '#d8b4fe', borderRadius: 12 }}>
                                                 <div className="flex items-center gap-2 mb-2">
-                                                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#7c3aed15', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                        <RobotOutlined style={{ color: '#7c3aed', fontSize: 14 }} />
+                                                    <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(var(--theme-color-rgb, 124, 58, 237), 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <RobotOutlined style={{ color: 'var(--theme-color, #7c3aed)', fontSize: 14 }} />
                                                     </div>
-                                                    <Text strong className="text-xs" style={{ color: '#7c3aed' }}>AI Suggestion · {aiResult.confidence}% confidence</Text>
+                                                    <Text strong className="text-xs" style={{ color: 'var(--theme-color, #7c3aed)' }}>AI Suggestion Â· {aiResult.confidence}% confidence</Text>
                                                 </div>
                                                 <div className="flex gap-2 flex-wrap">
                                                     <Tag color="purple" className="rounded-full">{aiResult.suggestedCategory}</Tag>
@@ -684,7 +684,7 @@ export default function ItemMasterPage() {
 
                                     {/* Type-specific detail fields */}
                                     {(selectedFulfillment === 'ticket') && (<>
-                                        <Divider className="my-3" /><Text strong className="text-xs text-gray-400 uppercase tracking-wider block mb-3">🎫 Event Details</Text>
+                                        <Divider className="my-3" /><Text strong className="text-xs text-gray-400 uppercase tracking-wider block mb-3">ðŸŽ« Event Details</Text>
                                         <Row gutter={16}>
                                             <Col span={12}><Form.Item name={['metadata', 'venue']} label="Venue / Location"><Input placeholder="e.g. Bali Convention Center" style={{ borderRadius: 10 }} /></Form.Item></Col>
                                             <Col span={12}><Form.Item name={['metadata', 'eventDate']} label="Event Date"><Input type="date" style={{ borderRadius: 10 }} /></Form.Item></Col>
@@ -696,7 +696,7 @@ export default function ItemMasterPage() {
                                     </>)}
 
                                     {(selectedFulfillment === 'scheduled') && (<>
-                                        <Divider className="my-3" /><Text strong className="text-xs text-gray-400 uppercase tracking-wider block mb-3">🗓️ Route Details</Text>
+                                        <Divider className="my-3" /><Text strong className="text-xs text-gray-400 uppercase tracking-wider block mb-3">ðŸ—“ï¸ Route Details</Text>
                                         <Row gutter={16}>
                                             <Col span={12}><Form.Item name={['metadata', 'origin']} label="Origin"><Input placeholder="e.g. Sanur Harbor" style={{ borderRadius: 10 }} /></Form.Item></Col>
                                             <Col span={12}><Form.Item name={['metadata', 'destination']} label="Destination"><Input placeholder="e.g. Nusa Penida" style={{ borderRadius: 10 }} /></Form.Item></Col>
@@ -709,16 +709,16 @@ export default function ItemMasterPage() {
                                     </>)}
 
                                     {(selectedFulfillment === 'rental') && (<>
-                                        <Divider className="my-3" /><Text strong className="text-xs text-gray-400 uppercase tracking-wider block mb-3">🔑 Rental Details</Text>
+                                        <Divider className="my-3" /><Text strong className="text-xs text-gray-400 uppercase tracking-wider block mb-3">ðŸ”‘ Rental Details</Text>
                                         <Row gutter={16}>
                                             <Col span={8}><Form.Item name={['metadata', 'rentalPeriod']} label="Rental Period"><Select options={[{ value: 'hourly', label: 'Hourly' }, { value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' }, { value: 'monthly', label: 'Monthly' }]} style={{ borderRadius: 10 }} /></Form.Item></Col>
-                                            <Col span={8}><Form.Item name={['metadata', 'condition']} label="Condition"><Select options={[{ value: 'excellent', label: '✨ Excellent' }, { value: 'good', label: '👍 Good' }, { value: 'fair', label: '👌 Fair' }, { value: 'needs_repair', label: '🔧 Needs Repair' }]} style={{ borderRadius: 10 }} /></Form.Item></Col>
+                                            <Col span={8}><Form.Item name={['metadata', 'condition']} label="Condition"><Select options={[{ value: 'excellent', label: 'âœ¨ Excellent' }, { value: 'good', label: 'ðŸ‘ Good' }, { value: 'fair', label: 'ðŸ‘Œ Fair' }, { value: 'needs_repair', label: 'ðŸ”§ Needs Repair' }]} style={{ borderRadius: 10 }} /></Form.Item></Col>
                                             <Col span={8}><Form.Item name={['metadata', 'depositAmount']} label="Deposit Amount"><InputNumber min={0} style={{ width: '100%', borderRadius: 10 }} formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={v => v!.replace(/,/g, '') as any} /></Form.Item></Col>
                                         </Row>
                                     </>)}
 
                                     {(selectedFulfillment === 'raw_material') && (<>
-                                        <Divider className="my-3" /><Text strong className="text-xs text-gray-400 uppercase tracking-wider block mb-3">🧱 Material Details</Text>
+                                        <Divider className="my-3" /><Text strong className="text-xs text-gray-400 uppercase tracking-wider block mb-3">ðŸ§± Material Details</Text>
                                         <Row gutter={16}>
                                             <Col span={8}><Form.Item name={['metadata', 'leadTimeDays']} label="Lead Time (days)"><InputNumber min={0} placeholder="7" style={{ width: '100%', borderRadius: 10 }} /></Form.Item></Col>
                                             <Col span={8}><Form.Item name={['metadata', 'minOrderQty']} label="Min Order Qty"><InputNumber min={1} placeholder="1" style={{ width: '100%', borderRadius: 10 }} /></Form.Item></Col>
@@ -728,7 +728,7 @@ export default function ItemMasterPage() {
                                 </motion.div>
                             )}
 
-                            {/* ── Step 2: Media Gallery ── */}
+                            {/* â”€â”€ Step 2: Media Gallery â”€â”€ */}
                             {wizardStep === 2 && (
                                 <motion.div key="step2" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.2 }}>
                                     <Text strong className="text-base block mb-1">Photos & Videos</Text>
@@ -744,7 +744,7 @@ export default function ItemMasterPage() {
                                 </motion.div>
                             )}
 
-                            {/* ── Step 3: Pricing ── */}
+                            {/* â”€â”€ Step 3: Pricing â”€â”€ */}
                             {wizardStep === 3 && (
                                 <motion.div key="step3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.2 }}>
                                     <Text strong className="text-base block mb-1">Pricing & Cost</Text>
@@ -771,7 +771,7 @@ export default function ItemMasterPage() {
                                     <Row gutter={16}>
                                         <Col span={8}>
                                             <Form.Item name="currency" label="Currency">
-                                                <Select size="large" options={[{ value: 'IDR', label: '🇮🇩 IDR' }, { value: 'USD', label: '🇺🇸 USD' }, { value: 'EUR', label: '🇪🇺 EUR' }, { value: 'SGD', label: '🇸🇬 SGD' }]} />
+                                                <Select size="large" options={[{ value: 'IDR', label: 'ðŸ‡®ðŸ‡© IDR' }, { value: 'USD', label: 'ðŸ‡ºðŸ‡¸ USD' }, { value: 'EUR', label: 'ðŸ‡ªðŸ‡º EUR' }, { value: 'SGD', label: 'ðŸ‡¸ðŸ‡¬ SGD' }]} />
                                             </Form.Item>
                                         </Col>
                                         <Col span={8}>
@@ -784,11 +784,11 @@ export default function ItemMasterPage() {
 
                                     {!isSellableType(selectedFulfillment) && (
                                         <Card size="small" style={{ borderRadius: 12, background: '#fafafa', border: '1px solid #e5e7eb', marginTop: 8 }}>
-                                            <Text type="secondary" className="text-xs">💡 This is an internal item (not for resale). Only cost price is tracked. To make it sellable, change the type in Step 1.</Text>
+                                            <Text type="secondary" className="text-xs">ðŸ’¡ This is an internal item (not for resale). Only cost price is tracked. To make it sellable, change the type in Step 1.</Text>
                                         </Card>
                                     )}
 
-                                    {/* Live Margin Calculator — only for sellable */}
+                                    {/* Live Margin Calculator â€” only for sellable */}
                                     {isSellableType(selectedFulfillment) && (
                                         <Form.Item noStyle shouldUpdate={(prev, cur) => prev.costPrice !== cur.costPrice || prev.sellingPrice !== cur.sellingPrice}>
                                             {({ getFieldValue }) => {
@@ -802,7 +802,7 @@ export default function ItemMasterPage() {
                                                         <Row gutter={16} align="middle">
                                                             <Col span={8}><div style={{ textAlign: 'center' }}><Text type="secondary" style={{ fontSize: 11, display: 'block' }}>Cost</Text><Text strong style={{ fontSize: 16 }}>{(cost || 0).toLocaleString()}</Text></div></Col>
                                                             <Col span={8}><div style={{ textAlign: 'center' }}><Text type="secondary" style={{ fontSize: 11, display: 'block' }}>Profit / Unit</Text><Text strong style={{ fontSize: 18, color: isProfit ? '#16a34a' : '#dc2626' }}>{isProfit ? '+' : ''}{profit.toLocaleString()}</Text></div></Col>
-                                                            <Col span={8}><div style={{ textAlign: 'center' }}><Text type="secondary" style={{ fontSize: 11, display: 'block' }}>Margin</Text><Text strong style={{ fontSize: 18, color: isProfit ? '#16a34a' : '#dc2626' }}>{cost > 0 ? `${marginPct.toFixed(1)}%` : '—'}</Text>{cost > 0 && <Progress percent={Math.min(Math.abs(marginPct), 100)} showInfo={false} strokeColor={isProfit ? '#16a34a' : '#dc2626'} size="small" style={{ marginTop: 4 }} />}</div></Col>
+                                                            <Col span={8}><div style={{ textAlign: 'center' }}><Text type="secondary" style={{ fontSize: 11, display: 'block' }}>Margin</Text><Text strong style={{ fontSize: 18, color: isProfit ? '#16a34a' : '#dc2626' }}>{cost > 0 ? `${marginPct.toFixed(1)}%` : 'â€”'}</Text>{cost > 0 && <Progress percent={Math.min(Math.abs(marginPct), 100)} showInfo={false} strokeColor={isProfit ? '#16a34a' : '#dc2626'} size="small" style={{ marginTop: 4 }} />}</div></Col>
                                                         </Row>
                                                     </Card>
                                                 );
@@ -812,7 +812,7 @@ export default function ItemMasterPage() {
                                 </motion.div>
                             )}
 
-                            {/* ── Step 4: Inventory ── */}
+                            {/* â”€â”€ Step 4: Inventory â”€â”€ */}
                             {wizardStep === 4 && (
                                 <motion.div key="step4" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.2 }}>
                                     <Text strong className="text-base block mb-1">
@@ -852,7 +852,7 @@ export default function ItemMasterPage() {
                                         </Col>
                                         <Col span={8}>
                                             <Form.Item name="status" label="Status">
-                                                <Select size="large" options={[{ value: 'active', label: '🟢 Active' }, { value: 'draft', label: '🟡 Draft' }, { value: 'archived', label: '⚪ Archived' }]} />
+                                                <Select size="large" options={[{ value: 'active', label: 'ðŸŸ¢ Active' }, { value: 'draft', label: 'ðŸŸ¡ Draft' }, { value: 'archived', label: 'âšª Archived' }]} />
                                             </Form.Item>
                                         </Col>
                                     </Row>
@@ -883,7 +883,7 @@ export default function ItemMasterPage() {
                                 </motion.div>
                             )}
 
-                            {/* ── Step 5: Review ── */}
+                            {/* â”€â”€ Step 5: Review â”€â”€ */}
                             {wizardStep === 5 && (
                                 <motion.div key="step5" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.2 }}>
                                     <Text strong className="text-base block mb-1">Review & Confirm</Text>
@@ -898,7 +898,7 @@ export default function ItemMasterPage() {
                                         return (
                                             <div className="space-y-4">
                                                 {/* Header card */}
-                                                <Card style={{ borderRadius: 14, border: `2px solid ${ft?.color || '#7c3aed'}20`, background: `${ft?.color || '#7c3aed'}05` }}>
+                                                <Card style={{ borderRadius: 14, border: `2px solid ${ft?.color || 'var(--theme-color, #7c3aed)'}20`, background: `${ft?.color || 'var(--theme-color, #7c3aed)'}05` }}>
                                                     <div className="flex items-center gap-4">
                                                         <div style={{ width: 56, height: 56, borderRadius: 14, background: `${ft?.color}15`, color: ft?.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
                                                             {ft?.icon}
@@ -909,11 +909,11 @@ export default function ItemMasterPage() {
                                                                 <Tag color={ft?.color} className="rounded-full">{ft?.label}</Tag>
                                                                 {v.itemType && <Tag className="rounded-full">{v.itemType}</Tag>}
                                                                 {cat && <Tag className="rounded-full">{cat.name}</Tag>}
-                                                                {v.brand && <Tag className="rounded-full">🏷️ {v.brand}</Tag>}
+                                                                {v.brand && <Tag className="rounded-full">ðŸ·ï¸ {v.brand}</Tag>}
                                                                 {(v.tags || []).map((t: string) => <Tag key={t} className="rounded-full text-xs">{t}</Tag>)}
                                                             </div>
                                                         </div>
-                                                        <Button type="link" size="small" style={{ color: '#7c3aed' }} onClick={() => setWizardStep(1)}>✏️ Edit Details</Button>
+                                                        <Button type="link" size="small" style={{ color: 'var(--theme-color, #7c3aed)' }} onClick={() => setWizardStep(1)}>âœï¸ Edit Details</Button>
                                                     </div>
                                                     {v.description && <Paragraph className="mt-3 mb-0 text-sm text-gray-500">{v.description}</Paragraph>}
                                                 </Card>
@@ -922,8 +922,8 @@ export default function ItemMasterPage() {
                                                 {galleryMediaIds.length > 0 && (
                                                     <Card size="small" style={{ borderRadius: 12 }}>
                                                         <div className="flex items-center justify-between mb-2">
-                                                            <Text type="secondary" className="text-xs uppercase tracking-wider">📸 Media ({galleryMediaIds.length} files)</Text>
-                                                            <Button type="link" size="small" onClick={() => setWizardStep(2)} style={{ color: '#7c3aed', padding: 0 }}>Edit Media</Button>
+                                                            <Text type="secondary" className="text-xs uppercase tracking-wider">ðŸ“¸ Media ({galleryMediaIds.length} files)</Text>
+                                                            <Button type="link" size="small" onClick={() => setWizardStep(2)} style={{ color: 'var(--theme-color, #7c3aed)', padding: 0 }}>Edit Media</Button>
                                                         </div>
                                                         <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
                                                             {galleryMediaIds.slice(0, 6).map(mid => {
@@ -944,17 +944,17 @@ export default function ItemMasterPage() {
                                                         <Card size="small" style={{ borderRadius: 12 }}>
                                                             <div className="flex items-center justify-between mb-2">
                                                                 <Text type="secondary" className="text-xs uppercase tracking-wider">Pricing</Text>
-                                                                <Button type="link" size="small" onClick={() => setWizardStep(3)} style={{ color: '#7c3aed', padding: 0 }}>Edit</Button>
+                                                                <Button type="link" size="small" onClick={() => setWizardStep(3)} style={{ color: 'var(--theme-color, #7c3aed)', padding: 0 }}>Edit</Button>
                                                             </div>
                                                             <Descriptions column={1} size="small">
                                                                 <Descriptions.Item label="Cost">{v.currency} {(v.costPrice || 0).toLocaleString()}</Descriptions.Item>
                                                                 <Descriptions.Item label="Sell">
-                                                                    <Text strong style={{ color: '#6366f1' }}>{v.currency} {(v.sellingPrice || 0).toLocaleString()}</Text>
+                                                                    <Text strong style={{ color: themeColor }}>{v.currency} {(v.sellingPrice || 0).toLocaleString()}</Text>
                                                                 </Descriptions.Item>
                                                                 <Descriptions.Item label="Tax">{v.taxRate || 0}%</Descriptions.Item>
                                                                 <Descriptions.Item label="Margin">
                                                                     <Text strong style={{ color: profit >= 0 ? '#16a34a' : '#dc2626' }}>
-                                                                        {(v.costPrice || 0) > 0 ? `${marginPct.toFixed(1)}%` : '—'}
+                                                                        {(v.costPrice || 0) > 0 ? `${marginPct.toFixed(1)}%` : 'â€”'}
                                                                     </Text>
                                                                 </Descriptions.Item>
                                                             </Descriptions>
@@ -964,12 +964,12 @@ export default function ItemMasterPage() {
                                                         <Card size="small" style={{ borderRadius: 12 }}>
                                                             <div className="flex items-center justify-between mb-2">
                                                                 <Text type="secondary" className="text-xs uppercase tracking-wider">Tracking</Text>
-                                                                <Button type="link" size="small" onClick={() => setWizardStep(4)} style={{ color: '#7c3aed', padding: 0 }}>Edit</Button>
+                                                                <Button type="link" size="small" onClick={() => setWizardStep(4)} style={{ color: 'var(--theme-color, #7c3aed)', padding: 0 }}>Edit</Button>
                                                             </div>
                                                             <Descriptions column={1} size="small">
                                                                 <Descriptions.Item label="SKU">{v.sku || <Text type="secondary" italic>Auto-generated</Text>}</Descriptions.Item>
                                                                 <Descriptions.Item label="UOM">{v.primaryUom}</Descriptions.Item>
-                                                                <Descriptions.Item label="Barcode">{v.barcode || '—'}</Descriptions.Item>
+                                                                <Descriptions.Item label="Barcode">{v.barcode || 'â€”'}</Descriptions.Item>
                                                                 <Descriptions.Item label="Status"><Tag color={STATUS_COLORS[v.status]} className="rounded-full text-xs">{v.status}</Tag></Descriptions.Item>
                                                             </Descriptions>
                                                         </Card>
@@ -995,7 +995,7 @@ export default function ItemMasterPage() {
                                     form.validateFields(['name']).then(() => setWizardStep(wizardStep + 1)).catch(() => {});
                                 } else { setWizardStep(wizardStep + 1); }
                             }}
-                            style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', border: 'none', borderRadius: 10, minWidth: 120 }}>
+                            style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', border: 'none', borderRadius: 10, minWidth: 120 }}>
                                 Continue
                             </Button>
                         ) : (
@@ -1117,9 +1117,9 @@ export default function ItemMasterPage() {
                     return (
                         <div>
                             {/* Hero Header */}
-                            <div style={{ padding: '24px 24px 16px', background: `linear-gradient(135deg, ${ft?.color || '#7c3aed'}08, ${ft?.color || '#7c3aed'}03)`, borderBottom: '1px solid #f0f0f0' }}>
+                            <div style={{ padding: '24px 24px 16px', background: `linear-gradient(135deg, ${ft?.color || 'var(--theme-color, #7c3aed)'}08, ${ft?.color || 'var(--theme-color, #7c3aed)'}03)`, borderBottom: '1px solid #f0f0f0' }}>
                                 <div className="flex items-center gap-4 mb-3">
-                                    <div style={{ width: 56, height: 56, borderRadius: 14, background: `${ft?.color || '#7c3aed'}15`, color: ft?.color || '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
+                                    <div style={{ width: 56, height: 56, borderRadius: 14, background: `${ft?.color || 'var(--theme-color, #7c3aed)'}15`, color: ft?.color || 'var(--theme-color, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
                                         {ft?.icon || <DropboxOutlined />}
                                     </div>
                                     <div className="flex-1">
@@ -1134,14 +1134,14 @@ export default function ItemMasterPage() {
                                     <Tag color={ft?.color} className="rounded-full">{ft?.label}</Tag>
                                     {detailDrawer.itemType && <Tag className="rounded-full">{detailDrawer.itemType}</Tag>}
                                     {cat && <Tag className="rounded-full">{cat.name}</Tag>}
-                                    {detailDrawer.brand && <Tag className="rounded-full">🏷️ {detailDrawer.brand}</Tag>}
+                                    {detailDrawer.brand && <Tag className="rounded-full">ðŸ·ï¸ {detailDrawer.brand}</Tag>}
                                 </div>
                             </div>
 
                             {/* Tabbed Content */}
                             <div style={{ padding: '0 24px 24px' }}>
                                 <Tabs defaultActiveKey="overview" size="small" style={{ marginTop: 12 }} items={[
-                                    { key: 'overview', label: '📋 Overview', children: (
+                                    { key: 'overview', label: 'ðŸ“‹ Overview', children: (
                                         <div className="space-y-4">
                                             {/* Product Gallery */}
                                             <ProductGallery mediaIds={detailDrawer.mediaIds || []} mediaMap={mediaMap as Record<string, MediaInfo>} />
@@ -1157,14 +1157,14 @@ export default function ItemMasterPage() {
                                                 <Col span={8}>
                                                     <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: '#f0fdf4' }}>
                                                         <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Sell</Text>
-                                                        <Text strong style={{ fontSize: 14, color: '#6366f1' }}>{(detailDrawer.sellingPrice || 0).toLocaleString()}</Text>
+                                                        <Text strong style={{ fontSize: 14, color: themeColor }}>{(detailDrawer.sellingPrice || 0).toLocaleString()}</Text>
                                                     </Card>
                                                 </Col>
                                                 <Col span={8}>
                                                     <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: profit >= 0 ? '#f0fdf4' : '#fef2f2' }}>
                                                         <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Margin</Text>
                                                         <Text strong style={{ fontSize: 14, color: profit >= 0 ? '#16a34a' : '#dc2626' }}>
-                                                            {(detailDrawer.costPrice || 0) > 0 ? `${marginPct.toFixed(0)}%` : '—'}
+                                                            {(detailDrawer.costPrice || 0) > 0 ? `${marginPct.toFixed(0)}%` : 'â€”'}
                                                         </Text>
                                                     </Card>
                                                 </Col>
@@ -1178,13 +1178,13 @@ export default function ItemMasterPage() {
                                             )}
                                         </div>
                                     )},
-                                    { key: 'details', label: '📦 Details', children: (
+                                    { key: 'details', label: 'ðŸ“¦ Details', children: (
                                         <Descriptions column={2} size="small" bordered style={{ borderRadius: 10 }}>
                                             <Descriptions.Item label="Currency">{detailDrawer.currency || 'IDR'}</Descriptions.Item>
                                             <Descriptions.Item label="Tax Rate">{detailDrawer.taxRate || 0}%</Descriptions.Item>
                                             <Descriptions.Item label="UOM">{detailDrawer.primaryUom}</Descriptions.Item>
-                                            <Descriptions.Item label="Barcode">{detailDrawer.barcode || '—'}</Descriptions.Item>
-                                            <Descriptions.Item label="Weight">{detailDrawer.weight ? `${detailDrawer.weight} ${detailDrawer.weightUnit || 'kg'}` : '—'}</Descriptions.Item>
+                                            <Descriptions.Item label="Barcode">{detailDrawer.barcode || 'â€”'}</Descriptions.Item>
+                                            <Descriptions.Item label="Weight">{detailDrawer.weight ? `${detailDrawer.weight} ${detailDrawer.weightUnit || 'kg'}` : 'â€”'}</Descriptions.Item>
                                             <Descriptions.Item label="Min Stock">{detailDrawer.minStock || 0}</Descriptions.Item>
                                             <Descriptions.Item label="Reorder Point">{detailDrawer.reorderPoint || 0}</Descriptions.Item>
                                             <Descriptions.Item label="Reorder Qty">{detailDrawer.reorderQty || 0}</Descriptions.Item>
@@ -1196,7 +1196,7 @@ export default function ItemMasterPage() {
                                 <Divider style={{ margin: '16px 0 12px' }} />
                                 <div className="flex gap-2 flex-wrap">
                                     <Button type="primary" icon={<EditOutlined />} onClick={() => { setDetailDrawer(null); handleEdit(detailDrawer); }}
-                                        style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', border: 'none', borderRadius: 8 }}>Edit Item</Button>
+                                        style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', border: 'none', borderRadius: 8 }}>Edit Item</Button>
                                     {!isSellableType(detailDrawer.fulfillmentType || '') && (
                                         <Button icon={<ShoppingOutlined />} onClick={() => { openMakeSellable(detailDrawer); }}
                                             style={{ borderRadius: 8, borderColor: '#10b981', color: '#10b981' }}>Make Sellable</Button>
@@ -1222,3 +1222,8 @@ export default function ItemMasterPage() {
         </CMSLayout>
     );
 }
+
+
+
+
+

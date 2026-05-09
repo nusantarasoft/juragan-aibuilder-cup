@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { motion } from "framer-motion";
+import RbacGuard from "@/components/common/RbacGuard";
 import {
     Table, Button, Space, Modal, Form, Input, Select, Tag, Card,
     message, Typography, Tooltip, Drawer, Descriptions, Row, Col,
@@ -10,15 +12,20 @@ import {
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, FileTextOutlined,
-    DollarOutlined, CheckCircleOutlined, ClockCircleOutlined,
-} from "@ant-design/icons";
+    DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import dayjs from "dayjs";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const { TextArea } = Input;
 
 interface Quote {
@@ -49,6 +56,8 @@ const QUOTE_FIELDS: FieldDef[] = [
 
 export default function QuotesPage() {
     const [quotes, setQuotes] = useState<Quote[]>([]);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Quote | null>(null);
@@ -121,21 +130,23 @@ export default function QuotesPage() {
     ];
 
     return (
-        <CMSLayout title="Quotes" subTitle="Sales quotes and proposals" extra={[
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Quotes</AuroraText>}
+            subTitle={<DecryptedText text="Sales quotes and proposals" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[
             <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
             <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>New Quote</Button>,
+                <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_quotes', title: 'CRM Quotes', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Quote #', key: 'quoteNumber' }, { header: 'Account', key: 'accountName' }, { header: 'Total', key: 'total' }, { header: 'Status', key: 'status' }], data: quotes })} /></Tooltip> <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_quotes', title: 'CRM Quotes', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Quote #', key: 'quoteNumber' }, { header: 'Account', key: 'accountName' }, { header: 'Total', key: 'total' }, { header: 'Status', key: 'status' }], data: quotes })} /></Tooltip></RbacGuard>,
         ]}>
             <Row gutter={16} style={{ marginBottom: 16 }}>
-                <Col span={6}><Card><Statistic title="Total Value" value={totalValue} prefix={<DollarOutlined />} precision={0} formatter={v => fmt(Number(v))} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Accepted" value={acceptedValue} prefix={<CheckCircleOutlined />} precision={0} valueStyle={{ color: '#52c41a' }} formatter={v => fmt(Number(v))} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Drafts" value={draftCount} prefix={<ClockCircleOutlined />} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Total Quotes" value={quotes.length} prefix={<FileTextOutlined />} /></Card></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}><Card style={{ ...glass }}><Statistic title="Total Value" value={totalValue} prefix={<DollarOutlined />} precision={0} formatter={v => fmt(Number(v))} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}><Card style={{ ...glass }}><Statistic title="Accepted" value={acceptedValue} prefix={<CheckCircleOutlined />} precision={0} valueStyle={{ color: '#52c41a' }} formatter={v => fmt(Number(v))} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Card style={{ ...glass }}><Statistic title="Drafts" value={draftCount} prefix={<ClockCircleOutlined />} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}><Card style={{ ...glass }}><Statistic title="Total Quotes" value={quotes.length} prefix={<FileTextOutlined />} /></Card></motion.div></Col>
             </Row>
-            <Card style={{ marginBottom: 16 }}><Space wrap>
+            <Card style={{ ...glass, marginBottom: 16 }}><Space wrap>
                 <Input prefix={<SearchOutlined />} placeholder="Search quotes..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />
                 <Select placeholder="Status" value={statusFilter} onChange={setStatusFilter} allowClear style={{ width: 140 }} options={STATUSES} />
             </Space></Card>
-            <Card><Table columns={columns} dataSource={quotes.map(q => ({ ...q, key: q.id }))} loading={loading} pagination={{ pageSize: 20 }} size="middle" /></Card>
+            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table scroll={{ x: 900 }} columns={columns} dataSource={quotes.map(q => ({ ...q, key: q.id }))} loading={loading} pagination={{ pageSize: 20 }} size="middle" /></Card>
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Quote" : "New Quote"} entityName="quote" steps={formSteps} fields={QUOTE_FIELDS} width={600} onBatchCreate={handleBatchCreate} gradient={["#0ea5e9", "#6366f1"]} editMode={!!editing} />
 
@@ -159,3 +170,6 @@ export default function QuotesPage() {
         </CMSLayout>
     );
 }
+
+
+

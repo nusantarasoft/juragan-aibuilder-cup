@@ -45,7 +45,7 @@ export const NoiseBackground = ({
 export const DottedGlowBackground = ({
     className,
     children,
-    glowColor = "#8b5cf6",
+    glowColor = "var(--theme-color, #8b5cf6)",
 }: {
     className?: string;
     children?: React.ReactNode;

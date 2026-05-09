@@ -2,6 +2,10 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { motion } from "framer-motion";
+import RbacGuard from "@/components/common/RbacGuard";
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     ProTable,
     ProForm,
@@ -25,12 +29,14 @@ import {
     AppstoreOutlined, UnorderedListOutlined, ProjectOutlined,
     RocketOutlined, CheckCircleOutlined, ClockCircleOutlined,
     DollarOutlined, TeamOutlined, ExperimentOutlined,
-    ThunderboltOutlined, AimOutlined, FlagOutlined
-} from "@ant-design/icons";
+    ThunderboltOutlined, AimOutlined, FlagOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text, Title } = Typography;
 
@@ -96,25 +102,25 @@ const DELETE_PROJECT = `
   }
 `;
 
-// ── PMBOK Edition Presets ────────────────────────────────────
+// â”€â”€ PMBOK Edition Presets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const PMBOK_PRESETS: Record<string, { label: string; description: string; modules: string[] }> = {
     agile_light: {
         label: 'Agile Light',
-        description: 'Minimal tracking — Kanban board only, no formal knowledge areas.',
+        description: 'Minimal tracking â€” Kanban board only, no formal knowledge areas.',
         modules: [],
     },
     pmbok6_predictive: {
-        label: 'PMBOK 6 — Predictive / Waterfall',
+        label: 'PMBOK 6 â€” Predictive / Waterfall',
         description: 'Full 10 knowledge areas for plan-driven projects.',
         modules: ['integration', 'scope', 'schedule', 'cost', 'quality', 'resource', 'comms', 'risk', 'procurement', 'stakeholder'],
     },
     pmbok7_adaptive: {
-        label: 'PMBOK 7 — Principle-Based',
+        label: 'PMBOK 7 â€” Principle-Based',
         description: '12 PMBOK 7 principles + 8 performance domains. Value-driven delivery.',
         modules: ['scope', 'schedule', 'cost', 'quality', 'resource', 'comms', 'risk', 'stakeholder'],
     },
     pmbok8_integrated: {
-        label: 'PMBOK 8 — Integrated / ESG',
+        label: 'PMBOK 8 â€” Integrated / ESG',
         description: 'All PMBOK 6/7/8 features including Focus Areas, Governance & Sustainability.',
         modules: ['integration', 'scope', 'schedule', 'cost', 'quality', 'resource', 'comms', 'risk', 'procurement', 'stakeholder'],
     },
@@ -125,7 +131,7 @@ const PMBOK_PRESETS: Record<string, { label: string; description: string; module
     },
 };
 
-// ── Status / Priority Config ────────────────────────────────
+// â”€â”€ Status / Priority Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const STATUS_CONFIG: Record<string, { color: string; gradient: string; icon: React.ReactNode; label: string }> = {
     planning: { color: '#6366f1', gradient: 'linear-gradient(135deg, #6366f1, #818cf8)', icon: <ProjectOutlined />, label: 'Planning' },
     active: { color: '#10b981', gradient: 'linear-gradient(135deg, #10b981, #34d399)', icon: <RocketOutlined />, label: 'Active' },
@@ -143,8 +149,8 @@ const PRIORITY_CONFIG: Record<string, { color: string; icon: React.ReactNode }> 
 
 const METHODOLOGY_LABELS: Record<string, { label: string; color: string }> = {
     agile: { label: 'Agile', color: '#06b6d4' },
-    pmbok: { label: 'Predictive', color: '#8b5cf6' },
-    hybrid: { label: 'Hybrid', color: '#6366f1' },
+    pmbok: { label: 'Predictive', color: '#6366f1' },
+    hybrid: { label: 'Hybrid', color: 'var(--theme-color, #8b5cf6)' },
 };
 
 export default function ProjectsPage() {
@@ -152,6 +158,8 @@ export default function ProjectsPage() {
     const { token } = theme.useToken();
     const { resolvedTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     useEffect(() => setMounted(true), []);
     const isDark = mounted && resolvedTheme === 'dark';
 
@@ -183,7 +191,7 @@ export default function ProjectsPage() {
         loadData();
     }, [loadData]);
 
-    // ── Glassmorphism styles ──────────────────────────────────
+    // â”€â”€ Glassmorphism styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const glassCard = useMemo(() => ({
         background: isDark ? 'rgba(15, 15, 23, 0.7)' : 'rgba(255,255,255,0.85)',
         backdropFilter: 'blur(12px)',
@@ -191,7 +199,7 @@ export default function ProjectsPage() {
         borderRadius: 16,
     }), [isDark]);
 
-    // ── Computed stats ────────────────────────────────────────
+    // â”€â”€ Computed stats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const stats = useMemo(() => {
         const active = projects.filter(p => p.status === 'active').length;
         const completed = projects.filter(p => p.status === 'completed').length;
@@ -203,7 +211,7 @@ export default function ProjectsPage() {
         return { active, completed, total, totalBudget, totalSpent, budgetPct, overdue };
     }, [projects]);
 
-    // ── Handlers ──────────────────────────────────────────────
+    // â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const handleAdd = () => {
         setEditingProject(null);
         setSelectedPmbokPreset(null);
@@ -275,7 +283,7 @@ export default function ProjectsPage() {
         }
     };
 
-    // ── Progress calculation ──────────────────────────────────
+    // â”€â”€ Progress calculation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const getProjectProgress = (project: any) => {
         if (!project.startDate || !project.endDate) return 0;
         const start = dayjs(project.startDate);
@@ -294,7 +302,7 @@ export default function ProjectsPage() {
         return '#10b981';
     };
 
-    // ── Table Columns ─────────────────────────────────────────
+    // â”€â”€ Table Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const columns: ProColumns<any>[] = [
         {
             title: "Project",
@@ -302,7 +310,7 @@ export default function ProjectsPage() {
             width: "30%",
             render: (_, record) => (
                 <Space>
-                    <FolderOpenOutlined style={{ fontSize: 20, color: '#8b5cf6' }} />
+                    <FolderOpenOutlined style={{ fontSize: 20, color: themeColor }} />
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <a onClick={() => handleOpenDashboard(record.id)} style={{ fontWeight: 600, fontSize: 15 }}>
                             {record.name}
@@ -401,7 +409,7 @@ export default function ProjectsPage() {
         },
     ];
 
-    // ── Stat Card Component ───────────────────────────────────
+    // â”€â”€ Stat Card Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const StatCard = ({ title, value, suffix, icon, gradient, extra }: {
         title: string; value: number | string; suffix?: string;
         icon: React.ReactNode; gradient: string; extra?: React.ReactNode;
@@ -442,7 +450,7 @@ export default function ProjectsPage() {
         </Card>
     );
 
-    // ── Project Card (Grid View) ──────────────────────────────
+    // â”€â”€ Project Card (Grid View) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const ProjectCard = ({ project }: { project: any }) => {
         const statusCfg = STATUS_CONFIG[project.status] || STATUS_CONFIG.planning;
         const priorityCfg = PRIORITY_CONFIG[project.priority] || PRIORITY_CONFIG.medium;
@@ -604,7 +612,7 @@ export default function ProjectsPage() {
         );
     };
 
-    // ── PMBOK Preset Handler ──────────────────────────────────
+    // â”€â”€ PMBOK Preset Handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const handlePmbokPresetChange = (presetKey: string, form: any) => {
         setSelectedPmbokPreset(presetKey);
         const preset = PMBOK_PRESETS[presetKey];
@@ -618,17 +626,19 @@ export default function ProjectsPage() {
     };
 
     return (
-        <CMSLayout title="Projects" subTitle="Manage all your project portfolios">
+        <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Projects</AuroraText>}
+            subTitle={<DecryptedText text="Manage all your project portfolios" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
             {contextHolder}
 
-            {/* ── Gradient Stat Cards ── */}
+            {/* â”€â”€ Gradient Stat Cards â”€â”€ */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
                     <StatCard
                         title="Total Projects"
                         value={stats.total}
                         icon={<ProjectOutlined />}
-                        gradient="linear-gradient(135deg, #6366f1, #8b5cf6)"
+                        gradient={`linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`}
                         extra={
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                                 {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
@@ -646,8 +656,10 @@ export default function ProjectsPage() {
                             </div>
                         }
                     />
+                        </motion.div>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
                     <StatCard
                         title="Active Projects"
                         value={stats.active}
@@ -659,12 +671,14 @@ export default function ProjectsPage() {
                                     {stats.overdue} overdue
                                 </Tag>
                             ) : (
-                                <Text type="secondary" style={{ fontSize: 11 }}>All on schedule ✓</Text>
+                                <Text type="secondary" style={{ fontSize: 11 }}>All on schedule âœ“</Text>
                             )
                         }
                     />
+                        </motion.div>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
                     <StatCard
                         title="Budget Utilization"
                         value={stats.budgetPct}
@@ -679,8 +693,10 @@ export default function ProjectsPage() {
                             </Text>
                         }
                     />
+                        </motion.div>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
                     <StatCard
                         title="Completed"
                         value={stats.completed}
@@ -697,10 +713,11 @@ export default function ProjectsPage() {
                             ) : null
                         }
                     />
+                        </motion.div>
                 </Col>
             </Row>
 
-            {/* ── View Toggle + Actions ── */}
+            {/* â”€â”€ View Toggle + Actions â”€â”€ */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Segmented
                     value={viewMode}
@@ -712,16 +729,17 @@ export default function ProjectsPage() {
                 />
                 <Space>
                     <Button icon={<ReloadOutlined />} onClick={loadData}>Reload</Button>
+                    <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_projects', title: 'PM Projects Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'projectNumber' }, { header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_projects', title: 'PM Projects Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'projectNumber' }, { header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip></RbacGuard>
                     <Button icon={<PlusOutlined />} type="primary" onClick={handleAdd}>New Project</Button>
                 </Space>
             </div>
 
-            {/* ── Grid View ── */}
+            {/* â”€â”€ Grid View â”€â”€ */}
             {viewMode === 'grid' && (
                 projects.length === 0 ? (
                     <Card style={{ ...glassCard, padding: 48, textAlign: 'center' }}>
                         <div style={{ marginBottom: 16 }}>
-                            <ProjectOutlined style={{ fontSize: 64, color: isDark ? '#6366f1' : '#8b5cf6', opacity: 0.6 }} />
+                            <ProjectOutlined style={{ fontSize: 64, color: isDark ? '#6366f1' : 'var(--theme-color, #8b5cf6)', opacity: 0.6 }} />
                         </div>
                         <Title level={4} style={{ marginBottom: 8 }}>No projects yet</Title>
                         <Text type="secondary" style={{ display: 'block', marginBottom: 24, maxWidth: 400, margin: '0 auto 24px' }}>
@@ -744,7 +762,7 @@ export default function ProjectsPage() {
                 )
             )}
 
-            {/* ── Table View ── */}
+            {/* â”€â”€ Table View â”€â”€ */}
             {viewMode === 'table' && (
                 <ProTable
                     actionRef={formRef}
@@ -758,7 +776,7 @@ export default function ProjectsPage() {
                 />
             )}
 
-            {/* ── Create/Edit Modal with PMBOK Selector ── */}
+            {/* â”€â”€ Create/Edit Modal with PMBOK Selector â”€â”€ */}
             <ModalForm
                 title={editingProject ? "Edit Project" : "New Project"}
                 open={isModalOpen}
@@ -798,11 +816,11 @@ export default function ProjectsPage() {
                         label="Status"
                         width="sm"
                         options={[
-                            { label: '📋 Planning', value: 'planning' },
-                            { label: '🚀 Active', value: 'active' },
-                            { label: '⏸️ Paused', value: 'paused' },
-                            { label: '✅ Completed', value: 'completed' },
-                            { label: '❌ Cancelled', value: 'cancelled' },
+                            { label: 'ðŸ“‹ Planning', value: 'planning' },
+                            { label: 'ðŸš€ Active', value: 'active' },
+                            { label: 'â¸ï¸ Paused', value: 'paused' },
+                            { label: 'âœ… Completed', value: 'completed' },
+                            { label: 'âŒ Cancelled', value: 'cancelled' },
                         ]}
                     />
                     <ProFormSelect
@@ -810,10 +828,10 @@ export default function ProjectsPage() {
                         label="Priority"
                         width="sm"
                         options={[
-                            { label: '🔴 Critical', value: 'critical' },
-                            { label: '🟠 High', value: 'high' },
-                            { label: '🔵 Medium', value: 'medium' },
-                            { label: '⚪ Low', value: 'low' },
+                            { label: 'ðŸ”´ Critical', value: 'critical' },
+                            { label: 'ðŸŸ  High', value: 'high' },
+                            { label: 'ðŸ”µ Medium', value: 'medium' },
+                            { label: 'âšª Low', value: 'low' },
                         ]}
                     />
                 </ProForm.Group>
@@ -830,7 +848,7 @@ export default function ProjectsPage() {
                     border: isDark ? '1px solid rgba(99, 102, 241, 0.2)' : '1px solid rgba(99, 102, 241, 0.1)',
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                        <ExperimentOutlined style={{ color: '#6366f1', fontSize: 16 }} />
+                        <ExperimentOutlined style={{ color: themeColor, fontSize: 16 }} />
                         <Text strong style={{ fontSize: 14 }}>PMBOK Framework Preset</Text>
                     </div>
                     <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
@@ -841,12 +859,12 @@ export default function ProjectsPage() {
                         width="xl"
                         fieldProps={{
                             onChange: (val: string) => {
-                                // Need to access form ref — handled via parent ModalForm
+                                // Need to access form ref â€” handled via parent ModalForm
                                 setSelectedPmbokPreset(val);
                             },
                         }}
                         options={Object.entries(PMBOK_PRESETS).map(([key, preset]) => ({
-                            label: `${preset.label} — ${preset.description}`,
+                            label: `${preset.label} â€” ${preset.description}`,
                             value: key,
                         }))}
                         placeholder="Select a preset to auto-fill modules..."
@@ -875,16 +893,16 @@ export default function ProjectsPage() {
                     tooltip="Select which project management disciplines to track. Presets auto-fill this list."
                     width="xl"
                     options={[
-                        { label: '📑 Integration (Project Charter)', value: 'integration' },
-                        { label: '🎯 Scope Management', value: 'scope' },
-                        { label: '📅 Schedule Management', value: 'schedule' },
-                        { label: '💰 Cost Management (EVM)', value: 'cost' },
-                        { label: '✅ Quality Management', value: 'quality' },
-                        { label: '👥 Resource Management', value: 'resource' },
-                        { label: '📢 Communications', value: 'comms' },
-                        { label: '⚠️ Risk Management', value: 'risk' },
-                        { label: '🛒 Procurement', value: 'procurement' },
-                        { label: '🤝 Stakeholder Management', value: 'stakeholder' },
+                        { label: 'ðŸ“‘ Integration (Project Charter)', value: 'integration' },
+                        { label: 'ðŸŽ¯ Scope Management', value: 'scope' },
+                        { label: 'ðŸ“… Schedule Management', value: 'schedule' },
+                        { label: 'ðŸ’° Cost Management (EVM)', value: 'cost' },
+                        { label: 'âœ… Quality Management', value: 'quality' },
+                        { label: 'ðŸ‘¥ Resource Management', value: 'resource' },
+                        { label: 'ðŸ“¢ Communications', value: 'comms' },
+                        { label: 'âš ï¸ Risk Management', value: 'risk' },
+                        { label: 'ðŸ›’ Procurement', value: 'procurement' },
+                        { label: 'ðŸ¤ Stakeholder Management', value: 'stakeholder' },
                     ]}
                 />
 
@@ -896,7 +914,7 @@ export default function ProjectsPage() {
                 />
             </ModalForm>
 
-            {/* ── Detail Drawer ── */}
+            {/* â”€â”€ Detail Drawer â”€â”€ */}
             <Drawer
                 title="Project Details"
                 width={600}
@@ -928,7 +946,7 @@ export default function ProjectsPage() {
                             </Tag>
                         </Descriptions.Item>
                         <Descriptions.Item label="Timeline">
-                            {viewingProject.startDate ? dayjs(viewingProject.startDate).format("MMM D, YYYY") : "N/A"} —{" "}
+                            {viewingProject.startDate ? dayjs(viewingProject.startDate).format("MMM D, YYYY") : "N/A"} â€”{" "}
                             {viewingProject.endDate ? dayjs(viewingProject.endDate).format("MMM D, YYYY") : "N/A"}
                         </Descriptions.Item>
                         <Descriptions.Item label="Budget">${viewingProject.budget?.toLocaleString() || 0}</Descriptions.Item>
@@ -940,3 +958,5 @@ export default function ProjectsPage() {
         </CMSLayout>
     );
 }
+
+

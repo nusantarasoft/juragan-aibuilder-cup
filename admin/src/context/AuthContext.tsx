@@ -8,6 +8,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { graphql, queries, mutations } from "@/lib/graphqlClient";
 import type { User, AuthResponse, SignOutResponse } from "@/lib/graphqlTypes";
+import { useAuthStore } from "@/store/useAuthStore";
 
 // Token storage keys
 const ACCESS_TOKEN_KEY = "auth_access_token";
@@ -86,6 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     two_factor_enabled: false,
                     created_at: data.me.createdAt || new Date().toISOString(),
                 });
+                // Sync to Zustand RBAC store
+                useAuthStore.getState().syncFromAuth(data.me);
             }
         } catch (error) {
             console.error("Session check failed:", error);
@@ -112,6 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     two_factor_enabled: false,
                     created_at: new Date().toISOString(),
                 });
+                // Sync to Zustand RBAC store
+                useAuthStore.getState().syncFromAuth(data.signIn.user);
                 return {};
             }
 
@@ -138,6 +143,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     two_factor_enabled: false,
                     created_at: new Date().toISOString(),
                 });
+                // Sync to Zustand RBAC store
+                useAuthStore.getState().syncFromAuth(data.signUp.user);
                 return {};
             }
 
@@ -168,6 +175,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearTokens();
         setUser(null);
         setProfile(null);
+        // Clear Zustand RBAC store
+        useAuthStore.getState().clearUser();
     };
 
     return (

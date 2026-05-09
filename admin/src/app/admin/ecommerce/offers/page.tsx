@@ -2,17 +2,22 @@
 
 import React, { useState, useEffect } from "react";
 import { Table, Tag, Card, Typography, Input, Space, Button, Tooltip, Row, Col, message, Modal, Select, Form, InputNumber, DatePicker } from "antd";
-import { TagOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, PlusOutlined, EditOutlined, ThunderboltOutlined, FireOutlined, PercentageOutlined } from "@ant-design/icons";
+import { TagOutlined, SearchOutlined, ReloadOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, PlusOutlined, EditOutlined, ThunderboltOutlined, FireOutlined, PercentageOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { inventoryService, EcomOffer, EcomOfferStatsType } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import dayjs from "dayjs";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : '—';
 
 const OFFER_TYPES = [
@@ -48,6 +53,8 @@ const OFFER_FIELDS: FieldDef[] = [
 
 export default function OffersPage() {
     const [stats, setStats] = useState<EcomOfferStatsType | null>(null);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [offers, setOffers] = useState<EcomOffer[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -133,7 +140,7 @@ export default function OffersPage() {
         { title: 'Active', value: stats?.active || 0, icon: <ThunderboltOutlined />, color: '#10b981' },
         { title: 'Draft', value: stats?.draft || 0, icon: <ClockCircleOutlined />, color: '#94a3b8' },
         { title: 'Expired', value: stats?.expired || 0, icon: <ClockCircleOutlined />, color: '#f59e0b' },
-        { title: 'Total Uses', value: stats?.totalUses || 0, icon: <FireOutlined />, color: '#8b5cf6' },
+        { title: 'Total Uses', value: stats?.totalUses || 0, icon: <FireOutlined />, color: themeColor },
     ];
 
     const filtered = offers.filter(o => {
@@ -250,8 +257,7 @@ export default function OffersPage() {
                         <Col key={i} xs={12} sm={8} md={Math.floor(24 / kpiCards.length)}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                                    ...glass,
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -267,7 +273,7 @@ export default function OffersPage() {
                     ))}
                 </Row>
 
-                <Card size="small" style={{ flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)' }}>
+                <Card size="small" style={{ flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)' }}>
                     <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                         <div className="flex items-center gap-3">
                             <Input prefix={<SearchOutlined className="text-gray-400" />} placeholder="Search offers..."
@@ -277,6 +283,8 @@ export default function OffersPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_offers', title: 'eCommerce Offers', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'offerType' }, { header: 'Discount', key: 'discountValue' }, { header: 'Status', key: 'status' }], data: offers })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_offers', title: 'eCommerce Offers', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'offerType' }, { header: 'Discount', key: 'discountValue' }, { header: 'Status', key: 'status' }], data: offers })} /></Tooltip></RbacGuard>
+            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_offers', title: 'eCommerce Offers', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'offerType' }, { header: 'Discount', key: 'discountValue' }, { header: 'Status', key: 'status' }], data: offers })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_offers', title: 'eCommerce Offers', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Type', key: 'offerType' }, { header: 'Discount', key: 'discountValue' }, { header: 'Status', key: 'status' }], data: offers })} /></Tooltip></RbacGuard>
                             <Button type="primary" icon={<PlusOutlined />} onClick={openNew}
                                 style={{ background: 'linear-gradient(135deg, #ef4444, #f97316)', border: 'none', borderRadius: 8 }}>
                                 New Offer

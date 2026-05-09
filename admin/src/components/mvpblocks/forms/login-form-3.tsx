@@ -33,7 +33,7 @@ export default function SignInPage() {
     <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden p-4">
       <style jsx>{`
         .login-btn {
-          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+          background: linear-gradient(135deg, #6366f1 0%, var(--theme-color, #8b5cf6) 100%);
           position: relative;
           overflow: hidden;
         }

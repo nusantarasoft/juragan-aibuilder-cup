@@ -3,17 +3,17 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
-import {
-    Table, Button, Space, Tag, Card, Typography, message,
-    Row, Col, Modal, Form, Input, InputNumber, Select, Tooltip
-} from "antd";
+import RbacGuard from "@/components/common/RbacGuard";
+import { Button, Card, Col, Form, Input, InputNumber, message, Modal, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
 import {
     ContainerOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
     DownloadOutlined, UploadOutlined, SwapOutlined,
     DeleteOutlined, WarningOutlined, GiftOutlined,
-    CheckCircleOutlined, InboxOutlined
-} from "@ant-design/icons";
+    CheckCircleOutlined, InboxOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import {
     inventoryService, StockOperation, StockOperationStatsType
@@ -23,6 +23,7 @@ import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const OP_TYPES: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
     receive: { label: 'Receive', color: 'green', icon: <DownloadOutlined /> },
@@ -68,6 +69,8 @@ const STOCK_OP_FIELDS: FieldDef[] = [
 
 export default function StockOperationsPage() {
     const [stats, setStats] = useState<StockOperationStatsType | null>(null);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [operations, setOperations] = useState<StockOperation[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -100,7 +103,7 @@ export default function StockOperationsPage() {
 
     const handleCreate = async (values: any) => {
         await inventoryService.createStockOperation('default', values);
-        message.success("Stock operation created — stock ledger updated");
+        message.success("Stock operation created â€” stock ledger updated");
         setModalOpen(false);
         form.resetFields();
         loadAll();
@@ -125,17 +128,17 @@ export default function StockOperationsPage() {
         } catch { message.error("Failed to delete"); }
     };
 
-    // ─── KPI Cards ─────────────────────────────────
+    // â”€â”€â”€ KPI Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const kpiCards = [
-        { title: 'Total Operations', value: stats?.totalOperations || 0, icon: <ContainerOutlined />, color: '#7c3aed' },
+        { title: 'Total Operations', value: stats?.totalOperations || 0, icon: <ContainerOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { title: 'Receives', value: stats?.receives || 0, icon: <DownloadOutlined />, color: '#10b981' },
         { title: 'Releases', value: stats?.releases || 0, icon: <UploadOutlined />, color: '#3b82f6' },
         { title: 'Adjustments', value: stats?.adjustments || 0, icon: <SwapOutlined />, color: '#f59e0b' },
         { title: 'Write-offs', value: stats?.writeOffs || 0, icon: <WarningOutlined />, color: '#ef4444' },
-        { title: 'Donations', value: stats?.donations || 0, icon: <GiftOutlined />, color: '#8b5cf6' },
+        { title: 'Donations', value: stats?.donations || 0, icon: <GiftOutlined />, color: themeColor },
     ];
 
-    // ─── Columns ───────────────────────────────────
+    // â”€â”€â”€ Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const columns = [
         {
             title: 'Op #', dataIndex: 'operationNumber', width: 140,
@@ -169,11 +172,11 @@ export default function StockOperationsPage() {
         },
         {
             title: 'Reason', dataIndex: 'reason', width: 140, ellipsis: true,
-            render: (v: string) => v ? <Tag className="rounded-full text-xs">{v.replace(/_/g, ' ')}</Tag> : '—',
+            render: (v: string) => v ? <Tag className="rounded-full text-xs">{v.replace(/_/g, ' ')}</Tag> : 'â€”',
         },
         {
             title: 'Batch', dataIndex: 'batchNumber', width: 110,
-            render: (v: string) => v || '—',
+            render: (v: string) => v || 'â€”',
         },
         {
             title: 'Status', dataIndex: 'status', width: 110,
@@ -181,7 +184,7 @@ export default function StockOperationsPage() {
         },
         {
             title: 'Date', dataIndex: 'createdAt', width: 110,
-            render: (v: string) => v ? new Date(v).toLocaleDateString() : '—',
+            render: (v: string) => v ? new Date(v).toLocaleDateString() : 'â€”',
         },
         {
             title: '', key: 'actions', width: 70,
@@ -317,8 +320,7 @@ export default function StockOperationsPage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                                    ...glass,
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -338,8 +340,7 @@ export default function StockOperationsPage() {
 
                 {/* Main Table Card */}
                 <Card size="small" style={{
-                    flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)',
-                    backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)',
+                    flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)',
                 }}>
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
@@ -361,6 +362,7 @@ export default function StockOperationsPage() {
                         </div>
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={loadAll} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'inventory_stock-operations', title: 'Stock Operations', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'operationNumber' }, { header: 'Type', key: 'operationType' }, { header: 'Status', key: 'status' }, { header: 'From', key: 'sourceWarehouseName' }, { header: 'To', key: 'destinationWarehouseName' }], data: operations })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'inventory_stock-operations', title: 'Stock Operations', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Number', key: 'operationNumber' }, { header: 'Type', key: 'operationType' }, { header: 'Status', key: 'status' }, { header: 'From', key: 'sourceWarehouseName' }, { header: 'To', key: 'destinationWarehouseName' }], data: operations })} /></Tooltip></RbacGuard>
                             <Button type="primary" icon={<PlusOutlined />}
                                 onClick={() => { form.resetFields(); setModalOpen(true); }}
                                 style={{ background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: 8, border: 'none' }}>
@@ -394,3 +396,7 @@ export default function StockOperationsPage() {
         </CMSLayout>
     );
 }
+
+
+
+

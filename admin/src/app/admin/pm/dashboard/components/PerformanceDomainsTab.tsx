@@ -123,7 +123,7 @@ export default function PerformanceDomainsTab({ projectId }: { projectId: string
             <ProCard
                 title={
                     <Space>
-                        <FundProjectionScreenOutlined style={{ color: '#8b5cf6' }} />
+                        <FundProjectionScreenOutlined style={{ color: 'var(--theme-color, #8b5cf6)' }} />
                         <span>PMBOK 7 — Performance Domains Health</span>
                     </Space>
                 }
@@ -136,7 +136,7 @@ export default function PerformanceDomainsTab({ projectId }: { projectId: string
                             icon={<SaveOutlined />}
                             onClick={handleSaveAll}
                             loading={saving}
-                            style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', border: 'none', borderRadius: 8 }}
+                            style={{ background: 'linear-gradient(135deg, var(--theme-color, #8b5cf6), var(--theme-secondary, #6366f1))', border: 'none', borderRadius: 8 }}
                         >
                             Save All
                         </Button>

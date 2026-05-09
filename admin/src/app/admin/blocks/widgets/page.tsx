@@ -2,11 +2,17 @@
 
 import React from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
-import { Card, Row, Col, Space, Button, Tag } from "antd";
-import { PlayCircleOutlined, EyeOutlined } from "@ant-design/icons";
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { AuroraText } from '@/components/magicui/aurora-text';
+import DecryptedText from '@/components/react-bits/DecryptedText';
+import { Card, Row, Col, Space, Button, Tag, Statistic } from "antd";
+import { PlayCircleOutlined, EyeOutlined, AppstoreOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import MiniGamesWidget from "@/components/widgets/MiniGamesWidget";
 import ChatWidget from "@/components/widgets/ChatWidget";
 import StatsCounterWidget from "@/components/widgets/StatsCounterWidget";
+
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface WidgetCard {
     name: string;
@@ -60,11 +66,26 @@ const widgets: WidgetCard[] = [
 ];
 
 export default function WidgetsPage() {
+    const { themeColor } = usePreferencesStore();
     return (
         <CMSLayout
-            title="Widgets"
-            subTitle="Interactive components for your landing pages"
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Widgets</AuroraText>}
+            subTitle={<DecryptedText text="Interactive components for your landing pages" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { title: 'Total Widgets', value: widgets.length, icon: <AppstoreOutlined />, color: '#3b82f6' },
+                    { title: 'Interactive', value: widgets.filter(w => w.demoEnabled).length, icon: <PlayCircleOutlined />, color: '#10b981' },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={12}>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
             <Row gutter={[16, 16]}>
                 {widgets.map((widget, index) => (
                     <Col key={index} xs={24} lg={12}>

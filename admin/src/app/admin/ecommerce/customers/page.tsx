@@ -2,21 +2,26 @@
 
 import React, { useState, useEffect } from "react";
 import { Table, Tag, Card, Typography, Input, Button, Space, Tooltip, Row, Col, Modal, Form, Select, message } from "antd";
-import { UserOutlined, SearchOutlined, ReloadOutlined, PlusOutlined, DeleteOutlined, TeamOutlined, ShoppingCartOutlined, DollarOutlined, MailOutlined } from "@ant-design/icons";
+import { UserOutlined, SearchOutlined, ReloadOutlined, PlusOutlined, DeleteOutlined, TeamOutlined, ShoppingCartOutlined, DollarOutlined, MailOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
+import RbacGuard from "@/components/common/RbacGuard";
 import { inventoryService, EcomCustomer, EcomStatsType } from "@/lib/inventoryService";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { CrmAccountPicker, CrmContactPicker } from "@/components/inventory/CrmPicker";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
+const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const TYPE_COLORS: Record<string, string> = { individual: 'blue', company: 'purple', reseller: 'gold' };
 const STATUS_COLORS: Record<string, string> = { active: 'green', inactive: 'default', blocked: 'red' };
-const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : '—';
+const fmtCurrency = (v?: number) => v ? `Rp ${v.toLocaleString()}` : 'â€”';
 
 const CUSTOMER_FIELDS: FieldDef[] = [
     { name: 'customerCode', label: 'Customer Code', required: true },
@@ -34,6 +39,8 @@ const CUSTOMER_FIELDS: FieldDef[] = [
 
 export default function CustomersPage() {
     const [stats, setStats] = useState<EcomStatsType | null>(null);
+    const { themeColor } = usePreferencesStore();
+    const { startDate, endDate } = useDateRangeStore();
     const [customers, setCustomers] = useState<EcomCustomer[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -91,7 +98,7 @@ export default function CustomersPage() {
     };
 
     const kpiCards = [
-        { title: 'Total Customers', value: stats?.totalCustomers || 0, icon: <TeamOutlined />, color: '#6366f1' },
+        { title: 'Total Customers', value: stats?.totalCustomers || 0, icon: <TeamOutlined />, color: themeColor },
         { title: 'Active', value: stats?.activeCustomers || 0, icon: <UserOutlined />, color: '#10b981' },
         { title: 'Total Orders', value: stats?.totalOrders || 0, icon: <ShoppingCartOutlined />, color: '#3b82f6' },
         { title: 'Revenue', value: fmtCurrency(stats?.totalRevenue), icon: <DollarOutlined />, color: '#f59e0b' },
@@ -107,15 +114,15 @@ export default function CustomersPage() {
     const columns = [
         { title: 'Code', dataIndex: 'customerCode', width: 110, render: (v: string) => <Text code className="text-xs">{v}</Text> },
         { title: 'Name', key: 'name', render: (_: any, r: EcomCustomer) => <Text strong className="text-sm">{r.firstName} {r.lastName || ''}</Text> },
-        { title: 'Email', dataIndex: 'email', ellipsis: true, render: (v: string) => v ? <Text className="text-xs"><MailOutlined className="mr-1" />{v}</Text> : '—' },
+        { title: 'Email', dataIndex: 'email', ellipsis: true, render: (v: string) => v ? <Text className="text-xs"><MailOutlined className="mr-1" />{v}</Text> : 'â€”' },
         { title: 'Phone', dataIndex: 'phone', width: 130 },
-        { title: 'Company', dataIndex: 'company', width: 150, ellipsis: true, render: (v: string) => v || '—' },
+        { title: 'Company', dataIndex: 'company', width: 150, ellipsis: true, render: (v: string) => v || 'â€”' },
         { title: 'Type', dataIndex: 'customerType', width: 100,
             render: (v: string) => <Tag color={TYPE_COLORS[v] || 'default'} className="rounded-full text-xs capitalize">{v}</Tag> },
         { title: 'Orders', dataIndex: 'totalOrders', width: 70, sorter: (a: any, b: any) => (a.totalOrders || 0) - (b.totalOrders || 0) },
         { title: 'Total Spent', dataIndex: 'totalSpent', width: 140, sorter: (a: any, b: any) => (a.totalSpent || 0) - (b.totalSpent || 0),
-            render: (v: number) => <Text strong style={{ color: '#6366f1' }}>{fmtCurrency(v)}</Text> },
-        { title: 'City', dataIndex: 'city', width: 120, render: (v: string) => v || '—' },
+            render: (v: number) => <Text strong style={{ color: themeColor }}>{fmtCurrency(v)}</Text> },
+        { title: 'City', dataIndex: 'city', width: 120, render: (v: string) => v || 'â€”' },
         { title: 'Status', dataIndex: 'status', width: 90,
             render: (v: string) => <Tag color={STATUS_COLORS[v] || 'default'} className="rounded-full text-xs capitalize">{v}</Tag> },
         { title: '', key: 'actions', width: 50,
@@ -178,7 +185,7 @@ export default function CustomersPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={["#6366f1", "#8b5cf6", "#a78bfa", "#00ffff", "#ff00ff"]}>Customers</AuroraText>}
+            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Customers</AuroraText>}
             subTitle={<DecryptedText text="Customer registry and purchase history" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
@@ -187,8 +194,7 @@ export default function CustomersPage() {
                         <Col key={i} xs={12} sm={12} md={6}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.5)', borderRadius: 12,
+                                    ...glass,
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -204,15 +210,16 @@ export default function CustomersPage() {
                     ))}
                 </Row>
 
-                <Card size="small" style={{ flex: 1, borderRadius: 12, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)' }}>
+                <Card size="small" style={{ flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)' }}>
                     <div className="flex items-center justify-between mb-3">
                         <Input prefix={<SearchOutlined className="text-gray-400" />} placeholder="Search customers..."
                             value={search} onChange={e => setSearch(e.target.value)} allowClear style={{ maxWidth: 300, borderRadius: 8 }} size="small" />
                         <Space>
                             <Tooltip title="Reload"><Button icon={<ReloadOutlined />} onClick={load} /></Tooltip>
+                            <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_customers', title: 'eCommerce Customers', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'firstName' }, { header: 'Surname', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'status' }], data: filtered })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_customers', title: 'eCommerce Customers', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'firstName' }, { header: 'Surname', key: 'lastName' }, { header: 'Email', key: 'email' }, { header: 'Phone', key: 'phone' }, { header: 'Status', key: 'status' }], data: filtered })} /></Tooltip></RbacGuard>
                             <Button type="primary" icon={<PlusOutlined />}
                                 onClick={() => { form.resetFields(); setModalOpen(true); }}
-                                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: 8, border: 'none' }}>
+                                style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, borderRadius: 8, border: 'none' }}>
                                 New Customer
                             </Button>
                         </Space>
@@ -233,8 +240,10 @@ export default function CustomersPage() {
                 fields={CUSTOMER_FIELDS}
                 loading={saving}
                 onBatchCreate={handleBatchCreate}
-                gradient={["#6366f1", "#8b5cf6"]}
+                gradient={["#6366f1", "var(--theme-color, #8b5cf6)"]}
             />
         </CMSLayout>
     );
 }
+
+
