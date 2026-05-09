@@ -59,8 +59,10 @@ import {
     HistoryOutlined,
     ArrowLeftOutlined,
     EditOutlined,
-    MoreOutlined
+    MoreOutlined,
+    ApartmentOutlined
 } from "@ant-design/icons";
+import GuideFlowsPanel from "./GuideFlowsPanel";
 import ReactMarkdown from 'react-markdown';
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
@@ -118,6 +120,7 @@ export default function AIStudioPage() {
     // ── Layout State ──
     const [showSources, setShowSources] = useState(true);
     const [showChat, setShowChat] = useState(true);
+    const [studioMainTab, setStudioMainTab] = useState<"workspace" | "flows">("workspace");
 
     // ── Report State ──
     const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -155,6 +158,7 @@ export default function AIStudioPage() {
         setChatHistory([]);
         setConversationId(undefined);
         setShowReferences(null);
+        setStudioMainTab("workspace");
         loadSourceStatus(notebook.id);
     };
 
@@ -164,10 +168,7 @@ export default function AIStudioPage() {
             const list = await studioService.getSourceStatus(notebookId);
             setSources(list);
 
-            // Start polling if any sources are still parsing
-            if (list.some((s: StudioSource) => s.parse_status === 'parsing')) {
-                startPolling(notebookId);
-            }
+            if (pollRef.current) clearInterval(pollRef.current);
         } catch (e) {
             console.error("Failed to load sources:", e);
         } finally {
@@ -277,9 +278,8 @@ export default function AIStudioPage() {
 
     const handleChatSend = async () => {
         if (!chatInput.trim() || !activeNotebook) return;
-        const readySources = sources.filter(s => s.parse_status === 'done');
-        if (readySources.length === 0) {
-            message.warning("No parsed sources yet. Wait for parsing to complete.");
+        if (sources.length === 0) {
+            message.warning("No sources yet. Add files or media first.");
             return;
         }
 
@@ -332,7 +332,7 @@ export default function AIStudioPage() {
     const getStatusTag = (status: string) => {
         switch (status) {
             case 'done': return <Tag color="success" className="text-[10px] m-0 leading-tight px-1.5">Ready</Tag>;
-            case 'parsing': return <Tag color="processing" className="text-[10px] m-0 leading-tight px-1.5">Parsing</Tag>;
+            case 'parsing': return <Tag color="processing" className="text-[10px] m-0 leading-tight px-1.5">Preparing</Tag>;
             case 'error': return <Tag color="error" className="text-[10px] m-0 leading-tight px-1.5">Error</Tag>;
             default: return <Tag className="text-[10px] m-0 leading-tight px-1.5">Pending</Tag>;
         }
@@ -604,10 +604,7 @@ export default function AIStudioPage() {
                         </div>
                         <div className="flex items-center gap-2 mt-2">
                             <Tag style={{ color: themeColor, borderColor: `${themeColor}44`, backgroundColor: `${themeColor}11` }}>{sources.length} source{sources.length !== 1 ? 's' : ''}</Tag>
-                            <Tag style={{ color: themeColor, borderColor: `${themeColor}44`, backgroundColor: `${themeColor}11` }}>{sources.filter(s => s.parse_status === 'done').length} ready</Tag>
-                            {sources.some(s => s.parse_status === 'parsing') && (
-                                <Tag color="processing" icon={<SyncOutlined spin />}>Parsing...</Tag>
-                            )}
+                            <Tag style={{ color: themeColor, borderColor: `${themeColor}44`, backgroundColor: `${themeColor}11` }}>{sources.filter(s => s.parse_status !== 'error').length} ready</Tag>
                         </div>
                     </div>
 
@@ -668,8 +665,8 @@ export default function AIStudioPage() {
                                 size="small"
                                 className="!rounded-xl cursor-pointer"
                                 onClick={() => {
-                                    if (sources.filter(s => s.parse_status === 'done').length === 0) {
-                                        message.warning("No parsed sources yet.");
+                                    if (sources.length === 0) {
+                                        message.warning("No sources yet.");
                                         return;
                                     }
                                     setReportModalOpen(true);
@@ -864,7 +861,42 @@ export default function AIStudioPage() {
                                 className="text-xs"
                             />
                         </Card>
-                        {renderStudioGuide()}
+                        <Tabs
+                            activeKey={studioMainTab}
+                            onChange={(k) => setStudioMainTab(k as "workspace" | "flows")}
+                            className="studio-main-tabs"
+                            items={[
+                                {
+                                    key: "workspace",
+                                    label: (
+                                        <span className="text-xs">
+                                            <FundProjectionScreenOutlined className="mr-1" />
+                                            Workspace
+                                        </span>
+                                    ),
+                                    children: renderStudioGuide(),
+                                },
+                                {
+                                    key: "flows",
+                                    label: (
+                                        <span className="text-xs">
+                                            <ApartmentOutlined className="mr-1" />
+                                            Guide flows
+                                        </span>
+                                    ),
+                                    children: (
+                                        <GuideFlowsPanel
+                                            notebookId={activeNotebook?.id ?? null}
+                                            themeColor={themeColor}
+                                            userId={CURRENT_USER_ID}
+                                            sourcesReady={
+                                                sources.length > 0
+                                            }
+                                        />
+                                    ),
+                                },
+                            ]}
+                        />
                     </div>
 
                     {/* ── RIGHT SIDEBAR: Chat ── */}

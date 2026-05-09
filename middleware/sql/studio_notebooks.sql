@@ -8,8 +8,6 @@ CREATE TABLE IF NOT EXISTS studio_notebooks (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     user_id UUID,
-    ragflow_dataset_id VARCHAR(255),        -- RAGFlow dataset UUID
-    ragflow_chat_id VARCHAR(255),           -- RAGFlow chat assistant UUID
     icon VARCHAR(50) DEFAULT '📓',
     is_shared BOOLEAN DEFAULT FALSE,
     source_count INT DEFAULT 0,
@@ -22,7 +20,6 @@ CREATE TABLE IF NOT EXISTS studio_notebook_sources (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     notebook_id UUID NOT NULL REFERENCES studio_notebooks(id) ON DELETE CASCADE,
     media_id UUID REFERENCES media(id) ON DELETE SET NULL,   -- from existing media library
-    ragflow_doc_id VARCHAR(255),            -- RAGFlow document UUID
     filename VARCHAR(500) NOT NULL,
     file_type VARCHAR(100),
     file_size BIGINT DEFAULT 0,
@@ -39,7 +36,6 @@ CREATE TABLE IF NOT EXISTS studio_conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     notebook_id UUID NOT NULL REFERENCES studio_notebooks(id) ON DELETE CASCADE,
     user_id UUID,
-    ragflow_session_id VARCHAR(255),        -- RAGFlow conversation session
     title VARCHAR(500) DEFAULT 'New Chat',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -81,3 +77,5 @@ CREATE POLICY studio_conversations_owner ON studio_conversations
 
 CREATE POLICY studio_messages_owner ON studio_messages
     FOR ALL USING (TRUE);
+
+-- Guide flows (playbooks): see studio_guide_flows.sql

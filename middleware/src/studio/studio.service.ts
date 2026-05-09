@@ -2,11 +2,11 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as Minio from 'minio';
 import { SupabaseService } from '../supabase/supabase.service';
-import { RagflowService } from './ragflow.service';
+import { VertexAiService } from '../ai/vertex-ai.service';
 
 /**
  * Studio AI business logic — orchestrates notebooks, sources, and conversations.
- * Bridges Supabase (metadata), MinIO (storage), and RAGFlow (RAG pipeline).
+ * Bridges Supabase (metadata), MinIO (storage), and internal LLM (chat/report).
  */
 @Injectable()
 export class StudioService {
@@ -17,7 +17,7 @@ export class StudioService {
     constructor(
         private configService: ConfigService,
         private supabaseService: SupabaseService,
-        private ragflowService: RagflowService,
+        private vertexAiService: VertexAiService,
     ) {
         // MinIO client for file storage
         const endpointUrl = this.configService.get('S3_ENDPOINT') || 'http://minio:9000';
@@ -46,25 +46,18 @@ export class StudioService {
     // ── Notebooks ────────────────────────────────────────────────────
 
     async createNotebook(name: string, description: string, userId: string): Promise<any> {
-        // 1. Create RAGFlow dataset
-        const dataset = await this.ragflowService.createDataset(name, description);
-
-        // 2. Save to Supabase (chat assistant will be created lazily when first chat is initiated,
-        //    because RAGFlow requires at least one parsed document in the dataset)
         const { data, error } = await this.supabaseService.getAdminClient()
             .from('studio_notebooks')
             .insert({
                 name,
                 description,
                 user_id: userId,
-                ragflow_dataset_id: dataset.id,
-                ragflow_chat_id: null,
             })
             .select()
             .single();
 
         if (error) throw error;
-        this.logger.log(`Created notebook "${name}" → dataset=${dataset.id} (chat assistant deferred)`);
+        this.logger.log(`Created notebook "${name}"`);
         return data;
     }
 
@@ -91,17 +84,6 @@ export class StudioService {
     }
 
     async deleteNotebook(notebookId: string): Promise<boolean> {
-        const notebook = await this.getNotebook(notebookId);
-
-        // Delete RAGFlow dataset
-        if (notebook.ragflow_dataset_id) {
-            try {
-                await this.ragflowService.deleteDataset(notebook.ragflow_dataset_id);
-            } catch (e) {
-                this.logger.warn(`Failed to delete RAGFlow dataset: ${e.message}`);
-            }
-        }
-
         // Delete from Supabase (cascades to sources, conversations, messages)
         const { error } = await this.supabaseService.getAdminClient()
             .from('studio_notebooks')
@@ -123,39 +105,22 @@ export class StudioService {
             'Content-Type': file.mimetype,
         });
 
-        // 2. Upload to RAGFlow dataset
-        const ragflowDocs = await this.ragflowService.uploadDocument(
-            notebook.ragflow_dataset_id,
-            file.buffer,
-            file.originalname,
-        );
-        const ragflowDocId = ragflowDocs?.[0]?.id;
-
-        // 3. Save source record
+        // 2. Save source record (chat-only mode: mark ready immediately)
         const { data, error } = await this.supabaseService.getAdminClient()
             .from('studio_notebook_sources')
             .insert({
                 notebook_id: notebookId,
-                ragflow_doc_id: ragflowDocId,
                 filename: file.originalname,
                 file_type: file.mimetype,
                 file_size: file.size,
                 s3_key: s3Key,
-                parse_status: 'pending',
+                parse_status: 'done',
+                parse_progress: 1,
             })
             .select()
             .single();
 
         if (error) throw error;
-
-        // 4. Trigger parsing
-        if (ragflowDocId) {
-            await this.ragflowService.parseDocuments(notebook.ragflow_dataset_id, [ragflowDocId]);
-            await this.supabaseService.getAdminClient()
-                .from('studio_notebook_sources')
-                .update({ parse_status: 'parsing' })
-                .eq('id', data.id);
-        }
 
         // 5. Update source count
         await this.supabaseService.getAdminClient()
@@ -188,40 +153,23 @@ export class StudioService {
         const buffer = await this.getFileBuffer(fileKey, mediaBucket);
         if (!buffer) throw new Error('Failed to read media file from storage');
 
-        // 3. Upload to RAGFlow dataset
-        const ragflowDocs = await this.ragflowService.uploadDocument(
-            notebook.ragflow_dataset_id,
-            buffer,
-            mediaRecord.filename,
-        );
-        const ragflowDocId = ragflowDocs?.[0]?.id;
-
-        // 4. Save source linked to media
+        // 3. Save source linked to media (ready state in chat-only mode)
         const { data, error } = await this.supabaseService.getAdminClient()
             .from('studio_notebook_sources')
             .insert({
                 notebook_id: notebookId,
                 media_id: mediaId,
-                ragflow_doc_id: ragflowDocId,
                 filename: mediaRecord.filename,
                 file_type: mediaRecord.mime_type,
                 file_size: mediaRecord.size || 0,
                 s3_key: fileKey,
-                parse_status: 'pending',
+                parse_status: 'done',
+                parse_progress: 1,
             })
             .select()
             .single();
 
         if (error) throw error;
-
-        // 5. Trigger parsing
-        if (ragflowDocId) {
-            await this.ragflowService.parseDocuments(notebook.ragflow_dataset_id, [ragflowDocId]);
-            await this.supabaseService.getAdminClient()
-                .from('studio_notebook_sources')
-                .update({ parse_status: 'parsing' })
-                .eq('id', data.id);
-        }
 
         // 6. Update count
         await this.supabaseService.getAdminClient()
@@ -238,44 +186,7 @@ export class StudioService {
 
     async getSourceStatus(notebookId: string): Promise<any[]> {
         const notebook = await this.getNotebook(notebookId);
-        const sources = notebook.studio_notebook_sources || [];
-
-        // Check RAGFlow parse status for each
-        for (const source of sources) {
-            if (source.parse_status === 'parsing' && source.ragflow_doc_id) {
-                try {
-                    const doc = await this.ragflowService.getDocumentParseStatus(
-                        notebook.ragflow_dataset_id,
-                        source.ragflow_doc_id,
-                    );
-                    if (doc) {
-                        const newStatus = doc.progress_msg?.includes('Done') ? 'done' :
-                            doc.progress_msg?.includes('Error') ? 'error' : 'parsing';
-                        const progress = doc.progress || 0;
-                        const chunkCount = doc.chunk_count || 0;
-
-                        if (newStatus !== source.parse_status || progress !== source.parse_progress) {
-                            await this.supabaseService.getAdminClient()
-                                .from('studio_notebook_sources')
-                                .update({
-                                    parse_status: newStatus,
-                                    parse_progress: progress,
-                                    chunk_count: chunkCount,
-                                    updated_at: new Date(),
-                                })
-                                .eq('id', source.id);
-                            source.parse_status = newStatus;
-                            source.parse_progress = progress;
-                            source.chunk_count = chunkCount;
-                        }
-                    }
-                } catch (e) {
-                    this.logger.warn(`Failed to check parse status: ${e.message}`);
-                }
-            }
-        }
-
-        return sources;
+        return notebook.studio_notebook_sources || [];
     }
 
     async removeSource(notebookId: string, sourceId: string): Promise<boolean> {
@@ -291,29 +202,65 @@ export class StudioService {
 
     // ── Chat ─────────────────────────────────────────────────────────
 
+    /** New conversation for chat-only internal engine. */
+    async createConversationSession(notebookId: string, userId: string | undefined, title: string): Promise<any> {
+        const { data, error } = await this.supabaseService.getAdminClient()
+            .from('studio_conversations')
+            .insert({
+                notebook_id: notebookId,
+                user_id: userId,
+                title,
+            })
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    }
+
+    /** Append a message and bump conversation updated_at. */
+    async appendStudioMessage(
+        conversationId: string,
+        role: 'user' | 'assistant' | 'system',
+        content: string,
+        sourceRefs?: any[] | null,
+    ): Promise<void> {
+        await this.supabaseService.getAdminClient()
+            .from('studio_messages')
+            .insert({
+                conversation_id: conversationId,
+                role,
+                content,
+                source_refs: sourceRefs ?? null,
+            });
+        await this.supabaseService.getAdminClient()
+            .from('studio_conversations')
+            .update({ updated_at: new Date() })
+            .eq('id', conversationId);
+    }
+
+    /** Chat-only engine hook. Keeps shape for compatibility with guide-flow. */
+    async invokeRagQuery(
+        notebookId: string,
+        conversationId: string,
+        question: string,
+    ): Promise<{ answer: string; references: { content: string; docName: string; score: number }[]; rawChunks: any[] }> {
+        const notebook = await this.getNotebook(notebookId);
+        const { data: conversation, error } = await this.supabaseService.getAdminClient()
+            .from('studio_conversations')
+            .select('*')
+            .eq('id', conversationId)
+            .single();
+        if (error || !conversation) throw new NotFoundException('Conversation not found');
+        const answer = await this.generateNotebookAnswer(notebook, conversationId, question);
+        return {
+            answer,
+            references: [],
+            rawChunks: [],
+        };
+    }
+
     async chat(notebookId: string, question: string, conversationId?: string, userId?: string): Promise<any> {
         const notebook = await this.getNotebook(notebookId);
-
-        // Lazily create the RAGFlow chat assistant if it doesn't exist yet.
-        // RAGFlow requires the dataset to have parsed documents before creating an assistant.
-        if (!notebook.ragflow_chat_id) {
-            this.logger.log(`Creating RAGFlow chat assistant for notebook ${notebookId}...`);
-            try {
-                const assistant = await this.ragflowService.createChatAssistant(
-                    notebook.name,
-                    [notebook.ragflow_dataset_id],
-                );
-                await this.supabaseService.getAdminClient()
-                    .from('studio_notebooks')
-                    .update({ ragflow_chat_id: assistant.id })
-                    .eq('id', notebookId);
-                notebook.ragflow_chat_id = assistant.id;
-                this.logger.log(`Created RAGFlow chat assistant: ${assistant.id}`);
-            } catch (e) {
-                this.logger.error(`Failed to create chat assistant: ${e.message}`);
-                throw new Error('Cannot start chat yet — ensure at least one source has been parsed successfully.');
-            }
-        }
 
         // Get or create conversation
         let conversation: any;
@@ -327,18 +274,11 @@ export class StudioService {
         }
 
         if (!conversation) {
-            // Create new RAGFlow session
-            const session = await this.ragflowService.createChatSession(
-                notebook.ragflow_chat_id,
-                `Chat ${new Date().toLocaleString()}`,
-            );
-
             const { data, error } = await this.supabaseService.getAdminClient()
                 .from('studio_conversations')
                 .insert({
                     notebook_id: notebookId,
                     user_id: userId,
-                    ragflow_session_id: session.id,
                     title: question.substring(0, 100),
                 })
                 .select()
@@ -348,34 +288,10 @@ export class StudioService {
             conversation = data;
         }
 
-        // Save user message
-        await this.supabaseService.getAdminClient()
-            .from('studio_messages')
-            .insert({
-                conversation_id: conversation.id,
-                role: 'user',
-                content: question,
-            });
+        await this.appendStudioMessage(conversation.id, 'user', question);
 
-        // Call RAGFlow chat
-        const result = await this.ragflowService.chat(
-            notebook.ragflow_chat_id,
-            question,
-            conversation.ragflow_session_id,
-        );
-
-        const answer = result?.answer || 'Sorry, I could not generate a response.';
-        const sourceRefs = result?.reference?.chunks || [];
-
-        // Save assistant message
-        await this.supabaseService.getAdminClient()
-            .from('studio_messages')
-            .insert({
-                conversation_id: conversation.id,
-                role: 'assistant',
-                content: answer,
-                source_refs: sourceRefs,
-            });
+        const { answer, references, rawChunks } = await this.invokeRagQuery(notebookId, conversation.id, question);
+        await this.appendStudioMessage(conversation.id, 'assistant', answer, rawChunks);
 
         // Update conversation title if first message
         if (!conversationId) {
@@ -388,11 +304,7 @@ export class StudioService {
         return {
             conversationId: conversation.id,
             answer,
-            references: sourceRefs.map((ref: any) => ({
-                content: ref.content_with_weight || ref.content,
-                docName: ref.doc_name || ref.document_name,
-                score: ref.similarity || ref.score,
-            })),
+            references,
         };
     }
 
@@ -431,40 +343,8 @@ export class StudioService {
 
     async generateReport(notebookId: string, query: string): Promise<string> {
         const notebook = await this.getNotebook(notebookId);
-
-        // Lazily create the RAGFlow chat assistant if it doesn't exist yet
-        if (!notebook.ragflow_chat_id) {
-            this.logger.log(`Creating RAGFlow chat assistant for report generation...`);
-            try {
-                const assistant = await this.ragflowService.createChatAssistant(
-                    notebook.name,
-                    [notebook.ragflow_dataset_id],
-                );
-                await this.supabaseService.getAdminClient()
-                    .from('studio_notebooks')
-                    .update({ ragflow_chat_id: assistant.id })
-                    .eq('id', notebookId);
-                notebook.ragflow_chat_id = assistant.id;
-                this.logger.log(`Created RAGFlow chat assistant: ${assistant.id}`);
-            } catch (e) {
-                this.logger.error(`Failed to create chat assistant: ${e.message}`);
-                return 'Cannot generate report — ensure at least one source has been parsed successfully.';
-            }
-        }
-
-        // Retrieve relevant chunks from RAGFlow
-        const chunks = await this.ragflowService.retrieve(
-            [notebook.ragflow_dataset_id],
-            query,
-            10,
-        );
-
-        if (chunks.length === 0) {
-            return 'No relevant information found in the notebook sources.';
-        }
-
-        // Use RAGFlow chat with a report-oriented prompt
-        const reportPrompt = `Based on the following knowledge base, write a comprehensive executive report about: "${query}".
+        const reportPrompt = `You are an executive analyst helping with notebook "${notebook.name}".
+Create a comprehensive executive report about: "${query}".
 
 Include:
 - Executive Summary
@@ -473,28 +353,8 @@ Include:
 - Recommendations
 - Conclusion
 
-Use markdown formatting. Cite sources where applicable.`;
-
-        // Step 1: Create a new chat session (returns prologue greeting)
-        const sessionResult = await this.ragflowService.chat(
-            notebook.ragflow_chat_id,
-            '',
-        );
-        const sessionId = sessionResult?.session_id;
-
-        if (!sessionId) {
-            this.logger.error('Failed to create chat session for report generation');
-            return 'Failed to initialize report generation session.';
-        }
-
-        // Step 2: Send actual report prompt with the session_id
-        const result = await this.ragflowService.chat(
-            notebook.ragflow_chat_id,
-            reportPrompt,
-            sessionId,
-        );
-
-        return result?.answer || 'Failed to generate report.';
+Use markdown formatting. If uncertain, clearly state assumptions.`;
+        return this.vertexAiService.generateText(reportPrompt);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────
@@ -514,5 +374,33 @@ Use markdown formatting. Cite sources where applicable.`;
                 stream.on('error', () => resolve(null));
             });
         });
+    }
+
+    private async generateNotebookAnswer(notebook: any, conversationId: string, question: string): Promise<string> {
+        const { data: messages } = await this.supabaseService.getAdminClient()
+            .from('studio_messages')
+            .select('role, content')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: true });
+
+        const contextLines = (messages || [])
+            .slice(-8)
+            .map((m: any) => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.content}`);
+
+        const prompt = [
+            `You are AI Studio assistant for notebook "${notebook.name}".`,
+            'Mode: chat-only (no retrieval).',
+            'Be concise, helpful, and honest when information is unknown.',
+            '',
+            'Recent conversation:',
+            contextLines.length > 0 ? contextLines.join('\n') : '(none)',
+            '',
+            `User question: ${question}`,
+            '',
+            'Answer in markdown.',
+        ].join('\n');
+
+        const answer = await this.vertexAiService.generateText(prompt);
+        return answer || 'Sorry, I could not generate a response.';
     }
 }

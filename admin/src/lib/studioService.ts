@@ -21,8 +21,6 @@ export interface StudioNotebook {
     description: string;
     icon: string;
     source_count: number;
-    ragflow_dataset_id: string;
-    ragflow_chat_id: string;
     created_at: string;
     updated_at: string;
     studio_notebook_sources?: StudioSource[];
@@ -61,6 +59,24 @@ export interface ChatResponse {
     conversationId: string;
     answer: string;
     references: { content: string; docName: string; score: number }[];
+}
+
+export interface StudioGuideFlow {
+    id: string;
+    notebook_id: string;
+    name: string;
+    status: 'draft' | 'published';
+    definition: Record<string, unknown>;
+    version: number;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface GuidedTurnResponse {
+    conversationId: string;
+    replies: { content: string; references?: { content: string; docName: string; score: number }[] }[];
+    waitingForInput: boolean;
+    currentNodeId: string | null;
 }
 
 export const studioService = {
@@ -184,5 +200,101 @@ export const studioService = {
             }
         `, { notebookId, query });
         return data.studioGenerateReport;
+    },
+
+    // ── Guide flows ───────────────────────────
+
+    async getGuideFlows(notebookId: string): Promise<StudioGuideFlow[]> {
+        const data = await graphqlRequest(`
+            query($notebookId: String!) {
+                studioGuideFlows(notebookId: $notebookId)
+            }
+        `, { notebookId });
+        return data.studioGuideFlows || [];
+    },
+
+    async getGuideFlow(flowId: string): Promise<StudioGuideFlow> {
+        const data = await graphqlRequest(`
+            query($flowId: String!) {
+                studioGuideFlow(flowId: $flowId)
+            }
+        `, { flowId });
+        return data.studioGuideFlow;
+    },
+
+    async getPublishedGuideFlow(notebookId: string): Promise<StudioGuideFlow | null> {
+        const data = await graphqlRequest(`
+            query($notebookId: String!) {
+                studioPublishedGuideFlow(notebookId: $notebookId)
+            }
+        `, { notebookId });
+        return data.studioPublishedGuideFlow ?? null;
+    },
+
+    async createGuideFlow(notebookId: string, name: string, definition?: Record<string, unknown>): Promise<StudioGuideFlow> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!, $name: String!, $definition: JSONObject) {
+                createStudioGuideFlow(notebookId: $notebookId, name: $name, definition: $definition)
+            }
+        `, { notebookId, name, definition: definition ?? null });
+        return data.createStudioGuideFlow;
+    },
+
+    async updateGuideFlow(
+        flowId: string,
+        patch: { name?: string; definition?: Record<string, unknown>; status?: 'draft' | 'published' },
+    ): Promise<StudioGuideFlow> {
+        const variables: Record<string, unknown> = { flowId };
+        if (patch.name !== undefined) variables.name = patch.name;
+        if (patch.definition !== undefined) variables.definition = patch.definition;
+        if (patch.status !== undefined) variables.status = patch.status;
+        const data = await graphqlRequest(`
+            mutation($flowId: String!, $name: String, $definition: JSONObject, $status: String) {
+                updateStudioGuideFlow(flowId: $flowId, name: $name, definition: $definition, status: $status)
+            }
+        `, variables);
+        return data.updateStudioGuideFlow;
+    },
+
+    async deleteGuideFlow(flowId: string): Promise<boolean> {
+        const data = await graphqlRequest(`
+            mutation($flowId: String!) {
+                deleteStudioGuideFlow(flowId: $flowId)
+            }
+        `, { flowId });
+        return data.deleteStudioGuideFlow;
+    },
+
+    async publishGuideFlow(flowId: string): Promise<StudioGuideFlow> {
+        const data = await graphqlRequest(`
+            mutation($flowId: String!) {
+                publishStudioGuideFlow(flowId: $flowId)
+            }
+        `, { flowId });
+        return data.publishStudioGuideFlow;
+    },
+
+    async startGuidedSession(notebookId: string, flowId: string, userId?: string): Promise<GuidedTurnResponse> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!, $flowId: String!, $userId: String) {
+                startStudioGuidedSession(notebookId: $notebookId, flowId: $flowId, userId: $userId)
+            }
+        `, { notebookId, flowId, userId: userId ?? null });
+        return data.startStudioGuidedSession;
+    },
+
+    async guidedChat(
+        notebookId: string,
+        flowId: string,
+        conversationId: string,
+        message: string,
+        userId?: string,
+    ): Promise<GuidedTurnResponse> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!, $flowId: String!, $conversationId: String!, $message: String!, $userId: String) {
+                studioGuidedChat(notebookId: $notebookId, flowId: $flowId, conversationId: $conversationId, message: $message, userId: $userId)
+            }
+        `, { notebookId, flowId, conversationId, message, userId: userId ?? null });
+        return data.studioGuidedChat;
     },
 };

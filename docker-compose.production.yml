@@ -49,6 +49,3 @@ services:
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
 
   # RAGFlow with production passwords
-  ragflow:
-    environment:
-      - REGISTER_ENABLED=0

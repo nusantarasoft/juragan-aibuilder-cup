@@ -565,8 +565,6 @@ services:
       - LABELSTUDIO_PROJECT_ID=${LABELSTUDIO_PROJECT_ID}
       - LABELSTUDIO_WEBHOOK_SECRET=${LABELSTUDIO_WEBHOOK_SECRET:-}
       # RAGFlow Config (runs on REMOTE device)
-      - RAGFLOW_API_KEY=${RAGFLOW_API_KEY}
-      - RAGFLOW_API_URL=http://${REMOTE_HOST_IP}:9380
     networks:
       - management-network
     depends_on:
