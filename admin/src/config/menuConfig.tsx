@@ -4,6 +4,7 @@ import React from "react";
 import {
     DashboardOutlined,
     FileTextOutlined,
+    FolderOutlined,
     PictureOutlined,
     TeamOutlined,
     SettingOutlined,
@@ -48,6 +49,7 @@ import {
     HomeOutlined,
     NodeIndexOutlined,
     ShopOutlined,
+    DollarOutlined,
     ScheduleOutlined,
     SwapOutlined,
     RollbackOutlined,
@@ -142,6 +144,43 @@ const menuConfig = {
                 icon: <PictureOutlined />,
                 isLeaf: true,
                 isTopLevel: true,
+            },
+            {
+                path: "/admin/documents",
+                name: "Documents",
+                icon: <FileTextOutlined />,
+                routes: [
+                    {
+                        path: "/admin/documents/explorer",
+                        name: "File Explorer",
+                        icon: <FolderOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/documents/recent",
+                        name: "Recent Documents",
+                        icon: <ClockCircleOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/documents/shared",
+                        name: "Shared With Me",
+                        icon: <ShareAltOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/documents/templates",
+                        name: "Templates",
+                        icon: <FileTextOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/documents/workflows",
+                        name: "Approval Workflows",
+                        icon: <ApartmentOutlined />,
+                        isLeaf: true,
+                    },
+                ],
             },
             {
                 path: "/admin/bigdata",
@@ -567,6 +606,24 @@ const menuConfig = {
                         path: "/admin/accounting/receivables",
                         name: "Accounts Receivable",
                         icon: <BankOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/accounting/reconciliation",
+                        name: "Bank Reconciliation",
+                        icon: <SwapOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/accounting/budgets",
+                        name: "Budgets & Forecasting",
+                        icon: <BarChartOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/accounting/cash-flow",
+                        name: "Cash Flow",
+                        icon: <DollarOutlined />,
                         isLeaf: true,
                     },
                     {

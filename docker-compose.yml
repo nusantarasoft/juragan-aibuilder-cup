@@ -79,6 +79,8 @@ services:
       - ./volumes/db/add_metadata.sql:/docker-entrypoint-initdb.d/migrations/99-add-metadata.sql:Z
       - ./volumes/db/nusantarasoft_seed.sql:/docker-entrypoint-initdb.d/init-scripts/99-nusantarasoft-seed.sql:Z
       - ./volumes/db/studio_tables.sql:/docker-entrypoint-initdb.d/migrations/99-studio-tables.sql:Z
+      - ./volumes/db/accounting_v2.sql:/docker-entrypoint-initdb.d/migrations/99-accounting-v2.sql:Z
+      - ./volumes/db/documents.sql:/docker-entrypoint-initdb.d/migrations/99-documents.sql:Z
       - ./volumes/db/data:/var/lib/postgresql/data:Z
       - db-config:/etc/postgresql-custom
     healthcheck:
@@ -535,6 +537,11 @@ services:
       dockerfile: Dockerfile
     container_name: middleware
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:
@@ -597,6 +604,11 @@ services:
       dockerfile: Dockerfile
     container_name: admin
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:
@@ -692,13 +704,6 @@ networks:
 
 volumes:
   minio-data:
-  postgres-data:
-  supabase-db-data:
   supabase-storage:
   db-config:
-  postgres-config:
-
-
   openclaw-config:
-
-
