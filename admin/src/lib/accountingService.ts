@@ -189,4 +189,84 @@ export const accountingService = {
     async deleteInvoice(id: string) {
         await gql(`mutation($id:String!){deleteAcctInvoice(id:$id)}`, { id });
     },
+
+    // ─── Budgets ────────────────────────────────────────
+    async getBudgets(tenantId = DEFAULT_TENANT_ID): Promise<AcctBudget[]> {
+        const d = await gql<{ acctBudgets: AcctBudget[] }>(`query($t:String!){acctBudgets(tenantId:$t){id tenantId name fiscalPeriodId status notes createdBy createdAt}}`, { t: tenantId });
+        return d.acctBudgets || [];
+    },
+    async getBudgetLines(budgetId: string): Promise<AcctBudgetLine[]> {
+        const d = await gql<{ acctBudgetLines: AcctBudgetLine[] }>(`query($id:String!){acctBudgetLines(budgetId:$id){id budgetId accountId month budgetedAmount actualAmount notes accountCode accountName}}`, { id: budgetId });
+        return d.acctBudgetLines || [];
+    },
+    async createBudget(tenantId = DEFAULT_TENANT_ID, input: Record<string, any>) {
+        const d = await gql<{ createAcctBudget: AcctBudget }>(`mutation($t:String!,$i:AcctBudgetInput!){createAcctBudget(tenantId:$t,input:$i){id name status createdAt}}`, { t: tenantId, i: input });
+        return d.createAcctBudget;
+    },
+    async updateBudget(id: string, input: Record<string, any>) {
+        const d = await gql<{ updateAcctBudget: AcctBudget }>(`mutation($id:String!,$i:AcctBudgetUpdateInput!){updateAcctBudget(id:$id,input:$i){id name status}}`, { id, i: input });
+        return d.updateAcctBudget;
+    },
+    async getBudgetVsActual(tenantId = DEFAULT_TENANT_ID, budgetId?: string): Promise<BudgetVsActualRow[]> {
+        const d = await gql<{ acctBudgetVsActual: BudgetVsActualRow[] }>(`query($t:String!,$b:String){acctBudgetVsActual(tenantId:$t,budgetId:$b){accountId accountCode accountName budgeted actual variance variancePct}}`, { t: tenantId, b: budgetId });
+        return d.acctBudgetVsActual || [];
+    },
+
+    // ─── Bank Reconciliation ────────────────────────────
+    async getBankAccounts(tenantId = DEFAULT_TENANT_ID): Promise<AcctBankAccount[]> {
+        const d = await gql<{ acctBankAccounts: AcctBankAccount[] }>(`query($t:String!){acctBankAccounts(tenantId:$t){id tenantId name bankName accountNumber glAccountId currency status createdAt}}`, { t: tenantId });
+        return d.acctBankAccounts || [];
+    },
+    async createBankAccount(tenantId = DEFAULT_TENANT_ID, input: Record<string, any>) {
+        const d = await gql<{ createAcctBankAccount: AcctBankAccount }>(`mutation($t:String!,$i:AcctBankAccountInput!){createAcctBankAccount(tenantId:$t,input:$i){id name bankName status}}`, { t: tenantId, i: input });
+        return d.createAcctBankAccount;
+    },
+    async getBankStatements(bankAccountId: string): Promise<AcctBankStatement[]> {
+        const d = await gql<{ acctBankStatements: AcctBankStatement[] }>(`query($id:String!){acctBankStatements(bankAccountId:$id){id bankAccountId statementDate openingBalance closingBalance totalCredits totalDebits source status importedAt}}`, { id: bankAccountId });
+        return d.acctBankStatements || [];
+    },
+    async getBankStatementLines(statementId: string): Promise<AcctBankStatementLine[]> {
+        const d = await gql<{ acctBankStatementLines: AcctBankStatementLine[] }>(`query($id:String!){acctBankStatementLines(statementId:$id){id statementId transactionDate description reference amount runningBalance matched matchedJournalId matchType}}`, { id: statementId });
+        return d.acctBankStatementLines || [];
+    },
+    async importBankStatement(bankAccountId: string, input: Record<string, any>) {
+        const d = await gql<{ importAcctBankStatement: AcctBankStatement }>(`mutation($id:String!,$i:AcctBankStatementInput!){importAcctBankStatement(bankAccountId:$id,input:$i){id statementDate status}}`, { id: bankAccountId, i: input });
+        return d.importAcctBankStatement;
+    },
+    async matchBankTransaction(lineId: string, journalId: string) {
+        await gql(`mutation($l:String!,$j:String!){matchAcctBankTransaction(lineId:$l,journalId:$j)}`, { l: lineId, j: journalId });
+    },
+    async unmatchBankTransaction(lineId: string) {
+        await gql(`mutation($l:String!){unmatchAcctBankTransaction(lineId:$l)}`, { l: lineId });
+    },
+    async autoMatchBankStatement(statementId: string) {
+        const d = await gql<{ autoMatchAcctBankStatement: number }>(`mutation($id:String!){autoMatchAcctBankStatement(statementId:$id)}`, { id: statementId });
+        return d.autoMatchAcctBankStatement || 0;
+    },
+
+    // ─── Cash Flow ──────────────────────────────────────
+    async getCashFlowStatement(tenantId = DEFAULT_TENANT_ID, dateFrom?: string, dateTo?: string): Promise<CashFlowStatement> {
+        const d = await gql<{ acctCashFlowStatement: CashFlowStatement }>(`query($t:String!,$df:String,$dt:String){acctCashFlowStatement(tenantId:$t,dateFrom:$df,dateTo:$dt){operating{items{name amount} total} investing{items{name amount} total} financing{items{name amount} total} netChange openingCash closingCash}}`, { t: tenantId, df: dateFrom, dt: dateTo });
+        return d.acctCashFlowStatement;
+    },
+
+    // ─── Settings ───────────────────────────────────────
+    async getSettings(tenantId = DEFAULT_TENANT_ID): Promise<AcctSetting[]> {
+        const d = await gql<{ acctSettings: AcctSetting[] }>(`query($t:String!){acctSettings(tenantId:$t){id key value description updatedAt}}`, { t: tenantId });
+        return d.acctSettings || [];
+    },
+    async updateSetting(tenantId = DEFAULT_TENANT_ID, key: string, value: string) {
+        await gql(`mutation($t:String!,$k:String!,$v:String!){updateAcctSetting(tenantId:$t,key:$k,value:$v)}`, { t: tenantId, k: key, v: value });
+    },
 };
+
+// ─── Additional Types ────────────────────────────────────
+export interface AcctBudget { id: string; tenantId: string; name: string; fiscalPeriodId?: string; status: string; notes?: string; createdBy?: string; createdAt?: string; }
+export interface AcctBudgetLine { id: string; budgetId: string; accountId: string; month: number; budgetedAmount: number; actualAmount: number; notes?: string; accountCode?: string; accountName?: string; }
+export interface BudgetVsActualRow { accountId: string; accountCode: string; accountName: string; budgeted: number; actual: number; variance: number; variancePct: number; }
+export interface AcctBankAccount { id: string; tenantId: string; name: string; bankName?: string; accountNumber?: string; glAccountId?: string; currency: string; status: string; createdAt?: string; }
+export interface AcctBankStatement { id: string; bankAccountId: string; statementDate: string; openingBalance: number; closingBalance: number; totalCredits: number; totalDebits: number; source: string; status: string; importedAt?: string; }
+export interface AcctBankStatementLine { id: string; statementId: string; transactionDate: string; description?: string; reference?: string; amount: number; runningBalance?: number; matched: boolean; matchedJournalId?: string; matchType?: string; }
+export interface CashFlowSection { items: { name: string; amount: number }[]; total: number; }
+export interface CashFlowStatement { operating: CashFlowSection; investing: CashFlowSection; financing: CashFlowSection; netChange: number; openingCash: number; closingCash: number; }
+export interface AcctSetting { id: string; key: string; value: string; description?: string; updatedAt?: string; }

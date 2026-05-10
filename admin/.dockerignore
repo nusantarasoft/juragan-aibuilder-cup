@@ -6,6 +6,7 @@ node_modules
 .next
 out
 dist
+build_output.txt
 
 # Source control
 .git
@@ -47,3 +48,6 @@ Thumbs.db
 Dockerfile
 .dockerignore
 docker-compose*.yml
+
+# Lock files (use package.json only for npm install)
+pnpm-lock.yaml

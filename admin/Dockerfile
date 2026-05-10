@@ -27,7 +27,8 @@ ENV NEXT_PUBLIC_SUPABASE_URL=http://kong:8000
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc1MjE1MjE4LCJleHAiOjIxNDU5MTY4MDB9.6q7QrCyLzEJ-m2Mw8Y29BNR_tF3fKAfbXhdcc4HKxhE
 
 
-# Build the application
+# Build the application (increase heap for 126+ page compilation)
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
 # ===== Runner Stage =====

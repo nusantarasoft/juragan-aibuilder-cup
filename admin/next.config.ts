@@ -2,8 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  // Empty turbopack config (required by Next.js 16)
-  turbopack: {},
+  // Turbopack config — root pinned to admin dir to prevent multi-lockfile warning
+  turbopack: { root: __dirname },
   // Webpack config for @xenova/transformers (fixes compatibility issues)
   webpack: (config) => {
     config.resolve.alias = {
