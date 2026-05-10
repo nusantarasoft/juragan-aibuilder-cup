@@ -34,7 +34,8 @@ import { NotificationsModule } from './notifications/notifications.module';
         // Environment configuration
         ConfigModule.forRoot({
             isGlobal: true,
-            envFilePath: ['.env', '../.env'],
+            // Later entries override earlier. Package-local `.env.local` wins over repo root.
+            envFilePath: ['.env', '../.env', '../.env.local', '.env.local'],
         }),
         ScheduleModule.forRoot(),
 

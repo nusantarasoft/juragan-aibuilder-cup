@@ -328,8 +328,11 @@ export default function GuideFlowsPanel({
                             />
                             <Paragraph type="secondary" className="!text-[11px] !mb-0">
                                 Nodes: <code>start</code>, <code>message</code>, <code>listen</code> (keyword /
-                                regex / default), <code>rag</code> (instruction with {"{{lastUserMessage}}"}),{" "}
-                                <code>end</code>.
+                                regex / default), <code>rag</code> (runs query understanding first; placeholders{" "}
+                                <code>{"{{lastUserMessage}}"}</code> prefers rewritten text, plus{" "}
+                                <code>{"{{originalUserMessage}}"}</code> / <code>{"{{rewrittenQuery}}"}</code>),{" "}
+                                <code>end</code>. Clarification loops back to the same <code>listen</code> when the
+                                model asks for more detail.
                             </Paragraph>
                             <TextArea
                                 value={editorJson}

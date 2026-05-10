@@ -1,15 +1,26 @@
 import type { GuideFlowDefinition, GuideFlowNode } from './guide-flow.definition';
+import type { QueryUnderstandingResult } from './query-understanding';
 
-export type FlowContext = Record<string, unknown> & { lastUserMessage?: string };
+export type FlowContext = Record<string, unknown> & {
+    lastUserMessage?: string;
+    /** Set after query-understanding; used for {{rewrittenQuery}} and preferred {{lastUserMessage}} substitution. */
+    rewrittenQuery?: string;
+    queryUnderstanding?: QueryUnderstandingResult;
+};
 
 export function getNode(def: GuideFlowDefinition, nodeId: string): GuideFlowNode | undefined {
     return def.nodes.find((n) => n.id === nodeId);
 }
 
 export function substituteInstruction(template: string, ctx: FlowContext): string {
+    const original = typeof ctx.lastUserMessage === 'string' ? ctx.lastUserMessage : '';
+    const rewritten =
+        typeof ctx.rewrittenQuery === 'string' && ctx.rewrittenQuery.length > 0 ? ctx.rewrittenQuery : original;
+    const forLastUserPlaceholder = rewritten;
     let out = template;
-    const last = typeof ctx.lastUserMessage === 'string' ? ctx.lastUserMessage : '';
-    out = out.replace(/\{\{lastUserMessage\}\}/g, last);
+    out = out.replace(/\{\{originalUserMessage\}\}/g, original);
+    out = out.replace(/\{\{rewrittenQuery\}\}/g, typeof ctx.rewrittenQuery === 'string' ? ctx.rewrittenQuery : '');
+    out = out.replace(/\{\{lastUserMessage\}\}/g, forLastUserPlaceholder);
     return out;
 }
 

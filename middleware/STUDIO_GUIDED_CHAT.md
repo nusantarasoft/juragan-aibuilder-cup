@@ -10,6 +10,12 @@
 - Executes a **versioned guide flow** stored in `studio_guide_flows.definition` (validated JSON: `start`, `message`, `listen`, `rag`, `end` nodes).
 - **Deterministic branching** uses `listen` transitions (`keyword`, `regex`, `default`).
 - `rag` node type is kept for backward compatibility in flow definitions, but runtime execution now uses internal LLM chat (no external RAGFlow dependency).
+- **Query understanding & rewriting**: before each `rag` step, the middleware runs a structured JSON pass (Vertex) to normalize language, infer `main_intent`, and produce `rewritten_query`. Results are stored on `guide_flow_context` as `queryUnderstanding` (full object) and `rewrittenQuery` (string) for downstream steps such as intent routing.
+- **RAG instruction placeholders** (see `substituteInstruction` in `guide-flow.interpreter.ts`):
+  - `{{lastUserMessage}}` — after query understanding, resolves to **`rewritten_query`** when available (so existing flows keep using one placeholder for the text sent into the answer step); otherwise the raw last user line.
+  - `{{originalUserMessage}}` — always the raw user line from the turn.
+  - `{{rewrittenQuery}}` — explicit rewritten string (empty if none).
+- **Clarification**: if `needs_clarification` is true and the flow reached `rag` from a `listen` node, the assistant sends `clarification_question`, the conversation waits again on that **same** `listen` node (no answer call), and `studio_guide_flow_events` records `query_clarification`. If clarification is needed but there was no preceding `listen` in the same drain (unusual graph), the server logs a warning and continues to the answer step.
 - State is persisted on `studio_conversations`: `guide_flow_id`, `guide_flow_node_id`, `guide_flow_context`.
 - **Telemetry**: transitions are logged to `studio_guide_flow_events` for analytics.
 

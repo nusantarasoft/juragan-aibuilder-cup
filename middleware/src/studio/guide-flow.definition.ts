@@ -66,7 +66,8 @@ export function defaultGuideFlowDefinition(): GuideFlowDefinition {
                 type: 'rag',
                 instruction:
                     'Jawab pertanyaan pelanggan hanya berdasarkan dokumen sumber. ' +
-                    'Jika tidak ada di sumber, katakan jujur. Pertanyaan pelanggan:\n{{lastUserMessage}}',
+                    'Jika tidak ada di sumber, katakan jujur. ' +
+                    'Pertanyaan (sudah dinormalisasi/ditulis ulang bila tersedia):\n{{lastUserMessage}}',
                 next: 'after_rag',
             },
             {

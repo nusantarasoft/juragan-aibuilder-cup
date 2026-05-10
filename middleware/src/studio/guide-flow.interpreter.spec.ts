@@ -18,6 +18,18 @@ describe('guide-flow.interpreter', () => {
         const ctx = { lastUserMessage: 'Hello?' };
         expect(substituteInstruction('Q: {{lastUserMessage}}', ctx)).toBe('Q: Hello?');
     });
+
+    it('prefers rewrittenQuery for {{lastUserMessage}} when set', () => {
+        const ctx = { lastUserMessage: 'gk mau', rewrittenQuery: 'Saya tidak mau' };
+        expect(substituteInstruction('Q: {{lastUserMessage}}', ctx)).toBe('Q: Saya tidak mau');
+    });
+
+    it('exposes original and rewritten placeholders', () => {
+        const ctx = { lastUserMessage: 'raw', rewrittenQuery: 'formal' };
+        expect(
+            substituteInstruction('O={{originalUserMessage}} R={{rewrittenQuery}} L={{lastUserMessage}}', ctx),
+        ).toBe('O=raw R=formal L=formal');
+    });
 });
 
 describe('guide-flow.xstate-factory', () => {

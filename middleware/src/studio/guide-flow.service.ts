@@ -212,10 +212,14 @@ export class GuideFlowService {
             this.logger.warn(`guidedChatTurn userId mismatch for conversation ${conversationId}`);
         }
 
+        const persisted =
+            typeof conversation.guide_flow_context === 'object' && conversation.guide_flow_context
+                ? ({ ...(conversation.guide_flow_context as object) } as Record<string, unknown>)
+                : {};
+        delete persisted.rewrittenQuery;
+        delete persisted.queryUnderstanding;
         const baseCtx: FlowContext = {
-            ...(typeof conversation.guide_flow_context === 'object' && conversation.guide_flow_context
-                ? (conversation.guide_flow_context as object)
-                : {}),
+            ...persisted,
             lastUserMessage: message,
         };
 
@@ -289,6 +293,8 @@ export class GuideFlowService {
         let nodeId = startNodeId;
         const ctx: FlowContext = { ...initialContext };
         let userJust = pendingUserText;
+        /** Set when a listen node consumes user text; used to return after query clarification. */
+        let lastResolvedListenNodeId: string | null = null;
         const replies: { content: string; references?: { content: string; docName: string; score: number }[] }[] = [];
 
         for (;;) {
@@ -310,6 +316,7 @@ export class GuideFlowService {
                     break;
                 case 'listen':
                     if (userJust != null) {
+                        lastResolvedListenNodeId = nodeId;
                         const next = resolveListenTarget(node, userJust);
                         await this.recordEvent(conversation.id, flowRowId, nodeId, next, 'listen', userJust);
                         nodeId = next;
@@ -324,6 +331,42 @@ export class GuideFlowService {
                         waitingForInput: true,
                     };
                 case 'rag': {
+                    const raw = typeof ctx.lastUserMessage === 'string' ? ctx.lastUserMessage : '';
+                    const qu = await this.studioService.understandUserQuery(raw);
+                    ctx.queryUnderstanding = qu;
+                    ctx.rewrittenQuery = qu.rewritten_query;
+
+                    if (qu.needs_clarification && lastResolvedListenNodeId) {
+                        const clarify = qu.clarification_question.trim() || 'Mohon jelaskan lebih spesifik.';
+                        await this.studioService.appendStudioMessage(conversation.id, 'assistant', clarify);
+                        replies.push({ content: clarify });
+                        await this.recordEvent(
+                            conversation.id,
+                            flowRowId,
+                            nodeId,
+                            lastResolvedListenNodeId,
+                            'query_clarification',
+                            raw,
+                            {
+                                main_intent: qu.main_intent,
+                                needs_clarification: true,
+                                confidence: qu.confidence,
+                            },
+                        );
+                        await this.persistFlowState(conversation.id, lastResolvedListenNodeId, ctx);
+                        return {
+                            replies,
+                            finalNodeId: lastResolvedListenNodeId,
+                            finalContext: ctx,
+                            waitingForInput: true,
+                        };
+                    }
+                    if (qu.needs_clarification && !lastResolvedListenNodeId) {
+                        this.logger.warn(
+                            `Query needs_clarification but no preceding listen node; continuing to answer for flow ${flowRowId}`,
+                        );
+                    }
+
                     const q = substituteInstruction(node.instruction, ctx);
                     const { answer, references, rawChunks } = await this.studioService.invokeRagQuery(
                         notebookId,
@@ -332,7 +375,11 @@ export class GuideFlowService {
                     );
                     await this.studioService.appendStudioMessage(conversation.id, 'assistant', answer, rawChunks);
                     replies.push({ content: answer, references });
-                    await this.recordEvent(conversation.id, flowRowId, nodeId, node.next, 'rag');
+                    await this.recordEvent(conversation.id, flowRowId, nodeId, node.next, 'rag', raw, {
+                        main_intent: qu.main_intent,
+                        needs_clarification: qu.needs_clarification,
+                        confidence: qu.confidence,
+                    });
                     nodeId = node.next;
                     break;
                 }

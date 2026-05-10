@@ -3,6 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import * as Minio from 'minio';
 import { SupabaseService } from '../supabase/supabase.service';
 import { VertexAiService } from '../ai/vertex-ai.service';
+import {
+    buildQueryUnderstandingPrompt,
+    normalizeQueryUnderstanding,
+    type QueryUnderstandingResult,
+} from './query-understanding';
 
 /**
  * Studio AI business logic — orchestrates notebooks, sources, and conversations.
@@ -236,6 +241,22 @@ export class StudioService {
             .from('studio_conversations')
             .update({ updated_at: new Date() })
             .eq('id', conversationId);
+    }
+
+    /**
+     * Query understanding & rewriting for guided RAG (and future intent routing).
+     * Never throws: returns a safe pass-through object on model/parse failure.
+     */
+    async understandUserQuery(raw: string): Promise<QueryUnderstandingResult> {
+        const trimmed = typeof raw === 'string' ? raw : '';
+        try {
+            const prompt = buildQueryUnderstandingPrompt(trimmed);
+            const parsed = await this.vertexAiService.generateStructuredJSON(prompt);
+            return normalizeQueryUnderstanding(parsed, trimmed);
+        } catch (e: any) {
+            this.logger.warn(`understandUserQuery failed: ${e?.message ?? e}`);
+            return normalizeQueryUnderstanding(null, trimmed);
+        }
     }
 
     /** Chat-only engine hook. Keeps shape for compatibility with guide-flow. */

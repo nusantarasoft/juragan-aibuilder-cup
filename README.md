@@ -269,6 +269,19 @@ docker compose down       # Stop all services
 docker compose down -v    # Destroy all (including data)
 ```
 
+## Local development (Admin & Middleware without Docker)
+
+Keep infrastructure (Postgres, Kong, MinIO, etc.) running in Docker. Stop only the **admin** and **middleware** containers so ports **4001** and **3003** stay free for host dev servers:
+
+```powershell
+.\scripts\dev-local.ps1
+```
+
+1. **Middleware:** copy [`middleware/.env.local.example`](middleware/.env.local.example) to `middleware/.env.local`, set **`SUPABASE_ANON_KEY`** and **`SUPABASE_SERVICE_KEY`** from root `.env` (`ANON_KEY` / `SERVICE_ROLE_KEY`), then `cd middleware` and `npm run start:dev`.
+2. **Admin:** copy [`admin/.env.local.example`](admin/.env.local.example) to `admin/.env.local`, copy `NEXT_PUBLIC_*` / `S3_*` values from the repo root `.env`, then `cd admin` and `npm run dev`.
+
+Nest loads `.env.local` after `.env` (see [`middleware/src/app.module.ts`](middleware/src/app.module.ts)). Next.js picks up `admin/.env.local` automatically.
+
 ## 🎯 Selective Startup (Recommended)
 
 Run only the stacks you need to save resources:
