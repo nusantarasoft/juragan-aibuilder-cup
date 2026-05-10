@@ -564,7 +564,6 @@ services:
       - LABELSTUDIO_API_TOKEN=${LABELSTUDIO_API_TOKEN}
       - LABELSTUDIO_PROJECT_ID=${LABELSTUDIO_PROJECT_ID}
       - LABELSTUDIO_WEBHOOK_SECRET=${LABELSTUDIO_WEBHOOK_SECRET:-}
-      # RAGFlow Config (runs on REMOTE device)
     networks:
       - management-network
     depends_on:
@@ -619,10 +618,7 @@ services:
       retries: 5
       start_period: 60s
 
-  # OpenClaw runs on REMOTE device (docker-compose.remote.yml)
-
-  # RAGFlow stack + OpenClaw run on REMOTE device
-  # See docker-compose.remote.yml
+  # OpenClaw runs on REMOTE device (docker-compose.remote.yml); see remote compose for extra stack.
 
   landing-page:
     build:

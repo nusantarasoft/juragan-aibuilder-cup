@@ -565,8 +565,7 @@ services:
       - LABELSTUDIO_API_TOKEN=${LABELSTUDIO_API_TOKEN}
       - LABELSTUDIO_PROJECT_ID=${LABELSTUDIO_PROJECT_ID}
       - LABELSTUDIO_WEBHOOK_SECRET=${LABELSTUDIO_WEBHOOK_SECRET:-}
-      # RAGFlow Config
-      # Notification Dispatcher
+      # Notification dispatcher (OpenClaw) + SMTP
       - OPENCLAW_GATEWAY_URL=http://openclaw:18789
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
       - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}

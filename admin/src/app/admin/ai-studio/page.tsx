@@ -464,7 +464,7 @@ export default function AIStudioPage() {
                         <div className="text-center">
                             <Text strong className="block text-sm mb-1">Ask about your sources</Text>
                             <Text className="text-xs text-gray-400 block max-w-[250px]">
-                                Chat with your notebook's knowledge base. AI will reference the parsed documents to answer your questions.
+                                Chat uses the internal model (Vertex). Sources are attached for context in future phases; for now the assistant answers without document retrieval.
                             </Text>
                         </div>
                     </div>

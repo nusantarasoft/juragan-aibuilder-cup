@@ -2,7 +2,7 @@
 -- Studio AI: Notebook Knowledge Base Schema
 -- =====================================================
 
--- 1. Notebooks (maps to a RAGFlow dataset)
+-- 1. Notebooks (knowledge workspace; chat-only engine, no external RAG dataset)
 CREATE TABLE IF NOT EXISTS studio_notebooks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS studio_messages (
     conversation_id UUID NOT NULL REFERENCES studio_conversations(id) ON DELETE CASCADE,
     role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
     content TEXT NOT NULL,
-    source_refs JSONB DEFAULT '[]'::jsonb,   -- RAGFlow citation chunks
+    source_refs JSONB DEFAULT '[]'::jsonb,   -- optional citation refs (legacy shape; chat-only may leave empty)
     tokens_used INT DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
