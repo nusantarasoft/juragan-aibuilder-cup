@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as Minio from 'minio';
 import { SupabaseService } from '../supabase/supabase.service';
+import { ClaudeAiService } from '../ai/claude-ai.service';
 import { VertexAiService } from '../ai/vertex-ai.service';
 import {
     buildQueryUnderstandingPrompt,
@@ -23,6 +24,7 @@ export class StudioService {
         private configService: ConfigService,
         private supabaseService: SupabaseService,
         private vertexAiService: VertexAiService,
+        private claudeAiService: ClaudeAiService,
     ) {
         // MinIO client for file storage
         const endpointUrl = this.configService.get('S3_ENDPOINT') || 'http://minio:9000';
@@ -46,6 +48,24 @@ export class StudioService {
 
         this.bucket = this.configService.get('S3_BUCKET') || 'cms-media';
         this.logger.log('StudioService initialized');
+    }
+
+    /** AI Studio LLM: Vertex (default) or Anthropic Claude via STUDIO_AI_PROVIDER. */
+    private useAnthropicStudio(): boolean {
+        const v = (this.configService.get<string>('STUDIO_AI_PROVIDER') || 'vertex').toLowerCase();
+        return v === 'anthropic' || v === 'claude';
+    }
+
+    private studioGenerateText(prompt: string): Promise<string> {
+        return this.useAnthropicStudio()
+            ? this.claudeAiService.generateText(prompt)
+            : this.vertexAiService.generateText(prompt);
+    }
+
+    private studioGenerateStructuredJSON(prompt: string): Promise<any> {
+        return this.useAnthropicStudio()
+            ? this.claudeAiService.generateStructuredJSON(prompt)
+            : this.vertexAiService.generateStructuredJSON(prompt);
     }
 
     // ── Notebooks ────────────────────────────────────────────────────
@@ -251,7 +271,7 @@ export class StudioService {
         const trimmed = typeof raw === 'string' ? raw : '';
         try {
             const prompt = buildQueryUnderstandingPrompt(trimmed);
-            const parsed = await this.vertexAiService.generateStructuredJSON(prompt);
+            const parsed = await this.studioGenerateStructuredJSON(prompt);
             return normalizeQueryUnderstanding(parsed, trimmed);
         } catch (e: any) {
             this.logger.warn(`understandUserQuery failed: ${e?.message ?? e}`);
@@ -375,7 +395,7 @@ Include:
 - Conclusion
 
 Use markdown formatting. If uncertain, clearly state assumptions.`;
-        return this.vertexAiService.generateText(reportPrompt);
+        return this.studioGenerateText(reportPrompt);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────
@@ -421,7 +441,7 @@ Use markdown formatting. If uncertain, clearly state assumptions.`;
             'Answer in markdown.',
         ].join('\n');
 
-        const answer = await this.vertexAiService.generateText(prompt);
+        const answer = await this.studioGenerateText(prompt);
         return answer || 'Sorry, I could not generate a response.';
     }
 }
