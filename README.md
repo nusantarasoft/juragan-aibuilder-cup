@@ -282,6 +282,34 @@ Keep infrastructure (Postgres, Kong, MinIO, etc.) running in Docker. Stop only t
 
 Nest loads `.env.local` after `.env` (see [`middleware/src/app.module.ts`](middleware/src/app.module.ts)). Next.js picks up `admin/.env.local` automatically.
 
+### Minimal Docker stack (host dev: admin + middleware)
+
+With **admin** and **middleware** running via `npm` on the host, you still need backends from [`docker-compose.yml`](docker-compose.yml):
+
+| Service | Role |
+|---------|------|
+| **postgres** | Database |
+| **analytics** | Logflare — **Kong** waits on it (`depends_on`) |
+| **kong** | Supabase gateway on host port `${KONG_HTTP_PORT:-8000}` (REST, Auth, …) |
+| **auth** | GoTrue — `/auth/v1/*` via Kong |
+| **rest** | PostgREST — `/rest/v1/*` (middleware `SupabaseService` / studio tables) |
+| **minio** + **minio-createbucket** | S3-compatible storage for uploads / Studio (`minio` uses `restart: unless-stopped` so it comes back after Docker restarts) |
+
+Optional flags on the helper script if the UI needs them:
+
+- **`-WithRealtime`** — WebSocket `/realtime/v1/*` (Supabase Realtime).
+- **`-WithStorage`** — `/storage/v1/*` (Supabase Storage + **imgproxy**).
+
+**pg-meta** (`meta` service) is mainly for Supabase Studio `/pg/*`; add `meta` manually if something in your workflow calls it.
+
+From repo root:
+
+```powershell
+.\scripts\docker-dev-stack.ps1
+```
+
+Then stop app containers if they steal ports: `docker compose stop admin middleware`.
+
 ## 🎯 Selective Startup (Recommended)
 
 Run only the stacks you need to save resources:

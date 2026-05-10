@@ -84,23 +84,27 @@ export class MediaService implements OnModuleInit {
         @Inject(forwardRef(() => RagService))
         private readonly ragService: RagService,
     ) {
-        const endPoint = this.configService.get('S3_ENDPOINT') || 'minio';
-        const port = parseInt(this.configService.get('S3_PORT'), 10) || 9000;
-        const useSSL = this.configService.get('S3_USE_SSL') === 'true';
+        const endPointRaw = this.configService.get('S3_ENDPOINT') || 'minio';
+        let useSSL = this.configService.get('S3_USE_SSL') === 'true';
 
-        // Fix for "minio" hostname resolution if needed
-        // If running in same network, 'minio' should resolve.
+        let endpointUrl = endPointRaw;
+        let port = parseInt(String(this.configService.get('S3_PORT') || ''), 10);
+        if (Number.isNaN(port) || port <= 0) {
+            port = 9000;
+        }
 
-        let endpointUrl = endPoint;
-        // Clean up protocol if present
-        if (endpointUrl.includes('://')) {
+        // Match StudioService: if S3_ENDPOINT is a full URL, take hostname + port from it
+        if (endPointRaw.includes('://')) {
             try {
-                const url = new URL(endPoint);
+                const url = new URL(endPointRaw);
                 endpointUrl = url.hostname;
-                this.logger.log(`Parsed S3 Endpoint: ${endpointUrl}`);
+                if (url.port) {
+                    port = parseInt(url.port, 10);
+                }
+                useSSL = url.protocol === 'https:';
+                this.logger.log(`Parsed S3 Endpoint: ${endpointUrl}:${port}`);
             } catch (e) {
-                // If parsing fails, use defaults
-                this.logger.warn(`Failed to parse S3_ENDPOINT: ${endpointUrl}, using defaults`);
+                this.logger.warn(`Failed to parse S3_ENDPOINT: ${endPointRaw}, using defaults`);
             }
         }
 

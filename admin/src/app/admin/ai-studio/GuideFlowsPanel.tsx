@@ -9,6 +9,7 @@ import {
     List,
     Space,
     Spin,
+    Tabs,
     Tag,
     Typography,
     message,
@@ -27,6 +28,10 @@ import {
     type StudioGuideFlow,
     type GuidedTurnResponse,
 } from "@/lib/studioService";
+import GuideFlowFormEditor, {
+    type GuideFlowDefinition,
+    parseGuideFlowDefinition,
+} from "./GuideFlowFormEditor";
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -55,6 +60,8 @@ export default function GuideFlowsPanel({
     const [loading, setLoading] = useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [editorJson, setEditorJson] = useState("");
+    const [editorTab, setEditorTab] = useState<"form" | "json">("form");
+    const [formDef, setFormDef] = useState<GuideFlowDefinition | null>(null);
     const [flowName, setFlowName] = useState("");
     const [saving, setSaving] = useState(false);
     const [simConvId, setSimConvId] = useState<string | undefined>();
@@ -91,10 +98,21 @@ export default function GuideFlowsPanel({
     useEffect(() => {
         if (selected) {
             setFlowName(selected.name);
-            setEditorJson(JSON.stringify(selected.definition, null, 2));
+            const raw = selected.definition;
+            const parsed = parseGuideFlowDefinition(raw);
+            const json = JSON.stringify(raw, null, 2);
+            setEditorJson(json);
+            if (parsed.ok) {
+                setFormDef(JSON.parse(JSON.stringify(parsed.data)) as GuideFlowDefinition);
+            } else {
+                setFormDef(null);
+            }
+            setEditorTab("form");
         } else {
             setFlowName("");
             setEditorJson("");
+            setFormDef(null);
+            setEditorTab("form");
         }
     }, [selected]);
 
@@ -135,20 +153,45 @@ export default function GuideFlowsPanel({
         }
     };
 
+    const handleFormDefinitionChange = useCallback((next: GuideFlowDefinition) => {
+        setFormDef(next);
+        setEditorJson(JSON.stringify(next, null, 2));
+    }, []);
+
     const handleSave = async () => {
         if (!selected) return;
-        let parsed: Record<string, unknown>;
-        try {
-            parsed = JSON.parse(editorJson) as Record<string, unknown>;
-        } catch {
-            message.error("Definition must be valid JSON");
-            return;
+        let definition: GuideFlowDefinition;
+        if (editorTab === "form") {
+            if (!formDef) {
+                message.error("Form editor could not load this definition. Fix JSON or switch to JSON tab.");
+                return;
+            }
+            const v = parseGuideFlowDefinition(formDef);
+            if (!v.ok) {
+                message.error(v.error);
+                return;
+            }
+            definition = v.data;
+        } else {
+            let raw: unknown;
+            try {
+                raw = JSON.parse(editorJson) as unknown;
+            } catch {
+                message.error("Definition must be valid JSON");
+                return;
+            }
+            const v = parseGuideFlowDefinition(raw);
+            if (!v.ok) {
+                message.error(v.error);
+                return;
+            }
+            definition = v.data;
         }
         setSaving(true);
         try {
             await studioService.updateGuideFlow(selected.id, {
                 name: flowName.trim() || selected.name,
-                definition: parsed,
+                definition: definition as unknown as Record<string, unknown>,
             });
             message.success("Saved");
             await loadFlows();
@@ -318,7 +361,7 @@ export default function GuideFlowsPanel({
                     }
                 >
                     {!selected ? (
-                        <Text type="secondary">Select a flow to edit JSON definition.</Text>
+                        <Text type="secondary">Select a flow to edit the definition.</Text>
                     ) : (
                         <div className="flex flex-col gap-2 flex-1 min-h-0">
                             <Input
@@ -328,17 +371,63 @@ export default function GuideFlowsPanel({
                             />
                             <Paragraph type="secondary" className="!text-[11px] !mb-0">
                                 Nodes: <code>start</code>, <code>message</code>, <code>listen</code> (keyword /
-                                regex / default), <code>rag</code> (runs query understanding first; placeholders{" "}
-                                <code>{"{{lastUserMessage}}"}</code> prefers rewritten text, plus{" "}
-                                <code>{"{{originalUserMessage}}"}</code> / <code>{"{{rewrittenQuery}}"}</code>),{" "}
-                                <code>end</code>. Clarification loops back to the same <code>listen</code> when the
-                                model asks for more detail.
+                                regex / default), <code>rag</code> (query understanding + placeholders{" "}
+                                <code>{"{{lastUserMessage}}"}</code>, <code>{"{{originalUserMessage}}"}</code>,{" "}
+                                <code>{"{{rewrittenQuery}}"}</code>), <code>end</code>. Use the form for everyday
+                                edits; switch to JSON for bulk copy-paste.
                             </Paragraph>
-                            <TextArea
-                                value={editorJson}
-                                onChange={(e) => setEditorJson(e.target.value)}
-                                className="font-mono text-[11px] flex-1"
-                                style={{ minHeight: 220 }}
+                            <Tabs
+                                size="small"
+                                activeKey={editorTab}
+                                onChange={(k) => {
+                                    const key = k as "form" | "json";
+                                    if (key === "form") {
+                                        let raw: unknown;
+                                        try {
+                                            raw = JSON.parse(editorJson) as unknown;
+                                        } catch {
+                                            message.error("Invalid JSON — fix the JSON tab before switching to Form.");
+                                            return;
+                                        }
+                                        const v = parseGuideFlowDefinition(raw);
+                                        if (!v.ok) {
+                                            message.error(v.error);
+                                            return;
+                                        }
+                                        setFormDef(JSON.parse(JSON.stringify(v.data)) as GuideFlowDefinition);
+                                    } else {
+                                        if (formDef) {
+                                            setEditorJson(JSON.stringify(formDef, null, 2));
+                                        }
+                                    }
+                                    setEditorTab(key);
+                                }}
+                                items={[
+                                    {
+                                        key: "form",
+                                        label: "Form",
+                                        children: formDef ? (
+                                            <GuideFlowFormEditor value={formDef} onChange={handleFormDefinitionChange} />
+                                        ) : (
+                                            <Text type="secondary" className="text-xs">
+                                                This definition does not match the expected shape. Use the JSON tab to
+                                                fix it, then return here.
+                                            </Text>
+                                        ),
+                                    },
+                                    {
+                                        key: "json",
+                                        label: "JSON (advanced)",
+                                        children: (
+                                            <TextArea
+                                                value={editorJson}
+                                                onChange={(e) => setEditorJson(e.target.value)}
+                                                className="font-mono text-[11px] flex-1"
+                                                style={{ minHeight: 280 }}
+                                            />
+                                        ),
+                                    },
+                                ]}
                             />
                         </div>
                     )}

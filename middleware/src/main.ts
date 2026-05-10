@@ -20,8 +20,9 @@ async function bootstrap() {
         credentials: true,
     });
 
-    // Enable file upload handling for GraphQL
-    app.use(graphqlUploadExpress({ maxFileSize: 50000000, maxFiles: 10 }));
+    // GraphQL multipart only — must NOT be global or plain multipart (e.g. POST /studio/upload) breaks with
+    // "Disordered multipart fields" (graphql-multipart-request-spec).
+    app.use('/graphql', graphqlUploadExpress({ maxFileSize: 50000000, maxFiles: 10 }));
 
     const port = process.env.PORT || 4001;
     await app.listen(port, '0.0.0.0');
