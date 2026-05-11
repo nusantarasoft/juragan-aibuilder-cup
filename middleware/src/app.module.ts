@@ -28,6 +28,7 @@ import { AccountingModule } from './accounting/accounting.module';
 import { HrModule } from './hr/hr.module';
 import { OpsModule } from './ops/ops.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { NewsModule } from './news/news.module';
 
 @Module({
     imports: [
@@ -73,6 +74,7 @@ import { NotificationsModule } from './notifications/notifications.module';
         HrModule,
         OpsModule,
         NotificationsModule,
+        NewsModule,
     ],
 })
 export class AppModule { }

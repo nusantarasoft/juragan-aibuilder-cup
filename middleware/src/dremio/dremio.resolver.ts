@@ -201,4 +201,49 @@ export class DremioResolver {
         const csv = this.dremioService.resultsToCsv(result);
         return { csv };
     }
+
+    @Mutation(() => DremioCatalogDetail, { name: 'dremioUpdateVDS' })
+    async updateVDS(
+        @Args('id') id: string,
+        @Args('tag') tag: string,
+        @Args('sql') sql: string,
+        @Args('sqlContext', { type: () => [String], nullable: true }) sqlContext?: string[],
+    ): Promise<DremioCatalogDetail> {
+        return this.dremioService.updateVDS(id, tag, sql, sqlContext) as any;
+    }
+
+    @Mutation(() => DremioDeleteResult, { name: 'dremioDeleteVDS' })
+    async deleteVDS(
+        @Args('id') id: string,
+        @Args('tag') tag: string,
+    ): Promise<DremioDeleteResult> {
+        const success = await this.dremioService.deleteVDS(id, tag);
+        return { success };
+    }
+
+    @Mutation(() => DremioDeleteResult, { name: 'dremioDeleteSpace' })
+    async deleteSpace(
+        @Args('id') id: string,
+        @Args('tag') tag: string,
+    ): Promise<DremioDeleteResult> {
+        const success = await this.dremioService.deleteSpace(id, tag);
+        return { success };
+    }
+
+    @Mutation(() => DremioDeleteResult, { name: 'dremioCancelJob' })
+    async cancelJob(
+        @Args('jobId') jobId: string,
+    ): Promise<DremioDeleteResult> {
+        const success = await this.dremioService.cancelJob(jobId);
+        return { success };
+    }
+
+    @Query(() => DremioQueryResult, { name: 'dremioJobResults' })
+    async getJobResults(
+        @Args('jobId') jobId: string,
+        @Args('offset', { type: () => Int, defaultValue: 0 }) offset: number,
+        @Args('limit', { type: () => Int, defaultValue: 500 }) limit: number,
+    ): Promise<DremioQueryResult> {
+        return this.dremioService.getJobResults(jobId, offset, limit) as any;
+    }
 }

@@ -191,6 +191,26 @@ export const dremioService = {
         return data.dremioCreateVDS;
     },
 
+    async updateVDS(id: string, tag: string, sql: string, sqlContext?: string[]): Promise<CatalogDetail> {
+        const data = await graphqlRequest<{ dremioUpdateVDS: CatalogDetail }>(`
+            mutation($id: String!, $tag: String!, $sql: String!, $sqlContext: [String!]) {
+                dremioUpdateVDS(id: $id, tag: $tag, sql: $sql, sqlContext: $sqlContext) {
+                    id path type entityType tag sql
+                }
+            }
+        `, { id, tag, sql, sqlContext });
+        return data.dremioUpdateVDS;
+    },
+
+    async deleteVDS(id: string, tag: string): Promise<boolean> {
+        const data = await graphqlRequest<{ dremioDeleteVDS: { success: boolean } }>(`
+            mutation($id: String!, $tag: String!) {
+                dremioDeleteVDS(id: $id, tag: $tag) { success }
+            }
+        `, { id, tag });
+        return data.dremioDeleteVDS.success;
+    },
+
     async createSpace(name: string): Promise<CatalogItem> {
         const data = await graphqlRequest<{ dremioCreateSpace: CatalogItem }>(`
             mutation($name: String!) {
@@ -198,6 +218,39 @@ export const dremioService = {
             }
         `, { name });
         return data.dremioCreateSpace;
+    },
+
+    async deleteSpace(id: string, tag: string): Promise<boolean> {
+        const data = await graphqlRequest<{ dremioDeleteSpace: { success: boolean } }>(`
+            mutation($id: String!, $tag: String!) {
+                dremioDeleteSpace(id: $id, tag: $tag) { success }
+            }
+        `, { id, tag });
+        return data.dremioDeleteSpace.success;
+    },
+
+    // ═══════════════ JOB MANAGEMENT ═══════════════
+
+    async cancelJob(jobId: string): Promise<boolean> {
+        const data = await graphqlRequest<{ dremioCancelJob: { success: boolean } }>(`
+            mutation($jobId: String!) {
+                dremioCancelJob(jobId: $jobId) { success }
+            }
+        `, { jobId });
+        return data.dremioCancelJob.success;
+    },
+
+    async getJobResults(jobId: string, offset = 0, limit = 500): Promise<QueryResult> {
+        const data = await graphqlRequest<{ dremioJobResults: QueryResult }>(`
+            query($jobId: String!, $offset: Int, $limit: Int) {
+                dremioJobResults(jobId: $jobId, offset: $offset, limit: $limit) {
+                    jobId rowCount status
+                    columns { name type }
+                    rows
+                }
+            }
+        `, { jobId, offset, limit });
+        return data.dremioJobResults;
     },
 
     // ═══════════════ EXPORT ═══════════════

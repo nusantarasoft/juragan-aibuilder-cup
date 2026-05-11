@@ -1,6 +1,6 @@
 # Nusantarasoft Docker Infrastructure
 
-Complete enterprise infrastructure with 11 integrated stacks and 65+ services.
+Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.10.0**
 
 ---
 
@@ -175,7 +175,8 @@ sequenceDiagram
 |-------|----------|-------|---------|
 | **Data & Storage** | MinIO, PostgreSQL, pgAdmin | 9000, 9001, 5432 | Object storage, RDBMS |
 | **Supabase** | Kong, Auth, REST, Realtime, Storage, Studio | 8000, 4000 | Backend-as-a-Service |
-| **CMS & AI** | Admin, Middleware, Label Studio | 3003, 4001, 8080 | Content management + AI |
+| **CMS & AI** | Admin, Middleware, Label Studio, RAGFlow | 3003, 4001, 8080 | Content management + AI |
+| **Big Data** | Dremio, Nessie, MinIO (Lakehouse) | 9047 | Lakehouse analytics |
 | **Frontend** | Landing Page | 3000 | Public website |
 | **Infrastructure** | Traefik, NPM, Pi-hole, BIND9, Portainer | 80, 443, 8081 | Proxy, DNS, monitoring |
 | **Email** | Mailserver, Roundcube | 25, 465, 587, 993 | Email infrastructure |
@@ -221,14 +222,24 @@ sequenceDiagram
 nusantarasoft/
 ├── admin/                 # Next.js Admin CMS Dashboard
 │   └── src/
-│       ├── app/           # App Router pages
-│       ├── components/    # 496+ React components (PrimeReact)
+│       ├── app/admin/     # App Router pages (145+ routes)
+│       │   ├── dashboard/ # Main dashboard
+│       │   ├── news/      # News & Media Intelligence (8 pages)
+│       │   ├── datasets/  # Big Data / Dremio
+│       │   ├── crm/       # CRM Intelligence
+│       │   ├── accounting/# Accounting Suite
+│       │   ├── hr/        # HR Management
+│       │   └── ...        # +15 more module groups
+│       ├── components/    # 500+ React components
 │       ├── hooks/         # Custom React hooks
-│       └── lib/           # GraphQL client, utilities
+│       └── lib/           # GraphQL client, services, exportUtils
 ├── middleware/            # NestJS GraphQL API Server
 │   └── src/
 │       ├── auth/          # Authentication resolvers
 │       ├── media/         # Media management module
+│       ├── news/          # News Intelligence (crawler, sentiment)
+│       ├── dremio/        # Big Data integration
+│       ├── accounting/    # Accounting backend
 │       ├── rag/           # RAG/AI integration
 │       ├── pages/         # CMS pages module
 │       └── webhooks/      # Label Studio webhooks
@@ -238,6 +249,7 @@ nusantarasoft/
 │       └── components/    # UI components
 ├── volumes/               # Docker persistent data & configs
 │   ├── db/                # PostgreSQL init scripts
+│   │   └── news_intelligence.sql # News module migration (16 tables)
 │   ├── functions/         # Supabase Edge Functions
 │   ├── api/               # Kong configuration
 │   └── bind9/             # DNS zone files
@@ -629,3 +641,27 @@ See [`docs/email-deployment.md`](docs/email-deployment.md) for complete guide in
 
 MIT
 
+---
+
+## 📋 Changelog
+
+### v2.10.0 (2025-05-11)
+- **News & Media Intelligence** — 8-page module: Dashboard, Feed, Social Media, Web Crawler, Sentiment Analysis, Market Sounding, Content Publishing, Analytics & Reports
+- **16-table database migration** (`news_intelligence.sql`) covering articles, crawlers, social media, sentiment, market signals, content drafts, calendar
+- **Built-in Sentiment Engine** — keyword-based NLP scoring in NestJS middleware
+- **RSS/Web Crawler** — native crawler with scheduled auto-crawl every 6 hours
+- **Big Data enhancements** — Cancel job, Update/Delete VDS, Delete Space, SQL pagination
+- **Docker Health dashboard** — live container status, CPU/memory bars, cluster overview
+- **Enhanced Settings** — 7-tab config: General, SEO, Social, Email, Modules, Dremio, System Info
+- **Menu expansion** — News & Intelligence section (8 items) + Docker Health sub-item
+
+### v2.9.0 (2025-05-05)
+- Notifications module (7 pages: inbox, channels, templates, rules, delivery logs, preferences, analytics)
+- Glassmorphism standardization across all modules
+- Export framework (PDF/Excel) across 35+ data pages
+
+### v2.8.0
+- CRM Intelligence, Accounting Suite, HR Management
+- Ops Automation, Project Management, ITSM
+- AI Studio (RAGFlow integration)
+- Big Data / Dremio Lakehouse

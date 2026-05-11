@@ -80,6 +80,12 @@ import {
     LineChartOutlined,
     StarOutlined,
     FormOutlined,
+    FileSearchOutlined,
+    ExperimentOutlined,
+    FundProjectionScreenOutlined,
+    EditOutlined,
+    SmileOutlined,
+    AimOutlined,
 } from "@ant-design/icons";
 
 // CMS Menu Configuration
@@ -818,6 +824,61 @@ const menuConfig = {
                 ],
             },
             {
+                path: "/admin/news",
+                name: "News & Intelligence",
+                icon: <ReadOutlined />,
+                routes: [
+                    {
+                        path: "/admin/news/dashboard",
+                        name: "Dashboard",
+                        icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/news/feed",
+                        name: "News Feed",
+                        icon: <FileSearchOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/news/social",
+                        name: "Social Media",
+                        icon: <ShareAltOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/news/crawler",
+                        name: "Web Crawler",
+                        icon: <RobotOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/news/sentiment",
+                        name: "Sentiment Analysis",
+                        icon: <SmileOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/news/market",
+                        name: "Market Sounding",
+                        icon: <AimOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/news/publishing",
+                        name: "Content Publishing",
+                        icon: <EditOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/news/analytics",
+                        name: "Analytics & Reports",
+                        icon: <BarChartOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
                 path: "/admin/notifications",
                 name: "Notifications",
                 icon: <AlertOutlined />,
@@ -893,6 +954,12 @@ const menuConfig = {
                         path: "/admin/infrastructure/bind9",
                         name: "BIND9 DNS",
                         icon: <GlobalOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/docker",
+                        name: "Docker Health",
+                        icon: <DeploymentUnitOutlined />,
                         isLeaf: true,
                     },
                 ],
