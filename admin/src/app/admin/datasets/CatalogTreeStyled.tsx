@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Tree, Input, Button, Card, Space, ConfigProvider, theme, message, Tag } from 'antd';
-import type { TreeProps } from 'antd';
+import { Tree, Input, Button, Card, Space, ConfigProvider, theme, message, Tag, Dropdown, Modal } from 'antd';
+import type { TreeProps, MenuProps } from 'antd';
 import {
     FolderAddOutlined,
     TableOutlined,
@@ -14,7 +14,10 @@ import {
     CompressOutlined,
     CaretRightOutlined,
     CaretDownOutlined,
-    CloudServerOutlined
+    CloudServerOutlined,
+    DeleteOutlined,
+    EditOutlined,
+    MoreOutlined,
 } from '@ant-design/icons';
 import { dremioService, CatalogItem, DremioSource } from '@/lib/dremioService';
 import { getTypeIcon } from './utils';
@@ -25,12 +28,13 @@ interface CatalogTreeProps {
     onCreateSpace?: () => void;
     onCreateVDS?: () => void;
     onAddSource?: () => void;
+    onDeleteItem?: (id: string, type: string, tag: string) => void;
     refreshTrigger?: number;
     className?: string;
     style?: React.CSSProperties;
 }
 
-export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAddSource, refreshTrigger = 0, className, style }: CatalogTreeProps) {
+export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAddSource, onDeleteItem, refreshTrigger = 0, className, style }: CatalogTreeProps) {
     const [treeGroups, setTreeGroups] = useState<{
         spaces: any[];
         lakehouse: any[];
@@ -226,6 +230,38 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
                 </span>
             </div>
         );
+    };
+
+    const getContextMenu = (node: any): MenuProps['items'] => {
+        const item = node.data;
+        const type = item?.type || item?.containerType || '';
+        const items: MenuProps['items'] = [];
+        if (['DATASET', 'VIRTUAL_DATASET', 'DATASET_VIRTUAL'].includes(type)) {
+            items.push({ key: 'deleteVDS', icon: <DeleteOutlined />, label: 'Delete VDS', danger: true });
+        }
+        if (type === 'SPACE') {
+            items.push({ key: 'deleteSpace', icon: <DeleteOutlined />, label: 'Delete Space', danger: true });
+        }
+        if (type === 'SOURCE') {
+            items.push({ key: 'deleteSource', icon: <DeleteOutlined />, label: 'Delete Source', danger: true });
+        }
+        return items.length > 0 ? items : [{ key: 'none', label: 'No actions', disabled: true }];
+    };
+
+    const handleContextAction = (key: string, node: any) => {
+        const item = node.data;
+        const tag = item?.tag || '';
+        const name = item?.path?.[item.path.length - 1] || 'this item';
+        Modal.confirm({
+            title: `Delete "${name}"?`,
+            content: 'This action cannot be undone.',
+            okText: 'Delete',
+            okType: 'danger',
+            onOk: () => {
+                if (onDeleteItem) onDeleteItem(item.id, key, tag);
+                else message.info('Delete handler not connected');
+            },
+        });
     };
 
     const toggleSection = (key: string) => {

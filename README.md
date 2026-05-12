@@ -1,6 +1,6 @@
 # Nusantarasoft Docker Infrastructure
 
-Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.10.0**
+Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.11.0**
 
 ---
 
@@ -225,6 +225,7 @@ nusantarasoft/
 │       ├── app/admin/     # App Router pages (145+ routes)
 │       │   ├── dashboard/ # Main dashboard
 │       │   ├── news/      # News & Media Intelligence (8 pages)
+│       │   ├── audit/     # Audit & Compliance (3 pages)
 │       │   ├── datasets/  # Big Data / Dremio
 │       │   ├── crm/       # CRM Intelligence
 │       │   ├── accounting/# Accounting Suite
@@ -644,6 +645,15 @@ MIT
 ---
 
 ## 📋 Changelog
+
+### v2.11.0 (2025-05-12)
+- **Audit & Compliance** — NEW module with 3 pages: Dashboard (compliance scoring, security checklist), Audit Logs (searchable/filterable trail), Data Retention (GDPR tools)
+- **Payment Gateway** — E-Commerce payment provider config (Midtrans, Xendit, Stripe), transaction monitoring, revenue-by-method charts
+- **Tax Configuration** — Indonesian PPh21 brackets, BPJS rates, PTKP table, THR settings under HR
+- **Webhooks Manager** — Notification webhook CRUD, test ping, delivery log viewer, event subscriptions
+- **API Gateway Monitor** — Kong routes, services, plugins, health checks, latency/RPS metrics
+- **Dremio UI Wiring** — Context menu (delete VDS/space/source) on CatalogTree, SQL Runner cancel + pagination
+- **Menu expansion** — 7 new navigation entries: Audit (3), Payments, Tax Config, Webhooks, API Gateway
 
 ### v2.10.0 (2025-05-11)
 - **News & Media Intelligence** — 8-page module: Dashboard, Feed, Social Media, Web Crawler, Sentiment Analysis, Market Sounding, Content Publishing, Analytics & Reports

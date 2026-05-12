@@ -86,6 +86,11 @@ import {
     EditOutlined,
     SmileOutlined,
     AimOutlined,
+    CreditCardOutlined,
+    CalculatorOutlined,
+    FileSearchOutlined as FileProtectOutlined2,
+    LockOutlined,
+    ApiOutlined,
 } from "@ant-design/icons";
 
 // CMS Menu Configuration
@@ -571,6 +576,12 @@ const menuConfig = {
                         icon: <PercentageOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/ecommerce/payments",
+                        name: "Payment Gateway",
+                        icon: <CreditCardOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {
@@ -727,6 +738,12 @@ const menuConfig = {
                         path: "/admin/hr/analytics",
                         name: "Analytics",
                         icon: <LineChartOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/hr/tax-config",
+                        name: "Tax Configuration",
+                        icon: <CalculatorOutlined />,
                         isLeaf: true,
                     },
                 ],
@@ -914,6 +931,12 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
+                        path: "/admin/notifications/webhooks",
+                        name: "Webhooks",
+                        icon: <ApiOutlined />,
+                        isLeaf: true,
+                    },
+                    {
                         path: "/admin/notifications/preferences",
                         name: "Preferences",
                         icon: <SettingOutlined />,
@@ -960,6 +983,37 @@ const menuConfig = {
                         path: "/admin/infrastructure/docker",
                         name: "Docker Health",
                         icon: <DeploymentUnitOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/api-gateway",
+                        name: "API Gateway",
+                        icon: <ApiOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/audit",
+                name: "Audit & Compliance",
+                icon: <SafetyOutlined />,
+                routes: [
+                    {
+                        path: "/admin/audit/dashboard",
+                        name: "Dashboard",
+                        icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/audit/logs",
+                        name: "Audit Logs",
+                        icon: <AuditOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/audit/data-retention",
+                        name: "Data Retention",
+                        icon: <LockOutlined />,
                         isLeaf: true,
                     },
                 ],
