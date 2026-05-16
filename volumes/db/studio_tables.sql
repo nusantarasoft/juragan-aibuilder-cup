@@ -11,10 +11,17 @@ CREATE TABLE IF NOT EXISTS public.studio_notebooks (
     icon character varying(50) DEFAULT '📓',
     is_shared boolean DEFAULT false,
     source_count integer DEFAULT 0,
+    audience character varying(20) DEFAULT 'admin',
+    context_config jsonb DEFAULT '{}'::jsonb,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT studio_notebooks_pkey PRIMARY KEY (id)
+    CONSTRAINT studio_notebooks_pkey PRIMARY KEY (id),
+    CONSTRAINT studio_notebooks_audience_check CHECK (audience IN ('admin', 'customer'))
 );
+
+ALTER TABLE public.studio_notebooks
+    ADD COLUMN IF NOT EXISTS audience character varying(20) DEFAULT 'admin',
+    ADD COLUMN IF NOT EXISTS context_config jsonb DEFAULT '{}'::jsonb;
 CREATE INDEX IF NOT EXISTS idx_studio_notebooks_user ON public.studio_notebooks (user_id);
 
 -- Studio Notebook Sources
@@ -114,16 +121,35 @@ CREATE TABLE IF NOT EXISTS public.studio_guide_flow_events (
 );
 CREATE INDEX IF NOT EXISTS idx_studio_guide_flow_events_conversation ON public.studio_guide_flow_events (conversation_id);
 
+-- Studio source chunks (RAG)
+CREATE TABLE IF NOT EXISTS public.studio_source_chunks (
+    id uuid NOT NULL DEFAULT gen_random_uuid(),
+    notebook_id uuid NOT NULL,
+    source_id uuid NOT NULL,
+    chunk_index integer NOT NULL DEFAULT 0,
+    content text NOT NULL,
+    embedding vector(1408),
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT studio_source_chunks_pkey PRIMARY KEY (id),
+    CONSTRAINT studio_source_chunks_source_id_fkey FOREIGN KEY (source_id)
+        REFERENCES public.studio_notebook_sources(id) ON DELETE CASCADE,
+    CONSTRAINT studio_source_chunks_notebook_id_fkey FOREIGN KEY (notebook_id)
+        REFERENCES public.studio_notebooks(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_studio_source_chunks_notebook ON public.studio_source_chunks (notebook_id);
+CREATE INDEX IF NOT EXISTS idx_studio_source_chunks_source ON public.studio_source_chunks (source_id);
+
 -- Enable RLS
 ALTER TABLE public.studio_notebooks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.studio_notebook_sources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.studio_conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.studio_messages ENABLE ROW LEVEL SECURITY;
 
--- Policies (allow all for now — can be tightened per-user later)
+-- Policies: owner-based when authenticated; service_role bypasses RLS
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'studio_notebooks' AND policyname = 'studio_notebooks_owner') THEN
-        CREATE POLICY studio_notebooks_owner ON public.studio_notebooks USING (true);
+        CREATE POLICY studio_notebooks_owner ON public.studio_notebooks
+            USING (user_id IS NULL OR user_id = auth.uid());
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'studio_notebook_sources' AND policyname = 'studio_sources_owner') THEN
         CREATE POLICY studio_sources_owner ON public.studio_notebook_sources USING (true);
@@ -149,3 +175,53 @@ GRANT ALL ON public.studio_conversations TO anon, authenticated, service_role, a
 GRANT ALL ON public.studio_messages TO anon, authenticated, service_role, authenticator;
 GRANT ALL ON public.studio_guide_flows TO anon, authenticated, service_role, authenticator;
 GRANT ALL ON public.studio_guide_flow_events TO anon, authenticated, service_role, authenticator;
+GRANT ALL ON public.studio_source_chunks TO anon, authenticated, service_role, authenticator;
+
+ALTER TABLE public.studio_source_chunks ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'studio_source_chunks' AND policyname = 'studio_source_chunks_owner') THEN
+        CREATE POLICY studio_source_chunks_owner ON public.studio_source_chunks
+            USING (
+                notebook_id IN (
+                    SELECT id FROM public.studio_notebooks
+                    WHERE user_id IS NULL OR user_id = auth.uid()
+                )
+            );
+    END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.match_studio_chunks(
+    query_embedding vector(1408),
+    p_notebook_id uuid,
+    match_threshold float DEFAULT 0.45,
+    match_count int DEFAULT 8
+)
+RETURNS TABLE (
+    chunk_id uuid,
+    source_id uuid,
+    filename text,
+    content text,
+    similarity float
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        c.id AS chunk_id,
+        c.source_id,
+        s.filename,
+        c.content,
+        (1 - (c.embedding <=> query_embedding))::float AS similarity
+    FROM public.studio_source_chunks c
+    JOIN public.studio_notebook_sources s ON s.id = c.source_id
+    WHERE c.notebook_id = p_notebook_id
+      AND c.embedding IS NOT NULL
+      AND (1 - (c.embedding <=> query_embedding)) > match_threshold
+    ORDER BY c.embedding <=> query_embedding
+    LIMIT match_count;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.match_studio_chunks(vector(1408), uuid, float, int)
+    TO anon, authenticated, service_role, authenticator;

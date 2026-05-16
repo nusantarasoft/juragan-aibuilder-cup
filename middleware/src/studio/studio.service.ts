@@ -4,6 +4,9 @@ import * as Minio from 'minio';
 import { SupabaseService } from '../supabase/supabase.service';
 import { ClaudeAiService } from '../ai/claude-ai.service';
 import { VertexAiService } from '../ai/vertex-ai.service';
+import { StudioIngestionService } from './studio-ingestion.service';
+import { StudioContextService } from './studio-context.service';
+import { StudioDbContextService, type StudioContextConfig } from './studio-db-context.service';
 import {
     buildQueryUnderstandingPrompt,
     normalizeQueryUnderstanding,
@@ -25,6 +28,9 @@ export class StudioService {
         private supabaseService: SupabaseService,
         private vertexAiService: VertexAiService,
         private claudeAiService: ClaudeAiService,
+        private ingestionService: StudioIngestionService,
+        private contextService: StudioContextService,
+        private dbContextService: StudioDbContextService,
     ) {
         // MinIO client for file storage
         const endpointUrl = this.configService.get('S3_ENDPOINT') || 'http://minio:9000';
@@ -70,13 +76,21 @@ export class StudioService {
 
     // ── Notebooks ────────────────────────────────────────────────────
 
-    async createNotebook(name: string, description: string, userId: string): Promise<any> {
+    async createNotebook(
+        name: string,
+        description: string,
+        userId: string,
+        audience: 'admin' | 'customer' = 'admin',
+        contextConfig?: StudioContextConfig,
+    ): Promise<any> {
         const { data, error } = await this.supabaseService.getAdminClient()
             .from('studio_notebooks')
             .insert({
                 name,
                 description,
                 user_id: userId,
+                audience,
+                context_config: contextConfig ?? {},
             })
             .select()
             .single();
@@ -130,7 +144,7 @@ export class StudioService {
             'Content-Type': file.mimetype,
         });
 
-        // 2. Save source record (chat-only mode: mark ready immediately)
+        // 2. Save source record — indexing runs asynchronously
         const { data, error } = await this.supabaseService.getAdminClient()
             .from('studio_notebook_sources')
             .insert({
@@ -139,13 +153,16 @@ export class StudioService {
                 file_type: file.mimetype,
                 file_size: file.size,
                 s3_key: s3Key,
-                parse_status: 'done',
-                parse_progress: 1,
+                parse_status: 'pending',
+                parse_progress: 0,
+                chunk_count: 0,
             })
             .select()
             .single();
 
         if (error) throw error;
+
+        void this.ingestionService.ingestSource(data.id);
 
         // 5. Update source count
         await this.supabaseService.getAdminClient()
@@ -178,7 +195,7 @@ export class StudioService {
         const buffer = await this.getFileBuffer(fileKey, mediaBucket);
         if (!buffer) throw new Error('Failed to read media file from storage');
 
-        // 3. Save source linked to media (ready state in chat-only mode)
+        // 3. Save source linked to media — indexing runs asynchronously
         const { data, error } = await this.supabaseService.getAdminClient()
             .from('studio_notebook_sources')
             .insert({
@@ -188,13 +205,16 @@ export class StudioService {
                 file_type: mediaRecord.mime_type,
                 file_size: mediaRecord.size || 0,
                 s3_key: fileKey,
-                parse_status: 'done',
-                parse_progress: 1,
+                parse_status: 'pending',
+                parse_progress: 0,
+                chunk_count: 0,
             })
             .select()
             .single();
 
         if (error) throw error;
+
+        void this.ingestionService.ingestSource(data.id);
 
         // 6. Update count
         await this.supabaseService.getAdminClient()
@@ -284,6 +304,10 @@ export class StudioService {
         notebookId: string,
         conversationId: string,
         question: string,
+        options?: {
+            instruction?: string;
+            queryUnderstanding?: QueryUnderstandingResult;
+        },
     ): Promise<{ answer: string; references: { content: string; docName: string; score: number }[]; rawChunks: any[] }> {
         const notebook = await this.getNotebook(notebookId);
         const { data: conversation, error } = await this.supabaseService.getAdminClient()
@@ -292,12 +316,62 @@ export class StudioService {
             .eq('id', conversationId)
             .single();
         if (error || !conversation) throw new NotFoundException('Conversation not found');
-        const answer = await this.generateNotebookAnswer(notebook, conversationId, question);
+
+        const qu = options?.queryUnderstanding ?? (await this.understandUserQuery(question));
+        const searchQuery = qu.rewritten_query?.trim() || question;
+        const config = this.dbContextService.parseConfig(notebook.context_config);
+        const audience = (notebook.audience === 'customer' ? 'customer' : 'admin') as 'admin' | 'customer';
+
+        const retrieval = await this.contextService.retrieveContext(
+            notebookId,
+            searchQuery,
+            qu,
+            config,
+        );
+
+        const { data: messages } = await this.supabaseService.getAdminClient()
+            .from('studio_messages')
+            .select('role, content')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: true });
+
+        const conversationLines = (messages || [])
+            .slice(-8)
+            .map((m: any) => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.content}`);
+
+        const answer = await this.contextService.generateGroundedAnswer({
+            notebookName: notebook.name,
+            audience,
+            question: options?.instruction
+                ? `${options.instruction}\n\nPertanyaan: ${searchQuery}`
+                : searchQuery,
+            instruction: options?.instruction,
+            conversationLines,
+            retrieval,
+        });
+
         return {
             answer,
-            references: [],
-            rawChunks: [],
+            references: retrieval.references,
+            rawChunks: retrieval.rawChunks,
         };
+    }
+
+    async reindexNotebookSource(notebookId: string, sourceId: string): Promise<boolean> {
+        const { data } = await this.supabaseService.getAdminClient()
+            .from('studio_notebook_sources')
+            .select('id')
+            .eq('id', sourceId)
+            .eq('notebook_id', notebookId)
+            .single();
+        if (!data) throw new NotFoundException('Source not found');
+        void this.ingestionService.ingestSource(sourceId);
+        return true;
+    }
+
+    async reindexNotebook(notebookId: string): Promise<boolean> {
+        void this.ingestionService.reindexNotebook(notebookId);
+        return true;
     }
 
     async chat(notebookId: string, question: string, conversationId?: string, userId?: string): Promise<any> {
@@ -384,17 +458,28 @@ export class StudioService {
 
     async generateReport(notebookId: string, query: string): Promise<string> {
         const notebook = await this.getNotebook(notebookId);
-        const reportPrompt = `You are an executive analyst helping with notebook "${notebook.name}".
-Create a comprehensive executive report about: "${query}".
+        const qu = await this.understandUserQuery(query);
+        const config = this.dbContextService.parseConfig(notebook.context_config);
+        const retrieval = await this.contextService.retrieveContext(
+            notebookId,
+            qu.rewritten_query || query,
+            qu,
+            config,
+        );
 
-Include:
-- Executive Summary
-- Key Findings
-- Detailed Analysis
-- Recommendations
-- Conclusion
+        const reportPrompt = [
+            `You are an executive analyst for notebook "${notebook.name}".`,
+            'Create a comprehensive executive report using ONLY the evidence below.',
+            '',
+            retrieval.fileContext ? `## Document evidence\n${retrieval.fileContext}` : '(No indexed documents)',
+            retrieval.dbContext ? `## Database evidence\n${retrieval.dbContext}` : '',
+            '',
+            `## Report topic\n${query}`,
+            '',
+            'Structure: Executive Summary, Key Findings, Detailed Analysis, Recommendations, Conclusion.',
+            'Use markdown. Cite source filenames where applicable. State assumptions if evidence is thin.',
+        ].join('\n');
 
-Use markdown formatting. If uncertain, clearly state assumptions.`;
         return this.studioGenerateText(reportPrompt);
     }
 
@@ -417,31 +502,9 @@ Use markdown formatting. If uncertain, clearly state assumptions.`;
         });
     }
 
+    /** @deprecated Use invokeRagQuery — kept for any legacy callers */
     private async generateNotebookAnswer(notebook: any, conversationId: string, question: string): Promise<string> {
-        const { data: messages } = await this.supabaseService.getAdminClient()
-            .from('studio_messages')
-            .select('role, content')
-            .eq('conversation_id', conversationId)
-            .order('created_at', { ascending: true });
-
-        const contextLines = (messages || [])
-            .slice(-8)
-            .map((m: any) => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.content}`);
-
-        const prompt = [
-            `You are AI Studio assistant for notebook "${notebook.name}".`,
-            'Mode: chat-only (no retrieval).',
-            'Be concise, helpful, and honest when information is unknown.',
-            '',
-            'Recent conversation:',
-            contextLines.length > 0 ? contextLines.join('\n') : '(none)',
-            '',
-            `User question: ${question}`,
-            '',
-            'Answer in markdown.',
-        ].join('\n');
-
-        const answer = await this.studioGenerateText(prompt);
-        return answer || 'Sorry, I could not generate a response.';
+        const result = await this.invokeRagQuery(notebook.id, conversationId, question);
+        return result.answer;
     }
 }

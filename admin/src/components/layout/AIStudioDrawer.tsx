@@ -15,17 +15,17 @@ import {
 } from "@ant-design/icons";
 import ReactMarkdown from 'react-markdown';
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { AnimatePresence, motion } from "framer-motion";
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
-const CURRENT_USER_ID = "00000000-0000-0000-0000-000000000001";
-
 interface AIStudioDrawerProps { visible: boolean; onClose: () => void; }
 
 export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps) {
     const { themeColor } = usePreferencesStore();
+    const userId = useAuthStore((s) => s.user?.id);
     const [isDark, setIsDark] = useState(false);
 
     useEffect(() => {
@@ -82,7 +82,8 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
 
     const loadNotebooks = async () => {
         setLoadingNotebooks(true);
-        try { setNotebooks(await studioService.getNotebooks(CURRENT_USER_ID)); } catch { }
+        if (!userId) return;
+        try { setNotebooks(await studioService.getNotebooks(userId)); } catch { }
         finally { setLoadingNotebooks(false); }
     };
 
@@ -96,7 +97,7 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
         try {
             const list = await studioService.getSourceStatus(notebookId);
             setSources(list);
-            if (list.some((s: StudioSource) => s.parse_status === 'parsing')) startPolling(notebookId);
+            if (list.some((s: StudioSource) => s.parse_status === 'parsing' || s.parse_status === 'pending')) startPolling(notebookId);
         } catch { } finally { setLoadingSources(false); }
     };
 
@@ -115,7 +116,8 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
         if (!newNotebookName.trim()) return;
         setCreatingNotebook(true);
         try {
-            const nb = await studioService.createNotebook(newNotebookName, "", CURRENT_USER_ID);
+            if (!userId) return;
+            const nb = await studioService.createNotebook(newNotebookName, "", userId);
             message.success(`Notebook "${newNotebookName}" created`);
             setNewNotebookName(""); setShowCreateModal(false);
             await loadNotebooks(); selectNotebook(nb);
@@ -140,7 +142,7 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
     const handleAddMedia = async (mediaId: string) => {
         if (!activeNotebook) return;
         setAddingMedia(prev => new Set(prev).add(mediaId));
-        try { await studioService.addMediaToNotebook(activeNotebook.id, mediaId); message.success("Source added"); loadSourceStatus(activeNotebook.id); }
+        try { await studioService.addMediaToNotebook(activeNotebook.id, mediaId); message.success("Source added"); loadSourceStatus(activeNotebook.id); startPolling(activeNotebook.id); }
         catch (e: any) { message.error(e.message || "Failed"); }
         finally { setAddingMedia(prev => { const s = new Set(prev); s.delete(mediaId); return s; }); }
     };
@@ -148,7 +150,7 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
     const handleUploadFile: UploadProps['customRequest'] = async (options) => {
         if (!activeNotebook) return;
         const { file, onSuccess, onError } = options as any;
-        try { await studioService.uploadFileToNotebook(activeNotebook.id, file); onSuccess?.({}, file); message.success(`"${(file as File).name}" uploaded`); loadSourceStatus(activeNotebook.id); }
+        try { await studioService.uploadFileToNotebook(activeNotebook.id, file); onSuccess?.({}, file); message.success(`"${(file as File).name}" uploaded`); loadSourceStatus(activeNotebook.id); startPolling(activeNotebook.id); }
         catch (e: any) { onError?.(e); message.error(e.message || "Upload failed"); }
     };
 
@@ -160,11 +162,12 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
 
     const handleChatSend = async () => {
         if (!chatInput.trim() || !activeNotebook) return;
-        if (sources.filter(s => s.parse_status === 'done').length === 0) { message.warning("No parsed sources yet."); return; }
+        const indexed = sources.some(s => s.parse_status === 'done' && (s.chunk_count ?? 0) > 0);
+        if (!indexed) { message.warning("Sources not indexed yet."); return; }
         const userMsg = { role: 'user' as const, content: chatInput, timestamp: Date.now() };
         setChatHistory(prev => [...prev, userMsg]); setChatInput(""); setIsChatting(true);
         try {
-            const result: ChatResponse = await studioService.chat(activeNotebook.id, userMsg.content, conversationId, CURRENT_USER_ID);
+            const result: ChatResponse = await studioService.chat(activeNotebook.id, userMsg.content, conversationId, userId);
             setConversationId(result.conversationId);
             setChatHistory(prev => [...prev, { role: 'assistant', content: result.answer, references: result.references, timestamp: Date.now() }]);
         } catch (e: any) { message.error(e.message || "Chat failed"); }

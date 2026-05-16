@@ -9,6 +9,8 @@ import {
     type GuideFlowDefinition,
 } from './guide-flow.definition';
 import { getNode, resolveListenTarget, substituteInstruction, type FlowContext } from './guide-flow.interpreter';
+import { DremioService } from '../dremio/dremio.service';
+import { StudioDbContextService } from './studio-db-context.service';
 
 @Injectable()
 export class GuideFlowService {
@@ -17,6 +19,8 @@ export class GuideFlowService {
     constructor(
         private readonly supabaseService: SupabaseService,
         private readonly studioService: StudioService,
+        private readonly dremioService: DremioService,
+        private readonly dbContextService: StudioDbContextService,
     ) { }
 
     private admin() {
@@ -371,7 +375,11 @@ export class GuideFlowService {
                     const { answer, references, rawChunks } = await this.studioService.invokeRagQuery(
                         notebookId,
                         conversation.id,
-                        q,
+                        typeof ctx.lastUserMessage === 'string' ? ctx.lastUserMessage : q,
+                        {
+                            instruction: node.instruction,
+                            queryUnderstanding: qu,
+                        },
                     );
                     await this.studioService.appendStudioMessage(conversation.id, 'assistant', answer, rawChunks);
                     replies.push({ content: answer, references });
@@ -380,6 +388,28 @@ export class GuideFlowService {
                         needs_clarification: qu.needs_clarification,
                         confidence: qu.confidence,
                     });
+                    nodeId = node.next;
+                    break;
+                }
+                case 'sql': {
+                    const sql = substituteInstruction(node.sql, ctx);
+                    if (!/^\s*select\b/i.test(sql) || /\b(insert|update|delete|drop|alter|create|truncate)\b/i.test(sql)) {
+                        throw new BadRequestException(`sql node "${nodeId}" must be a read-only SELECT`);
+                    }
+                    const notebook = await this.studioService.getNotebook(notebookId);
+                    const cfg = this.dbContextService.parseConfig(notebook.context_config);
+                    const dremioCtx = node.context?.length
+                        ? node.context
+                        : cfg.dremio_context_paths?.[0];
+                    const result = await this.dremioService.runSQL(sql, dremioCtx);
+                    const summary =
+                        result.rows?.length > 0
+                            ? `Hasil query (${result.rowCount} baris):\n\`\`\`json\n${JSON.stringify(result.rows.slice(0, 15), null, 2)}\n\`\`\``
+                            : 'Query selesai tanpa baris data.';
+                    ctx.lastSqlResult = result.rows?.slice(0, 25);
+                    await this.studioService.appendStudioMessage(conversation.id, 'assistant', summary);
+                    replies.push({ content: summary });
+                    await this.recordEvent(conversation.id, flowRowId, nodeId, node.next, 'sql');
                     nodeId = node.next;
                     break;
                 }

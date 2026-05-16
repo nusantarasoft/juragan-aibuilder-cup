@@ -31,8 +31,25 @@ export class StudioResolver {
         @Args('name', { type: () => String }) name: string,
         @Args('description', { type: () => String, nullable: true }) description: string,
         @Args('userId', { type: () => String }) userId: string,
+        @Args('audience', { type: () => String, nullable: true }) audience: string,
     ) {
-        return this.studioService.createNotebook(name, description || '', userId);
+        const aud = audience === 'customer' ? 'customer' : 'admin';
+        return this.studioService.createNotebook(name, description || '', userId, aud);
+    }
+
+    @Mutation(() => Boolean, { name: 'reindexStudioSource' })
+    async reindexSource(
+        @Args('notebookId', { type: () => String }) notebookId: string,
+        @Args('sourceId', { type: () => String }) sourceId: string,
+    ) {
+        return this.studioService.reindexNotebookSource(notebookId, sourceId);
+    }
+
+    @Mutation(() => Boolean, { name: 'reindexStudioNotebook' })
+    async reindexNotebook(
+        @Args('notebookId', { type: () => String }) notebookId: string,
+    ) {
+        return this.studioService.reindexNotebook(notebookId);
     }
 
     @Mutation(() => Boolean, { name: 'deleteStudioNotebook' })

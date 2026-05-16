@@ -20,6 +20,13 @@ export const guideFlowNodeSchema = z.discriminatedUnion('type', [
         instruction: z.string().min(1),
         next: z.string().min(1),
     }),
+    z.object({
+        id: z.string().min(1),
+        type: z.literal('sql'),
+        sql: z.string().min(1),
+        context: z.array(z.string()).optional(),
+        next: z.string().min(1),
+    }),
     z.object({ id: z.string().min(1), type: z.literal('end') }),
 ]);
 
@@ -105,6 +112,7 @@ export function validateGuideFlowGraph(def: GuideFlowDefinition): void {
         if (node.type === 'start') targets.add(node.next);
         if (node.type === 'message') targets.add(node.next);
         if (node.type === 'rag') targets.add(node.next);
+        if (node.type === 'sql') targets.add(node.next);
         if (node.type === 'listen') {
             for (const t of node.transitions) targets.add(t.target);
         }

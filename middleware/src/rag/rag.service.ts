@@ -126,6 +126,90 @@ Answer:`;
         }
     }
 
+    /** Public wrapper for Studio notebook chunk embeddings. */
+    async embedText(text: string): Promise<number[] | null> {
+        if (!text?.trim()) return null;
+        return this.getVertexEmbedding(text.trim());
+    }
+
+    /**
+     * Extract plain text from an uploaded file buffer (text files directly; PDF/images via Vertex).
+     */
+    async extractDocumentText(buffer: Buffer, mimeType: string, filename: string): Promise<string> {
+        const mime = (mimeType || '').toLowerCase();
+        const ext = (filename || '').split('.').pop()?.toLowerCase() || '';
+
+        const isPlainText =
+            mime.startsWith('text/') ||
+            mime === 'application/json' ||
+            mime === 'application/xml' ||
+            ['txt', 'md', 'csv', 'json', 'xml', 'html', 'htm', 'log'].includes(ext);
+
+        if (isPlainText) {
+            return buffer.toString('utf-8').trim();
+        }
+
+        if (buffer.length > 20 * 1024 * 1024) {
+            this.logger.warn(`extractDocumentText: file too large (${filename})`);
+            return `Document: ${filename} (too large to extract inline)`;
+        }
+
+        let resolvedMime = mimeType || 'application/octet-stream';
+        if (resolvedMime === 'application/octet-stream') {
+            if (ext === 'pdf') resolvedMime = 'application/pdf';
+            else if (['jpg', 'jpeg'].includes(ext)) resolvedMime = 'image/jpeg';
+            else if (ext === 'png') resolvedMime = 'image/png';
+            else if (ext === 'webp') resolvedMime = 'image/webp';
+        }
+
+        const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
+        if (!projectId) {
+            return `Document: ${filename}`;
+        }
+
+        try {
+            const { GoogleAuth } = await import('google-auth-library');
+            const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
+            const client = await auth.getClient();
+            const accessToken = await client.getAccessToken();
+            const location = this.configService.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
+            const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/gemini-2.5-pro:generateContent`;
+
+            const prompt =
+                'Extract and return the full textual content of this document for search indexing. ' +
+                'Return plain text only, no markdown fences. Preserve important facts, numbers, and headings.';
+
+            const apiResponse = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken.token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        role: 'user',
+                        parts: [
+                            { text: prompt },
+                            { inlineData: { mimeType: resolvedMime, data: buffer.toString('base64') } },
+                        ],
+                    }],
+                }),
+            });
+
+            if (!apiResponse.ok) {
+                this.logger.warn(`extractDocumentText Vertex error: ${apiResponse.status}`);
+                return `Document: ${filename}`;
+            }
+
+            const data = await apiResponse.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            return (text || `Document: ${filename}`).trim();
+        } catch (e: any) {
+            this.logger.warn(`extractDocumentText failed: ${e?.message}`);
+            return `Document: ${filename}`;
+        }
+    }
+
     async semanticSearch(query: string, limit: number = 10): Promise<{ id: string; filename: string; score: number }[]> {
         this.logger.log(`Semantic search for: "${query}" (limit ${limit})`);
 

@@ -31,6 +31,7 @@ export function assertXStateStateCoverage(def: GuideFlowDefinition): boolean {
         if (n.type === 'start' && !ids.has(n.next)) return false;
         if (n.type === 'message' && !ids.has(n.next)) return false;
         if (n.type === 'rag' && !ids.has(n.next)) return false;
+        if (n.type === 'sql' && !ids.has(n.next)) return false;
         if (n.type === 'listen') {
             for (const t of n.transitions) {
                 if (!ids.has(t.target)) return false;

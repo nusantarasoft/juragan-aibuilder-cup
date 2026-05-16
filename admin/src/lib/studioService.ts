@@ -21,6 +21,8 @@ export interface StudioNotebook {
     description: string;
     icon: string;
     source_count: number;
+    audience?: 'admin' | 'customer';
+    context_config?: Record<string, unknown>;
     created_at: string;
     updated_at: string;
     studio_notebook_sources?: StudioSource[];
@@ -296,5 +298,23 @@ export const studioService = {
             }
         `, { notebookId, flowId, conversationId, message, userId: userId ?? null });
         return data.studioGuidedChat;
+    },
+
+    async reindexSource(notebookId: string, sourceId: string): Promise<boolean> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!, $sourceId: String!) {
+                reindexStudioSource(notebookId: $notebookId, sourceId: $sourceId)
+            }
+        `, { notebookId, sourceId });
+        return data.reindexStudioSource;
+    },
+
+    async reindexNotebook(notebookId: string): Promise<boolean> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!) {
+                reindexStudioNotebook(notebookId: $notebookId)
+            }
+        `, { notebookId });
+        return data.reindexStudioNotebook;
     },
 };

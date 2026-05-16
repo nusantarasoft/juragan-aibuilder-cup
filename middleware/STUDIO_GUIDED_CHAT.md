@@ -9,7 +9,8 @@
 
 - Executes a **versioned guide flow** stored in `studio_guide_flows.definition` (validated JSON: `start`, `message`, `listen`, `rag`, `end` nodes).
 - **Deterministic branching** uses `listen` transitions (`keyword`, `regex`, `default`).
-- `rag` node type is kept for backward compatibility in flow definitions, but runtime execution now uses internal LLM chat (no external RAGFlow dependency).
+- `rag` node type runs **notebook RAG**: vector search on `studio_source_chunks`, optional Supabase/Dremio context from `studio_notebooks.context_config`, then grounded LLM answer with citations.
+- `sql` node type runs a **read-only SELECT** against Dremio (notebook `dremio_context_paths` or per-node `context`).
 - **Query understanding & rewriting**: before each `rag` step, the middleware runs a structured JSON pass (Vertex) to normalize language, infer `main_intent`, and produce `rewritten_query`. Results are stored on `guide_flow_context` as `queryUnderstanding` (full object) and `rewrittenQuery` (string) for downstream steps such as intent routing.
 - **RAG instruction placeholders** (see `substituteInstruction` in `guide-flow.interpreter.ts`):
   - `{{lastUserMessage}}` — after query understanding, resolves to **`rewritten_query`** when available (so existing flows keep using one placeholder for the text sent into the answer step); otherwise the raw last user line.

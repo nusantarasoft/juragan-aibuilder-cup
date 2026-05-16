@@ -63,6 +63,8 @@ import {
     ApartmentOutlined
 } from "@ant-design/icons";
 import GuideFlowsPanel from "./GuideFlowsPanel";
+import { useStudioChat } from "./useStudioChat";
+import { useAuthStore } from "@/store/useAuthStore";
 import ReactMarkdown from 'react-markdown';
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
@@ -84,13 +86,12 @@ interface ChatMessage {
     timestamp: number;
 }
 
-// Dummy user ID for now (in production, get from auth context)
-const CURRENT_USER_ID = "00000000-0000-0000-0000-000000000001";
-
 // ── Main Component ───────────────────────────────────────────────────
 
 export default function AIStudioPage() {
     const { themeColor } = usePreferencesStore();
+    const authUser = useAuthStore((s) => s.user);
+    const userId = authUser?.id;
 
     // ── Notebook State ──
     const [notebooks, setNotebooks] = useState<StudioNotebook[]>([]);
@@ -109,13 +110,24 @@ export default function AIStudioPage() {
     const [loadingMedia, setLoadingMedia] = useState(false);
     const [addingMedia, setAddingMedia] = useState<Set<string>>(new Set());
 
-    // ── Chat State ──
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [chatInput, setChatInput] = useState("");
-    const [isChatting, setIsChatting] = useState(false);
-    const [conversationId, setConversationId] = useState<string | undefined>();
     const [showReferences, setShowReferences] = useState<number | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [useFreeChat, setUseFreeChat] = useState(false);
+
+    const {
+        chatHistory,
+        conversationId,
+        isChatting,
+        chatMode,
+        guidedFlow,
+        waitingInput,
+        resetChat,
+        initGuidedFromPublished,
+        sendMessage,
+        setChatMode,
+        setGuidedFlow,
+    } = useStudioChat(activeNotebook?.id ?? null, userId);
 
     // ── Layout State ──
     const [showSources, setShowSources] = useState(true);
@@ -133,9 +145,9 @@ export default function AIStudioPage() {
 
     // ── Load Notebooks ──
     useEffect(() => {
-        loadNotebooks();
+        if (userId) loadNotebooks();
         return () => { if (pollRef.current) clearInterval(pollRef.current); };
-    }, []);
+    }, [userId]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -144,7 +156,8 @@ export default function AIStudioPage() {
     const loadNotebooks = async () => {
         setLoadingNotebooks(true);
         try {
-            const list = await studioService.getNotebooks(CURRENT_USER_ID);
+            if (!userId) return;
+            const list = await studioService.getNotebooks(userId);
             setNotebooks(list);
         } catch (e) {
             console.error("Failed to load notebooks:", e);
@@ -155,11 +168,21 @@ export default function AIStudioPage() {
 
     const selectNotebook = async (notebook: StudioNotebook) => {
         setActiveNotebook(notebook);
-        setChatHistory([]);
-        setConversationId(undefined);
+        resetChat();
+        setUseFreeChat(false);
+        setChatMode("free");
+        setGuidedFlow(null);
         setShowReferences(null);
         setStudioMainTab("workspace");
-        loadSourceStatus(notebook.id);
+        await loadSourceStatus(notebook.id);
+        if (!useFreeChat) {
+            try {
+                const published = await studioService.getPublishedGuideFlow(notebook.id);
+                if (published) {
+                    await initGuidedFromPublished(published);
+                }
+            } catch { /* no published flow */ }
+        }
     };
 
     const loadSourceStatus = async (notebookId: string) => {
@@ -168,7 +191,11 @@ export default function AIStudioPage() {
             const list = await studioService.getSourceStatus(notebookId);
             setSources(list);
 
-            if (pollRef.current) clearInterval(pollRef.current);
+            if (list.some((s: StudioSource) => s.parse_status === 'parsing' || s.parse_status === 'pending')) {
+                startPolling(notebookId);
+            } else if (pollRef.current) {
+                clearInterval(pollRef.current);
+            }
         } catch (e) {
             console.error("Failed to load sources:", e);
         } finally {
@@ -182,11 +209,11 @@ export default function AIStudioPage() {
             try {
                 const list = await studioService.getSourceStatus(notebookId);
                 setSources(list);
-                if (!list.some((s: StudioSource) => s.parse_status === 'parsing')) {
+                if (!list.some((s: StudioSource) => s.parse_status === 'parsing' || s.parse_status === 'pending')) {
                     if (pollRef.current) clearInterval(pollRef.current);
                 }
             } catch { /* ignore */ }
-        }, 5000);
+        }, 4000);
     };
 
     // ── Actions ──
@@ -195,7 +222,11 @@ export default function AIStudioPage() {
         if (!newNotebookName.trim()) return;
         setCreatingNotebook(true);
         try {
-            const notebook = await studioService.createNotebook(newNotebookName, newNotebookDesc, CURRENT_USER_ID);
+            if (!userId) {
+                message.error("Sign in to create a notebook");
+                return;
+            }
+            const notebook = await studioService.createNotebook(newNotebookName, newNotebookDesc, userId);
             message.success(`Notebook "${newNotebookName}" created`);
             setNewNotebookName("");
             setNewNotebookDesc("");
@@ -216,7 +247,7 @@ export default function AIStudioPage() {
             if (activeNotebook?.id === notebookId) {
                 setActiveNotebook(null);
                 setSources([]);
-                setChatHistory([]);
+                resetChat();
             }
             loadNotebooks();
         } catch (e: any) {
@@ -231,6 +262,7 @@ export default function AIStudioPage() {
             await studioService.addMediaToNotebook(activeNotebook.id, mediaId);
             message.success("Source added to notebook");
             loadSourceStatus(activeNotebook.id);
+            startPolling(activeNotebook.id);
         } catch (e: any) {
             message.error(e.message || "Failed to add source");
         } finally {
@@ -259,6 +291,7 @@ export default function AIStudioPage() {
             onSuccess?.({}, file);
             message.success(`"${(file as File).name}" uploaded`);
             loadSourceStatus(activeNotebook.id);
+            startPolling(activeNotebook.id);
         } catch (e: any) {
             onError?.(e);
             message.error(e.message || "Upload failed");
@@ -276,32 +309,37 @@ export default function AIStudioPage() {
         }
     };
 
+    const sourcesIndexed = sources.some((s) => s.parse_status === 'done' && (s.chunk_count ?? 0) > 0);
+    const sourcesIndexing = sources.some((s) => s.parse_status === 'parsing' || s.parse_status === 'pending');
+
     const handleChatSend = async () => {
         if (!chatInput.trim() || !activeNotebook) return;
         if (sources.length === 0) {
             message.warning("No sources yet. Add files or media first.");
             return;
         }
-
-        const userMsg: ChatMessage = { role: 'user', content: chatInput, timestamp: Date.now() };
-        setChatHistory(prev => [...prev, userMsg]);
+        if (!sourcesIndexed && !sourcesIndexing) {
+            message.warning("Sources are not indexed yet. Wait for indexing or use Reindex.");
+            return;
+        }
+        if (chatMode === 'guided' && !waitingInput && chatHistory.length > 0) {
+            message.warning("Guided flow is not waiting for input.");
+            return;
+        }
         const q = chatInput;
         setChatInput("");
-        setIsChatting(true);
+        await sendMessage(q);
+    };
 
+    const handleReindexSource = async (sourceId: string) => {
+        if (!activeNotebook) return;
         try {
-            const result: ChatResponse = await studioService.chat(activeNotebook.id, q, conversationId, CURRENT_USER_ID);
-            setConversationId(result.conversationId);
-            setChatHistory(prev => [...prev, {
-                role: 'assistant',
-                content: result.answer,
-                references: result.references,
-                timestamp: Date.now()
-            }]);
+            await studioService.reindexSource(activeNotebook.id, sourceId);
+            message.success("Reindex started");
+            startPolling(activeNotebook.id);
+            loadSourceStatus(activeNotebook.id);
         } catch (e: any) {
-            message.error(e.message || "Chat failed");
-        } finally {
-            setIsChatting(false);
+            message.error(e.message || "Reindex failed");
         }
     };
 
@@ -329,10 +367,13 @@ export default function AIStudioPage() {
         }
     };
 
-    const getStatusTag = (status: string) => {
-        switch (status) {
-            case 'done': return <Tag color="success" className="text-[10px] m-0 leading-tight px-1.5">Ready</Tag>;
-            case 'parsing': return <Tag color="processing" className="text-[10px] m-0 leading-tight px-1.5">Preparing</Tag>;
+    const getStatusTag = (source: StudioSource) => {
+        if (source.parse_status === 'done' && (source.chunk_count ?? 0) > 0) {
+            return <Tag color="success" className="text-[10px] m-0 leading-tight px-1.5">Indexed ({source.chunk_count})</Tag>;
+        }
+        switch (source.parse_status) {
+            case 'done': return <Tag color="warning" className="text-[10px] m-0 leading-tight px-1.5">No chunks</Tag>;
+            case 'parsing': return <Tag color="processing" className="text-[10px] m-0 leading-tight px-1.5">Indexing</Tag>;
             case 'error': return <Tag color="error" className="text-[10px] m-0 leading-tight px-1.5">Error</Tag>;
             default: return <Tag className="text-[10px] m-0 leading-tight px-1.5">Pending</Tag>;
         }
@@ -429,7 +470,7 @@ export default function AIStudioPage() {
                                     {source.chunk_count > 0 && (
                                         <Text className="text-[10px] text-gray-400">· {source.chunk_count} chunks</Text>
                                     )}
-                                    {getStatusTag(source.parse_status)}
+                                    {getStatusTag(source)}
                                 </div>
                                 {source.parse_status === 'parsing' && (
                                     <Progress
@@ -441,14 +482,25 @@ export default function AIStudioPage() {
                                 )}
                             </div>
                         </div>
-                        <Button
-                            type="text"
-                            size="small"
-                            danger
-                            icon={<DeleteOutlined />}
-                            className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center"
-                            onClick={() => handleRemoveSource(source.id)}
-                        />
+                        <Space size={0}>
+                            <Tooltip title="Reindex">
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<SyncOutlined />}
+                                    className="opacity-0 group-hover:opacity-100 w-5 h-5"
+                                    onClick={() => handleReindexSource(source.id)}
+                                />
+                            </Tooltip>
+                            <Button
+                                type="text"
+                                size="small"
+                                danger
+                                icon={<DeleteOutlined />}
+                                className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center"
+                                onClick={() => handleRemoveSource(source.id)}
+                            />
+                        </Space>
                     </div>
                 ))
             )}
@@ -457,14 +509,23 @@ export default function AIStudioPage() {
 
     const renderChatPanel = () => (
         <div className="flex flex-col h-full">
+            {sources.length > 0 && !sourcesIndexed && (
+                <motion.div className="mx-3 mt-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 text-[11px] text-amber-800 dark:text-amber-200">
+                    {sourcesIndexing
+                        ? "Sources are being indexed. Answers improve once indexing completes."
+                        : "Sources are not indexed yet. Use Reindex on a source or wait for processing."}
+                </motion.div>
+            )}
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                 {chatHistory.length === 0 && (
                     <div className="w-full h-full flex flex-col items-center justify-center gap-4 opacity-60">
                         <RobotOutlined style={{ fontSize: 48, color: themeColor }} />
                         <div className="text-center">
                             <Text strong className="block text-sm mb-1">Ask about your sources</Text>
-                            <Text className="text-xs text-gray-400 block max-w-[250px]">
-                                Chat uses the internal model (Vertex). Sources are attached for context in future phases; for now the assistant answers without document retrieval.
+                            <Text className="text-xs text-gray-400 block max-w-[280px]">
+                                {chatMode === "guided" && guidedFlow
+                                    ? `Guided session: ${guidedFlow.name}. Answers use indexed sources and optional database context.`
+                                    : "Ask questions grounded in indexed notebook sources (RAG) and configured database views."}
                             </Text>
                         </div>
                     </div>
@@ -888,10 +949,8 @@ export default function AIStudioPage() {
                                         <GuideFlowsPanel
                                             notebookId={activeNotebook?.id ?? null}
                                             themeColor={themeColor}
-                                            userId={CURRENT_USER_ID}
-                                            sourcesReady={
-                                                sources.length > 0
-                                            }
+                                            userId={userId || ""}
+                                            sourcesReady={sourcesIndexed}
                                         />
                                     ),
                                 },
@@ -925,7 +984,7 @@ export default function AIStudioPage() {
                                         conversationId ? (
                                             <Button type="text" size="small"
                                                 className="text-[10px] text-gray-400 hover:!text-[color:var(--theme-color)]"
-                                                onClick={() => { setChatHistory([]); setConversationId(undefined); }}
+                                                onClick={() => resetChat()}
                                             >
                                                 New Chat
                                             </Button>
