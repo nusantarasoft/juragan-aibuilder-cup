@@ -65,6 +65,7 @@ import {
 import GuideFlowsPanel from "./GuideFlowsPanel";
 import { useStudioChat } from "./useStudioChat";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useAuth } from "@/context/AuthContext";
 import ReactMarkdown from 'react-markdown';
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
@@ -90,8 +91,9 @@ interface ChatMessage {
 
 export default function AIStudioPage() {
     const { themeColor } = usePreferencesStore();
+    const { user: contextUser, loading: authLoading } = useAuth();
     const authUser = useAuthStore((s) => s.user);
-    const userId = authUser?.id;
+    const userId = authUser?.id ?? contextUser?.id;
 
     // ── Notebook State ──
     const [notebooks, setNotebooks] = useState<StudioNotebook[]>([]);
@@ -143,28 +145,33 @@ export default function AIStudioPage() {
     // ── Poll timer ──
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    // ── Load Notebooks ──
-    useEffect(() => {
-        if (userId) loadNotebooks();
-        return () => { if (pollRef.current) clearInterval(pollRef.current); };
-    }, [userId]);
-
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [chatHistory]);
-
-    const loadNotebooks = async () => {
+    const loadNotebooks = useCallback(async () => {
+        if (!userId) {
+            setLoadingNotebooks(false);
+            return;
+        }
         setLoadingNotebooks(true);
         try {
-            if (!userId) return;
             const list = await studioService.getNotebooks(userId);
             setNotebooks(list);
         } catch (e) {
             console.error("Failed to load notebooks:", e);
+            message.error("Gagal memuat notebooks");
         } finally {
             setLoadingNotebooks(false);
         }
-    };
+    }, [userId]);
+
+    // ── Load Notebooks ──
+    useEffect(() => {
+        if (authLoading) return;
+        loadNotebooks();
+        return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    }, [authLoading, loadNotebooks]);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [chatHistory]);
 
     const selectNotebook = async (notebook: StudioNotebook) => {
         setActiveNotebook(notebook);
@@ -391,8 +398,14 @@ export default function AIStudioPage() {
 
     const renderNotebookList = () => (
         <div className="flex flex-col gap-1 p-2">
-            {loadingNotebooks ? (
-                <div className="flex justify-center py-8"><Spin /></div>
+            {loadingNotebooks || authLoading ? (
+                <motion.div className="flex justify-center py-8"><Spin /></motion.div>
+            ) : !userId ? (
+                <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={<span className="text-xs text-gray-400">Sign in to view notebooks</span>}
+                    className="my-8"
+                />
             ) : notebooks.length === 0 ? (
                 <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}

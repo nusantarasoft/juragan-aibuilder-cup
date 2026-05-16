@@ -129,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signUp = async (email: string, password: string, fullName?: string) => {
         try {
             const data = await graphql<{ signUp: AuthResponse }>(mutations.signUp, {
-                variables: { email, password, fullName },
+                variables: { email, password, name: fullName },
             });
 
             if (data.signUp) {
@@ -167,7 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signOut = async () => {
         try {
             const token = getStoredToken();
-            await graphql<{ signOut: SignOutResponse }>(mutations.signOut, { token: token || undefined });
+            await graphql<{ signOut: boolean }>(mutations.signOut, { token: token || undefined });
         } catch (error) {
             console.error("Sign out error:", error);
         }

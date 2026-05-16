@@ -16,6 +16,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useAuth } from "@/context/AuthContext";
 import { AnimatePresence, motion } from "framer-motion";
 
 const { Text, Paragraph } = Typography;
@@ -25,7 +26,8 @@ interface AIStudioDrawerProps { visible: boolean; onClose: () => void; }
 
 export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps) {
     const { themeColor } = usePreferencesStore();
-    const userId = useAuthStore((s) => s.user?.id);
+    const { user: contextUser, loading: authLoading } = useAuth();
+    const userId = useAuthStore((s) => s.user?.id) ?? contextUser?.id;
     const [isDark, setIsDark] = useState(false);
 
     useEffect(() => {
@@ -77,15 +79,22 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
     // Poll
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    useEffect(() => { if (visible) loadNotebooks(); return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, [visible]);
-    useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
-
-    const loadNotebooks = async () => {
+    const loadNotebooks = useCallback(async () => {
+        if (!userId) {
+            setLoadingNotebooks(false);
+            return;
+        }
         setLoadingNotebooks(true);
-        if (!userId) return;
         try { setNotebooks(await studioService.getNotebooks(userId)); } catch { }
         finally { setLoadingNotebooks(false); }
-    };
+    }, [userId]);
+
+    useEffect(() => {
+        if (!visible || authLoading) return;
+        loadNotebooks();
+        return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    }, [visible, authLoading, loadNotebooks]);
+    useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
 
     const selectNotebook = async (nb: StudioNotebook) => {
         setActiveNotebook(nb); setChatHistory([]); setConversationId(undefined); setShowReferences(null);

@@ -5,6 +5,16 @@ import { SupabaseService } from '../supabase/supabase.service';
 export class AuthService {
     constructor(private supabaseService: SupabaseService) { }
 
+    private async resolveAppRole(userId: string, fallback?: string): Promise<string> {
+        const { data } = await this.supabaseService
+            .getAdminClient()
+            .from('user_profiles')
+            .select('role')
+            .eq('id', userId)
+            .maybeSingle();
+        return data?.role || fallback || 'viewer';
+    }
+
     async signIn(email: string, password: string) {
         const { data, error } = await this.supabaseService
             .getClient()
@@ -14,10 +24,13 @@ export class AuthService {
             throw new Error(error.message);
         }
 
+        const user = data.user;
+        const appRole = user ? await this.resolveAppRole(user.id, user.role) : undefined;
+
         return {
             accessToken: data.session?.access_token,
             refreshToken: data.session?.refresh_token,
-            user: data.user,
+            user: user ? { ...user, role: appRole } : undefined,
         };
     }
 
@@ -59,7 +72,8 @@ export class AuthService {
             throw new Error(error.message);
         }
 
-        return data.user;
+        const appRole = await this.resolveAppRole(data.user.id, data.user.role);
+        return { ...data.user, role: appRole };
     }
 
     async refreshSession(refreshToken: string) {

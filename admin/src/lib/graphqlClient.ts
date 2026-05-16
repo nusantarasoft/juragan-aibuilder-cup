@@ -62,7 +62,7 @@ export const queries = {
     health: `query { health }`,
 
     // Auth queries
-    me: `query { me { id email fullName role } }`,
+    me: `query { me { id email role } }`,
 
     // Pages queries
     pages: `query Pages($status: String) {
@@ -117,22 +117,22 @@ export const queries = {
 export const mutations = {
     // Auth mutations
     signIn: `mutation SignIn($email: String!, $password: String!) {
-        signIn(signInInput: { email: $email, password: $password }) {
+        signIn(input: { email: $email, password: $password }) {
             accessToken
             refreshToken
-            user { id email fullName role }
+            user { id email role }
         }
     }`,
 
-    signUp: `mutation SignUp($email: String!, $password: String!, $fullName: String) {
-        signUp(signUpInput: { email: $email, password: $password, fullName: $fullName }) {
+    signUp: `mutation SignUp($email: String!, $password: String!, $name: String) {
+        signUp(input: { email: $email, password: $password, name: $name }) {
             accessToken
             refreshToken
-            user { id email fullName role }
+            user { id email role }
         }
     }`,
 
-    signOut: `mutation { signOut { success } }`,
+    signOut: `mutation { signOut }`,
 
     refreshToken: `mutation RefreshToken($refreshToken: String!) {
         refreshToken(refreshToken: $refreshToken) {

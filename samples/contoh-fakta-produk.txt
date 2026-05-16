@@ -1,0 +1,7 @@
+Fakta Produk — Contoh Sumber Knowledge Base
+
+Produk X (seri hemat energi) dijual dengan harga Rp 99.000 per unit di toko resmi dan marketplace resmi per 16 Mei 2026. Garansi resmi berlaku 12 bulan sejak tanggal pembelian; klaim garansi membutuhkan nomor seri dan bukti transaksi.
+
+Layanan pelanggan NusantaraSoft dapat dihubungi di support@nusantarasoft.com pada hari kerja (Senin–Jumat, 09.00–17.00 WIB). Waktu respons rata-rata untuk tiket prioritas normal adalah 1×24 jam kerja.
+
+Promo bundling: pembelian Produk X + aksesoris Y mendapat diskon 15% jika checkout sebelum 30 Juni 2026. Kode promo yang berlaku untuk uji coba internal adalah NSOFT-DEMO-2026 (maksimal 1× per akun uji).
