@@ -35,8 +35,8 @@ import { DremioModule } from './dremio/dremio.module';
         // Environment configuration
         ConfigModule.forRoot({
             isGlobal: true,
-            // Later entries override earlier. Package-local `.env.local` wins over repo root.
-            envFilePath: ['.env', '../.env', '../.env.local', '.env.local'],
+            // First file wins on duplicate keys (Nest merges with Object.assign(parsed, existing)).
+            envFilePath: ['.env.local', '../.env.local', '.env', '../.env'],
         }),
         ScheduleModule.forRoot(),
 

@@ -122,7 +122,9 @@ export class StudioIngestionService {
             }
 
             if (embedded === 0) {
-                throw new Error('Failed to embed any chunks (check GOOGLE_CLOUD_PROJECT)');
+                throw new Error(
+                    'Failed to embed any chunks (set GOOGLE_CLOUD_PROJECT for Vertex, or GOOGLE_API_KEY + EMBEDDING_PROVIDER=google_ai and apply studio_embedding_google_ai_768.sql)',
+                );
             }
 
             await this.admin()

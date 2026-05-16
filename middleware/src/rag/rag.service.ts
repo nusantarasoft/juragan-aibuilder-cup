@@ -129,7 +129,30 @@ Answer:`;
     /** Public wrapper for Studio notebook chunk embeddings. */
     async embedText(text: string): Promise<number[] | null> {
         if (!text?.trim()) return null;
-        return this.getVertexEmbedding(text.trim());
+        const trimmed = text.trim();
+        const provider = (this.configService.get('EMBEDDING_PROVIDER') || 'auto').toLowerCase();
+        const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
+        const apiKey = this.configService.get('GOOGLE_API_KEY');
+
+        const useGoogle =
+            provider === 'google_ai' ||
+            (provider === 'auto' && !projectId && !!apiKey);
+        const useVertex =
+            provider === 'vertex' ||
+            (provider === 'auto' && !!projectId);
+
+        if (useGoogle && apiKey) {
+            const googleEmb = await this.getGoogleAiStudioEmbedding(trimmed);
+            if (googleEmb) return googleEmb;
+            if (provider === 'google_ai') return null;
+        }
+        if (useVertex && projectId) {
+            return this.getVertexEmbedding(trimmed);
+        }
+        if (apiKey) {
+            return this.getGoogleAiStudioEmbedding(trimmed);
+        }
+        return null;
     }
 
     /**
@@ -442,6 +465,46 @@ Answer:`;
         }
     }
 
+
+    /** Google AI Studio embeddings (text-embedding-004 = 768 dims). Used for Studio when EMBEDDING_PROVIDER=google_ai. */
+    private async getGoogleAiStudioEmbedding(text: string): Promise<number[] | null> {
+        const apiKey = this.configService.get('GOOGLE_API_KEY');
+        const model = this.configService.get('GOOGLE_EMBEDDING_MODEL') || 'gemini-embedding-001';
+        if (!apiKey) {
+            this.logger.warn('[EMBED] GOOGLE_API_KEY not set');
+            return null;
+        }
+
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${encodeURIComponent(apiKey)}`;
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: `models/${model}`,
+                    content: { parts: [{ text }] },
+                    // Match studio_source_chunks vector(768) after studio_embedding_google_ai_768.sql
+                    outputDimensionality: 768,
+                }),
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                this.logger.error(`[EMBED] Google AI embed error (${response.status}): ${errorText}`);
+                return null;
+            }
+            const data = (await response.json()) as { embedding?: { values?: number[] } };
+            const values = data.embedding?.values;
+            if (values?.length) {
+                this.logger.log(`[EMBED] Google AI Studio: ${values.length} dimensions (${model})`);
+                return values;
+            }
+            this.logger.warn('[EMBED] Google AI Studio response missing embedding.values');
+            return null;
+        } catch (e: any) {
+            this.logger.error(`[EMBED] Google AI Studio failed: ${e?.message ?? e}`);
+            return null;
+        }
+    }
 
     // Helper for Vertex AI Embedding (Multimodal - 1408 Dimensions) via REST API
     private async getVertexEmbedding(text: string, image?: { data: string; mimeType: string }): Promise<number[] | null> {
