@@ -169,6 +169,7 @@ export const usePreferencesStore = create<PreferencesState>()(
         }),
         {
             name: 'cms-preferences',
+            skipHydration: true,
             storage: createJSONStorage(() => encryptedStorage),
             partialize: (state) => ({
                 pinnedItems: state.pinnedItems,
