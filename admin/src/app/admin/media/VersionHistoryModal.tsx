@@ -185,7 +185,7 @@ export default function VersionHistoryModal({ visible, onClose, fileKey, filenam
                                     </Space>
                                 }
                                 description={
-                                    <Space split={<Divider type="vertical" />}>
+                                    <Space split={<Divider orientation="vertical" />}>
                                         <Tooltip title={formatDate(version.lastModified)}>
                                             <Text type="secondary" className="text-xs">
                                                 <ClockCircleOutlined /> {getRelativeTime(version.lastModified)}

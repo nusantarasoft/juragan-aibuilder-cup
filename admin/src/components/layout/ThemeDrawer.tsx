@@ -130,7 +130,7 @@ export default function ThemeDrawer({ visible, onClose, darkMode }: ThemeDrawerP
                 </Space>
             }
             placement="right"
-            width={400}
+            size={400}
             onClose={onClose}
             open={visible}
             styles={{

@@ -188,7 +188,7 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
     };
 
     return (
-        <Drawer title={null} width={760} onClose={onClose} open={visible} closable={false}
+        <Drawer title={null} size={760} onClose={onClose} open={visible} closable={false}
             styles={{ header: { display: 'none' }, body: { padding: 0, overflow: 'hidden', background: bg, color: textColor } }}>
             <div style={{ display: 'flex', height: '100%', overflow: 'hidden', color: textColor }}>
 

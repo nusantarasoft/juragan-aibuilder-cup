@@ -335,6 +335,7 @@ export default function CMSLayout({
     } = usePreferencesStore();
 
     const [darkMode, setDarkMode] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const [appListOpen, setAppListOpen] = useState(false);
     const [showBackground, setShowBackground] = useState(true);
     const [aiStudioVisible, setAIStudioVisible] = useState(false);
@@ -464,7 +465,7 @@ export default function CMSLayout({
                     }}
                 />
             </Tooltip>
-            <Divider type="vertical" style={{ height: 16, margin: '0 2px', background: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }} />
+            <Divider orientation="vertical" style={{ height: 16, margin: '0 2px', background: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }} />
             <Tooltip title={isStarred(pathname) ? "Remove from favorites" : "Add to favorites"}>
                 <Button
                     type="text"
@@ -484,7 +485,7 @@ export default function CMSLayout({
                     }}
                 />
             </Tooltip>
-            <Divider type="vertical" style={{ height: 16, margin: '0 2px', background: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }} />
+            <Divider orientation="vertical" style={{ height: 16, margin: '0 2px', background: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }} />
             <Popover
                 content={
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
@@ -532,6 +533,11 @@ export default function CMSLayout({
             </Popover>
         </div>
     );
+
+    // Defer ProLayout until after hydration (needs document for getTargetContainer)
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
 
     // Initialize preferences from localStorage and system preferences
     React.useEffect(() => {
@@ -850,8 +856,14 @@ export default function CMSLayout({
         { value: "history", icon: <HistoryOutlined /> },
     ];
 
-    if (typeof document === "undefined") {
-        return <div />;
+    if (!mounted) {
+        return (
+            <div
+                id="cms-pro-layout"
+                style={{ height: "100vh" }}
+                suppressHydrationWarning
+            />
+        );
     }
 
     return (

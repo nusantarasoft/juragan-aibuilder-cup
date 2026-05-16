@@ -258,7 +258,7 @@ export default function SteppedFormModal({
                   title={
                     <div className="flex items-center justify-between">
                       <Text strong className="text-xs">{section.title}</Text>
-                      <Divider type="vertical" />
+                      <Divider orientation="vertical" />
                       <Button type="link" size="small" icon={<EditOutlined />} className="text-xs p-0"
                         style={{ color: g1, height: "auto" }}>
                         Edit
