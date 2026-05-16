@@ -68,6 +68,15 @@ export function useStudioChat(notebookId: string | null, userId: string | undefi
         [notebookId, userId, resetChat, applyGuidedReplies, message],
     );
 
+    /** New guided conversation (same published flow) — for production chat "New Chat". */
+    const restartGuidedSession = useCallback(async () => {
+        if (!guidedFlow) {
+            resetChat();
+            return false;
+        }
+        return initGuidedFromPublished(guidedFlow);
+    }, [guidedFlow, initGuidedFromPublished, resetChat]);
+
     const sendMessage = useCallback(
         async (text: string) => {
             if (!notebookId || !text.trim()) return;
@@ -80,7 +89,14 @@ export function useStudioChat(notebookId: string | null, userId: string | undefi
             setIsChatting(true);
 
             try {
-                if (chatMode === "guided" && guidedFlow && conversationId) {
+                if (chatMode === "guided" && guidedFlow) {
+                    if (!conversationId) {
+                        setChatHistory((prev) => prev.slice(0, -1));
+                        const started = await initGuidedFromPublished(guidedFlow);
+                        if (!started) return;
+                        message.info("Sesi guided dimulai. Kirim pesan Anda lagi.");
+                        return;
+                    }
                     const res = await studioService.guidedChat(
                         notebookId,
                         guidedFlow.id,
@@ -114,7 +130,16 @@ export function useStudioChat(notebookId: string | null, userId: string | undefi
                 setIsChatting(false);
             }
         },
-        [notebookId, userId, chatMode, guidedFlow, conversationId, applyGuidedReplies, message],
+        [
+            notebookId,
+            userId,
+            chatMode,
+            guidedFlow,
+            conversationId,
+            applyGuidedReplies,
+            initGuidedFromPublished,
+            message,
+        ],
     );
 
     return {
@@ -129,6 +154,7 @@ export function useStudioChat(notebookId: string | null, userId: string | undefi
         waitingInput,
         resetChat,
         initGuidedFromPublished,
+        restartGuidedSession,
         sendMessage,
     };
 }

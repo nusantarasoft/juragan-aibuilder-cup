@@ -116,8 +116,6 @@ export default function AIStudioPage() {
     const [chatInput, setChatInput] = useState("");
     const [showReferences, setShowReferences] = useState<number | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const [useFreeChat, setUseFreeChat] = useState(false);
-
     const {
         chatHistory,
         conversationId,
@@ -127,6 +125,7 @@ export default function AIStudioPage() {
         waitingInput,
         resetChat,
         initGuidedFromPublished,
+        restartGuidedSession,
         sendMessage,
         setChatMode,
         setGuidedFlow,
@@ -177,19 +176,24 @@ export default function AIStudioPage() {
     const selectNotebook = async (notebook: StudioNotebook) => {
         setActiveNotebook(notebook);
         resetChat();
-        setUseFreeChat(false);
         setChatMode("free");
         setGuidedFlow(null);
         setShowReferences(null);
         setStudioMainTab("workspace");
         await loadSourceStatus(notebook.id);
-        if (!useFreeChat) {
-            try {
-                const published = await studioService.getPublishedGuideFlow(notebook.id);
-                if (published) {
-                    await initGuidedFromPublished(published);
-                }
-            } catch { /* no published flow */ }
+        try {
+            const published = await studioService.getPublishedGuideFlow(notebook.id);
+            if (published) {
+                await initGuidedFromPublished(published);
+            }
+        } catch { /* no published flow */ }
+    };
+
+    const handleNewChat = async () => {
+        if (chatMode === "guided" && guidedFlow) {
+            await restartGuidedSession();
+        } else {
+            resetChat();
         }
     };
 
@@ -521,8 +525,34 @@ export default function AIStudioPage() {
         </div>
     );
 
+    const chatInputPlaceholder = !activeNotebook
+        ? "Select a notebook first"
+        : chatMode === "guided" && guidedFlow
+          ? waitingInput
+              ? "Balas di sini…"
+              : "Tunggu respons asisten…"
+          : "Ask about your sources...";
+
     const renderChatPanel = () => (
         <div className="flex flex-col h-full">
+            {chatMode === "guided" && guidedFlow && (
+                <div
+                    className="mx-3 mt-2 px-3 py-2 rounded-lg text-[11px] border"
+                    style={{
+                        borderColor: `${themeColor}33`,
+                        backgroundColor: `${themeColor}0d`,
+                    }}
+                >
+                    <Text strong className="text-[11px] block" style={{ color: themeColor }}>
+                        Guided session: {guidedFlow.name}
+                    </Text>
+                    <Text type="secondary" className="text-[10px] block mt-0.5">
+                        {waitingInput
+                            ? "Menunggu balasan Anda — jawaban memakai sumber terindeks."
+                            : "Alur sedang berjalan…"}
+                    </Text>
+                </div>
+            )}
             {sources.length > 0 && !sourcesIndexed && (
                 <motion.div className="mx-3 mt-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 text-[11px] text-amber-800 dark:text-amber-200">
                     {sourcesIndexing
@@ -611,8 +641,12 @@ export default function AIStudioPage() {
                         value={chatInput}
                         onChange={e => setChatInput(e.target.value)}
                         onPressEnter={handleChatSend}
-                        placeholder={activeNotebook ? "Ask about your sources..." : "Select a notebook first"}
-                        disabled={isChatting || !activeNotebook}
+                        placeholder={chatInputPlaceholder}
+                        disabled={
+                            isChatting ||
+                            !activeNotebook ||
+                            (chatMode === "guided" && !waitingInput && chatHistory.length > 0)
+                        }
                         style={{ borderBottomLeftRadius: 10, borderTopLeftRadius: 10 }}
                     />
                     <Button
@@ -621,7 +655,10 @@ export default function AIStudioPage() {
                         icon={<SendOutlined />}
                         onClick={handleChatSend}
                         loading={isChatting}
-                        disabled={!activeNotebook}
+                        disabled={
+                            !activeNotebook ||
+                            (chatMode === "guided" && !waitingInput && chatHistory.length > 0)
+                        }
                         style={{ borderBottomRightRadius: 10, borderTopRightRadius: 10, backgroundColor: themeColor }}
                     />
                 </Space.Compact>
@@ -995,10 +1032,14 @@ export default function AIStudioPage() {
                                         </span>
                                     }
                                     extra={
-                                        conversationId ? (
-                                            <Button type="text" size="small"
+                                        activeNotebook &&
+                                        (conversationId || (chatMode === "guided" && guidedFlow)) ? (
+                                            <Button
+                                                type="text"
+                                                size="small"
                                                 className="text-[10px] text-gray-400 hover:!text-[color:var(--theme-color)]"
-                                                onClick={() => resetChat()}
+                                                onClick={() => void handleNewChat()}
+                                                loading={isChatting}
                                             >
                                                 New Chat
                                             </Button>
