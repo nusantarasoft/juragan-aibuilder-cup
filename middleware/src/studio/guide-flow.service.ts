@@ -9,6 +9,10 @@ import {
     type GuideFlowDefinition,
 } from './guide-flow.definition';
 import { getNode, resolveListenTarget, substituteInstruction, type FlowContext } from './guide-flow.interpreter';
+import {
+    forceProceedAfterClarificationCap,
+    shouldAskClarification,
+} from './query-understanding';
 import { DremioService } from '../dremio/dremio.service';
 import { StudioDbContextService } from './studio-db-context.service';
 
@@ -222,9 +226,13 @@ export class GuideFlowService {
                 : {};
         delete persisted.rewrittenQuery;
         delete persisted.queryUnderstanding;
+        const priorTurns = Array.isArray(persisted.guidedUserTurns)
+            ? (persisted.guidedUserTurns as string[])
+            : [];
         const baseCtx: FlowContext = {
             ...persisted,
             lastUserMessage: message,
+            guidedUserTurns: [...priorTurns, message],
         };
 
         const result = await this.runFlowDrain(
@@ -336,14 +344,29 @@ export class GuideFlowService {
                     };
                 case 'rag': {
                     const raw = typeof ctx.lastUserMessage === 'string' ? ctx.lastUserMessage : '';
-                    const qu = await this.studioService.understandUserQuery(raw);
-                    ctx.queryUnderstanding = qu;
-                    ctx.rewrittenQuery = qu.rewritten_query;
+                    const userTurns = Array.isArray(ctx.guidedUserTurns)
+                        ? (ctx.guidedUserTurns as string[])
+                        : raw
+                          ? [raw]
+                          : [];
+                    const clarificationCount =
+                        typeof ctx.clarificationCount === 'number' ? ctx.clarificationCount : 0;
 
-                    if (qu.needs_clarification && lastResolvedListenNodeId) {
+                    const conversationLines = await this.studioService.getRecentConversationLines(
+                        conversation.id,
+                        12,
+                    );
+                    let qu = await this.studioService.understandUserQuery(raw, { conversationLines });
+
+                    const askClarify =
+                        shouldAskClarification(qu, clarificationCount) && !!lastResolvedListenNodeId;
+
+                    if (askClarify) {
                         const clarify = qu.clarification_question.trim() || 'Mohon jelaskan lebih spesifik.';
                         await this.studioService.appendStudioMessage(conversation.id, 'assistant', clarify);
                         replies.push({ content: clarify });
+                        ctx.clarificationCount = clarificationCount + 1;
+                        ctx.queryUnderstanding = qu;
                         await this.recordEvent(
                             conversation.id,
                             flowRowId,
@@ -355,6 +378,7 @@ export class GuideFlowService {
                                 main_intent: qu.main_intent,
                                 needs_clarification: true,
                                 confidence: qu.confidence,
+                                clarification_count: ctx.clarificationCount,
                             },
                         );
                         await this.persistFlowState(conversation.id, lastResolvedListenNodeId, ctx);
@@ -365,19 +389,32 @@ export class GuideFlowService {
                             waitingForInput: true,
                         };
                     }
+
                     if (qu.needs_clarification && !lastResolvedListenNodeId) {
                         this.logger.warn(
                             `Query needs_clarification but no preceding listen node; continuing to answer for flow ${flowRowId}`,
                         );
                     }
 
-                    const q = substituteInstruction(node.instruction, ctx);
+                    if (qu.needs_clarification && clarificationCount > 0) {
+                        qu = forceProceedAfterClarificationCap(qu, raw, userTurns);
+                        this.logger.log(
+                            `Clarification cap reached (${clarificationCount}); proceeding to RAG for conversation ${conversation.id}`,
+                        );
+                    }
+
+                    ctx.queryUnderstanding = qu;
+                    ctx.rewrittenQuery = qu.rewritten_query;
+                    ctx.clarificationCount = 0;
+                    delete ctx.guidedUserTurns;
+
+                    const instructionResolved = substituteInstruction(node.instruction, ctx);
                     const { answer, references, rawChunks } = await this.studioService.invokeRagQuery(
                         notebookId,
                         conversation.id,
-                        typeof ctx.lastUserMessage === 'string' ? ctx.lastUserMessage : q,
+                        qu.rewritten_query?.trim() || raw,
                         {
-                            instruction: node.instruction,
+                            instruction: instructionResolved,
                             queryUnderstanding: qu,
                         },
                     );
@@ -385,8 +422,9 @@ export class GuideFlowService {
                     replies.push({ content: answer, references });
                     await this.recordEvent(conversation.id, flowRowId, nodeId, node.next, 'rag', raw, {
                         main_intent: qu.main_intent,
-                        needs_clarification: qu.needs_clarification,
+                        needs_clarification: false,
                         confidence: qu.confidence,
+                        forced_rag_after_clarification: clarificationCount > 0,
                     });
                     nodeId = node.next;
                     break;

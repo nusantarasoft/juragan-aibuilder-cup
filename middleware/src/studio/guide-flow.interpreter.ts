@@ -6,6 +6,10 @@ export type FlowContext = Record<string, unknown> & {
     /** Set after query-understanding; used for {{rewrittenQuery}} and preferred {{lastUserMessage}} substitution. */
     rewrittenQuery?: string;
     queryUnderstanding?: QueryUnderstandingResult;
+    /** User lines since last successful RAG (for multi-turn clarification). */
+    guidedUserTurns?: string[];
+    /** Clarifications asked this listen→rag cycle. */
+    clarificationCount?: number;
 };
 
 export function getNode(def: GuideFlowDefinition, nodeId: string): GuideFlowNode | undefined {

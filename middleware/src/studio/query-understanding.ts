@@ -20,6 +20,13 @@ export const queryUnderstandingResultSchema = z.object({
 
 export type QueryUnderstandingResult = z.infer<typeof queryUnderstandingResultSchema>;
 
+export type ConversationLine = { role: 'user' | 'assistant'; content: string };
+
+/** Max clarification questions per listen→rag cycle before forcing retrieval. */
+export const MAX_GUIDED_CLARIFICATIONS_PER_CYCLE = 2;
+
+export const CLARIFICATION_CONFIDENCE_THRESHOLD = 0.6;
+
 const DEFAULT_CLARIFICATION = 'Mohon jelaskan lebih spesifik apa yang Anda maksud.';
 
 export const QUERY_UNDERSTANDING_SYSTEM_PROMPT = `Kamu adalah modul pemrosesan query pertama dalam sistem RAG customer service.
@@ -40,13 +47,15 @@ Identifikasi bahasa yang digunakan pengguna (Indonesia, Inggris, campuran, atau 
 Tentukan apa yang sebenarnya ingin diketahui atau diselesaikan pengguna. Fokus pada satu maksud utama jika ada beberapa pertanyaan sekaligus.
 
 ### 4. Rewriting query
-Tulis ulang query menjadi kalimat yang jelas, lengkap, dan spesifik. Query hasil rewriting harus:
+Gabungkan riwayat percakapan (jika ada) dengan pesan terbaru. Tulis ulang menjadi satu kalimat yang jelas, lengkap, dan spesifik:
 - Menggunakan bahasa Indonesia yang baku
-- Bisa dipahami tanpa konteks percakapan sebelumnya
+- Menggabungkan konteks dari beberapa giliran user (mis. "mau belanja" lalu "product x" lalu "harganya" → "Berapa harga product X untuk belanja?")
 - Tidak mengubah maksud asli pengguna
 
 ### 5. Deteksi ambiguitas
-Jika query terlalu ambigu untuk di-rewrite dengan yakin, tandai dengan flag needs_clarification: true dan berikan satu pertanyaan klarifikasi yang singkat.
+Hanya set needs_clarification: true jika **setelah memakai riwayat percakapan** masih tidak cukup untuk retrieval.
+Jika riwayat sudah menjelaskan produk/topik/intent, set needs_clarification: false dan berikan rewritten_query lengkap.
+Berikan satu pertanyaan klarifikasi yang singkat dan terarah (bukan pertanyaan generik berulang).
 
 ## Format output (JSON):
 {
@@ -63,12 +72,25 @@ Jika query terlalu ambigu untuk di-rewrite dengan yakin, tandai dengan flag need
 ## Aturan penting:
 - Jangan menjawab pertanyaan pengguna — tugasmu hanya memproses dan merestrukturisasi query
 - Jangan menambahkan asumsi yang tidak ada di query asli
-- Jika confidence di bawah 0.6, wajib set needs_clarification: true
+- Jika confidence di bawah ${CLARIFICATION_CONFIDENCE_THRESHOLD}, biasanya set needs_clarification: true — kecuali riwayat percakapan sudah cukup menjelaskan maksud
 - Output harus selalu berupa JSON valid, tidak ada teks di luar JSON`;
 
-export function buildQueryUnderstandingPrompt(userInput: string): string {
-    const escaped = userInput.replace(/\\/g, '\\\\').replace(/"""/g, '\\"\\"\\"');
-    const userBlock = `Query dari pengguna:
+function escapeForPrompt(text: string): string {
+    return text.replace(/\\/g, '\\\\').replace(/"""/g, '\\"\\"\\"');
+}
+
+export function buildQueryUnderstandingPrompt(
+    userInput: string,
+    conversationLines: ConversationLine[] = [],
+): string {
+    const escaped = escapeForPrompt(userInput);
+    const history =
+        conversationLines.length > 0
+            ? `## Riwayat percakapan terbaru\n${conversationLines
+                  .map((l) => `${l.role === 'user' ? 'User' : 'Assistant'}: ${l.content}`)
+                  .join('\n')}\n\n`
+            : '';
+    const userBlock = `${history}## Pesan terbaru dari pengguna
 """
 ${escaped}
 """`;
@@ -77,6 +99,50 @@ ${escaped}
 ---
 
 ${userBlock}`;
+}
+
+/** Whether guided flow should ask another clarification (respects per-cycle cap). */
+export function shouldAskClarification(
+    qu: QueryUnderstandingResult,
+    clarificationCount: number,
+): boolean {
+    if (clarificationCount >= MAX_GUIDED_CLARIFICATIONS_PER_CYCLE) return false;
+    return qu.needs_clarification;
+}
+
+/** Build retrieval text when proceeding after multi-turn user input. */
+export function buildRetrievalQueryFromTurns(
+    latestUserMessage: string,
+    userTurns: string[],
+    qu: QueryUnderstandingResult,
+    options?: { preferMergedTurns?: boolean },
+): string {
+    const parts = [...userTurns.filter((t) => t?.trim()), latestUserMessage.trim()].filter(Boolean);
+    const unique = [...new Set(parts)];
+    const merged = unique.join(' — ');
+    if (options?.preferMergedTurns && merged.length > 0) {
+        return merged;
+    }
+    const rewritten = qu.rewritten_query?.trim();
+    if (rewritten && rewritten.length > 0) return rewritten;
+    return merged || latestUserMessage;
+}
+
+/** After clarification cap, force RAG with best-effort merged query. */
+export function forceProceedAfterClarificationCap(
+    qu: QueryUnderstandingResult,
+    latestUserMessage: string,
+    userTurns: string[],
+): QueryUnderstandingResult {
+    return {
+        ...qu,
+        needs_clarification: false,
+        clarification_question: '',
+        rewritten_query: buildRetrievalQueryFromTurns(latestUserMessage, userTurns, qu, {
+            preferMergedTurns: true,
+        }),
+        confidence: Math.max(qu.confidence, CLARIFICATION_CONFIDENCE_THRESHOLD),
+    };
 }
 
 function clampConfidence(n: unknown): number {
@@ -123,7 +189,7 @@ export function normalizeQueryUnderstanding(parsed: unknown, originalUserText: s
     clarification_question = clarification_question.trim();
     confidence = clampConfidence(confidence);
 
-    if (confidence < 0.6) {
+    if (confidence < CLARIFICATION_CONFIDENCE_THRESHOLD) {
         needs_clarification = true;
     }
     if (needs_clarification && !clarification_question) {

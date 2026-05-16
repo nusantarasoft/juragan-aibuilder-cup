@@ -10,6 +10,7 @@ import { StudioDbContextService, type StudioContextConfig } from './studio-db-co
 import {
     buildQueryUnderstandingPrompt,
     normalizeQueryUnderstanding,
+    type ConversationLine,
     type QueryUnderstandingResult,
 } from './query-understanding';
 
@@ -287,10 +288,34 @@ export class StudioService {
      * Query understanding & rewriting for guided RAG (and future intent routing).
      * Never throws: returns a safe pass-through object on model/parse failure.
      */
-    async understandUserQuery(raw: string): Promise<QueryUnderstandingResult> {
+    async getRecentConversationLines(
+        conversationId: string,
+        limit = 12,
+    ): Promise<ConversationLine[]> {
+        const { data: messages } = await this.supabaseService.getAdminClient()
+            .from('studio_messages')
+            .select('role, content')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: true });
+
+        const rows = (messages || []).filter(
+            (m: { role?: string; content?: string }) =>
+                (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim(),
+        );
+        return rows.slice(-limit).map((m: { role: string; content: string }) => ({
+            role: m.role === 'assistant' ? ('assistant' as const) : ('user' as const),
+            content: m.content.trim(),
+        }));
+    }
+
+    async understandUserQuery(
+        raw: string,
+        options?: { conversationLines?: ConversationLine[] },
+    ): Promise<QueryUnderstandingResult> {
         const trimmed = typeof raw === 'string' ? raw : '';
+        const conversationLines = options?.conversationLines ?? [];
         try {
-            const prompt = buildQueryUnderstandingPrompt(trimmed);
+            const prompt = buildQueryUnderstandingPrompt(trimmed, conversationLines);
             const parsed = await this.studioGenerateStructuredJSON(prompt);
             return normalizeQueryUnderstanding(parsed, trimmed);
         } catch (e: any) {
@@ -339,13 +364,14 @@ export class StudioService {
             .slice(-8)
             .map((m: any) => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.content}`);
 
+        const resolvedInstruction = options?.instruction?.trim() || undefined;
         const answer = await this.contextService.generateGroundedAnswer({
             notebookName: notebook.name,
             audience,
-            question: options?.instruction
-                ? `${options.instruction}\n\nPertanyaan: ${searchQuery}`
+            question: resolvedInstruction
+                ? `${resolvedInstruction}\n\nPertanyaan: ${searchQuery}`
                 : searchQuery,
-            instruction: options?.instruction,
+            instruction: resolvedInstruction,
             conversationLines,
             retrieval,
         });

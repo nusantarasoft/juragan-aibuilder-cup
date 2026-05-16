@@ -16,7 +16,11 @@
   - `{{lastUserMessage}}` — after query understanding, resolves to **`rewritten_query`** when available (so existing flows keep using one placeholder for the text sent into the answer step); otherwise the raw last user line.
   - `{{originalUserMessage}}` — always the raw user line from the turn.
   - `{{rewrittenQuery}}` — explicit rewritten string (empty if none).
-- **Clarification**: if `needs_clarification` is true and the flow reached `rag` from a `listen` node, the assistant sends `clarification_question`, the conversation waits again on that **same** `listen` node (no answer call), and `studio_guide_flow_events` records `query_clarification`. If clarification is needed but there was no preceding `listen` in the same drain (unusual graph), the server logs a warning and continues to the answer step.
+- **Clarification (multi-turn, no infinite loop)**:
+  - Query understanding receives **recent conversation lines** plus the latest user message, so short replies like “product x” after “saya mau belanja” can be merged into one `rewritten_query`.
+  - At most **2** clarification questions per listen→rag cycle (`MAX_GUIDED_CLARIFICATIONS_PER_CYCLE`). After that, the server **forces RAG** with a merged query from all user turns in the cycle (`forceProceedAfterClarificationCap`).
+  - User turns in a cycle are accumulated in `guide_flow_context.guidedUserTurns` and cleared after a successful `rag` answer.
+  - If `needs_clarification` is true and the flow reached `rag` from a `listen` node (and under the cap), the assistant sends `clarification_question`, waits on the **same** `listen` node, and logs `query_clarification`. If there was no preceding `listen` (unusual graph), the server logs a warning and continues to RAG.
 - State is persisted on `studio_conversations`: `guide_flow_id`, `guide_flow_node_id`, `guide_flow_context`.
 - **Telemetry**: transitions are logged to `studio_guide_flow_events` for analytics.
 
