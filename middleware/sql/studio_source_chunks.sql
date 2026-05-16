@@ -47,7 +47,7 @@ BEGIN
     SELECT
         c.id AS chunk_id,
         c.source_id,
-        s.filename,
+        s.filename::text,
         c.content,
         (1 - (c.embedding <=> query_embedding))::float AS similarity
     FROM public.studio_source_chunks c

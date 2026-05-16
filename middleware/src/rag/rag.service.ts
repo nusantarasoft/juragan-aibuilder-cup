@@ -98,7 +98,8 @@ Answer:`;
         try {
             if (apiKey) {
                 // Use Gemini API directly
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                const genModel = this.configService.get('GOOGLE_GENERATIVE_MODEL') || 'gemini-2.5-flash';
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${genModel}:generateContent?key=${apiKey}`;
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

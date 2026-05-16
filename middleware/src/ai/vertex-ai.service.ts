@@ -16,7 +16,13 @@ export class VertexAiService {
         const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
 
         if (!projectId) {
-            this.logger.warn('GOOGLE_CLOUD_PROJECT is not set. Using fallback AI response.');
+            const apiKey = this.configService.get<string>('GOOGLE_API_KEY');
+            if (apiKey?.trim()) {
+                const viaStudio = await this.generateTextViaGoogleAiStudio(apiKey.trim(), prompt, inlineData);
+                if (viaStudio.text) return viaStudio.text;
+                if (viaStudio.userMessage) return viaStudio.userMessage;
+            }
+            this.logger.warn('GOOGLE_CLOUD_PROJECT is not set and Google AI Studio unavailable. Using fallback AI response.');
             return this.getFallbackResponse(prompt);
         }
 
@@ -65,6 +71,91 @@ export class VertexAiService {
             this.logger.error(`Failed to call Vertex AI: ${error.message}`);
             return this.getFallbackResponse(prompt);
         }
+    }
+
+    private googleGenerativeModels(): string[] {
+        const configured = this.configService.get<string>('GOOGLE_GENERATIVE_MODEL')?.trim();
+        // gemini-1.5-* removed from Google AI v1beta (404). Prefer models that still accept generateContent.
+        const defaults = [
+            'gemini-2.5-flash',
+            'gemini-flash-latest',
+            'gemini-2.0-flash-lite',
+            'gemini-2.0-flash',
+        ];
+        if (configured) {
+            return [configured, ...defaults.filter((m) => m !== configured)];
+        }
+        return defaults;
+    }
+
+    /** Google AI Studio (API key) — used when Vertex/GCP is not configured. */
+    private async generateTextViaGoogleAiStudio(
+        apiKey: string,
+        prompt: string,
+        inlineData?: { mimeType: string; data: string },
+    ): Promise<{ text?: string; userMessage?: string }> {
+        const parts: { text?: string; inlineData?: { mimeType: string; data: string } }[] = [{ text: prompt }];
+        if (inlineData) {
+            parts.push({ inlineData: { mimeType: inlineData.mimeType, data: inlineData.data } });
+        }
+
+        let lastStatus: number | undefined;
+        let lastModel: string | undefined;
+
+        for (const model of this.googleGenerativeModels()) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ role: 'user', parts }] }),
+                });
+
+                if (!response.ok) {
+                    lastStatus = response.status;
+                    lastModel = model;
+                    const errorText = await response.text();
+                    this.logger.warn(`Google AI Studio error (${response.status}, ${model}): ${errorText.slice(0, 200)}`);
+                    if (response.status === 404 || response.status === 429 || response.status === 503) {
+                        continue;
+                    }
+                    break;
+                }
+
+                const data = (await response.json()) as {
+                    candidates?: { content?: { parts?: { text?: string }[] } }[];
+                };
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text?.trim()) {
+                    if (model !== this.googleGenerativeModels()[0]) {
+                        this.logger.log(`Google AI Studio succeeded with fallback model: ${model}`);
+                    }
+                    return { text };
+                }
+            } catch (error: unknown) {
+                const msg = error instanceof Error ? error.message : String(error);
+                this.logger.error(`Google AI Studio request failed (${model}): ${msg}`);
+            }
+        }
+
+        return { userMessage: this.googleAiStudioUnavailableMessage(lastStatus, lastModel) };
+    }
+
+    private googleAiStudioUnavailableMessage(status?: number, model?: string): string {
+        if (status === 429) {
+            return (
+                `Kuota Google AI Studio habis${model ? ` (model: ${model})` : ''}. ` +
+                'Tunggu ~1 menit, aktifkan billing di Google AI, atau set di middleware/.env.local: ' +
+                'GOOGLE_GENERATIVE_MODEL=gemini-2.5-flash. Alternatif: STUDIO_AI_PROVIDER=anthropic + ANTHROPIC_API_KEY.'
+            );
+        }
+        if (status === 403) {
+            return 'Google API key ditolak untuk generate content. Periksa GOOGLE_API_KEY dan izin API di Google Cloud Console.';
+        }
+        return (
+            'Tidak dapat menghubungi Google AI Studio. Periksa GOOGLE_API_KEY, atau set GOOGLE_CLOUD_PROJECT (Vertex), ' +
+            'atau STUDIO_AI_PROVIDER=anthropic dengan ANTHROPIC_API_KEY.'
+        );
     }
 
     /**
@@ -329,6 +420,9 @@ export class VertexAiService {
         }
 
         // Generic fallback — return empty JSON object instead of a string
-        return JSON.stringify({ message: 'AI is not configured. Please set GOOGLE_CLOUD_PROJECT environment variable.' });
+        return JSON.stringify({
+            message:
+                'AI is not configured. Set GOOGLE_CLOUD_PROJECT (Vertex), GOOGLE_API_KEY (Google AI Studio), or STUDIO_AI_PROVIDER=anthropic with ANTHROPIC_API_KEY.',
+        });
     }
 }
