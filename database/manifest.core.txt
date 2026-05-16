@@ -1,0 +1,15 @@
+# Core migrations — idempotent SQL, safe on existing DBs.
+# Applied in order by scripts/apply-migrations.ps1
+
+database/migrations/000_schema_migrations.sql
+database/migrations/001_cms_schema_idempotent.sql
+volumes/db/studio_tables.sql
+middleware/sql/studio_source_chunks.sql
+middleware/sql/studio_notebooks_audience_migration.sql
+supabase/user_stars_schema.sql
+database/migrations/20260506_data_export_logs_idempotent.sql
+database/migrations/20260506_notifications_module_idempotent.sql
+database/migrations/20260506_ops_module_idempotent.sql
+database/migrations/20260506_realtime_notifications_idempotent.sql
+volumes/db/migrations/20260506_seed_ops_notifications.sql
+database/migrations/999_reload_postgrest.sql

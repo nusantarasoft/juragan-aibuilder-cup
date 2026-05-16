@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS studio_notebooks (
     icon VARCHAR(50) DEFAULT '📓',
     is_shared BOOLEAN DEFAULT FALSE,
     source_count INT DEFAULT 0,
+    audience VARCHAR(20) DEFAULT 'admin' CHECK (audience IN ('admin', 'customer')),
+    context_config JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

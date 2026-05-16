@@ -1,0 +1,18 @@
+# Optional module schemas — run after manifest.core.txt when enabling modules.
+# Large / may depend on tenants — apply manually or: .\scripts\apply-migrations.ps1 -Manifest modules
+
+supabase/permissions_schema.sql
+volumes/db/permissions.sql
+supabase/crm_schema.sql
+supabase/itsm_full_schema.sql
+supabase/pm_schema_v2.sql
+supabase/ecommerce_schema.sql
+middleware/sql/inventory_schema.sql
+middleware/sql/procurement_schema.sql
+volumes/db/accounting_v2.sql
+volumes/db/documents.sql
+volumes/db/files.sql
+volumes/db/chat.sql
+volumes/db/blog.sql
+volumes/db/emails.sql
+database/migrations/999_reload_postgrest.sql
