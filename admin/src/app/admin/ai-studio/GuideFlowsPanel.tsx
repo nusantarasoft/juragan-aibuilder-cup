@@ -12,7 +12,6 @@ import {
     Tabs,
     Tag,
     Typography,
-    message,
 } from "antd";
 import {
     PlusOutlined,
@@ -28,6 +27,7 @@ import {
     type StudioGuideFlow,
     type GuidedTurnResponse,
 } from "@/lib/studioService";
+import { useAppMessage } from "@/hooks/useAppMessage";
 import GuideFlowFormEditor, {
     type GuideFlowDefinition,
     parseGuideFlowDefinition,
@@ -56,6 +56,7 @@ export default function GuideFlowsPanel({
     userId,
     sourcesReady,
 }: GuideFlowsPanelProps) {
+    const message = useAppMessage();
     const [flows, setFlows] = useState<StudioGuideFlow[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -83,7 +84,7 @@ export default function GuideFlowsPanel({
         } finally {
             setLoading(false);
         }
-    }, [notebookId]);
+    }, [notebookId, message]);
 
     useEffect(() => {
         loadFlows();

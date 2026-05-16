@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
+import { useAppMessage } from "@/hooks/useAppMessage";
 import { mediaService, MediaFile } from "@/lib/mediaService";
 import { studioService, StudioNotebook, StudioSource, ChatResponse } from "@/lib/studioService";
 import {
@@ -15,7 +16,6 @@ import {
     Avatar,
     Space,
     Spin,
-    message,
     Modal,
     Empty,
     Divider,
@@ -90,6 +90,7 @@ interface ChatMessage {
 // ── Main Component ───────────────────────────────────────────────────
 
 export default function AIStudioPage() {
+    const message = useAppMessage();
     const { themeColor } = usePreferencesStore();
     const { user: contextUser, loading: authLoading } = useAuth();
     const authUser = useAuthStore((s) => s.user);

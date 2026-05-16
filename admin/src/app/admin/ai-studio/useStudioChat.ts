@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { message } from "antd";
 import { studioService, type ChatResponse, type GuidedTurnResponse, type StudioGuideFlow } from "@/lib/studioService";
+import { useAppMessage } from "@/hooks/useAppMessage";
 
 export interface StudioChatMessage {
     role: "user" | "assistant";
@@ -14,6 +14,7 @@ export interface StudioChatMessage {
 export type StudioChatMode = "free" | "guided";
 
 export function useStudioChat(notebookId: string | null, userId: string | undefined) {
+    const message = useAppMessage();
     const [chatHistory, setChatHistory] = useState<StudioChatMessage[]>([]);
     const [conversationId, setConversationId] = useState<string | undefined>();
     const [isChatting, setIsChatting] = useState(false);
@@ -64,7 +65,7 @@ export function useStudioChat(notebookId: string | null, userId: string | undefi
                 setIsChatting(false);
             }
         },
-        [notebookId, userId, resetChat, applyGuidedReplies],
+        [notebookId, userId, resetChat, applyGuidedReplies, message],
     );
 
     const sendMessage = useCallback(
@@ -113,7 +114,7 @@ export function useStudioChat(notebookId: string | null, userId: string | undefi
                 setIsChatting(false);
             }
         },
-        [notebookId, userId, chatMode, guidedFlow, conversationId, applyGuidedReplies],
+        [notebookId, userId, chatMode, guidedFlow, conversationId, applyGuidedReplies, message],
     );
 
     return {

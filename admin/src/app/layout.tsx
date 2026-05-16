@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 // Removed Geist font to fix build network error
 import { AntdRegistry } from "@ant-design/nextjs-registry";
-import { ConfigProvider } from "antd";
+import { App, ConfigProvider } from "antd";
 import enUS from "antd/locale/en_US";
 import { AuthProvider } from "@/context/AuthContext";
 import "./globals.css";
@@ -24,9 +24,11 @@ export default function RootLayout({
       >
         <AntdRegistry>
           <ConfigProvider locale={enUS}>
-            <AuthProvider>
-              {children}
-            </AuthProvider>
+            <App>
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+            </App>
           </ConfigProvider>
         </AntdRegistry>
       </body>
