@@ -97,6 +97,9 @@ import {
     BranchesOutlined,
     SwapOutlined as SwapOutlined2,
     StopOutlined,
+    MonitorOutlined,
+    PieChartOutlined,
+    FundOutlined,
 } from "@ant-design/icons";
 
 // CMS Menu Configuration
@@ -1015,6 +1018,30 @@ const menuConfig = {
                         icon: <FileSearchOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/infrastructure/portainer",
+                        name: "Portainer",
+                        icon: <ContainerOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/zabbix",
+                        name: "Zabbix",
+                        icon: <MonitorOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/k3s",
+                        name: "K3s Kubernetes",
+                        icon: <ClusterOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/socketio",
+                        name: "Socket.IO",
+                        icon: <WifiOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {
@@ -1063,6 +1090,12 @@ const menuConfig = {
                         path: "/admin/security/crowdsec",
                         name: "CrowdSec",
                         icon: <StopOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/security/ldap",
+                        name: "OpenLDAP",
+                        icon: <ApartmentOutlined />,
                         isLeaf: true,
                     },
                 ],
@@ -1128,6 +1161,12 @@ const menuConfig = {
                         icon: <SwapOutlined2 />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/messaging/hasura",
+                        name: "Hasura GraphQL",
+                        icon: <ApiOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {
@@ -1152,6 +1191,44 @@ const menuConfig = {
                         path: "/admin/tenants/dashboard",
                         name: "Dashboard",
                         icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/ai-studio",
+                name: "AI Studio",
+                icon: <RobotOutlined />,
+                routes: [
+                    {
+                        path: "/admin/ai-studio/label-studio",
+                        name: "Label Studio",
+                        icon: <EditOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ai-studio/ai-gateway",
+                        name: "AI Gateway",
+                        icon: <NodeIndexOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/datasets",
+                name: "Big Data",
+                icon: <FundOutlined />,
+                routes: [
+                    {
+                        path: "/admin/datasets/superset",
+                        name: "Superset BI",
+                        icon: <PieChartOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/datasets/minio",
+                        name: "MinIO Storage",
+                        icon: <FolderOutlined />,
                         isLeaf: true,
                     },
                 ],

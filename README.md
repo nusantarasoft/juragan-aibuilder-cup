@@ -1,6 +1,6 @@
 # Nusantarasoft Docker Infrastructure
 
-Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.12.0**
+Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.13.0**
 
 ---
 
@@ -222,7 +222,7 @@ sequenceDiagram
 nusantarasoft/
 ├── admin/                 # Next.js Admin CMS Dashboard
 │   └── src/
-│       ├── app/admin/     # App Router pages (145+ routes)
+│       ├── app/admin/     # App Router pages (176+ routes)
 │       │   ├── dashboard/ # Main dashboard
 │       │   ├── news/      # News & Media Intelligence (8 pages)
 │       │   ├── audit/     # Audit & Compliance (3 pages)
@@ -645,6 +645,16 @@ MIT
 ---
 
 ## 📋 Changelog
+
+### v2.13.0 (2025-05-17)
+- **Management Stack** — 3 new pages: Portainer (endpoints, stacks, images, volumes), Zabbix (hosts, triggers, metrics, latest data), K3s Kubernetes (nodes, pods, services, namespaces)
+- **Directory Services** — OpenLDAP dashboard (organizational units, user directory, group management)
+- **API Layer** — Hasura GraphQL page (tracked tables, actions, event triggers, permissions)
+- **AI Studio** — 2 new pages: Label Studio (annotation projects, task progress, recent labels), OpenClaw AI Gateway (agent registry, routing, health monitoring)
+- **Realtime** — Socket.IO dashboard (namespaces, connected clients, rooms, event stats)
+- **Big Data** — 2 new pages: Apache Superset BI (dashboards, charts, database connections), MinIO Storage (bucket browser, policies, server info)
+- **Menu expansion** — AI Studio section (2 items), Big Data section (2 items), +4 Infrastructure sub-items, +1 Security sub-item, +1 Messaging sub-item
+- **Build verified**: 176 pages, exit code 0
 
 ### v2.12.0 (2025-05-17)
 - **Observability Stack** — 3 new pages: Grafana (dashboard browser, datasource health, alert rules), Prometheus (scrape targets, alert rules, metrics overview), Log Explorer (Loki streams, search, terminal log viewer)
