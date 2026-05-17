@@ -91,6 +91,12 @@ import {
     FileSearchOutlined as FileProtectOutlined2,
     LockOutlined,
     ApiOutlined,
+    MailOutlined,
+    VideoCameraOutlined,
+    MessageOutlined,
+    BranchesOutlined,
+    SwapOutlined as SwapOutlined2,
+    StopOutlined,
 } from "@ant-design/icons";
 
 // CMS Menu Configuration
@@ -991,6 +997,24 @@ const menuConfig = {
                         icon: <ApiOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/infrastructure/grafana",
+                        name: "Grafana",
+                        icon: <BarChartOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/prometheus",
+                        name: "Prometheus",
+                        icon: <ThunderboltOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/logging",
+                        name: "Log Explorer",
+                        icon: <FileSearchOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {
@@ -1014,6 +1038,133 @@ const menuConfig = {
                         path: "/admin/audit/data-retention",
                         name: "Data Retention",
                         icon: <LockOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/security",
+                name: "Security & Identity",
+                icon: <SafetyCertificateOutlined />,
+                routes: [
+                    {
+                        path: "/admin/security/keycloak",
+                        name: "Keycloak SSO",
+                        icon: <KeyOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/security/vault",
+                        name: "Vault Secrets",
+                        icon: <LockOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/security/crowdsec",
+                        name: "CrowdSec",
+                        icon: <StopOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/collaboration",
+                name: "Collaboration",
+                icon: <TeamOutlined />,
+                routes: [
+                    {
+                        path: "/admin/collaboration/mattermost",
+                        name: "Mattermost",
+                        icon: <MessageOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/collaboration/nextcloud",
+                        name: "Nextcloud",
+                        icon: <CloudServerOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/collaboration/jitsi",
+                        name: "Jitsi Meet",
+                        icon: <VideoCameraOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/devops",
+                name: "DevOps",
+                icon: <BranchesOutlined />,
+                routes: [
+                    {
+                        path: "/admin/devops/gitlab",
+                        name: "GitLab",
+                        icon: <CodeOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/devops/sonarqube",
+                        name: "SonarQube",
+                        icon: <BugOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/messaging",
+                name: "Messaging & Events",
+                icon: <ThunderboltOutlined />,
+                routes: [
+                    {
+                        path: "/admin/messaging/kafka",
+                        name: "Apache Kafka",
+                        icon: <DatabaseOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/messaging/rabbitmq",
+                        name: "RabbitMQ",
+                        icon: <SwapOutlined2 />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/email",
+                name: "Email Server",
+                icon: <MailOutlined />,
+                routes: [
+                    {
+                        path: "/admin/email/dashboard",
+                        name: "Dashboard",
+                        icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/tenants",
+                name: "Multi-Tenancy",
+                icon: <CloudServerOutlined />,
+                routes: [
+                    {
+                        path: "/admin/tenants/dashboard",
+                        name: "Dashboard",
+                        icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/automation",
+                name: "Automation",
+                icon: <RocketOutlined />,
+                routes: [
+                    {
+                        path: "/admin/automation/dashboard",
+                        name: "Dashboard",
+                        icon: <DashboardOutlined />,
                         isLeaf: true,
                     },
                 ],

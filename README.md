@@ -1,6 +1,6 @@
 # Nusantarasoft Docker Infrastructure
 
-Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.11.0**
+Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.12.0**
 
 ---
 
@@ -645,6 +645,18 @@ MIT
 ---
 
 ## 📋 Changelog
+
+### v2.12.0 (2025-05-17)
+- **Observability Stack** — 3 new pages: Grafana (dashboard browser, datasource health, alert rules), Prometheus (scrape targets, alert rules, metrics overview), Log Explorer (Loki streams, search, terminal log viewer)
+- **Security & Identity** — 3 new pages: Keycloak SSO (realms, client apps, active sessions), Vault (secret engines, KV store, policies), CrowdSec (threat decisions, bouncers, parser stats)
+- **Collaboration Tools** — 3 new pages: Mattermost (teams, channels, activity), Nextcloud (storage quotas, app management), Jitsi Meet (active rooms, participants, SRTP health)
+- **DevOps Pipeline** — 2 new pages: GitLab (repos, CI/CD pipelines, container registry), SonarQube (quality gates, coverage, vulnerabilities)
+- **Messaging & Events** — 2 new pages: Apache Kafka (topics, consumer groups, partition lag), RabbitMQ (queues, exchanges, message rates)
+- **Email Administration** — Email server dashboard (domain security DKIM/SPF/DMARC, accounts, mail queue)
+- **Multi-Tenancy** — Tenant management dashboard (tenant cards, quota management, feature flags, usage analytics)
+- **Workflow Automation** — Unified automation dashboard (n8n workflows, Jenkins pipelines, AWX playbooks in tabbed view)
+- **Infrastructure expansion** — 3 new sub-items: Grafana, Prometheus, Log Explorer
+- **Menu expansion** — 8 new navigation sections: Security, Collaboration, DevOps, Messaging, Email, Tenants, Automation + 3 Infrastructure sub-items
 
 ### v2.11.0 (2025-05-12)
 - **Audit & Compliance** — NEW module with 3 pages: Dashboard (compliance scoring, security checklist), Audit Logs (searchable/filterable trail), Data Retention (GDPR tools)
