@@ -321,6 +321,20 @@ export class DremioService {
         return this.mapCatalogDetail(data);
     }
 
+    async updateVDS(id: string, tag: string, sql: string, sqlContext?: string[]): Promise<CatalogDetail> {
+        const existing = await this.dremioFetch(`/api/v3/catalog/${encodeURIComponent(id)}`);
+        const data = await this.dremioFetch(`/api/v3/catalog/${encodeURIComponent(id)}`, {
+            method: 'PUT',
+            body: JSON.stringify({ ...existing, tag, sql, sqlContext: sqlContext || existing.sqlContext }),
+        });
+        return this.mapCatalogDetail(data);
+    }
+
+    async deleteVDS(id: string, tag: string): Promise<boolean> {
+        await this.dremioFetch(`/api/v3/catalog/${encodeURIComponent(id)}?tag=${tag}`, { method: 'DELETE' });
+        return true;
+    }
+
     // ─── Spaces ──────────────────────────────────────────────────────────────
 
     async createSpace(name: string): Promise<CatalogItem> {
@@ -329,6 +343,29 @@ export class DremioService {
             body: JSON.stringify({ entityType: 'space', name }),
         });
         return this.mapCatalogItem(data);
+    }
+
+    async deleteSpace(id: string, tag: string): Promise<boolean> {
+        await this.dremioFetch(`/api/v3/catalog/${encodeURIComponent(id)}?tag=${tag}`, { method: 'DELETE' });
+        return true;
+    }
+
+    // ─── Job Management ─────────────────────────────────────────────────────
+
+    async cancelJob(jobId: string): Promise<boolean> {
+        await this.dremioFetch(`/api/v3/job/${jobId}/cancel`, { method: 'POST' });
+        return true;
+    }
+
+    async getJobResults(jobId: string, offset = 0, limit = 500): Promise<QueryResult> {
+        const results = await this.dremioFetch(`/api/v3/job/${jobId}/results?offset=${offset}&limit=${limit}`);
+        return {
+            jobId,
+            rowCount: results.rowCount || 0,
+            columns: (results.schema || []).map((col: any) => ({ name: col.name, type: col.type?.name || 'VARCHAR' })),
+            rows: results.rows || [],
+            status: 'COMPLETED',
+        };
     }
 
     // ─── Export ──────────────────────────────────────────────────────────────

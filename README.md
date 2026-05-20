@@ -1,6 +1,6 @@
 # Nusantarasoft Docker Infrastructure
 
-Complete enterprise infrastructure with 11 integrated stacks and 65+ services.
+Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.14.0**
 
 ---
 
@@ -175,7 +175,8 @@ sequenceDiagram
 |-------|----------|-------|---------|
 | **Data & Storage** | MinIO, PostgreSQL, pgAdmin | 9000, 9001, 5432 | Object storage, RDBMS |
 | **Supabase** | Kong, Auth, REST, Realtime, Storage, Studio | 8000, 4000 | Backend-as-a-Service |
-| **CMS & AI** | Admin, Middleware, Label Studio | 3003, 4001, 8080 | Content management + AI |
+| **CMS & AI** | Admin, Middleware, Label Studio, RAGFlow | 3003, 4001, 8080 | Content management + AI |
+| **Big Data** | Dremio, Nessie, MinIO (Lakehouse) | 9047 | Lakehouse analytics |
 | **Frontend** | Landing Page | 3000 | Public website |
 | **Infrastructure** | Traefik, NPM, Pi-hole, BIND9, Portainer | 80, 443, 8081 | Proxy, DNS, monitoring |
 | **Email** | Mailserver, Roundcube | 25, 465, 587, 993 | Email infrastructure |
@@ -221,14 +222,25 @@ sequenceDiagram
 nusantarasoft/
 ├── admin/                 # Next.js Admin CMS Dashboard
 │   └── src/
-│       ├── app/           # App Router pages
-│       ├── components/    # 496+ React components (PrimeReact)
+│       ├── app/admin/     # App Router pages (176+ routes)
+│       │   ├── dashboard/ # Main dashboard
+│       │   ├── news/      # News & Media Intelligence (8 pages)
+│       │   ├── audit/     # Audit & Compliance (3 pages)
+│       │   ├── datasets/  # Big Data / Dremio
+│       │   ├── crm/       # CRM Intelligence
+│       │   ├── accounting/# Accounting Suite
+│       │   ├── hr/        # HR Management
+│       │   └── ...        # +15 more module groups
+│       ├── components/    # 500+ React components
 │       ├── hooks/         # Custom React hooks
-│       └── lib/           # GraphQL client, utilities
+│       └── lib/           # GraphQL client, services, exportUtils
 ├── middleware/            # NestJS GraphQL API Server
 │   └── src/
 │       ├── auth/          # Authentication resolvers
 │       ├── media/         # Media management module
+│       ├── news/          # News Intelligence (crawler, sentiment)
+│       ├── dremio/        # Big Data integration
+│       ├── accounting/    # Accounting backend
 │       ├── rag/           # RAG/AI integration
 │       ├── pages/         # CMS pages module
 │       └── webhooks/      # Label Studio webhooks
@@ -238,6 +250,7 @@ nusantarasoft/
 │       └── components/    # UI components
 ├── volumes/               # Docker persistent data & configs
 │   ├── db/                # PostgreSQL init scripts
+│   │   └── news_intelligence.sql # News module migration (16 tables)
 │   ├── functions/         # Supabase Edge Functions
 │   ├── api/               # Kong configuration
 │   └── bind9/             # DNS zone files
@@ -670,3 +683,69 @@ See [`docs/email-deployment.md`](docs/email-deployment.md) for complete guide in
 
 MIT
 
+---
+
+## 📋 Changelog
+
+### v2.14.0 (2026-05-20)
+- **Reporting Engine** — 4 new pages: Dashboard (saved reports, recent exports), Report Builder (visual designer, data source/filter/chart config), Scheduled Reports (cron delivery, email recipients), Templates (8 pre-built module-specific report templates)
+- **API Marketplace** — 3 new pages: Marketplace (12 categorized integrations with search/filter), Installed Integrations (connection status, request counts, uptime monitoring), Webhook Event Log (inbound/outbound events, delivery status, payload viewer)
+- **Log Analytics** — 2 new pages: Log Analytics (log level distribution, top errors by severity, service heatmap), Platform Metrics (SLO compliance gauges, P95/P99 latency, Apdex scoring, endpoint performance)
+- **Backend Integration** — New InfrastructureModule in middleware: system info, Portainer endpoints, MinIO server info via live API proxy with mock fallbacks
+- **Production Hardening** — Nginx: HTTPS-ready config with security headers (HSTS, CSP, X-Frame-Options), landing page routing, WebSocket proxy, static asset caching. Docker: expanded `docker-compose.prod.yml` with logging rotation, memory limits, restart policies for all services
+- **Deployment Scripts** — `scripts/generate-ssl.sh` (self-signed cert generator), `scripts/deploy.sh` (production deployment with rolling restart and health verification)
+- **Landing Page** — Updated to v2.14.0, 3 new feature cards (Reporting, Integrations, Log Analytics), Architecture Showcase section with 18 open source tech badges, updated stats (185+ pages, 15 modules)
+- **Menu expansion** — 3 new nav sections: Reports (4), Integrations (3), Analytics (2)
+- **Build verified**: 185+ pages, exit code 0
+
+### v2.13.0 (2025-05-17)
+- **Management Stack** — 3 new pages: Portainer (endpoints, stacks, images, volumes), Zabbix (hosts, triggers, metrics, latest data), K3s Kubernetes (nodes, pods, services, namespaces)
+- **Directory Services** — OpenLDAP dashboard (organizational units, user directory, group management)
+- **API Layer** — Hasura GraphQL page (tracked tables, actions, event triggers, permissions)
+- **AI Studio** — 2 new pages: Label Studio (annotation projects, task progress, recent labels), OpenClaw AI Gateway (agent registry, routing, health monitoring)
+- **Realtime** — Socket.IO dashboard (namespaces, connected clients, rooms, event stats)
+- **Big Data** — 2 new pages: Apache Superset BI (dashboards, charts, database connections), MinIO Storage (bucket browser, policies, server info)
+- **Menu expansion** — AI Studio section (2 items), Big Data section (2 items), +4 Infrastructure sub-items, +1 Security sub-item, +1 Messaging sub-item
+- **Build verified**: 176 pages, exit code 0
+
+### v2.12.0 (2025-05-17)
+- **Observability Stack** — 3 new pages: Grafana (dashboard browser, datasource health, alert rules), Prometheus (scrape targets, alert rules, metrics overview), Log Explorer (Loki streams, search, terminal log viewer)
+- **Security & Identity** — 3 new pages: Keycloak SSO (realms, client apps, active sessions), Vault (secret engines, KV store, policies), CrowdSec (threat decisions, bouncers, parser stats)
+- **Collaboration Tools** — 3 new pages: Mattermost (teams, channels, activity), Nextcloud (storage quotas, app management), Jitsi Meet (active rooms, participants, SRTP health)
+- **DevOps Pipeline** — 2 new pages: GitLab (repos, CI/CD pipelines, container registry), SonarQube (quality gates, coverage, vulnerabilities)
+- **Messaging & Events** — 2 new pages: Apache Kafka (topics, consumer groups, partition lag), RabbitMQ (queues, exchanges, message rates)
+- **Email Administration** — Email server dashboard (domain security DKIM/SPF/DMARC, accounts, mail queue)
+- **Multi-Tenancy** — Tenant management dashboard (tenant cards, quota management, feature flags, usage analytics)
+- **Workflow Automation** — Unified automation dashboard (n8n workflows, Jenkins pipelines, AWX playbooks in tabbed view)
+- **Infrastructure expansion** — 3 new sub-items: Grafana, Prometheus, Log Explorer
+- **Menu expansion** — 8 new navigation sections: Security, Collaboration, DevOps, Messaging, Email, Tenants, Automation + 3 Infrastructure sub-items
+
+### v2.11.0 (2025-05-12)
+- **Audit & Compliance** — NEW module with 3 pages: Dashboard (compliance scoring, security checklist), Audit Logs (searchable/filterable trail), Data Retention (GDPR tools)
+- **Payment Gateway** — E-Commerce payment provider config (Midtrans, Xendit, Stripe), transaction monitoring, revenue-by-method charts
+- **Tax Configuration** — Indonesian PPh21 brackets, BPJS rates, PTKP table, THR settings under HR
+- **Webhooks Manager** — Notification webhook CRUD, test ping, delivery log viewer, event subscriptions
+- **API Gateway Monitor** — Kong routes, services, plugins, health checks, latency/RPS metrics
+- **Dremio UI Wiring** — Context menu (delete VDS/space/source) on CatalogTree, SQL Runner cancel + pagination
+- **Menu expansion** — 7 new navigation entries: Audit (3), Payments, Tax Config, Webhooks, API Gateway
+
+### v2.10.0 (2025-05-11)
+- **News & Media Intelligence** — 8-page module: Dashboard, Feed, Social Media, Web Crawler, Sentiment Analysis, Market Sounding, Content Publishing, Analytics & Reports
+- **16-table database migration** (`news_intelligence.sql`) covering articles, crawlers, social media, sentiment, market signals, content drafts, calendar
+- **Built-in Sentiment Engine** — keyword-based NLP scoring in NestJS middleware
+- **RSS/Web Crawler** — native crawler with scheduled auto-crawl every 6 hours
+- **Big Data enhancements** — Cancel job, Update/Delete VDS, Delete Space, SQL pagination
+- **Docker Health dashboard** — live container status, CPU/memory bars, cluster overview
+- **Enhanced Settings** — 7-tab config: General, SEO, Social, Email, Modules, Dremio, System Info
+- **Menu expansion** — News & Intelligence section (8 items) + Docker Health sub-item
+
+### v2.9.0 (2025-05-05)
+- Notifications module (7 pages: inbox, channels, templates, rules, delivery logs, preferences, analytics)
+- Glassmorphism standardization across all modules
+- Export framework (PDF/Excel) across 35+ data pages
+
+### v2.8.0
+- CRM Intelligence, Accounting Suite, HR Management
+- Ops Automation, Project Management, ITSM
+- AI Studio (RAGFlow integration)
+- Big Data / Dremio Lakehouse

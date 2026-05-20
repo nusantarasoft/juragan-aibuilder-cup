@@ -29,6 +29,9 @@ import { HrModule } from './hr/hr.module';
 import { OpsModule } from './ops/ops.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { DremioModule } from './dremio/dremio.module';
+import { NewsModule } from './news/news.module';
+import { DockerModule } from './docker/docker.module';
+import { InfrastructureModule } from './infrastructure/infrastructure.module';
 
 @Module({
     imports: [
@@ -76,6 +79,9 @@ import { DremioModule } from './dremio/dremio.module';
         OpsModule,
         NotificationsModule,
         DremioModule,
+        NewsModule,
+        DockerModule,
+        InfrastructureModule,
     ],
 })
 export class AppModule { }

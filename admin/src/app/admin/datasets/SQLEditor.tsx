@@ -11,6 +11,9 @@ import {
     CheckOutlined,
     CodeOutlined,
     SaveOutlined,
+    StopOutlined,
+    LeftOutlined,
+    RightOutlined,
 } from "@ant-design/icons";
 import { dremioService, QueryResult, QueryColumn } from "@/lib/dremioService";
 import { motion } from "framer-motion";
@@ -27,6 +30,9 @@ export default function SQLEditor({ defaultSQL, context }: SQLEditorProps) {
     const [result, setResult] = useState<QueryResult | null>(null);
     const [loading, setLoading] = useState(false);
     const [copiedSQL, setCopiedSQL] = useState(false);
+    const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+    const [pageOffset, setPageOffset] = useState(0);
+    const PAGE_SIZE = 500;
 
     const runQuery = async () => {
         if (!sql.trim()) {
@@ -35,14 +41,40 @@ export default function SQLEditor({ defaultSQL, context }: SQLEditorProps) {
         }
         setLoading(true);
         setResult(null);
+        setPageOffset(0);
         try {
             const res = await dremioService.runSQL(sql.trim(), context);
             setResult(res);
+            setCurrentJobId(res.jobId || null);
             message.success(`Query completed: ${res.rowCount} rows`);
         } catch (err: any) {
             message.error("Query failed: " + err.message);
         } finally {
             setLoading(false);
+            setCurrentJobId(null);
+        }
+    };
+
+    const handleCancel = async () => {
+        if (!currentJobId) return;
+        try {
+            await dremioService.cancelJob(currentJobId);
+            message.warning('Job cancelled');
+            setLoading(false);
+            setCurrentJobId(null);
+        } catch (err: any) {
+            message.error('Cancel failed: ' + err.message);
+        }
+    };
+
+    const loadPage = async (offset: number) => {
+        if (!result?.jobId) return;
+        try {
+            const res = await dremioService.getJobResults(result.jobId, offset, PAGE_SIZE);
+            setResult(res);
+            setPageOffset(offset);
+        } catch (err: any) {
+            message.error('Failed to load page: ' + err.message);
         }
     };
 
@@ -163,8 +195,21 @@ export default function SQLEditor({ defaultSQL, context }: SQLEditorProps) {
                         position: 'absolute',
                         bottom: 12,
                         right: 12,
-                        zIndex: 10
+                        zIndex: 10,
+                        display: 'flex',
+                        gap: 8
                     }}>
+                        {loading && (
+                            <Button
+                                danger
+                                icon={<StopOutlined />}
+                                onClick={handleCancel}
+                                shape="round"
+                                style={{ height: 32, fontSize: 13, fontWeight: 500 }}
+                            >
+                                Cancel
+                            </Button>
+                        )}
                         <Button
                             type="primary"
                             icon={<PlayCircleOutlined />}
@@ -172,7 +217,7 @@ export default function SQLEditor({ defaultSQL, context }: SQLEditorProps) {
                             loading={loading}
                             shape="round"
                             style={{
-                                background: "linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))", // Violet gradient
+                                background: "linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))",
                                 border: "none",
                                 boxShadow: "0 4px 12px rgba(124, 58, 237, 0.3)",
                                 height: 32,
@@ -222,6 +267,9 @@ export default function SQLEditor({ defaultSQL, context }: SQLEditorProps) {
                         }
                         extra={
                             <Space size={8}>
+                                <Button size="small" disabled={pageOffset <= 0} icon={<LeftOutlined />} onClick={() => loadPage(Math.max(0, pageOffset - PAGE_SIZE))}>Prev</Button>
+                                <Tag style={{ margin: 0, fontSize: 11 }}>Offset {pageOffset}–{pageOffset + (result?.rows?.length || 0)}</Tag>
+                                <Button size="small" disabled={(result?.rows?.length || 0) < PAGE_SIZE} icon={<RightOutlined />} onClick={() => loadPage(pageOffset + PAGE_SIZE)}>Next</Button>
                                 <Button size="small" icon={<DownloadOutlined />} onClick={handleExportCsv}>CSV</Button>
                                 <Button size="small" icon={<FileExcelOutlined />} onClick={handleExportExcel}>Excel</Button>
                             </Space>
