@@ -202,32 +202,7 @@ const menuConfig = {
                     },
                 ],
             },
-            {
-                path: "/admin/bigdata",
-                name: "Big Data",
-                icon: <DatabaseOutlined />,
-                routes: [
-                    {
-                        path: "/admin/datasets",
-                        name: "Datasets",
-                        icon: <TableOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/sql-runner",
-                        name: "SQL Runner",
-                        icon: <CodeOutlined />,
-                        isLeaf: true,
-                    },
-                ],
-            },
-            {
-                path: "/admin/ai-studio",
-                name: "AI Studio",
-                icon: <RobotOutlined />,
-                isLeaf: true,
-                isTopLevel: true,
-            },
+
             {
                 path: "/admin/itsm",
                 name: "ITSM",
@@ -1201,6 +1176,12 @@ const menuConfig = {
                 icon: <RobotOutlined />,
                 routes: [
                     {
+                        path: "/admin/ai-studio",
+                        name: "Studio",
+                        icon: <RobotOutlined />,
+                        isLeaf: true,
+                    },
+                    {
                         path: "/admin/ai-studio/label-studio",
                         name: "Label Studio",
                         icon: <EditOutlined />,
@@ -1219,6 +1200,18 @@ const menuConfig = {
                 name: "Big Data",
                 icon: <FundOutlined />,
                 routes: [
+                    {
+                        path: "/admin/datasets",
+                        name: "Datasets",
+                        icon: <TableOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/sql-runner",
+                        name: "SQL Runner",
+                        icon: <CodeOutlined />,
+                        isLeaf: true,
+                    },
                     {
                         path: "/admin/datasets/superset",
                         name: "Superset BI",

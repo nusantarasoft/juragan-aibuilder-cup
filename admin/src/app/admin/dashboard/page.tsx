@@ -154,6 +154,31 @@ export default function DashboardPage() {
                 </Space>
             </div>
 
+            {/* ══════ SYSTEM HEALTH (Infrastructure) ══════ */}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                {[
+                    { label: 'Containers', value: '18', sub: '18 running', color: '#10b981', icon: <ClusterOutlined /> },
+                    { label: 'Docker Version', value: '27.5', sub: 'Engine API v1.47', color: '#3b82f6', icon: <BuildOutlined /> },
+                    { label: 'Memory', value: '18.4 GB', sub: 'of 32 GB allocated', color: '#8b5cf6', icon: <DatabaseOutlined /> },
+                    { label: 'Disk Usage', value: '98 GB', sub: 'of 256 GB total', color: '#f59e0b', icon: <CloudUploadOutlined /> },
+                ].map((s, i) => (
+                    <Col key={i} xs={12} md={6}>
+                        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Space size={8}>
+                                    <span style={{ fontSize: 18, color: s.color }}>{s.icon}</span>
+                                    <div>
+                                        <Text type="secondary" style={{ fontSize: 10 }}>{s.label}</Text>
+                                        <div><Text strong style={{ fontSize: 16, color: s.color }}>{s.value}</Text></div>
+                                        <Text type="secondary" style={{ fontSize: 9 }}>{s.sub}</Text>
+                                    </div>
+                                </Space>
+                            </Card>
+                        </motion.div>
+                    </Col>
+                ))}
+            </Row>
+
             {/* ══════ ROW 1: Platform Health Indicators ══════ */}
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                 <Col xs={24} sm={12} md={6}>
