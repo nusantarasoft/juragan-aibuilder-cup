@@ -28,6 +28,10 @@
 
 - Only **one** `published` flow per notebook (partial unique index). Draft flows can still be edited and simulated from AI Studio.
 
+## Database context (penjualan / e-commerce)
+
+See [`STUDIO_DB_CONTEXT.md`](STUDIO_DB_CONTEXT.md): apply `middleware/sql/studio_sales_views.sql` and optional `supabase/studio_sales_seed.sql`.
+
 ## Applying SQL
 
 - **Fresh Docker / init**: `studio` tables (including guide flows) load from [`volumes/db/studio_tables.sql`](volumes/db/studio_tables.sql) when Postgres is first created.

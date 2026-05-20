@@ -6,7 +6,11 @@ import { ClaudeAiService } from '../ai/claude-ai.service';
 import { VertexAiService } from '../ai/vertex-ai.service';
 import { StudioIngestionService } from './studio-ingestion.service';
 import { StudioContextService } from './studio-context.service';
-import { StudioDbContextService, type StudioContextConfig } from './studio-db-context.service';
+import {
+    StudioDbContextService,
+    DEFAULT_STUDIO_SALES_CONTEXT,
+    type StudioContextConfig,
+} from './studio-db-context.service';
 import {
     buildQueryUnderstandingPrompt,
     normalizeQueryUnderstanding,
@@ -91,7 +95,7 @@ export class StudioService {
                 description,
                 user_id: userId,
                 audience,
-                context_config: contextConfig ?? {},
+                context_config: contextConfig ?? DEFAULT_STUDIO_SALES_CONTEXT,
             })
             .select()
             .single();
