@@ -1247,6 +1247,81 @@ const menuConfig = {
                 ],
             },
             {
+                path: "/admin/reports",
+                name: "Reports",
+                icon: <BarChartOutlined />,
+                routes: [
+                    {
+                        path: "/admin/reports/dashboard",
+                        name: "Dashboard",
+                        icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/reports/builder",
+                        name: "Report Builder",
+                        icon: <BuildOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/reports/scheduled",
+                        name: "Scheduled",
+                        icon: <CalendarOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/reports/templates",
+                        name: "Templates",
+                        icon: <FileTextOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/integrations",
+                name: "Integrations",
+                icon: <ApiOutlined />,
+                routes: [
+                    {
+                        path: "/admin/integrations/marketplace",
+                        name: "Marketplace",
+                        icon: <AppstoreOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/integrations/installed",
+                        name: "Installed",
+                        icon: <CheckSquareOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/integrations/webhooks-log",
+                        name: "Webhook Log",
+                        icon: <NodeIndexOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/analytics",
+                name: "Analytics",
+                icon: <LineChartOutlined />,
+                routes: [
+                    {
+                        path: "/admin/analytics/logs",
+                        name: "Log Analytics",
+                        icon: <FileSearchOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/analytics/metrics",
+                        name: "Platform Metrics",
+                        icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
                 path: "/admin/settings",
                 name: "Settings",
                 icon: <SettingOutlined />,

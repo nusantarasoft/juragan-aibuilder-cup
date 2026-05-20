@@ -30,6 +30,7 @@ import { OpsModule } from './ops/ops.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { NewsModule } from './news/news.module';
 import { DockerModule } from './docker/docker.module';
+import { InfrastructureModule } from './infrastructure/infrastructure.module';
 
 @Module({
     imports: [
@@ -77,6 +78,7 @@ import { DockerModule } from './docker/docker.module';
         NotificationsModule,
         NewsModule,
         DockerModule,
+        InfrastructureModule,
     ],
 })
 export class AppModule { }

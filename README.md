@@ -1,6 +1,6 @@
 # Nusantarasoft Docker Infrastructure
 
-Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.13.0**
+Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.14.0**
 
 ---
 
@@ -645,6 +645,17 @@ MIT
 ---
 
 ## 📋 Changelog
+
+### v2.14.0 (2026-05-20)
+- **Reporting Engine** — 4 new pages: Dashboard (saved reports, recent exports), Report Builder (visual designer, data source/filter/chart config), Scheduled Reports (cron delivery, email recipients), Templates (8 pre-built module-specific report templates)
+- **API Marketplace** — 3 new pages: Marketplace (12 categorized integrations with search/filter), Installed Integrations (connection status, request counts, uptime monitoring), Webhook Event Log (inbound/outbound events, delivery status, payload viewer)
+- **Log Analytics** — 2 new pages: Log Analytics (log level distribution, top errors by severity, service heatmap), Platform Metrics (SLO compliance gauges, P95/P99 latency, Apdex scoring, endpoint performance)
+- **Backend Integration** — New InfrastructureModule in middleware: system info, Portainer endpoints, MinIO server info via live API proxy with mock fallbacks
+- **Production Hardening** — Nginx: HTTPS-ready config with security headers (HSTS, CSP, X-Frame-Options), landing page routing, WebSocket proxy, static asset caching. Docker: expanded `docker-compose.prod.yml` with logging rotation, memory limits, restart policies for all services
+- **Deployment Scripts** — `scripts/generate-ssl.sh` (self-signed cert generator), `scripts/deploy.sh` (production deployment with rolling restart and health verification)
+- **Landing Page** — Updated to v2.14.0, 3 new feature cards (Reporting, Integrations, Log Analytics), Architecture Showcase section with 18 open source tech badges, updated stats (185+ pages, 15 modules)
+- **Menu expansion** — 3 new nav sections: Reports (4), Integrations (3), Analytics (2)
+- **Build verified**: 185+ pages, exit code 0
 
 ### v2.13.0 (2025-05-17)
 - **Management Stack** — 3 new pages: Portainer (endpoints, stacks, images, volumes), Zabbix (hosts, triggers, metrics, latest data), K3s Kubernetes (nodes, pods, services, namespaces)

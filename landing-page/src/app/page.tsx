@@ -19,6 +19,9 @@ const FEATURES = [
   { icon: "🔒", title: "Audit & Compliance", desc: "Cross-module audit trails, compliance scoring, GDPR tools, and data retention policies." },
   { icon: "🐳", title: "Docker Infrastructure", desc: "Real-time container health monitoring, CPU/memory metrics, log viewer, and cluster overview." },
   { icon: "🔔", title: "Notifications Hub", desc: "Multi-channel notifications, webhook management, delivery logs, and template engine." },
+  { icon: "📋", title: "Reporting Engine", desc: "Visual report builder, scheduled delivery, pre-built templates across all modules." },
+  { icon: "🔌", title: "API Marketplace", desc: "Browse & install third-party integrations — payments, logistics, AI, and communication APIs." },
+  { icon: "📉", title: "Log Analytics", desc: "Centralized log intelligence with error trends, SLO compliance, and Apdex scoring." },
 ];
 
 const PRICING = [
@@ -29,8 +32,8 @@ const PRICING = [
 
 const STATS = [
   { value: "65+", label: "Microservices" },
-  { value: "12", label: "Core Modules" },
-  { value: "150+", label: "Admin Pages" },
+  { value: "15", label: "Core Modules" },
+  { value: "185+", label: "Admin Pages" },
   { value: "81", label: "PostgreSQL Extensions" },
 ];
 
@@ -50,7 +53,7 @@ export default function Home() {
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
             <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 rounded-full border border-white/10 bg-white/5 text-sm text-neutral-400">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              v2.11.0 — Now with Audit & Compliance
+              v2.14.0 — Reporting Engine, API Marketplace & Production Hardening
             </div>
           </motion.div>
 
@@ -70,7 +73,7 @@ export default function Home() {
 
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.55 }}
             className="text-neutral-500 text-base md:text-lg max-w-2xl mx-auto mb-10">
-            65+ microservices, 12 core modules, and 150+ admin pages — built for the modern Indonesian enterprise.
+            65+ microservices, 15 core modules, and 185+ admin pages — built for the modern Indonesian enterprise.
           </motion.p>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}
@@ -112,7 +115,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-bold mb-4">Everything you need to <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">run your enterprise</span></h2>
-            <p className="text-neutral-400 text-lg max-w-2xl mx-auto">12 deeply integrated modules working together as a single platform.</p>
+            <p className="text-neutral-400 text-lg max-w-2xl mx-auto">15 deeply integrated modules working together as a single platform.</p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -209,6 +212,32 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ─── Architecture Showcase ─────────────────────────── */}
+      <section className="py-24 px-6 bg-white/[0.01]">
+        <div className="max-w-5xl mx-auto">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold mb-4">Built on <span className="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">battle-tested</span> open source</h2>
+            <p className="text-neutral-400 text-lg">Enterprise-grade infrastructure powered by the best open source technologies.</p>
+          </motion.div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {[
+              { name: 'PostgreSQL', tag: 'Database' }, { name: 'Supabase', tag: 'Backend' }, { name: 'Dremio', tag: 'Lakehouse' },
+              { name: 'MinIO', tag: 'Storage' }, { name: 'Kong', tag: 'API Gateway' }, { name: 'Nginx', tag: 'Proxy' },
+              { name: 'Docker', tag: 'Container' }, { name: 'Next.js', tag: 'Frontend' }, { name: 'NestJS', tag: 'Middleware' },
+              { name: 'GraphQL', tag: 'API' }, { name: 'Nessie', tag: 'Catalog' }, { name: 'Keycloak', tag: 'SSO' },
+              { name: 'Grafana', tag: 'Monitoring' }, { name: 'Prometheus', tag: 'Metrics' }, { name: 'Loki', tag: 'Logging' },
+              { name: 'Vault', tag: 'Secrets' }, { name: 'K3s', tag: 'K8s' }, { name: 'Portainer', tag: 'Mgmt' },
+            ].map((tech, i) => (
+              <motion.div key={tech.name} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.03 }}
+                className="p-3 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10 transition-all text-center group">
+                <div className="font-semibold text-sm text-white group-hover:text-violet-300 transition-colors">{tech.name}</div>
+                <div className="text-[10px] text-neutral-600 mt-0.5">{tech.tag}</div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ─── Footer ───────────────────────────────────────────── */}
       <footer className="py-12 px-6 border-t border-white/5">
         <div className="max-w-6xl mx-auto">
@@ -254,7 +283,7 @@ export default function Home() {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center font-bold text-sm">N</div>
               <span className="font-semibold">Nusantarasoft</span>
             </div>
-            <p className="text-sm text-neutral-600">© 2025 Nusantarasoft. All rights reserved.</p>
+            <p className="text-sm text-neutral-600">© 2026 Nusantarasoft. All rights reserved.</p>
           </div>
         </div>
       </footer>
