@@ -100,6 +100,7 @@ import {
     MonitorOutlined,
     PieChartOutlined,
     FundOutlined,
+    HddOutlined,
 } from "@ant-design/icons";
 
 // CMS Menu Configuration
@@ -1161,6 +1162,18 @@ const menuConfig = {
                         icon: <DashboardOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/email/accounts",
+                        name: "Accounts",
+                        icon: <UserOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/email/roundcube",
+                        name: "Roundcube",
+                        icon: <MailOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {
@@ -1172,6 +1185,12 @@ const menuConfig = {
                         path: "/admin/tenants/dashboard",
                         name: "Dashboard",
                         icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/tenants/configuration",
+                        name: "Configuration",
+                        icon: <SettingOutlined />,
                         isLeaf: true,
                     },
                 ],
@@ -1254,6 +1273,12 @@ const menuConfig = {
                         icon: <DatabaseOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/datasets/pgadmin",
+                        name: "pgAdmin",
+                        icon: <HddOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {
@@ -1265,6 +1290,24 @@ const menuConfig = {
                         path: "/admin/automation/dashboard",
                         name: "Dashboard",
                         icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/automation/n8n",
+                        name: "n8n Workflows",
+                        icon: <ThunderboltOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/automation/jenkins",
+                        name: "Jenkins CI/CD",
+                        icon: <BuildOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/automation/awx",
+                        name: "AWX Ansible",
+                        icon: <CodeOutlined />,
                         isLeaf: true,
                     },
                 ],

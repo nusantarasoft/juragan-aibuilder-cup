@@ -1,6 +1,6 @@
 # Nusantarasoft Docker Infrastructure
 
-Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.16.0**
+Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.17.0**
 
 ---
 
@@ -645,6 +645,14 @@ MIT
 ---
 
 ## 📋 Changelog
+
+### v2.17.0 (2026-05-22)
+- **Automation Expansion** — 3 new standalone pages: n8n Workflows (active workflows, execution history, credential count), Jenkins CI/CD (pipelines, build health, agent management), AWX Ansible (job templates, inventories, playbook execution history)
+- **Email Expansion** — 2 new pages: Email Accounts (mailbox quota management, alias configuration), Roundcube Webmail (mailbox overview, active sessions, plugin management)
+- **Big Data** — pgAdmin page (PostgreSQL server info, 9-database overview, connection stats, query metrics)
+- **Multi-Tenancy** — Tenant Configuration page (per-tenant branding, custom domains, module provisioning matrix)
+- **Menu expansion** — +3 Automation sub-items (n8n, Jenkins, AWX), +2 Email sub-items (Accounts, Roundcube), +1 Big Data sub-item (pgAdmin), +1 Tenants sub-item (Configuration)
+- **Build verified**: 199 pages, exit code 0
 
 ### v2.16.0 (2026-05-22)
 - **Settings Gap Closure** — 2 new pages: SEO Configuration (meta tags, robots.txt, sitemap, Open Graph scoring, page-level overrides), Navigation Manager (menu trees, footer links, breadcrumbs, menu entry table)
