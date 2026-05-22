@@ -1,6 +1,6 @@
 # Nusantarasoft Docker Infrastructure
 
-Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.17.0**
+Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.18.0**
 
 ---
 
@@ -645,6 +645,15 @@ MIT
 ---
 
 ## 📋 Changelog
+
+### v2.18.0 (2026-05-22)
+- **Database Migration Consolidation** — Mounted all 30 SQL schemas across 3 compose files (`docker-compose.yml`, `docker-compose.local.yml`, `docker-compose.full.yml`)
+- **Extensions** — 72 PostgreSQL extensions now installed (vector, postgis, timescaledb, pg_cron, pgmq, pg_trgm, etc.)
+- **16 Previously Unmounted Schemas** — `extensions.sql`, `fix-realtime-schema.sql`, `pg_cron.sql`, `permissions.sql`, `files.sql`, `blog.sql`, `chat.sql`, `emails.sql`, `news_intelligence.sql`, `match_media_embeddings.sql`, and 5 migration files (ops_module, notifications_module, data_export_logs, realtime_notifications, seed_ops_notifications)
+- **Auth Compatibility Fix** — Removed hard `auth.users` FK constraints from `files.sql`, `blog.sql`, `chat.sql` (replaced with logical UUID columns). Wrapped auth-dependent RLS policies in conditional `DO` blocks that check for `auth` schema existence
+- **Realtime Publication Guard** — Chat realtime publication now conditionally applied only when `supabase_realtime` publication exists
+- **Init Script Ordering** — Proper dependency-based ordering: extensions (01) → realtime-fix (02) → pg_cron (03) → webhooks (98) → core (99) → post-migrations (100) → seed data (101)
+- **Database verified**: 169 tables, 72 extensions, all schemas applied successfully
 
 ### v2.17.0 (2026-05-22)
 - **Automation Expansion** — 3 new standalone pages: n8n Workflows (active workflows, execution history, credential count), Jenkins CI/CD (pipelines, build health, agent management), AWX Ansible (job templates, inventories, playbook execution history)

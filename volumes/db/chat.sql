@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS chat_rooms (
     description TEXT,
     type TEXT DEFAULT 'public' CHECK (type IN ('public', 'private', 'direct')),
     avatar_url TEXT,
-    created_by UUID REFERENCES auth.users(id),
+    created_by UUID, -- logical FK to auth.users(id)
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -27,7 +27,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS chat_room_members (
     room_id UUID REFERENCES chat_rooms(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID, -- logical FK to auth.users(id) ON DELETE CASCADE
     role TEXT DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
     joined_at TIMESTAMPTZ DEFAULT NOW(),
     last_read_at TIMESTAMPTZ DEFAULT NOW(),
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS chat_room_members (
 CREATE TABLE IF NOT EXISTS chat_messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     room_id UUID REFERENCES chat_rooms(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    user_id UUID, -- logical FK to auth.users(id) ON DELETE SET NULL
     content TEXT NOT NULL,
     type TEXT DEFAULT 'text' CHECK (type IN ('text', 'image', 'file', 'system')),
     
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 CREATE TABLE IF NOT EXISTS chat_reactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     message_id UUID REFERENCES chat_messages(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID, -- logical FK to auth.users(id) ON DELETE CASCADE
     emoji TEXT NOT NULL, -- e.g., '👍', '❤️', '😂'
     created_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE (message_id, user_id, emoji)
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS chat_reactions (
 -- USER PRESENCE (for online status)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS chat_presence (
-    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID PRIMARY KEY, -- logical FK to auth.users(id) ON DELETE CASCADE
     status TEXT DEFAULT 'offline' CHECK (status IN ('online', 'away', 'busy', 'offline')),
     last_seen_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -88,9 +88,14 @@ CREATE INDEX IF NOT EXISTS chat_room_members_user_idx ON chat_room_members(user_
 -- ============================================================================
 -- ENABLE REALTIME
 -- ============================================================================
-ALTER PUBLICATION supabase_realtime ADD TABLE chat_messages;
-ALTER PUBLICATION supabase_realtime ADD TABLE chat_reactions;
-ALTER PUBLICATION supabase_realtime ADD TABLE chat_presence;
+-- Enable realtime (only if publication exists)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_publication WHERE pubname = 'supabase_realtime') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE chat_messages;
+    ALTER PUBLICATION supabase_realtime ADD TABLE chat_reactions;
+    ALTER PUBLICATION supabase_realtime ADD TABLE chat_presence;
+  END IF;
+END $$;
 
 -- ============================================================================
 -- ROW LEVEL SECURITY
@@ -105,52 +110,22 @@ ALTER TABLE chat_presence ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view public rooms" ON chat_rooms
     FOR SELECT USING (type = 'public');
 
--- Members can view their private rooms
-CREATE POLICY "Members can view their rooms" ON chat_rooms
-    FOR SELECT USING (
-        EXISTS (SELECT 1 FROM chat_room_members WHERE room_id = chat_rooms.id AND user_id = auth.uid())
-    );
-
--- Authenticated users can create rooms
-CREATE POLICY "Users can create rooms" ON chat_rooms
-    FOR INSERT WITH CHECK (auth.uid() = created_by);
-
--- Room members can view membership
-CREATE POLICY "View room memberships" ON chat_room_members
-    FOR SELECT USING (
-        user_id = auth.uid() OR
-        EXISTS (SELECT 1 FROM chat_room_members m WHERE m.room_id = chat_room_members.room_id AND m.user_id = auth.uid())
-    );
-
--- Users can join public rooms
-CREATE POLICY "Join public rooms" ON chat_room_members
-    FOR INSERT WITH CHECK (
-        user_id = auth.uid() AND
-        EXISTS (SELECT 1 FROM chat_rooms WHERE id = room_id AND type = 'public')
-    );
-
--- Members can view messages in their rooms
-CREATE POLICY "View messages in joined rooms" ON chat_messages
-    FOR SELECT USING (
-        EXISTS (SELECT 1 FROM chat_room_members WHERE room_id = chat_messages.room_id AND user_id = auth.uid())
-        OR EXISTS (SELECT 1 FROM chat_rooms WHERE id = chat_messages.room_id AND type = 'public')
-    );
-
--- Members can send messages
-CREATE POLICY "Send messages to joined rooms" ON chat_messages
-    FOR INSERT WITH CHECK (
-        user_id = auth.uid() AND
-        (EXISTS (SELECT 1 FROM chat_room_members WHERE room_id = chat_messages.room_id AND user_id = auth.uid())
-        OR EXISTS (SELECT 1 FROM chat_rooms WHERE id = chat_messages.room_id AND type = 'public'))
-    );
-
--- Users can manage their own reactions
-CREATE POLICY "Manage own reactions" ON chat_reactions
-    FOR ALL USING (user_id = auth.uid());
-
 -- Presence is public
 CREATE POLICY "View presence" ON chat_presence FOR SELECT USING (true);
-CREATE POLICY "Manage own presence" ON chat_presence FOR ALL USING (user_id = auth.uid());
+
+-- Auth-dependent policies (only when auth schema exists)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_namespace WHERE nspname = 'auth') THEN
+    EXECUTE 'CREATE POLICY "Members can view their rooms" ON chat_rooms FOR SELECT USING (EXISTS (SELECT 1 FROM chat_room_members WHERE room_id = chat_rooms.id AND user_id = auth.uid()))';
+    EXECUTE 'CREATE POLICY "Users can create rooms" ON chat_rooms FOR INSERT WITH CHECK (auth.uid() = created_by)';
+    EXECUTE 'CREATE POLICY "View room memberships" ON chat_room_members FOR SELECT USING (user_id = auth.uid() OR EXISTS (SELECT 1 FROM chat_room_members m WHERE m.room_id = chat_room_members.room_id AND m.user_id = auth.uid()))';
+    EXECUTE 'CREATE POLICY "Join public rooms" ON chat_room_members FOR INSERT WITH CHECK (user_id = auth.uid() AND EXISTS (SELECT 1 FROM chat_rooms WHERE id = room_id AND type = ''public''))';
+    EXECUTE 'CREATE POLICY "View messages in joined rooms" ON chat_messages FOR SELECT USING (EXISTS (SELECT 1 FROM chat_room_members WHERE room_id = chat_messages.room_id AND user_id = auth.uid()) OR EXISTS (SELECT 1 FROM chat_rooms WHERE id = chat_messages.room_id AND type = ''public''))';
+    EXECUTE 'CREATE POLICY "Send messages to joined rooms" ON chat_messages FOR INSERT WITH CHECK (user_id = auth.uid() AND (EXISTS (SELECT 1 FROM chat_room_members WHERE room_id = chat_messages.room_id AND user_id = auth.uid()) OR EXISTS (SELECT 1 FROM chat_rooms WHERE id = chat_messages.room_id AND type = ''public'')))';
+    EXECUTE 'CREATE POLICY "Manage own reactions" ON chat_reactions FOR ALL USING (user_id = auth.uid())';
+    EXECUTE 'CREATE POLICY "Manage own presence" ON chat_presence FOR ALL USING (user_id = auth.uid())';
+  END IF;
+END $$;
 
 -- ============================================================================
 -- FUNCTIONS
