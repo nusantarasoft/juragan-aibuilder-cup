@@ -1,6 +1,6 @@
 # Nusantarasoft Docker Infrastructure
 
-Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.18.0**
+Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.19.0**
 
 ---
 
@@ -645,6 +645,14 @@ MIT
 ---
 
 ## 📋 Changelog
+
+### v2.19.0 (2026-05-22)
+- **Menu Restructuring** — Consolidated 26 sidebar sections into 16 with 6 domain groups (Business, People, Service Management, Intelligence, Platform, System)
+- **Module Mergers**: Pages+Blocks+Media → Content Studio, Infrastructure+Messaging+Analytics → Platform & Infra, Security+Audit → Security & Compliance, DevOps+Automation+Ops → DevOps & Automation, Notifications+Email+Collaboration → Communications, Reports+Analytics → Reports & Analytics
+- **Duplicate Elimination** — Removed overlapping CRM Products (consolidated under Commerce), merged webhook pages, consolidated knowledge bases
+- **ITSM sub-grouping** — 17 items organized by ITIL categories (Service Design, Operations, Change & Release, Configuration)
+- **Cross-module path fixes** — Bookings/Rentals properly referenced, Tenants moved under Security & Compliance
+- **Build verified**: 199 pages, exit code 0
 
 ### v2.18.0 (2026-05-22)
 - **Database Migration Consolidation** — Mounted all 30 SQL schemas across 3 compose files (`docker-compose.yml`, `docker-compose.local.yml`, `docker-compose.full.yml`)

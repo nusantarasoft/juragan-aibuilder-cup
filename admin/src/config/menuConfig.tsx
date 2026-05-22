@@ -1,52 +1,49 @@
-"use client";
-
 import React from "react";
 import {
     DashboardOutlined,
     FileTextOutlined,
-    FolderOutlined,
     PictureOutlined,
-    TeamOutlined,
-    SettingOutlined,
-    AppstoreOutlined,
-    BuildOutlined,
-    BlockOutlined,
-    UnorderedListOutlined,
-    LayoutOutlined,
     UserOutlined,
-    SafetyOutlined,
-    ToolOutlined,
-    GlobalOutlined,
-    MenuOutlined,
-    CloudServerOutlined,
-    GatewayOutlined,
-    SafetyCertificateOutlined,
-    WifiOutlined,
+    SettingOutlined,
     DatabaseOutlined,
+    CloudServerOutlined,
+    ShoppingOutlined,
+    AppstoreOutlined,
+    UnorderedListOutlined,
+    BuildOutlined,
     TableOutlined,
     CodeOutlined,
-    RobotOutlined,
-    ApartmentOutlined,
+    TeamOutlined,
+    CalendarOutlined,
+    BarChartOutlined,
+    SafetyCertificateOutlined,
     KeyOutlined,
     ShareAltOutlined,
     UsergroupAddOutlined,
     IdcardOutlined,
+    ApartmentOutlined,
+    WifiOutlined,
+    GatewayOutlined,
+    InboxOutlined,
+    ThunderboltOutlined,
+    AuditOutlined,
+    ShoppingCartOutlined,
+    RocketOutlined,
     SolutionOutlined,
     ContactsOutlined,
     BankOutlined,
-    CalendarOutlined,
-    RocketOutlined,
-    BugOutlined,
-    ShoppingOutlined,
-    ThunderboltOutlined,
     ProjectOutlined,
-    InboxOutlined,
-    ShoppingCartOutlined,
-    DropboxOutlined,
-    BarChartOutlined,
-    AuditOutlined,
+    FolderOutlined,
+    ToolOutlined,
     ReconciliationOutlined,
+    BugOutlined,
+    RobotOutlined,
+    GlobalOutlined,
+    DropboxOutlined,
     HomeOutlined,
+    SafetyOutlined,
+    DeploymentUnitOutlined,
+    LayoutOutlined,
     NodeIndexOutlined,
     ShopOutlined,
     DollarOutlined,
@@ -64,7 +61,7 @@ import {
     FlagOutlined,
     ClusterOutlined,
     ThunderboltOutlined as BellOutlined2,
-    DeploymentUnitOutlined,
+    DeploymentUnitOutlined as DeploymentUnitOutlined2,
     SendOutlined,
     SafetyOutlined as ShieldOutlined2,
     FieldTimeOutlined,
@@ -101,9 +98,12 @@ import {
     PieChartOutlined,
     FundOutlined,
     HddOutlined,
+    MenuOutlined,
+    BlockOutlined,
 } from "@ant-design/icons";
 
-// CMS Menu Configuration
+// CMS Menu Configuration — v2.19.0 Restructured
+// 16 sections organized into 6 domain groups
 const menuConfig = {
     route: {
         path: "/admin",
@@ -115,61 +115,72 @@ const menuConfig = {
                 isLeaf: true,
                 isTopLevel: true,
             },
+
+            // ═══════════════════════════════════════
+            // BUSINESS
+            // ═══════════════════════════════════════
             {
-                path: "/admin/pages",
-                name: "Pages",
-                icon: <FileTextOutlined />,
+                path: "/admin/content-studio",
+                name: "Content Studio",
+                icon: <EditOutlined />,
+                type: "group",
                 routes: [
                     {
-                        path: "/admin/pages/list",
-                        name: "All Pages",
-                        icon: <UnorderedListOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/pages/builder",
-                        name: "Page Builder",
-                        icon: <BuildOutlined />,
-                        isLeaf: true,
-                    },
-                ],
-            },
-            {
-                path: "/admin/blocks",
-                name: "Blocks Library",
-                icon: <BlockOutlined />,
-                routes: [
-                    {
-                        path: "/admin/blocks/templates",
-                        name: "Template Blocks",
-                        icon: <LayoutOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/blocks/content",
-                        name: "Content Blocks",
+                        path: "/admin/pages",
+                        name: "Pages",
                         icon: <FileTextOutlined />,
-                        isLeaf: true,
+                        routes: [
+                            {
+                                path: "/admin/pages/list",
+                                name: "All Pages",
+                                icon: <UnorderedListOutlined />,
+                                isLeaf: true,
+                            },
+                            {
+                                path: "/admin/pages/builder",
+                                name: "Page Builder",
+                                icon: <BuildOutlined />,
+                                isLeaf: true,
+                            },
+                        ],
                     },
                     {
-                        path: "/admin/blocks/widgets",
-                        name: "Widgets",
-                        icon: <AppstoreOutlined />,
+                        path: "/admin/blocks",
+                        name: "Blocks",
+                        icon: <BlockOutlined />,
+                        routes: [
+                            {
+                                path: "/admin/blocks/templates",
+                                name: "Template Blocks",
+                                icon: <LayoutOutlined />,
+                                isLeaf: true,
+                            },
+                            {
+                                path: "/admin/blocks/content",
+                                name: "Content Blocks",
+                                icon: <FileTextOutlined />,
+                                isLeaf: true,
+                            },
+                            {
+                                path: "/admin/blocks/widgets",
+                                name: "Widgets",
+                                icon: <AppstoreOutlined />,
+                                isLeaf: true,
+                            },
+                        ],
+                    },
+                    {
+                        path: "/admin/media",
+                        name: "Media Library",
+                        icon: <PictureOutlined />,
                         isLeaf: true,
                     },
                 ],
-            },
-            {
-                path: "/admin/media",
-                name: "Media Library",
-                icon: <PictureOutlined />,
-                isLeaf: true,
-                isTopLevel: true,
             },
             {
                 path: "/admin/documents",
                 name: "Documents",
-                icon: <FileTextOutlined />,
+                icon: <FolderOutlined />,
                 routes: [
                     {
                         path: "/admin/documents/explorer",
@@ -199,116 +210,6 @@ const menuConfig = {
                         path: "/admin/documents/workflows",
                         name: "Approval Workflows",
                         icon: <ApartmentOutlined />,
-                        isLeaf: true,
-                    },
-                ],
-            },
-
-            {
-                path: "/admin/itsm",
-                name: "ITSM",
-                icon: <CustomerServiceOutlined />,
-                routes: [
-                    {
-                        path: "/admin/itsm/dashboard",
-                        name: "Dashboard",
-                        icon: <DashboardOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/itsm/portfolio",
-                        name: "Service Portfolio",
-                        icon: <ProjectOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/itsm/catalog",
-                        name: "Service Catalog",
-                        icon: <ShopOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/itsm/tickets",
-                        name: "Incidents",
-                        icon: <AlertOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/itsm/requests",
-                        name: "Service Requests",
-                        icon: <ReconciliationOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/itsm/problems",
-                        name: "Problems",
-                        icon: <BugOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/itsm/changes",
-                        name: "Change Requests",
-                        icon: <SwapOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/itsm/knowledge",
-                        name: "Knowledge Base",
-                        icon: <BookOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/itsm/categories",
-                        name: "Categories",
-                        icon: <AppstoreOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/itsm/sla",
-                        name: "SLA Policies",
-                        icon: <FlagOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/itsm/cmdb",
-                        name: "CMDB",
-                        icon: <ClusterOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/itsm/events",
-                        name: "Events",
-                        icon: <AlertOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/itsm/releases",
-                        name: "Releases",
-                        icon: <SendOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/itsm/agents",
-                        name: "Agents",
-                        icon: <TeamOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/itsm/continuity",
-                        name: "Continuity Plans",
-                        icon: <SafetyOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/itsm/availability",
-                        name: "Availability",
-                        icon: <FieldTimeOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/itsm/deployments",
-                        name: "Deployments",
-                        icon: <CloudUploadOutlined />,
                         isLeaf: true,
                     },
                 ],
@@ -343,15 +244,21 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/crm/activities",
-                        name: "Activities",
-                        icon: <CalendarOutlined />,
-                        isLeaf: true,
-                    },
-                    {
                         path: "/admin/crm/deals",
                         name: "Deals",
                         icon: <BankOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/crm/quotes",
+                        name: "Quotes",
+                        icon: <FileTextOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/crm/activities",
+                        name: "Activities",
+                        icon: <CalendarOutlined />,
                         isLeaf: true,
                     },
                     {
@@ -367,125 +274,9 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/crm/products",
-                        name: "Products",
-                        icon: <ShoppingOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/crm/quotes",
-                        name: "Quotes",
-                        icon: <FileTextOutlined />,
-                        isLeaf: true,
-                    },
-                    {
                         path: "/admin/crm/intelligence",
                         name: "AI Intelligence",
                         icon: <ThunderboltOutlined />,
-                        isLeaf: true,
-                    },
-                ],
-            },
-            {
-                path: "/admin/pm",
-                name: "Project Management",
-                icon: <ProjectOutlined />,
-                routes: [
-                    {
-                        path: "/admin/pm/portfolio",
-                        name: "Portfolio Overview",
-                        icon: <BarChartOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/pm/projects",
-                        name: "Projects",
-                        icon: <ProjectOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/pm/backlog",
-                        name: "Backlog",
-                        icon: <UnorderedListOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/pm/timeline",
-                        name: "Timeline",
-                        icon: <CalendarOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/pm/reports",
-                        name: "Reports",
-                        icon: <BarChartOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/pm/knowledge-base",
-                        name: "Knowledge Base",
-                        icon: <BookOutlined />,
-                        isLeaf: true,
-                    },
-                ],
-            },
-            {
-                path: "/admin/inventory",
-                name: "Inventory & Supply Chain",
-                icon: <InboxOutlined />,
-                routes: [
-                    {
-                        path: "/admin/inventory/items",
-                        name: "Item Master",
-                        icon: <DropboxOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/inventory/procurement",
-                        name: "Procurement",
-                        icon: <ShoppingCartOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/inventory/manufacturing",
-                        name: "Manufacturing",
-                        icon: <ToolOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/inventory/warehouses",
-                        name: "Warehouses",
-                        icon: <HomeOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/inventory/stock",
-                        name: "Stock Dashboard",
-                        icon: <BarChartOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/inventory/stock-opname",
-                        name: "Stock Opname",
-                        icon: <AuditOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/inventory/stock-operations",
-                        name: "Stock Operations",
-                        icon: <ContainerOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/inventory/fixed-assets",
-                        name: "Fixed Assets",
-                        icon: <CarOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/inventory/analytics",
-                        name: "Analytics & AI",
-                        icon: <NodeIndexOutlined />,
                         isLeaf: true,
                     },
                 ],
@@ -532,12 +323,6 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/ecommerce/settings",
-                        name: "Settings",
-                        icon: <SettingOutlined />,
-                        isLeaf: true,
-                    },
-                    {
                         path: "/admin/ecommerce/returns",
                         name: "Returns",
                         icon: <RollbackOutlined />,
@@ -565,6 +350,73 @@ const menuConfig = {
                         path: "/admin/ecommerce/payments",
                         name: "Payment Gateway",
                         icon: <CreditCardOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ecommerce/settings",
+                        name: "Settings",
+                        icon: <SettingOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/inventory",
+                name: "Inventory & Assets",
+                icon: <InboxOutlined />,
+                routes: [
+                    {
+                        path: "/admin/inventory/items",
+                        name: "Item Master",
+                        icon: <DropboxOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/warehouses",
+                        name: "Warehouses",
+                        icon: <HomeOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/stock",
+                        name: "Stock Dashboard",
+                        icon: <BarChartOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/stock-opname",
+                        name: "Stock Opname",
+                        icon: <AuditOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/stock-operations",
+                        name: "Stock Operations",
+                        icon: <ContainerOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/procurement",
+                        name: "Procurement",
+                        icon: <ShoppingCartOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/manufacturing",
+                        name: "Manufacturing",
+                        icon: <ToolOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/fixed-assets",
+                        name: "Fixed Assets",
+                        icon: <CarOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/analytics",
+                        name: "Analytics & AI",
+                        icon: <NodeIndexOutlined />,
                         isLeaf: true,
                     },
                 ],
@@ -643,6 +495,53 @@ const menuConfig = {
                 ],
             },
             {
+                path: "/admin/pm",
+                name: "Project Management",
+                icon: <ProjectOutlined />,
+                routes: [
+                    {
+                        path: "/admin/pm/portfolio",
+                        name: "Portfolio Overview",
+                        icon: <BarChartOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/pm/projects",
+                        name: "Projects",
+                        icon: <ProjectOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/pm/backlog",
+                        name: "Backlog",
+                        icon: <UnorderedListOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/pm/timeline",
+                        name: "Timeline",
+                        icon: <CalendarOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/pm/knowledge-base",
+                        name: "Knowledge Base",
+                        icon: <BookOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/pm/reports",
+                        name: "Reports",
+                        icon: <BarChartOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+
+            // ═══════════════════════════════════════
+            // PEOPLE
+            // ═══════════════════════════════════════
+            {
                 path: "/admin/hr",
                 name: "HR & People",
                 icon: <HeartOutlined />,
@@ -690,9 +589,21 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
+                        path: "/admin/hr/tax-config",
+                        name: "Tax Configuration",
+                        icon: <CalculatorOutlined />,
+                        isLeaf: true,
+                    },
+                    {
                         path: "/admin/hr/recruitment",
                         name: "Recruitment",
                         icon: <UsergroupAddOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/hr/onboarding",
+                        name: "Onboarding",
+                        icon: <CheckSquareOutlined />,
                         isLeaf: true,
                     },
                     {
@@ -708,12 +619,6 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/hr/onboarding",
-                        name: "Onboarding",
-                        icon: <CheckSquareOutlined />,
-                        isLeaf: true,
-                    },
-                    {
                         path: "/admin/hr/offboarding",
                         name: "Offboarding",
                         icon: <FormOutlined />,
@@ -723,12 +628,6 @@ const menuConfig = {
                         path: "/admin/hr/analytics",
                         name: "Analytics",
                         icon: <LineChartOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/hr/tax-config",
-                        name: "Tax Configuration",
-                        icon: <CalculatorOutlined />,
                         isLeaf: true,
                     },
                 ],
@@ -782,49 +681,127 @@ const menuConfig = {
                     },
                 ],
             },
+
+            // ═══════════════════════════════════════
+            // SERVICE MANAGEMENT
+            // ═══════════════════════════════════════
             {
-                path: "/admin/ops",
-                name: "Operations",
-                icon: <ScheduleOutlined />,
+                path: "/admin/itsm",
+                name: "ITSM",
+                icon: <CustomerServiceOutlined />,
                 routes: [
                     {
-                        path: "/admin/ops/dashboard",
+                        path: "/admin/itsm/dashboard",
                         name: "Dashboard",
                         icon: <DashboardOutlined />,
                         isLeaf: true,
                     },
+                    // — Service Design —
                     {
-                        path: "/admin/ops/playbooks",
-                        name: "Playbooks",
-                        icon: <BookOutlined />,
+                        path: "/admin/itsm/portfolio",
+                        name: "Service Portfolio",
+                        icon: <ProjectOutlined />,
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/ops/runs",
-                        name: "Active Runs",
-                        icon: <RocketOutlined />,
+                        path: "/admin/itsm/catalog",
+                        name: "Service Catalog",
+                        icon: <ShopOutlined />,
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/ops/schedules",
-                        name: "Schedules",
-                        icon: <ClockCircleOutlined />,
+                        path: "/admin/itsm/sla",
+                        name: "SLA Policies",
+                        icon: <FlagOutlined />,
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/ops/history",
-                        name: "History",
+                        path: "/admin/itsm/categories",
+                        name: "Categories",
+                        icon: <AppstoreOutlined />,
+                        isLeaf: true,
+                    },
+                    // — Service Operations —
+                    {
+                        path: "/admin/itsm/tickets",
+                        name: "Incidents",
+                        icon: <AlertOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/itsm/requests",
+                        name: "Service Requests",
+                        icon: <ReconciliationOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/itsm/problems",
+                        name: "Problems",
+                        icon: <BugOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/itsm/events",
+                        name: "Events",
+                        icon: <AlertOutlined />,
+                        isLeaf: true,
+                    },
+                    // — Change & Release —
+                    {
+                        path: "/admin/itsm/changes",
+                        name: "Change Requests",
+                        icon: <SwapOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/itsm/releases",
+                        name: "Releases",
+                        icon: <SendOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/itsm/deployments",
+                        name: "Deployments",
+                        icon: <CloudUploadOutlined />,
+                        isLeaf: true,
+                    },
+                    // — Configuration —
+                    {
+                        path: "/admin/itsm/cmdb",
+                        name: "CMDB",
+                        icon: <ClusterOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/itsm/availability",
+                        name: "Availability",
                         icon: <FieldTimeOutlined />,
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/ops/system-health",
-                        name: "System Health",
-                        icon: <HeartOutlined />,
+                        path: "/admin/itsm/continuity",
+                        name: "Continuity Plans",
+                        icon: <SafetyOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/itsm/knowledge",
+                        name: "Knowledge Base",
+                        icon: <BookOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/itsm/agents",
+                        name: "Agents",
+                        icon: <TeamOutlined />,
                         isLeaf: true,
                     },
                 ],
             },
+
+            // ═══════════════════════════════════════
+            // INTELLIGENCE
+            // ═══════════════════════════════════════
             {
                 path: "/admin/news",
                 name: "News & Intelligence",
@@ -876,321 +853,6 @@ const menuConfig = {
                         path: "/admin/news/analytics",
                         name: "Analytics & Reports",
                         icon: <BarChartOutlined />,
-                        isLeaf: true,
-                    },
-                ],
-            },
-            {
-                path: "/admin/notifications",
-                name: "Notifications",
-                icon: <AlertOutlined />,
-                routes: [
-                    {
-                        path: "/admin/notifications/inbox",
-                        name: "Inbox",
-                        icon: <InboxOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/notifications/channels",
-                        name: "Channels",
-                        icon: <SendOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/notifications/templates",
-                        name: "Templates",
-                        icon: <FileTextOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/notifications/rules",
-                        name: "Rules",
-                        icon: <NodeIndexOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/notifications/delivery-logs",
-                        name: "Delivery Logs",
-                        icon: <AuditOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/notifications/webhooks",
-                        name: "Webhooks",
-                        icon: <ApiOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/notifications/preferences",
-                        name: "Preferences",
-                        icon: <SettingOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/notifications/analytics",
-                        name: "Analytics",
-                        icon: <BarChartOutlined />,
-                        isLeaf: true,
-                    },
-                ],
-            },
-            {
-                path: "/admin/infrastructure",
-                name: "Infrastructure",
-                icon: <CloudServerOutlined />,
-                routes: [
-                    {
-                        path: "/admin/infrastructure/traefik",
-                        name: "Traefik Proxy",
-                        icon: <GatewayOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/infrastructure/npm",
-                        name: "Nginx Proxy Mgr",
-                        icon: <SafetyCertificateOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/infrastructure/pihole",
-                        name: "Pi-hole DNS",
-                        icon: <WifiOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/infrastructure/bind9",
-                        name: "BIND9 DNS",
-                        icon: <GlobalOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/infrastructure/docker",
-                        name: "Docker Health",
-                        icon: <DeploymentUnitOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/infrastructure/api-gateway",
-                        name: "API Gateway",
-                        icon: <ApiOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/infrastructure/grafana",
-                        name: "Grafana",
-                        icon: <BarChartOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/infrastructure/prometheus",
-                        name: "Prometheus",
-                        icon: <ThunderboltOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/infrastructure/logging",
-                        name: "Log Explorer",
-                        icon: <FileSearchOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/infrastructure/portainer",
-                        name: "Portainer",
-                        icon: <ContainerOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/infrastructure/zabbix",
-                        name: "Zabbix",
-                        icon: <MonitorOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/infrastructure/k3s",
-                        name: "K3s Kubernetes",
-                        icon: <ClusterOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/infrastructure/socketio",
-                        name: "Socket.IO",
-                        icon: <WifiOutlined />,
-                        isLeaf: true,
-                    },
-                ],
-            },
-            {
-                path: "/admin/audit",
-                name: "Audit & Compliance",
-                icon: <SafetyOutlined />,
-                routes: [
-                    {
-                        path: "/admin/audit/dashboard",
-                        name: "Dashboard",
-                        icon: <DashboardOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/audit/logs",
-                        name: "Audit Logs",
-                        icon: <AuditOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/audit/data-retention",
-                        name: "Data Retention",
-                        icon: <LockOutlined />,
-                        isLeaf: true,
-                    },
-                ],
-            },
-            {
-                path: "/admin/security",
-                name: "Security & Identity",
-                icon: <SafetyCertificateOutlined />,
-                routes: [
-                    {
-                        path: "/admin/security/keycloak",
-                        name: "Keycloak SSO",
-                        icon: <KeyOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/security/vault",
-                        name: "Vault Secrets",
-                        icon: <LockOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/security/crowdsec",
-                        name: "CrowdSec",
-                        icon: <StopOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/security/ldap",
-                        name: "OpenLDAP",
-                        icon: <ApartmentOutlined />,
-                        isLeaf: true,
-                    },
-                ],
-            },
-            {
-                path: "/admin/collaboration",
-                name: "Collaboration",
-                icon: <TeamOutlined />,
-                routes: [
-                    {
-                        path: "/admin/collaboration/mattermost",
-                        name: "Mattermost",
-                        icon: <MessageOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/collaboration/nextcloud",
-                        name: "Nextcloud",
-                        icon: <CloudServerOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/collaboration/jitsi",
-                        name: "Jitsi Meet",
-                        icon: <VideoCameraOutlined />,
-                        isLeaf: true,
-                    },
-                ],
-            },
-            {
-                path: "/admin/devops",
-                name: "DevOps",
-                icon: <BranchesOutlined />,
-                routes: [
-                    {
-                        path: "/admin/devops/gitlab",
-                        name: "GitLab",
-                        icon: <CodeOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/devops/sonarqube",
-                        name: "SonarQube",
-                        icon: <BugOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/devops/registry",
-                        name: "Docker Registry",
-                        icon: <ContainerOutlined />,
-                        isLeaf: true,
-                    },
-                ],
-            },
-            {
-                path: "/admin/messaging",
-                name: "Messaging & Events",
-                icon: <ThunderboltOutlined />,
-                routes: [
-                    {
-                        path: "/admin/messaging/kafka",
-                        name: "Apache Kafka",
-                        icon: <DatabaseOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/messaging/rabbitmq",
-                        name: "RabbitMQ",
-                        icon: <SwapOutlined2 />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/messaging/hasura",
-                        name: "Hasura GraphQL",
-                        icon: <ApiOutlined />,
-                        isLeaf: true,
-                    },
-                ],
-            },
-            {
-                path: "/admin/email",
-                name: "Email Server",
-                icon: <MailOutlined />,
-                routes: [
-                    {
-                        path: "/admin/email/dashboard",
-                        name: "Dashboard",
-                        icon: <DashboardOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/email/accounts",
-                        name: "Accounts",
-                        icon: <UserOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/email/roundcube",
-                        name: "Roundcube",
-                        icon: <MailOutlined />,
-                        isLeaf: true,
-                    },
-                ],
-            },
-            {
-                path: "/admin/tenants",
-                name: "Multi-Tenancy",
-                icon: <CloudServerOutlined />,
-                routes: [
-                    {
-                        path: "/admin/tenants/dashboard",
-                        name: "Dashboard",
-                        icon: <DashboardOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/tenants/configuration",
-                        name: "Configuration",
-                        icon: <SettingOutlined />,
                         isLeaf: true,
                     },
                 ],
@@ -1281,10 +943,105 @@ const menuConfig = {
                     },
                 ],
             },
+
+            // ═══════════════════════════════════════
+            // PLATFORM
+            // ═══════════════════════════════════════
             {
-                path: "/admin/automation",
-                name: "Automation",
-                icon: <RocketOutlined />,
+                path: "/admin/communications",
+                name: "Communications",
+                icon: <SendOutlined />,
+                routes: [
+                    {
+                        path: "/admin/notifications/inbox",
+                        name: "Inbox",
+                        icon: <InboxOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/notifications/channels",
+                        name: "Channels",
+                        icon: <SendOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/notifications/templates",
+                        name: "Templates",
+                        icon: <FileTextOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/notifications/rules",
+                        name: "Rules",
+                        icon: <NodeIndexOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/notifications/delivery-logs",
+                        name: "Delivery Logs",
+                        icon: <AuditOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/notifications/webhooks",
+                        name: "Webhooks",
+                        icon: <ApiOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/notifications/preferences",
+                        name: "Preferences",
+                        icon: <SettingOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/notifications/analytics",
+                        name: "Analytics",
+                        icon: <BarChartOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/email/dashboard",
+                        name: "Email Dashboard",
+                        icon: <MailOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/email/accounts",
+                        name: "Email Accounts",
+                        icon: <UserOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/email/roundcube",
+                        name: "Roundcube",
+                        icon: <MailOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/collaboration/mattermost",
+                        name: "Mattermost",
+                        icon: <MessageOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/collaboration/nextcloud",
+                        name: "Nextcloud",
+                        icon: <CloudServerOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/collaboration/jitsi",
+                        name: "Jitsi Meet",
+                        icon: <VideoCameraOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/devops",
+                name: "DevOps & Automation",
+                icon: <BranchesOutlined />,
                 routes: [
                     {
                         path: "/admin/automation/dashboard",
@@ -1292,10 +1049,11 @@ const menuConfig = {
                         icon: <DashboardOutlined />,
                         isLeaf: true,
                     },
+                    // — CI/CD —
                     {
-                        path: "/admin/automation/n8n",
-                        name: "n8n Workflows",
-                        icon: <ThunderboltOutlined />,
+                        path: "/admin/devops/gitlab",
+                        name: "GitLab",
+                        icon: <CodeOutlined />,
                         isLeaf: true,
                     },
                     {
@@ -1305,16 +1063,244 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
+                        path: "/admin/devops/registry",
+                        name: "Docker Registry",
+                        icon: <ContainerOutlined />,
+                        isLeaf: true,
+                    },
+                    // — Quality —
+                    {
+                        path: "/admin/devops/sonarqube",
+                        name: "SonarQube",
+                        icon: <BugOutlined />,
+                        isLeaf: true,
+                    },
+                    // — Automation —
+                    {
+                        path: "/admin/automation/n8n",
+                        name: "n8n Workflows",
+                        icon: <ThunderboltOutlined />,
+                        isLeaf: true,
+                    },
+                    {
                         path: "/admin/automation/awx",
                         name: "AWX Ansible",
                         icon: <CodeOutlined />,
                         isLeaf: true,
                     },
+                    // — Operations —
+                    {
+                        path: "/admin/ops/playbooks",
+                        name: "Playbooks",
+                        icon: <BookOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ops/runs",
+                        name: "Active Runs",
+                        icon: <RocketOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ops/schedules",
+                        name: "Schedules",
+                        icon: <ClockCircleOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ops/history",
+                        name: "History",
+                        icon: <FieldTimeOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {
+                path: "/admin/infrastructure",
+                name: "Platform & Infra",
+                icon: <CloudServerOutlined />,
+                routes: [
+                    // — Containers —
+                    {
+                        path: "/admin/infrastructure/docker",
+                        name: "Docker Health",
+                        icon: <DeploymentUnitOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/portainer",
+                        name: "Portainer",
+                        icon: <ContainerOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/k3s",
+                        name: "K3s Kubernetes",
+                        icon: <ClusterOutlined />,
+                        isLeaf: true,
+                    },
+                    // — Networking —
+                    {
+                        path: "/admin/infrastructure/api-gateway",
+                        name: "API Gateway",
+                        icon: <ApiOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/traefik",
+                        name: "Traefik Proxy",
+                        icon: <GatewayOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/npm",
+                        name: "Nginx Proxy Mgr",
+                        icon: <SafetyCertificateOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/pihole",
+                        name: "Pi-hole DNS",
+                        icon: <WifiOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/bind9",
+                        name: "BIND9 DNS",
+                        icon: <GlobalOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/socketio",
+                        name: "Socket.IO",
+                        icon: <WifiOutlined />,
+                        isLeaf: true,
+                    },
+                    // — Monitoring —
+                    {
+                        path: "/admin/infrastructure/grafana",
+                        name: "Grafana",
+                        icon: <BarChartOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/prometheus",
+                        name: "Prometheus",
+                        icon: <ThunderboltOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/zabbix",
+                        name: "Zabbix",
+                        icon: <MonitorOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/infrastructure/logging",
+                        name: "Log Explorer",
+                        icon: <FileSearchOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ops/system-health",
+                        name: "System Health",
+                        icon: <HeartOutlined />,
+                        isLeaf: true,
+                    },
+                    // — Event Streaming —
+                    {
+                        path: "/admin/messaging/kafka",
+                        name: "Apache Kafka",
+                        icon: <DatabaseOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/messaging/rabbitmq",
+                        name: "RabbitMQ",
+                        icon: <SwapOutlined2 />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/messaging/hasura",
+                        name: "Hasura GraphQL",
+                        icon: <ApiOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+            {
+                path: "/admin/security",
+                name: "Security & Compliance",
+                icon: <SafetyCertificateOutlined />,
+                routes: [
+                    // — Identity —
+                    {
+                        path: "/admin/security/keycloak",
+                        name: "Keycloak SSO",
+                        icon: <KeyOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/security/ldap",
+                        name: "OpenLDAP",
+                        icon: <ApartmentOutlined />,
+                        isLeaf: true,
+                    },
+                    // — Secrets —
+                    {
+                        path: "/admin/security/vault",
+                        name: "Vault Secrets",
+                        icon: <LockOutlined />,
+                        isLeaf: true,
+                    },
+                    // — Threat Protection —
+                    {
+                        path: "/admin/security/crowdsec",
+                        name: "CrowdSec",
+                        icon: <StopOutlined />,
+                        isLeaf: true,
+                    },
+                    // — Audit —
+                    {
+                        path: "/admin/audit/dashboard",
+                        name: "Audit Dashboard",
+                        icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/audit/logs",
+                        name: "Audit Logs",
+                        icon: <AuditOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/audit/data-retention",
+                        name: "Data Retention",
+                        icon: <LockOutlined />,
+                        isLeaf: true,
+                    },
+                    // — Multi-Tenancy —
+                    {
+                        path: "/admin/tenants/dashboard",
+                        name: "Tenants Dashboard",
+                        icon: <CloudServerOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/tenants/configuration",
+                        name: "Tenant Configuration",
+                        icon: <SettingOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+
+            // ═══════════════════════════════════════
+            // SYSTEM
+            // ═══════════════════════════════════════
+            {
                 path: "/admin/reports",
-                name: "Reports",
+                name: "Reports & Analytics",
                 icon: <BarChartOutlined />,
                 routes: [
                     {
@@ -1341,6 +1327,18 @@ const menuConfig = {
                         icon: <FileTextOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/analytics/logs",
+                        name: "Log Analytics",
+                        icon: <FileSearchOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/analytics/metrics",
+                        name: "Platform Metrics",
+                        icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {
@@ -1362,27 +1360,8 @@ const menuConfig = {
                     },
                     {
                         path: "/admin/integrations/webhooks-log",
-                        name: "Webhook Log",
+                        name: "Webhook Event Log",
                         icon: <NodeIndexOutlined />,
-                        isLeaf: true,
-                    },
-                ],
-            },
-            {
-                path: "/admin/analytics",
-                name: "Analytics",
-                icon: <LineChartOutlined />,
-                routes: [
-                    {
-                        path: "/admin/analytics/logs",
-                        name: "Log Analytics",
-                        icon: <FileSearchOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/analytics/metrics",
-                        name: "Platform Metrics",
-                        icon: <DashboardOutlined />,
                         isLeaf: true,
                     },
                 ],
