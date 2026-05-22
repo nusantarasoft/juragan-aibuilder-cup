@@ -67,20 +67,38 @@ services:
     networks:
       - management-network
     volumes:
-      - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
-      - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
+      # ── Init scripts (run first, alphabetical within priority) ──────────
+      - ./volumes/db/extensions.sql:/docker-entrypoint-initdb.d/init-scripts/01-extensions.sql:Z
+      - ./volumes/db/fix-realtime-schema.sql:/docker-entrypoint-initdb.d/init-scripts/02-fix-realtime-schema.sql:Z
+      - ./volumes/db/pg_cron.sql:/docker-entrypoint-initdb.d/init-scripts/03-pg-cron.sql:Z
       - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
       - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
+      - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
+      - ./volumes/db/nusantarasoft_seed.sql:/docker-entrypoint-initdb.d/init-scripts/99-nusantarasoft-seed.sql:Z
+      # ── Migrations (run after init-scripts) ─────────────────────────────
       - ./volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:Z
+      - ./volumes/db/permissions.sql:/docker-entrypoint-initdb.d/migrations/98-permissions.sql:Z
+      - ./volumes/db/files.sql:/docker-entrypoint-initdb.d/migrations/98-files.sql:Z
+      - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
       - ./volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
       - ./volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
       - ./volumes/db/media_embeddings.sql:/docker-entrypoint-initdb.d/migrations/99-media-embeddings.sql:Z
       - ./volumes/db/media_annotations.sql:/docker-entrypoint-initdb.d/migrations/99-media-annotations.sql:Z
+      - ./volumes/db/match_media_embeddings.sql:/docker-entrypoint-initdb.d/migrations/99-match-media-embeddings.sql:Z
       - ./volumes/db/add_metadata.sql:/docker-entrypoint-initdb.d/migrations/99-add-metadata.sql:Z
-      - ./volumes/db/nusantarasoft_seed.sql:/docker-entrypoint-initdb.d/init-scripts/99-nusantarasoft-seed.sql:Z
       - ./volumes/db/studio_tables.sql:/docker-entrypoint-initdb.d/migrations/99-studio-tables.sql:Z
       - ./volumes/db/accounting_v2.sql:/docker-entrypoint-initdb.d/migrations/99-accounting-v2.sql:Z
       - ./volumes/db/documents.sql:/docker-entrypoint-initdb.d/migrations/99-documents.sql:Z
+      - ./volumes/db/blog.sql:/docker-entrypoint-initdb.d/migrations/99-blog.sql:Z
+      - ./volumes/db/chat.sql:/docker-entrypoint-initdb.d/migrations/99-chat.sql:Z
+      - ./volumes/db/emails.sql:/docker-entrypoint-initdb.d/migrations/99-emails.sql:Z
+      - ./volumes/db/news_intelligence.sql:/docker-entrypoint-initdb.d/migrations/99-news-intelligence.sql:Z
+      - ./volumes/db/migrations/20260506_ops_module.sql:/docker-entrypoint-initdb.d/migrations/99-ops-module.sql:Z
+      - ./volumes/db/migrations/20260506_notifications_module.sql:/docker-entrypoint-initdb.d/migrations/99-notifications-module.sql:Z
+      - ./volumes/db/migrations/20260506_data_export_logs.sql:/docker-entrypoint-initdb.d/migrations/99-data-export-logs.sql:Z
+      - ./volumes/db/migrations/20260506_realtime_notifications.sql:/docker-entrypoint-initdb.d/migrations/100-realtime-notifications.sql:Z
+      - ./volumes/db/migrations/20260506_seed_ops_notifications.sql:/docker-entrypoint-initdb.d/init-scripts/101-seed-ops-notifications.sql:Z
+      # ── Data volumes ────────────────────────────────────────────────────
       - ./volumes/db/data:/var/lib/postgresql/data:Z
       - db-config:/etc/postgresql-custom
     healthcheck:

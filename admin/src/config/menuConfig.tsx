@@ -1117,6 +1117,12 @@ const menuConfig = {
                         icon: <BugOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/devops/registry",
+                        name: "Docker Registry",
+                        icon: <ContainerOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {
@@ -1193,6 +1199,12 @@ const menuConfig = {
                         icon: <NodeIndexOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/ai-studio/anythingllm",
+                        name: "AnythingLLM",
+                        icon: <RobotOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {
@@ -1228,6 +1240,18 @@ const menuConfig = {
                         path: "/admin/datasets/minio",
                         name: "MinIO Storage",
                         icon: <FolderOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/datasets/nessie",
+                        name: "Nessie Catalog",
+                        icon: <BranchesOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/datasets/dremio",
+                        name: "Dremio Admin",
+                        icon: <DatabaseOutlined />,
                         isLeaf: true,
                     },
                 ],

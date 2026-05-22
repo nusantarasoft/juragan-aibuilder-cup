@@ -1,6 +1,6 @@
 # Nusantarasoft Docker Infrastructure
 
-Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.15.0**
+Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.16.0**
 
 ---
 
@@ -645,6 +645,14 @@ MIT
 ---
 
 ## 📋 Changelog
+
+### v2.16.0 (2026-05-22)
+- **Settings Gap Closure** — 2 new pages: SEO Configuration (meta tags, robots.txt, sitemap, Open Graph scoring, page-level overrides), Navigation Manager (menu trees, footer links, breadcrumbs, menu entry table)
+- **AI Studio** — AnythingLLM workspace management (AI workspaces, document processor, embedding status, chat session analytics)
+- **DevOps** — Docker Registry management (repositories, image tags, layer sizes, pull analytics)
+- **Big Data** — 2 new pages: Nessie Catalog (branches, tables, version history, catalog entries), Dremio Lakehouse Admin (job analytics, reflections, source connections, query history)
+- **Menu expansion** — +1 AI Studio sub-item (AnythingLLM), +1 DevOps sub-item (Docker Registry), +2 Big Data sub-items (Nessie Catalog, Dremio Admin)
+- **Build verified**: 190+ pages, exit code 0
 
 ### v2.15.0 (2026-05-22)
 - **Kong API Gateway Fix** — Resolved restart loop caused by Windows CRLF line endings in `kong-entrypoint.sh` and `kong.yml`. Bulk-converted 38 volume/script files to LF
