@@ -29,12 +29,14 @@ interface CatalogTreeProps {
     onCreateVDS?: () => void;
     onAddSource?: () => void;
     onDeleteItem?: (id: string, type: string, tag: string) => void;
+    onEditVDS?: (id: string, tag: string) => void;
+    onRenameSpace?: (id: string, tag: string, currentName: string) => void;
     refreshTrigger?: number;
     className?: string;
     style?: React.CSSProperties;
 }
 
-export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAddSource, onDeleteItem, refreshTrigger = 0, className, style }: CatalogTreeProps) {
+export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAddSource, onDeleteItem, onEditVDS, onRenameSpace, refreshTrigger = 0, className, style }: CatalogTreeProps) {
     const [treeGroups, setTreeGroups] = useState<{
         spaces: any[];
         lakehouse: any[];
@@ -237,9 +239,13 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
         const type = item?.type || item?.containerType || '';
         const items: MenuProps['items'] = [];
         if (['DATASET', 'VIRTUAL_DATASET', 'DATASET_VIRTUAL'].includes(type)) {
+            items.push({ key: 'editVDS', icon: <EditOutlined />, label: 'Edit VDS' });
+            items.push({ type: 'divider' });
             items.push({ key: 'deleteVDS', icon: <DeleteOutlined />, label: 'Delete VDS', danger: true });
         }
         if (type === 'SPACE') {
+            items.push({ key: 'renameSpace', icon: <EditOutlined />, label: 'Rename Space' });
+            items.push({ type: 'divider' });
             items.push({ key: 'deleteSpace', icon: <DeleteOutlined />, label: 'Delete Space', danger: true });
         }
         if (type === 'SOURCE') {
@@ -252,6 +258,20 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
         const item = node.data;
         const tag = item?.tag || '';
         const name = item?.path?.[item.path.length - 1] || 'this item';
+
+        // Non-destructive actions
+        if (key === 'editVDS') {
+            if (onEditVDS) onEditVDS(item.id, tag);
+            else message.info('Edit VDS handler not connected');
+            return;
+        }
+        if (key === 'renameSpace') {
+            if (onRenameSpace) onRenameSpace(item.id, tag, name);
+            else message.info('Rename handler not connected');
+            return;
+        }
+
+        // Destructive actions — confirm first
         Modal.confirm({
             title: `Delete "${name}"?`,
             content: 'This action cannot be undone.',

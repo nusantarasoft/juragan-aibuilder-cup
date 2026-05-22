@@ -1213,6 +1213,12 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
+                        path: "/admin/datasets/sources",
+                        name: "Data Sources",
+                        icon: <CloudServerOutlined />,
+                        isLeaf: true,
+                    },
+                    {
                         path: "/admin/datasets/superset",
                         name: "Superset BI",
                         icon: <PieChartOutlined />,

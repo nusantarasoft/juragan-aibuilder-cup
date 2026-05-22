@@ -1,6 +1,6 @@
 # Nusantarasoft Docker Infrastructure
 
-Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.14.0**
+Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.15.0**
 
 ---
 
@@ -645,6 +645,21 @@ MIT
 ---
 
 ## 📋 Changelog
+
+### v2.15.0 (2026-05-22)
+- **Kong API Gateway Fix** — Resolved restart loop caused by Windows CRLF line endings in `kong-entrypoint.sh` and `kong.yml`. Bulk-converted 38 volume/script files to LF
+- **`.gitattributes`** — Added global LF enforcement for `*.sh`, `*.yml`, `*.sql`, `*.exs`, `*.conf` to prevent future CRLF issues on Windows checkouts
+- **Dremio Priority Completion (6/6)** — All items from `prioritas.md` resolved:
+  - ✅ Edit Source modal (already complete)
+  - ✅ Delete Source/VDS/Space from Datasets page — wired `onDeleteItem` handler through CatalogTree context menu
+  - ✅ Data Sources page (`/admin/datasets/sources`) — standalone SourceManager with card grid, create/edit/delete
+  - ✅ SQL pagination with offset/limit (already complete)
+  - ✅ Cancel running job (already complete)
+  - ✅ Edit VDS — new `EditVDSModal` with SQL editor, loads existing definition, submits via `updateVDS`
+  - ✅ Rename Space — new `renameSpace` backend endpoint (service + resolver) + `RenameSpaceModal` UI
+- **CatalogTree Context Menu** — Enhanced with Edit VDS, Rename Space actions alongside existing Delete actions
+- **Menu expansion** — Added "Data Sources" entry under Big Data section
+- **Build verified**: 184+ pages, exit code 0
 
 ### v2.14.0 (2026-05-20)
 - **Reporting Engine** — 4 new pages: Dashboard (saved reports, recent exports), Report Builder (visual designer, data source/filter/chart config), Scheduled Reports (cron delivery, email recipients), Templates (8 pre-built module-specific report templates)

@@ -246,4 +246,13 @@ export class DremioResolver {
     ): Promise<DremioQueryResult> {
         return this.dremioService.getJobResults(jobId, offset, limit) as any;
     }
+
+    @Mutation(() => DremioCatalogDetail, { name: 'dremioRenameSpace' })
+    async renameSpace(
+        @Args('id') id: string,
+        @Args('tag') tag: string,
+        @Args('newName') newName: string,
+    ): Promise<DremioCatalogDetail> {
+        return this.dremioService.renameSpace(id, tag, newName) as any;
+    }
 }
