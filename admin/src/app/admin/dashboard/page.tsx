@@ -18,6 +18,9 @@ import {
     BuildOutlined, DatabaseOutlined,
     ShopOutlined, AppstoreOutlined,
     PlayCircleOutlined, CalendarOutlined, BellOutlined,
+    DollarOutlined, WalletOutlined, HeartOutlined,
+    ShoppingOutlined, CreditCardOutlined, AuditOutlined,
+    LinkOutlined,
 } from "@ant-design/icons";
 import { gql } from "@/lib/graphql";
 import { supaRest } from "@/lib/supaRest";
@@ -68,6 +71,10 @@ export default function DashboardPage() {
     const [opsOverdue, setOpsOverdue] = useState(0);
     const [opsSchedules, setOpsSchedules] = useState(0);
     const [notifHealth, setNotifHealth] = useState<{ dispatched: number; delivered: number; failRate: number }>({ dispatched: 0, delivered: 0, failRate: 0 });
+    // Cross-module: Commerce, Accounting, HR
+    const [commerce, setCommerce] = useState<{ orders: number; revenue: number; pending: number; customers: number }>({ orders: 0, revenue: 0, pending: 0, customers: 0 });
+    const [accounting, setAccounting] = useState<{ balance: number; payables: number; receivables: number; journalEntries: number }>({ balance: 0, payables: 0, receivables: 0, journalEntries: 0 });
+    const [hrStats, setHrStats] = useState<{ employees: number; departments: number; pendingLeave: number; openPositions: number }>({ employees: 0, departments: 0, pendingLeave: 0, openPositions: 0 });
 
     useEffect(() => {
         (async () => {
@@ -118,6 +125,31 @@ export default function DashboardPage() {
                     const failed = logs.filter((l: any) => l.status === 'failed').length;
                     setNotifHealth({ dispatched: logs.length, delivered: sent, failRate: logs.length > 0 ? Math.round((failed / logs.length) * 100) : 0 });
                 } catch { /* ignore ops data errors */ }
+                // Cross-module: Commerce + Accounting + HR
+                try {
+                    const [orders, products, customers, accounts, journals, payables, receivables, employees, departments, leaves] = await Promise.all([
+                        supaRest('ecommerce_orders', { select: 'id,status,total_amount' }),
+                        supaRest('ecommerce_products', { select: 'id' }),
+                        supaRest('ecommerce_customers', { select: 'id' }),
+                        supaRest('accounting_accounts', { select: 'id,balance' }),
+                        supaRest('accounting_journal_entries', { select: 'id' }),
+                        supaRest('accounting_payables', { select: 'id,amount,status' }),
+                        supaRest('accounting_receivables', { select: 'id,amount,status' }),
+                        supaRest('hr_employees', { select: 'id,status' }),
+                        supaRest('hr_departments', { select: 'id' }),
+                        supaRest('hr_leave_requests', { select: 'id,status' }),
+                    ]);
+                    const totalRev = orders.reduce((s: number, o: any) => s + (o.total_amount || 0), 0);
+                    const pendingOrders = orders.filter((o: any) => o.status === 'pending' || o.status === 'processing').length;
+                    setCommerce({ orders: orders.length, revenue: totalRev, pending: pendingOrders, customers: customers.length });
+                    const totalBal = accounts.reduce((s: number, a: any) => s + (a.balance || 0), 0);
+                    const totalAP = payables.filter((p: any) => p.status !== 'paid').reduce((s: number, p: any) => s + (p.amount || 0), 0);
+                    const totalAR = receivables.filter((r: any) => r.status !== 'collected').reduce((s: number, r: any) => s + (r.amount || 0), 0);
+                    setAccounting({ balance: totalBal, payables: totalAP, receivables: totalAR, journalEntries: journals.length });
+                    const activeEmp = employees.filter((e: any) => e.status === 'active').length;
+                    const pendingLeave = leaves.filter((l: any) => l.status === 'pending').length;
+                    setHrStats({ employees: activeEmp, departments: departments.length, pendingLeave, openPositions: 0 });
+                } catch { /* tables may not exist yet */ }
             } catch (err: any) { messageApi.error(err.message); }
             finally { setLoading(false); }
         })();
@@ -149,7 +181,8 @@ export default function DashboardPage() {
                     </div>
                 </Space>
                 <Space>
-                    <Tag color="blue">128 Tables</Tag>
+                    <Tag color="blue">169 Tables</Tag>
+                    <Tag color="cyan">16 Modules</Tag>
                     <Tag color="green">All Systems Operational</Tag>
                 </Space>
             </div>
@@ -287,7 +320,56 @@ export default function DashboardPage() {
                 </Col>
             </Row>
 
-            {/* ══════ ROW 3: ITIL v4 Module Quick Status ══════ */}
+            {/* ══════ ROW 3: Cross-Module Integration — Commerce ↔ Accounting ↔ HR ══════ */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                <Col xs={24} md={8}>
+                    <ProCard title={<Space><ShopOutlined style={{ color: '#eb2f96' }} /> Commerce & Sales</Space>} bordered loading={loading} style={{ height: '100%' }} extra={<a onClick={() => router.push('/admin/ecommerce/dashboard')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
+                        <Row gutter={[8, 12]}>
+                            <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Revenue" value={fmtCurrency(commerce.revenue)} prefix="Rp" valueStyle={{ fontSize: 18, color: '#52c41a' }} /></motion.div></Col>
+                            <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Orders" value={commerce.orders} valueStyle={{ fontSize: 18, color: '#1890ff' }} /></motion.div></Col>
+                            <Col span={12}><Statistic title="Pending" value={commerce.pending} valueStyle={{ fontSize: 18, color: commerce.pending > 0 ? '#fa8c16' : '#52c41a' }} prefix={commerce.pending > 0 ? <WarningOutlined /> : <CheckCircleOutlined />} /></Col>
+                            <Col span={12}><Statistic title="Customers" value={commerce.customers} valueStyle={{ fontSize: 18, color: '#13c2c2' }} /></Col>
+                        </Row>
+                        <Divider style={{ margin: '8px 0' }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <LinkOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                            <Text type="secondary" style={{ fontSize: 11 }}>Synced with CRM Contacts · Auto-journals to Accounting</Text>
+                        </div>
+                    </ProCard>
+                </Col>
+                <Col xs={24} md={8}>
+                    <ProCard title={<Space><AuditOutlined style={{ color: '#722ed1' }} /> Accounting & Finance</Space>} bordered loading={loading} style={{ height: '100%' }} extra={<a onClick={() => router.push('/admin/accounting/dashboard')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
+                        <Row gutter={[8, 12]}>
+                            <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Net Balance" value={fmtCurrency(accounting.balance)} prefix="Rp" valueStyle={{ fontSize: 18, color: '#722ed1' }} /></motion.div></Col>
+                            <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Journal Entries" value={accounting.journalEntries} valueStyle={{ fontSize: 18, color: '#1890ff' }} /></motion.div></Col>
+                            <Col span={12}><Statistic title={<span style={{ color: '#f5222d' }}>Payables (AP)</span>} value={fmtCurrency(accounting.payables)} prefix="Rp" valueStyle={{ fontSize: 16, color: '#f5222d' }} /></Col>
+                            <Col span={12}><Statistic title={<span style={{ color: '#52c41a' }}>Receivables (AR)</span>} value={fmtCurrency(accounting.receivables)} prefix="Rp" valueStyle={{ fontSize: 16, color: '#52c41a' }} /></Col>
+                        </Row>
+                        <Divider style={{ margin: '8px 0' }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <LinkOutlined style={{ color: '#722ed1', fontSize: 12 }} />
+                            <Text type="secondary" style={{ fontSize: 11 }}>Commerce orders → Journals · HR payroll → AP entries</Text>
+                        </div>
+                    </ProCard>
+                </Col>
+                <Col xs={24} md={8}>
+                    <ProCard title={<Space><HeartOutlined style={{ color: '#f5222d' }} /> HR & People</Space>} bordered loading={loading} style={{ height: '100%' }} extra={<a onClick={() => router.push('/admin/hr/dashboard')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
+                        <Row gutter={[8, 12]}>
+                            <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Active Employees" value={hrStats.employees} valueStyle={{ fontSize: 18, color: '#f5222d' }} prefix={<TeamOutlined />} /></motion.div></Col>
+                            <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Departments" value={hrStats.departments} valueStyle={{ fontSize: 18, color: '#1890ff' }} /></motion.div></Col>
+                            <Col span={12}><Statistic title="Pending Leave" value={hrStats.pendingLeave} valueStyle={{ fontSize: 18, color: hrStats.pendingLeave > 0 ? '#fa8c16' : '#52c41a' }} /></Col>
+                            <Col span={12}><Statistic title="Open Positions" value={hrStats.openPositions} valueStyle={{ fontSize: 18, color: '#8b5cf6' }} /></Col>
+                        </Row>
+                        <Divider style={{ margin: '8px 0' }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <LinkOutlined style={{ color: '#f5222d', fontSize: 12 }} />
+                            <Text type="secondary" style={{ fontSize: 11 }}>Payroll → Accounting AP · Headcount → PM capacity</Text>
+                        </div>
+                    </ProCard>
+                </Col>
+            </Row>
+
+            {/* ══════ ROW 4: ITIL v4 Module Quick Status ══════ */}
             <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
                 <Col xs={12} sm={8} md={4}>
                     <ModuleCard title="CMDB" icon={<ClusterOutlined />} color={themeColor} href="/admin/itsm/cmdb">
@@ -321,21 +403,21 @@ export default function DashboardPage() {
                 </Col>
             </Row>
 
-            {/* ══════ ROW 4: Quick Actions & Module Links ══════ */}
+            {/* ══════ ROW 6: Quick Actions & Module Links ══════ */}
             <Row gutter={[16, 16]}>
                 <Col xs={24} md={12}>
                     <ProCard title={<Space><RocketOutlined /> Quick Actions</Space>} bordered>
                         <Row gutter={[8, 8]}>
                             {[
                                 { label: 'New Incident', href: '/admin/itsm/tickets', color: themeColor, icon: <AlertOutlined /> },
-                                { label: 'New Change', href: '/admin/itsm/changes', color: '#52c41a', icon: <SyncOutlined /> },
-                                { label: 'Add CI to CMDB', href: '/admin/itsm/cmdb', color: themeColor, icon: <ClusterOutlined /> },
-                                { label: 'New Deployment', href: '/admin/itsm/deployments', color: '#1890ff', icon: <CloudUploadOutlined /> },
-                                { label: 'CRM Dashboard', href: '/admin/crm/dashboard', color: '#13c2c2', icon: <SolutionOutlined /> },
-                                { label: 'Create Page', href: '/admin/pages/builder', color: '#fa8c16', icon: <FileTextOutlined /> },
-                                { label: 'Manage Users', href: '/admin/users/list', color: '#eb2f96', icon: <TeamOutlined /> },
-                                { label: 'Media Library', href: '/admin/media', color: '#2f54eb', icon: <PictureOutlined /> },
-                                { label: 'Ops Dashboard', href: '/admin/ops/dashboard', color: '#8b5cf6', icon: <PlayCircleOutlined /> },
+                                { label: 'New Page', href: '/admin/pages/builder', color: '#fa8c16', icon: <FileTextOutlined /> },
+                                { label: 'New Order', href: '/admin/ecommerce/orders', color: '#eb2f96', icon: <ShoppingCartOutlined /> },
+                                { label: 'New Employee', href: '/admin/hr/employees', color: '#f5222d', icon: <TeamOutlined /> },
+                                { label: 'Journal Entry', href: '/admin/accounting/journals', color: '#722ed1', icon: <AuditOutlined /> },
+                                { label: 'New Deal', href: '/admin/crm/deals', color: '#1890ff', icon: <SolutionOutlined /> },
+                                { label: 'Run Playbook', href: '/admin/ops/playbooks', color: '#8b5cf6', icon: <PlayCircleOutlined /> },
+                                { label: 'AI Studio', href: '/admin/ai-studio', color: '#2f54eb', icon: <DatabaseOutlined /> },
+                                { label: 'Manage Users', href: '/admin/users/list', color: '#13c2c2', icon: <TeamOutlined /> },
                                 { label: 'Notifications', href: '/admin/notifications/inbox', color: '#06b6d4', icon: <BellOutlined /> },
                             ].map(a => (
                                 <Col span={12} key={a.label}>
@@ -348,19 +430,21 @@ export default function DashboardPage() {
                     </ProCard>
                 </Col>
                 <Col xs={24} md={12}>
-                    <ProCard title={<Space><BarChartOutlined /> Platform Modules</Space>} bordered>
+                    <ProCard title={<Space><AppstoreOutlined /> Platform Modules <Tag color="blue">16</Tag></Space>} bordered>
                         <Row gutter={[8, 8]}>
                             {[
-                                { name: 'CMS', count: '89 pages', color: '#fa8c16', href: '/admin/pages' },
+                                { name: 'Content Studio', count: 'Pages & Media', color: '#fa8c16', href: '/admin/pages/list' },
                                 { name: 'CRM', count: `${crm?.totalIndividuals || 0} leads`, color: '#1890ff', href: '/admin/crm/dashboard' },
                                 { name: 'ITSM', count: `${itsm?.totalTickets || 0} tickets`, color: themeColor, href: '/admin/itsm/dashboard' },
+                                { name: 'Commerce', count: `${commerce.orders} orders`, color: '#eb2f96', href: '/admin/ecommerce/dashboard' },
                                 { name: 'Inventory', count: 'Items & Stock', color: '#52c41a', href: '/admin/inventory/items' },
-                                { name: 'E-Commerce', count: 'Orders & Products', color: '#eb2f96', href: '/admin/ecommerce/dashboard' },
-                                { name: 'Projects', count: 'Tasks & Sprints', color: '#13c2c2', href: '/admin/pm/dashboard' },
-                                { name: 'AI Studio', count: 'ML Models', color: '#2f54eb', href: '/admin/ai-studio' },
-                                { name: 'Infrastructure', count: 'Networking', color: '#fa541c', href: '/admin/infrastructure/traefik' },
-                                { name: 'Operations', count: `${opsPlaybooks} playbooks`, color: '#8b5cf6', href: '/admin/ops/dashboard' },
-                                { name: 'Notifications', count: `${notifHealth.dispatched} sent`, color: '#06b6d4', href: '/admin/notifications/analytics' },
+                                { name: 'Accounting', count: `${accounting.journalEntries} entries`, color: '#722ed1', href: '/admin/accounting/dashboard' },
+                                { name: 'HR & People', count: `${hrStats.employees} staff`, color: '#f5222d', href: '/admin/hr/dashboard' },
+                                { name: 'Projects', count: 'Tasks & Sprints', color: '#13c2c2', href: '/admin/pm/portfolio' },
+                                { name: 'News & Intel', count: 'Sentiment & Crawl', color: '#2f54eb', href: '/admin/news/dashboard' },
+                                { name: 'AI Studio', count: 'ML Models', color: '#3b82f6', href: '/admin/ai-studio' },
+                                { name: 'DevOps', count: 'CI/CD & Automation', color: '#8b5cf6', href: '/admin/devops/gitlab' },
+                                { name: 'Platform', count: 'Infra & Monitoring', color: '#fa541c', href: '/admin/infrastructure/docker' },
                             ].map(m => (
                                 <Col span={12} key={m.name}>
                                     <Card size="small" bordered hoverable style={{ cursor: 'pointer', borderLeft: `3px solid ${m.color}` }} onClick={() => router.push(m.href)}>
