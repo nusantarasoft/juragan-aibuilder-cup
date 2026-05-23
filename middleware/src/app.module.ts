@@ -31,6 +31,19 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { NewsModule } from './news/news.module';
 import { DockerModule } from './docker/docker.module';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
+import { EcommerceModule } from './ecommerce/ecommerce.module';
+import { EmailModule } from './email/email.module';
+import { AuditModule } from './audit/audit.module';
+import { SecurityModule } from './security/security.module';
+import { AutomationModule } from './automation/automation.module';
+import { DevopsModule } from './devops/devops.module';
+import { CollaborationModule } from './collaboration/collaboration.module';
+import { MessagingModule } from './messaging/messaging.module';
+import { DatasetsModule } from './datasets/datasets.module';
+import { IntegrationsModule } from './integrations/integrations.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { DocumentsModule } from './documents/documents.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
     imports: [
@@ -79,6 +92,20 @@ import { InfrastructureModule } from './infrastructure/infrastructure.module';
         NewsModule,
         DockerModule,
         InfrastructureModule,
+        // v2.19.0 — New modules
+        EcommerceModule,
+        EmailModule,
+        AuditModule,
+        SecurityModule,
+        AutomationModule,
+        DevopsModule,
+        CollaborationModule,
+        MessagingModule,
+        DatasetsModule,
+        IntegrationsModule,
+        AnalyticsModule,
+        DocumentsModule,
+        ReportsModule,
     ],
 })
 export class AppModule { }
