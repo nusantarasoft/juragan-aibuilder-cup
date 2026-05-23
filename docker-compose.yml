@@ -98,6 +98,10 @@ services:
       - ./volumes/db/migrations/20260506_data_export_logs.sql:/docker-entrypoint-initdb.d/migrations/99-data-export-logs.sql:Z
       - ./volumes/db/migrations/20260506_realtime_notifications.sql:/docker-entrypoint-initdb.d/migrations/100-realtime-notifications.sql:Z
       - ./volumes/db/migrations/20260506_seed_ops_notifications.sql:/docker-entrypoint-initdb.d/init-scripts/101-seed-ops-notifications.sql:Z
+      - ./volumes/db/31-ecommerce.sql:/docker-entrypoint-initdb.d/migrations/101-ecommerce.sql:Z
+      - ./volumes/db/32-audit-security-analytics.sql:/docker-entrypoint-initdb.d/migrations/102-audit-security-analytics.sql:Z
+      - ./volumes/db/33-automation-devops-collab-messaging.sql:/docker-entrypoint-initdb.d/migrations/103-automation-devops-collab-messaging.sql:Z
+      - ./volumes/db/34-datasets-documents-reports-integrations.sql:/docker-entrypoint-initdb.d/migrations/104-datasets-documents-reports-integrations.sql:Z
       # ── Data volumes ────────────────────────────────────────────────────
       - ./volumes/db/data:/var/lib/postgresql/data:Z
       - db-config:/etc/postgresql-custom
