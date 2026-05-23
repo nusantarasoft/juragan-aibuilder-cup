@@ -1462,17 +1462,18 @@ ul.ant-pagination li.ant-pagination-next.ant-pagination-disabled > button {
    Sidebar Overflow Fix — No Horizontal Scroll
    ======================================== */
 
-.cms-outer-sider,
-.cms-outer-sider .ant-layout-sider-children,
-.ant-pro-sider,
-.ant-pro-sider .ant-layout-sider-children {
-  overflow-x: hidden !important;
-}
-
+/* Only hide horizontal overflow on the menu, NOT the sider itself.
+   The sider must remain overflow:visible for the collapse button. */
 .cms-outer-sider .ant-menu,
 .ant-pro-sider .ant-menu {
   overflow-x: hidden !important;
   overflow-y: auto !important;
+}
+
+/* Menu extra area (search, toggles) — prevent horizontal overflow */
+.cms-outer-sider .cms-outer-sider-extra,
+.ant-pro-sider .ant-pro-sider-extra {
+  overflow-x: hidden !important;
 }
 
 /* ========================================
