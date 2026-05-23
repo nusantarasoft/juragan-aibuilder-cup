@@ -119,9 +119,7 @@ const menuConfig = {
             // ═══════════════════════════════════════
             // BUSINESS
             // ═══════════════════════════════════════
-            { type: 'divider' },
             {
-                path: '/admin/_group_business',
                 name: 'BUSINESS',
                 type: 'group',
                 routes: [],
@@ -548,9 +546,7 @@ const menuConfig = {
             // ═══════════════════════════════════════
             // PEOPLE
             // ═══════════════════════════════════════
-            { type: 'divider' },
             {
-                path: '/admin/_group_people',
                 name: 'PEOPLE',
                 type: 'group',
                 routes: [],
@@ -699,9 +695,7 @@ const menuConfig = {
             // ═══════════════════════════════════════
             // SERVICE MANAGEMENT
             // ═══════════════════════════════════════
-            { type: 'divider' },
             {
-                path: '/admin/_group_service',
                 name: 'SERVICE MANAGEMENT',
                 type: 'group',
                 routes: [],
@@ -823,9 +817,7 @@ const menuConfig = {
             // ═══════════════════════════════════════
             // INTELLIGENCE
             // ═══════════════════════════════════════
-            { type: 'divider' },
             {
-                path: '/admin/_group_intelligence',
                 name: 'INTELLIGENCE',
                 type: 'group',
                 routes: [],
@@ -975,9 +967,7 @@ const menuConfig = {
             // ═══════════════════════════════════════
             // PLATFORM
             // ═══════════════════════════════════════
-            { type: 'divider' },
             {
-                path: '/admin/_group_platform',
                 name: 'PLATFORM',
                 type: 'group',
                 routes: [],
@@ -1333,9 +1323,7 @@ const menuConfig = {
             // ═══════════════════════════════════════
             // SYSTEM
             // ═══════════════════════════════════════
-            { type: 'divider' },
             {
-                path: '/admin/_group_system',
                 name: 'SYSTEM',
                 type: 'group',
                 routes: [],

@@ -349,7 +349,7 @@ export default function CMSLayout({
         const keys: string[] = [];
         if (menuConfig?.route?.routes) {
             for (const route of menuConfig.route.routes) {
-                if (route.routes && route.routes.some((r: any) => path.startsWith(r.path))) {
+                if (route.path && route.routes && route.routes.some((r: any) => r.path && path.startsWith(r.path))) {
                     keys.push(route.path);
                 }
             }
@@ -890,7 +890,7 @@ export default function CMSLayout({
                         collapsed={outerCollapsed}
                         onCollapse={handleOuterCollapse}
                         headerRender={false}
-                        siderWidth={260}
+                        siderWidth={280}
                         navTheme={darkMode ? "realDark" : "light"}
                         token={{ sider: { colorMenuBackground: darkMode ? themePalette.sidebarBg : undefined, colorTextMenu: darkMode ? 'rgba(255,255,255,0.75)' : undefined, colorTextMenuSelected: darkMode ? '#fff' : themePalette.primary, colorBgMenuItemSelected: `${themePalette.primary}${darkMode ? '40' : '15'}`, colorTextMenuItemHover: darkMode ? '#fff' : themePalette.primary, colorBgMenuItemHover: `${themePalette.primary}${darkMode ? '20' : '08'}` } }}
                         layout="side"
