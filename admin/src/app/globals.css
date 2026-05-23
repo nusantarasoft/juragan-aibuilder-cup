@@ -1272,3 +1272,225 @@ ul.ant-pagination li.ant-pagination-next.ant-pagination-disabled > button {
   border-color: #4ade80;
   color: #4ade80;
 }
+
+/* ========================================
+   Menu Scrollbar — Sleek Overlay Thin Bar
+   ======================================== */
+
+/* Hide default scrollbar, use overlay thin bar */
+.cms-outer-sider .ant-layout-sider-children,
+.cms-outer-sider .ant-pro-sider-menu-container,
+.ant-pro-sider .ant-layout-sider-children {
+  scrollbar-width: thin !important;
+  scrollbar-color: transparent transparent !important;
+  scroll-behavior: smooth !important;
+  overflow-y: overlay !important;
+  -ms-overflow-style: none !important;
+}
+
+/* Show scrollbar on hover with smooth fade */
+.cms-outer-sider .ant-layout-sider-children:hover,
+.cms-outer-sider .ant-pro-sider-menu-container:hover,
+.ant-pro-sider .ant-layout-sider-children:hover {
+  scrollbar-color: rgba(var(--theme-color-rgb, 139, 92, 246), 0.25) transparent !important;
+}
+
+/* Webkit scrollbar — Thin overlay, doesn't eat space */
+.cms-outer-sider .ant-layout-sider-children::-webkit-scrollbar,
+.cms-outer-sider .ant-pro-sider-menu-container::-webkit-scrollbar,
+.ant-pro-sider .ant-layout-sider-children::-webkit-scrollbar {
+  width: 4px !important;
+  background: transparent !important;
+}
+
+.cms-outer-sider .ant-layout-sider-children::-webkit-scrollbar-track,
+.cms-outer-sider .ant-pro-sider-menu-container::-webkit-scrollbar-track,
+.ant-pro-sider .ant-layout-sider-children::-webkit-scrollbar-track {
+  background: transparent !important;
+  border-radius: 4px !important;
+}
+
+.cms-outer-sider .ant-layout-sider-children::-webkit-scrollbar-thumb,
+.cms-outer-sider .ant-pro-sider-menu-container::-webkit-scrollbar-thumb,
+.ant-pro-sider .ant-layout-sider-children::-webkit-scrollbar-thumb {
+  background: transparent !important;
+  border-radius: 4px !important;
+  transition: background 0.3s ease !important;
+}
+
+/* Show thumb on hover */
+.cms-outer-sider .ant-layout-sider-children:hover::-webkit-scrollbar-thumb,
+.cms-outer-sider .ant-pro-sider-menu-container:hover::-webkit-scrollbar-thumb,
+.ant-pro-sider .ant-layout-sider-children:hover::-webkit-scrollbar-thumb {
+  background: rgba(var(--theme-color-rgb, 139, 92, 246), 0.25) !important;
+}
+
+.cms-outer-sider .ant-layout-sider-children:hover::-webkit-scrollbar-thumb:hover,
+.cms-outer-sider .ant-pro-sider-menu-container:hover::-webkit-scrollbar-thumb:hover,
+.ant-pro-sider .ant-layout-sider-children:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--theme-color-rgb, 139, 92, 246), 0.45) !important;
+}
+
+/* Dark mode scrollbar */
+.dark .cms-outer-sider .ant-layout-sider-children:hover,
+.dark .cms-outer-sider .ant-pro-sider-menu-container:hover,
+.dark .ant-pro-sider .ant-layout-sider-children:hover {
+  scrollbar-color: rgba(var(--theme-accent-rgb, 0, 255, 255), 0.2) transparent !important;
+}
+
+.dark .cms-outer-sider .ant-layout-sider-children:hover::-webkit-scrollbar-thumb,
+.dark .cms-outer-sider .ant-pro-sider-menu-container:hover::-webkit-scrollbar-thumb,
+.dark .ant-pro-sider .ant-layout-sider-children:hover::-webkit-scrollbar-thumb {
+  background: rgba(var(--theme-accent-rgb, 0, 255, 255), 0.2) !important;
+}
+
+.dark .cms-outer-sider .ant-layout-sider-children:hover::-webkit-scrollbar-thumb:hover,
+.dark .cms-outer-sider .ant-pro-sider-menu-container:hover::-webkit-scrollbar-thumb:hover,
+.dark .ant-pro-sider .ant-layout-sider-children:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--theme-accent-rgb, 0, 255, 255), 0.4) !important;
+}
+
+/* ========================================
+   Menu Divider Lines — Gradient Separator
+   ======================================== */
+
+/* ProLayout divider type items */
+.cms-outer-sider .ant-menu-item-divider,
+.cms-outer-sider .ant-menu > li[class*="divider"],
+.ant-pro-sider .ant-menu-item-divider {
+  height: 1px !important;
+  margin: 12px 16px 4px 16px !important;
+  padding: 0 !important;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(var(--theme-color-rgb, 139, 92, 246), 0.25) 20%,
+    rgba(var(--theme-color-rgb, 139, 92, 246), 0.25) 80%,
+    transparent 100%
+  ) !important;
+  border: none !important;
+  list-style: none !important;
+  overflow: hidden !important;
+}
+
+.dark .cms-outer-sider .ant-menu-item-divider,
+.dark .cms-outer-sider .ant-menu > li[class*="divider"],
+.dark .ant-pro-sider .ant-menu-item-divider {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(var(--theme-accent-rgb, 0, 255, 255), 0.15) 20%,
+    rgba(var(--theme-color-rgb, 139, 92, 246), 0.15) 80%,
+    transparent 100%
+  ) !important;
+}
+
+/* ========================================
+   Menu Group Headers — Domain Labels
+   ======================================== */
+
+/* ProLayout group type items */
+.cms-outer-sider .ant-menu-item-group-title,
+.ant-pro-sider .ant-menu-item-group-title {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase !important;
+  color: rgba(var(--theme-color-rgb, 139, 92, 246), 0.55) !important;
+  padding: 4px 24px 8px 24px !important;
+  margin: 0 !important;
+  line-height: 16px !important;
+  user-select: none !important;
+  pointer-events: none !important;
+}
+
+.dark .cms-outer-sider .ant-menu-item-group-title,
+.dark .ant-pro-sider .ant-menu-item-group-title {
+  color: rgba(var(--theme-accent-rgb, 0, 255, 255), 0.4) !important;
+  text-shadow: 0 0 12px rgba(var(--theme-accent-rgb, 0, 255, 255), 0.15) !important;
+}
+
+/* Group containers — no extra padding/margin */
+.cms-outer-sider .ant-menu-item-group,
+.ant-pro-sider .ant-menu-item-group {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.cms-outer-sider .ant-menu-item-group-list,
+.ant-pro-sider .ant-menu-item-group-list {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* ========================================
+   Menu Items — Refined Spacing & Transitions
+   ======================================== */
+
+/* Tighter menu item spacing */
+.cms-outer-sider .ant-menu-item,
+.cms-outer-sider .ant-menu-submenu-title {
+  height: 38px !important;
+  line-height: 38px !important;
+  margin: 1px 0 !important;
+  font-size: 13px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Submenu children — slightly smaller */
+.cms-outer-sider .ant-menu-sub .ant-menu-item {
+  height: 34px !important;
+  line-height: 34px !important;
+  font-size: 12.5px !important;
+  padding-left: 44px !important;
+}
+
+/* Submenu arrow styling */
+.cms-outer-sider .ant-menu-submenu-arrow,
+.ant-pro-sider .ant-menu-submenu-arrow {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Active submenu arrow rotation */
+.cms-outer-sider .ant-menu-submenu-open > .ant-menu-submenu-title .ant-menu-submenu-arrow {
+  transform: rotate(0deg) !important;
+}
+
+/* Collapsed state refinements */
+.cms-outer-sider.ant-layout-sider-collapsed .ant-menu-item,
+.cms-outer-sider.ant-layout-sider-collapsed .ant-menu-submenu-title {
+  padding: 0 !important;
+  text-align: center !important;
+  justify-content: center !important;
+}
+
+/* Hide dividers and group headers when collapsed */
+.cms-outer-sider.ant-layout-sider-collapsed .ant-menu-item-divider,
+.cms-outer-sider.ant-layout-sider-collapsed .ant-menu-item-group-title {
+  display: none !important;
+}
+
+/* ========================================
+   Menu Item Count Badges
+   ======================================== */
+
+.cms-outer-sider .ant-menu-submenu-title .ant-badge,
+.ant-pro-sider .ant-menu-submenu-title .ant-badge {
+  font-size: 10px !important;
+  margin-left: auto !important;
+}
+
+/* ========================================
+   Smooth Scroll for Menu Container
+   ======================================== */
+
+.cms-outer-sider .ant-pro-sider-menu-container {
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+}
+
+/* Smooth open/close transition for submenus */
+.cms-outer-sider .ant-menu-inline .ant-menu-sub {
+  transition: height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease !important;
+}
