@@ -902,7 +902,6 @@ export default function CMSLayout({
 
                         menuDataRender={(menuData) => {
                             // Ensure icons from menuConfig are preserved on all items
-                            // ProLayout may strip icons from submenu parents during transformation
                             const attachIcons = (items: any[]): any[] => {
                                 return items.map(item => {
                                     const route = findMenuItemByPath(menuConfig.route.routes, item.path || '');
@@ -919,7 +918,47 @@ export default function CMSLayout({
                                     return result;
                                 });
                             };
-                            return attachIcons(menuData);
+                            const withIcons = attachIcons(menuData);
+
+                            // Group labels defined in menuConfig (type:'group' with empty routes)
+                            const groupNames = ['BUSINESS', 'PEOPLE', 'SERVICE MANAGEMENT', 'INTELLIGENCE', 'PLATFORM', 'SYSTEM'];
+
+                            // Restructure: collect items between group markers and nest them as group children
+                            const result: any[] = [];
+                            let currentGroup: any = null;
+
+                            for (const item of withIcons) {
+                                // Detect group label entries (empty groups used as section markers)
+                                const isGroupLabel = groupNames.includes(item.name) && 
+                                    (!item.children || item.children.length === 0) &&
+                                    (!item.path || item.path.includes('_group'));
+
+                                if (isGroupLabel) {
+                                    // Push previous group if exists
+                                    if (currentGroup) {
+                                        result.push(currentGroup);
+                                    }
+                                    // Start new group
+                                    currentGroup = {
+                                        type: 'group',
+                                        name: item.name,
+                                        key: `group-${item.name}`,
+                                        children: [],
+                                    };
+                                } else if (currentGroup) {
+                                    // Add item as child of current group
+                                    currentGroup.children.push(item);
+                                } else {
+                                    // Items before first group (e.g. Dashboard)
+                                    result.push(item);
+                                }
+                            }
+                            // Push last group
+                            if (currentGroup) {
+                                result.push(currentGroup);
+                            }
+
+                            return result;
                         }}
                         menuProps={{
                             openKeys,
