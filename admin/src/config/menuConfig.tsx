@@ -119,6 +119,13 @@ const menuConfig = {
             // ═══════════════════════════════════════
             // BUSINESS
             // ═══════════════════════════════════════
+            { type: 'divider' },
+            {
+                path: '/admin/_group_business',
+                name: 'BUSINESS',
+                type: 'group',
+                routes: [],
+            },
             {
                 path: "/admin/content-studio",
                 name: "Content Studio",
@@ -541,6 +548,13 @@ const menuConfig = {
             // ═══════════════════════════════════════
             // PEOPLE
             // ═══════════════════════════════════════
+            { type: 'divider' },
+            {
+                path: '/admin/_group_people',
+                name: 'PEOPLE',
+                type: 'group',
+                routes: [],
+            },
             {
                 path: "/admin/hr",
                 name: "HR & People",
@@ -685,6 +699,13 @@ const menuConfig = {
             // ═══════════════════════════════════════
             // SERVICE MANAGEMENT
             // ═══════════════════════════════════════
+            { type: 'divider' },
+            {
+                path: '/admin/_group_service',
+                name: 'SERVICE MANAGEMENT',
+                type: 'group',
+                routes: [],
+            },
             {
                 path: "/admin/itsm",
                 name: "ITSM",
@@ -802,6 +823,13 @@ const menuConfig = {
             // ═══════════════════════════════════════
             // INTELLIGENCE
             // ═══════════════════════════════════════
+            { type: 'divider' },
+            {
+                path: '/admin/_group_intelligence',
+                name: 'INTELLIGENCE',
+                type: 'group',
+                routes: [],
+            },
             {
                 path: "/admin/news",
                 name: "News & Intelligence",
@@ -947,6 +975,13 @@ const menuConfig = {
             // ═══════════════════════════════════════
             // PLATFORM
             // ═══════════════════════════════════════
+            { type: 'divider' },
+            {
+                path: '/admin/_group_platform',
+                name: 'PLATFORM',
+                type: 'group',
+                routes: [],
+            },
             {
                 path: "/admin/communications",
                 name: "Communications",
@@ -1298,6 +1333,13 @@ const menuConfig = {
             // ═══════════════════════════════════════
             // SYSTEM
             // ═══════════════════════════════════════
+            { type: 'divider' },
+            {
+                path: '/admin/_group_system',
+                name: 'SYSTEM',
+                type: 'group',
+                routes: [],
+            },
             {
                 path: "/admin/reports",
                 name: "Reports & Analytics",
