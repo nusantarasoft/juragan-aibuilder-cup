@@ -1477,6 +1477,39 @@ ul.ant-pagination li.ant-pagination-next.ant-pagination-disabled > button {
 }
 
 /* ========================================
+   Collapse Button Fix — Full Visibility
+   ======================================== */
+
+/* Ensure sider itself doesn't clip the collapse button */
+.cms-outer-sider,
+.cms-outer-sider > .ant-layout-sider-children {
+  overflow: visible !important;
+}
+
+/* The collapse trigger area at the bottom of the sider */
+.cms-outer-sider .ant-pro-sider-collapsed-button,
+.cms-outer-sider .ant-layout-sider-trigger,
+.cms-outer-sider .ant-pro-sider-collapse-button,
+.cms-outer-layout .ant-layout-sider-trigger {
+  z-index: 200 !important;
+  overflow: visible !important;
+  position: relative !important;
+}
+
+/* ProLayout links container (often wraps the collapse button) */
+.cms-outer-sider .ant-pro-sider-links,
+.cms-outer-sider .ant-pro-sider-footer {
+  overflow: visible !important;
+  z-index: 200 !important;
+}
+
+/* The actual collapse icon/button element */
+.cms-outer-sider .ant-pro-sider-collapsed-button > *,
+.cms-outer-sider .ant-layout-sider-trigger > * {
+  z-index: 201 !important;
+}
+
+/* ========================================
    Menu Items — Refined Spacing & Transitions
    ======================================== */
 
