@@ -120,9 +120,10 @@ const menuConfig = {
             // BUSINESS
             // ═══════════════════════════════════════
             {
+                path: '/admin/divider-business',
                 name: 'BUSINESS',
-                type: 'group',
-                routes: [],
+                hideInBreadcrumb: true,
+                isLeaf: true,
             },
             {
                 path: "/admin/content-studio",
@@ -547,9 +548,10 @@ const menuConfig = {
             // PEOPLE
             // ═══════════════════════════════════════
             {
+                path: '/admin/divider-people',
                 name: 'PEOPLE',
-                type: 'group',
-                routes: [],
+                hideInBreadcrumb: true,
+                isLeaf: true,
             },
             {
                 path: "/admin/hr",
@@ -696,9 +698,10 @@ const menuConfig = {
             // SERVICE MANAGEMENT
             // ═══════════════════════════════════════
             {
+                path: '/admin/divider-service',
                 name: 'SERVICE MANAGEMENT',
-                type: 'group',
-                routes: [],
+                hideInBreadcrumb: true,
+                isLeaf: true,
             },
             {
                 path: "/admin/itsm",
@@ -818,9 +821,10 @@ const menuConfig = {
             // INTELLIGENCE
             // ═══════════════════════════════════════
             {
+                path: '/admin/divider-intelligence',
                 name: 'INTELLIGENCE',
-                type: 'group',
-                routes: [],
+                hideInBreadcrumb: true,
+                isLeaf: true,
             },
             {
                 path: "/admin/news",
@@ -968,9 +972,10 @@ const menuConfig = {
             // PLATFORM
             // ═══════════════════════════════════════
             {
+                path: '/admin/divider-platform',
                 name: 'PLATFORM',
-                type: 'group',
-                routes: [],
+                hideInBreadcrumb: true,
+                isLeaf: true,
             },
             {
                 path: "/admin/communications",
@@ -1324,9 +1329,10 @@ const menuConfig = {
             // SYSTEM
             // ═══════════════════════════════════════
             {
+                path: '/admin/divider-system',
                 name: 'SYSTEM',
-                type: 'group',
-                routes: [],
+                hideInBreadcrumb: true,
+                isLeaf: true,
             },
             {
                 path: "/admin/reports",

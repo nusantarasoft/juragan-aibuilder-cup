@@ -918,47 +918,7 @@ export default function CMSLayout({
                                     return result;
                                 });
                             };
-                            const withIcons = attachIcons(menuData);
-
-                            // Group labels defined in menuConfig (type:'group' with empty routes)
-                            const groupNames = ['BUSINESS', 'PEOPLE', 'SERVICE MANAGEMENT', 'INTELLIGENCE', 'PLATFORM', 'SYSTEM'];
-
-                            // Restructure: collect items between group markers and nest them as group children
-                            const result: any[] = [];
-                            let currentGroup: any = null;
-
-                            for (const item of withIcons) {
-                                // Detect group label entries (empty groups used as section markers)
-                                const isGroupLabel = groupNames.includes(item.name) && 
-                                    (!item.children || item.children.length === 0) &&
-                                    (!item.path || item.path.includes('_group'));
-
-                                if (isGroupLabel) {
-                                    // Push previous group if exists
-                                    if (currentGroup) {
-                                        result.push(currentGroup);
-                                    }
-                                    // Start new group
-                                    currentGroup = {
-                                        type: 'group',
-                                        name: item.name,
-                                        key: `group-${item.name}`,
-                                        children: [],
-                                    };
-                                } else if (currentGroup) {
-                                    // Add item as child of current group
-                                    currentGroup.children.push(item);
-                                } else {
-                                    // Items before first group (e.g. Dashboard)
-                                    result.push(item);
-                                }
-                            }
-                            // Push last group
-                            if (currentGroup) {
-                                result.push(currentGroup);
-                            }
-
-                            return result;
+                            return attachIcons(menuData);
                         }}
                         menuProps={{
                             openKeys,
@@ -1102,7 +1062,79 @@ export default function CMSLayout({
                                 )}
                             </div>
                         )}
+                        collapsedButtonRender={(collapsed) => (
+                            <div
+                                onClick={() => handleOuterCollapse(!outerCollapsed)}
+                                style={{
+                                    position: 'absolute',
+                                    right: collapsed ? 8 : 12,
+                                    bottom: 12,
+                                    width: 28,
+                                    height: 28,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: '50%',
+                                    cursor: 'pointer',
+                                    background: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
+                                    border: `1px solid ${darkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'}`,
+                                    transition: 'all 0.2s ease',
+                                    zIndex: 100,
+                                }}
+                                onMouseEnter={(e) => {
+                                    (e.currentTarget as HTMLElement).style.background = darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    (e.currentTarget as HTMLElement).style.background = darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';
+                                }}
+                            >
+                                <span style={{ fontSize: 14, color: darkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.45)', transform: collapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease', display: 'inline-flex' }}>
+                                    ◀
+                                </span>
+                            </div>
+                        )}
                         menuItemRender={(item, dom) => {
+                            // Detect divider/group-label items from menuConfig
+                            const groupNames = ['BUSINESS', 'PEOPLE', 'SERVICE MANAGEMENT', 'INTELLIGENCE', 'PLATFORM', 'SYSTEM'];
+                            if (groupNames.includes(item.name || '')) {
+                                if (outerCollapsed) return null; // hide when collapsed
+                                return (
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 8,
+                                            padding: '12px 8px 4px 8px',
+                                            margin: '4px 0 0 0',
+                                            pointerEvents: 'none',
+                                            userSelect: 'none',
+                                            cursor: 'default',
+                                            height: 'auto',
+                                            lineHeight: 'normal',
+                                        }}
+                                    >
+                                        <span style={{
+                                            fontSize: 10,
+                                            fontWeight: 700,
+                                            letterSpacing: '1.5px',
+                                            textTransform: 'uppercase' as const,
+                                            color: darkMode ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.3)',
+                                            whiteSpace: 'nowrap',
+                                            flexShrink: 0,
+                                        }}>
+                                            {item.name}
+                                        </span>
+                                        <span style={{
+                                            flex: 1,
+                                            height: 1,
+                                            minWidth: 20,
+                                            background: darkMode
+                                                ? 'linear-gradient(90deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 80%, transparent 100%)'
+                                                : 'linear-gradient(90deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.03) 80%, transparent 100%)',
+                                        }} />
+                                    </div>
+                                );
+                            }
                             // Unified rendering for both collapsed and expanded modes.
                             // Uses classes so the useEffect can target elements precisely.
                             const route = findMenuItemByPath(menuConfig.route.routes, item.path || '');
