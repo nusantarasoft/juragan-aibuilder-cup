@@ -1062,37 +1062,6 @@ export default function CMSLayout({
                                 )}
                             </div>
                         )}
-                        collapsedButtonRender={(collapsed) => (
-                            <div
-                                onClick={() => handleOuterCollapse(!outerCollapsed)}
-                                style={{
-                                    position: 'absolute',
-                                    right: collapsed ? 8 : 12,
-                                    bottom: 12,
-                                    width: 28,
-                                    height: 28,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    borderRadius: '50%',
-                                    cursor: 'pointer',
-                                    background: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
-                                    border: `1px solid ${darkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'}`,
-                                    transition: 'all 0.2s ease',
-                                    zIndex: 100,
-                                }}
-                                onMouseEnter={(e) => {
-                                    (e.currentTarget as HTMLElement).style.background = darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    (e.currentTarget as HTMLElement).style.background = darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';
-                                }}
-                            >
-                                <span style={{ fontSize: 14, color: darkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.45)', transform: collapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease', display: 'inline-flex' }}>
-                                    ◀
-                                </span>
-                            </div>
-                        )}
                         menuItemRender={(item, dom) => {
                             // Detect divider/group-label items from menuConfig
                             const groupNames = ['BUSINESS', 'PEOPLE', 'SERVICE MANAGEMENT', 'INTELLIGENCE', 'PLATFORM', 'SYSTEM'];
