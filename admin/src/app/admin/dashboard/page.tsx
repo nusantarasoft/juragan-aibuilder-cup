@@ -181,7 +181,7 @@ export default function DashboardPage() {
                     </div>
                 </Space>
                 <Space>
-                    <Tag color="blue">169 Tables</Tag>
+                    <Tag color="blue">207 Tables</Tag>
                     <Tag color="cyan">16 Modules</Tag>
                     <Tag color="green">All Systems Operational</Tag>
                 </Space>
