@@ -1493,7 +1493,6 @@ ul.ant-pagination li.ant-pagination-next.ant-pagination-disabled > button {
 .cms-outer-layout .ant-layout-sider-trigger {
   z-index: 200 !important;
   overflow: visible !important;
-  position: relative !important;
 }
 
 /* ProLayout links container (often wraps the collapse button) */
@@ -1521,6 +1520,23 @@ ul.ant-pagination li.ant-pagination-next.ant-pagination-disabled > button {
   margin: 1px 0 !important;
   font-size: 13px !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Divider items — override height and disable interactivity */
+.cms-outer-sider .ant-menu-item[data-menu-divider="true"] {
+    height: auto !important;
+    line-height: normal !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    cursor: default !important;
+    pointer-events: none !important;
+}
+
+.cms-outer-sider .ant-menu-item[data-menu-divider="true"]:hover,
+.cms-outer-sider .ant-menu-item[data-menu-divider="true"].ant-menu-item-active,
+.cms-outer-sider .ant-menu-item[data-menu-divider="true"].ant-menu-item-selected {
+    background: transparent !important;
 }
 
 /* Submenu children — slightly smaller */
@@ -1554,6 +1570,15 @@ ul.ant-pagination li.ant-pagination-next.ant-pagination-disabled > button {
 .cms-outer-sider.ant-layout-sider-collapsed .ant-menu-item-divider,
 .cms-outer-sider.ant-layout-sider-collapsed .ant-menu-item-group-title {
   display: none !important;
+}
+
+/* Hide divider items when sidebar is collapsed */
+.cms-outer-sider.ant-layout-sider-collapsed .ant-menu-item[data-menu-divider="true"] {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
 }
 
 /* ========================================

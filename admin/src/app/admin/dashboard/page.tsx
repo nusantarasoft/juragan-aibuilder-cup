@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { motion } from "framer-motion";
 import { ProCard } from "@ant-design/pro-components";
-import { Row, Col, Statistic, Tag, Space, Progress, message, Typography, Card, Badge, Button, Divider } from "antd";
+import { Row, Col, Statistic, Tag, Space, Progress, message, Typography, Card, Badge, Button, Divider, Timeline, Skeleton, Tooltip } from "antd";
 import {
     DashboardOutlined, FileTextOutlined, PictureOutlined,
     TeamOutlined, CustomerServiceOutlined, SolutionOutlined,
@@ -20,7 +20,10 @@ import {
     PlayCircleOutlined, CalendarOutlined, BellOutlined,
     DollarOutlined, WalletOutlined, HeartOutlined,
     ShoppingOutlined, CreditCardOutlined, AuditOutlined,
-    LinkOutlined,
+    LinkOutlined, LockOutlined, FileSearchOutlined,
+    InboxOutlined, CodeOutlined, ToolOutlined,
+    HistoryOutlined, ApiOutlined, ContainerOutlined,
+    FundProjectionScreenOutlined, ExperimentOutlined,
 } from "@ant-design/icons";
 import { gql } from "@/lib/graphql";
 import { supaRest } from "@/lib/supaRest";
@@ -31,6 +34,29 @@ import { usePreferencesStore } from "@/store/usePreferencesStore";
 const { Title, Text, Paragraph } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const DEFAULT_TENANT = 'default';
+
+/* ═══ Dashboard animation styles ═══ */
+const dashAnimStyle = `
+@keyframes dashFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmerPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.7; }
+}
+.dash-card {
+  animation: dashFadeUp 0.5s ease both;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.dash-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+}
+.dash-stat-value .ant-statistic-content-value {
+  animation: shimmerPulse 3s ease-in-out infinite;
+}
+`;
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 dayjs.extend(relativeTime);
@@ -75,6 +101,13 @@ export default function DashboardPage() {
     const [commerce, setCommerce] = useState<{ orders: number; revenue: number; pending: number; customers: number }>({ orders: 0, revenue: 0, pending: 0, customers: 0 });
     const [accounting, setAccounting] = useState<{ balance: number; payables: number; receivables: number; journalEntries: number }>({ balance: 0, payables: 0, receivables: 0, journalEntries: 0 });
     const [hrStats, setHrStats] = useState<{ employees: number; departments: number; pendingLeave: number; openPositions: number }>({ employees: 0, departments: 0, pendingLeave: 0, openPositions: 0 });
+    // New widgets state
+    const [pmStats, setPmStats] = useState<{ projects: number; tasks: number }>({ projects: 0, tasks: 0 });
+    const [invStats, setInvStats] = useState<{ items: number; warehouses: number; purchaseOrders: number; fixedAssets: number }>({ items: 0, warehouses: 0, purchaseOrders: 0, fixedAssets: 0 });
+    const [secStats, setSecStats] = useState<{ events: number; auditLogs: number; policies: number }>({ events: 0, auditLogs: 0, policies: 0 });
+    const [devopsStats, setDevopsStats] = useState<{ pipelines: number; builds: number; workflows: number }>({ pipelines: 0, builds: 0, workflows: 0 });
+    const [recentActivity, setRecentActivity] = useState<any[]>([]);
+    const [platformCounts, setPlatformCounts] = useState<{ tables: number; modules: number; resolvers: number; extensions: number }>({ tables: 207, modules: 16, resolvers: 37, extensions: 72 });
 
     useEffect(() => {
         (async () => {
@@ -150,24 +183,74 @@ export default function DashboardPage() {
                     const pendingLeave = leaves.filter((l: any) => l.status === 'pending').length;
                     setHrStats({ employees: activeEmp, departments: departments.length, pendingLeave, openPositions: 0 });
                 } catch { /* tables may not exist yet */ }
+                // ── Project Management widget ──
+                try {
+                    const [pmAssessments, pmChecklist] = await Promise.all([
+                        supaRest('pm_principle_assessments', { select: 'id' }),
+                        supaRest('pm_process_checklist', { select: 'id' }),
+                    ]);
+                    setPmStats({ projects: pmAssessments.length, tasks: pmChecklist.length });
+                } catch { /* pm tables may not exist */ }
+                // ── Inventory Snapshot widget ──
+                try {
+                    const [invItems, invWh, invPo, invFa] = await Promise.all([
+                        supaRest('inv_items', { select: 'id' }),
+                        supaRest('inv_warehouses', { select: 'id' }),
+                        supaRest('inv_purchase_orders', { select: 'id' }),
+                        supaRest('inv_fixed_assets', { select: 'id' }),
+                    ]);
+                    setInvStats({ items: invItems.length, warehouses: invWh.length, purchaseOrders: invPo.length, fixedAssets: invFa.length });
+                } catch { /* inventory tables may not exist */ }
+                // ── Security & Audit widget ──
+                try {
+                    const [secEvts, audLogs, secPol] = await Promise.all([
+                        supaRest('security_events', { select: 'id' }),
+                        supaRest('audit_logs', { select: 'id' }),
+                        supaRest('security_policies', { select: 'id' }),
+                    ]);
+                    setSecStats({ events: secEvts.length, auditLogs: audLogs.length, policies: secPol.length });
+                } catch { /* security tables may not exist */ }
+                // ── DevOps & Automation widget ──
+                try {
+                    const [pipes, builds, wflows] = await Promise.all([
+                        supaRest('devops_pipelines', { select: 'id' }),
+                        supaRest('devops_builds', { select: 'id' }),
+                        supaRest('automation_workflows', { select: 'id' }),
+                    ]);
+                    setDevopsStats({ pipelines: pipes.length, builds: builds.length, workflows: wflows.length });
+                } catch { /* devops tables may not exist */ }
+                // ── Recent Activity Feed ──
+                try {
+                    const actLogs = await supaRest('audit_logs', { select: '*', order: 'created_at.desc', limit: 10 });
+                    setRecentActivity(actLogs || []);
+                } catch { /* audit_logs may not exist */ }
+                // ── Platform overview counts ──
+                try {
+                    const [extRows] = await Promise.all([
+                        supaRest('pg_available_extensions' as any, { select: 'name', limit: 500 }),
+                    ]);
+                    setPlatformCounts(prev => ({ ...prev, extensions: Array.isArray(extRows) ? extRows.length : prev.extensions }));
+                } catch { /* keep defaults */ }
             } catch (err: any) { messageApi.error(err.message); }
             finally { setLoading(false); }
         })();
     }, [messageApi]);
 
-    const ModuleCard = ({ title, icon, color, href, children }: { title: string, icon: React.ReactNode, color: string, href: string, children: React.ReactNode }) => (
-        <ProCard bordered hoverable style={{ borderTop: `3px solid ${color}`, cursor: 'pointer', height: '100%' }} onClick={() => router.push(href)}>
+    const ModuleCard = ({ title, icon, color, href, children, delay = 0 }: { title: string, icon: React.ReactNode, color: string, href: string, children: React.ReactNode, delay?: number }) => (
+        <ProCard bordered hoverable className="dash-card" style={{ borderTop: `4px solid ${color}`, cursor: 'pointer', height: '100%', animationDelay: `${delay}ms`, position: 'relative', overflow: 'hidden' }} onClick={() => router.push(href)}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: `linear-gradient(90deg, ${color}, ${color}88, ${color}44)` }} />
             <Space style={{ marginBottom: 8 }}>
                 <span style={{ fontSize: 18, color }}>{icon}</span>
                 <Text strong style={{ fontSize: 13 }}>{title}</Text>
             </Space>
-            {children}
+            <div className="dash-stat-value">{children}</div>
         </ProCard>
     );
 
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Dashboard</AuroraText>}
             subTitle={<DecryptedText text="NusantaraSoft Enterprise Platform" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
+        <style>{dashAnimStyle}</style>
         <div style={{ padding: 24 }}>
             {contextHolder}
 
@@ -187,22 +270,23 @@ export default function DashboardPage() {
                 </Space>
             </div>
 
-            {/* ══════ SYSTEM HEALTH (Infrastructure) ══════ */}
+            {/* ══════ PLATFORM OVERVIEW ══════ */}
             <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
                 {[
-                    { label: 'Containers', value: '18', sub: '18 running', color: '#10b981', icon: <ClusterOutlined /> },
-                    { label: 'Docker Version', value: '27.5', sub: 'Engine API v1.47', color: '#3b82f6', icon: <BuildOutlined /> },
-                    { label: 'Memory', value: '18.4 GB', sub: 'of 32 GB allocated', color: '#8b5cf6', icon: <DatabaseOutlined /> },
-                    { label: 'Disk Usage', value: '98 GB', sub: 'of 256 GB total', color: '#f59e0b', icon: <CloudUploadOutlined /> },
+                    { label: 'Total Tables', value: String(platformCounts.tables), sub: 'PostgreSQL schema objects', color: '#10b981', icon: <DatabaseOutlined /> },
+                    { label: 'Active Modules', value: String(platformCounts.modules), sub: 'Enterprise feature modules', color: '#3b82f6', icon: <AppstoreOutlined /> },
+                    { label: 'GraphQL Resolvers', value: String(platformCounts.resolvers), sub: 'API query endpoints', color: '#8b5cf6', icon: <ApiOutlined /> },
+                    { label: 'DB Extensions', value: String(platformCounts.extensions), sub: 'PostgreSQL extensions', color: '#f59e0b', icon: <ExperimentOutlined /> },
                 ].map((s, i) => (
                     <Col key={i} xs={12} md={6}>
                         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                            <Card size="small" className="dash-card" style={{ ...glass, borderTop: `4px solid ${s.color}`, animationDelay: `${i * 60}ms`, position: 'relative', overflow: 'hidden' }}>
+                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: `linear-gradient(90deg, ${s.color}, ${s.color}88, ${s.color}44)` }} />
                                 <Space size={8}>
                                     <span style={{ fontSize: 18, color: s.color }}>{s.icon}</span>
                                     <div>
                                         <Text type="secondary" style={{ fontSize: 10 }}>{s.label}</Text>
-                                        <div><Text strong style={{ fontSize: 16, color: s.color }}>{s.value}</Text></div>
+                                        <div className="dash-stat-value"><Text strong style={{ fontSize: 16, color: s.color }}>{loading ? '—' : s.value}</Text></div>
                                         <Text type="secondary" style={{ fontSize: 9 }}>{s.sub}</Text>
                                     </div>
                                 </Space>
@@ -295,7 +379,7 @@ export default function DashboardPage() {
             {/* ══════ ROW 2.5: Operations & Notifications Quick Status ══════ */}
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                 <Col xs={24} md={8}>
-                    <ProCard title={<Space><PlayCircleOutlined /> Operations</Space>} bordered loading={loading} style={{ height: '100%' }} extra={<a onClick={() => router.push('/admin/ops/dashboard')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
+                    <ProCard title={<Space><PlayCircleOutlined /> Operations</Space>} bordered loading={loading} className="dash-card" style={{ height: '100%', animationDelay: '200ms' }} extra={<a onClick={() => router.push('/admin/ops/dashboard')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
                         <Row gutter={[8, 12]}>
                             <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Playbooks" value={opsPlaybooks} valueStyle={{ fontSize: 18, color: '#8b5cf6' }} /></motion.div></Col>
                             <Col span={12}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Active Runs" value={opsActiveRuns} valueStyle={{ fontSize: 18, color: '#3b82f6' }} /></motion.div></Col>
@@ -305,7 +389,7 @@ export default function DashboardPage() {
                     </ProCard>
                 </Col>
                 <Col xs={24} md={8}>
-                    <ProCard title={<Space><BellOutlined /> Notification Health</Space>} bordered loading={loading} style={{ height: '100%' }} extra={<a onClick={() => router.push('/admin/notifications/analytics')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
+                    <ProCard title={<Space><BellOutlined /> Notification Health</Space>} bordered loading={loading} className="dash-card" style={{ height: '100%', animationDelay: '260ms' }} extra={<a onClick={() => router.push('/admin/notifications/analytics')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
                         <div style={{ textAlign: 'center', padding: '8px 0' }}>
                             <Progress type="circle" percent={100 - notifHealth.failRate} size={80}
                                 strokeColor={notifHealth.failRate <= 5 ? '#22c55e' : notifHealth.failRate <= 15 ? '#f59e0b' : '#ef4444'}
@@ -316,6 +400,28 @@ export default function DashboardPage() {
                             <Col span={8}><Text style={{ fontSize: 11 }}>Delivered<br /><Text strong style={{ color: '#22c55e' }}>{notifHealth.delivered}</Text></Text></Col>
                             <Col span={8}><Text style={{ fontSize: 11 }}>Fail Rate<br /><Text strong type={notifHealth.failRate > 10 ? 'danger' : undefined}>{notifHealth.failRate}%</Text></Text></Col>
                         </Row>
+                    </ProCard>
+                </Col>
+                <Col xs={24} md={8}>
+                    <ProCard title={<Space><ProjectOutlined style={{ color: '#13c2c2' }} /> Project Management</Space>} bordered className="dash-card" style={{ height: '100%', animationDelay: '320ms' }} extra={<a onClick={() => router.push('/admin/pm/portfolio')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
+                        {loading ? <Skeleton active paragraph={{ rows: 3 }} /> : (
+                            <Row gutter={[8, 12]}>
+                                <Col span={12}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                                        <Statistic title="Assessments" value={pmStats.projects} valueStyle={{ fontSize: 18, color: '#13c2c2' }} prefix={<FundProjectionScreenOutlined />} />
+                                    </motion.div>
+                                </Col>
+                                <Col span={12}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                                        <Statistic title="Checklist Items" value={pmStats.tasks} valueStyle={{ fontSize: 18, color: '#3b82f6' }} prefix={<FileSearchOutlined />} />
+                                    </motion.div>
+                                </Col>
+                                <Col span={24}>
+                                    <Text type="secondary" style={{ fontSize: 11 }}>Sprint Progress</Text>
+                                    <Progress percent={pmStats.tasks > 0 ? Math.min(Math.round((pmStats.projects / Math.max(pmStats.tasks, 1)) * 100), 100) : 0} strokeColor={{ from: '#13c2c2', to: '#3b82f6' }} size="small" />
+                                </Col>
+                            </Row>
+                        )}
                     </ProCard>
                 </Col>
             </Row>
@@ -369,6 +475,88 @@ export default function DashboardPage() {
                 </Col>
             </Row>
 
+            {/* ══════ ROW 3.5: Inventory · Security · DevOps ══════ */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                <Col xs={24} md={8}>
+                    <ProCard title={<Space><InboxOutlined style={{ color: '#52c41a' }} /> Inventory Snapshot</Space>} bordered className="dash-card" style={{ height: '100%', animationDelay: '380ms', position: 'relative', overflow: 'hidden' }} extra={<a onClick={() => router.push('/admin/inventory/items')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, #52c41a, #52c41a88, #52c41a44)' }} />
+                        {loading ? <Skeleton active paragraph={{ rows: 3 }} /> : (
+                            <Row gutter={[8, 12]}>
+                                <Col span={12}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                                        <Statistic title="Items" value={invStats.items} valueStyle={{ fontSize: 18, color: '#52c41a' }} prefix={<ShoppingOutlined />} />
+                                    </motion.div>
+                                </Col>
+                                <Col span={12}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                                        <Statistic title="Warehouses" value={invStats.warehouses} valueStyle={{ fontSize: 18, color: '#1890ff' }} prefix={<ContainerOutlined />} />
+                                    </motion.div>
+                                </Col>
+                                <Col span={12}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                                        <Statistic title="Purchase Orders" value={invStats.purchaseOrders} valueStyle={{ fontSize: 18, color: '#fa8c16' }} prefix={<CreditCardOutlined />} />
+                                    </motion.div>
+                                </Col>
+                                <Col span={12}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+                                        <Statistic title="Fixed Assets" value={invStats.fixedAssets} valueStyle={{ fontSize: 18, color: '#722ed1' }} prefix={<BuildOutlined />} />
+                                    </motion.div>
+                                </Col>
+                            </Row>
+                        )}
+                    </ProCard>
+                </Col>
+                <Col xs={24} md={8}>
+                    <ProCard title={<Space><LockOutlined style={{ color: '#f5222d' }} /> Security & Audit</Space>} bordered className="dash-card" style={{ height: '100%', animationDelay: '440ms', position: 'relative', overflow: 'hidden' }} extra={<Tooltip title="Security overview"><SafetyOutlined /></Tooltip>}>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, #f5222d, #f5222d88, #f5222d44)' }} />
+                        {loading ? <Skeleton active paragraph={{ rows: 3 }} /> : (
+                            <Row gutter={[8, 12]}>
+                                <Col span={12}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                                        <Statistic title="Security Events" value={secStats.events} valueStyle={{ fontSize: 18, color: secStats.events > 0 ? '#f5222d' : '#52c41a' }} prefix={<AlertOutlined />} />
+                                    </motion.div>
+                                </Col>
+                                <Col span={12}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                                        <Statistic title="Audit Entries" value={secStats.auditLogs} valueStyle={{ fontSize: 18, color: '#1890ff' }} prefix={<FileSearchOutlined />} />
+                                    </motion.div>
+                                </Col>
+                                <Col span={24}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                                        <Statistic title="Active Policies" value={secStats.policies} valueStyle={{ fontSize: 18, color: '#722ed1' }} prefix={<SafetyOutlined />} />
+                                        {secStats.events === 0 && <Tag color="green" icon={<CheckCircleOutlined />} style={{ marginTop: 4 }}>No active threats</Tag>}
+                                    </motion.div>
+                                </Col>
+                            </Row>
+                        )}
+                    </ProCard>
+                </Col>
+                <Col xs={24} md={8}>
+                    <ProCard title={<Space><CodeOutlined style={{ color: '#8b5cf6' }} /> DevOps & Automation</Space>} bordered className="dash-card" style={{ height: '100%', animationDelay: '500ms', position: 'relative', overflow: 'hidden' }} extra={<a onClick={() => router.push('/admin/devops/gitlab')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, #8b5cf6, #8b5cf688, #8b5cf644)' }} />
+                        {loading ? <Skeleton active paragraph={{ rows: 3 }} /> : (
+                            <Row gutter={[8, 12]}>
+                                <Col span={12}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                                        <Statistic title="Pipelines" value={devopsStats.pipelines} valueStyle={{ fontSize: 18, color: '#8b5cf6' }} prefix={<ToolOutlined />} />
+                                    </motion.div>
+                                </Col>
+                                <Col span={12}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                                        <Statistic title="Builds" value={devopsStats.builds} valueStyle={{ fontSize: 18, color: '#3b82f6' }} prefix={<BuildOutlined />} />
+                                    </motion.div>
+                                </Col>
+                                <Col span={24}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                                        <Statistic title="Automation Workflows" value={devopsStats.workflows} valueStyle={{ fontSize: 18, color: '#06b6d4' }} prefix={<SyncOutlined />} />
+                                    </motion.div>
+                                </Col>
+                            </Row>
+                        )}
+                    </ProCard>
+                </Col>
+            </Row>
+
             {/* ══════ ROW 4: ITIL v4 Module Quick Status ══════ */}
             <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
                 <Col xs={12} sm={8} md={4}>
@@ -400,6 +588,37 @@ export default function DashboardPage() {
                     <ModuleCard title="Deployments" icon={<CloudUploadOutlined />} color="#1890ff" href="/admin/itsm/deployments">
                         <Statistic value={depsCompleted} valueStyle={{ fontSize: 20 }} suffix={`/ ${depsTotal}`} loading={loading} />
                     </ModuleCard>
+                </Col>
+            </Row>
+
+            {/* ══════ ROW 5: Recent Activity Feed ══════ */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                <Col xs={24}>
+                    <ProCard title={<Space><HistoryOutlined style={{ color: themeColor }} /> Recent Activity</Space>} bordered className="dash-card" style={{ animationDelay: '560ms', position: 'relative', overflow: 'hidden' }} extra={<Tag color="blue">{recentActivity.length} entries</Tag>}>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: `linear-gradient(90deg, ${themeColor}, ${themeColor}88, ${themeColor}44)` }} />
+                        {loading ? <Skeleton active paragraph={{ rows: 4 }} /> : recentActivity.length === 0 ? (
+                            <Text type="secondary" style={{ display: 'block', textAlign: 'center', padding: '24px 0' }}>No recent activity recorded</Text>
+                        ) : (
+                            <Timeline style={{ marginTop: 16 }}
+                                items={recentActivity.map((log: any, idx: number) => ({
+                                    color: idx === 0 ? themeColor : idx < 3 ? '#1890ff' : '#d9d9d9',
+                                    children: (
+                                        <motion.div key={log.id || idx} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                                <Text strong style={{ fontSize: 13 }}>{log.action || log.event_type || 'System Event'}</Text>
+                                                <Text type="secondary" style={{ fontSize: 11 }}>{log.created_at ? dayjs(log.created_at).fromNow() : ''}</Text>
+                                            </div>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                {log.table_name && <Tag style={{ fontSize: 10 }}>{log.table_name}</Tag>}
+                                                {log.user_id && <span>by {String(log.user_id).slice(0, 8)}…</span>}
+                                                {log.description || log.details || ''}
+                                            </Text>
+                                        </motion.div>
+                                    ),
+                                }))}
+                            />
+                        )}
+                    </ProCard>
                 </Col>
             </Row>
 

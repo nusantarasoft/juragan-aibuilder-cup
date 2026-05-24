@@ -832,6 +832,21 @@ export default function CMSLayout({
         return () => clearInterval(id);
     }, [innerCollapsed]);
 
+    // Mark divider menu items with data attribute for CSS targeting
+    React.useEffect(() => {
+        const sider = document.querySelector('.cms-outer-sider');
+        if (!sider) return;
+        const menuItems = sider.querySelectorAll('.ant-menu-item');
+        menuItems.forEach((item) => {
+            const wrapper = item.querySelector('.menu-divider-wrapper');
+            if (wrapper) {
+                (item as HTMLElement).setAttribute('data-menu-divider', 'true');
+            } else {
+                (item as HTMLElement).removeAttribute('data-menu-divider');
+            }
+        });
+    });
+
     // Auto-generate breadcrumb if not provided
     const breadcrumbItems = breadcrumb || generateBreadcrumb(currentPath || "/admin/dashboard");
 
@@ -1066,9 +1081,9 @@ export default function CMSLayout({
                             // Detect divider/group-label items from menuConfig
                             const groupNames = ['BUSINESS', 'PEOPLE', 'SERVICE MANAGEMENT', 'INTELLIGENCE', 'PLATFORM', 'SYSTEM'];
                             if (groupNames.includes(item.name || '')) {
-                                if (outerCollapsed) return null; // hide when collapsed
                                 return (
                                     <div
+                                        className="menu-divider-wrapper"
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
