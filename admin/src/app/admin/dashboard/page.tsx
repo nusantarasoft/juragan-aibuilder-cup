@@ -102,7 +102,7 @@ export default function DashboardPage() {
     const [accounting, setAccounting] = useState<{ balance: number; payables: number; receivables: number; journalEntries: number }>({ balance: 0, payables: 0, receivables: 0, journalEntries: 0 });
     const [hrStats, setHrStats] = useState<{ employees: number; departments: number; pendingLeave: number; openPositions: number }>({ employees: 0, departments: 0, pendingLeave: 0, openPositions: 0 });
     // New widgets state
-    const [pmStats, setPmStats] = useState<{ projects: number; tasks: number }>({ projects: 0, tasks: 0 });
+    const [pmStats, setPmStats] = useState<{ projects: number; tasks: number; sprints: number }>({ projects: 0, tasks: 0, sprints: 0 });
     const [invStats, setInvStats] = useState<{ items: number; warehouses: number; purchaseOrders: number; fixedAssets: number }>({ items: 0, warehouses: 0, purchaseOrders: 0, fixedAssets: 0 });
     const [secStats, setSecStats] = useState<{ events: number; auditLogs: number; policies: number }>({ events: 0, auditLogs: 0, policies: 0 });
     const [devopsStats, setDevopsStats] = useState<{ pipelines: number; builds: number; workflows: number }>({ pipelines: 0, builds: 0, workflows: 0 });
@@ -185,19 +185,20 @@ export default function DashboardPage() {
                 } catch { /* tables may not exist yet */ }
                 // ── Project Management widget ──
                 try {
-                    const [pmAssessments, pmChecklist] = await Promise.all([
-                        supaRest('pm_principle_assessments', { select: 'id' }),
-                        supaRest('pm_process_checklist', { select: 'id' }),
+                    const [pmProjects, pmTasks, pmSprints] = await Promise.all([
+                        supaRest('pm_projects', { select: 'id' }),
+                        supaRest('pm_tasks', { select: 'id' }),
+                        supaRest('pm_sprints', { select: 'id' }),
                     ]);
-                    setPmStats({ projects: pmAssessments.length, tasks: pmChecklist.length });
+                    setPmStats({ projects: pmProjects.length, tasks: pmTasks.length, sprints: pmSprints.length });
                 } catch { /* pm tables may not exist */ }
                 // ── Inventory Snapshot widget ──
                 try {
                     const [invItems, invWh, invPo, invFa] = await Promise.all([
-                        supaRest('inv_items', { select: 'id' }),
-                        supaRest('inv_warehouses', { select: 'id' }),
-                        supaRest('inv_purchase_orders', { select: 'id' }),
-                        supaRest('inv_fixed_assets', { select: 'id' }),
+                        supaRest('pm_milestones', { select: 'id' }),
+                        supaRest('pm_risk_registers', { select: 'id' }),
+                        supaRest('pm_stakeholders', { select: 'id' }),
+                        supaRest('pm_requirements', { select: 'id' }),
                     ]);
                     setInvStats({ items: invItems.length, warehouses: invWh.length, purchaseOrders: invPo.length, fixedAssets: invFa.length });
                 } catch { /* inventory tables may not exist */ }
@@ -408,16 +409,17 @@ export default function DashboardPage() {
                             <Row gutter={[8, 12]}>
                                 <Col span={12}>
                                     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                                        <Statistic title="Assessments" value={pmStats.projects} valueStyle={{ fontSize: 18, color: '#13c2c2' }} prefix={<FundProjectionScreenOutlined />} />
+                                        <Statistic title="Projects" value={pmStats.projects} valueStyle={{ fontSize: 18, color: '#13c2c2' }} prefix={<FundProjectionScreenOutlined />} />
                                     </motion.div>
                                 </Col>
                                 <Col span={12}>
                                     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                                        <Statistic title="Checklist Items" value={pmStats.tasks} valueStyle={{ fontSize: 18, color: '#3b82f6' }} prefix={<FileSearchOutlined />} />
+                                        <Statistic title="Tasks" value={pmStats.tasks} valueStyle={{ fontSize: 18, color: '#3b82f6' }} prefix={<FileSearchOutlined />} />
                                     </motion.div>
                                 </Col>
                                 <Col span={24}>
                                     <Text type="secondary" style={{ fontSize: 11 }}>Sprint Progress</Text>
+                                    <Text type="secondary" style={{ fontSize: 11 }}>Sprints: {pmStats.sprints}</Text>
                                     <Progress percent={pmStats.tasks > 0 ? Math.min(Math.round((pmStats.projects / Math.max(pmStats.tasks, 1)) * 100), 100) : 0} strokeColor={{ from: '#13c2c2', to: '#3b82f6' }} size="small" />
                                 </Col>
                             </Row>
@@ -478,28 +480,28 @@ export default function DashboardPage() {
             {/* ══════ ROW 3.5: Inventory · Security · DevOps ══════ */}
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                 <Col xs={24} md={8}>
-                    <ProCard title={<Space><InboxOutlined style={{ color: '#52c41a' }} /> Inventory Snapshot</Space>} bordered className="dash-card" style={{ height: '100%', animationDelay: '380ms', position: 'relative', overflow: 'hidden' }} extra={<a onClick={() => router.push('/admin/inventory/items')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
+                    <ProCard title={<Space><InboxOutlined style={{ color: '#52c41a' }} /> PM Governance</Space>} bordered className="dash-card" style={{ height: '100%', animationDelay: '380ms', position: 'relative', overflow: 'hidden' }} extra={<a onClick={() => router.push('/admin/pm/projects')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
                         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, #52c41a, #52c41a88, #52c41a44)' }} />
                         {loading ? <Skeleton active paragraph={{ rows: 3 }} /> : (
                             <Row gutter={[8, 12]}>
                                 <Col span={12}>
                                     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                                        <Statistic title="Items" value={invStats.items} valueStyle={{ fontSize: 18, color: '#52c41a' }} prefix={<ShoppingOutlined />} />
+                                        <Statistic title="Milestones" value={invStats.items} valueStyle={{ fontSize: 18, color: '#52c41a' }} prefix={<ShoppingOutlined />} />
                                     </motion.div>
                                 </Col>
                                 <Col span={12}>
                                     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                                        <Statistic title="Warehouses" value={invStats.warehouses} valueStyle={{ fontSize: 18, color: '#1890ff' }} prefix={<ContainerOutlined />} />
+                                        <Statistic title="Risk Items" value={invStats.warehouses} valueStyle={{ fontSize: 18, color: '#1890ff' }} prefix={<ContainerOutlined />} />
                                     </motion.div>
                                 </Col>
                                 <Col span={12}>
                                     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                                        <Statistic title="Purchase Orders" value={invStats.purchaseOrders} valueStyle={{ fontSize: 18, color: '#fa8c16' }} prefix={<CreditCardOutlined />} />
+                                        <Statistic title="Stakeholders" value={invStats.purchaseOrders} valueStyle={{ fontSize: 18, color: '#fa8c16' }} prefix={<CreditCardOutlined />} />
                                     </motion.div>
                                 </Col>
                                 <Col span={12}>
                                     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-                                        <Statistic title="Fixed Assets" value={invStats.fixedAssets} valueStyle={{ fontSize: 18, color: '#722ed1' }} prefix={<BuildOutlined />} />
+                                        <Statistic title="Requirements" value={invStats.fixedAssets} valueStyle={{ fontSize: 18, color: '#722ed1' }} prefix={<BuildOutlined />} />
                                     </motion.div>
                                 </Col>
                             </Row>
@@ -609,9 +611,9 @@ export default function DashboardPage() {
                                                 <Text type="secondary" style={{ fontSize: 11 }}>{log.created_at ? dayjs(log.created_at).fromNow() : ''}</Text>
                                             </div>
                                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                                {log.table_name && <Tag style={{ fontSize: 10 }}>{log.table_name}</Tag>}
+                                                {log.module && <Tag style={{ fontSize: 10 }}>{log.module}</Tag>}
+                                                {log.entity_type && <Tag color="default" style={{ fontSize: 10 }}>{log.entity_type}</Tag>}
                                                 {log.user_id && <span>by {String(log.user_id).slice(0, 8)}…</span>}
-                                                {log.description || log.details || ''}
                                             </Text>
                                         </motion.div>
                                     ),
