@@ -24,6 +24,7 @@ import {
     InboxOutlined, CodeOutlined, ToolOutlined,
     HistoryOutlined, ApiOutlined, ContainerOutlined,
     FundProjectionScreenOutlined, ExperimentOutlined,
+    FormOutlined, StarOutlined,
 } from "@ant-design/icons";
 import { gql } from "@/lib/graphql";
 import { supaRest } from "@/lib/supaRest";
@@ -108,6 +109,7 @@ export default function DashboardPage() {
     const [devopsStats, setDevopsStats] = useState<{ pipelines: number; builds: number; workflows: number }>({ pipelines: 0, builds: 0, workflows: 0 });
     const [recentActivity, setRecentActivity] = useState<any[]>([]);
     const [platformCounts, setPlatformCounts] = useState<{ tables: number; modules: number; resolvers: number; extensions: number }>({ tables: 207, modules: 16, resolvers: 37, extensions: 72 });
+    const [formsStats, setFormsStats] = useState<{ templates: number; published: number; submissions: number; pending: number; avgScore: number }>({ templates: 0, published: 0, submissions: 0, pending: 0, avgScore: 0 });
 
     useEffect(() => {
         (async () => {
@@ -232,6 +234,18 @@ export default function DashboardPage() {
                     ]);
                     setPlatformCounts(prev => ({ ...prev, extensions: Array.isArray(extRows) ? extRows.length : prev.extensions }));
                 } catch { /* keep defaults */ }
+                // ── Forms & KPI stats ──
+                try {
+                    const [fTpls, fSubs] = await Promise.all([
+                        supaRest('form_templates', { select: 'id,status' }),
+                        supaRest('form_submissions', { select: 'id,status,percentage' }),
+                    ]);
+                    const published = fTpls.filter((t: any) => t.status === 'published').length;
+                    const pending = fSubs.filter((s: any) => s.status === 'submitted' || s.status === 'draft').length;
+                    const scored = fSubs.filter((s: any) => (s.percentage || 0) > 0);
+                    const avg = scored.length > 0 ? scored.reduce((s: number, r: any) => s + (r.percentage || 0), 0) / scored.length : 0;
+                    setFormsStats({ templates: fTpls.length, published, submissions: fSubs.length, pending, avgScore: Math.round(avg) });
+                } catch { /* form tables may not exist */ }
             } catch (err: any) { messageApi.error(err.message); }
             finally { setLoading(false); }
         })();
@@ -473,6 +487,48 @@ export default function DashboardPage() {
                             <LinkOutlined style={{ color: '#f5222d', fontSize: 12 }} />
                             <Text type="secondary" style={{ fontSize: 11 }}>Payroll → Accounting AP · Headcount → PM capacity</Text>
                         </div>
+                    </ProCard>
+                </Col>
+            </Row>
+
+            {/* ══════ ROW 3.25: Forms & KPI ══════ */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                <Col xs={24}>
+                    <ProCard title={<Space><FormOutlined style={{ color: '#8b5cf6' }} /> Forms & KPI Evaluations</Space>} bordered className="dash-card" style={{ animationDelay: '350ms', position: 'relative', overflow: 'hidden' }} extra={<a onClick={() => router.push('/admin/forms/templates')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, #8b5cf6, #ec4899, #3b82f6)' }} />
+                        {loading ? <Skeleton active paragraph={{ rows: 1 }} /> : (
+                            <Row gutter={[16, 12]}>
+                                <Col xs={12} sm={6} md={4}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                                        <Statistic title="Templates" value={formsStats.templates} valueStyle={{ fontSize: 18, color: '#8b5cf6' }} prefix={<FileTextOutlined />} />
+                                    </motion.div>
+                                </Col>
+                                <Col xs={12} sm={6} md={4}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                                        <Statistic title="Published" value={formsStats.published} valueStyle={{ fontSize: 18, color: '#10b981' }} prefix={<CheckCircleOutlined />} />
+                                    </motion.div>
+                                </Col>
+                                <Col xs={12} sm={6} md={4}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                                        <Statistic title="Submissions" value={formsStats.submissions} valueStyle={{ fontSize: 18, color: '#3b82f6' }} prefix={<InboxOutlined />} />
+                                    </motion.div>
+                                </Col>
+                                <Col xs={12} sm={6} md={4}>
+                                    <Statistic title="Pending Review" value={formsStats.pending} valueStyle={{ fontSize: 18, color: formsStats.pending > 0 ? '#f59e0b' : '#10b981' }} prefix={formsStats.pending > 0 ? <WarningOutlined /> : <CheckCircleOutlined />} />
+                                </Col>
+                                <Col xs={12} sm={6} md={4}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+                                        <Statistic title="Avg Score" value={formsStats.avgScore} suffix="%" valueStyle={{ fontSize: 18, color: formsStats.avgScore >= 80 ? '#10b981' : formsStats.avgScore >= 60 ? '#f59e0b' : '#ef4444' }} prefix={<StarOutlined />} />
+                                    </motion.div>
+                                </Col>
+                                <Col xs={12} sm={6} md={4}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 4 }}>
+                                        <Button size="small" type="primary" onClick={() => router.push('/admin/forms/templates')} style={{ background: '#8b5cf6', borderColor: '#8b5cf6', fontSize: 11, borderRadius: 6 }} icon={<FormOutlined />}>Manage Forms</Button>
+                                        <Button size="small" onClick={() => router.push('/admin/forms/kpi')} style={{ fontSize: 11, borderRadius: 6 }} icon={<BarChartOutlined />}>KPI Dashboard</Button>
+                                    </div>
+                                </Col>
+                            </Row>
+                        )}
                     </ProCard>
                 </Col>
             </Row>

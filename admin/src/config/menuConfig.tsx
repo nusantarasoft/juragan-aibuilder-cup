@@ -100,6 +100,9 @@ import {
     HddOutlined,
     MenuOutlined,
     BlockOutlined,
+    CheckCircleOutlined,
+    HistoryOutlined,
+    EnvironmentOutlined,
 } from "@ant-design/icons";
 
 // CMS Menu Configuration — v2.19.0 Restructured
@@ -112,6 +115,13 @@ const menuConfig = {
                 path: "/admin/dashboard",
                 name: "Dashboard",
                 icon: <DashboardOutlined />,
+                isLeaf: true,
+                isTopLevel: true,
+            },
+            {
+                path: "/admin/activity",
+                name: "Activity Feed",
+                icon: <ClockCircleOutlined />,
                 isLeaf: true,
                 isTopLevel: true,
             },
@@ -285,6 +295,12 @@ const menuConfig = {
                         icon: <ThunderboltOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/crm/surveys",
+                        name: "Customer Surveys",
+                        icon: <FormOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {
@@ -381,6 +397,24 @@ const menuConfig = {
                         path: "/admin/inventory/warehouses",
                         name: "Warehouses",
                         icon: <HomeOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/warehouse-map",
+                        name: "Warehouse Map 3D",
+                        icon: <EnvironmentOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/warehouse-heatmap",
+                        name: "Warehouse Heatmap",
+                        icon: <BarChartOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/inventory/item-locator",
+                        name: "Item Locator",
+                        icon: <AimOutlined />,
                         isLeaf: true,
                     },
                     {
@@ -541,6 +575,118 @@ const menuConfig = {
                         icon: <BarChartOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/pm/quality",
+                        name: "Quality Checklists",
+                        icon: <CheckSquareOutlined />,
+                        isLeaf: true,
+                    },
+                ],
+            },
+
+            // ─── Form Builder ─────────────────────
+            {
+                path: "/admin/forms",
+                name: "Form Builder",
+                icon: <FormOutlined />,
+                routes: [
+                    {
+                        path: "/admin/forms/templates",
+                        name: "Templates",
+                        icon: <UnorderedListOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/forms/submissions",
+                        name: "Submissions",
+                        icon: <InboxOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/forms/analytics",
+                        name: "Analytics",
+                        icon: <BarChartOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/forms/kpi",
+                        name: "KPI Dashboard",
+                        icon: <DashboardOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/forms/builder",
+                        name: "Visual Builder",
+                        icon: <EditOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/forms/fill",
+                        name: "Fill Form",
+                        icon: <CheckCircleOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/forms/assignments",
+                        name: "Assignments",
+                        icon: <TeamOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/forms/response",
+                        name: "Response Detail",
+                        icon: <FileTextOutlined />,
+                        isLeaf: true,
+                        hideInMenu: true,
+                    },
+                    {
+                        path: "/admin/forms/settings",
+                        name: "Settings",
+                        icon: <SettingOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/forms/workflows",
+                        name: "Workflows",
+                        icon: <ThunderboltOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/forms/library",
+                        name: "Template Library",
+                        icon: <AppstoreOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/forms/logic",
+                        name: "Conditional Logic",
+                        icon: <BranchesOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/forms/sharing",
+                        name: "Sharing & Links",
+                        icon: <ShareAltOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/forms/integrations",
+                        name: "Integrations",
+                        icon: <ApiOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/forms/audit",
+                        name: "Audit Log",
+                        icon: <HistoryOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/forms/permissions",
+                        name: "Access Control",
+                        icon: <LockOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
 
@@ -622,6 +768,12 @@ const menuConfig = {
                         path: "/admin/hr/performance",
                         name: "Performance",
                         icon: <TrophyOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/hr/kpi",
+                        name: "KPI Evaluations",
+                        icon: <StarOutlined />,
                         isLeaf: true,
                     },
                     {
@@ -812,6 +964,12 @@ const menuConfig = {
                         path: "/admin/itsm/agents",
                         name: "Agents",
                         icon: <TeamOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/itsm/audits",
+                        name: "Security Audits",
+                        icon: <AuditOutlined />,
                         isLeaf: true,
                     },
                 ],
@@ -1361,6 +1519,12 @@ const menuConfig = {
                         path: "/admin/reports/templates",
                         name: "Templates",
                         icon: <FileTextOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/reports/kpi",
+                        name: "KPI Report",
+                        icon: <TrophyOutlined />,
                         isLeaf: true,
                     },
                     {

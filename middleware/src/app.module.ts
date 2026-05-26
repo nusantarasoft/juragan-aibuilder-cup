@@ -44,7 +44,7 @@ import { IntegrationsModule } from './integrations/integrations.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { DocumentsModule } from './documents/documents.module';
 import { ReportsModule } from './reports/reports.module';
-
+import { FormsModule } from './forms/forms.module';
 @Module({
     imports: [
         // Environment configuration
@@ -106,6 +106,8 @@ import { ReportsModule } from './reports/reports.module';
         AnalyticsModule,
         DocumentsModule,
         ReportsModule,
+        // v3.0 — Form Builder
+        FormsModule,
     ],
 })
 export class AppModule { }

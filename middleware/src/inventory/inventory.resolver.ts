@@ -765,6 +765,34 @@ class WarehouseStats {
     @Field(() => Int) usedCapacity: number;
 }
 
+// ─── Warehouse Layout Types ────────────────────────────
+
+@ObjectType()
+class WarehouseLayoutType {
+    @Field() id: string;
+    @Field() tenantId: string;
+    @Field({ nullable: true }) warehouseId?: string;
+    @Field() name: string;
+    @Field(() => GraphQLJSON) objects: any;
+    @Field(() => Int) objectCount: number;
+    @Field(() => Int) zoneCount: number;
+    @Field(() => Int) rackCount: number;
+    @Field() isActive: boolean;
+    @Field({ nullable: true }) createdBy?: string;
+    @Field() createdAt: string;
+    @Field() updatedAt: string;
+}
+
+@InputType()
+class SaveWarehouseLayoutInput {
+    @Field({ nullable: true }) id?: string;
+    @Field({ nullable: true }) warehouseId?: string;
+    @Field() name: string;
+    @Field(() => GraphQLJSON) objects: any;
+    @Field({ nullable: true }) isActive?: boolean;
+    @Field({ nullable: true }) createdBy?: string;
+}
+
 // ─── Warehouse Input Types ──────────────────────────────
 
 @InputType()
@@ -843,6 +871,16 @@ function mapWarehouse(r: any): InvWarehouseType {
         manager: r.manager, phone: r.phone, email: r.email,
         operatingHours: r.operating_hours, tags: r.tags,
         notes: r.notes, status: r.status,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+}
+
+function mapWarehouseLayout(r: any): WarehouseLayoutType {
+    return {
+        id: r.id, tenantId: r.tenant_id, warehouseId: r.warehouse_id,
+        name: r.name, objects: r.objects,
+        objectCount: r.object_count, zoneCount: r.zone_count, rackCount: r.rack_count,
+        isActive: r.is_active, createdBy: r.created_by,
         createdAt: r.created_at, updatedAt: r.updated_at,
     };
 }
@@ -2740,6 +2778,45 @@ export class InventoryResolver {
     @Query(() => WarehouseStats)
     async warehouseStats(@Args('tenantId') tenantId: string) {
         return this.inventoryService.getWarehouseStats(tenantId);
+    }
+
+    // Warehouse Layouts (3D Builder)
+    @Query(() => [WarehouseLayoutType])
+    async warehouseLayouts(
+        @Args('tenantId') tenantId: string,
+        @Args('warehouseId', { nullable: true }) warehouseId?: string,
+    ) {
+        const data = await this.inventoryService.getWarehouseLayouts(tenantId, warehouseId);
+        return data.map(mapWarehouseLayout);
+    }
+
+    @Query(() => WarehouseLayoutType)
+    async warehouseLayout(@Args('id') id: string) {
+        const data = await this.inventoryService.getWarehouseLayout(id);
+        return mapWarehouseLayout(data);
+    }
+
+    @Mutation(() => WarehouseLayoutType)
+    async saveWarehouseLayout(
+        @Args('tenantId') tenantId: string,
+        @Args('input') input: SaveWarehouseLayoutInput,
+    ) {
+        const data = await this.inventoryService.saveWarehouseLayout(tenantId, input);
+        return mapWarehouseLayout(data);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteWarehouseLayout(@Args('id') id: string) {
+        return this.inventoryService.deleteWarehouseLayout(id);
+    }
+
+    @Mutation(() => WarehouseLayoutType)
+    async setActiveWarehouseLayout(
+        @Args('id') id: string,
+        @Args('tenantId') tenantId: string,
+    ) {
+        const data = await this.inventoryService.setActiveWarehouseLayout(id, tenantId);
+        return mapWarehouseLayout(data);
     }
 
     // ═══════════════════════════════════════════════════════

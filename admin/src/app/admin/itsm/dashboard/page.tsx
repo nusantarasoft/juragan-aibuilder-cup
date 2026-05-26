@@ -24,6 +24,7 @@ import { supaRest } from "@/lib/supaRest";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import FormIntegrationWidget from "@/components/forms/FormIntegrationWidget";
 import dynamic from "next/dynamic";
 
 // ── Dynamic chart imports (SSR-safe) ──────────────────────
@@ -390,6 +391,26 @@ export default function ItsmDashboardPage() {
             <ProCard title={<Space><AlertOutlined /> Recent Incidents</Space>} bordered extra={<a href="/admin/itsm/tickets">View All</a>}>
                 <Table scroll={{ x: 900 }} dataSource={tickets} columns={ticketCols} rowKey="id" pagination={false} size="small" loading={loading} />
             </ProCard>
+
+            {/* ROW 7: Form Builder Integration */}
+            <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+                <Col xs={24} md={12}>
+                    <FormIntegrationWidget
+                        categories={['audit', 'checklist']}
+                        title="IT Audit & Checklists"
+                        maxItems={3}
+                        animIndex={14}
+                    />
+                </Col>
+                <Col xs={24} md={12}>
+                    <FormIntegrationWidget
+                        categories={['assessment']}
+                        title="Security Assessments"
+                        maxItems={3}
+                        animIndex={15}
+                    />
+                </Col>
+            </Row>
         </>
     );
 

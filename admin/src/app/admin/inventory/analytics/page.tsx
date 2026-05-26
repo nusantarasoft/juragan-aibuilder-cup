@@ -10,6 +10,7 @@ import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { inventoryService } from '@/lib/inventoryService';
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
+const glassDark = { background: 'rgba(12,12,30,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14 };
 
 export default function AnalyticsPage() {
     const { themeColor } = usePreferencesStore();
@@ -122,13 +123,15 @@ export default function AnalyticsPage() {
                 {/* Overview KPIs */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 14, marginBottom: 24 }}>
                     {topCards.map((k, i) => (
-                        <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                            style={{ ...glass, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.45)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                                <span style={{ color: k.color, fontSize: 16 }}>{k.icon}</span>
-                                <span style={{ color: '#999', fontSize: 12 }}>{k.label}</span>
+                        <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, type: 'spring', stiffness: 260, damping: 20 }}
+                            style={{ ...glassDark, padding: '16px 18px', borderTop: `3px solid ${k.color}`, position: 'relative', overflow: 'hidden' }}>
+                            <div style={{ position: 'absolute', top: -10, right: -10, width: 70, height: 70, borderRadius: '50%', background: `radial-gradient(circle, ${k.color}18 0%, transparent 70%)`, pointerEvents: 'none' }} />
+                            <div style={{ position: 'absolute', top: 6, right: 8, fontSize: 32, opacity: 0.06, color: k.color, pointerEvents: 'none' }}>{k.icon}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, position: 'relative' }}>
+                                <span style={{ color: k.color, fontSize: 14 }}>{k.icon}</span>
+                                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase' as const }}>{k.label}</span>
                             </div>
-                            <div style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e' }}>{k.value}</div>
+                            <div style={{ fontSize: 24, fontWeight: 800, color: k.color, position: 'relative', letterSpacing: -0.5 }}>{k.value}</div>
                         </motion.div>
                     ))}
                 </div>
@@ -136,46 +139,70 @@ export default function AnalyticsPage() {
                 <Tabs items={[
                     { key: 'overview', label: '📊 Module Overview', children: (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-                            {analyticModules.map((mod, i) => (
-                                <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
-                                    <Card size="small" title={<Space>{mod.icon}<span>{mod.title}</span></Space>}
-                                        style={{ borderRadius: 12, height: '100%' }}>
+                            {analyticModules.map((mod, i) => {
+                                const modColors: Record<string, string> = { Procurement: '#7c3aed', Warehouse: '#2563eb', Manufacturing: '#059669', 'Stock Opname': '#d97706', Bookings: '#0891b2', Rentals: '#dc2626' };
+                                const mc = modColors[mod.title] || '#6b7280';
+                                return (
+                                <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, type: 'spring', stiffness: 260, damping: 20 }}>
+                                    <Card size="small" title={
+                                        <Space>
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: `linear-gradient(135deg, ${mc}, ${mc}bb)` }}>
+                                                {React.cloneElement(mod.icon, { style: { color: '#fff', fontSize: 12 } })}
+                                            </span>
+                                            <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>{mod.title}</span>
+                                        </Space>
+                                    }
+                                        style={{ ...glassDark, borderLeft: `3px solid ${mc}`, height: '100%' }}>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                             {mod.stats.map((s: any, j: number) => (
                                                 <div key={j} style={{ padding: '8px 0' }}>
-                                                    <div style={{ color: '#999', fontSize: 11, marginBottom: 4 }}>{s.label}</div>
+                                                    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, marginBottom: 4, letterSpacing: 0.3, textTransform: 'uppercase' as const }}>{s.label}</div>
                                                     {s.progress !== undefined ? (
                                                         <div>
-                                                            <span style={{ fontWeight: 700, fontSize: 16 }}>{s.value}</span>
+                                                            <span style={{ fontWeight: 700, fontSize: 16, color: 'rgba(255,255,255,0.9)' }}>{s.value}</span>
                                                             <Progress percent={s.progress} size="small" showInfo={false}
                                                                 strokeColor={s.progress >= 80 ? '#52c41a' : s.progress >= 50 ? '#1890ff' : '#faad14'} />
                                                         </div>
                                                     ) : (
-                                                        <div style={{ fontWeight: 700, fontSize: 16 }}>{s.value}</div>
+                                                        <div style={{ fontWeight: 700, fontSize: 16, color: 'rgba(255,255,255,0.9)' }}>{s.value}</div>
                                                     )}
                                                 </div>
                                             ))}
                                         </div>
                                     </Card>
                                 </motion.div>
-                            ))}
+                            );})}
                         </div>
                     )},
                     { key: 'fulfillment', label: '🎯 Fulfillment Breakdown', children: (
                         <div style={{ maxWidth: 700 }}>
-                            <Card title="Item Distribution by Fulfillment Type" style={{ borderRadius: 12 }}>
+                            <Card title={
+                                <Space>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+                                        <PieChartOutlined style={{ color: '#fff', fontSize: 12 }} />
+                                    </span>
+                                    <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>Item Distribution by Fulfillment Type</span>
+                                </Space>
+                            } style={{ ...glassDark, borderLeft: '3px solid #8b5cf6' }}>
                                 {fulfillmentBreakdown.map((f, i) => (
                                     <div key={i} style={{ marginBottom: 16 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                                            <span style={{ fontWeight: 500 }}>{f.type}</span>
-                                            <span style={{ fontWeight: 700 }}>{f.count} items ({Math.round(f.count / totalFulfillment * 100)}%)</span>
+                                            <span style={{ fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>{f.type}</span>
+                                            <span style={{ fontWeight: 700, color: f.color }}>{f.count} items ({Math.round(f.count / totalFulfillment * 100)}%)</span>
                                         </div>
                                         <Progress percent={Math.round(f.count / totalFulfillment * 100)} strokeColor={f.color} showInfo={false} />
                                     </div>
                                 ))}
                             </Card>
 
-                            <Card title="Revenue Streams" style={{ borderRadius: 12, marginTop: 16 }}>
+                            <Card title={
+                                <Space>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}>
+                                        <DollarOutlined style={{ color: '#fff', fontSize: 12 }} />
+                                    </span>
+                                    <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>Revenue Streams</span>
+                                </Space>
+                            } style={{ ...glassDark, borderLeft: '3px solid #22c55e', marginTop: 16 }}>
                                 <Table scroll={{ x: 900 }} dataSource={[
                                     { stream: 'Procurement Spend', amount: totalProcSpend, type: 'expense' },
                                     { stream: 'Booking Revenue', amount: totalBookingRevenue, type: 'revenue' },
@@ -202,14 +229,14 @@ export default function AnalyticsPage() {
                                 { title: 'Procurement Spend', value: totalProcSpend, prefix: 'Rp ', isFormatted: true },
                                 { title: 'Opname Variance', value: opnameStats?.totalVariance || 0, prefix: 'Rp ', isFormatted: true, color: (opnameStats?.totalVariance || 0) < 0 ? '#f5222d' : '#52c41a' },
                             ].map((metric: any, i) => (
-                                <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.06 }}>
-                                    <Card size="small" style={{ borderRadius: 12, textAlign: 'center', height: '100%' }}>
-                                        <div style={{ color: '#999', fontSize: 12, marginBottom: 8 }}>{metric.title}</div>
+                                <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.06, type: 'spring', stiffness: 260, damping: 20 }}>
+                                    <Card size="small" style={{ ...glassDark, borderLeft: `3px solid ${metric.color || '#6b7280'}`, textAlign: 'center', height: '100%' }}>
+                                        <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, marginBottom: 8, letterSpacing: 0.3 }}>{metric.title}</div>
                                         {metric.suffix === '%' ? (
                                             <Progress type="circle" percent={metric.value} size={80}
-                                                strokeColor={metric.color} format={() => `${metric.value}%`} />
+                                                strokeColor={metric.color} strokeWidth={8} format={() => <span style={{ color: metric.color, fontWeight: 700 }}>{`${metric.value}%`}</span>} />
                                         ) : (
-                                            <div style={{ fontSize: 20, fontWeight: 700, color: metric.color || '#1a1a2e' }}>
+                                            <div style={{ fontSize: 20, fontWeight: 700, color: metric.color || 'rgba(255,255,255,0.85)' }}>
                                                 {metric.isFormatted ? fmt(metric.value) : metric.value}
                                             </div>
                                         )}
