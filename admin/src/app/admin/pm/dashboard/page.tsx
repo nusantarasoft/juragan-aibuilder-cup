@@ -30,7 +30,7 @@ import {
     AuditOutlined, SolutionOutlined, SearchOutlined, BookOutlined,
     ExperimentOutlined, RadarChartOutlined, TrophyOutlined, ToolOutlined,
     FlagOutlined, BankOutlined, GlobalOutlined, BarChartOutlined,
-    ArrowLeftOutlined
+    ArrowLeftOutlined, FormOutlined
 } from "@ant-design/icons";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
@@ -38,6 +38,7 @@ import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useSearchParams, useRouter } from "next/navigation";
 import dayjs from "dayjs";
+import FormIntegrationWidget from "@/components/forms/FormIntegrationWidget";
 
 // Tab Components
 import ProjectCharterTab from "./components/ProjectCharterTab";
@@ -157,6 +158,7 @@ const NAV_SECTIONS: NavSection[] = [
         items: [
             { key: "sprint", label: "Kanban Board", icon: <DashboardOutlined /> },
             { key: "gantt", label: "Gantt Chart", icon: <BarChartOutlined /> },
+            { key: "forms", label: "Forms & Checklists", icon: <FormOutlined /> },
         ]
     },
     {
@@ -627,6 +629,27 @@ function PmDashboardContent() {
                 return <GovernanceTab projectId={projectId} />;
             case "sustainability":
                 return <SustainabilityTab projectId={projectId} />;
+            case "forms":
+                return (
+                    <Row gutter={[16, 16]}>
+                        <Col xs={24} md={12}>
+                            <FormIntegrationWidget
+                                categories={['checklist', 'assessment']}
+                                title="Quality Checklists"
+                                maxItems={4}
+                                animIndex={0}
+                            />
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <FormIntegrationWidget
+                                categories={['kpi', 'survey', 'feedback']}
+                                title="Project Evaluations"
+                                maxItems={4}
+                                animIndex={1}
+                            />
+                        </Col>
+                    </Row>
+                );
             default:
                 return null;
         }

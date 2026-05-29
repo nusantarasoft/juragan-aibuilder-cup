@@ -350,6 +350,14 @@ export class DremioService {
         return true;
     }
 
+    async renameSpace(id: string, tag: string, newName: string): Promise<CatalogItem> {
+        const data = await this.dremioFetch(`/api/v3/catalog/${encodeURIComponent(id)}`, {
+            method: 'PUT',
+            body: JSON.stringify({ entityType: 'space', id, tag, name: newName }),
+        });
+        return this.mapCatalogItem(data);
+    }
+
     // ─── Job Management ─────────────────────────────────────────────────────
 
     async cancelJob(jobId: string): Promise<boolean> {

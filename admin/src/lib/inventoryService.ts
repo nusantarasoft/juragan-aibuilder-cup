@@ -729,6 +729,67 @@ export const inventoryService = {
     },
 
     // ═══════════════════════════════════════════════════════
+    // ─── WAREHOUSE LAYOUTS (3D Builder) ───────────────────
+    // ═══════════════════════════════════════════════════════
+
+    async getWarehouseLayouts(tenantId = DEFAULT_TENANT_ID, warehouseId?: string): Promise<WarehouseLayout[]> {
+        const data = await graphqlRequest<{ warehouseLayouts: WarehouseLayout[] }>(`
+            query($tenantId: String!, $warehouseId: String) {
+                warehouseLayouts(tenantId: $tenantId, warehouseId: $warehouseId) {
+                    id tenantId warehouseId name objects objectCount zoneCount rackCount
+                    isActive createdBy createdAt updatedAt
+                }
+            }
+        `, { tenantId, warehouseId });
+        return data.warehouseLayouts || [];
+    },
+
+    async getWarehouseLayout(id: string): Promise<WarehouseLayout> {
+        const data = await graphqlRequest<{ warehouseLayout: WarehouseLayout }>(`
+            query($id: String!) {
+                warehouseLayout(id: $id) {
+                    id tenantId warehouseId name objects objectCount zoneCount rackCount
+                    isActive createdBy createdAt updatedAt
+                }
+            }
+        `, { id });
+        return data.warehouseLayout;
+    },
+
+    async saveWarehouseLayout(tenantId = DEFAULT_TENANT_ID, input: {
+        id?: string; warehouseId?: string; name: string; objects: any[];
+        isActive?: boolean; createdBy?: string;
+    }): Promise<WarehouseLayout> {
+        const data = await graphqlRequest<{ saveWarehouseLayout: WarehouseLayout }>(`
+            mutation($tenantId: String!, $input: SaveWarehouseLayoutInput!) {
+                saveWarehouseLayout(tenantId: $tenantId, input: $input) {
+                    id tenantId warehouseId name objects objectCount zoneCount rackCount
+                    isActive createdBy createdAt updatedAt
+                }
+            }
+        `, { tenantId, input });
+        return data.saveWarehouseLayout;
+    },
+
+    async deleteWarehouseLayout(id: string): Promise<boolean> {
+        const data = await graphqlRequest<{ deleteWarehouseLayout: boolean }>(`
+            mutation($id: String!) { deleteWarehouseLayout(id: $id) }
+        `, { id });
+        return data.deleteWarehouseLayout;
+    },
+
+    async setActiveWarehouseLayout(id: string, tenantId = DEFAULT_TENANT_ID): Promise<WarehouseLayout> {
+        const data = await graphqlRequest<{ setActiveWarehouseLayout: WarehouseLayout }>(`
+            mutation($id: String!, $tenantId: String!) {
+                setActiveWarehouseLayout(id: $id, tenantId: $tenantId) {
+                    id tenantId name isActive updatedAt
+                }
+            }
+        `, { id, tenantId });
+        return data.setActiveWarehouseLayout;
+    },
+
+    // ═══════════════════════════════════════════════════════
     // ─── MANUFACTURING ────────────────────────────────────
     // ═══════════════════════════════════════════════════════
 
@@ -1806,6 +1867,14 @@ export interface WarehouseStats {
     totalWarehouses: number; totalZones: number; totalBins: number;
     activeTransfers: number; totalTransfers: number;
     totalCapacity: number; usedCapacity: number;
+}
+
+export interface WarehouseLayout {
+    id: string; tenantId: string; warehouseId?: string;
+    name: string; objects: any[];
+    objectCount: number; zoneCount: number; rackCount: number;
+    isActive: boolean; createdBy?: string;
+    createdAt: string; updatedAt: string;
 }
 
 // ─── Manufacturing Types ────────────────────────────────

@@ -26,6 +26,7 @@ import { inventoryService, InvItem, InvCategory, InvStockStats, AiClassification
 
 const { Title, Text, Paragraph } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
+const glassDark = { background: 'rgba(12,12,30,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14 };
 
 const SELLABLE_FULFILLMENT_TYPES = [
     { value: 'physical', label: 'Physical Goods', icon: <DropboxOutlined />, color: 'var(--theme-color, #7c3aed)', desc: 'Tangible products with stock tracking', example: 'Laptop, T-shirt, Bolt', sellable: true },
@@ -403,18 +404,19 @@ export default function ItemMasterPage() {
                 <Row gutter={[12, 12]}>
                     {statsCards.map((s, i) => (
                         <Col key={i} xs={12} sm={8} md={4}>
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, type: 'spring', stiffness: 260, damping: 20 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    ...glass,
+                                    ...glassDark, borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden',
                                 }}>
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                                            style={{ background: `${s.color}15`, color: s.color, fontSize: 18 }}>
+                                    <div style={{ position: 'absolute', top: -10, right: -10, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle, ${s.color}18 0%, transparent 70%)`, pointerEvents: 'none' }} />
+                                    <div className="flex items-center gap-3" style={{ position: 'relative' }}>
+                                        <div className="w-11 h-11 rounded-xl flex items-center justify-center"
+                                            style={{ background: `${s.color}15`, color: s.color, fontSize: 18, border: `1px solid ${s.color}20` }}>
                                             {s.icon}
                                         </div>
                                         <div>
-                                            <Text type="secondary" className="text-xs block">{s.title}</Text>
-                                            <Text strong className="text-lg">{s.value}</Text>
+                                            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5, textTransform: 'uppercase' as const }} className="block">{s.title}</Text>
+                                            <Text strong style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.value}</Text>
                                         </div>
                                     </div>
                                 </Card>
@@ -425,7 +427,7 @@ export default function ItemMasterPage() {
 
                 {/* Toolbar */}
                 <Card size="small" style={{
-                    ...glass,
+                    ...glassDark,
                 }}>
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -487,8 +489,7 @@ export default function ItemMasterPage() {
                 {/* Table / Grid */}
                 <Card size="small" style={{
                     flex: 1, minHeight: 0,
-                    ...glass, borderRadius: 12,
-                    border: '1px solid rgba(255,255,255,0.5)',
+                    ...glassDark, borderLeft: `3px solid var(--theme-color, #7c3aed)`,
                 }}>
                     {viewMode === 'table' ? (
                         <Table

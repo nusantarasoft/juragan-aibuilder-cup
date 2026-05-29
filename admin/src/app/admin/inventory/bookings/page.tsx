@@ -17,6 +17,7 @@ import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
+const glassDark = { background: 'rgba(12,12,30,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14 };
 
 const STATUS_COLORS: Record<string, string> = {
     active: 'green', suspended: 'orange', cancelled: 'red',
@@ -334,13 +335,14 @@ export default function BookingsPage() {
                 {/* KPI Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 14, marginBottom: 24 }}>
                     {kpis.map((k, i) => (
-                        <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                            style={{ ...glass, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.5)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                                <span style={{ color: k.color, fontSize: 16 }}>{k.icon}</span>
-                                <span style={{ color: '#999', fontSize: 12 }}>{k.label}</span>
+                        <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, type: 'spring', stiffness: 260, damping: 20 }}
+                            style={{ ...glassDark, padding: '16px 18px', borderTop: `3px solid ${k.color}`, position: 'relative', overflow: 'hidden' }}>
+                            <div style={{ position: 'absolute', top: -10, right: -10, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle, ${k.color}18 0%, transparent 70%)`, pointerEvents: 'none' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, position: 'relative' }}>
+                                <span style={{ color: k.color, fontSize: 14 }}>{k.icon}</span>
+                                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase' as const }}>{k.label}</span>
                             </div>
-                            <div style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e' }}>{typeof k.value === 'number' ? k.value : k.value}</div>
+                            <div style={{ fontSize: 22, fontWeight: 800, color: k.color, position: 'relative', letterSpacing: -0.5 }}>{typeof k.value === 'number' ? k.value : k.value}</div>
                         </motion.div>
                     ))}
                 </div>
@@ -359,7 +361,7 @@ export default function BookingsPage() {
                     </Space>
                 </div>
 
-                <Card size="small" style={{ flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)' }}>
+                <Card size="small" style={{ flex: 1, ...glassDark, borderLeft: `3px solid var(--theme-color, #7c3aed)` }}>
                     {/* Tabs */}
                     <Tabs activeKey={tab} onChange={setTab} items={[
                         { key: 'schedules', label: `ðŸ—“ï¸ Schedules (${schedules.length})`, children: (

@@ -1272,3 +1272,336 @@ ul.ant-pagination li.ant-pagination-next.ant-pagination-disabled > button {
   border-color: #4ade80;
   color: #4ade80;
 }
+
+/* ========================================
+   Menu Scrollbar — Sleek Overlay Thin Bar
+   ======================================== */
+
+/* Hide default scrollbar, use overlay thin bar */
+.cms-outer-sider .ant-layout-sider-children,
+.cms-outer-sider .ant-pro-sider-menu-container,
+.ant-pro-sider .ant-layout-sider-children {
+  scrollbar-width: thin !important;
+  scrollbar-color: transparent transparent !important;
+  scroll-behavior: smooth !important;
+  overflow-y: overlay !important;
+  -ms-overflow-style: none !important;
+}
+
+/* Show scrollbar on hover with smooth fade */
+.cms-outer-sider .ant-layout-sider-children:hover,
+.cms-outer-sider .ant-pro-sider-menu-container:hover,
+.ant-pro-sider .ant-layout-sider-children:hover {
+  scrollbar-color: rgba(var(--theme-color-rgb, 139, 92, 246), 0.25) transparent !important;
+}
+
+/* Webkit scrollbar — Thin overlay, doesn't eat space */
+.cms-outer-sider .ant-layout-sider-children::-webkit-scrollbar,
+.cms-outer-sider .ant-pro-sider-menu-container::-webkit-scrollbar,
+.ant-pro-sider .ant-layout-sider-children::-webkit-scrollbar {
+  width: 4px !important;
+  background: transparent !important;
+}
+
+.cms-outer-sider .ant-layout-sider-children::-webkit-scrollbar-track,
+.cms-outer-sider .ant-pro-sider-menu-container::-webkit-scrollbar-track,
+.ant-pro-sider .ant-layout-sider-children::-webkit-scrollbar-track {
+  background: transparent !important;
+  border-radius: 4px !important;
+}
+
+.cms-outer-sider .ant-layout-sider-children::-webkit-scrollbar-thumb,
+.cms-outer-sider .ant-pro-sider-menu-container::-webkit-scrollbar-thumb,
+.ant-pro-sider .ant-layout-sider-children::-webkit-scrollbar-thumb {
+  background: transparent !important;
+  border-radius: 4px !important;
+  transition: background 0.3s ease !important;
+}
+
+/* Show thumb on hover */
+.cms-outer-sider .ant-layout-sider-children:hover::-webkit-scrollbar-thumb,
+.cms-outer-sider .ant-pro-sider-menu-container:hover::-webkit-scrollbar-thumb,
+.ant-pro-sider .ant-layout-sider-children:hover::-webkit-scrollbar-thumb {
+  background: rgba(var(--theme-color-rgb, 139, 92, 246), 0.25) !important;
+}
+
+.cms-outer-sider .ant-layout-sider-children:hover::-webkit-scrollbar-thumb:hover,
+.cms-outer-sider .ant-pro-sider-menu-container:hover::-webkit-scrollbar-thumb:hover,
+.ant-pro-sider .ant-layout-sider-children:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--theme-color-rgb, 139, 92, 246), 0.45) !important;
+}
+
+/* Dark mode scrollbar */
+.dark .cms-outer-sider .ant-layout-sider-children:hover,
+.dark .cms-outer-sider .ant-pro-sider-menu-container:hover,
+.dark .ant-pro-sider .ant-layout-sider-children:hover {
+  scrollbar-color: rgba(var(--theme-accent-rgb, 0, 255, 255), 0.2) transparent !important;
+}
+
+.dark .cms-outer-sider .ant-layout-sider-children:hover::-webkit-scrollbar-thumb,
+.dark .cms-outer-sider .ant-pro-sider-menu-container:hover::-webkit-scrollbar-thumb,
+.dark .ant-pro-sider .ant-layout-sider-children:hover::-webkit-scrollbar-thumb {
+  background: rgba(var(--theme-accent-rgb, 0, 255, 255), 0.2) !important;
+}
+
+.dark .cms-outer-sider .ant-layout-sider-children:hover::-webkit-scrollbar-thumb:hover,
+.dark .cms-outer-sider .ant-pro-sider-menu-container:hover::-webkit-scrollbar-thumb:hover,
+.dark .ant-pro-sider .ant-layout-sider-children:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--theme-accent-rgb, 0, 255, 255), 0.4) !important;
+}
+
+/* ========================================
+   Menu Divider Lines — Gradient Separator
+   ======================================== */
+
+/* ProLayout divider type items (if any remain) */
+.cms-outer-sider .ant-menu-item-divider,
+.ant-pro-sider .ant-menu-item-divider {
+  height: 1px !important;
+  margin: 12px 16px 4px 16px !important;
+  padding: 0 !important;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(var(--theme-color-rgb, 139, 92, 246), 0.2) 20%,
+    rgba(var(--theme-color-rgb, 139, 92, 246), 0.2) 80%,
+    transparent 100%
+  ) !important;
+  border: none !important;
+  list-style: none !important;
+  overflow: hidden !important;
+}
+
+.dark .cms-outer-sider .ant-menu-item-divider,
+.dark .ant-pro-sider .ant-menu-item-divider {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(var(--theme-accent-rgb, 0, 255, 255), 0.12) 20%,
+    rgba(var(--theme-color-rgb, 139, 92, 246), 0.12) 80%,
+    transparent 100%
+  ) !important;
+}
+
+/* ========================================
+   Menu Group Headers — Domain Labels + Line After
+   ======================================== */
+
+/* Group title text — non-clickable, with line extending after text */
+.cms-outer-sider .ant-menu-item-group-title,
+.ant-pro-sider .ant-menu-item-group-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase !important;
+  color: rgba(var(--theme-color-rgb, 139, 92, 246), 0.5) !important;
+  padding: 16px 20px 6px 20px !important;
+  margin: 0 !important;
+  line-height: 16px !important;
+  user-select: none !important;
+  pointer-events: none !important;
+  cursor: default !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+}
+
+/* Line AFTER text — extends to fill remaining width */
+.cms-outer-sider .ant-menu-item-group-title::after,
+.ant-pro-sider .ant-menu-item-group-title::after {
+  content: '' !important;
+  display: block !important;
+  flex: 1 !important;
+  height: 1px !important;
+  min-width: 20px !important;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--theme-color-rgb, 139, 92, 246), 0.25) 0%,
+    rgba(var(--theme-color-rgb, 139, 92, 246), 0.08) 80%,
+    transparent 100%
+  ) !important;
+}
+
+/* Dark mode group title */
+.dark .cms-outer-sider .ant-menu-item-group-title,
+.dark .ant-pro-sider .ant-menu-item-group-title {
+  color: rgba(var(--theme-accent-rgb, 0, 255, 255), 0.35) !important;
+  text-shadow: 0 0 10px rgba(var(--theme-accent-rgb, 0, 255, 255), 0.1) !important;
+}
+
+/* Dark mode line after text */
+.dark .cms-outer-sider .ant-menu-item-group-title::after,
+.dark .ant-pro-sider .ant-menu-item-group-title::after {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--theme-accent-rgb, 0, 255, 255), 0.15) 0%,
+    rgba(var(--theme-color-rgb, 139, 92, 246), 0.08) 60%,
+    transparent 100%
+  ) !important;
+}
+
+/* Group containers — ensure no clickable area */
+.cms-outer-sider .ant-menu-item-group,
+.ant-pro-sider .ant-menu-item-group {
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Re-enable pointer events for actual menu items inside group */
+.cms-outer-sider .ant-menu-item-group-list,
+.ant-pro-sider .ant-menu-item-group-list {
+  padding: 0 !important;
+  margin: 0 !important;
+  pointer-events: auto !important;
+}
+
+/* ========================================
+   Sidebar Overflow Fix — No Horizontal Scroll
+   ======================================== */
+
+/* Only hide horizontal overflow on the menu, NOT the sider itself.
+   The sider must remain overflow:visible for the collapse button. */
+.cms-outer-sider .ant-menu,
+.ant-pro-sider .ant-menu {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+/* Menu extra area (search, toggles) — prevent horizontal overflow */
+.cms-outer-sider .cms-outer-sider-extra,
+.ant-pro-sider .ant-pro-sider-extra {
+  overflow-x: hidden !important;
+}
+
+/* ========================================
+   Collapse Button Fix — Full Visibility
+   ======================================== */
+
+/* Ensure sider itself doesn't clip the collapse button */
+.cms-outer-sider,
+.cms-outer-sider > .ant-layout-sider-children {
+  overflow: visible !important;
+}
+
+/* The collapse trigger area at the bottom of the sider */
+.cms-outer-sider .ant-pro-sider-collapsed-button,
+.cms-outer-sider .ant-layout-sider-trigger,
+.cms-outer-sider .ant-pro-sider-collapse-button,
+.cms-outer-layout .ant-layout-sider-trigger {
+  z-index: 200 !important;
+  overflow: visible !important;
+}
+
+/* ProLayout links container (often wraps the collapse button) */
+.cms-outer-sider .ant-pro-sider-links,
+.cms-outer-sider .ant-pro-sider-footer {
+  overflow: visible !important;
+  z-index: 200 !important;
+}
+
+/* The actual collapse icon/button element */
+.cms-outer-sider .ant-pro-sider-collapsed-button > *,
+.cms-outer-sider .ant-layout-sider-trigger > * {
+  z-index: 201 !important;
+}
+
+/* ========================================
+   Menu Items — Refined Spacing & Transitions
+   ======================================== */
+
+/* Tighter menu item spacing */
+.cms-outer-sider .ant-menu-item,
+.cms-outer-sider .ant-menu-submenu-title {
+  height: 38px !important;
+  line-height: 38px !important;
+  margin: 1px 0 !important;
+  font-size: 13px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Divider items — override height and disable interactivity */
+.cms-outer-sider .ant-menu-item[data-menu-divider="true"] {
+    height: auto !important;
+    line-height: normal !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    cursor: default !important;
+    pointer-events: none !important;
+}
+
+.cms-outer-sider .ant-menu-item[data-menu-divider="true"]:hover,
+.cms-outer-sider .ant-menu-item[data-menu-divider="true"].ant-menu-item-active,
+.cms-outer-sider .ant-menu-item[data-menu-divider="true"].ant-menu-item-selected {
+    background: transparent !important;
+}
+
+/* Submenu children — slightly smaller */
+.cms-outer-sider .ant-menu-sub .ant-menu-item {
+  height: 34px !important;
+  line-height: 34px !important;
+  font-size: 12.5px !important;
+  padding-left: 44px !important;
+}
+
+/* Submenu arrow styling */
+.cms-outer-sider .ant-menu-submenu-arrow,
+.ant-pro-sider .ant-menu-submenu-arrow {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Active submenu arrow rotation */
+.cms-outer-sider .ant-menu-submenu-open > .ant-menu-submenu-title .ant-menu-submenu-arrow {
+  transform: rotate(0deg) !important;
+}
+
+/* Collapsed state refinements */
+.cms-outer-sider.ant-layout-sider-collapsed .ant-menu-item,
+.cms-outer-sider.ant-layout-sider-collapsed .ant-menu-submenu-title {
+  padding: 0 !important;
+  text-align: center !important;
+  justify-content: center !important;
+}
+
+/* Hide dividers and group headers when collapsed */
+.cms-outer-sider.ant-layout-sider-collapsed .ant-menu-item-divider,
+.cms-outer-sider.ant-layout-sider-collapsed .ant-menu-item-group-title {
+  display: none !important;
+}
+
+/* Hide divider items when sidebar is collapsed */
+.cms-outer-sider.ant-layout-sider-collapsed .ant-menu-item[data-menu-divider="true"] {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+/* ========================================
+   Menu Item Count Badges
+   ======================================== */
+
+.cms-outer-sider .ant-menu-submenu-title .ant-badge,
+.ant-pro-sider .ant-menu-submenu-title .ant-badge {
+  font-size: 10px !important;
+  margin-left: auto !important;
+}
+
+/* ========================================
+   Smooth Scroll for Menu Container
+   ======================================== */
+
+.cms-outer-sider .ant-pro-sider-menu-container {
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+}
+
+/* Smooth open/close transition for submenus */
+.cms-outer-sider .ant-menu-inline .ant-menu-sub {
+  transition: height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease !important;
+}

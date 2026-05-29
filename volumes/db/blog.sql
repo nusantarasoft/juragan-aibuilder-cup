@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS blog_posts (
     cover_image_alt TEXT,
     
     -- Author
-    author_id UUID REFERENCES auth.users(id),
+    author_id UUID, -- logical FK to auth.users(id)
     
     -- Category
     category_id UUID REFERENCES blog_categories(id),
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS blog_post_tags (
 CREATE TABLE IF NOT EXISTS blog_comments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     post_id UUID REFERENCES blog_posts(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES auth.users(id),
+    user_id UUID, -- logical FK to auth.users(id)
     
     -- Guest comments (if user_id is null)
     guest_name TEXT,
@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS blog_comments (
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS blog_likes (
     post_id UUID REFERENCES blog_posts(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID, -- logical FK to auth.users(id) ON DELETE CASCADE
     created_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (post_id, user_id)
 );
@@ -150,29 +150,23 @@ ALTER TABLE blog_tags ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "View published posts" ON blog_posts
     FOR SELECT USING (status = 'published');
 
--- Authors can manage their own posts
-CREATE POLICY "Authors manage own posts" ON blog_posts
-    FOR ALL USING (auth.uid() = author_id);
-
 -- Anyone can view approved comments
 CREATE POLICY "View approved comments" ON blog_comments
     FOR SELECT USING (is_approved = true AND is_spam = false);
-
--- Authenticated users can comment
-CREATE POLICY "Users can comment" ON blog_comments
-    FOR INSERT WITH CHECK (auth.uid() IS NOT NULL OR guest_email IS NOT NULL);
-
--- Users can manage their own comments
-CREATE POLICY "Users manage own comments" ON blog_comments
-    FOR ALL USING (user_id = auth.uid());
 
 -- Anyone can view categories and tags
 CREATE POLICY "View categories" ON blog_categories FOR SELECT USING (true);
 CREATE POLICY "View tags" ON blog_tags FOR SELECT USING (true);
 
--- Authenticated users can like
-CREATE POLICY "Users can like" ON blog_likes
-    FOR ALL USING (user_id = auth.uid());
+-- Auth-dependent policies (only created when auth schema exists)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_namespace WHERE nspname = 'auth') THEN
+    EXECUTE 'CREATE POLICY "Authors manage own posts" ON blog_posts FOR ALL USING (auth.uid() = author_id)';
+    EXECUTE 'CREATE POLICY "Users can comment" ON blog_comments FOR INSERT WITH CHECK (auth.uid() IS NOT NULL OR guest_email IS NOT NULL)';
+    EXECUTE 'CREATE POLICY "Users manage own comments" ON blog_comments FOR ALL USING (user_id = auth.uid())';
+    EXECUTE 'CREATE POLICY "Users can like" ON blog_likes FOR ALL USING (user_id = auth.uid())';
+  END IF;
+END $$;
 
 -- ============================================================================
 -- FUNCTIONS

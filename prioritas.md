@@ -1,13 +1,13 @@
-# Prioritas Implementasi Big Data / Dremio
+# Prioritas Implementasi Big Data / Dremio — ✅ ALL COMPLETED (v2.15.0)
 
-1. **Edit Source** – Backend sudah ada (`updateSource`); tambah modal Edit di UI, isi form dari `getSourceDetail`, submit update.
+1. ~~**Edit Source**~~ ✅ — `EditSourceModal.tsx` with `updateSource` backend. Completed in v2.14.0.
 
-2. **Delete source dari halaman Datasets** – Tambah aksi Delete di tree/browser untuk source, panggil `deleteSource`.
+2. ~~**Delete source dari halaman Datasets**~~ ✅ — `onDeleteItem` handler wired from `page.tsx` → `CatalogTreeStyled`, calls `deleteSource/deleteVDS/deleteSpace`.
 
-3. **SourceManager** – Pakai sebagai halaman "Data Sources" terpisah (plus Edit) atau hapus jika tidak dipakai.
+3. ~~**SourceManager**~~ ✅ — Routed as `/admin/datasets/sources` with dedicated page. Added "Data Sources" menu entry.
 
-4. **Pagination hasil SQL** – Parameter offset/limit (atau pageToken) di backend + UI Next/Previous di SQL Runner.
+4. ~~**Pagination hasil SQL**~~ ✅ — `getJobResults(jobId, offset, limit)` backend + `loadPage()` with Prev/Next in SQLEditor. Completed in v2.14.0.
 
-5. **Cancel job** – Ekspos cancel job Dremio di backend + tombol Cancel di UI saat query berjalan.
+5. ~~**Cancel job**~~ ✅ — `cancelJob(jobId)` backend + Cancel button in SQLEditor. Completed in v2.14.0.
 
-6. **Update/delete VDS, delete/rename space** – Tambah di backend (Catalog API) lalu aksi di tree/context menu.
+6. ~~**Update/delete VDS, delete/rename space**~~ ✅ — `EditVDSModal` for VDS editing, `RenameSpaceModal` + `renameSpace` backend mutation for spaces. Context menu in CatalogTree updated.

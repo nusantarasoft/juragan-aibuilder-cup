@@ -27,6 +27,7 @@ import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
+const glassDark = { background: 'rgba(12,12,30,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14 };
 
 const BOM_STATUSES: Record<string, { color: string }> = {
     draft: { color: 'default' },
@@ -135,7 +136,7 @@ export default function ManufacturingPage() {
         } catch { console.error("Failed to load BOM lines"); }
     };
 
-    // â”€â”€â”€ BOM CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ BOM CRUD Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const handleSaveBom = async (values: any) => {
         if (bomEditId) {
             await inventoryService.updateBom(bomEditId, values);
@@ -176,7 +177,7 @@ export default function ManufacturingPage() {
         catch { message.error("Failed to delete"); }
     };
 
-    // â”€â”€â”€ BOM Line CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ BOM Line CRUD Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const handleAddBomLine = async () => {
         try {
             const values = await lineForm.validateFields();
@@ -187,7 +188,7 @@ export default function ManufacturingPage() {
         } catch { message.error("Failed"); }
     };
 
-    // â”€â”€â”€ Work Order CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Work Order CRUD Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const handleCreateWo = async (values: any) => {
         const bom = boms.find(b => b.id === values.bomId);
         const wh = warehouses.find(w => w.id === values.warehouseId);
@@ -219,12 +220,12 @@ export default function ManufacturingPage() {
     const handleWoStatusChange = async (id: string, newStatus: string) => {
         try {
             await inventoryService.updateWorkOrderStatus(id, newStatus);
-            message.success(`Status â†’ ${newStatus.replace('_', ' ')}`);
+            message.success(`Status Ã¢â€ â€™ ${newStatus.replace('_', ' ')}`);
             loadAll();
         } catch { message.error("Failed to update status"); }
     };
 
-    // â”€â”€â”€ KPI Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ KPI Cards Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const kpiCards = [
         { title: 'Total BOMs', value: stats?.totalBoms || 0, icon: <FileTextOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { title: 'Work Orders', value: stats?.totalWorkOrders || 0, icon: <ToolOutlined />, color: '#0ea5e9' },
@@ -234,7 +235,7 @@ export default function ManufacturingPage() {
         { title: 'Completed', value: stats?.completedWos || 0, icon: <CheckCircleOutlined />, color: '#10b981' },
     ];
 
-    // â”€â”€â”€ BOM Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ BOM Columns Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const bomColumns = [
         { title: 'Code', dataIndex: 'code', width: 140, render: (v: string) => <Text code className="text-xs">{v}</Text> },
         { title: 'Name', dataIndex: 'name', render: (v: string) => <Text strong className="text-sm">{v}</Text> },
@@ -264,7 +265,7 @@ export default function ManufacturingPage() {
         },
     ];
 
-    // â”€â”€â”€ BOM Line Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ BOM Line Columns Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const bomLineColumns = [
         { title: '#', dataIndex: 'sortOrder', width: 50 },
         { title: 'Item', dataIndex: 'itemName', render: (v: string) => <Text strong className="text-sm">{v}</Text> },
@@ -275,7 +276,7 @@ export default function ManufacturingPage() {
         { title: 'Scrap %', dataIndex: 'scrapPct', width: 80, render: (v: number) => v ? `${v}%` : '-' },
     ];
 
-    // â”€â”€â”€ Work Order Columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Work Order Columns Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const woColumns = [
         {
             title: 'WO #', dataIndex: 'woNumber', width: 140,
@@ -305,8 +306,8 @@ export default function ManufacturingPage() {
             title: 'Schedule', key: 'schedule', width: 180,
             render: (_: any, r: MfgWorkOrder) => (
                 <Text className="text-xs">
-                    {r.plannedStart ? new Date(r.plannedStart).toLocaleDateString() : 'â€”'} â†’{' '}
-                    {r.plannedEnd ? new Date(r.plannedEnd).toLocaleDateString() : 'â€”'}
+                    {r.plannedStart ? new Date(r.plannedStart).toLocaleDateString() : 'Ã¢â‚¬â€'} Ã¢â€ â€™{' '}
+                    {r.plannedEnd ? new Date(r.plannedEnd).toLocaleDateString() : 'Ã¢â‚¬â€'}
                 </Text>
             ),
         },
@@ -341,7 +342,7 @@ export default function ManufacturingPage() {
         },
     ];
 
-    // â”€â”€â”€ Step Definitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Step Definitions Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const bomSteps = [
         {
             title: "Basic Info",
@@ -434,7 +435,7 @@ export default function ManufacturingPage() {
                             <Form.Item name="bomId" label="BOM" rules={[{ required: true }]}>
                                 <Select placeholder="Select BOM"
                                     options={boms.filter(b => b.status === 'active').map(b => ({
-                                        value: b.id, label: `${b.code} â€” ${b.name}`
+                                        value: b.id, label: `${b.code} Ã¢â‚¬â€ ${b.name}`
                                     }))} />
                             </Form.Item>
                         </Col>
@@ -444,7 +445,7 @@ export default function ManufacturingPage() {
                             <Form.Item name="warehouseId" label="Warehouse">
                                 <Select placeholder="Select warehouse"
                                     options={warehouses.map(w => ({
-                                        value: w.id, label: `${w.code} â€” ${w.name}`
+                                        value: w.id, label: `${w.code} Ã¢â‚¬â€ ${w.name}`
                                     }))} />
                             </Form.Item>
                         </Col>
@@ -511,9 +512,9 @@ export default function ManufacturingPage() {
                 <Row gutter={[12, 12]}>
                     {kpiCards.map((s, i) => (
                         <Col key={i} xs={12} sm={8} md={4}>
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, type: 'spring', stiffness: 260, damping: 20 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    ...glass,
+                                    ...glassDark, borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden',
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -533,7 +534,7 @@ export default function ManufacturingPage() {
 
                 {/* Tabs */}
                 <Card size="small" style={{
-                    flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)',
+                    flex: 1, ...glassDark, borderLeft: `3px solid var(--theme-color, #7c3aed)`,
                 }}>
                     <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
                         {
@@ -576,7 +577,7 @@ export default function ManufacturingPage() {
                                                         <Text strong style={{
                                                             background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                                             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                                                        }}>Components â€” {record.name}</Text>
+                                                        }}>Components Ã¢â‚¬â€ {record.name}</Text>
                                                         <Button size="small" icon={<PlusOutlined />}
                                                             onClick={() => { setLineBomId(record.id); lineForm.resetFields(); setLineModalOpen(true); }}
                                                             style={{ borderColor: 'var(--theme-color, #7c3aed)', color: 'var(--theme-color, #7c3aed)' }}>
@@ -679,7 +680,7 @@ export default function ManufacturingPage() {
                 </Card>
             </div>
 
-            {/* â”€â”€â”€ BOM SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ BOM SteppedFormModal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
             <SteppedFormModal
                 open={bomModalOpen}
                 onCancel={() => { setBomModalOpen(false); setBomEditId(null); bomForm.resetFields(); }}
@@ -696,7 +697,7 @@ export default function ManufacturingPage() {
                 editMode={!!bomEditId}
             />
 
-            {/* â”€â”€â”€ BOM Line Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ BOM Line Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
             <Modal title="Add Component" open={lineModalOpen}
                 onCancel={() => setLineModalOpen(false)} onOk={handleAddBomLine} okText="Add">
                 <Form form={lineForm} layout="vertical">
@@ -753,7 +754,7 @@ export default function ManufacturingPage() {
                 </Form>
             </Modal>
 
-            {/* â”€â”€â”€ Work Order SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Work Order SteppedFormModal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
             <SteppedFormModal
                 open={woModalOpen}
                 onCancel={() => { setWoModalOpen(false); woForm.resetFields(); }}
@@ -771,6 +772,8 @@ export default function ManufacturingPage() {
         </CMSLayout>
     );
 }
+
+
 
 
 

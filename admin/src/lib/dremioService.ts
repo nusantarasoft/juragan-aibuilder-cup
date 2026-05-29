@@ -229,6 +229,15 @@ export const dremioService = {
         return data.dremioDeleteSpace.success;
     },
 
+    async renameSpace(id: string, tag: string, newName: string): Promise<CatalogItem> {
+        const data = await graphqlRequest<{ dremioRenameSpace: CatalogItem }>(`
+            mutation($id: String!, $tag: String!, $newName: String!) {
+                dremioRenameSpace(id: $id, tag: $tag, newName: $newName) { id path type tag }
+            }
+        `, { id, tag, newName });
+        return data.dremioRenameSpace;
+    },
+
     // ═══════════════ JOB MANAGEMENT ═══════════════
 
     async cancelJob(jobId: string): Promise<boolean> {

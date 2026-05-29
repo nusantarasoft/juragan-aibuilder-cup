@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import FormIntegrationWidget from "@/components/forms/FormIntegrationWidget";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -254,6 +255,29 @@ export default function CrmDashboardPage() {
                         {navCard("Accepted Quotes", "/admin/crm/quotes", <CheckCircleOutlined />, "#10b981",
                             <Statistic title="Accepted Quotes" value={stats.acceptedQuotes} suffix={`/ ${stats.totalQuotes}`} valueStyle={{ color: '#10b981' }} />,
                         0.8)}
+                    </Col>
+                </Row>
+            </div>
+
+            {/* Customer Surveys & Feedback */}
+            <div>
+                <SectionTitle icon={<FileTextOutlined />} label="Surveys & Feedback" />
+                <Row gutter={[14, 14]}>
+                    <Col xs={24} md={12}>
+                        <FormIntegrationWidget
+                            categories={['survey', 'feedback']}
+                            title="Customer Surveys"
+                            maxItems={3}
+                            animIndex={16}
+                        />
+                    </Col>
+                    <Col xs={24} md={12}>
+                        <FormIntegrationWidget
+                            categories={['kpi', 'assessment']}
+                            title="Sales KPIs"
+                            maxItems={3}
+                            animIndex={17}
+                        />
                     </Col>
                 </Row>
             </div>

@@ -16,6 +16,7 @@ import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import FormIntegrationWidget from "@/components/forms/FormIntegrationWidget";
 
 const { Text, Title } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -295,6 +296,26 @@ export default function HrDashboardPage() {
                         </Card>
                     </motion.div>
                 )}
+
+                {/* Form Builder Integration */}
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} md={12}>
+                        <FormIntegrationWidget
+                            categories={['kpi', 'assessment']}
+                            title="KPI & Evaluations"
+                            maxItems={3}
+                            animIndex={12}
+                        />
+                    </Col>
+                    <Col xs={24} md={12}>
+                        <FormIntegrationWidget
+                            categories={['survey', 'feedback']}
+                            title="Employee Surveys"
+                            maxItems={3}
+                            animIndex={13}
+                        />
+                    </Col>
+                </Row>
             </div>
         </CMSLayout>
     );

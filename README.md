@@ -1,6 +1,6 @@
 # Nusantarasoft Docker Infrastructure
 
-Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.14.0**
+Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.19.0**
 
 ---
 
@@ -686,6 +686,54 @@ MIT
 ---
 
 ## 📋 Changelog
+
+### v2.19.0 (2026-05-22)
+- **Menu Restructuring** — Consolidated 26 sidebar sections into 16 with 6 domain groups (Business, People, Service Management, Intelligence, Platform, System)
+- **Module Mergers**: Pages+Blocks+Media → Content Studio, Infrastructure+Messaging+Analytics → Platform & Infra, Security+Audit → Security & Compliance, DevOps+Automation+Ops → DevOps & Automation, Notifications+Email+Collaboration → Communications, Reports+Analytics → Reports & Analytics
+- **Duplicate Elimination** — Removed overlapping CRM Products (consolidated under Commerce), merged webhook pages, consolidated knowledge bases
+- **ITSM sub-grouping** — 17 items organized by ITIL categories (Service Design, Operations, Change & Release, Configuration)
+- **Cross-module path fixes** — Bookings/Rentals properly referenced, Tenants moved under Security & Compliance
+- **Build verified**: 199 pages, exit code 0
+
+### v2.18.0 (2026-05-22)
+- **Database Migration Consolidation** — Mounted all 30 SQL schemas across 3 compose files (`docker-compose.yml`, `docker-compose.local.yml`, `docker-compose.full.yml`)
+- **Extensions** — 72 PostgreSQL extensions now installed (vector, postgis, timescaledb, pg_cron, pgmq, pg_trgm, etc.)
+- **16 Previously Unmounted Schemas** — `extensions.sql`, `fix-realtime-schema.sql`, `pg_cron.sql`, `permissions.sql`, `files.sql`, `blog.sql`, `chat.sql`, `emails.sql`, `news_intelligence.sql`, `match_media_embeddings.sql`, and 5 migration files (ops_module, notifications_module, data_export_logs, realtime_notifications, seed_ops_notifications)
+- **Auth Compatibility Fix** — Removed hard `auth.users` FK constraints from `files.sql`, `blog.sql`, `chat.sql` (replaced with logical UUID columns). Wrapped auth-dependent RLS policies in conditional `DO` blocks that check for `auth` schema existence
+- **Realtime Publication Guard** — Chat realtime publication now conditionally applied only when `supabase_realtime` publication exists
+- **Init Script Ordering** — Proper dependency-based ordering: extensions (01) → realtime-fix (02) → pg_cron (03) → webhooks (98) → core (99) → post-migrations (100) → seed data (101)
+- **Database verified**: 169 tables, 72 extensions, all schemas applied successfully
+
+### v2.17.0 (2026-05-22)
+- **Automation Expansion** — 3 new standalone pages: n8n Workflows (active workflows, execution history, credential count), Jenkins CI/CD (pipelines, build health, agent management), AWX Ansible (job templates, inventories, playbook execution history)
+- **Email Expansion** — 2 new pages: Email Accounts (mailbox quota management, alias configuration), Roundcube Webmail (mailbox overview, active sessions, plugin management)
+- **Big Data** — pgAdmin page (PostgreSQL server info, 9-database overview, connection stats, query metrics)
+- **Multi-Tenancy** — Tenant Configuration page (per-tenant branding, custom domains, module provisioning matrix)
+- **Menu expansion** — +3 Automation sub-items (n8n, Jenkins, AWX), +2 Email sub-items (Accounts, Roundcube), +1 Big Data sub-item (pgAdmin), +1 Tenants sub-item (Configuration)
+- **Build verified**: 199 pages, exit code 0
+
+### v2.16.0 (2026-05-22)
+- **Settings Gap Closure** — 2 new pages: SEO Configuration (meta tags, robots.txt, sitemap, Open Graph scoring, page-level overrides), Navigation Manager (menu trees, footer links, breadcrumbs, menu entry table)
+- **AI Studio** — AnythingLLM workspace management (AI workspaces, document processor, embedding status, chat session analytics)
+- **DevOps** — Docker Registry management (repositories, image tags, layer sizes, pull analytics)
+- **Big Data** — 2 new pages: Nessie Catalog (branches, tables, version history, catalog entries), Dremio Lakehouse Admin (job analytics, reflections, source connections, query history)
+- **Menu expansion** — +1 AI Studio sub-item (AnythingLLM), +1 DevOps sub-item (Docker Registry), +2 Big Data sub-items (Nessie Catalog, Dremio Admin)
+- **Build verified**: 190+ pages, exit code 0
+
+### v2.15.0 (2026-05-22)
+- **Kong API Gateway Fix** — Resolved restart loop caused by Windows CRLF line endings in `kong-entrypoint.sh` and `kong.yml`. Bulk-converted 38 volume/script files to LF
+- **`.gitattributes`** — Added global LF enforcement for `*.sh`, `*.yml`, `*.sql`, `*.exs`, `*.conf` to prevent future CRLF issues on Windows checkouts
+- **Dremio Priority Completion (6/6)** — All items from `prioritas.md` resolved:
+  - ✅ Edit Source modal (already complete)
+  - ✅ Delete Source/VDS/Space from Datasets page — wired `onDeleteItem` handler through CatalogTree context menu
+  - ✅ Data Sources page (`/admin/datasets/sources`) — standalone SourceManager with card grid, create/edit/delete
+  - ✅ SQL pagination with offset/limit (already complete)
+  - ✅ Cancel running job (already complete)
+  - ✅ Edit VDS — new `EditVDSModal` with SQL editor, loads existing definition, submits via `updateVDS`
+  - ✅ Rename Space — new `renameSpace` backend endpoint (service + resolver) + `RenameSpaceModal` UI
+- **CatalogTree Context Menu** — Enhanced with Edit VDS, Rename Space actions alongside existing Delete actions
+- **Menu expansion** — Added "Data Sources" entry under Big Data section
+- **Build verified**: 184+ pages, exit code 0
 
 ### v2.14.0 (2026-05-20)
 - **Reporting Engine** — 4 new pages: Dashboard (saved reports, recent exports), Report Builder (visual designer, data source/filter/chart config), Scheduled Reports (cron delivery, email recipients), Templates (8 pre-built module-specific report templates)

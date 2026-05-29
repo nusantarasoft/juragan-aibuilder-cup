@@ -53,6 +53,8 @@ import DataPreview from "./DataPreview";
 import AddSourceModal from "./AddSourceModal";
 import EditSourceModal from "./EditSourceModal";
 import CreateVDSModal from "./CreateVDSModal";
+import EditVDSModal from "./EditVDSModal";
+import RenameSpaceModal from "./RenameSpaceModal";
 import { dremioService } from "@/lib/dremioService";
 
 const { Title, Text } = Typography;
@@ -88,6 +90,12 @@ export default function DatasetsPage() {
 
     // Header State
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+    // Edit VDS state
+    const [editVDSId, setEditVDSId] = useState<string | null>(null);
+
+    // Rename Space state
+    const [renameSpaceState, setRenameSpaceState] = useState<{ id: string; tag: string; name: string } | null>(null);
 
     const isDataset = selectedType === "VIRTUAL" || selectedType === "PROMOTED" || selectedType === "DIRECT"
         || selectedType === "DATASET" || selectedType === "DATASET_TABLE" || selectedType === "DATASET_VIRTUAL"
@@ -126,6 +134,41 @@ export default function DatasetsPage() {
         } catch (err: any) {
             message.error("Failed: " + err.message);
         }
+    };
+
+    // ─── Delete handler for catalog tree context menu ─────────────────────
+    const handleDeleteItem = async (id: string, actionKey: string, tag: string) => {
+        try {
+            if (actionKey === 'deleteSource') {
+                await dremioService.deleteSource(id, tag);
+                message.success('Source deleted');
+            } else if (actionKey === 'deleteVDS') {
+                await dremioService.deleteVDS(id, tag);
+                message.success('VDS deleted');
+            } else if (actionKey === 'deleteSpace') {
+                await dremioService.deleteSpace(id, tag);
+                message.success('Space deleted');
+            }
+            setRefreshTrigger(prev => prev + 1);
+            // Clear selection if deleted item was selected
+            if (selectedId === id) {
+                setSelectedPath([]);
+                setSelectedType('');
+                setSelectedId('');
+            }
+        } catch (err: any) {
+            message.error('Delete failed: ' + err.message);
+        }
+    };
+
+    // ─── Edit VDS handler ─────────────────────────────────────────────────
+    const handleEditVDS = (id: string, _tag: string) => {
+        setEditVDSId(id);
+    };
+
+    // ─── Rename Space handler ────────────────────────────────────────────
+    const handleRenameSpace = (id: string, tag: string, currentName: string) => {
+        setRenameSpaceState({ id, tag, name: currentName });
     };
 
     return (
@@ -172,6 +215,9 @@ export default function DatasetsPage() {
                                     onCreateSpace={() => setSpaceModalOpen(true)}
                                     onCreateVDS={() => setVdsModalOpen(true)}
                                     onAddSource={() => setAddSourceOpen(true)}
+                                    onDeleteItem={handleDeleteItem}
+                                    onEditVDS={handleEditVDS}
+                                    onRenameSpace={handleRenameSpace}
                                     refreshTrigger={refreshTrigger}
                                 />
                             </motion.div>
@@ -308,6 +354,24 @@ export default function DatasetsPage() {
                     </Form.Item>
                 </Form>
             </Modal>
+
+            {/* Edit VDS Modal */}
+            <EditVDSModal
+                open={!!editVDSId}
+                onClose={() => setEditVDSId(null)}
+                onSuccess={() => setRefreshTrigger(prev => prev + 1)}
+                vdsId={editVDSId}
+            />
+
+            {/* Rename Space Modal */}
+            <RenameSpaceModal
+                open={!!renameSpaceState}
+                onClose={() => setRenameSpaceState(null)}
+                onSuccess={() => setRefreshTrigger(prev => prev + 1)}
+                spaceId={renameSpaceState?.id || null}
+                spaceTag={renameSpaceState?.tag || ''}
+                currentName={renameSpaceState?.name || ''}
+            />
         </CMSLayout>
     );
 }

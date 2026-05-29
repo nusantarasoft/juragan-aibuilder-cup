@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS folders (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     parent_id UUID REFERENCES folders(id),
-    owner_id UUID REFERENCES auth.users(id),
+    owner_id UUID, -- logical FK to auth.users(id)
     path TEXT, -- Materialized path like '/documents/projects/2024/'
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS files (
     duration_seconds NUMERIC,
     
     -- Ownership
-    owner_id UUID REFERENCES auth.users(id),
+    owner_id UUID, -- logical FK to auth.users(id)
     folder_id UUID REFERENCES folders(id),
     
     -- Versioning
@@ -102,10 +102,10 @@ CREATE TABLE IF NOT EXISTS files (
 -- ============================================================================
 -- FILE SHARES (Sharing files with users/groups)
 -- ============================================================================
-CREATE TABLE file_shares (
+CREATE TABLE IF NOT EXISTS file_shares (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     file_id UUID REFERENCES files(id) ON DELETE CASCADE,
-    shared_with_user_id UUID REFERENCES auth.users(id),
+    shared_with_user_id UUID, -- logical FK to auth.users(id)
     shared_with_email TEXT,
     permission TEXT DEFAULT 'view' CHECK (permission IN ('view', 'edit', 'admin')),
     expires_at TIMESTAMPTZ,
@@ -116,7 +116,7 @@ CREATE TABLE file_shares (
 -- ============================================================================
 -- FILE PROCESSING QUEUE
 -- ============================================================================
-CREATE TABLE file_processing_queue (
+CREATE TABLE IF NOT EXISTS file_processing_queue (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     file_id UUID REFERENCES files(id) ON DELETE CASCADE,
     task_type TEXT NOT NULL, -- 'extract_text', 'generate_embedding', 'transcribe', 'thumbnail'
@@ -222,27 +222,20 @@ ALTER TABLE folders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE file_shares ENABLE ROW LEVEL SECURITY;
 
 -- Files: Owner can do anything, shared users can view
-CREATE POLICY "Users can manage own files" ON files
-    FOR ALL USING (auth.uid() = owner_id);
-
-CREATE POLICY "Users can view shared files" ON files
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM file_shares 
-            WHERE file_id = files.id 
-            AND (shared_with_user_id = auth.uid() OR shared_with_email = auth.email())
-        )
-    );
+-- Note: RLS policies use auth.uid() which is only available when auth schema exists
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_namespace WHERE nspname = 'auth') THEN
+    EXECUTE 'CREATE POLICY "Users can manage own files" ON files FOR ALL USING (auth.uid() = owner_id)';
+    EXECUTE 'CREATE POLICY "Users can view shared files" ON files FOR SELECT USING (EXISTS (SELECT 1 FROM file_shares WHERE file_id = files.id AND (shared_with_user_id = auth.uid() OR shared_with_email = auth.email())))';
+    EXECUTE 'CREATE POLICY "Users can manage own folders" ON folders FOR ALL USING (auth.uid() = owner_id)';
+  END IF;
+END $$;
 
 -- Public files in public buckets
 CREATE POLICY "Anyone can view public files" ON files
     FOR SELECT USING (
         EXISTS (SELECT 1 FROM storage_buckets WHERE id = bucket_id AND public = true)
     );
-
--- Folders: Owner only
-CREATE POLICY "Users can manage own folders" ON folders
-    FOR ALL USING (auth.uid() = owner_id);
 
 -- ============================================================================
 -- TRIGGERS

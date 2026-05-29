@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
@@ -31,6 +31,7 @@ const { TabPane } = Tabs;
 const { Text, Title } = Typography;
 const TENANT = "default";
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
+const glassDark = { background: 'rgba(12,12,30,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14 };
 
 const SUPPLIER_FIELDS: FieldDef[] = [
     { name: 'code', label: 'Supplier Code', required: true },
@@ -372,8 +373,8 @@ export default function ProcurementPage() {
                     { title: 'PO Value', value: stats?.totalPoValue ? fmtMoney(stats.totalPoValue) : '—', icon: <DollarOutlined />, color: '#10b981' },
                 ].map((s, i) => (
                     <Col key={i} xs={12} sm={8} md={4}>
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, type: 'spring', stiffness: 260, damping: 20 }}>
+                            <Card size="small" style={{ ...glassDark, borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden' }}>
                                 <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
                             </Card>
                         </motion.div>
@@ -628,3 +629,6 @@ export default function ProcurementPage() {
         </CMSLayout>
     );
 }
+
+
+

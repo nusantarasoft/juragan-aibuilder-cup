@@ -32,7 +32,20 @@ import { DremioModule } from './dremio/dremio.module';
 import { NewsModule } from './news/news.module';
 import { DockerModule } from './docker/docker.module';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
-
+import { EcommerceModule } from './ecommerce/ecommerce.module';
+import { EmailModule } from './email/email.module';
+import { AuditModule } from './audit/audit.module';
+import { SecurityModule } from './security/security.module';
+import { AutomationModule } from './automation/automation.module';
+import { DevopsModule } from './devops/devops.module';
+import { CollaborationModule } from './collaboration/collaboration.module';
+import { MessagingModule } from './messaging/messaging.module';
+import { DatasetsModule } from './datasets/datasets.module';
+import { IntegrationsModule } from './integrations/integrations.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { DocumentsModule } from './documents/documents.module';
+import { ReportsModule } from './reports/reports.module';
+import { FormsModule } from './forms/forms.module';
 @Module({
     imports: [
         // Environment configuration
@@ -82,6 +95,22 @@ import { InfrastructureModule } from './infrastructure/infrastructure.module';
         NewsModule,
         DockerModule,
         InfrastructureModule,
+        // v2.19.0 — New modules
+        EcommerceModule,
+        EmailModule,
+        AuditModule,
+        SecurityModule,
+        AutomationModule,
+        DevopsModule,
+        CollaborationModule,
+        MessagingModule,
+        DatasetsModule,
+        IntegrationsModule,
+        AnalyticsModule,
+        DocumentsModule,
+        ReportsModule,
+        // v3.0 — Form Builder
+        FormsModule,
     ],
 })
 export class AppModule { }

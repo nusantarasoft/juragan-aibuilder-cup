@@ -1127,6 +1127,70 @@ IMPORTANT: Return ONLY valid JSON.`;
         };
     }
 
+    // ─── WAREHOUSE LAYOUTS (3D Builder Persistence) ────────────
+
+    async getWarehouseLayouts(tenantId: string, warehouseId?: string) {
+        let query = this.db.from('inv_warehouse_layouts').select('*').eq('tenant_id', tenantId);
+        if (warehouseId) query = query.eq('warehouse_id', warehouseId);
+        const { data, error } = await query.order('updated_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async getWarehouseLayout(id: string) {
+        const { data, error } = await this.db.from('inv_warehouse_layouts').select('*').eq('id', id).single();
+        if (error) throw error;
+        return data;
+    }
+
+    async saveWarehouseLayout(tenantId: string, input: Record<string, any>) {
+        const objects = input.objects || [];
+        const row: any = {
+            tenant_id: tenantId,
+            warehouse_id: input.warehouseId || null,
+            name: input.name || 'Untitled Layout',
+            objects,
+            object_count: objects.length,
+            zone_count: objects.filter((o: any) => o.type === 'zone').length,
+            rack_count: objects.filter((o: any) => o.type === 'rack').length,
+            is_active: input.isActive ?? false,
+            created_by: input.createdBy || null,
+            updated_at: new Date().toISOString(),
+        };
+
+        // Upsert: if id provided, update; else insert
+        if (input.id) {
+            const { data, error } = await this.db.from('inv_warehouse_layouts')
+                .update(row).eq('id', input.id).select().single();
+            if (error) throw error;
+            return data;
+        } else {
+            const { data, error } = await this.db.from('inv_warehouse_layouts')
+                .insert(row).select().single();
+            if (error) throw error;
+            return data;
+        }
+    }
+
+    async deleteWarehouseLayout(id: string): Promise<boolean> {
+        const { error } = await this.db.from('inv_warehouse_layouts').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    async setActiveWarehouseLayout(id: string, tenantId: string) {
+        // Unset all active for this tenant
+        await this.db.from('inv_warehouse_layouts')
+            .update({ is_active: false, updated_at: new Date().toISOString() })
+            .eq('tenant_id', tenantId).eq('is_active', true);
+        // Set this one active
+        const { data, error } = await this.db.from('inv_warehouse_layouts')
+            .update({ is_active: true, updated_at: new Date().toISOString() })
+            .eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
     // ═══════════════════════════════════════════════════════
     // ─── MANUFACTURING ────────────────────────────────────
     // ═══════════════════════════════════════════════════════
