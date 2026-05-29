@@ -702,7 +702,7 @@ MIT
 - **Management Stack** — 3 new pages: Portainer (endpoints, stacks, images, volumes), Zabbix (hosts, triggers, metrics, latest data), K3s Kubernetes (nodes, pods, services, namespaces)
 - **Directory Services** — OpenLDAP dashboard (organizational units, user directory, group management)
 - **API Layer** — Hasura GraphQL page (tracked tables, actions, event triggers, permissions)
-- **AI Studio** — 2 new pages: Label Studio (annotation projects, task progress, recent labels), OpenClaw AI Gateway (agent registry, routing, health monitoring)
+- **AI Studio** — Label Studio, WhatsApp (WAHA) gateway for AI Studio chat, sales DB context views
 - **Realtime** — Socket.IO dashboard (namespaces, connected clients, rooms, event stats)
 - **Big Data** — 2 new pages: Apache Superset BI (dashboards, charts, database connections), MinIO Storage (bucket browser, policies, server info)
 - **Menu expansion** — AI Studio section (2 items), Big Data section (2 items), +4 Infrastructure sub-items, +1 Security sub-item, +1 Messaging sub-item

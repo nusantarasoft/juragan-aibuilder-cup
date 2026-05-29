@@ -1,9 +1,26 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { graphqlUploadExpress } from 'graphql-upload-ts';
+import * as express from 'express';
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+    // rawBody: true disables JSON parsing and breaks POST /graphql (login, notebooks, etc.)
+    const app = await NestFactory.create(AppModule, { bodyParser: false });
+
+    app.use(
+        express.json({
+            limit: '50mb',
+            verify: (
+                req: express.Request & { rawBody?: Buffer },
+                _res: express.Response,
+                buf: Buffer,
+            ) => {
+                if (req.originalUrl?.includes('/api/studio/whatsapp/webhook')) {
+                    req.rawBody = buf;
+                }
+            },
+        }),
+    );
 
     // Enable CORS for frontend apps
     app.enableCors({
@@ -29,4 +46,3 @@ async function bootstrap() {
     console.log(`🚀 Middleware running on http://localhost:${port}/graphql`);
 }
 bootstrap();
-

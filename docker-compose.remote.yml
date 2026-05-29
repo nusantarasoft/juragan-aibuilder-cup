@@ -46,31 +46,54 @@ services:
   # ═══════════════════════════════════════════════════════════════════════════
   # ═══════════════════════════════════════════════════════════════════════════
 
-  openclaw:
-    image: ghcr.io/openclaw/openclaw:latest
-    container_name: openclaw
+  waha:
+    image: ${WAHA_IMAGE:-devlikeapro/waha:latest-2026.4.3}
+    container_name: waha
     restart: unless-stopped
+    shm_size: "2gb"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:
           memory: 2g
         reservations:
-          memory: 1g
+          memory: 768m
     ports:
-      - "18789:18789"
+      - "${WAHA_HOST_PORT:-3010}:3000"
     environment:
-      - NODE_ENV=production
-      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
+      # Set WHATSAPP_HOOK_URL in .env to LOCAL_HOST_IP middleware when WAHA runs on remote device
+      - WHATSAPP_HOOK_URL=${WHATSAPP_HOOK_URL:-http://host.docker.internal:4001/api/studio/whatsapp/webhook}
+      - WHATSAPP_HOOK_EVENTS=message,message.any
+      - WHATSAPP_HOOK_HMAC_KEY=${WAHA_WEBHOOK_HMAC_KEY:-}
+      - WAHA_API_KEY=${WAHA_API_KEY:-}
+      - WAHA_API_KEY_PLAIN=${WAHA_API_KEY_PLAIN:-${WAHA_API_KEY:-}}
+      - WAHA_API_KEY_EXCLUDE_PATH=health
+      - WAHA_DASHBOARD_USERNAME=${WAHA_DASHBOARD_USERNAME:-admin}
+      - WAHA_DASHBOARD_PASSWORD=${WAHA_DASHBOARD_PASSWORD:-}
+      - WHATSAPP_SWAGGER_USERNAME=${WHATSAPP_SWAGGER_USERNAME:-admin}
+      - WHATSAPP_SWAGGER_PASSWORD=${WHATSAPP_SWAGGER_PASSWORD:-}
+      - WAHA_BASE_URL=http://waha:3000
+      - WHATSAPP_DEFAULT_SESSION=${WAHA_SESSION:-default}
+      - WHATSAPP_DEFAULT_ENGINE=${WAHA_DEFAULT_ENGINE:-WEBJS}
+      - WAHA_SESSION_ENGINE_INFO_TIMEOUT=15000
+      - WHATSAPP_RESTART_ALL_SESSIONS=True
     volumes:
-      - openclaw-config:/home/node/.openclaw
+      - waha-sessions:/app/.sessions
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     networks:
       - remote-network
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:18789/healthz', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      test: ["CMD-SHELL", "wget -q --header=\"X-Api-Key: $$WAHA_API_KEY\" -O - http://127.0.0.1:3000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 45s
 
 networks:
   remote-network:
@@ -78,4 +101,4 @@ networks:
 
 volumes:
   dremio-data:
-  openclaw-config:
+  waha-sessions:

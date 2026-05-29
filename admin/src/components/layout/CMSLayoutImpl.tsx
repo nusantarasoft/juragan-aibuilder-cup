@@ -319,6 +319,12 @@ export default function CMSLayoutImpl({
     const router = useRouter();
     const currentPath = usePathname();
     const [pathname, setPathname] = useState(currentPath || "/admin/dashboard");
+
+    React.useEffect(() => {
+        if (currentPath) {
+            setPathname(currentPath);
+        }
+    }, [currentPath]);
     const [innerCollapsed, setInnerCollapsed] = useState(true); // Default collapsed
     const [outerCollapsed, setOuterCollapsed] = useState(false);
     

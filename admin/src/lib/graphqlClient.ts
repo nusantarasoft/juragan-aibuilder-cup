@@ -7,6 +7,38 @@ const GRAPHQL_URL = (typeof window === 'undefined' && process.env.GRAPHQL_API_UR
     ? process.env.GRAPHQL_API_URL
     : (process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql');
 
+export const ACCESS_TOKEN_KEY = 'auth_access_token';
+export const REFRESH_TOKEN_KEY = 'auth_refresh_token';
+
+export function getStoredToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(ACCESS_TOKEN_KEY);
+}
+
+export function getStoredRefreshToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function storeAuthTokens(accessToken: string, refreshToken: string): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+}
+
+export function clearAuthTokens(): void {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+const AUTH_ERROR_RE =
+    /jwt|token|expired|invalid.*session|not authenticated|unauthorized/i;
+
+export function isAuthGraphQLError(message: string): boolean {
+    return AUTH_ERROR_RE.test(message);
+}
+
 export interface GraphQLResponse<T> {
     data?: T;
     errors?: Array<{ message: string; path?: string[] }>;
@@ -24,7 +56,8 @@ export async function graphql<T>(
     query: string,
     options: GraphQLRequestOptions = {}
 ): Promise<T> {
-    const { token, variables } = options;
+    const { variables } = options;
+    const token = options.token ?? getStoredToken() ?? undefined;
 
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',

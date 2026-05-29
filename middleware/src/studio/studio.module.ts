@@ -11,10 +11,13 @@ import { SupabaseModule } from '../supabase/supabase.module';
 import { AiModule } from '../ai/ai.module';
 import { RagModule } from '../rag/rag.module';
 import { DremioModule } from '../dremio/dremio.module';
+import { WahaModule } from '../waha/waha.module';
+import { StudioWhatsAppController } from './studio-whatsapp.controller';
+import { StudioWhatsAppService } from './studio-whatsapp.service';
 
 @Module({
-    imports: [ConfigModule, SupabaseModule, AiModule, RagModule, DremioModule],
-    controllers: [StudioUploadController],
+    imports: [ConfigModule, SupabaseModule, AiModule, RagModule, DremioModule, WahaModule],
+    controllers: [StudioUploadController, StudioWhatsAppController],
     providers: [
         StudioService,
         GuideFlowService,
@@ -22,7 +25,8 @@ import { DremioModule } from '../dremio/dremio.module';
         StudioIngestionService,
         StudioContextService,
         StudioDbContextService,
+        StudioWhatsAppService,
     ],
-    exports: [StudioService, GuideFlowService, StudioIngestionService, StudioContextService],
+    exports: [StudioService, GuideFlowService, StudioIngestionService, StudioContextService, StudioWhatsAppService],
 })
 export class StudioModule { }

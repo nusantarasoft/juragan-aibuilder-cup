@@ -1,6 +1,7 @@
 import { Resolver, Query, Mutation, Args } from '@nestjs/graphql';
 import { StudioService } from './studio.service';
 import { GuideFlowService } from './guide-flow.service';
+import { StudioWhatsAppService } from './studio-whatsapp.service';
 import { GraphQLJSONObject } from 'graphql-type-json';
 
 @Resolver()
@@ -8,6 +9,7 @@ export class StudioResolver {
     constructor(
         private readonly studioService: StudioService,
         private readonly guideFlowService: GuideFlowService,
+        private readonly studioWhatsAppService: StudioWhatsAppService,
     ) { }
 
     // ── Notebooks ────────────────────────────────────────────────────
@@ -198,5 +200,42 @@ export class StudioResolver {
         @Args('userId', { type: () => String, nullable: true }) userId: string,
     ) {
         return this.guideFlowService.guidedChatTurn(notebookId, flowId, message, conversationId, userId);
+    }
+
+    // ── WhatsApp (WAHA) ─────────────────────────────────────────────
+
+    @Query(() => GraphQLJSONObject, { name: 'studioWhatsAppConfig', nullable: true })
+    async studioWhatsAppConfig() {
+        return this.studioWhatsAppService.getConfig();
+    }
+
+    @Query(() => GraphQLJSONObject, { name: 'studioWhatsAppSessionStatus' })
+    async studioWhatsAppSessionStatus() {
+        return this.studioWhatsAppService.getWahaSessionStatus();
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'restartStudioWahaSession' })
+    async restartStudioWahaSession() {
+        return this.studioWhatsAppService.restartWahaSession();
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'syncStudioWahaSession' })
+    async syncStudioWahaSession() {
+        return this.studioWhatsAppService.syncWahaSession();
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'updateStudioWhatsAppConfig' })
+    async updateStudioWhatsAppConfig(
+        @Args('notebookId', { type: () => String, nullable: true }) notebookId: string,
+        @Args('enabled', { type: () => Boolean }) enabled: boolean,
+        @Args('allowlistPhones', { type: () => [String], nullable: true }) allowlistPhones: string[],
+        @Args('useGuidedFlow', { type: () => Boolean, nullable: true }) useGuidedFlow: boolean,
+    ) {
+        return this.studioWhatsAppService.updateConfig({
+            notebookId: notebookId || null,
+            enabled,
+            allowlistPhones: allowlistPhones ?? [],
+            useGuidedFlow: useGuidedFlow ?? false,
+        });
     }
 }

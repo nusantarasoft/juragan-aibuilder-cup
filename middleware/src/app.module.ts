@@ -32,6 +32,7 @@ import { DremioModule } from './dremio/dremio.module';
 import { NewsModule } from './news/news.module';
 import { DockerModule } from './docker/docker.module';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
+import { WahaModule } from './waha/waha.module';
 
 @Module({
     imports: [
@@ -41,6 +42,7 @@ import { InfrastructureModule } from './infrastructure/infrastructure.module';
             // First file wins on duplicate keys (Nest merges with Object.assign(parsed, existing)).
             envFilePath: ['.env.local', '../.env.local', '.env', '../.env'],
         }),
+        WahaModule,
         ScheduleModule.forRoot(),
 
         // GraphQL configuration (Code-First)

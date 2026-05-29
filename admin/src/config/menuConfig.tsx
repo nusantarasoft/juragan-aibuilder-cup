@@ -225,8 +225,27 @@ const menuConfig = {
                 path: "/admin/ai-studio",
                 name: "AI Studio",
                 icon: <RobotOutlined />,
-                isLeaf: true,
                 isTopLevel: true,
+                routes: [
+                    {
+                        path: "/admin/ai-studio",
+                        name: "Workspace",
+                        icon: <RobotOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ai-studio/label-studio",
+                        name: "Label Studio",
+                        icon: <EditOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ai-studio/ai-gateway",
+                        name: "WhatsApp",
+                        icon: <NodeIndexOutlined />,
+                        isLeaf: true,
+                    },
+                ],
             },
             {
                 path: "/admin/itsm",
@@ -1191,25 +1210,6 @@ const menuConfig = {
                         path: "/admin/tenants/dashboard",
                         name: "Dashboard",
                         icon: <DashboardOutlined />,
-                        isLeaf: true,
-                    },
-                ],
-            },
-            {
-                path: "/admin/ai-studio",
-                name: "AI Studio",
-                icon: <RobotOutlined />,
-                routes: [
-                    {
-                        path: "/admin/ai-studio/label-studio",
-                        name: "Label Studio",
-                        icon: <EditOutlined />,
-                        isLeaf: true,
-                    },
-                    {
-                        path: "/admin/ai-studio/ai-gateway",
-                        name: "AI Gateway",
-                        icon: <NodeIndexOutlined />,
                         isLeaf: true,
                     },
                 ],
