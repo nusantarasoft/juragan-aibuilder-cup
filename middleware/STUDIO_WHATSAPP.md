@@ -1,8 +1,6 @@
 # AI Studio — WhatsApp via WAHA
 
-Chat AI Studio (RAG + database penjualan) dapat diakses lewat WhatsApp menggunakan [WAHA](https://waha.devlike.pro/) (WhatsApp HTTP API, non-resmi / WhatsApp Web).
-
-OpenClaw **tidak** dipakai lagi; notifikasi WhatsApp juga memakai WAHA.
+Chat AI Studio (RAG + database penjualan) dapat diakses lewat WhatsApp menggunakan [WAHA](https://waha.devlike.pro/) (WhatsApp HTTP API, non-resmi / WhatsApp Web). Notifikasi WhatsApp juga memakai WAHA.
 
 ## Setup
 
