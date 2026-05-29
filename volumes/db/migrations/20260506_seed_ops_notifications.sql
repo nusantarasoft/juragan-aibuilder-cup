@@ -123,7 +123,7 @@ RETURNING id INTO ch_email;
 
 INSERT INTO notification_channels (id, tenant_id, name, channel_type, config, is_active)
 VALUES
-  (gen_random_uuid(), t_id, 'WhatsApp Gateway', 'whatsapp', '{"gateway_url":"http://openclaw:3000","api_key":""}', false)
+  (gen_random_uuid(), t_id, 'WhatsApp Gateway', 'whatsapp', '{"gateway_url":"http://waha:3000","api_key":""}', false)
 RETURNING id INTO ch_whatsapp;
 
 INSERT INTO notification_channels (id, tenant_id, name, channel_type, config, is_active)

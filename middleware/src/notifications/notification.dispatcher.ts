@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NotificationsService } from './notifications.service';
+import { WahaClientService } from '../waha/waha-client.service';
 import * as nodemailer from 'nodemailer';
 
 interface SendOptions {
@@ -20,6 +21,7 @@ export class NotificationDispatcher {
     constructor(
         private notificationsService: NotificationsService,
         private configService: ConfigService,
+        private wahaClient: WahaClientService,
     ) {}
 
     /**
@@ -102,40 +104,15 @@ export class NotificationDispatcher {
         }
     }
 
-    // ─── WHATSAPP (via OpenClaw Gateway) ────────────────────
+    // ─── WHATSAPP (via WAHA) ────────────────────────────────
 
     private async sendWhatsApp(phone: string, message: string): Promise<{ success: boolean; error?: string }> {
-        try {
-            const gatewayUrl = this.configService.get('OPENCLAW_GATEWAY_URL', 'http://openclaw:18789');
-            const gatewayToken = this.configService.get('OPENCLAW_GATEWAY_TOKEN', '');
-
-            // Format phone: ensure it starts with country code
-            const formattedPhone = phone.startsWith('+') ? phone.slice(1) : phone;
-            const chatId = `${formattedPhone}@c.us`;
-
-            const response = await fetch(`${gatewayUrl}/api/sendText`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(gatewayToken ? { 'Authorization': `Bearer ${gatewayToken}` } : {}),
-                },
-                body: JSON.stringify({
-                    chatId,
-                    text: message,
-                    session: 'default',
-                }),
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`WhatsApp API error ${response.status}: ${errorText}`);
-            }
-
+        const chatId = this.wahaClient.phoneToChatId(phone);
+        const result = await this.wahaClient.sendText(chatId, message);
+        if (result.success) {
             this.logger.log(`WhatsApp sent to ${phone}`);
-            return { success: true };
-        } catch (err: any) {
-            return { success: false, error: err.message };
         }
+        return result;
     }
 
     // ─── WEBHOOK ────────────────────────────────────────────

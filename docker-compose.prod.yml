@@ -134,8 +134,10 @@ services:
         reservations:
           memory: 2g
 
-  openclaw:
+  waha:
+    image: ${WAHA_IMAGE:-devlikeapro/waha:latest-2026.4.3}
     restart: always
+    shm_size: "2gb"
     logging:
       driver: json-file
       options:
@@ -146,7 +148,7 @@ services:
         limits:
           memory: 2g
         reservations:
-          memory: 1g
+          memory: 768m
 
   auth:
     restart: always

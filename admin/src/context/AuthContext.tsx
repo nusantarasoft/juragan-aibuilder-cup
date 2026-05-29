@@ -6,13 +6,18 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { graphql, queries, mutations } from "@/lib/graphqlClient";
-import type { User, AuthResponse, SignOutResponse } from "@/lib/graphqlTypes";
+import {
+    graphql,
+    queries,
+    mutations,
+    getStoredToken,
+    getStoredRefreshToken,
+    storeAuthTokens,
+    clearAuthTokens,
+    isAuthGraphQLError,
+} from "@/lib/graphqlClient";
+import type { User, AuthResponse } from "@/lib/graphqlTypes";
 import { useAuthStore } from "@/store/useAuthStore";
-
-// Token storage keys
-const ACCESS_TOKEN_KEY = "auth_access_token";
-const REFRESH_TOKEN_KEY = "auth_refresh_token";
 
 // User profile type for backward compatibility
 interface UserProfile {
@@ -37,62 +42,99 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Helper to get stored token
-const getStoredToken = (): string | null => {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem(ACCESS_TOKEN_KEY);
-};
+function applyUserSession(me: User) {
+    const profile: UserProfile = {
+        id: me.id,
+        email: me.email,
+        full_name: me.fullName,
+        role: me.role,
+        two_factor_enabled: false,
+        created_at: me.createdAt || new Date().toISOString(),
+    };
+    useAuthStore.getState().syncFromAuth(me);
+    return { user: me, profile };
+}
 
-// Helper to store tokens
-const storeTokens = (accessToken: string, refreshToken: string) => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-};
+async function fetchMe(accessToken: string): Promise<User | null> {
+    const data = await graphql<{ me: User | null }>(queries.me, { token: accessToken });
+    return data.me ?? null;
+}
 
-// Helper to clear tokens
-const clearTokens = () => {
-    if (typeof window === "undefined") return;
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-};
+async function tryRefreshTokens(): Promise<string | null> {
+    const refreshToken = getStoredRefreshToken();
+    if (!refreshToken) return null;
+
+    try {
+        const data = await graphql<{ refreshToken: { accessToken: string; refreshToken: string } }>(
+            mutations.refreshToken,
+            { variables: { refreshToken } },
+        );
+        if (!data.refreshToken?.accessToken) return null;
+        storeAuthTokens(data.refreshToken.accessToken, data.refreshToken.refreshToken);
+        return data.refreshToken.accessToken;
+    } catch {
+        return null;
+    }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
-    const [pendingTwoFactor, setPendingTwoFactor] = useState(false);
-
     useEffect(() => {
-        // Check for existing session on mount
         checkSession();
     }, []);
 
     const checkSession = async () => {
-        const token = getStoredToken();
+        let token = getStoredToken();
         if (!token) {
             setLoading(false);
             return;
         }
 
         try {
-            const data = await graphql<{ me: User }>(queries.me, { token: token || undefined });
-            if (data.me) {
-                setUser(data.me);
-                setProfile({
-                    id: data.me.id,
-                    email: data.me.email,
-                    full_name: data.me.fullName,
-                    role: data.me.role,
-                    two_factor_enabled: false,
-                    created_at: data.me.createdAt || new Date().toISOString(),
-                });
-                // Sync to Zustand RBAC store
-                useAuthStore.getState().syncFromAuth(data.me);
+            let me = await fetchMe(token);
+
+            if (!me) {
+                const refreshed = await tryRefreshTokens();
+                if (refreshed) {
+                    token = refreshed;
+                    me = await fetchMe(token);
+                }
+            }
+
+            if (me) {
+                const session = applyUserSession(me);
+                setUser(session.user);
+                setProfile(session.profile);
+            } else {
+                clearAuthTokens();
+                useAuthStore.getState().clearUser();
             }
         } catch (error) {
-            console.error("Session check failed:", error);
-            clearTokens();
+            const message = error instanceof Error ? error.message : String(error);
+            console.error("Session check failed:", message);
+
+            if (isAuthGraphQLError(message)) {
+                const refreshed = await tryRefreshTokens();
+                if (refreshed) {
+                    try {
+                        const me = await fetchMe(refreshed);
+                        if (me) {
+                            const session = applyUserSession(me);
+                            setUser(session.user);
+                            setProfile(session.profile);
+                            setLoading(false);
+                            return;
+                        }
+                    } catch {
+                        // fall through to clear
+                    }
+                }
+                clearAuthTokens();
+                useAuthStore.getState().clearUser();
+            }
+            // Network / middleware errors: keep tokens so refresh does not feel like logout
         }
 
         setLoading(false);
@@ -105,18 +147,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
 
             if (data.signIn) {
-                storeTokens(data.signIn.accessToken, data.signIn.refreshToken);
-                setUser(data.signIn.user);
-                setProfile({
-                    id: data.signIn.user.id,
-                    email: data.signIn.user.email,
-                    full_name: data.signIn.user.fullName,
-                    role: data.signIn.user.role,
-                    two_factor_enabled: false,
-                    created_at: new Date().toISOString(),
-                });
-                // Sync to Zustand RBAC store
-                useAuthStore.getState().syncFromAuth(data.signIn.user);
+                storeAuthTokens(data.signIn.accessToken, data.signIn.refreshToken);
+                const session = applyUserSession(data.signIn.user);
+                setUser(session.user);
+                setProfile(session.profile);
                 return {};
             }
 
@@ -133,18 +167,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
 
             if (data.signUp) {
-                storeTokens(data.signUp.accessToken, data.signUp.refreshToken);
-                setUser(data.signUp.user);
-                setProfile({
-                    id: data.signUp.user.id,
-                    email: data.signUp.user.email,
-                    full_name: data.signUp.user.fullName,
-                    role: data.signUp.user.role,
-                    two_factor_enabled: false,
-                    created_at: new Date().toISOString(),
-                });
-                // Sync to Zustand RBAC store
-                useAuthStore.getState().syncFromAuth(data.signUp.user);
+                storeAuthTokens(data.signUp.accessToken, data.signUp.refreshToken);
+                const session = applyUserSession(data.signUp.user);
+                setUser(session.user);
+                setProfile(session.profile);
                 return {};
             }
 
@@ -155,12 +181,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const verifyTwoFactor = async (code: string) => {
-        // TODO: Implement 2FA verification via GraphQL
         if (code.length !== 6 || !/^\d+$/.test(code)) {
             return { error: "Invalid verification code" };
         }
 
-        setPendingTwoFactor(false);
         return {};
     };
 
@@ -172,10 +196,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.error("Sign out error:", error);
         }
 
-        clearTokens();
+        clearAuthTokens();
         setUser(null);
         setProfile(null);
-        // Clear Zustand RBAC store
         useAuthStore.getState().clearUser();
     };
 

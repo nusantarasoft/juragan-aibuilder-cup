@@ -1,11 +1,18 @@
 import { gql } from '@apollo/client';
+import { getStoredToken } from '@/lib/graphqlClient';
 
-const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4001/graphql';
+const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
 
 async function graphqlRequest(query: string, variables: Record<string, any> = {}) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const token = getStoredToken();
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(GRAPHQL_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ query, variables }),
     });
     const result = await response.json();
@@ -317,4 +324,72 @@ export const studioService = {
         `, { notebookId });
         return data.reindexStudioNotebook;
     },
+
+    // ── WhatsApp (WAHA) ─────────────────────────────────────
+
+    async getWhatsAppConfig(): Promise<StudioWhatsAppConfig | null> {
+        const data = await graphqlRequest(`query { studioWhatsAppConfig }`);
+        return data.studioWhatsAppConfig;
+    },
+
+    async getWhatsAppSessionStatus(): Promise<StudioWhatsAppSessionStatus> {
+        const data = await graphqlRequest(`query { studioWhatsAppSessionStatus }`);
+        return data.studioWhatsAppSessionStatus;
+    },
+
+    async restartWahaSession(): Promise<{ status: string }> {
+        const data = await graphqlRequest(`mutation { restartStudioWahaSession }`);
+        return data.restartStudioWahaSession;
+    },
+
+    async syncWahaSession(): Promise<{ status: string; connected: boolean }> {
+        const data = await graphqlRequest(`mutation { syncStudioWahaSession }`);
+        return data.syncStudioWahaSession;
+    },
+
+    async updateWhatsAppConfig(params: {
+        notebookId?: string | null;
+        enabled: boolean;
+        allowlistPhones?: string[];
+        useGuidedFlow?: boolean;
+    }): Promise<StudioWhatsAppConfig> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String, $enabled: Boolean!, $allowlistPhones: [String!], $useGuidedFlow: Boolean) {
+                updateStudioWhatsAppConfig(
+                    notebookId: $notebookId
+                    enabled: $enabled
+                    allowlistPhones: $allowlistPhones
+                    useGuidedFlow: $useGuidedFlow
+                )
+            }
+        `, {
+            notebookId: params.notebookId ?? null,
+            enabled: params.enabled,
+            allowlistPhones: params.allowlistPhones ?? [],
+            useGuidedFlow: params.useGuidedFlow ?? false,
+        });
+        return data.updateStudioWhatsAppConfig;
+    },
 };
+
+export interface StudioWhatsAppConfig {
+    tenant_id: string;
+    notebook_id: string | null;
+    enabled: boolean;
+    allowlist_phones: string[];
+    use_guided_flow: boolean;
+    updated_at?: string;
+}
+
+export interface StudioWhatsAppSessionStatus {
+    session: {
+        name: string;
+        status: string;
+        connected: boolean;
+        meId?: string;
+        pairedButStuck?: boolean;
+        engineState?: string;
+    } | null;
+    sessions: { name: string; status: string }[];
+    version?: { version: string; engine: string } | null;
+}
