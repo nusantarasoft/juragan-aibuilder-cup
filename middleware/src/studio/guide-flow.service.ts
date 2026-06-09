@@ -473,9 +473,22 @@ export class GuideFlowService {
                         typeof ctx.lastUserMessage === 'string' ? ctx.lastUserMessage : '';
                     let content = '';
                     switch (node.action) {
-                        case 'record_sale':
-                            content = await this.umkmService.recordSaleFromText(raw, tenantId, undefined, cfg);
+                        case 'record_sale': {
+                            // Fallback when published flow predates list_products transitions.
+                            const intent = this.umkmService.detectIntent(raw);
+                            if (intent === 'list_products') {
+                                content = await this.umkmService.buildProductListMessage(tenantId);
+                            } else if (intent === 'sales_report') {
+                                content = await this.umkmService.buildDailyReportMessage(tenantId);
+                            } else if (intent === 'help') {
+                                content =
+                                    (await this.umkmService.handleMessage('bantuan', tenantId, undefined, cfg)) ||
+                                    '';
+                            } else {
+                                content = await this.umkmService.recordSaleFromText(raw, tenantId, undefined, cfg);
+                            }
                             break;
+                        }
                         case 'sales_report':
                             content = await this.umkmService.buildDailyReportMessage(tenantId);
                             break;

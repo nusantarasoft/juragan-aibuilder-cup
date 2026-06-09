@@ -159,7 +159,12 @@ export class StudioWhatsAppService {
 
     async handleWebhook(body: Record<string, unknown>, session?: string): Promise<void> {
         const event = String(body.event || '').toLowerCase();
-        const allowed = new Set(['message', 'message.any', '']);
+        // WAHA emits both message.any and message for the same inbound text — handle once.
+        if (event === 'message.any') {
+            this.logger.debug('Webhook ignored duplicate event=message.any');
+            return;
+        }
+        const allowed = new Set(['message', '']);
         if (event && !allowed.has(event)) {
             this.logger.debug(`Webhook ignored event=${event}`);
             return;
