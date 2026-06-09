@@ -9,7 +9,8 @@
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:rag-eval": "vitest run src/studio/studio-rag-eval.integration.spec.ts"
   },
   "dependencies": {
     "@google-cloud/vertexai": "^1.9.0",
