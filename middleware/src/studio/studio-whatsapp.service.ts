@@ -5,6 +5,8 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { WahaClientService } from '../waha/waha-client.service';
 import { StudioService } from './studio.service';
 import { GuideFlowService } from './guide-flow.service';
+import { StudioDbContextService } from './studio-db-context.service';
+import { StudioUmkmService } from './studio-umkm.service';
 import {
     isPhoneInAllowlist,
     normalizePhoneDigits,
@@ -37,6 +39,8 @@ export class StudioWhatsAppService {
         private readonly wahaClient: WahaClientService,
         private readonly studioService: StudioService,
         private readonly guideFlowService: GuideFlowService,
+        private readonly dbContextService: StudioDbContextService,
+        private readonly umkmService: StudioUmkmService,
     ) {
         this.rateLimiter = new StudioWhatsAppRateLimiter(this.getRateLimitPerMinute());
     }
@@ -207,6 +211,11 @@ export class StudioWhatsAppService {
             String(payload.notifyName || payload.pushName || ''),
         );
 
+        const notebook = await this.studioService.getNotebook(config.notebook_id);
+        const notebookCfg = this.dbContextService.parseConfig(notebook.context_config);
+        const tenantId = this.umkmService.resolveTenantId(notebookCfg);
+        const umkmMode = this.umkmService.isUmkmMode(notebookCfg);
+
         // studio_conversations.user_id is uuid — never pass wa:phone into DB writes
         let answer: string;
         if (config.use_guided_flow) {
@@ -216,6 +225,19 @@ export class StudioWhatsAppService {
                 conversationId,
                 chatId,
             );
+        } else if (umkmMode) {
+            const umkmAnswer = await this.umkmService.handleMessage(question, tenantId, phone);
+            if (umkmAnswer) {
+                answer = umkmAnswer;
+            } else {
+                const result = await this.studioService.chat(
+                    config.notebook_id,
+                    question,
+                    conversationId,
+                    undefined,
+                );
+                answer = result.answer || '';
+            }
         } else {
             const result = await this.studioService.chat(
                 config.notebook_id,
@@ -334,13 +356,22 @@ export class StudioWhatsAppService {
         let activeConversationId = conversationId;
         const { data: conv } = await this.admin()
             .from('studio_conversations')
-            .select('guide_flow_id')
+            .select('guide_flow_id, guide_flow_node_id')
             .eq('id', conversationId)
             .single();
 
         const parts: string[] = [];
 
-        if (!conv?.guide_flow_id) {
+        const flowMismatch = conv?.guide_flow_id && conv.guide_flow_id !== flow.id;
+        const flowEnded = conv?.guide_flow_id && !conv.guide_flow_node_id;
+        const needsNewSession = !conv?.guide_flow_id || flowMismatch || flowEnded;
+
+        if (needsNewSession) {
+            if (flowMismatch) {
+                this.logger.log(
+                    `WA guided session flow changed (${conv?.guide_flow_id} → ${flow.id}); restarting for chat ${chatId}`,
+                );
+            }
             const started = await this.guideFlowService.startGuidedSession(
                 notebookId,
                 flow.id,

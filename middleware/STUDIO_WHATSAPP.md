@@ -56,9 +56,13 @@ Kirim pesan ke nomor yang terhubung:
 - "Produk apa yang paling laris?"
 - Kirim gambar + caption
 
+## UMKM (catat penjualan + laporan)
+
+Untuk use case **UMKM** — catat penjualan dan laporan harian lewat WA — lihat **[STUDIO_UMKM.md](./STUDIO_UMKM.md)** (setup notebook, guide flow, format pesan).
+
 ## Arsitektur
 
-- **Inbound:** WAHA → `POST /api/studio/whatsapp/webhook` → `StudioWhatsAppService` → `StudioService.chat()` atau guided flow
+- **Inbound:** WAHA → `POST /api/studio/whatsapp/webhook` → `StudioWhatsAppService` → UMKM / `StudioService.chat()` / guided flow
 - **Outbound:** `WahaClientService.sendText` / `sendImage` / `sendFile`
 - **Sesi:** `studio_whatsapp_sessions` maps `chat_id` ↔ `studio_conversations` (`channel=whatsapp`)
 

@@ -15,6 +15,8 @@ import {
 } from './query-understanding';
 import { DremioService } from '../dremio/dremio.service';
 import { StudioDbContextService } from './studio-db-context.service';
+import { StudioUmkmService } from './studio-umkm.service';
+import { defaultUmkmGuideFlowDefinition } from './guide-flow.definition';
 
 @Injectable()
 export class GuideFlowService {
@@ -25,6 +27,7 @@ export class GuideFlowService {
         private readonly studioService: StudioService,
         private readonly dremioService: DremioService,
         private readonly dbContextService: StudioDbContextService,
+        private readonly umkmService: StudioUmkmService,
     ) { }
 
     private admin() {
@@ -128,6 +131,15 @@ export class GuideFlowService {
         if (error) throw error;
         this.logger.log(`Published guide flow ${flowId} v${nextVersion} for notebook ${row.notebook_id}`);
         return data;
+    }
+
+    async createAndPublishUmkmFlow(notebookId: string): Promise<any> {
+        const existing = await this.getPublishedFlowForNotebook(notebookId);
+        if (existing?.name === 'UMKM Penjualan WA') {
+            return existing;
+        }
+        const created = await this.createFlow(notebookId, 'UMKM Penjualan WA', defaultUmkmGuideFlowDefinition());
+        return this.publishFlow(created.id);
     }
 
     async getPublishedFlowForNotebook(notebookId: string): Promise<any | null> {
@@ -448,6 +460,34 @@ export class GuideFlowService {
                     await this.studioService.appendStudioMessage(conversation.id, 'assistant', summary);
                     replies.push({ content: summary });
                     await this.recordEvent(conversation.id, flowRowId, nodeId, node.next, 'sql');
+                    nodeId = node.next;
+                    break;
+                }
+                case 'action': {
+                    const notebook = await this.studioService.getNotebook(notebookId);
+                    const cfg = this.dbContextService.parseConfig(notebook.context_config);
+                    const tenantId = this.umkmService.resolveTenantId(cfg);
+                    const raw =
+                        typeof ctx.lastUserMessage === 'string' ? ctx.lastUserMessage : '';
+                    let content = '';
+                    switch (node.action) {
+                        case 'record_sale':
+                            content = await this.umkmService.recordSaleFromText(raw, tenantId);
+                            break;
+                        case 'sales_report':
+                            content = await this.umkmService.buildDailyReportMessage(tenantId);
+                            break;
+                        case 'umkm_help':
+                            content = await this.umkmService.handleMessage('bantuan', tenantId) || '';
+                            break;
+                        default:
+                            throw new BadRequestException(`Unknown action "${(node as any).action}"`);
+                    }
+                    await this.studioService.appendStudioMessage(conversation.id, 'assistant', content);
+                    replies.push({ content });
+                    await this.recordEvent(conversation.id, flowRowId, nodeId, node.next, 'action', raw, {
+                        action: node.action,
+                    });
                     nodeId = node.next;
                     break;
                 }

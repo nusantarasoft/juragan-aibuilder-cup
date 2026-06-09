@@ -6,6 +6,10 @@ import type { QueryUnderstandingResult } from './query-understanding';
 /** Notebook-level DB context configuration (stored in studio_notebooks.context_config). */
 export type StudioContextConfig = {
     audience?: 'admin' | 'customer';
+    /** UMKM mode: WhatsApp prioritizes record sale + daily report actions. */
+    umkm_mode?: boolean;
+    /** Tenant for ecom_orders / sales views (default: default). */
+    tenant_id?: string;
     supabase_views?: string[];
     dremio_context_paths?: string[][];
     /** Pre-approved SELECT templates; {{filter}} placeholders filled by LLM JSON output */

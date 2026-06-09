@@ -2,6 +2,7 @@ import { Resolver, Query, Mutation, Args } from '@nestjs/graphql';
 import { StudioService } from './studio.service';
 import { GuideFlowService } from './guide-flow.service';
 import { StudioWhatsAppService } from './studio-whatsapp.service';
+import { StudioUmkmService } from './studio-umkm.service';
 import { GraphQLJSONObject } from 'graphql-type-json';
 
 @Resolver()
@@ -10,6 +11,7 @@ export class StudioResolver {
         private readonly studioService: StudioService,
         private readonly guideFlowService: GuideFlowService,
         private readonly studioWhatsAppService: StudioWhatsAppService,
+        private readonly studioUmkmService: StudioUmkmService,
     ) { }
 
     // ── Notebooks ────────────────────────────────────────────────────
@@ -227,6 +229,19 @@ export class StudioResolver {
     @Mutation(() => GraphQLJSONObject, { name: 'syncStudioWahaSession' })
     async syncStudioWahaSession() {
         return this.studioWhatsAppService.syncWahaSession();
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'studioSetupUmkmNotebook' })
+    async setupUmkmNotebook(
+        @Args('notebookId', { type: () => String }) notebookId: string,
+        @Args('publishGuideFlow', { type: () => Boolean, nullable: true }) publishGuideFlow: boolean,
+    ) {
+        const setup = await this.studioUmkmService.setupUmkmNotebook(notebookId);
+        let flow = null;
+        if (publishGuideFlow !== false) {
+            flow = await this.guideFlowService.createAndPublishUmkmFlow(notebookId);
+        }
+        return { ...setup, flow };
     }
 
     @Mutation(() => GraphQLJSONObject, { name: 'updateStudioWhatsAppConfig' })
