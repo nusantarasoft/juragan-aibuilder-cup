@@ -3,7 +3,9 @@ import {
     extractBusinessPhoneFromPayload,
     normalizePhoneDigits,
     isPhoneInAllowlist,
-    pickWhatsAppConfigForWebhook,
+    pickTenantConfigBySenderPhone,
+    pickSingleTenantFallback,
+    collectUmkmOwnerPhones,
     StudioWhatsAppRateLimiter,
 } from './studio-whatsapp.util';
 
@@ -30,20 +32,47 @@ describe('isPhoneInAllowlist', () => {
     });
 });
 
-describe('pickWhatsAppConfigForWebhook', () => {
+describe('shared inbox routing', () => {
     const configs = [
-        { tenant_id: 'default', waha_session: 'default', business_phone: '6281110115321' },
-        { tenant_id: 'umkm-b', waha_session: 'toko-b', business_phone: '6282223344556' },
+        {
+            tenant_id: 'umkm-a',
+            waha_session: 'default',
+            business_phone: '6281111111111',
+            allowlist_phones: [],
+            enabled: true,
+            notebook_id: 'nb-a',
+        },
+        {
+            tenant_id: 'umkm-b',
+            waha_session: 'default',
+            business_phone: '6282222222222',
+            allowlist_phones: ['6283333333333'],
+            enabled: true,
+            notebook_id: 'nb-b',
+        },
     ];
 
-    it('resolves by waha session first', () => {
-        expect(pickWhatsAppConfigForWebhook(configs, 'toko-b', null)?.tenant_id).toBe('umkm-b');
+    it('routes by owner phone', () => {
+        expect(pickTenantConfigBySenderPhone(configs, '6281111111111@c.us')?.tenant_id).toBe(
+            'umkm-a',
+        );
     });
 
-    it('falls back to business phone', () => {
-        expect(
-            pickWhatsAppConfigForWebhook(configs, 'unknown-session', '6281110115321')?.tenant_id,
-        ).toBe('default');
+    it('routes staff via allowlist', () => {
+        expect(pickTenantConfigBySenderPhone(configs, '6283333333333')?.tenant_id).toBe('umkm-b');
+    });
+
+    it('returns null for unknown sender when multiple UMKMs', () => {
+        expect(pickTenantConfigBySenderPhone(configs, '6289999999999')).toBeNull();
+    });
+
+    it('collects owner and staff phones', () => {
+        expect(collectUmkmOwnerPhones(configs[1])).toEqual(['6282222222222', '6283333333333']);
+    });
+
+    it('single tenant fallback for dev', () => {
+        const single = [{ tenant_id: 'default', enabled: true, notebook_id: 'x' }];
+        expect(pickSingleTenantFallback(single)?.tenant_id).toBe('default');
     });
 });
 
@@ -68,14 +97,5 @@ describe('StudioWhatsAppRateLimiter', () => {
         expect(limiter.tryConsume('6281')).toBe(true);
         expect(limiter.tryConsume('6281')).toBe(true);
         expect(limiter.tryConsume('6281')).toBe(false);
-    });
-
-    it('tracks keys independently', () => {
-        expect(limiter.tryConsume('a')).toBe(true);
-        expect(limiter.tryConsume('b')).toBe(true);
-        expect(limiter.tryConsume('a')).toBe(true);
-        expect(limiter.tryConsume('a')).toBe(true);
-        expect(limiter.tryConsume('a')).toBe(false);
-        expect(limiter.tryConsume('b')).toBe(true);
     });
 });

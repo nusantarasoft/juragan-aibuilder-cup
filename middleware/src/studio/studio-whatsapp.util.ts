@@ -1,10 +1,14 @@
 export type StudioWhatsAppConfigLookup = {
     tenant_id: string;
     waha_session?: string | null;
+    /** Nomor pemilik UMKM (pengirim ke inbox admin). */
     business_phone?: string | null;
+    allowlist_phones?: string[] | null;
+    enabled?: boolean;
+    notebook_id?: string | null;
 };
 
-/** Extract business account phone from WAHA webhook payload (`me`, `to`, etc.). */
+/** Extract WAHA admin account phone from webhook payload (`me`, etc.). */
 export function extractBusinessPhoneFromPayload(payload: Record<string, unknown>): string | null {
     const me = payload.me as Record<string, unknown> | undefined;
     const candidates = [
@@ -20,29 +24,6 @@ export function extractBusinessPhoneFromPayload(payload: Record<string, unknown>
     return null;
 }
 
-/** Pick WA config row for an inbound webhook (session name is primary key). */
-export function pickWhatsAppConfigForWebhook(
-    configs: StudioWhatsAppConfigLookup[],
-    wahaSession: string,
-    businessPhone?: string | null,
-): StudioWhatsAppConfigLookup | null {
-    const sessionKey = wahaSession.trim().toLowerCase();
-    if (sessionKey) {
-        const bySession = configs.find(
-            (c) => (c.waha_session || '').trim().toLowerCase() === sessionKey,
-        );
-        if (bySession) return bySession;
-    }
-    if (businessPhone) {
-        const byPhone = configs.find((c) => {
-            const bp = normalizePhoneDigits(c.business_phone || '');
-            return bp.length >= 8 && (bp === businessPhone || businessPhone.endsWith(bp) || bp.endsWith(businessPhone));
-        });
-        if (byPhone) return byPhone;
-    }
-    return configs.find((c) => c.tenant_id === 'default') ?? configs[0] ?? null;
-}
-
 /** Normalize WhatsApp chat id / phone to digits-only for matching. */
 export function normalizePhoneDigits(input: string): string {
     const local = input.split('@')[0] || input;
@@ -51,19 +32,82 @@ export function normalizePhoneDigits(input: string): string {
     return input.replace(/\D/g, '');
 }
 
+export function phonesMatch(phoneA: string, phoneB: string): boolean {
+    const a = normalizePhoneDigits(phoneA);
+    const b = normalizePhoneDigits(phoneB);
+    if (!a || !b) return false;
+    return a === b || a.endsWith(b) || b.endsWith(a);
+}
+
+/** Owner + staff phones registered for one UMKM tenant. */
+export function collectUmkmOwnerPhones(config: StudioWhatsAppConfigLookup): string[] {
+    const phones: string[] = [];
+    if (config.business_phone) {
+        phones.push(normalizePhoneDigits(config.business_phone));
+    }
+    for (const p of config.allowlist_phones || []) {
+        const d = normalizePhoneDigits(p);
+        if (d.length >= 8) phones.push(d);
+    }
+    return [...new Set(phones)];
+}
+
+/**
+ * Shared inbox: route inbound message to UMKM by sender phone (pemilik/staff).
+ * Returns null if ambiguous or no match.
+ */
+export function pickTenantConfigBySenderPhone(
+    configs: StudioWhatsAppConfigLookup[],
+    senderPhone: string,
+): StudioWhatsAppConfigLookup | null {
+    const sender = normalizePhoneDigits(senderPhone);
+    if (sender.length < 8) return null;
+
+    const candidates = configs.filter((c) => c.enabled !== false && c.notebook_id);
+    const matches = candidates.filter((c) =>
+        collectUmkmOwnerPhones(c).some((p) => phonesMatch(p, sender)),
+    );
+
+    if (matches.length === 1) return matches[0];
+    return null;
+}
+
+/**
+ * Dev/single-tenant fallback when no owner phone is registered yet.
+ */
+export function pickSingleTenantFallback(
+    configs: StudioWhatsAppConfigLookup[],
+): StudioWhatsAppConfigLookup | null {
+    const active = configs.filter((c) => c.enabled !== false && c.notebook_id);
+    if (active.length === 1) return active[0];
+    return configs.find((c) => c.tenant_id === 'default' && c.notebook_id) ?? null;
+}
+
+/** @deprecated Use pickTenantConfigBySenderPhone for shared inbox. */
+export function pickWhatsAppConfigForWebhook(
+    configs: StudioWhatsAppConfigLookup[],
+    wahaSession: string,
+    businessPhone?: string | null,
+): StudioWhatsAppConfigLookup | null {
+    const sessionKey = wahaSession.trim().toLowerCase();
+    if (sessionKey) {
+        const bySession = configs.filter(
+            (c) => (c.waha_session || 'default').trim().toLowerCase() === sessionKey,
+        );
+        if (bySession.length === 1) return bySession[0];
+    }
+    if (businessPhone) {
+        const byPhone = configs.find((c) => phonesMatch(c.business_phone || '', businessPhone));
+        if (byPhone) return byPhone;
+    }
+    return pickSingleTenantFallback(configs);
+}
+
 /** Match phone against allowlist entries (suffix/prefix tolerant). */
 export function isPhoneInAllowlist(phone: string, allowlist: string[] | null | undefined): boolean {
     if (!allowlist?.length) return false;
     const normalized = normalizePhoneDigits(phone);
-    return allowlist.some((entry) => {
-        const candidate = normalizePhoneDigits(entry);
-        if (!candidate) return false;
-        return (
-            candidate === normalized ||
-            normalized.endsWith(candidate) ||
-            candidate.endsWith(normalized)
-        );
-    });
+    return allowlist.some((entry) => phonesMatch(normalized, entry));
 }
 
 /**

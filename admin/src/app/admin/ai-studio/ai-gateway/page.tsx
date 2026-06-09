@@ -163,7 +163,7 @@ export default function WhatsAppGatewayPage() {
                 enabled: values.enabled,
                 allowlistPhones: values.allowlistPhones || [],
                 useGuidedFlow: values.useGuidedFlow,
-                wahaSession: values.wahaSession || null,
+                wahaSession: 'default',
                 businessPhone: values.businessPhone?.replace(/\D/g, '') || null,
                 label: values.label || null,
             });
@@ -391,25 +391,26 @@ export default function WhatsAppGatewayPage() {
                             <Form.Item name="tenantId" hidden>
                                 <Input />
                             </Form.Item>
-                            <Form.Item name="label" label="Nama toko">
+                            <Alert
+                                type="info"
+                                showIcon
+                                style={{ marginBottom: 16 }}
+                                message="Satu nomor WA admin untuk semua UMKM"
+                                description="Routing ke UMKM berdasarkan nomor pengirim (pemilik). Kelola daftar UMKM di halaman UMKM Penjualan."
+                            />
+                            <Form.Item name="label" label="Nama toko (UMKM)">
                                 <Input placeholder="Warung Bu Ani" />
                             </Form.Item>
-                            <Row gutter={12}>
-                                <Col xs={24} md={12}>
-                                    <Form.Item
-                                        name="wahaSession"
-                                        label="WAHA session"
-                                        rules={[{ required: true }]}
-                                    >
-                                        <Input placeholder="default / toko-bu-ani" />
-                                    </Form.Item>
-                                </Col>
-                                <Col xs={24} md={12}>
-                                    <Form.Item name="businessPhone" label="Nomor bisnis">
-                                        <Input placeholder="6281110115321" />
-                                    </Form.Item>
-                                </Col>
-                            </Row>
+                            <Form.Item name="wahaSession" hidden initialValue="default">
+                                <Input />
+                            </Form.Item>
+                            <Form.Item
+                                name="businessPhone"
+                                label="Nomor HP pemilik UMKM"
+                                extra="Nomor yang mengirim chat ke nomor admin WA"
+                            >
+                                <Input placeholder="6288123456789" />
+                            </Form.Item>
                             <Form.Item
                                 name="enabled"
                                 label="Aktifkan balasan WhatsApp"

@@ -102,6 +102,7 @@ export default function UmkmStudioPage() {
         form.setFieldsValue({
             enabled: true,
             useGuidedFlow: true,
+            wahaSession: 'default',
             allowlistPhones: [],
             createNewNotebook: true,
         });
@@ -125,18 +126,15 @@ export default function UmkmStudioPage() {
     };
 
     const handleLabelChange = (label: string) => {
-        if (!editing) {
-            const slug = slugifyTenant(label);
-            if (slug) {
-                const current = form.getFieldValue('tenantId');
-                if (!current || String(current).startsWith('umkm-')) {
-                    form.setFieldsValue({
-                        tenantId: `umkm-${slug}`,
-                        wahaSession: slug,
-                    });
+            if (!editing) {
+                const slug = slugifyTenant(label);
+                if (slug) {
+                    const current = form.getFieldValue('tenantId');
+                    if (!current || String(current).startsWith('umkm-')) {
+                        form.setFieldsValue({ tenantId: `umkm-${slug}` });
+                    }
                 }
             }
-        }
     };
 
     const handleSave = async () => {
@@ -166,7 +164,7 @@ export default function UmkmStudioPage() {
                 enabled: values.enabled,
                 useGuidedFlow: values.useGuidedFlow,
                 allowlistPhones: values.allowlistPhones || [],
-                wahaSession: values.wahaSession || null,
+                wahaSession: 'default',
                 businessPhone: values.businessPhone?.replace(/\D/g, '') || null,
                 label: values.label || null,
             });
@@ -214,16 +212,20 @@ export default function UmkmStudioPage() {
             ),
         },
         {
-            title: 'Nomor bisnis',
+            title: 'Nomor pemilik',
             dataIndex: 'business_phone',
             key: 'business_phone',
             render: (v: string) => v || '—',
         },
         {
-            title: 'WAHA session',
-            dataIndex: 'waha_session',
-            key: 'waha_session',
-            render: (v: string) => (v ? <Text code>{v}</Text> : '—'),
+            title: 'Staff',
+            key: 'staff',
+            render: (_: unknown, row: StudioWhatsAppConfig) =>
+                row.allowlist_phones?.length ? (
+                    <Text type="secondary">{row.allowlist_phones.length} nomor</Text>
+                ) : (
+                    '—'
+                ),
         },
         {
             title: 'Status',
@@ -279,7 +281,7 @@ export default function UmkmStudioPage() {
             }
             subTitle={
                 <DecryptedText
-                    text="Kelola toko UMKM — satu nomor bisnis WhatsApp = satu tenant (stok, penjualan, laporan terisolasi)"
+                    text="Satu nomor WA admin — setiap UMKM dikenali dari nomor HP pemilik yang mengirim pesan"
                     animateOn="view"
                     revealDirection="center"
                     speed={40}
@@ -305,13 +307,14 @@ export default function UmkmStudioPage() {
                 <Alert
                     type="info"
                     showIcon
-                    message="Alur onboarding UMKM baru"
+                    message="Model: satu nomor WA admin (WAHA)"
                     description={
                         <ol style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12 }}>
-                            <li>Klik <strong>Tambah UMKM</strong> — isi tenant, session WAHA, nomor bisnis</li>
-                            <li>Pair nomor di WAHA Dashboard (session name harus sama)</li>
-                            <li>Klik <strong>Setup UMKM</strong> — aktifkan flow penjualan WA</li>
-                            <li>Isi <strong>Katalog</strong> produk dengan tenant yang sama</li>
+                            <li>Pair <strong>satu</strong> nomor admin di WAHA Dashboard (session <code>default</code>)</li>
+                            <li><strong>Tambah UMKM</strong> — daftarkan <strong>nomor HP pemilik</strong> yang akan chat ke admin</li>
+                            <li><strong>Setup UMKM</strong> — aktifkan flow penjualan</li>
+                            <li>Pemilik kirim WA ke nomor admin: <em>jual ...</em>, <em>laporan</em>, dll.</li>
+                            <li>Isi <strong>Katalog</strong> per tenant</li>
                         </ol>
                     }
                 />
@@ -358,28 +361,17 @@ export default function UmkmStudioPage() {
                     >
                         <Input placeholder="umkm-warung-bu-ani" disabled={!!editing} />
                     </Form.Item>
-                    <Row gutter={12}>
-                        <Col span={12}>
-                            <Form.Item
-                                name="wahaSession"
-                                label="WAHA session"
-                                rules={[{ required: true }]}
-                                extra="Nama session di WAHA Dashboard"
-                            >
-                                <Input placeholder="toko-bu-ani" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item
-                                name="businessPhone"
-                                label="Nomor bisnis"
-                                rules={[{ required: true }]}
-                                extra="628... tanpa +"
-                            >
-                                <Input placeholder="6282223344556" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
+                    <Form.Item name="wahaSession" hidden initialValue="default">
+                        <Input />
+                    </Form.Item>
+                    <Form.Item
+                        name="businessPhone"
+                        label="Nomor HP pemilik UMKM"
+                        rules={[{ required: true, message: 'Nomor pemilik wajib' }]}
+                        extra="Nomor ini yang dipakai pemilik mengirim WA ke nomor admin. 628... tanpa +"
+                    >
+                        <Input placeholder="6288123456789" />
+                    </Form.Item>
 
                     {!editing ? (
                         <Form.Item name="createNewNotebook" label="Notebook" valuePropName="checked">
@@ -417,7 +409,11 @@ export default function UmkmStudioPage() {
                     <Form.Item name="useGuidedFlow" label="Gunakan guided flow UMKM" valuePropName="checked">
                         <Switch />
                     </Form.Item>
-                    <Form.Item name="allowlistPhones" label="Allowlist nomor (kosong = semua, dev)">
+                    <Form.Item
+                        name="allowlistPhones"
+                        label="Nomor staff tambahan (opsional)"
+                        extra="Karyawan yang juga boleh catat penjualan untuk toko ini"
+                    >
                         <Select mode="tags" placeholder="628..." tokenSeparators={[',', ' ']} />
                     </Form.Item>
                 </Form>

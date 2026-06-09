@@ -8,10 +8,12 @@ import { GuideFlowService } from './guide-flow.service';
 import { StudioDbContextService } from './studio-db-context.service';
 import { StudioUmkmService } from './studio-umkm.service';
 import {
+    collectUmkmOwnerPhones,
     extractBusinessPhoneFromPayload,
-    isPhoneInAllowlist,
     normalizePhoneDigits,
-    pickWhatsAppConfigForWebhook,
+    phonesMatch,
+    pickSingleTenantFallback,
+    pickTenantConfigBySenderPhone,
     StudioWhatsAppRateLimiter,
 } from './studio-whatsapp.util';
 
@@ -20,6 +22,8 @@ export const DEFAULT_TENANT = 'default';
 const DEFAULT_RATE_LIMIT_PER_MINUTE = 10;
 const RATE_LIMIT_MESSAGE =
     'Terlalu banyak pesan dalam waktu singkat. Mohon tunggu sebentar sebelum mengirim lagi.';
+const UNREGISTERED_SENDER_MESSAGE =
+    'Nomor Anda belum terdaftar sebagai pemilik UMKM. Hubungi admin untuk mendaftarkan nomor HP Anda.';
 
 export type StudioWhatsAppConfigRow = {
     tenant_id: string;
@@ -95,14 +99,58 @@ export class StudioWhatsAppService {
 
     async resolveConfigForWebhook(
         wahaSession: string,
+        senderPhone: string,
         payload?: Record<string, unknown>,
     ): Promise<StudioWhatsAppConfigRow | null> {
         const { data, error } = await this.admin().from('studio_whatsapp_config').select('*');
         if (error) throw error;
         const configs = (data || []) as StudioWhatsAppConfigRow[];
-        const businessPhone = payload ? extractBusinessPhoneFromPayload(payload) : null;
-        const picked = pickWhatsAppConfigForWebhook(configs, wahaSession, businessPhone);
-        return picked ? (configs.find((c) => c.tenant_id === picked.tenant_id) ?? null) : null;
+
+        const bySender = pickTenantConfigBySenderPhone(configs, senderPhone);
+        if (bySender) {
+            return configs.find((c) => c.tenant_id === bySender.tenant_id) ?? null;
+        }
+
+        const activeCount = configs.filter((c) => c.enabled && c.notebook_id).length;
+        if (activeCount <= 1) {
+            const fallback = pickSingleTenantFallback(configs);
+            if (fallback) {
+                return configs.find((c) => c.tenant_id === fallback.tenant_id) ?? null;
+            }
+        }
+
+        if (payload) {
+            extractBusinessPhoneFromPayload(payload);
+        }
+        void wahaSession;
+        return null;
+    }
+
+    private async assertOwnerPhonesUnique(
+        tenantId: string,
+        ownerPhone?: string | null,
+        extraPhones?: string[] | null,
+    ): Promise<void> {
+        const incoming = [
+            ...(ownerPhone ? [normalizePhoneDigits(ownerPhone)] : []),
+            ...(extraPhones || []).map((p) => normalizePhoneDigits(p)),
+        ].filter((p) => p.length >= 8);
+        if (!incoming.length) return;
+
+        const { data, error } = await this.admin().from('studio_whatsapp_config').select('*');
+        if (error) throw error;
+        for (const row of (data || []) as StudioWhatsAppConfigRow[]) {
+            if (row.tenant_id === tenantId) continue;
+            for (const existing of collectUmkmOwnerPhones(row)) {
+                for (const phone of incoming) {
+                    if (phonesMatch(existing, phone)) {
+                        throw new BadRequestException(
+                            `Nomor ${phone} sudah terdaftar untuk UMKM "${row.label || row.tenant_id}".`,
+                        );
+                    }
+                }
+            }
+        }
     }
 
     isAllowlistRequired(): boolean {
@@ -143,30 +191,26 @@ export class StudioWhatsAppService {
         tenantId = DEFAULT_TENANT,
     ): Promise<StudioWhatsAppConfigRow> {
         const enabling = patch.enabled === true;
-        const allowlist = patch.allowlistPhones;
-        if (enabling && this.isAllowlistRequired()) {
-            const phones = allowlist ?? (await this.getConfig(tenantId))?.allowlist_phones ?? [];
-            if (!phones?.length) {
+        const existing = await this.getConfig(tenantId);
+        const ownerPhone =
+            patch.businessPhone !== undefined
+                ? patch.businessPhone
+                : existing?.business_phone;
+        const staffPhones =
+            patch.allowlistPhones !== undefined
+                ? patch.allowlistPhones
+                : existing?.allowlist_phones;
+
+        if (enabling) {
+            const ownerDigits = ownerPhone ? normalizePhoneDigits(ownerPhone) : '';
+            if (ownerDigits.length < 8) {
                 throw new BadRequestException(
-                    'Allowlist nomor wajib diisi saat WhatsApp diaktifkan (production / STUDIO_WHATSAPP_REQUIRE_ALLOWLIST=true).',
+                    'Nomor pemilik UMKM wajib diisi (HP yang dipakai mengirim WA ke nomor admin).',
                 );
             }
         }
 
-        if (patch.wahaSession) {
-            const sessionKey = patch.wahaSession.trim();
-            const { data: conflict } = await this.admin()
-                .from('studio_whatsapp_config')
-                .select('tenant_id')
-                .eq('waha_session', sessionKey)
-                .neq('tenant_id', tenantId)
-                .maybeSingle();
-            if (conflict) {
-                throw new BadRequestException(
-                    `WAHA session "${sessionKey}" sudah dipakai tenant "${conflict.tenant_id}".`,
-                );
-            }
-        }
+        await this.assertOwnerPhonesUnique(tenantId, ownerPhone, staffPhones);
 
         const row: Record<string, unknown> = {
             tenant_id: tenantId,
@@ -176,7 +220,11 @@ export class StudioWhatsAppService {
         if (patch.enabled !== undefined) row.enabled = patch.enabled;
         if (patch.allowlistPhones !== undefined) row.allowlist_phones = patch.allowlistPhones;
         if (patch.useGuidedFlow !== undefined) row.use_guided_flow = patch.useGuidedFlow;
-        if (patch.wahaSession !== undefined) row.waha_session = patch.wahaSession;
+        if (patch.wahaSession !== undefined) {
+            row.waha_session = patch.wahaSession?.trim() || 'default';
+        } else if (!existing?.waha_session) {
+            row.waha_session = 'default';
+        }
         if (patch.businessPhone !== undefined) {
             row.business_phone = patch.businessPhone
                 ? normalizePhoneDigits(patch.businessPhone)
@@ -237,24 +285,21 @@ export class StudioWhatsAppService {
         }
 
         const wahaSession = (session || String(body.session || '') || this.wahaClient.defaultSession).trim();
-        const config = await this.resolveConfigForWebhook(wahaSession, payload);
+        const phone = this.extractPhone(chatId);
+
+        const config = await this.resolveConfigForWebhook(wahaSession, phone, payload);
         if (!config?.enabled || !config.notebook_id) {
             this.logger.warn(
-                `WhatsApp not configured for session=${wahaSession} tenant=${config?.tenant_id ?? '?'}`,
+                `WA sender ${phone} not mapped to any UMKM tenant (shared inbox ${wahaSession})`,
             );
+            await this.sendReplyChunks(chatId, UNREGISTERED_SENDER_MESSAGE, wahaSession);
             return;
         }
 
         const tenantId = config.tenant_id;
         this.logger.log(
-            `WA inbound session=${wahaSession} tenant=${tenantId} from=${chatId}`,
+            `WA inbound inbox=${wahaSession} tenant=${tenantId} sender=${phone}`,
         );
-
-        const phone = this.extractPhone(chatId);
-        if (!this.isPhoneAllowed(phone, config.allowlist_phones)) {
-            this.logger.warn(`WhatsApp message from non-allowlisted phone: ${phone}`);
-            return;
-        }
 
         if (!this.rateLimiter.tryConsume(`${tenantId}:${phone}`)) {
             this.logger.warn(`WhatsApp rate limit exceeded for tenant=${tenantId} phone=${phone}`);
@@ -325,14 +370,6 @@ export class StudioWhatsAppService {
 
     private extractPhone(chatId: string): string {
         return normalizePhoneDigits(chatId);
-    }
-
-    private isPhoneAllowed(phone: string, allowlist: string[] | null): boolean {
-        if (this.isAllowlistRequired()) {
-            return isPhoneInAllowlist(phone, allowlist);
-        }
-        if (!allowlist?.length) return true;
-        return isPhoneInAllowlist(phone, allowlist);
     }
 
     private async buildQuestionFromPayload(
