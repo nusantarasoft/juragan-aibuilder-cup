@@ -8,6 +8,8 @@ export type StudioContextConfig = {
     audience?: 'admin' | 'customer';
     /** UMKM mode: WhatsApp prioritizes record sale + daily report actions. */
     umkm_mode?: boolean;
+    /** If true, reject sales when item name does not match inv_items catalog. */
+    umkm_require_catalog_match?: boolean;
     /** Tenant for ecom_orders / sales views (default: default). */
     tenant_id?: string;
     supabase_views?: string[];

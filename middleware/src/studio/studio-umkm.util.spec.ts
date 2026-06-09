@@ -18,6 +18,7 @@ describe('studio-umkm.util', () => {
         expect(detectUmkmIntent('jual 3 kopi 45000')).toBe('record_sale');
         expect(detectUmkmIntent('laporan hari ini')).toBe('sales_report');
         expect(detectUmkmIntent('berapa penjualan hari ini')).toBe('sales_report');
+        expect(detectUmkmIntent('daftar barang')).toBe('list_products');
         expect(detectUmkmIntent('bantuan')).toBe('help');
         expect(detectUmkmIntent('halo')).toBe('unknown');
     });

@@ -58,7 +58,7 @@ Kirim pesan ke nomor yang terhubung:
 
 ## UMKM (catat penjualan + laporan)
 
-Untuk use case **UMKM** — catat penjualan dan laporan harian lewat WA — lihat **[STUDIO_UMKM.md](./STUDIO_UMKM.md)** (setup notebook, guide flow, format pesan).
+Untuk use case **UMKM** — catat penjualan dan laporan harian lewat WA — lihat **[STUDIO_UMKM.md](./STUDIO_UMKM.md)** (setup) dan **[STUDIO_UMKM_FLOW.md](./STUDIO_UMKM_FLOW.md)** (alur & diagram flow).
 
 ## Arsitektur
 

@@ -134,11 +134,13 @@ export class GuideFlowService {
     }
 
     async createAndPublishUmkmFlow(notebookId: string): Promise<any> {
+        const def = defaultUmkmGuideFlowDefinition();
         const existing = await this.getPublishedFlowForNotebook(notebookId);
         if (existing?.name === 'UMKM Penjualan WA') {
-            return existing;
+            await this.updateFlow(existing.id, { definition: def });
+            return this.publishFlow(existing.id);
         }
-        const created = await this.createFlow(notebookId, 'UMKM Penjualan WA', defaultUmkmGuideFlowDefinition());
+        const created = await this.createFlow(notebookId, 'UMKM Penjualan WA', def);
         return this.publishFlow(created.id);
     }
 
@@ -472,13 +474,16 @@ export class GuideFlowService {
                     let content = '';
                     switch (node.action) {
                         case 'record_sale':
-                            content = await this.umkmService.recordSaleFromText(raw, tenantId);
+                            content = await this.umkmService.recordSaleFromText(raw, tenantId, undefined, cfg);
                             break;
                         case 'sales_report':
                             content = await this.umkmService.buildDailyReportMessage(tenantId);
                             break;
+                        case 'list_products':
+                            content = await this.umkmService.buildProductListMessage(tenantId);
+                            break;
                         case 'umkm_help':
-                            content = await this.umkmService.handleMessage('bantuan', tenantId) || '';
+                            content = await this.umkmService.handleMessage('bantuan', tenantId, undefined, cfg) || '';
                             break;
                         default:
                             throw new BadRequestException(`Unknown action "${(node as any).action}"`);

@@ -30,7 +30,7 @@ export const guideFlowNodeSchema = z.discriminatedUnion('type', [
     z.object({
         id: z.string().min(1),
         type: z.literal('action'),
-        action: z.enum(['record_sale', 'sales_report', 'umkm_help']),
+        action: z.enum(['record_sale', 'sales_report', 'list_products', 'umkm_help']),
         next: z.string().min(1),
     }),
     z.object({ id: z.string().min(1), type: z.literal('end') }),
@@ -113,6 +113,7 @@ export function defaultUmkmGuideFlowDefinition(): GuideFlowDefinition {
                 content:
                     'Halo! Saya asisten penjualan UMKM Anda.\n\n' +
                     '• Ketik *jual ...* untuk catat penjualan\n' +
+                    '• Ketik *daftar barang* untuk katalog produk\n' +
                     '• Ketik *laporan* untuk rekap hari ini\n' +
                     '• Ketik *bantuan* untuk contoh format',
                 next: 'listen_intent',
@@ -125,6 +126,13 @@ export function defaultUmkmGuideFlowDefinition(): GuideFlowDefinition {
                     { when: 'keyword', value: 'bantuan', target: 'help' },
                     { when: 'keyword', value: 'help', target: 'help' },
                     { when: 'keyword', value: 'menu', target: 'help' },
+                    { when: 'keyword', value: 'daftar', target: 'do_list' },
+                    { when: 'keyword', value: 'katalog', target: 'do_list' },
+                    {
+                        when: 'regex',
+                        pattern: '\\b(daftar\\s+barang|daftar\\s+produk|list\\s+produk)\\b',
+                        target: 'do_list',
+                    },
                     { when: 'keyword', value: 'laporan', target: 'do_report' },
                     { when: 'keyword', value: 'rekap', target: 'do_report' },
                     { when: 'keyword', value: 'omzet', target: 'do_report' },
@@ -139,6 +147,7 @@ export function defaultUmkmGuideFlowDefinition(): GuideFlowDefinition {
             },
             { id: 'do_record', type: 'action', action: 'record_sale', next: 'listen_intent' },
             { id: 'do_report', type: 'action', action: 'sales_report', next: 'listen_intent' },
+            { id: 'do_list', type: 'action', action: 'list_products', next: 'listen_intent' },
             { id: 'help', type: 'action', action: 'umkm_help', next: 'listen_intent' },
             {
                 id: 'goodbye',

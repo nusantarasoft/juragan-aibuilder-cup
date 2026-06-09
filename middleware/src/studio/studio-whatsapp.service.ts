@@ -226,7 +226,12 @@ export class StudioWhatsAppService {
                 chatId,
             );
         } else if (umkmMode) {
-            const umkmAnswer = await this.umkmService.handleMessage(question, tenantId, phone);
+            const umkmAnswer = await this.umkmService.handleMessage(
+                question,
+                tenantId,
+                phone,
+                notebookCfg,
+            );
             if (umkmAnswer) {
                 answer = umkmAnswer;
             } else {

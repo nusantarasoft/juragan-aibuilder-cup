@@ -1,5 +1,7 @@
 # AI Studio UMKM — Catat Penjualan & Laporan via WhatsApp
 
+> **Alur & diagram flow:** lihat [STUDIO_UMKM_FLOW.md](./STUDIO_UMKM_FLOW.md) (alur bisnis, guide flow, sesi WA, sub-alur catat/laporan).
+
 Modul ini mengubah AI Studio menjadi **asisten penjualan UMKM** lewat WhatsApp:
 
 1. **Catat penjualan** — pesan natural → `ecom_orders` + `ecom_order_items`
@@ -146,6 +148,24 @@ Kirim ke nomor bisnis yang ter-pair:
 | `catat 2 tas total 500rb tunai` | Order tersimpan, status lunas |
 | `laporan hari ini` | Ringkasan omzet + produk terlaris |
 | `berapa penjualan hari ini` | Sama (laporan) |
+| `daftar barang` | Katalog `inv_items` aktif (nama, SKU, harga) |
+
+## Katalog produk (`inv_items`)
+
+Saat catat penjualan, nama barang **dicocokkan** ke `inv_items` (status `active`, `tenant_id` sama):
+
+- Cocok → `ecom_order_items.item_id` terisi, nama/SKU dari katalog
+- Tidak cocok → tetap tersimpan dengan label _(belum di katalog)_ (mode default)
+
+Opsional di `context_config`:
+
+```json
+{ "umkm_require_catalog_match": true }
+```
+
+Jika `true` dan ada katalog, penjualan **ditolak** bila nama tidak match.
+
+Perintah WA: `daftar barang`, `daftar produk`, `katalog`.
 
 ## Format pesan penjualan
 
@@ -175,8 +195,9 @@ Node `action`:
 
 | Action | Perilaku |
 |--------|----------|
-| `record_sale` | Parse + INSERT order |
+| `record_sale` | Parse + match katalog + INSERT order |
 | `sales_report` | Query views + template WA |
+| `list_products` | Daftar barang dari `inv_items` |
 | `umkm_help` | Tampilkan menu bantuan |
 
 Aktifkan dengan `useGuidedFlow: true` di config WhatsApp.

@@ -8,7 +8,6 @@ import {
 import {
     detectUmkmIntent,
     formatDailyReportWa,
-    formatSaleConfirmation,
     formatUmkmHelp,
     generateWaOrderNumber,
     parseSaleHeuristic,
@@ -17,6 +16,13 @@ import {
     type UmkmDailyReport,
     type UmkmIntent,
 } from './studio-umkm.util';
+import {
+    formatProductListWa,
+    formatSaleConfirmationWithCatalog,
+    resolveSaleItemsAgainstCatalog,
+    type UmkmCatalogProduct,
+    type UmkmSaleItemResolved,
+} from './studio-umkm-product.util';
 
 const DEFAULT_TENANT = 'default';
 
@@ -61,13 +67,16 @@ export class StudioUmkmService {
         text: string,
         tenantId = DEFAULT_TENANT,
         phone?: string,
+        config?: StudioContextConfig,
     ): Promise<string | null> {
         const intent = detectUmkmIntent(text);
         switch (intent) {
             case 'record_sale':
-                return this.recordSaleFromText(text, tenantId, phone);
+                return this.recordSaleFromText(text, tenantId, phone, config);
             case 'sales_report':
                 return this.buildDailyReportMessage(tenantId);
+            case 'list_products':
+                return this.buildProductListMessage(tenantId);
             case 'help':
                 return formatUmkmHelp();
             default:
@@ -75,10 +84,35 @@ export class StudioUmkmService {
         }
     }
 
+    async fetchActiveProducts(tenantId = DEFAULT_TENANT): Promise<UmkmCatalogProduct[]> {
+        const { data, error } = await this.admin()
+            .from('inv_items')
+            .select('id, name, sku, selling_price')
+            .eq('tenant_id', tenantId)
+            .eq('status', 'active')
+            .order('name');
+        if (error) {
+            this.logger.warn(`fetchActiveProducts: ${error.message}`);
+            return [];
+        }
+        return (data || []).map((row: any) => ({
+            id: String(row.id),
+            name: String(row.name || ''),
+            sku: row.sku ? String(row.sku) : null,
+            sellingPrice: Number(row.selling_price ?? 0),
+        }));
+    }
+
+    async buildProductListMessage(tenantId = DEFAULT_TENANT): Promise<string> {
+        const products = await this.fetchActiveProducts(tenantId);
+        return formatProductListWa(products);
+    }
+
     async recordSaleFromText(
         text: string,
         tenantId = DEFAULT_TENANT,
         phone?: string,
+        config?: StudioContextConfig,
     ): Promise<string> {
         const parsed = await this.parseSaleMessage(text);
         if (!parsed) {
@@ -89,13 +123,40 @@ export class StudioUmkmService {
                 '• jual 3 es kopi 45000',
                 '• catat 2 tas total 500rb tunai',
                 '• order pelanggan Budi 1 sabun 25000 transfer',
+                '',
+                'Ketik *daftar barang* untuk lihat produk terdaftar.',
             ].join('\n');
         }
-        const order = await this.saveSale(tenantId, parsed, phone);
-        return formatSaleConfirmation({
+
+        const products = await this.fetchActiveProducts(tenantId);
+        const resolved = resolveSaleItemsAgainstCatalog(parsed.items, products);
+        const requireMatch = config?.umkm_require_catalog_match === true;
+        const hasUnmatched = resolved.some((i) => !i.catalogMatched);
+
+        if (requireMatch && hasUnmatched && products.length > 0) {
+            return formatSaleConfirmationWithCatalog({
+                orderNumber: '',
+                totalAmount: 0,
+                items: resolved,
+                unmatchedBlocked: true,
+            });
+        }
+
+        const saleForSave: ParsedUmkmSale = {
+            ...parsed,
+            totalAmount: resolved.reduce((s, i) => s + i.quantity * i.unitPrice, 0) || parsed.totalAmount,
+            items: resolved.map((i) => ({
+                name: i.name,
+                quantity: i.quantity,
+                unitPrice: i.unitPrice,
+            })),
+        };
+
+        const order = await this.saveSale(tenantId, saleForSave, phone, resolved);
+        return formatSaleConfirmationWithCatalog({
             orderNumber: order.orderNumber,
             totalAmount: order.totalAmount,
-            items: parsed.items,
+            items: resolved,
             paymentMethod: parsed.paymentMethod,
         });
     }
@@ -137,6 +198,7 @@ export class StudioUmkmService {
         tenantId: string,
         sale: ParsedUmkmSale,
         phone?: string,
+        resolvedItems?: UmkmSaleItemResolved[],
     ): Promise<{ orderNumber: string; totalAmount: number; orderId: string }> {
         const orderNumber = generateWaOrderNumber();
         const subtotal = sale.totalAmount;
@@ -166,12 +228,18 @@ export class StudioUmkmService {
 
         if (error) throw error;
 
-        for (const item of sale.items) {
+        for (let i = 0; i < sale.items.length; i++) {
+            const item = sale.items[i];
+            const resolved = resolvedItems?.[i];
             const lineSubtotal = item.quantity * item.unitPrice;
+            const sku =
+                resolved?.itemSku ||
+                `WA-${item.name.slice(0, 20).replace(/\s+/g, '-').toUpperCase()}`;
             const { error: itemErr } = await this.admin().from('ecom_order_items').insert({
                 order_id: order.id,
+                item_id: resolved?.itemId || null,
                 item_name: item.name,
-                item_sku: `WA-${item.name.slice(0, 20).replace(/\s+/g, '-').toUpperCase()}`,
+                item_sku: sku,
                 quantity: item.quantity,
                 unit_price: item.unitPrice,
                 subtotal: lineSubtotal,

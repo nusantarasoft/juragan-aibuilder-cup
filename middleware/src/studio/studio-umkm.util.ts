@@ -1,6 +1,6 @@
 /** UMKM WhatsApp — intent detection, sale parsing helpers, report formatting. */
 
-export type UmkmIntent = 'record_sale' | 'sales_report' | 'help' | 'unknown';
+export type UmkmIntent = 'record_sale' | 'sales_report' | 'list_products' | 'help' | 'unknown';
 
 export type UmkmSaleItem = {
     name: string;
@@ -36,11 +36,14 @@ const RECORD_KEYWORDS =
 const REPORT_KEYWORDS =
     /\b(laporan|rekap|omzet|report|summary|ringkas|penjualan\s+hari\s+ini|hari\s+ini)\b/i;
 const HELP_KEYWORDS = /\b(bantuan|help|menu|panduan|cara\s+pakai)\b/i;
+const LIST_PRODUCTS_KEYWORDS =
+    /\b(daftar\s+barang|daftar\s+produk|list\s+produk|list\s+barang|katalog|catalog|produk\s+apa\s+saja)\b/i;
 
 /** Detect primary UMKM intent from free-text WhatsApp message. */
 export function detectUmkmIntent(text: string): UmkmIntent {
     const t = text.trim();
     if (!t) return 'unknown';
+    if (LIST_PRODUCTS_KEYWORDS.test(t)) return 'list_products';
     if (HELP_KEYWORDS.test(t) && !RECORD_KEYWORDS.test(t) && !REPORT_KEYWORDS.test(t)) {
         return 'help';
     }
@@ -248,11 +251,14 @@ export function formatUmkmHelp(): string {
         '• catat 2 tas total 500rb tunai',
         '• order: pelanggan Budi, 1 sabun 25000 transfer',
         '',
+        '*Daftar barang* — ketik:',
+        '• daftar barang',
+        '',
         '*Laporan* — contoh:',
         '• laporan hari ini',
         '• rekap omzet',
         '',
-        'Ketik pesan penjualan atau *laporan* kapan saja.',
+        'Ketik pesan penjualan, *daftar barang*, atau *laporan* kapan saja.',
     ].join('\n');
 }
 
