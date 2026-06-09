@@ -1,13 +1,21 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
 import { WahaClientService } from '../waha/waha-client.service';
 import { StudioService } from './studio.service';
 import { GuideFlowService } from './guide-flow.service';
+import {
+    isPhoneInAllowlist,
+    normalizePhoneDigits,
+    StudioWhatsAppRateLimiter,
+} from './studio-whatsapp.util';
 
 const WA_CHUNK = 4000;
 const DEFAULT_TENANT = 'default';
+const DEFAULT_RATE_LIMIT_PER_MINUTE = 10;
+const RATE_LIMIT_MESSAGE =
+    'Terlalu banyak pesan dalam waktu singkat. Mohon tunggu sebentar sebelum mengirim lagi.';
 
 export type StudioWhatsAppConfigRow = {
     tenant_id: string;
@@ -21,6 +29,7 @@ export type StudioWhatsAppConfigRow = {
 @Injectable()
 export class StudioWhatsAppService {
     private readonly logger = new Logger(StudioWhatsAppService.name);
+    private readonly rateLimiter: StudioWhatsAppRateLimiter;
 
     constructor(
         private readonly configService: ConfigService,
@@ -28,7 +37,9 @@ export class StudioWhatsAppService {
         private readonly wahaClient: WahaClientService,
         private readonly studioService: StudioService,
         private readonly guideFlowService: GuideFlowService,
-    ) {}
+    ) {
+        this.rateLimiter = new StudioWhatsAppRateLimiter(this.getRateLimitPerMinute());
+    }
 
     private admin() {
         return this.supabaseService.getAdminClient();
@@ -64,6 +75,31 @@ export class StudioWhatsAppService {
         return data as StudioWhatsAppConfigRow | null;
     }
 
+    isAllowlistRequired(): boolean {
+        const explicit = (this.configService.get<string>('STUDIO_WHATSAPP_REQUIRE_ALLOWLIST') || '')
+            .trim()
+            .toLowerCase();
+        if (explicit === 'true' || explicit === '1') return true;
+        if (explicit === 'false' || explicit === '0') return false;
+        return process.env.NODE_ENV === 'production';
+    }
+
+    getRateLimitPerMinute(): number {
+        const raw = parseInt(
+            this.configService.get<string>('STUDIO_WHATSAPP_RATE_LIMIT_PER_MINUTE') ||
+                String(DEFAULT_RATE_LIMIT_PER_MINUTE),
+            10,
+        );
+        return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_RATE_LIMIT_PER_MINUTE;
+    }
+
+    getSecurityMeta() {
+        return {
+            allowlistRequired: this.isAllowlistRequired(),
+            rateLimitPerMinute: this.getRateLimitPerMinute(),
+        };
+    }
+
     async updateConfig(
         patch: Partial<{
             notebookId: string | null;
@@ -73,6 +109,17 @@ export class StudioWhatsAppService {
         }>,
         tenantId = DEFAULT_TENANT,
     ): Promise<StudioWhatsAppConfigRow> {
+        const enabling = patch.enabled === true;
+        const allowlist = patch.allowlistPhones;
+        if (enabling && this.isAllowlistRequired()) {
+            const phones = allowlist ?? (await this.getConfig(tenantId))?.allowlist_phones ?? [];
+            if (!phones?.length) {
+                throw new BadRequestException(
+                    'Allowlist nomor wajib diisi saat WhatsApp diaktifkan (production / STUDIO_WHATSAPP_REQUIRE_ALLOWLIST=true).',
+                );
+            }
+        }
+
         const row: Record<string, unknown> = {
             tenant_id: tenantId,
             updated_at: new Date().toISOString(),
@@ -144,6 +191,12 @@ export class StudioWhatsAppService {
             return;
         }
 
+        if (!this.rateLimiter.tryConsume(phone)) {
+            this.logger.warn(`WhatsApp rate limit exceeded for phone: ${phone}`);
+            await this.sendReplyChunks(chatId, RATE_LIMIT_MESSAGE, session);
+            return;
+        }
+
         const question = await this.buildQuestionFromPayload(payload, session);
         if (!question.trim()) return;
 
@@ -177,19 +230,15 @@ export class StudioWhatsAppService {
     }
 
     private extractPhone(chatId: string): string {
-        const local = chatId.split('@')[0] || '';
-        const digits = local.replace(/\D/g, '');
-        if (digits.length >= 8) return digits;
-        return chatId.replace(/\D/g, '');
+        return normalizePhoneDigits(chatId);
     }
 
     private isPhoneAllowed(phone: string, allowlist: string[] | null): boolean {
+        if (this.isAllowlistRequired()) {
+            return isPhoneInAllowlist(phone, allowlist);
+        }
         if (!allowlist?.length) return true;
-        const normalized = phone.replace(/\D/g, '');
-        return allowlist.some((p) => {
-            const a = p.replace(/\D/g, '');
-            return a === normalized || normalized.endsWith(a) || a.endsWith(normalized);
-        });
+        return isPhoneInAllowlist(phone, allowlist);
     }
 
     private async buildQuestionFromPayload(

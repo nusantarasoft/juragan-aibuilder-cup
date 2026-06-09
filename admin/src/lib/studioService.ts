@@ -332,6 +332,11 @@ export const studioService = {
         return data.studioWhatsAppConfig;
     },
 
+    async getWhatsAppSecurityMeta(): Promise<StudioWhatsAppSecurityMeta> {
+        const data = await graphqlRequest(`query { studioWhatsAppSecurityMeta }`);
+        return data.studioWhatsAppSecurityMeta;
+    },
+
     async getWhatsAppSessionStatus(): Promise<StudioWhatsAppSessionStatus> {
         const data = await graphqlRequest(`query { studioWhatsAppSessionStatus }`);
         return data.studioWhatsAppSessionStatus;
@@ -379,6 +384,11 @@ export interface StudioWhatsAppConfig {
     allowlist_phones: string[];
     use_guided_flow: boolean;
     updated_at?: string;
+}
+
+export interface StudioWhatsAppSecurityMeta {
+    allowlistRequired: boolean;
+    rateLimitPerMinute: number;
 }
 
 export interface StudioWhatsAppSessionStatus {

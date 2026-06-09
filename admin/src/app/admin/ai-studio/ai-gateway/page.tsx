@@ -32,8 +32,8 @@ import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     studioService,
     StudioNotebook,
-    StudioWhatsAppConfig,
     StudioWhatsAppSessionStatus,
+    StudioWhatsAppSecurityMeta,
 } from '@/lib/studioService';
 import { useAuth } from '@/context/AuthContext';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -59,6 +59,7 @@ export default function WhatsAppGatewayPage() {
     const [saving, setSaving] = useState(false);
     const [notebooks, setNotebooks] = useState<StudioNotebook[]>([]);
     const [sessionStatus, setSessionStatus] = useState<StudioWhatsAppSessionStatus | null>(null);
+    const [securityMeta, setSecurityMeta] = useState<StudioWhatsAppSecurityMeta | null>(null);
     const [restartingWaha, setRestartingWaha] = useState(false);
     const [syncingWaha, setSyncingWaha] = useState(false);
 
@@ -96,6 +97,12 @@ export default function WhatsAppGatewayPage() {
             } catch {
                 setSessionStatus(null);
             }
+
+            try {
+                setSecurityMeta(await studioService.getWhatsAppSecurityMeta());
+            } catch {
+                setSecurityMeta(null);
+            }
         } finally {
             setLoading(false);
         }
@@ -116,8 +123,18 @@ export default function WhatsAppGatewayPage() {
         return () => clearInterval(t);
     }, [authLoading, wahaConnected]);
 
+    const allowlistRequired = securityMeta?.allowlistRequired ?? false;
+
     const handleSave = async () => {
         const values = await form.validateFields();
+        if (
+            allowlistRequired &&
+            values.enabled &&
+            (!values.allowlistPhones || values.allowlistPhones.length === 0)
+        ) {
+            message.error('Allowlist nomor wajib diisi saat WhatsApp diaktifkan.');
+            return;
+        }
         setSaving(true);
         try {
             await studioService.updateWhatsAppConfig({
@@ -367,10 +384,52 @@ export default function WhatsAppGatewayPage() {
                             >
                                 <Switch />
                             </Form.Item>
+                            {allowlistRequired ? (
+                                <Alert
+                                    type="warning"
+                                    showIcon
+                                    style={{ marginBottom: 16 }}
+                                    message="Allowlist wajib"
+                                    description="Mode production / STUDIO_WHATSAPP_REQUIRE_ALLOWLIST aktif — isi minimal satu nomor sebelum mengaktifkan balasan WhatsApp."
+                                />
+                            ) : (
+                                <Alert
+                                    type="info"
+                                    showIcon
+                                    style={{ marginBottom: 16 }}
+                                    message="Mode development"
+                                    description="Allowlist kosong mengizinkan semua nomor. Di production, allowlist otomatis wajib."
+                                />
+                            )}
                             <Form.Item
                                 name="allowlistPhones"
-                                label="Allowlist nomor (kosong = semua)"
-                                extra="Format: 628123456789 tanpa +. Kosongkan untuk izinkan semua (dev)."
+                                label="Allowlist nomor"
+                                rules={
+                                    allowlistRequired
+                                        ? [
+                                              ({ getFieldValue }) => ({
+                                                  validator(_, value: string[] | undefined) {
+                                                      if (
+                                                          !getFieldValue('enabled') ||
+                                                          (value && value.length > 0)
+                                                      ) {
+                                                          return Promise.resolve();
+                                                      }
+                                                      return Promise.reject(
+                                                          new Error(
+                                                              'Isi minimal satu nomor saat WhatsApp aktif',
+                                                          ),
+                                                      );
+                                                  },
+                                              }),
+                                          ]
+                                        : undefined
+                                }
+                                extra={
+                                    securityMeta
+                                        ? `Format: 628123456789 tanpa +. Batas: ${securityMeta.rateLimitPerMinute} pesan/menit per nomor.`
+                                        : 'Format: 628123456789 tanpa +.'
+                                }
                             >
                                 <Select mode="tags" placeholder="628..." tokenSeparators={[',', ' ']} />
                             </Form.Item>

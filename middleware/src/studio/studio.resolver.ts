@@ -209,6 +209,11 @@ export class StudioResolver {
         return this.studioWhatsAppService.getConfig();
     }
 
+    @Query(() => GraphQLJSONObject, { name: 'studioWhatsAppSecurityMeta' })
+    async studioWhatsAppSecurityMeta() {
+        return this.studioWhatsAppService.getSecurityMeta();
+    }
+
     @Query(() => GraphQLJSONObject, { name: 'studioWhatsAppSessionStatus' })
     async studioWhatsAppSessionStatus() {
         return this.studioWhatsAppService.getWahaSessionStatus();
