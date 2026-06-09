@@ -9,6 +9,7 @@ import {
     detectUmkmIntent,
     formatDailyReportWa,
     formatUmkmHelp,
+    formatUnknownUmkmCommand,
     generateWaOrderNumber,
     parseSaleHeuristic,
     parseSaleJsonFromLlm,
@@ -80,7 +81,7 @@ export class StudioUmkmService {
             case 'help':
                 return formatUmkmHelp();
             default:
-                return null;
+                return formatUnknownUmkmCommand();
         }
     }
 

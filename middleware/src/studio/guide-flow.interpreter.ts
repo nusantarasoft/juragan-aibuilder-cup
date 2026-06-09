@@ -1,5 +1,6 @@
 import type { GuideFlowDefinition, GuideFlowNode } from './guide-flow.definition';
 import type { QueryUnderstandingResult } from './query-understanding';
+import { detectUmkmIntent } from './studio-umkm.util';
 
 export type FlowContext = Record<string, unknown> & {
     lastUserMessage?: string;
@@ -51,4 +52,45 @@ export function resolveListenTarget(node: Extract<GuideFlowNode, { type: 'listen
     }
     if (fallback) return fallback;
     throw new Error(`listen node "${node.id}" has no default transition`);
+}
+
+/** True when listen node belongs to the UMKM sales guide flow (has do_list branch). */
+export function isUmkmSalesListenNode(node: Extract<GuideFlowNode, { type: 'listen' }>): boolean {
+    return node.transitions.some((t) => t.target === 'do_list');
+}
+
+/**
+ * UMKM listen routing: keyword/regex first, then intent detection before blind record_sale.
+ */
+export function resolveUmkmListenTarget(
+    node: Extract<GuideFlowNode, { type: 'listen' }>,
+    userText: string,
+): string {
+    const text = userText.toLowerCase();
+    for (const t of node.transitions) {
+        if (t.when === 'default') continue;
+        if (t.when === 'keyword' && text.includes(t.value.toLowerCase())) {
+            return t.target;
+        }
+        if (t.when === 'regex') {
+            try {
+                const re = new RegExp(t.pattern, 'i');
+                if (re.test(userText)) return t.target;
+            } catch {
+                /* invalid regex — skip */
+            }
+        }
+    }
+    switch (detectUmkmIntent(userText)) {
+        case 'list_products':
+            return 'do_list';
+        case 'sales_report':
+            return 'do_report';
+        case 'help':
+            return 'help';
+        case 'record_sale':
+            return 'do_record';
+        default:
+            return 'help';
+    }
 }

@@ -7,20 +7,30 @@ import {
     detectUmkmIntent,
     formatDailyReportWa,
     formatSaleConfirmation,
+    formatUnknownUmkmCommand,
     generateWaOrderNumber,
     parseRupiahToken,
     parseSaleHeuristic,
     parseSaleJsonFromLlm,
 } from './studio-umkm.util';
+import { resolveUmkmListenTarget } from './guide-flow.interpreter';
 
 describe('studio-umkm.util', () => {
     it('detects record vs report intent', () => {
         expect(detectUmkmIntent('jual 3 kopi 45000')).toBe('record_sale');
+        expect(detectUmkmIntent('jual produk kopi 45000')).toBe('record_sale');
         expect(detectUmkmIntent('laporan hari ini')).toBe('sales_report');
         expect(detectUmkmIntent('berapa penjualan hari ini')).toBe('sales_report');
+        expect(detectUmkmIntent('ringkasan')).toBe('sales_report');
+        expect(detectUmkmIntent('berapa omzet')).toBe('sales_report');
         expect(detectUmkmIntent('daftar barang')).toBe('list_products');
+        expect(detectUmkmIntent('list barang')).toBe('list_products');
         expect(detectUmkmIntent('bantuan')).toBe('help');
         expect(detectUmkmIntent('halo')).toBe('unknown');
+    });
+
+    it('formats unknown command hint', () => {
+        expect(formatUnknownUmkmCommand()).toContain('belum dikenali');
     });
 
     it('parses rupiah tokens', () => {
@@ -81,5 +91,16 @@ describe('defaultUmkmGuideFlowDefinition', () => {
         const def = defaultUmkmGuideFlowDefinition();
         validateGuideFlowGraph(def);
         expect(def.nodes.some((n) => n.type === 'action' && n.action === 'record_sale')).toBe(true);
+    });
+
+    it('routes unknown text to help via intent resolver', () => {
+        const def = defaultUmkmGuideFlowDefinition();
+        const listen = def.nodes.find((n) => n.id === 'listen_intent');
+        expect(listen?.type).toBe('listen');
+        if (listen?.type !== 'listen') return;
+        expect(resolveUmkmListenTarget(listen, 'halo')).toBe('help');
+        expect(resolveUmkmListenTarget(listen, 'list barang')).toBe('do_list');
+        expect(resolveUmkmListenTarget(listen, 'ringkasan')).toBe('do_report');
+        expect(resolveUmkmListenTarget(listen, 'jual 2 kopi 30000')).toBe('do_record');
     });
 });

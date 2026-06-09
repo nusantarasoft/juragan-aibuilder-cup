@@ -34,22 +34,22 @@ export type UmkmDailyReport = {
 const RECORD_KEYWORDS =
     /\b(jual|jualan|catat|order|pesan|beli|transaksi|terjual|sold)\b/i;
 const REPORT_KEYWORDS =
-    /\b(laporan|rekap|omzet|report|summary|ringkas|penjualan\s+hari\s+ini|hari\s+ini)\b/i;
-const HELP_KEYWORDS = /\b(bantuan|help|menu|panduan|cara\s+pakai)\b/i;
+    /\b(laporan|laporkan|rekap|ringkasan|ringkas|omzet|omset|report|summary|total\s+penjualan|berapa\s+(?:omzet|omset|penjualan|jualan)|penjualan\s+hari\s+ini|hari\s+ini)\b/i;
+const HELP_KEYWORDS = /\b(bantuan|help|menu|panduan|cara\s+pakai|contoh)\b/i;
 const LIST_PRODUCTS_KEYWORDS =
-    /\b(daftar\s+barang|daftar\s+produk|list\s+produk|list\s+barang|katalog|catalog|produk\s+apa\s+saja)\b/i;
+    /\b(daftar\s+barang|daftar\s+produk|list\s+produk|list\s+barang|katalog|catalog|produk\s+apa\s+saja|barang\s+apa\s+saja|(?:lihat|cek)\s+(?:produk|barang|stok|stock))\b/i;
 
 /** Detect primary UMKM intent from free-text WhatsApp message. */
 export function detectUmkmIntent(text: string): UmkmIntent {
     const t = text.trim();
     if (!t) return 'unknown';
-    if (LIST_PRODUCTS_KEYWORDS.test(t)) return 'list_products';
-    if (HELP_KEYWORDS.test(t) && !RECORD_KEYWORDS.test(t) && !REPORT_KEYWORDS.test(t)) {
-        return 'help';
-    }
-    if (REPORT_KEYWORDS.test(t) && !RECORD_KEYWORDS.test(t)) return 'sales_report';
-    if (RECORD_KEYWORDS.test(t)) return 'record_sale';
-    if (REPORT_KEYWORDS.test(t)) return 'sales_report';
+    const hasRecord = RECORD_KEYWORDS.test(t);
+    const hasReport = REPORT_KEYWORDS.test(t);
+    if (!hasRecord && LIST_PRODUCTS_KEYWORDS.test(t)) return 'list_products';
+    if (HELP_KEYWORDS.test(t) && !hasRecord && !hasReport) return 'help';
+    if (hasReport && !hasRecord) return 'sales_report';
+    if (hasRecord) return 'record_sale';
+    if (hasReport) return 'sales_report';
     return 'unknown';
 }
 
@@ -240,6 +240,19 @@ export function formatSaleConfirmation(order: {
     lines.push('');
     lines.push('Ketik *laporan* untuk rekap hari ini, atau *bantuan* untuk menu.');
     return lines.join('\n');
+}
+
+/** Short reply when free-text command is not recognized. */
+export function formatUnknownUmkmCommand(): string {
+    return [
+        '🤔 Perintah belum dikenali.',
+        '',
+        'Coba salah satu:',
+        '• *daftar barang* — lihat katalog',
+        '• *laporan* — rekap penjualan hari ini',
+        '• *jual 3 kopi 45000* — catat penjualan',
+        '• *bantuan* — contoh lengkap',
+    ].join('\n');
 }
 
 export function formatUmkmHelp(): string {

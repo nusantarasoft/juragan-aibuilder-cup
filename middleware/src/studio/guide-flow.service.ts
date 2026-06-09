@@ -8,7 +8,14 @@ import {
     validateGuideFlowGraph,
     type GuideFlowDefinition,
 } from './guide-flow.definition';
-import { getNode, resolveListenTarget, substituteInstruction, type FlowContext } from './guide-flow.interpreter';
+import {
+    getNode,
+    isUmkmSalesListenNode,
+    resolveListenTarget,
+    resolveUmkmListenTarget,
+    substituteInstruction,
+    type FlowContext,
+} from './guide-flow.interpreter';
 import {
     forceProceedAfterClarificationCap,
     shouldAskClarification,
@@ -17,6 +24,7 @@ import { DremioService } from '../dremio/dremio.service';
 import { StudioDbContextService } from './studio-db-context.service';
 import { StudioUmkmService } from './studio-umkm.service';
 import { defaultUmkmGuideFlowDefinition } from './guide-flow.definition';
+import { formatUnknownUmkmCommand } from './studio-umkm.util';
 
 @Injectable()
 export class GuideFlowService {
@@ -343,7 +351,9 @@ export class GuideFlowService {
                 case 'listen':
                     if (userJust != null) {
                         lastResolvedListenNodeId = nodeId;
-                        const next = resolveListenTarget(node, userJust);
+                        const next = isUmkmSalesListenNode(node)
+                            ? resolveUmkmListenTarget(node, userJust)
+                            : resolveListenTarget(node, userJust);
                         await this.recordEvent(conversation.id, flowRowId, nodeId, next, 'listen', userJust);
                         nodeId = next;
                         userJust = null;
@@ -484,6 +494,8 @@ export class GuideFlowService {
                                 content =
                                     (await this.umkmService.handleMessage('bantuan', tenantId, undefined, cfg)) ||
                                     '';
+                            } else if (intent === 'unknown') {
+                                content = formatUnknownUmkmCommand();
                             } else {
                                 content = await this.umkmService.recordSaleFromText(raw, tenantId, undefined, cfg);
                             }
@@ -495,9 +507,15 @@ export class GuideFlowService {
                         case 'list_products':
                             content = await this.umkmService.buildProductListMessage(tenantId);
                             break;
-                        case 'umkm_help':
-                            content = await this.umkmService.handleMessage('bantuan', tenantId, undefined, cfg) || '';
+                        case 'umkm_help': {
+                            const helpIntent = this.umkmService.detectIntent(raw);
+                            content =
+                                helpIntent === 'unknown'
+                                    ? formatUnknownUmkmCommand()
+                                    : (await this.umkmService.handleMessage('bantuan', tenantId, undefined, cfg)) ||
+                                      '';
                             break;
+                        }
                         default:
                             throw new BadRequestException(`Unknown action "${(node as any).action}"`);
                     }
