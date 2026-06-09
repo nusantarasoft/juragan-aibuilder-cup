@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import RbacGuard from "@/components/common/RbacGuard";
-import { Badge, Button, Card, Col, Descriptions, Divider, Drawer, Empty, Form, Image, Input, InputNumber, message, Modal, Popconfirm, Progress, Row, Segmented, Select, Space, Spin, Statistic, Steps, Switch, Table, Tabs, Tag, Tooltip, Typography } from "antd";
+import { Alert, Badge, Button, Card, Col, Descriptions, Divider, Drawer, Empty, Form, Image, Input, InputNumber, message, Modal, Popconfirm, Progress, Row, Segmented, Select, Space, Spin, Statistic, Steps, Switch, Table, Tabs, Tag, Tooltip, Typography } from "antd";
 import {
     PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined,
     DropboxOutlined, ShoppingCartOutlined, CalendarOutlined,
@@ -73,6 +75,9 @@ const WIZARD_STEPS = [
 ];
 
 export default function ItemMasterPage() {
+    const searchParams = useSearchParams();
+    const catalogTenantId = searchParams.get("tenantId") || "default";
+
     const [items, setItems] = useState<InvItem[]>([]);
     const { themeColor } = usePreferencesStore();
     const { startDate, endDate } = useDateRangeStore();
@@ -113,7 +118,7 @@ export default function ItemMasterPage() {
     // Media URL map
     const [mediaMap, setMediaMap] = useState<Record<string, { url: string; filename: string; mimeType?: string }>>({});
 
-    useEffect(() => { loadAll(); }, []);
+    useEffect(() => { loadAll(); }, [catalogTenantId]);
 
     const loadMediaForItems = useCallback(async (itemList: InvItem[]) => {
         const allMediaIds = [...new Set(itemList.flatMap(i => i.mediaIds || []).filter(Boolean))];
@@ -128,9 +133,9 @@ export default function ItemMasterPage() {
         setLoading(true);
         try {
             const [itemsData, catsData, statsData] = await Promise.all([
-                inventoryService.getItems(),
-                inventoryService.getCategories(),
-                inventoryService.getStockStats(),
+                inventoryService.getItems(catalogTenantId),
+                inventoryService.getCategories(catalogTenantId),
+                inventoryService.getStockStats(catalogTenantId),
             ]);
             setItems(itemsData);
             setCategories(catsData);
@@ -195,7 +200,7 @@ export default function ItemMasterPage() {
                 await inventoryService.updateItem(editingItem.id, values);
                 message.success("Item updated");
             } else {
-                await inventoryService.createItem('default', values);
+                await inventoryService.createItem(catalogTenantId, values);
                 message.success("Item created");
             }
             setFormOpen(false);
@@ -237,7 +242,7 @@ export default function ItemMasterPage() {
     const handleCreateCategory = async () => {
         try {
             const values = await categoryForm.validateFields();
-            await inventoryService.createCategory('default', values);
+            await inventoryService.createCategory(catalogTenantId, values);
             message.success("Category created");
             setCategoryModalOpen(false);
             categoryForm.resetFields();
@@ -400,6 +405,22 @@ export default function ItemMasterPage() {
             }
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
+                <Alert
+                    type="info"
+                    showIcon
+                    message={
+                        <>
+                            Tenant katalog: <Text code>{catalogTenantId}</Text>
+                            {searchParams.get("tenantId") ? (
+                                <>
+                                    {" "}
+                                    (UMKM WA) — <Link href="/admin/ai-studio/umkm">Kelola UMKM</Link>
+                                </>
+                            ) : null}
+                        </>
+                    }
+                    style={{ borderRadius: 10 }}
+                />
                 {/* Stats Row */}
                 <Row gutter={[12, 12]}>
                     {statsCards.map((s, i) => (

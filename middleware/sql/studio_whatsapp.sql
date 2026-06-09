@@ -23,6 +23,9 @@ CREATE INDEX IF NOT EXISTS idx_studio_conversations_external_chat
 CREATE TABLE IF NOT EXISTS public.studio_whatsapp_config (
     tenant_id text PRIMARY KEY DEFAULT 'default',
     notebook_id uuid REFERENCES public.studio_notebooks(id) ON DELETE SET NULL,
+    waha_session text,
+    business_phone text,
+    label text,
     enabled boolean NOT NULL DEFAULT false,
     allowlist_phones text[] DEFAULT '{}',
     use_guided_flow boolean NOT NULL DEFAULT false,

@@ -207,8 +207,15 @@ export class StudioResolver {
     // ── WhatsApp (WAHA) ─────────────────────────────────────────────
 
     @Query(() => GraphQLJSONObject, { name: 'studioWhatsAppConfig', nullable: true })
-    async studioWhatsAppConfig() {
-        return this.studioWhatsAppService.getConfig();
+    async studioWhatsAppConfig(
+        @Args('tenantId', { type: () => String, nullable: true }) tenantId?: string,
+    ) {
+        return this.studioWhatsAppService.getConfig(tenantId || undefined);
+    }
+
+    @Query(() => [GraphQLJSONObject], { name: 'studioWhatsAppConfigs' })
+    async studioWhatsAppConfigs() {
+        return this.studioWhatsAppService.listConfigs();
     }
 
     @Query(() => GraphQLJSONObject, { name: 'studioWhatsAppSecurityMeta' })
@@ -234,9 +241,10 @@ export class StudioResolver {
     @Mutation(() => GraphQLJSONObject, { name: 'studioSetupUmkmNotebook' })
     async setupUmkmNotebook(
         @Args('notebookId', { type: () => String }) notebookId: string,
+        @Args('tenantId', { type: () => String, nullable: true }) tenantId: string,
         @Args('publishGuideFlow', { type: () => Boolean, nullable: true }) publishGuideFlow: boolean,
     ) {
-        const setup = await this.studioUmkmService.setupUmkmNotebook(notebookId);
+        const setup = await this.studioUmkmService.setupUmkmNotebook(notebookId, tenantId);
         let flow = null;
         if (publishGuideFlow !== false) {
             flow = await this.guideFlowService.createAndPublishUmkmFlow(notebookId);
@@ -246,16 +254,31 @@ export class StudioResolver {
 
     @Mutation(() => GraphQLJSONObject, { name: 'updateStudioWhatsAppConfig' })
     async updateStudioWhatsAppConfig(
+        @Args('tenantId', { type: () => String, nullable: true }) tenantId: string,
         @Args('notebookId', { type: () => String, nullable: true }) notebookId: string,
         @Args('enabled', { type: () => Boolean }) enabled: boolean,
         @Args('allowlistPhones', { type: () => [String], nullable: true }) allowlistPhones: string[],
         @Args('useGuidedFlow', { type: () => Boolean, nullable: true }) useGuidedFlow: boolean,
+        @Args('wahaSession', { type: () => String, nullable: true }) wahaSession: string,
+        @Args('businessPhone', { type: () => String, nullable: true }) businessPhone: string,
+        @Args('label', { type: () => String, nullable: true }) label: string,
     ) {
-        return this.studioWhatsAppService.updateConfig({
-            notebookId: notebookId || null,
-            enabled,
-            allowlistPhones: allowlistPhones ?? [],
-            useGuidedFlow: useGuidedFlow ?? false,
-        });
+        const resolvedTenant = tenantId?.trim() || undefined;
+        const row = await this.studioWhatsAppService.updateConfig(
+            {
+                notebookId: notebookId || null,
+                enabled,
+                allowlistPhones: allowlistPhones ?? [],
+                useGuidedFlow: useGuidedFlow ?? false,
+                wahaSession: wahaSession ?? undefined,
+                businessPhone: businessPhone ?? undefined,
+                label: label ?? undefined,
+            },
+            resolvedTenant,
+        );
+        if (notebookId && resolvedTenant) {
+            await this.studioUmkmService.setupUmkmNotebook(notebookId, resolvedTenant);
+        }
+        return row;
     }
 }

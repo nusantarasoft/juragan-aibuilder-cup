@@ -1057,6 +1057,12 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
+                        path: "/admin/ai-studio/umkm",
+                        name: "UMKM Penjualan",
+                        icon: <ShopOutlined />,
+                        isLeaf: true,
+                    },
+                    {
                         path: "/admin/ai-studio/ai-gateway",
                         name: "WhatsApp",
                         icon: <NodeIndexOutlined />,

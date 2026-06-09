@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
 import {
@@ -14,6 +16,7 @@ import {
     Select,
     Switch,
     Form,
+    Input,
     message,
     Spin,
     Alert,
@@ -32,6 +35,7 @@ import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     studioService,
     StudioNotebook,
+    StudioWhatsAppConfig,
     StudioWhatsAppSessionStatus,
     StudioWhatsAppSecurityMeta,
 } from '@/lib/studioService';
@@ -50,6 +54,9 @@ const WAHA_DASHBOARD =
     process.env.NEXT_PUBLIC_WAHA_DASHBOARD_URL || 'http://localhost:3010/dashboard';
 
 export default function WhatsAppGatewayPage() {
+    const searchParams = useSearchParams();
+    const tenantFromUrl = searchParams.get('tenant') || 'default';
+
     const { themeColor } = usePreferencesStore();
     const { user: contextUser, loading: authLoading } = useAuth();
     const authUser = useAuthStore((s) => s.user);
@@ -57,6 +64,8 @@ export default function WhatsAppGatewayPage() {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [activeTenant, setActiveTenant] = useState(tenantFromUrl);
+    const [waConfigs, setWaConfigs] = useState<StudioWhatsAppConfig[]>([]);
     const [notebooks, setNotebooks] = useState<StudioNotebook[]>([]);
     const [sessionStatus, setSessionStatus] = useState<StudioWhatsAppSessionStatus | null>(null);
     const [securityMeta, setSecurityMeta] = useState<StudioWhatsAppSecurityMeta | null>(null);
@@ -80,8 +89,15 @@ export default function WhatsAppGatewayPage() {
             }
 
             try {
-                const cfg = await studioService.getWhatsAppConfig();
+                const list = await studioService.listWhatsAppConfigs();
+                setWaConfigs(list);
+                const tenant = activeTenant || list[0]?.tenant_id || 'default';
+                const cfg = await studioService.getWhatsAppConfig(tenant);
                 form.setFieldsValue({
+                    tenantId: cfg?.tenant_id ?? tenant,
+                    label: cfg?.label ?? '',
+                    wahaSession: cfg?.waha_session ?? '',
+                    businessPhone: cfg?.business_phone ?? '',
                     notebookId: cfg?.notebook_id ?? undefined,
                     enabled: cfg?.enabled ?? false,
                     allowlistPhones: cfg?.allowlist_phones ?? [],
@@ -106,7 +122,11 @@ export default function WhatsAppGatewayPage() {
         } finally {
             setLoading(false);
         }
-    }, [form, userId]);
+    }, [form, userId, activeTenant]);
+
+    useEffect(() => {
+        setActiveTenant(tenantFromUrl);
+    }, [tenantFromUrl]);
 
     useEffect(() => {
         if (authLoading) return;
@@ -138,10 +158,14 @@ export default function WhatsAppGatewayPage() {
         setSaving(true);
         try {
             await studioService.updateWhatsAppConfig({
+                tenantId: values.tenantId || activeTenant,
                 notebookId: values.notebookId || null,
                 enabled: values.enabled,
                 allowlistPhones: values.allowlistPhones || [],
                 useGuidedFlow: values.useGuidedFlow,
+                wahaSession: values.wahaSession || null,
+                businessPhone: values.businessPhone?.replace(/\D/g, '') || null,
+                label: values.label || null,
             });
             message.success('Konfigurasi WhatsApp disimpan');
             await load();
@@ -211,6 +235,9 @@ export default function WhatsAppGatewayPage() {
                 />
             }
             extra={[
+                <Link key="umkm" href="/admin/ai-studio/umkm">
+                    <Button>Kelola UMKM</Button>
+                </Link>,
                 pairedButStuck ? (
                     <Button key="sync" loading={syncingWaha} onClick={handleSyncWaha} type="primary">
                         Sync status → WORKING
@@ -350,6 +377,39 @@ export default function WhatsAppGatewayPage() {
                         </div>
                     ) : (
                         <Form form={form} layout="vertical" onFinish={handleSave}>
+                            <Form.Item label="UMKM / tenant">
+                                <Select
+                                    value={activeTenant}
+                                    onChange={(t) => setActiveTenant(t)}
+                                    options={waConfigs.map((c) => ({
+                                        value: c.tenant_id,
+                                        label: c.label || c.tenant_id,
+                                    }))}
+                                    placeholder="Pilih UMKM"
+                                />
+                            </Form.Item>
+                            <Form.Item name="tenantId" hidden>
+                                <Input />
+                            </Form.Item>
+                            <Form.Item name="label" label="Nama toko">
+                                <Input placeholder="Warung Bu Ani" />
+                            </Form.Item>
+                            <Row gutter={12}>
+                                <Col xs={24} md={12}>
+                                    <Form.Item
+                                        name="wahaSession"
+                                        label="WAHA session"
+                                        rules={[{ required: true }]}
+                                    >
+                                        <Input placeholder="default / toko-bu-ani" />
+                                    </Form.Item>
+                                </Col>
+                                <Col xs={24} md={12}>
+                                    <Form.Item name="businessPhone" label="Nomor bisnis">
+                                        <Input placeholder="6281110115321" />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
                             <Form.Item
                                 name="enabled"
                                 label="Aktifkan balasan WhatsApp"

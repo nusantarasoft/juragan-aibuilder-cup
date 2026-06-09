@@ -261,34 +261,77 @@ export class StudioUmkmService {
 
     async fetchDailyReport(tenantId = DEFAULT_TENANT): Promise<UmkmDailyReport> {
         const today = new Date().toISOString().slice(0, 10);
+        const dayStart = `${today}T00:00:00.000Z`;
+        const dayEnd = `${today}T23:59:59.999Z`;
 
-        const { data: todayRow } = await this.admin()
-            .from('v_studio_sales_today')
-            .select('*')
-            .maybeSingle();
+        const { data: todayOrders, error: todayErr } = await this.admin()
+            .from('ecom_orders')
+            .select('total_amount, paid_amount, payment_status, status')
+            .eq('tenant_id', tenantId)
+            .gte('created_at', dayStart)
+            .lte('created_at', dayEnd);
+        if (todayErr) {
+            this.logger.warn(`fetchDailyReport today orders: ${todayErr.message}`);
+        }
 
-        const { data: topProducts } = await this.admin()
-            .from('v_studio_top_products')
-            .select('item_name, units_sold, revenue')
-            .limit(5);
+        const activeToday = (todayOrders || []).filter(
+            (o: { status?: string }) => o.status !== 'cancelled' && o.status !== 'refunded',
+        );
+        const orderCount = activeToday.length;
+        const paidOrderCount = activeToday.filter((o: { payment_status?: string }) =>
+            /^(paid|partial)$/i.test(String(o.payment_status || '')),
+        ).length;
+        const revenueGross = activeToday.reduce(
+            (s: number, o: { total_amount?: number }) => s + Number(o.total_amount ?? 0),
+            0,
+        );
+        const revenuePaid = activeToday.reduce((s: number, o: { paid_amount?: number; payment_status?: string }) => {
+            if (!/^(paid|partial)$/i.test(String(o.payment_status || ''))) return s;
+            return s + Number(o.paid_amount ?? 0);
+        }, 0);
 
-        const { data: recentOrders } = await this.admin()
-            .from('v_studio_recent_orders')
+        const { data: lineItems, error: itemsErr } = await this.admin()
+            .from('ecom_order_items')
+            .select('item_name, quantity, subtotal, status, ecom_orders!inner(tenant_id, status)')
+            .eq('ecom_orders.tenant_id', tenantId);
+        if (itemsErr) {
+            this.logger.warn(`fetchDailyReport line items: ${itemsErr.message}`);
+        }
+
+        const productMap = new Map<string, { name: string; unitsSold: number; revenue: number }>();
+        for (const row of lineItems || []) {
+            const order = (row as { ecom_orders?: { status?: string } }).ecom_orders;
+            const itemStatus = String((row as { status?: string }).status || '');
+            if (order?.status === 'cancelled' || order?.status === 'refunded') continue;
+            if (itemStatus === 'cancelled' || itemStatus === 'returned') continue;
+            const name = String((row as { item_name?: string }).item_name || 'Produk');
+            const key = name.toLowerCase();
+            const prev = productMap.get(key) || { name, unitsSold: 0, revenue: 0 };
+            prev.unitsSold += Number((row as { quantity?: number }).quantity ?? 0);
+            prev.revenue += Number((row as { subtotal?: number }).subtotal ?? 0);
+            productMap.set(key, prev);
+        }
+        const topProducts = [...productMap.values()]
+            .sort((a, b) => b.revenue - a.revenue || b.unitsSold - a.unitsSold)
+            .slice(0, 5);
+
+        const { data: recentOrders, error: recentErr } = await this.admin()
+            .from('ecom_orders')
             .select('order_number, customer_name, total_amount, created_at')
+            .eq('tenant_id', tenantId)
+            .order('created_at', { ascending: false })
             .limit(5);
+        if (recentErr) {
+            this.logger.warn(`fetchDailyReport recent orders: ${recentErr.message}`);
+        }
 
-        const row = todayRow as Record<string, unknown> | null;
         return {
-            salesDate: String(row?.sales_date || today),
-            orderCount: Number(row?.order_count ?? 0),
-            paidOrderCount: Number(row?.paid_order_count ?? 0),
-            revenueGross: Number(row?.revenue_gross ?? 0),
-            revenuePaid: Number(row?.revenue_paid ?? 0),
-            topProducts: (topProducts || []).map((p: any) => ({
-                name: String(p.item_name || 'Produk'),
-                unitsSold: Number(p.units_sold ?? 0),
-                revenue: Number(p.revenue ?? 0),
-            })),
+            salesDate: today,
+            orderCount,
+            paidOrderCount,
+            revenueGross,
+            revenuePaid,
+            topProducts,
             recentOrders: (recentOrders || []).map((o: any) => ({
                 orderNumber: String(o.order_number || ''),
                 customerName: o.customer_name ? String(o.customer_name) : null,
@@ -304,9 +347,12 @@ export class StudioUmkmService {
     }
 
     /** Setup notebook for UMKM mode (context + optional guide flow creation). */
-    async setupUmkmNotebook(notebookId: string): Promise<{
+    async setupUmkmNotebook(
+        notebookId: string,
+        tenantId?: string,
+    ): Promise<{
         notebookId: string;
-        flowId?: string;
+        tenantId: string;
         contextConfig: StudioContextConfig;
     }> {
         const { data: notebook, error: nbErr } = await this.admin()
@@ -316,6 +362,11 @@ export class StudioUmkmService {
             .single();
         if (nbErr || !notebook) throw nbErr || new Error('Notebook not found');
 
+        const resolvedTenant =
+            typeof tenantId === 'string' && tenantId.trim()
+                ? tenantId.trim()
+                : undefined;
+
         const merged: StudioContextConfig = {
             ...DEFAULT_STUDIO_UMKM_CONTEXT,
             ...(typeof notebook.context_config === 'object' && notebook.context_config
@@ -323,6 +374,7 @@ export class StudioUmkmService {
                 : {}),
             umkm_mode: true,
             audience: 'customer',
+            ...(resolvedTenant ? { tenant_id: resolvedTenant } : {}),
         };
 
         const { error: updErr } = await this.admin()
@@ -331,6 +383,10 @@ export class StudioUmkmService {
             .eq('id', notebookId);
         if (updErr) throw updErr;
 
-        return { notebookId, contextConfig: merged };
+        return {
+            notebookId,
+            tenantId: this.resolveTenantId(merged),
+            contextConfig: merged,
+        };
     }
 }
