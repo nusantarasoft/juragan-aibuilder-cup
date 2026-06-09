@@ -1062,12 +1062,6 @@ const menuConfig = {
                         icon: <NodeIndexOutlined />,
                         isLeaf: true,
                     },
-                    {
-                        path: "/admin/ai-studio/anythingllm",
-                        name: "AnythingLLM",
-                        icon: <RobotOutlined />,
-                        isLeaf: true,
-                    },
                 ],
             },
             {

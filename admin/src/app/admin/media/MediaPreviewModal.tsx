@@ -160,10 +160,10 @@ const InfoTab = ({ activeMedia, embeddingDim, embeddingVector, versions, getRela
                 )}
             </div>
 
-            {/* RAGFlow Status */}
+            {/* Vector / RAG status */}
             <div className="glass-card">
                 <div className="flex justify-between items-center mb-1">
-                    <div className="section-title !mb-0 flex items-center gap-1.5"><RobotOutlined style={{ fontSize: 10 }} /> RAGFLOW</div>
+                    <div className="section-title !mb-0 flex items-center gap-1.5"><RobotOutlined style={{ fontSize: 10 }} /> VECTOR</div>
                     {embeddingStatus?.status === 'done' ? (
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ color: '#34d399', background: 'rgba(52,211,153,0.1)' }}>{embeddingStatus?.chunkCount || 0} chunks</span>
                     ) : embeddingStatus?.status === 'parsing' ? (
@@ -220,7 +220,6 @@ interface AIIntelTabProps {
         status: string;
         progress: number;
         chunkCount: number;
-        ragflowDocId: string | null;
         progressMsg: string;
     };
 }
@@ -229,7 +228,6 @@ const AIIntelTab = ({ embeddingDim, embeddingVector, isLoading, isGeneratingEmbe
     const status = embeddingStatus?.status || 'none';
     const progress = embeddingStatus?.progress || 0;
     const chunkCount = embeddingStatus?.chunkCount || 0;
-    const ragflowDocId = embeddingStatus?.ragflowDocId;
     const isParsing = status === 'parsing' || status === 'pending';
     const isDone = status === 'done';
     const isError = status === 'error';
@@ -239,7 +237,7 @@ const AIIntelTab = ({ embeddingDim, embeddingVector, isLoading, isGeneratingEmbe
     <div className="space-y-4">
         <div className="glass-card">
             <div className="flex justify-between items-center mb-3">
-                <div className="section-title !mb-0 flex items-center gap-1.5"><RobotOutlined style={{ fontSize: 12 }} /> RAGFLOW EMBEDDINGS</div>
+                <div className="section-title !mb-0 flex items-center gap-1.5"><RobotOutlined style={{ fontSize: 12 }} /> MEDIA EMBEDDING</div>
                 {hasEmbedding && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ color: 'rgba(52,211,153,0.8)', background: 'rgba(52,211,153,0.1)' }}>{chunkCount} Chunks</span>}
             </div>
 
@@ -254,19 +252,9 @@ const AIIntelTab = ({ embeddingDim, embeddingVector, isLoading, isGeneratingEmbe
                                 </div>
                                 <div>
                                     <div className="text-sm font-bold" style={{ color: 'rgba(52,211,153,0.9)' }}>{chunkCount} Chunks</div>
-                                    <div className="text-[10px]" style={{ color: 'rgba(52,211,153,0.5)' }}>Parsed and vectorized</div>
+                                    <div className="text-[10px]" style={{ color: 'rgba(52,211,153,0.5)' }}>Stored in media_embeddings (pgvector)</div>
                                 </div>
                             </div>
-                            {ragflowDocId && (
-                                <div className="flex items-center gap-2 text-[10px]">
-                                    <span className="meta-label">Doc ID:</span>
-                                    <code className="font-mono text-[9px] px-1.5 py-0.5 rounded cursor-pointer transition-colors meta-value"
-                                        style={{ background: 'rgba(var(--theme-color-rgb, 139,92,246), 0.06)' }}
-                                        onClick={() => copyToClipboard(ragflowDocId, "RAGFlow Doc ID copied")}>
-                                        {ragflowDocId.substring(0, 16)}...
-                                    </code>
-                                </div>
-                            )}
                         </div>
                     ) : isError ? (
                         <div className="text-center py-4">
@@ -290,7 +278,7 @@ const AIIntelTab = ({ embeddingDim, embeddingVector, isLoading, isGeneratingEmbe
                         <div className="text-center py-5">
                             <RobotOutlined className="ai-empty-icon" style={{ fontSize: 28, marginBottom: 8, display: 'block' }} />
                             <div className="text-xs meta-label">No embeddings generated</div>
-                            <div className="text-[10px] mt-1 meta-label" style={{ opacity: 0.6 }}>Parse, chunk, and vectorize via RAGFlow</div>
+                            <div className="text-[10px] mt-1 meta-label" style={{ opacity: 0.6 }}>Generate vector for media search, or add file to AI Studio notebook</div>
                         </div>
                     )}
                 </Spin>
@@ -667,7 +655,6 @@ export default function MediaPreviewModal({
         status: string;
         progress: number;
         chunkCount: number;
-        ragflowDocId: string | null;
         progressMsg: string;
     } | undefined>(undefined);
 
@@ -936,17 +923,13 @@ export default function MediaPreviewModal({
         if (!mediaFile) return;
         setIsGeneratingEmbed(true);
         try {
-            console.log("Calling generateMediaEmbeddings (RAGFlow)...");
             const success = await mediaService.generateMediaEmbeddings(mediaFile.id, "");
-            console.log("Result:", success);
             if (success) {
-                message.success('Document uploaded to RAGFlow — parsing started');
-                // Set status to parsing immediately for responsive UI
+                message.success('Embedding generated — indexed in pgvector');
                 setEmbeddingStatus({
                     status: 'parsing',
                     progress: 0,
                     chunkCount: 0,
-                    ragflowDocId: null,
                     progressMsg: 'Starting...',
                 });
                 // Fetch actual status from backend

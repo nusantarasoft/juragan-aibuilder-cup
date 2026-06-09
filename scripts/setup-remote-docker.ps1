@@ -96,5 +96,5 @@ Write-Host ""
 Write-Host "  # Manage REMOTE containers (from this device):" -ForegroundColor White
 Write-Host '  docker --context remote compose -f docker-compose.remote.yml up -d' -ForegroundColor Gray
 Write-Host '  docker --context remote compose -f docker-compose.remote.yml ps' -ForegroundColor Gray
-Write-Host '  docker --context remote compose -f docker-compose.remote.yml logs ragflow' -ForegroundColor Gray
+Write-Host '  docker --context remote compose -f docker-compose.remote.yml logs middleware' -ForegroundColor Gray
 Write-Host ""

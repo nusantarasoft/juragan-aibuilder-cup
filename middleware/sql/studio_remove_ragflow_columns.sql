@@ -1,4 +1,4 @@
--- Remove legacy RAGFlow columns from Studio schema (chat-only engine).
+-- Remove legacy external-RAG columns from Studio schema (internal RAG only).
 
 ALTER TABLE IF EXISTS studio_notebooks
     DROP COLUMN IF EXISTS ragflow_dataset_id,
