@@ -1041,6 +1041,7 @@ const menuConfig = {
             },
             {
                 path: "/admin/ai-studio",
+                key: "/admin/ai-studio-menu",
                 name: "AI Studio",
                 icon: <RobotOutlined />,
                 routes: [
@@ -1072,6 +1073,7 @@ const menuConfig = {
             },
             {
                 path: "/admin/datasets",
+                key: "/admin/datasets-menu",
                 name: "Big Data",
                 icon: <FundOutlined />,
                 routes: [

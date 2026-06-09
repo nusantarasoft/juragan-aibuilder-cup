@@ -203,7 +203,7 @@ export default function UmkmStudioPage() {
             title: 'UMKM',
             key: 'label',
             render: (_: unknown, row: StudioWhatsAppConfig) => (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <Text strong>{row.label || row.tenant_id}</Text>
                     <Text type="secondary" style={{ fontSize: 11 }}>
                         {row.tenant_id}
@@ -307,7 +307,7 @@ export default function UmkmStudioPage() {
                 <Alert
                     type="info"
                     showIcon
-                    message="Model: satu nomor WA admin (WAHA)"
+                    title="Model: satu nomor WA admin (WAHA)"
                     description={
                         <ol style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12 }}>
                             <li>Pair <strong>satu</strong> nomor admin di WAHA Dashboard (session <code>default</code>)</li>
@@ -333,7 +333,7 @@ export default function UmkmStudioPage() {
 
             <Drawer
                 title={editing ? 'Edit UMKM' : 'Tambah UMKM baru'}
-                width={480}
+                size={480}
                 open={drawerOpen}
                 onClose={() => setDrawerOpen(false)}
                 extra={

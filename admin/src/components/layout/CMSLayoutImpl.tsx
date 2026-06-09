@@ -356,7 +356,7 @@ export default function CMSLayoutImpl({
         if (menuConfig?.route?.routes) {
             for (const route of menuConfig.route.routes) {
                 if (route.routes && route.routes.some((r: any) => path.startsWith(r.path))) {
-                    keys.push(route.path);
+                    keys.push(route.key ?? route.path);
                 }
             }
         }

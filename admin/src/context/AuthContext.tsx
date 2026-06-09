@@ -92,14 +92,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
         }
 
+        const fetchMeOrNull = async (accessToken: string): Promise<User | null> => {
+            try {
+                return await fetchMe(accessToken);
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                if (isAuthGraphQLError(message)) return null;
+                throw error;
+            }
+        };
+
         try {
-            let me = await fetchMe(token);
+            let me = await fetchMeOrNull(token);
 
             if (!me) {
                 const refreshed = await tryRefreshTokens();
                 if (refreshed) {
-                    token = refreshed;
-                    me = await fetchMe(token);
+                    me = await fetchMeOrNull(refreshed);
                 }
             }
 
@@ -114,26 +123,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             console.error("Session check failed:", message);
-
-            if (isAuthGraphQLError(message)) {
-                const refreshed = await tryRefreshTokens();
-                if (refreshed) {
-                    try {
-                        const me = await fetchMe(refreshed);
-                        if (me) {
-                            const session = applyUserSession(me);
-                            setUser(session.user);
-                            setProfile(session.profile);
-                            setLoading(false);
-                            return;
-                        }
-                    } catch {
-                        // fall through to clear
-                    }
-                }
-                clearAuthTokens();
-                useAuthStore.getState().clearUser();
-            }
             // Network / middleware errors: keep tokens so refresh does not feel like logout
         }
 
