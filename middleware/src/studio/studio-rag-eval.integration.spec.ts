@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { formatRagEvalReport, runStudioRagEval } from './studio-rag-eval.runner';
+import { runStudioRagEval } from './studio-rag-eval.runner';
+import { formatRagEvalReport } from './studio-rag-eval.util';
 
 const RUN = process.env.RUN_RAG_EVAL === '1' || process.env.RUN_RAG_EVAL === 'true';
 const NOTEBOOK_ID = process.env.STUDIO_RAG_EVAL_NOTEBOOK_ID?.trim();
