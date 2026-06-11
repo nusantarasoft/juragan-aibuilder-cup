@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Table, Tag, Button, Modal, Form, Input, InputNumber, Select, Space, message, Tabs, Progress, Drawer, Row, Col, Card, Typography , Tooltip } from 'antd';
+import { Table, Tag, Button, Modal, Form, Input, InputNumber, Select, Space, message, Tabs, Progress, Drawer, Row, Col, Card, Typography, Tooltip, theme } from 'antd';
 import { PlusOutlined, ReloadOutlined, ScheduleOutlined, CheckCircleOutlined, ClockCircleOutlined, TeamOutlined, DollarOutlined, SearchOutlined, SendOutlined, LoginOutlined, CloseCircleOutlined, EyeOutlined, UserOutlined , FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
@@ -41,6 +41,8 @@ const BOOKING_FIELDS: FieldDef[] = [
 
 export default function BookingsPage() {
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const { startDate, endDate } = useDateRangeStore();
     const [schedules, setSchedules] = useState<BookingSchedule[]>([]);
     const [occurrences, setOccurrences] = useState<BookingOccurrence[]>([]);
@@ -336,11 +338,11 @@ export default function BookingsPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 14, marginBottom: 24 }}>
                     {kpis.map((k, i) => (
                         <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, type: 'spring', stiffness: 260, damping: 20 }}
-                            style={{ ...glassDark, padding: '16px 18px', borderTop: `3px solid ${k.color}`, position: 'relative', overflow: 'hidden' }}>
+                            style={{ ...(isDark ? glassDark : glass), padding: '16px 18px', borderTop: `3px solid ${k.color}`, position: 'relative', overflow: 'hidden' }}>
                             <div style={{ position: 'absolute', top: -10, right: -10, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle, ${k.color}18 0%, transparent 70%)`, pointerEvents: 'none' }} />
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, position: 'relative' }}>
                                 <span style={{ color: k.color, fontSize: 14 }}>{k.icon}</span>
-                                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase' as const }}>{k.label}</span>
+                                <span style={{ color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase' as const }}>{k.label}</span>
                             </div>
                             <div style={{ fontSize: 22, fontWeight: 800, color: k.color, position: 'relative', letterSpacing: -0.5 }}>{typeof k.value === 'number' ? k.value : k.value}</div>
                         </motion.div>
@@ -361,7 +363,7 @@ export default function BookingsPage() {
                     </Space>
                 </div>
 
-                <Card size="small" style={{ flex: 1, ...glassDark, borderLeft: `3px solid var(--theme-color, #7c3aed)` }}>
+                <Card size="small" style={{ flex: 1, ...(isDark ? glassDark : glass), borderLeft: `3px solid var(--theme-color, #7c3aed)` }}>
                     {/* Tabs */}
                     <Tabs activeKey={tab} onChange={setTab} items={[
                         { key: 'schedules', label: `ðŸ—“ï¸ Schedules (${schedules.length})`, children: (
@@ -383,7 +385,7 @@ export default function BookingsPage() {
                 <Drawer title={`Passengers â€” ${selectedBooking?.bookingCode}`} open={!!selectedBooking} onClose={() => setSelectedBooking(null)} width={520}>
                     {selectedBooking && (
                         <div>
-                            <div style={{ marginBottom: 16, padding: 12, background: '#f8f9fa', borderRadius: 8 }}>
+                            <div style={{ marginBottom: 16, padding: 12, background: isDark ? 'rgba(255,255,255,0.04)' : '#f8f9fa', borderRadius: 8 }}>
                                 <p style={{ margin: 0 }}><strong>Customer:</strong> {selectedBooking.customerName}</p>
                                 <p style={{ margin: 0 }}><strong>Class:</strong> <Tag color={selectedBooking.class === 'vip' ? 'gold' : selectedBooking.class === 'business' ? 'blue' : 'default'}>{selectedBooking.class?.toUpperCase()}</Tag></p>
                                 <p style={{ margin: 0 }}><strong>Amount:</strong> {fmt(selectedBooking.totalAmount || 0)}</p>

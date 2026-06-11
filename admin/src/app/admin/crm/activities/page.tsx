@@ -28,7 +28,6 @@ import relativeTime from "dayjs/plugin/relativeTime";
 dayjs.extend(relativeTime);
 
 const { Text } = Typography;
-const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const { TextArea } = Input;
 
 interface Activity {
@@ -138,17 +137,17 @@ export default function ActivitiesPage() {
                 <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_activities', title: 'CRM Activities', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Subject', key: 'subject' }, { header: 'Type', key: 'type' }, { header: 'Status', key: 'status' }, { header: 'Assigned', key: 'assignedTo' }], data: activities })} /></Tooltip> <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_activities', title: 'CRM Activities', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Subject', key: 'subject' }, { header: 'Type', key: 'type' }, { header: 'Status', key: 'status' }, { header: 'Assigned', key: 'assignedTo' }], data: activities })} /></Tooltip></RbacGuard>,
         ]}>
             <Row gutter={16} style={{ marginBottom: 16 }}>
-                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}><Card style={{ ...glass }}><Statistic title="Open" value={openCount} prefix={<ClockCircleOutlined />} valueStyle={{ color: '#1677ff' }} /></Card></motion.div></Col>
-                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}><Card style={{ ...glass }}><Statistic title="Completed" value={completedCount} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#52c41a' }} /></Card></motion.div></Col>
-                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Card style={{ ...glass }}><Statistic title="Overdue" value={overdueCount} prefix={<FireOutlined />} valueStyle={{ color: overdueCount > 0 ? '#ff4d4f' : undefined }} /></Card></motion.div></Col>
-                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}><Card style={{ ...glass }}><Statistic title="Total" value={activities.length} prefix={<ThunderboltOutlined />} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}><Card ><Statistic title="Open" value={openCount} prefix={<ClockCircleOutlined />} valueStyle={{ color: '#1677ff' }} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}><Card ><Statistic title="Completed" value={completedCount} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#52c41a' }} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Card ><Statistic title="Overdue" value={overdueCount} prefix={<FireOutlined />} valueStyle={{ color: overdueCount > 0 ? '#ff4d4f' : undefined }} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}><Card ><Statistic title="Total" value={activities.length} prefix={<ThunderboltOutlined />} /></Card></motion.div></Col>
             </Row>
-            <Card style={{ ...glass, marginBottom: 16 }}><Space wrap>
+            <Card style={{ marginBottom: 16 }}><Space wrap>
                 <Input prefix={<SearchOutlined />} placeholder="Search by subject..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />
                 <Select placeholder="Type" value={typeFilter} onChange={setTypeFilter} allowClear style={{ width: 130 }} options={ACTIVITY_TYPES.map(t => ({ value: t.value, label: t.label }))} />
                 <Select placeholder="Status" value={statusFilter} onChange={setStatusFilter} allowClear style={{ width: 150 }} options={STATUSES} />
             </Space></Card>
-            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table scroll={{ x: 900 }} columns={columns} dataSource={activities.map(a => ({ ...a, key: a.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>
+            <Card  styles={{ body: { padding: 0 } }}><Table scroll={{ x: 900 }} columns={columns} dataSource={activities.map(a => ({ ...a, key: a.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Activity" : "Log Activity"} entityName="activity" steps={formSteps} fields={ACTIVITY_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["#10b981", "#059669"]} editMode={!!editing} />
 

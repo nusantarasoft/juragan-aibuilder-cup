@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { ProTable, ProColumns, ModalForm, ProFormText, ProFormSelect, ProFormTextArea, ProForm, ProFormDatePicker } from "@ant-design/pro-components";
-import { Button, message, Space, Tag, Popconfirm, Alert, Row, Col, Card, Statistic } from "antd";
-import { BankOutlined, PlusOutlined, DeleteOutlined, EditOutlined, AuditOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import { Button, message, Space, Tag, Popconfirm, Row, Col, Card, Statistic } from "antd";
+import { BankOutlined, PlusOutlined, DeleteOutlined, EditOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip } from 'recharts';
 
 const GET_GOVERNANCE = `
   query GetGovernanceDecisions($projectId: String!) {
@@ -95,9 +96,7 @@ export default function GovernanceTab({ projectId }: { projectId: string }) {
         try {
             const data = await gql(GET_GOVERNANCE, { projectId });
             setEntries(data.pmGovernanceDecisions || []);
-        } catch {
-            // empty
-        } finally {
+        } catch (err: any) { console.error("PM Error", err); } finally {
             setLoading(false);
         }
     }, [projectId]);
@@ -163,6 +162,20 @@ export default function GovernanceTab({ projectId }: { projectId: string }) {
 
     const openCount = entries.filter(e => e.status === 'open' || e.status === 'under_review').length;
     const decidedCount = entries.filter(e => e.status === 'decided' || e.status === 'implemented').length;
+
+    const categoryDist = useMemo(() => {
+        const counts: Record<string, number> = {};
+        entries.forEach((e: any) => { const c = e.category || 'other'; counts[c] = (counts[c] || 0) + 1; });
+        const colors: Record<string, string> = { strategic: '#6366f1', budget: '#f59e0b', scope: '#3b82f6', schedule: '#10b981', risk: '#ef4444', resource: '#8b5cf6', compliance: '#f97316', quality: '#14b8a6' };
+        return Object.entries(counts).map(([cat, count]) => ({ name: cat, value: count, color: colors[cat] || '#6b7280' }));
+    }, [entries]);
+
+    const statusDist = useMemo(() => {
+        const counts: Record<string, number> = {};
+        entries.forEach((e: any) => { const s = e.status || 'open'; counts[s] = (counts[s] || 0) + 1; });
+        const colors: Record<string, string> = { open: '#f59e0b', under_review: '#3b82f6', decided: '#10b981', implemented: '#6366f1', deferred: '#94a3b8' };
+        return Object.entries(counts).map(([status, count]) => ({ name: status.replace('_', ' '), value: count, color: colors[status] || '#6b7280' }));
+    }, [entries]);
 
     const columns: ProColumns<any>[] = [
         {
@@ -248,6 +261,55 @@ export default function GovernanceTab({ projectId }: { projectId: string }) {
                 </Col>
             </Row>
 
+            {entries.length > 0 && (
+                <Card size="small" title={<span style={{ fontWeight: 600 }}>Decision Distribution</span>} style={{ marginBottom: 16, borderRadius: 10, background: isDark ? 'rgba(15,15,23,0.7)' : undefined, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                    <div style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ width: 140, height: 140, margin: '0 auto' }}>
+                                <ResponsiveContainer>
+                                    <PieChart>
+                                        <Pie data={categoryDist} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={30} outerRadius={55} paddingAngle={2} strokeWidth={0}>
+                                            {categoryDist.map((c, i) => <Cell key={i} fill={c.color} />)}
+                                        </Pie>
+                                        <RTooltip />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, color: isDark ? '#e2e8f0' : '#333' }}>By Category</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center', marginTop: 4 }}>
+                                {categoryDist.map(c => (
+                                    <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9 }}>
+                                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: c.color }} />
+                                        <span style={{ color: isDark ? '#94a3b8' : '#64748b', textTransform: 'capitalize' }}>{c.name} ({c.value})</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ width: 140, height: 140, margin: '0 auto' }}>
+                                <ResponsiveContainer>
+                                    <PieChart>
+                                        <Pie data={statusDist} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={30} outerRadius={55} paddingAngle={2} strokeWidth={0}>
+                                            {statusDist.map((s, i) => <Cell key={i} fill={s.color} />)}
+                                        </Pie>
+                                        <RTooltip />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, color: isDark ? '#e2e8f0' : '#333' }}>By Status</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center', marginTop: 4 }}>
+                                {statusDist.map(s => (
+                                    <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9 }}>
+                                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: s.color }} />
+                                        <span style={{ color: isDark ? '#94a3b8' : '#64748b', textTransform: 'capitalize' }}>{s.name} ({s.value})</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </Card>
+            )}
+
             <ProTable
                 headerTitle={
                     <Space>
@@ -300,3 +362,4 @@ export default function GovernanceTab({ projectId }: { projectId: string }) {
         </div>
     );
 }
+

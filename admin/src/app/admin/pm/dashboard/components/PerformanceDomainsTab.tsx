@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { ProCard } from "@ant-design/pro-components";
-import { Button, message, Space, Typography, Spin, Input, Progress, Tag, Tooltip, Select, Row, Col, Card } from "antd";
+import { Button, message, Space, Typography, Spin, Input, Progress, Tag, Select, Row, Col, Card, Slider } from "antd";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RTooltip, PieChart, Pie, Cell } from 'recharts';
 import { FundProjectionScreenOutlined, SaveOutlined, CheckCircleOutlined, WarningOutlined, CloseCircleOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
@@ -67,9 +68,7 @@ export default function PerformanceDomainsTab({ projectId }: { projectId: string
             const map: Record<string, any> = {};
             items.forEach((item: any) => { map[item.domain_key || item.domainKey] = item; });
             setDomains(map);
-        } catch {
-            // First load
-        } finally {
+        } catch (err: any) { console.error("PM Error", err); } finally {
             setLoading(false);
         }
     }, [projectId]);
@@ -117,6 +116,22 @@ export default function PerformanceDomainsTab({ projectId }: { projectId: string
 
     const onTrackCount = DOMAINS.filter(d => (domains[d.key]?.healthStatus || domains[d.key]?.health_status) === 'on_track').length;
 
+    const scoreData = useMemo(() =>
+        DOMAINS.map(d => ({
+            name: d.name.length > 12 ? d.name.slice(0, 10) + '..' : d.name,
+            score: domains[d.key]?.score || 0,
+        })),
+    [domains]);
+
+    const healthDist = useMemo(() => {
+        const counts: Record<string, number> = {};
+        DOMAINS.forEach(d => {
+            const status = domains[d.key]?.healthStatus || domains[d.key]?.health_status || 'not_started';
+            counts[status] = (counts[status] || 0) + 1;
+        });
+        return HEALTH_OPTIONS.map(h => ({ name: h.label, value: counts[h.value] || 0, color: h.color })).filter(h => h.value > 0);
+    }, [domains]);
+
     return (
         <div>
             {contextHolder}
@@ -149,6 +164,44 @@ export default function PerformanceDomainsTab({ projectId }: { projectId: string
                     borderRadius: 12,
                 }}
             >
+                <Card size="small" title={<span style={{ fontWeight: 600 }}>Domain Scores and Health</span>} style={{ marginBottom: 16, borderRadius: 10, background: isDark ? 'rgba(15,15,23,0.7)' : undefined, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                        <div style={{ flex: 2, minWidth: 280, height: 200 }}>
+                            <ResponsiveContainer>
+                                <BarChart data={scoreData} margin={{ left: -10, right: 10 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} />
+                                    <XAxis dataKey="name" tick={{ fontSize: 9, fill: isDark ? '#94a3b8' : '#64748b' }} interval={0} angle={-20} textAnchor="end" height={50} />
+                                    <YAxis domain={[0, 5]} tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }} />
+                                    <RTooltip contentStyle={{ background: isDark ? '#1e1e2e' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, borderRadius: 8, fontSize: 12 }} />
+                                    <Bar dataKey="score" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                        {healthDist.length > 0 && (
+                            <div style={{ flex: 1, minWidth: 160, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <div style={{ width: 120, height: 120 }}>
+                                    <ResponsiveContainer>
+                                        <PieChart>
+                                            <Pie data={healthDist} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={30} outerRadius={50} paddingAngle={3} strokeWidth={0}>
+                                                {healthDist.map((h, i) => <Cell key={i} fill={h.color} />)}
+                                            </Pie>
+                                            <RTooltip />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginTop: 8 }}>
+                                    {healthDist.map(h => (
+                                        <div key={h.name} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10 }}>
+                                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: h.color }} />
+                                            <span style={{ color: isDark ? '#94a3b8' : '#64748b' }}>{h.name} ({h.value})</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </Card>
+
                 <Row gutter={[16, 16]}>
                     {DOMAINS.map(d => {
                         const a = domains[d.key] || {};
@@ -204,13 +257,7 @@ export default function PerformanceDomainsTab({ projectId }: { projectId: string
                                             format={() => `${score}/5`}
                                             style={{ marginTop: 4 }}
                                         />
-                                        <input
-                                            type="range"
-                                            min={0} max={5} step={1}
-                                            value={score}
-                                            onChange={e => handleChange(d.key, 'score', parseInt(e.target.value))}
-                                            style={{ width: '100%', accentColor: healthConfig.color }}
-                                        />
+                                        <Slider min={0} max={5} step={1} value={domains[d.key]?.score || 0} onChange={(val: number) => setDomains(prev => ({ ...prev, [d.key]: { ...prev[d.key], score: val, dirty: true } }))} />
                                     </div>
 
                                     <div style={{ marginBottom: 8 }}>
@@ -255,3 +302,4 @@ export default function PerformanceDomainsTab({ projectId }: { projectId: string
         </div>
     );
 }
+

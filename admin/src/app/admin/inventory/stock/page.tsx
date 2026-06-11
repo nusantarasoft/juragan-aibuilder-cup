@@ -1,17 +1,18 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import RbacGuard from "@/components/common/RbacGuard";
-import { Badge, Button, Card, Col, Descriptions, Divider, Empty, Form, Input, InputNumber, message, Row, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography } from "antd";
+import { Badge, Button, Card, Col, Descriptions, Divider, Empty, Form, Input, InputNumber, message, Row, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography , theme } from "antd";
 import {
     ArrowUpOutlined, ArrowDownOutlined, SwapOutlined,
     WarningOutlined, ReloadOutlined, PlusOutlined,
     SearchOutlined, ThunderboltOutlined, BarChartOutlined,
     RobotOutlined, DashboardOutlined, CheckCircleOutlined,
     ClockCircleOutlined, ExclamationCircleOutlined,
-    FileTextOutlined, UnorderedListOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
+    FileTextOutlined, UnorderedListOutlined, FileExcelOutlined, FilePdfOutlined, EnvironmentOutlined, AimOutlined } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { useDateRangeStore } from "@/store/useDateRangeStore";
@@ -56,6 +57,9 @@ const MOVEMENT_ICONS: Record<string, React.ReactNode> = {
 export default function StockDashboardPage() {
     const [stats, setStats] = useState<InvStockStats | null>(null);
     const { themeColor } = usePreferencesStore();
+    const router = useRouter();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const { startDate, endDate } = useDateRangeStore();
     const [ledger, setLedger] = useState<StockLedgerEntry[]>([]);
     const [movements, setMovements] = useState<StockMovement[]>([]);
@@ -190,6 +194,21 @@ export default function StockDashboardPage() {
                 return <Badge status="success" text={<Text className="text-xs">OK</Text>} />;
             },
         },
+        {
+            title: '',
+            key: 'actions',
+            width: 60,
+            render: (_: any, r: StockLedgerEntry) => {
+                const item = itemMap.get(r.itemId);
+                return (
+                    <Tooltip title="Locate in Warehouse">
+                        <Button size="small" type="link" icon={<AimOutlined />}
+                            onClick={() => router.push(`/admin/inventory/item-locator?bin=${encodeURIComponent(item?.sku || item?.name || '')}`)}
+                            style={{ color: themeColor }} />
+                    </Tooltip>
+                );
+            },
+        },
     ];
 
     const movementColumns = [
@@ -260,6 +279,10 @@ export default function StockDashboardPage() {
                     animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential
                 />
             }
+            extra={[
+                <Tooltip key="locator" title="Find items in bins"><Button icon={<AimOutlined />} onClick={() => router.push('/admin/inventory/item-locator')}>Item Locator</Button></Tooltip>,
+                <Tooltip key="3d" title="View 3D Warehouse"><Button icon={<EnvironmentOutlined />} onClick={() => router.push('/admin/inventory/warehouse-map')}>3D Map</Button></Tooltip>,
+            ]}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
                 {/* KPI Cards */}
@@ -268,7 +291,7 @@ export default function StockDashboardPage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, type: 'spring', stiffness: 260, damping: 20 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    ...glassDark, borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden',
+                                    ...(isDark ? glassDark : glass), borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden',
                                 }}>
                                     <div style={{ position: 'absolute', top: -10, right: -10, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle, ${s.color}18 0%, transparent 70%)`, pointerEvents: 'none' }} />
                                     <div className="flex items-center gap-3" style={{ position: 'relative' }}>
@@ -277,7 +300,7 @@ export default function StockDashboardPage() {
                                             {s.icon}
                                         </div>
                                         <div>
-                                            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5, textTransform: 'uppercase' as const }} className="block">{s.title}</Text>
+                                            <Text style={{ fontSize: 10, color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', letterSpacing: 0.5, textTransform: 'uppercase' as const }} className="block">{s.title}</Text>
                                             <Text strong style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.value.toLocaleString()}</Text>
                                         </div>
                                     </div>
@@ -289,7 +312,7 @@ export default function StockDashboardPage() {
 
                 {/* Toolbar */}
                 <Card size="small" style={{
-                    ...glassDark, borderLeft: `3px solid var(--theme-color, #7c3aed)`,
+                    ...(isDark ? glassDark : glass), borderLeft: `3px solid var(--theme-color, #7c3aed)`,
                 }}>
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div className="flex items-center gap-2">
@@ -360,9 +383,9 @@ export default function StockDashboardPage() {
                                 <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)' }}>
                                     <BarChartOutlined style={{ color: '#fff', fontSize: 12 }} />
                                 </span>
-                                <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>Stock Levels</span>
+                                <span style={{ fontWeight: 600, color: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.85)' }}>Stock Levels</span>
                             </Space>
-                        } style={{ height: '100%', ...glassDark, borderLeft: '3px solid #3b82f6' }}>
+                        } style={{ height: '100%', ...(isDark ? glassDark : glass), borderLeft: '3px solid #3b82f6' }}>
                             <Table
                                 dataSource={ledger}
                                 columns={ledgerColumns}
@@ -380,9 +403,9 @@ export default function StockDashboardPage() {
                                 <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: 'linear-gradient(135deg, #10b981, #059669)' }}>
                                     <SwapOutlined style={{ color: '#fff', fontSize: 12 }} />
                                 </span>
-                                <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>Recent Movements</span>
+                                <span style={{ fontWeight: 600, color: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.85)' }}>Recent Movements</span>
                             </Space>
-                        } style={{ height: '100%', ...glassDark, borderLeft: '3px solid #10b981' }}>
+                        } style={{ height: '100%', ...(isDark ? glassDark : glass), borderLeft: '3px solid #10b981' }}>
                             <Table
                                 dataSource={movements}
                                 columns={movementColumns}

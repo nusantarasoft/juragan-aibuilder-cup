@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { ProTable, ProColumns, ModalForm, ProFormText, ProFormSelect, ProFormTextArea, ProForm } from "@ant-design/pro-components";
 import { Button, message, Space, Tag, Popconfirm, Progress, Card, Row, Col, Statistic } from "antd";
 import { TrophyOutlined, PlusOutlined, DeleteOutlined, EditOutlined, CheckCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip as RTooltip, CartesianGrid } from 'recharts';
 
 const GET_BENEFITS = `
   query GetBenefits($projectId: String!) {
@@ -76,14 +77,20 @@ export default function BenefitsTab({ projectId }: { projectId: string }) {
     useEffect(() => setMounted(true), []);
     const isDark = mounted && resolvedTheme === 'dark';
 
+    const benefitChart = useMemo(() => {
+        return benefits.filter((b: any) => b.target || b.actual).map((b: any) => ({
+            name: (b.benefitName || b.benefit_name || b.name || '').slice(0, 20),
+            Target: Number(b.target || 0),
+            Actual: Number(b.actual || 0),
+        }));
+    }, [benefits]);
+
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
             const data = await gql(GET_BENEFITS, { projectId });
             setBenefits(data.pmBenefits || []);
-        } catch {
-            // empty
-        } finally {
+        } catch (err: any) { console.error("PM Error", err); } finally {
             setLoading(false);
         }
     }, [projectId]);
@@ -219,6 +226,27 @@ export default function BenefitsTab({ projectId }: { projectId: string }) {
                 </Col>
             </Row>
 
+            {benefitChart.length > 0 && (
+                <Card size="small" title={<Space><span style={{ fontWeight: 600 }}>Target vs Actual</span></Space>} style={{ marginBottom: 16, borderRadius: 10, background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                    <div style={{ height: 200 }}>
+                        <ResponsiveContainer>
+                            <BarChart data={benefitChart} margin={{ left: 10, right: 10 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} />
+                                <XAxis dataKey="name" tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }} />
+                                <YAxis tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }} />
+                                <RTooltip />
+                                <Bar dataKey="Target" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="Actual" fill="#10b981" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: '#6366f1' }} /><span style={{ color: isDark ? '#94a3b8' : '#64748b' }}>Target</span></div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: '#10b981' }} /><span style={{ color: isDark ? '#94a3b8' : '#64748b' }}>Actual</span></div>
+                    </div>
+                </Card>
+            )}
+
             <ProTable
                 headerTitle={
                     <Space>
@@ -270,3 +298,4 @@ export default function BenefitsTab({ projectId }: { projectId: string }) {
         </div>
     );
 }
+

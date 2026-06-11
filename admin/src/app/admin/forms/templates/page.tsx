@@ -1,8 +1,8 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { Table, Button, Card, Space, Tag, Input, Select, Modal, Form, message, Tooltip, Dropdown, Badge, Typography, Row, Col, Statistic, Drawer, Rate, Skeleton, Popconfirm } from "antd";
-import { PlusOutlined, SearchOutlined, ReloadOutlined, CopyOutlined, EditOutlined, DeleteOutlined, EyeOutlined, RocketOutlined, DownloadOutlined, UploadOutlined, FormOutlined, BarChartOutlined, FileTextOutlined, CheckCircleOutlined, ClockCircleOutlined, SafetyOutlined, MoreOutlined, StarOutlined, AuditOutlined, UnorderedListOutlined, ShareAltOutlined, LinkOutlined } from "@ant-design/icons";
-import { motion } from "framer-motion";
+import { Table, Button, Card, Space, Tag, Input, Select, Modal, Form, message, Tooltip, Dropdown, Badge, Typography, Row, Col, Statistic, Drawer, Rate, Skeleton, Popconfirm, theme, Segmented } from "antd";
+import { PlusOutlined, SearchOutlined, ReloadOutlined, CopyOutlined, EditOutlined, DeleteOutlined, EyeOutlined, RocketOutlined, DownloadOutlined, UploadOutlined, FormOutlined, BarChartOutlined, FileTextOutlined, CheckCircleOutlined, ClockCircleOutlined, SafetyOutlined, MoreOutlined, StarOutlined, AuditOutlined, UnorderedListOutlined, ShareAltOutlined, LinkOutlined, AppstoreOutlined } from "@ant-design/icons";
+import { motion, AnimatePresence } from "framer-motion";
 import type { ColumnsType } from "antd/es/table";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { AuroraText } from "@/components/magicui/aurora-text";
@@ -49,7 +49,7 @@ const STATUSES = [
     { value: 'closed', label: 'Closed', color: 'red' },
 ];
 
-const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
+const glass = { background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)', border: '1px solid rgba(255, 255, 255, 0.6)', borderRadius: 12 };
 
 const TEMPLATE_FRAGMENT = `
     id tenantId name description category status settings scoringConfig
@@ -59,6 +59,8 @@ const TEMPLATE_FRAGMENT = `
 // ─── Page ───────────────────────────────────────────────
 
 export default function FormTemplatesPage() {
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const [data, setData] = useState<FormTemplate[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -69,6 +71,7 @@ export default function FormTemplatesPage() {
     const [detailOpen, setDetailOpen] = useState(false);
     const [detailRecord, setDetailRecord] = useState<FormTemplate | null>(null);
     const [detailFields, setDetailFields] = useState<FormField[]>([]);
+    const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
     const [form] = Form.useForm();
     const [messageApi, ctx] = message.useMessage();
     const router = useRouter();
@@ -270,9 +273,18 @@ export default function FormTemplatesPage() {
             title={<AuroraText>Form Builder</AuroraText>}
             subTitle={<DecryptedText text="Create KPI evaluations, surveys, checklists & more" speed={40} revealDirection="start" />}
             extra={[
+                <Segmented
+                    key="view"
+                    options={[
+                        { value: 'grid', icon: <AppstoreOutlined /> },
+                        { value: 'table', icon: <UnorderedListOutlined /> }
+                    ]}
+                    value={viewMode}
+                    onChange={(val) => setViewMode(val as "grid" | "table")}
+                />,
                 <Button key="import" icon={<UploadOutlined />} onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.json'; input.onchange = (e: any) => { if (e.target.files?.[0]) handleImport(e.target.files[0]); }; input.click(); }}>Import</Button>,
                 <Button key="reload" icon={<ReloadOutlined />} onClick={loadData} />,
-                <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); form.resetFields(); setModalOpen(true); }}>New Template</Button>,
+                <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); form.resetFields(); setModalOpen(true); }} style={{ background: '#8b5cf6', borderColor: '#8b5cf6' }}>New Template</Button>,
             ]}
         >
             {ctx}
@@ -310,14 +322,77 @@ export default function FormTemplatesPage() {
                     </Row>
                 </Card>
 
-                {/* Table */}
-                <Card style={glass}>
-                    <Table<FormTemplate>
-                        dataSource={data} columns={columns} rowKey="id"
-                        loading={loading} pagination={{ pageSize: 15, showSizeChanger: true, showTotal: (t) => `${t} templates` }}
-                        size="middle"
-                    />
-                </Card>
+                {/* Data View */}
+                {viewMode === 'table' ? (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <Card style={glass}>
+                            <Table<FormTemplate>
+                                dataSource={data} columns={columns} rowKey="id"
+                                loading={loading} pagination={{ pageSize: 15, showSizeChanger: true, showTotal: (t) => `${t} templates` }}
+                                size="middle"
+                            />
+                        </Card>
+                    </motion.div>
+                ) : (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <Row gutter={[16, 16]}>
+                            <AnimatePresence>
+                                {data.map((rec, index) => {
+                                    const c = CATEGORIES.find(cat => cat.value === rec.category);
+                                    return (
+                                        <Col xs={24} sm={12} md={8} lg={6} key={rec.id}>
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, scale: 0.9 }}
+                                                transition={{ delay: index * 0.05 }}
+                                            >
+                                                <Card
+                                                    hoverable
+                                                    style={{ ...glass, height: '100%', borderTop: `3px solid ${c?.color || '#d9d9d9'}` }}
+                                                    bodyStyle={{ padding: 16 }}
+                                                    actions={[
+                                                        <Tooltip key="preview" title="View Details"><EyeOutlined onClick={() => openDetail(rec)} /></Tooltip>,
+                                                        <Tooltip key="edit" title="Builder"><FormOutlined style={{ color: '#8b5cf6' }} onClick={() => router.push(`/admin/forms/builder?id=${rec.id}`)} /></Tooltip>,
+                                                        rec.status === 'published' ? <Tooltip key="fill" title="Fill Form"><CheckCircleOutlined style={{ color: '#10b981' }} onClick={() => router.push(`/admin/forms/fill?id=${rec.id}`)} /></Tooltip> : <Tooltip key="publish" title="Publish"><RocketOutlined style={{ color: '#52c41a' }} onClick={() => handlePublish(rec.id)} /></Tooltip>,
+                                                        <Dropdown key="more" menu={{ items: [
+                                                            { key: 'editMeta', label: 'Edit Metadata', icon: <EditOutlined />, onClick: () => { setEditRecord(rec); form.setFieldsValue({ name: rec.name, description: rec.description, category: rec.category, tags: rec.tags }); setModalOpen(true); } },
+                                                            { key: 'dup', label: 'Duplicate', icon: <CopyOutlined />, onClick: () => handleDuplicate(rec.id) },
+                                                            { key: 'export', label: 'Export JSON', icon: <DownloadOutlined />, onClick: () => handleExport(rec.id) },
+                                                            { key: 'share', label: 'Copy Share Link', icon: <LinkOutlined />, onClick: () => handleCopyShareLink(rec.id) },
+                                                            { type: 'divider' },
+                                                            { key: 'del', label: <Popconfirm title="Delete this template?" onConfirm={() => handleDelete(rec.id)}><span style={{ color: '#ff4d4f' }}>Delete</span></Popconfirm>, icon: <DeleteOutlined style={{ color: '#ff4d4f' }} />, danger: true },
+                                                        ] }}><MoreOutlined /></Dropdown>
+                                                    ]}
+                                                >
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                                        <div style={{ fontWeight: 600, fontSize: 16 }}>
+                                                            <a onClick={() => openDetail(rec)} style={{ color: 'inherit' }}>{rec.name}</a>
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ color: '#666', fontSize: 12, height: 36, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginBottom: 12 }}>
+                                                        {rec.description || 'No description provided.'}
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+                                                        {c ? <Tag icon={c.icon} color={c.color} style={{ margin: 0 }}>{c.label}</Tag> : <Tag style={{ margin: 0 }}>{rec.category}</Tag>}
+                                                        {(() => {
+                                                            const s = STATUSES.find(st => st.value === rec.status);
+                                                            return <Badge status={rec.status === 'published' ? 'success' : rec.status === 'draft' ? 'default' : 'warning'} text={<Tag color={s?.color} style={{ margin: 0 }}>{s?.label || rec.status}</Tag>} />;
+                                                        })()}
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#888', fontSize: 11 }}>
+                                                        <span><FileTextOutlined /> {rec.fieldCount || 0} fields</span>
+                                                        <span>v{rec.version} · {dayjs(rec.updatedAt).fromNow(true)} ago</span>
+                                                    </div>
+                                                </Card>
+                                            </motion.div>
+                                        </Col>
+                                    );
+                                })}
+                            </AnimatePresence>
+                        </Row>
+                    </motion.div>
+                )}
 
                 {/* Create/Edit Modal */}
                 <Modal title={editRecord ? 'Edit Template' : 'New Form Template'} open={modalOpen}
@@ -367,19 +442,19 @@ export default function FormTemplatesPage() {
                             {detailRecord.description && <Paragraph type="secondary">{detailRecord.description}</Paragraph>}
                             {(detailRecord.tags?.length ?? 0) > 0 && <div>{detailRecord.tags!.map((t: string) => <Tag key={t} color="blue">{t}</Tag>)}</div>}
                             {detailRecord.scoringConfig?.grading_scale && (
-                                <Card size="small" title="Grading Scale" style={{ background: '#fafafa' }}>
+                                <Card size="small" title="Grading Scale" style={{ background: isDark ? 'rgba(255,255,255,0.03)' : '#fafafa' }}>
                                     {detailRecord.scoringConfig.grading_scale.map((g: any, i: number) => (
-                                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #f0f0f0' }}>
+                                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}` }}>
                                             <Tag color={g.color}>{g.label}</Tag>
                                             <Text type="secondary">{g.min} – {g.max}</Text>
                                         </div>
                                     ))}
                                 </Card>
                             )}
-                            <Card size="small" title={`Fields (${detailFields.length})`} style={{ background: '#fafafa' }}>
+                            <Card size="small" title={`Fields (${detailFields.length})`} style={{ background: isDark ? 'rgba(255,255,255,0.03)' : '#fafafa' }}>
                                 {detailFields.length === 0 ? <Text type="secondary">No fields yet. Use the Builder to add fields.</Text> :
                                     detailFields.map((f, i) => (
-                                        <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: i < detailFields.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
+                                        <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: i < detailFields.length - 1 ? `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}` : 'none' }}>
                                             <Tag color="blue" style={{ minWidth: 70, textAlign: 'center' }}>{f.fieldType}</Tag>
                                             <div style={{ flex: 1 }}>
                                                 <Text strong>{f.label}</Text>

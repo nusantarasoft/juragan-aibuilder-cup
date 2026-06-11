@@ -1,15 +1,17 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import RbacGuard from "@/components/common/RbacGuard";
-import { Button, Card, Col, Form, Input, InputNumber, message, Modal, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { Button, Card, Col, Form, Input, InputNumber, message, Modal, Row, Select, Space, Table, Tag, Tooltip, Typography , theme } from "antd";
 import {
     ContainerOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
     DownloadOutlined, UploadOutlined, SwapOutlined,
     DeleteOutlined, WarningOutlined, GiftOutlined,
-    CheckCircleOutlined, InboxOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
+    CheckCircleOutlined, InboxOutlined, FileExcelOutlined, FilePdfOutlined,
+    BarChartOutlined, UnorderedListOutlined, AuditOutlined } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { useDateRangeStore } from "@/store/useDateRangeStore";
@@ -69,8 +71,11 @@ const STOCK_OP_FIELDS: FieldDef[] = [
 ];
 
 export default function StockOperationsPage() {
+    const router = useRouter();
     const [stats, setStats] = useState<StockOperationStatsType | null>(null);
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const { startDate, endDate } = useDateRangeStore();
     const [operations, setOperations] = useState<StockOperation[]>([]);
     const [loading, setLoading] = useState(true);
@@ -313,6 +318,11 @@ export default function StockOperationsPage() {
                     animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential
                 />
             }
+            extra={[
+                <Tooltip key="stock" title="View stock levels"><Button icon={<BarChartOutlined />} onClick={() => router.push('/admin/inventory/stock')}>Stock</Button></Tooltip>,
+                <Tooltip key="items" title="Manage items"><Button icon={<UnorderedListOutlined />} onClick={() => router.push('/admin/inventory/items')}>Items</Button></Tooltip>,
+                <Tooltip key="opname" title="Stock opname sessions"><Button icon={<AuditOutlined />} onClick={() => router.push('/admin/inventory/stock-opname')}>Opname</Button></Tooltip>,
+            ]}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
                 {/* KPI Cards */}
@@ -321,7 +331,7 @@ export default function StockOperationsPage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, type: 'spring', stiffness: 260, damping: 20 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    ...glassDark, borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden',
+                                    ...(isDark ? glassDark : glass), borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden',
                                 }}>
                                     <div style={{ position: 'absolute', top: -10, right: -10, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle, ${s.color}18 0%, transparent 70%)`, pointerEvents: 'none' }} />
                                     <div className="flex items-center gap-3" style={{ position: 'relative' }}>
@@ -330,7 +340,7 @@ export default function StockOperationsPage() {
                                             {s.icon}
                                         </div>
                                         <div>
-                                            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5, textTransform: 'uppercase' as const }} className="block">{s.title}</Text>
+                                            <Text style={{ fontSize: 10, color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', letterSpacing: 0.5, textTransform: 'uppercase' as const }} className="block">{s.title}</Text>
                                             <Text strong style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.value.toLocaleString()}</Text>
                                         </div>
                                     </div>
@@ -342,7 +352,7 @@ export default function StockOperationsPage() {
 
                 {/* Main Table Card */}
                 <Card size="small" style={{
-                    flex: 1, ...glassDark, borderLeft: '3px solid #10b981',
+                    flex: 1, ...(isDark ? glassDark : glass), borderLeft: '3px solid #10b981',
                 }}>
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
@@ -350,7 +360,7 @@ export default function StockOperationsPage() {
                                 <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: 'linear-gradient(135deg, #10b981, #059669)' }}>
                                     <ContainerOutlined style={{ color: '#fff', fontSize: 12 }} />
                                 </span>
-                                <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>Operations ({filteredOps.length})</span>
+                                <span style={{ fontWeight: 600, color: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.85)' }}>Operations ({filteredOps.length})</span>
                             </Space>
                             <Input prefix={<SearchOutlined className="text-gray-400" />}
                                 placeholder="Search..." value={searchTerm}

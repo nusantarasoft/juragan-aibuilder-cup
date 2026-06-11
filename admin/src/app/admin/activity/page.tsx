@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { Card, Button, Space, Tag, Typography, Row, Col, Statistic, Timeline, Select, Badge, Empty, Spin, Avatar, Tooltip, message, Divider } from "antd";
+import { Card, Button, Space, Tag, Typography, Row, Col, Statistic, Timeline, Select, Badge, Empty, Spin, Avatar, Tooltip, message, Divider, theme } from "antd";
 import {
     ClockCircleOutlined, UserOutlined, FormOutlined, TeamOutlined,
     CheckCircleOutlined, StarOutlined, FileTextOutlined, BarChartOutlined,
@@ -136,6 +136,8 @@ function generateActivities(templates: any[], submissions: any[], employees: any
 
 export default function ActivityFeedPage() {
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const router = useRouter();
     const [messageApi, ctx] = message.useMessage();
     const [loading, setLoading] = useState(true);
@@ -220,7 +222,7 @@ export default function ActivityFeedPage() {
                                         <motion.div key={activity.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: i * 0.03 }}
                                             style={{
-                                                display: 'flex', gap: 12, padding: '12px 8px', borderBottom: '1px solid #f5f5f5',
+                                                display: 'flex', gap: 12, padding: '12px 8px', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f5f5f5'}`,
                                                 cursor: activity.link ? 'pointer' : 'default',
                                             }}
                                             onClick={() => activity.link && router.push(activity.link)}>
@@ -260,7 +262,7 @@ export default function ActivityFeedPage() {
                                                     <Space size={4}><span style={{ color: cfg.color }}>{cfg.icon}</span><Text style={{ fontSize: 11 }}>{mod}</Text></Space>
                                                     <Text strong style={{ fontSize: 11, color: cfg.color }}>{count}</Text>
                                                 </div>
-                                                <div style={{ height: 6, borderRadius: 3, background: '#f0f0f0', overflow: 'hidden' }}>
+                                                <div style={{ height: 6, borderRadius: 3, background: isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0', overflow: 'hidden' }}>
                                                     <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ delay: 0.3, duration: 0.6 }}
                                                         style={{ height: '100%', background: cfg.color, borderRadius: 3 }} />
                                                 </div>

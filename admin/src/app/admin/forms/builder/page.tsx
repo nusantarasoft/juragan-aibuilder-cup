@@ -91,8 +91,8 @@ const FIELD_CATEGORIES = [
 
 const getFieldTypeDef = (type: string) => FIELD_TYPES.find(f => f.type === type);
 
-const glass = { background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.5)', borderRadius: 14 };
-const glassPanel = { background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(12px)', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12 };
+const glass = { background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)', border: '1px solid rgba(255, 255, 255, 0.6)', borderRadius: 12 };
+const glassPanel = { background: 'rgba(255, 255, 255, 0.35)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', boxShadow: '0 4px 24px 0 rgba(31, 38, 135, 0.05)', border: '1px solid rgba(255, 255, 255, 0.5)', borderRadius: 10 };
 
 // ─── GraphQL ────────────────────────────────────────────
 const GET_TEMPLATE = `query($id:ID!){formTemplate(id:$id){id name description category status settings scoringConfig styleConfig version tags}}`;
@@ -579,9 +579,9 @@ function FormBuilderContent() {
                                                     size="small"
                                                     style={{
                                                         ...glassPanel,
-                                                        borderColor: isSelected ? themeColor : 'rgba(0,0,0,0.06)',
+                                                        borderColor: isSelected ? themeColor : 'rgba(255, 255, 255, 0.5)',
                                                         borderWidth: isSelected ? 2 : 1,
-                                                        boxShadow: isSelected ? `0 0 0 3px ${themeColor}18` : 'none',
+                                                        boxShadow: isSelected ? `0 0 0 3px ${themeColor}18, 0 8px 32px 0 rgba(31,38,135,0.07)` : glassPanel.boxShadow,
                                                         transition: 'all 0.15s ease',
                                                     }}
                                                 >

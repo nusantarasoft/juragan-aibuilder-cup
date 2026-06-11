@@ -48,6 +48,7 @@ import {
     Divider,
 } from "antd";
 import AIStudioDrawer from "./AIStudioDrawer";
+import CommandPalette from "../common/CommandPalette";
 import ThemeDrawer from "./ThemeDrawer";
 import { useRouter, usePathname } from "next/navigation";
 import menuConfig from "@/config/menuConfig";
@@ -344,13 +345,23 @@ export default function CMSLayout({
 
     // Controlled openKeys to prevent submenu collapse on navigation
     const [openKeys, setOpenKeys] = useState<string[]>(() => {
-        // Compute initial open keys from current path
+        // Compute initial open keys from current path, including nested subgroups
         const path = currentPath || '/admin/dashboard';
         const keys: string[] = [];
         if (menuConfig?.route?.routes) {
             for (const route of menuConfig.route.routes) {
-                if (route.path && route.routes && route.routes.some((r: any) => r.path && path.startsWith(r.path))) {
-                    keys.push(route.path);
+                if (route.path && route.routes) {
+                    // Check direct leaf children
+                    if (route.routes.some((r: any) => r.path && r.isLeaf && path.startsWith(r.path))) {
+                        keys.push(route.path);
+                    }
+                    // Check nested subgroup children
+                    for (const sub of route.routes) {
+                        if (sub.path && 'routes' in sub && sub.routes && (sub.routes as any[]).some((r: any) => r.path && path.startsWith(r.path))) {
+                            keys.push(route.path);
+                            keys.push(sub.path);
+                        }
+                    }
                 }
             }
         }
@@ -581,6 +592,18 @@ export default function CMSLayout({
         mediaQuery.addEventListener("change", handleChange);
         return () => mediaQuery.removeEventListener("change", handleChange);
     }, []);
+
+    // Listen for custom events from CommandPalette quick actions
+    React.useEffect(() => {
+        const handleToggleTheme = () => handleDarkModeChange(!darkMode);
+        const handleOpenAI = () => setAIStudioVisible(true);
+        document.addEventListener('toggle-dark-mode', handleToggleTheme);
+        document.addEventListener('open-ai-studio', handleOpenAI);
+        return () => {
+            document.removeEventListener('toggle-dark-mode', handleToggleTheme);
+            document.removeEventListener('open-ai-studio', handleOpenAI);
+        };
+    }, [darkMode]);
 
     // Ref to track if initial ProLayout setup has completed
     // ProLayout calls onCollapse during mount, so we delay allowing saves
@@ -1173,6 +1196,39 @@ export default function CMSLayout({
                         subMenuItemRender={(item, dom) => {
                             const route = findMenuItemByPath(menuConfig.route.routes, item.path || '');
                             const icon = route?.icon;
+                            const isSubgroup = route?.isSubgroup;
+
+                            // Render subgroup headers with distinct visual style:
+                            // smaller font, uppercase, muted color, thin top border
+                            if (isSubgroup) {
+                                return (
+                                    <div
+                                        className="submenu-item-wrapper submenu-subgroup-header"
+                                        onClickCapture={(e) => {
+                                            const target = e.target as HTMLElement;
+                                            if (target.tagName === 'A' || target.closest('a')) {
+                                                e.preventDefault();
+                                            }
+                                        }}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 8,
+                                            borderTop: darkMode ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)',
+                                            marginTop: 4,
+                                            paddingTop: 8,
+                                        }}
+                                    >
+                                        <span className="submenu-text-el" style={{
+                                            fontSize: 10,
+                                            fontWeight: 700,
+                                            letterSpacing: '1px',
+                                            textTransform: 'uppercase',
+                                            color: darkMode ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)',
+                                        }}>{item.name}</span>
+                                    </div>
+                                );
+                            }
 
                             // Render a consistent structure for both collapsed and expanded modes.
                             // The useEffect handles hiding text in collapsed mode via inline styles.
@@ -1341,6 +1397,9 @@ export default function CMSLayout({
 
             {/* AI Studio Drawer */}
             <AIStudioDrawer visible={aiStudioVisible} onClose={() => setAIStudioVisible(false)} />
+
+            {/* Global Command Palette (Ctrl+K / Cmd+K) */}
+            <CommandPalette isDark={darkMode} themeColor={themeColor} />
 
             {/* Theme Customizer Drawer */}
             <ThemeDrawer visible={themeDrawerVisible} onClose={() => setThemeDrawerVisible(false)} darkMode={darkMode} />

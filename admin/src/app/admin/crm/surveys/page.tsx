@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { Card, Button, Space, Tag, Typography, Row, Col, Statistic, Table, Progress, message, Select, Badge, Empty, Spin, Tabs, Tooltip, Rate } from "antd";
+import { Card, Button, Space, Tag, Typography, Row, Col, Statistic, Table, Progress, message, Select, Badge, Empty, Spin, Tabs, Tooltip, Rate, theme } from "antd";
 import {
     SmileOutlined, FrownOutlined, MehOutlined, FormOutlined, CheckCircleOutlined,
     ClockCircleOutlined, PlusOutlined, ReloadOutlined, FileTextOutlined,
@@ -21,7 +21,6 @@ import relativeTime from "dayjs/plugin/relativeTime";
 dayjs.extend(relativeTime);
 
 const { Text } = Typography;
-const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899'];
 
 // Satisfaction categories
@@ -43,6 +42,8 @@ const SURVEY_TEMPLATES = [
 
 export default function CrmSurveysPage() {
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const router = useRouter();
     const [messageApi, ctx] = message.useMessage();
     const [loading, setLoading] = useState(true);
@@ -120,7 +121,7 @@ export default function CrmSurveysPage() {
                         ].map((s, i) => (
                             <Col xs={12} sm={8} md={4} key={i}>
                                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                                    <Card style={{ ...glass, borderTop: `3px solid ${s.color}` }} bodyStyle={{ padding: '12px 14px' }}>
+                                    <Card style={{ borderTop: `3px solid ${s.color}` }} bodyStyle={{ padding: '12px 14px' }}>
                                         <Statistic title={<Text style={{ fontSize: 10 }}>{s.label}</Text>} value={s.value}
                                             prefix={s.icon} valueStyle={{ color: s.color, fontSize: 18 }} />
                                     </Card>
@@ -130,7 +131,7 @@ export default function CrmSurveysPage() {
                     </Row>
 
                     {/* NPS Gauge */}
-                    <Card style={{ ...glass, marginBottom: 16, textAlign: 'center' }} bodyStyle={{ padding: '20px 24px' }}>
+                    <Card style={{ marginBottom: 16, textAlign: 'center' }} bodyStyle={{ padding: '20px 24px' }}>
                         <Row align="middle" gutter={24}>
                             <Col xs={24} md={8}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -172,7 +173,7 @@ export default function CrmSurveysPage() {
                                     {SURVEY_TEMPLATES.map((tpl, i) => (
                                         <Col xs={24} sm={12} md={8} key={tpl.id}>
                                             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }}>
-                                                <Card hoverable style={{ ...glass, borderTop: `3px solid ${tpl.color}`, cursor: 'pointer' }}
+                                                <Card hoverable style={{ borderTop: `3px solid ${tpl.color}`, cursor: 'pointer' }}
                                                     onClick={() => router.push('/admin/forms/builder')}>
                                                     <Space direction="vertical" size={6} style={{ width: '100%' }}>
                                                         <Text strong style={{ fontSize: 14 }}>{tpl.name}</Text>
@@ -194,12 +195,12 @@ export default function CrmSurveysPage() {
                             children: (
                                 <Row gutter={[16, 16]}>
                                     <Col xs={24} md={14}>
-                                        <Card size="small" title={<Space><BarChartOutlined style={{ color: '#3b82f6' }} /> Satisfaction by Survey</Space>} style={glass}>
+                                        <Card size="small" title={<Space><BarChartOutlined style={{ color: '#3b82f6' }} /> Satisfaction by Survey</Space>} >
                                             <div style={{ height: 280 }}>
                                                 {barData.length > 0 ? (
                                                     <ResponsiveContainer>
                                                         <BarChart data={barData}>
-                                                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'} />
                                                             <XAxis dataKey="name" tick={{ fontSize: 9 }} />
                                                             <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
                                                             <RTooltip />
@@ -213,7 +214,7 @@ export default function CrmSurveysPage() {
                                         </Card>
                                     </Col>
                                     <Col xs={24} md={10}>
-                                        <Card size="small" title={<Space><PieChartOutlined style={{ color: '#ec4899' }} /> Satisfaction Split</Space>} style={{ ...glass, height: '100%' }}>
+                                        <Card size="small" title={<Space><PieChartOutlined style={{ color: '#ec4899' }} /> Satisfaction Split</Space>} style={{ height: '100%' }}>
                                             <div style={{ height: 280 }}>
                                                 {satData.length > 0 ? (
                                                     <ResponsiveContainer>

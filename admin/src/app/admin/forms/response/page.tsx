@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback, Suspense } from "react";
-import { Card, Button, Space, Tag, message, Typography, Row, Col, Statistic, Progress, Descriptions, Spin, Divider, Empty, Result, Input, Badge, Timeline, Rate } from "antd";
+import { Card, Button, Space, Tag, message, Typography, Row, Col, Statistic, Progress, Descriptions, Spin, Divider, Empty, Result, Input, Badge, Timeline, Rate, theme } from "antd";
 import {
     ArrowLeftOutlined, CheckCircleOutlined, CloseCircleOutlined, TrophyOutlined,
     ClockCircleOutlined, PrinterOutlined, StarOutlined, UserOutlined,
@@ -78,6 +78,8 @@ function ResponseDetailContent() {
     const router = useRouter();
     const submissionId = searchParams.get('id');
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const [messageApi, contextHolder] = message.useMessage();
 
     const [detail, setDetail] = useState<any>(null);
@@ -229,7 +231,7 @@ function ResponseDetailContent() {
                                 {detail.fieldValues.map((fv: any, idx: number) => (
                                     <motion.div key={fv.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.02 }}>
                                         <div style={{
-                                            padding: '12px 16px', borderBottom: '1px solid #f0f0f0',
+                                            padding: '12px 16px', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}`,
                                             display: 'flex', alignItems: 'flex-start', gap: 16,
                                             background: idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.01)',
                                         }}>

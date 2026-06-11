@@ -1,19 +1,20 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import RbacGuard from "@/components/common/RbacGuard";
 import {
     Table, Button, Space, Tag, Card, Typography, message,
     Row, Col, Modal, Form, Input, InputNumber, Select, Progress, Tooltip
-} from "antd";
+, theme } from "antd";
 import {
     AuditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
     FileTextOutlined, CheckCircleOutlined, ClockCircleOutlined,
     ExclamationCircleOutlined, DeleteOutlined, EditOutlined,
     EyeOutlined, WarningOutlined, ArrowRightOutlined,
-    CalendarOutlined, TeamOutlined,
+    CalendarOutlined, TeamOutlined, EnvironmentOutlined,
     FileExcelOutlined, FilePdfOutlined,
 } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
@@ -61,6 +62,9 @@ const SESSION_FIELDS: FieldDef[] = [
 export default function StockOpnamePage() {
     const [stats, setStats] = useState<OpnameStatsType | null>(null);
     const { themeColor } = usePreferencesStore();
+    const router = useRouter();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const { startDate, endDate } = useDateRangeStore();
     const [sessions, setSessions] = useState<OpnameSession[]>([]);
     const [warehouses, setWarehouses] = useState<InvWarehouse[]>([]);
@@ -331,6 +335,14 @@ export default function StockOpnamePage() {
                     animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential
                 />
             }
+            extra={[
+                <Tooltip key="3d" title="View Warehouse in 3D Map"><Button icon={<EnvironmentOutlined />} onClick={() => {
+                    const activeSession = expandedSessionId ? sessions.find(s => s.id === expandedSessionId) : sessions[0];
+                    const whId = activeSession?.warehouseId;
+                    router.push(`/admin/inventory/warehouse-map${whId ? `?warehouse=${whId}` : ''}`);
+                }}>3D Map</Button></Tooltip>,
+                <Tooltip key="locator" title="Find items in bins"><Button icon={<SearchOutlined />} onClick={() => router.push('/admin/inventory/item-locator')}>Item Locator</Button></Tooltip>,
+            ]}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
                 {/* KPI Cards */}
@@ -339,7 +351,7 @@ export default function StockOpnamePage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, type: 'spring', stiffness: 260, damping: 20 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    ...glassDark, borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden',
+                                    ...(isDark ? glassDark : glass), borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden',
                                 }}>
                                     <div style={{ position: 'absolute', top: -10, right: -10, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle, ${s.color}18 0%, transparent 70%)`, pointerEvents: 'none' }} />
                                     <div className="flex items-center gap-3" style={{ position: 'relative' }}>
@@ -348,7 +360,7 @@ export default function StockOpnamePage() {
                                             {s.icon}
                                         </div>
                                         <div>
-                                            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5, textTransform: 'uppercase' as const }} className="block">{s.title}</Text>
+                                            <Text style={{ fontSize: 10, color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', letterSpacing: 0.5, textTransform: 'uppercase' as const }} className="block">{s.title}</Text>
                                             <Text strong style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{typeof s.value === 'number' ? s.value.toLocaleString() : s.value}</Text>
                                         </div>
                                     </div>
@@ -360,7 +372,7 @@ export default function StockOpnamePage() {
 
                 {/* Main Table Card */}
                 <Card size="small" style={{
-                    flex: 1, ...glassDark, borderLeft: `3px solid var(--theme-color, #7c3aed)`,
+                    flex: 1, ...(isDark ? glassDark : glass), borderLeft: `3px solid var(--theme-color, #7c3aed)`,
                 }}>
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
@@ -368,7 +380,7 @@ export default function StockOpnamePage() {
                                 <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), #6366f1)' }}>
                                     <AuditOutlined style={{ color: '#fff', fontSize: 12 }} />
                                 </span>
-                                <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>Counting Sessions ({sessions.length})</span>
+                                <span style={{ fontWeight: 600, color: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.85)' }}>Counting Sessions ({sessions.length})</span>
                             </Space>
                             <Input prefix={<SearchOutlined className="text-gray-400" />}
                                 placeholder="Search sessions..." value={searchTerm}

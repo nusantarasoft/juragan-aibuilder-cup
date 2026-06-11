@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { Table, Button, Card, Space, Tag, Input, Select, message, Tooltip, Typography, Row, Col, Statistic, Drawer, Progress, Descriptions, Timeline, Badge, Popconfirm } from "antd";
+import { Table, Button, Card, Space, Tag, Input, Select, message, Tooltip, Typography, Row, Col, Statistic, Drawer, Progress, Descriptions, Timeline, Badge, Popconfirm, theme } from "antd";
 import { SearchOutlined, ReloadOutlined, EyeOutlined, CheckCircleOutlined, CloseCircleOutlined, DeleteOutlined, ClockCircleOutlined, FileTextOutlined, TrophyOutlined, InboxOutlined, ExpandOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import type { ColumnsType } from "antd/es/table";
@@ -14,7 +14,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 dayjs.extend(relativeTime);
 
 const { Text } = Typography;
-const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
+const glass = { background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)', border: '1px solid rgba(255, 255, 255, 0.6)', borderRadius: 12 };
 
 interface Submission {
     id: string; tenantId: string; templateId: string; submittedBy?: string;
@@ -42,6 +42,8 @@ function gradeColor(grade?: string) {
 }
 
 export default function FormSubmissionsPage() {
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const [data, setData] = useState<Submission[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -203,9 +205,9 @@ export default function FormSubmissionsPage() {
                                 <Descriptions.Item label="Reviewed">{detail.reviewedAt ? dayjs(detail.reviewedAt).format('YYYY-MM-DD HH:mm') : '—'}</Descriptions.Item>
                             </Descriptions>
                             {scores.length > 0 && (
-                                <Card size="small" title="Dimension Scores" style={{ background: '#fafafa' }}>
+                                <Card size="small" title="Dimension Scores" style={{ background: isDark ? 'rgba(255,255,255,0.03)' : '#fafafa' }}>
                                     {scores.map((s: any) => (
-                                        <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #f0f0f0' }}>
+                                        <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}` }}>
                                             <Text style={{ width: 120 }}>{s.dimension}</Text>
                                             <Progress percent={Math.round((s.score / s.maxScore) * 100)} size="small" style={{ flex: 1 }} />
                                             <Text type="secondary">{s.score.toFixed(1)}/{s.maxScore}</Text>
@@ -215,9 +217,9 @@ export default function FormSubmissionsPage() {
                                 </Card>
                             )}
                             {(detail.fieldValues?.length ?? 0) > 0 && (
-                                <Card size="small" title="Answers" style={{ background: '#fafafa' }}>
+                                <Card size="small" title="Answers" style={{ background: isDark ? 'rgba(255,255,255,0.03)' : '#fafafa' }}>
                                     {detail.fieldValues!.map((fv: any) => (
-                                        <div key={fv.id} style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
+                                        <div key={fv.id} style={{ padding: '8px 0', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}` }}>
                                             <Text strong>{fv.fieldLabel}</Text> <Tag style={{ fontSize: 10 }}>{fv.fieldType}</Tag>
                                             <div style={{ marginTop: 4 }}>
                                                 <Text>{fv.value || (fv.numericValue != null ? fv.numericValue : JSON.stringify(fv.jsonValue))}</Text>

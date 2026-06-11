@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -8,6 +8,8 @@ import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col,
 import { PlusOutlined, DeleteOutlined, EditOutlined, ClusterOutlined, NodeIndexOutlined, DesktopOutlined, CloudServerOutlined, DatabaseOutlined, ApiOutlined, GlobalOutlined, CheckCircleOutlined, ExclamationCircleOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { supaRest, supaInsert, supaUpdate, supaDelete } from "@/lib/supaRest";
+import { gql } from "@/lib/graphql";
+import TopologyViewer from "./components/TopologyViewer";
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import { AuroraText } from "@/components/magicui/aurora-text";
@@ -42,6 +44,8 @@ export default function CmdbPage() {
     const [form] = Form.useForm();
     const [filterClass, setFilterClass] = useState<string | undefined>(undefined);
     const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
+    const [showTopology, setShowTopology] = useState(false);
+    const [relationships, setRelationships] = useState<any[]>([]);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -56,6 +60,24 @@ export default function CmdbPage() {
     }, [filterClass, filterStatus, messageApi]);
 
     useEffect(() => { loadData(); }, [loadData]);
+
+    // Load CI relationships for topology viewer
+    useEffect(() => {
+        if (!showTopology) return;
+        (async () => {
+            try {
+                const rels: any[] = [];
+                for (const ci of data.slice(0, 20)) {
+                    try {
+                        const res = await gql(`query($ciId: ID!) { itsmCIRelationships(ciId: $ciId) }`, { ciId: ci.id });
+                        const parsed = typeof res.itsmCIRelationships === 'string' ? JSON.parse(res.itsmCIRelationships) : (res.itsmCIRelationships || []);
+                        if (Array.isArray(parsed)) rels.push(...parsed);
+                    } catch { /* skip */ }
+                }
+                setRelationships(rels);
+            } catch { /* ignore */ }
+        })();
+    }, [showTopology, data]);
 
     const handleSave = async (values: any) => {
         try {
@@ -120,6 +142,15 @@ export default function CmdbPage() {
                     </Col>
                 ))}
             </Row>
+
+            {/* Topology Viewer */}
+            {showTopology && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} style={{ marginBottom: 16 }}>
+                    <Card size="small" title={<Space><NodeIndexOutlined style={{ color: themeColor }} /> CI Topology Map</Space>} style={{ ...glass, borderTop: `3px solid ${themeColor}` }}>
+                        <TopologyViewer configItems={data} relationships={relationships} onSelectCI={(id) => { const ci = data.find((d: any) => d.id === id); if (ci) { setDetailItem(ci); setDetailOpen(true); } }} />
+                    </Card>
+                </motion.div>
+            )}
             <ProTable
                 headerTitle={<Space><ClusterOutlined /> Configuration Items <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
@@ -128,6 +159,7 @@ export default function CmdbPage() {
                         options={[{ value: 'hardware', label: 'ðŸ’» Hardware' }, { value: 'software', label: 'âš™ï¸ Software' }, { value: 'network', label: 'ðŸŒ Network' }, { value: 'service', label: 'ðŸ”— Service' }, { value: 'cloud', label: 'â˜ï¸ Cloud' }]} />,
                     <Select key="fs" placeholder="Status" allowClear style={{ width: 150 }} value={filterStatus} onChange={setFilterStatus}
                         options={[{ value: 'active', label: 'Active' }, { value: 'under_maintenance', label: 'Maintenance' }, { value: 'retired', label: 'Retired' }, { value: 'planned', label: 'Planned' }]} />,
+                    <Button key="topo" type={showTopology ? 'primary' : 'default'} icon={<NodeIndexOutlined />} onClick={() => setShowTopology(!showTopology)}>{showTopology ? 'Hide Topology' : 'Show Topology'}</Button>,
                     <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>New CI</Button>,
                     <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'itsm_cmdb', title: 'CMDB Configuration Items', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Ci class', key: 'ci_class' }, { header: 'Ci type', key: 'ci_type' }, { header: 'Status', key: 'status' }, { header: 'Environment', key: 'environment' }, { header: 'Owner', key: 'owner' }], data: data })} /></Tooltip> <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'itsm_cmdb', title: 'CMDB Configuration Items', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Ci class', key: 'ci_class' }, { header: 'Ci type', key: 'ci_type' }, { header: 'Status', key: 'status' }, { header: 'Environment', key: 'environment' }, { header: 'Owner', key: 'owner' }], data: data })} /></Tooltip></RbacGuard>,
                 ]}

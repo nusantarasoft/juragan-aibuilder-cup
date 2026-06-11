@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, Button, Card, Col, Descriptions, Divider, Drawer, Form, Input, InputNumber, message, Modal, Popconfirm, Progress, Row, Select, Space, Table, Tabs, Tag, Tooltip, Typography } from "antd";
+import { Alert, Button, Card, Col, Descriptions, Divider, Drawer, Form, Input, InputNumber, message, Modal, Popconfirm, Progress, Row, Select, Space, Table, Tabs, Tag, Tooltip, Typography, theme } from "antd";
 import {
     ShoppingOutlined, SearchOutlined, ReloadOutlined, InboxOutlined,
     TagOutlined, DollarOutlined, FilterOutlined, PlusOutlined,
@@ -18,7 +18,6 @@ import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import { AuroraText } from "@/components/magicui/aurora-text";
 
 const { Text, Title, Paragraph } = Typography;
-const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 const SELLABLE_TYPES = [
     { value: 'physical', label: 'Physical Product', icon: 'ðŸ“¦', desc: 'Tangible item tracked in stock (e-commerce, retail)', color: '#3b82f6' },
@@ -45,12 +44,15 @@ export default function ProductsPage() {
     const router = useRouter();
     const [items, setItems] = useState<any[]>([]);
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [fulfillmentFilter, setFulfillmentFilter] = useState<string | undefined>();
     const [statusFilter, setStatusFilter] = useState<string | undefined>();
     const [stats, setStats] = useState<any>(null);
+    const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
     // Add Product state
     const [addModalOpen, setAddModalOpen] = useState(false);
@@ -226,9 +228,7 @@ export default function ProductsPage() {
                     {kpiCards.map((s, i) => (
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                                <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    ...glass,
-                                }}>
+                                <Card size="small" className="hover:shadow-md transition-shadow">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                                             style={{ background: `${s.color}15`, color: s.color, fontSize: 18 }}>{s.icon}</div>
@@ -243,9 +243,14 @@ export default function ProductsPage() {
                     ))}
                 </Row>
 
-                <Card size="small" style={{ flex: 1, ...glass, borderRadius: 12, border: '1px solid rgba(255,255,255,0.5)' }}>
+                <Card size="small" style={{ flex: 1, borderRadius: 12, minHeight: 400 }}>
                     <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                         <div className="flex items-center gap-3 flex-wrap">
+                            <Select value={viewMode} onChange={setViewMode as any} size="small" style={{ width: 100 }}
+                                options={[
+                                    { label: <span>ðŸŽ² Grid</span>, value: 'grid' },
+                                    { label: <span>ðŸ“‹ Table</span>, value: 'table' }
+                                ]} />
                             <Input prefix={<SearchOutlined className="text-gray-400" />} placeholder="Search products..."
                                 value={search} onChange={e => setSearch(e.target.value)} allowClear style={{ maxWidth: 240, borderRadius: 8 }} size="small" />
                             <Select placeholder="Fulfillment" allowClear value={fulfillmentFilter} onChange={setFulfillmentFilter} style={{ width: 130 }} size="small"
@@ -261,14 +266,79 @@ export default function ProductsPage() {
                             <RbacGuard requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'ecommerce_products', title: 'eCommerce Products', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'SKU', key: 'sku' }, { header: 'Price', key: 'price' }, { header: 'Stock', key: 'stock' }, { header: 'Status', key: 'status' }], data: items })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'ecommerce_products', title: 'eCommerce Products', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'SKU', key: 'sku' }, { header: 'Price', key: 'price' }, { header: 'Stock', key: 'stock' }, { header: 'Status', key: 'status' }], data: items })} /></Tooltip></RbacGuard>
                         </div>
                     </div>
-                    <Table dataSource={filtered} columns={columns} rowKey="id" loading={loading} size="small"
-                        pagination={{ pageSize: 15, showSizeChanger: true, showTotal: (t) => `${t} products` }}
-                        scroll={{ x: 1000 }}
-                        onRow={(record) => ({ onClick: () => setDetailDrawer(record), style: { cursor: 'pointer' } })}
-                    />
+                    
+                    {viewMode === 'table' ? (
+                        <Table dataSource={filtered} columns={columns} rowKey="id" loading={loading} size="small"
+                            pagination={{ pageSize: 15, showSizeChanger: true, showTotal: (t) => `${t} products` }}
+                            scroll={{ x: 1000 }}
+                            onRow={(record) => ({ onClick: () => setDetailDrawer(record), style: { cursor: 'pointer' } })}
+                        />
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16, marginTop: 12 }}>
+                            <AnimatePresence>
+                                {filtered.map((item, idx) => {
+                                    const cost = item.costPrice || 0;
+                                    const sell = item.sellingPrice || 0;
+                                    const profit = sell - cost;
+                                    const isProfit = profit >= 0;
+                                    const pct = cost > 0 ? ((profit / cost) * 100) : 0;
+                                    const cfg = SELLABLE_TYPES.find(t => t.value === item.fulfillmentType) || SELLABLE_TYPES[0];
+                                    
+                                    return (
+                                        <motion.div key={item.id} initial={{ opacity: 0, y: 15, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ delay: idx * 0.05, duration: 0.3 }}
+                                            onClick={() => setDetailDrawer(item)}>
+                                            <Card hoverable styles={{ body: { padding: 0 } }} style={{
+                                                borderRadius: 16, overflow: 'hidden', height: '100%',
+                                                background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.5)',
+                                                border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}`,
+                                                boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
+                                            }}>
+                                                <div style={{ height: 110, background: `linear-gradient(135deg, ${cfg.color}15, ${cfg.color}05)`, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <div style={{ fontSize: 48, filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1))' }}>{cfg.icon}</div>
+                                                    <div style={{ position: 'absolute', top: 12, right: 12 }}>
+                                                        <Tag color={STATUS_COLORS[item.status || 'default']} style={{ margin: 0, borderRadius: 12, border: 'none' }}>{item.status}</Tag>
+                                                    </div>
+                                                    <div style={{ position: 'absolute', bottom: -16, left: 16, background: isDark ? '#1f2937' : '#fff', padding: '4px 10px', borderRadius: 12, border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                                                        <Text strong style={{ fontSize: 11, color: cfg.color }}>{cfg.label}</Text>
+                                                    </div>
+                                                </div>
+                                                <div style={{ padding: '24px 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                                    <div>
+                                                        <Tooltip title={item.name}><Text strong ellipsis style={{ fontSize: 15, display: 'block' }}>{item.name}</Text></Tooltip>
+                                                        <Text type="secondary" code style={{ fontSize: 10 }}>{item.sku || 'NO-SKU'}</Text>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 4 }}>
+                                                        <div>
+                                                            <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>Selling Price</Text>
+                                                            <Text strong style={{ fontSize: 16, color: themeColor }}>{fmtCurrency(sell)}</Text>
+                                                        </div>
+                                                        <div style={{ textAlign: 'right' }}>
+                                                            <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>Margin</Text>
+                                                            {cost > 0 ? (
+                                                                <Text strong style={{ color: isProfit ? '#10b981' : '#ef4444', fontSize: 13 }}>
+                                                                    {isProfit ? '+' : ''}{pct.toFixed(0)}%
+                                                                </Text>
+                                                            ) : <Text type="secondary" style={{ fontSize: 12 }}>â€”</Text>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </Card>
+                                        </motion.div>
+                                    );
+                                })}
+                            </AnimatePresence>
+                            {filtered.length === 0 && (
+                                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px 20px', color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)' }}>
+                                    <ShoppingOutlined style={{ fontSize: 48, marginBottom: 16, opacity: 0.2 }} />
+                                    <br />No products found.
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <Alert
                         message={<span>For advanced settings (variants, media, stock, BOM) â€” <Button size="small" type="link" style={{ padding: 0 }} onClick={() => router.push('/admin/inventory/items')}>Open Item Master â†’</Button></span>}
-                        type="info" showIcon style={{ marginTop: 12, borderRadius: 8 }} />
+                        type="info" showIcon style={{ marginTop: 24, borderRadius: 8 }} />
                 </Card>
             </div>
 
@@ -282,7 +352,7 @@ export default function ProductsPage() {
                 centered
                 styles={{ body: { padding: 0 } }}
             >
-                <div style={{ padding: '24px 28px 0', borderBottom: addStep === 1 ? 'none' : '1px solid #f0f0f0', paddingBottom: 20 }}>
+                <div style={{ padding: '24px 28px 0', borderBottom: addStep === 1 ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}`, paddingBottom: 20 }}>
                     <Title level={4} className="!m-0" style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                         âœ¨ Add New Product
                     </Title>
@@ -302,8 +372,8 @@ export default function ProductsPage() {
                                             <motion.div key={t.value} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
                                                 <Card hoverable onClick={() => setSelectedType(t.value)} style={{
                                                     borderRadius: 14, cursor: 'pointer', transition: 'all 0.25s',
-                                                    border: isActive ? `2px solid ${t.color}` : '2px solid #f0f0f0',
-                                                    background: isActive ? `${t.color}08` : '#fff',
+                                                    border: isActive ? `2px solid ${t.color}` : `2px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}`,
+                                                    background: isActive ? `${t.color}08` : isDark ? 'rgba(255,255,255,0.03)' : '#fff',
                                                     boxShadow: isActive ? `0 4px 20px ${t.color}20` : 'none',
                                                 }} styles={{ body: { padding: '16px' } }}>
                                                     <div className="flex items-start gap-3">
@@ -376,7 +446,7 @@ export default function ProductsPage() {
                                             const pct = cost > 0 ? ((profit / cost) * 100) : 0;
                                             const isProfit = profit >= 0;
                                             return (
-                                                <Card size="small" style={{ borderRadius: 10, background: isProfit ? '#f0fdf4' : '#fef2f2', border: `1px solid ${isProfit ? '#bbf7d0' : '#fecaca'}`, marginBottom: 16 }}>
+                                                <Card size="small" style={{ borderRadius: 10, background: isProfit ? (isDark ? 'rgba(34,197,94,0.08)' : '#f0fdf4') : (isDark ? 'rgba(239,68,68,0.08)' : '#fef2f2'), border: `1px solid ${isProfit ? (isDark ? 'rgba(34,197,94,0.2)' : '#bbf7d0') : (isDark ? 'rgba(239,68,68,0.2)' : '#fecaca')}`, marginBottom: 16 }}>
                                                     <div className="flex items-center justify-between">
                                                         <Text type="secondary" className="text-xs">Profit per unit</Text>
                                                         <Text strong style={{ color: isProfit ? '#16a34a' : '#dc2626' }}>
@@ -477,7 +547,7 @@ export default function ProductsPage() {
             >
                 {editingProduct && (
                     <>
-                        <div style={{ padding: '24px 28px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                        <div style={{ padding: '24px 28px 16px', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}` }}>
                             <div className="flex items-center gap-3">
                                 <div style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
                                     background: `${SELLABLE_TYPES.find(t => t.value === editingProduct.fulfillmentType)?.color || '#6366f1'}15` }}>
@@ -534,7 +604,7 @@ export default function ProductsPage() {
                                         const pct = cost > 0 ? ((profit / cost) * 100) : 0;
                                         const isProfit = profit >= 0;
                                         return (
-                                            <Card size="small" style={{ borderRadius: 10, background: isProfit ? '#f0fdf4' : '#fef2f2', border: `1px solid ${isProfit ? '#bbf7d0' : '#fecaca'}`, marginBottom: 16 }}>
+                                            <Card size="small" style={{ borderRadius: 10, background: isProfit ? (isDark ? 'rgba(34,197,94,0.08)' : '#f0fdf4') : (isDark ? 'rgba(239,68,68,0.08)' : '#fef2f2'), border: `1px solid ${isProfit ? (isDark ? 'rgba(34,197,94,0.2)' : '#bbf7d0') : (isDark ? 'rgba(239,68,68,0.2)' : '#fecaca')}`, marginBottom: 16 }}>
                                                 <Row align="middle">
                                                     <Col span={8} style={{ textAlign: 'center' }}>
                                                         <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Cost</Text>
@@ -638,7 +708,7 @@ export default function ProductsPage() {
                     return (
                         <div>
                             {/* Hero Header */}
-                            <div style={{ padding: '24px 24px 16px', background: `linear-gradient(135deg, ${ft?.color || '#6366f1'}08, ${ft?.color || '#6366f1'}03)`, borderBottom: '1px solid #f0f0f0' }}>
+                            <div style={{ padding: '24px 24px 16px', background: `linear-gradient(135deg, ${ft?.color || '#6366f1'}08, ${ft?.color || '#6366f1'}03)`, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}` }}>
                                 <div className="flex items-center gap-4 mb-3">
                                     <div style={{ width: 52, height: 52, borderRadius: 14, background: `${ft?.color || '#6366f1'}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
                                         {ft?.icon || 'ðŸ“¦'}
@@ -662,19 +732,19 @@ export default function ProductsPage() {
                                 {/* Price Summary */}
                                 <Row gutter={10} style={{ marginBottom: 16 }}>
                                     <Col span={8}>
-                                        <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: '#f9fafb' }}>
+                                        <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb' }}>
                                             <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Cost</Text>
                                             <Text strong style={{ fontSize: 14 }}>{fmtCurrency(detailDrawer.costPrice)}</Text>
                                         </Card>
                                     </Col>
                                     <Col span={8}>
-                                        <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: '#f0f0ff' }}>
+                                        <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: isDark ? 'rgba(99,102,241,0.08)' : '#f0f0ff' }}>
                                             <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Sell</Text>
                                             <Text strong style={{ fontSize: 14, color: themeColor }}>{fmtCurrency(detailDrawer.sellingPrice)}</Text>
                                         </Card>
                                     </Col>
                                     <Col span={8}>
-                                        <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: profit >= 0 ? '#f0fdf4' : '#fef2f2' }}>
+                                        <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: profit >= 0 ? (isDark ? 'rgba(34,197,94,0.08)' : '#f0fdf4') : (isDark ? 'rgba(239,68,68,0.08)' : '#fef2f2') }}>
                                             <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Margin</Text>
                                             <Text strong style={{ fontSize: 14, color: profit >= 0 ? '#16a34a' : '#dc2626' }}>
                                                 {(detailDrawer.costPrice || 0) > 0 ? `${marginPct.toFixed(0)}%` : 'â€”'}

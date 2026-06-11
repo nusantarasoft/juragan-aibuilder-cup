@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { ProCard, ProForm, ProFormTextArea, ProFormInstance } from "@ant-design/pro-components";
-import { Button, message, Space, Spin, Alert } from "antd";
+import { Button, message, Space, Spin, Alert, Progress, Typography } from "antd";
 import { RobotOutlined, SaveOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { useTheme } from 'next-themes';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 
 const GET_CHARTER = `
   query GetProjectCharter($projectId: String!) {
@@ -40,11 +42,24 @@ const AI_DRAFT_CHARTER = `
 `;
 
 export default function ProjectCharterTab({ projectId }: { projectId: string }) {
+    const { resolvedTheme } = useTheme();
+    const { themeColor } = usePreferencesStore();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const isDark = mounted && resolvedTheme === 'dark';
+
     const [messageApi, contextHolder] = message.useMessage();
     const [loading, setLoading] = useState(true);
     const [aiLoading, setAiLoading] = useState(false);
     const [charterData, setCharterData] = useState<any>(null);
     const formRef = React.useRef<ProFormInstance>(null);
+
+    const CHARTER_FIELDS = ['purpose', 'objectives', 'highLevelRequirements', 'highLevelRisks', 'summaryMilestoneSchedule', 'preapprovedFinancialResources', 'keyStakeholders', 'projectApprovalRequirements'];
+    const charterCompletion = React.useMemo(() => {
+        if (!charterData) return 0;
+        const filled = CHARTER_FIELDS.filter(f => charterData[f] && String(charterData[f]).trim().length > 0).length;
+        return Math.round((filled / CHARTER_FIELDS.length) * 100);
+    }, [charterData]);
 
     const loadCharter = React.useCallback(async () => {
         setLoading(true);
@@ -106,6 +121,17 @@ export default function ProjectCharterTab({ projectId }: { projectId: string }) 
                 />
             </div>
 
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, padding: '8px 12px', borderRadius: 8, background: isDark ? 'rgba(15,15,23,0.5)' : 'rgba(0,0,0,0.02)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` }}>
+                <Progress type="circle" percent={charterCompletion} size={48} strokeColor={charterCompletion === 100 ? '#10b981' : themeColor} />
+                <div>
+                    <Typography.Text strong style={{ fontSize: 13 }}>Charter Completion</Typography.Text>
+                    <br />
+                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                        {CHARTER_FIELDS.filter(f => charterData?.[f] && String(charterData[f]).trim().length > 0).length} of {CHARTER_FIELDS.length} sections filled
+                    </Typography.Text>
+                </div>
+            </div>
+
             <div style={{ marginBottom: 24 }}>
                 <Button
                     type="dashed"
@@ -123,7 +149,7 @@ export default function ProjectCharterTab({ projectId }: { projectId: string }) 
                     initialValues={charterData}
                     onFinish={handleSave}
                     submitter={{
-                        render: (props, doms) => {
+                        render: (props, _doms) => {
                             return (
                                 <Space>
                                     <Button type="primary" htmlType="submit" icon={<SaveOutlined />}>Save Charter</Button>

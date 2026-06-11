@@ -1,9 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { ProTable, ProColumns, ModalForm, ProFormText, ProFormTextArea, ProForm, ProCard, ProFormSelect, ProFormDigit, ProFormDatePicker } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Tabs, Space, Spin, Progress } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, RobotOutlined } from "@ant-design/icons";
+import React, { useState, useEffect, useMemo } from "react";
+import { useTheme } from 'next-themes';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { ProTable, ProColumns, ModalForm, ProFormText, ProFormTextArea, ProForm, ProFormSelect, ProFormDigit, ProFormDatePicker } from "@ant-design/pro-components";
+import { Button, message, Tag, Popconfirm, Tabs, Progress, Row, Col, Card, Statistic, Space } from "antd";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RTooltip, PieChart, Pie, Cell } from 'recharts';
+import { PlusOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 
 // ─── GraphQL ───────────────────────────────────────────────
@@ -22,10 +25,13 @@ const CREATE_INSPECTION = `mutation($tenantId: String!, $input: CreatePmQualityI
 const UPDATE_INSPECTION = `mutation($id: ID!, $input: UpdatePmQualityInspectionInput!) { updatePmQualityInspection(id: $id, input: $input) { id } }`;
 const DELETE_INSPECTION = `mutation($id: ID!) { deletePmQualityInspection(id: $id) }`;
 
-const AI_QUALITY_CHECKLIST = `query($projectId: String!, $deliverable: String!) { generateQualityChecklist(projectId: $projectId, deliverable: $deliverable) }`;
-
 export default function QualityTab({ projectId }: { projectId: string }) {
     const [messageApi, contextHolder] = message.useMessage();
+    const { resolvedTheme } = useTheme();
+    const { themeColor } = usePreferencesStore();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const isDark = mounted && resolvedTheme === 'dark';
 
     const [metrics, setMetrics] = useState<any[]>([]);
     const [metricsLoading, setMetricsLoading] = useState(true);
@@ -41,8 +47,6 @@ export default function QualityTab({ projectId }: { projectId: string }) {
     const [insLoading, setInsLoading] = useState(true);
     const [insModal, setInsModal] = useState(false);
     const [editingIns, setEditingIns] = useState<any>(null);
-
-    const [aiLoading, setAiLoading] = useState(false);
 
     const loadMetrics = React.useCallback(async () => {
         setMetricsLoading(true);
@@ -67,8 +71,23 @@ export default function QualityTab({ projectId }: { projectId: string }) {
 
     useEffect(() => { loadMetrics(); loadChecklists(); loadInspections(); }, [loadMetrics, loadChecklists, loadInspections]);
 
+    const metricChart = useMemo(() =>
+        metrics.filter((m: any) => m.targetValue || m.actualValue).map((m: any) => ({
+            name: (m.metricName || '').slice(0, 14),
+            Target: Number(m.targetValue || 0),
+            Actual: Number(m.actualValue || 0),
+        })),
+    [metrics]);
+
+    const inspectionResults = useMemo(() => {
+        const counts: Record<string, number> = {};
+        inspections.forEach((ins: any) => { const r = ins.result || 'pending'; counts[r] = (counts[r] || 0) + 1; });
+        const colors: Record<string, string> = { pass: '#10b981', fail: '#ef4444', conditional: '#f59e0b', pending: '#6b7280' };
+        return Object.entries(counts).map(([result, count]) => ({ name: result, value: count, color: colors[result] || '#6b7280' }));
+    }, [inspections]);
+
     // ─── CRUD Helpers ──────────────────────────────────
-    const crudHandler = (getQ: string, createQ: string, updateQ: string, loadFn: () => void, setModal: (v: boolean) => void, editObj: any, entityName: string) =>
+    const crudHandler = (createQ: string, updateQ: string, loadFn: () => void, setModal: (v: boolean) => void, editObj: any, entityName: string) =>
         async (values: any) => {
             try {
                 if (editObj) {
@@ -155,6 +174,69 @@ export default function QualityTab({ projectId }: { projectId: string }) {
     return (
         <div>
             {contextHolder}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                <Col xs={12} md={8}>
+                    <Card size="small" style={{ borderRadius: 10, borderTop: `3px solid ${themeColor}`, background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}>Quality Metrics</span>} value={metrics.length} valueStyle={{ fontSize: 20, fontWeight: 700 }} />
+                    </Card>
+                </Col>
+                <Col xs={12} md={8}>
+                    <Card size="small" style={{ borderRadius: 10, borderTop: '3px solid #3b82f6', background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}>Checklists</span>} value={checklists.length} valueStyle={{ fontSize: 20, fontWeight: 700, color: '#3b82f6' }} />
+                    </Card>
+                </Col>
+                <Col xs={12} md={8}>
+                    <Card size="small" style={{ borderRadius: 10, borderTop: '3px solid #10b981', background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}>Inspections</span>} value={inspections.length} valueStyle={{ fontSize: 20, fontWeight: 700, color: '#10b981' }} />
+                    </Card>
+                </Col>
+            </Row>
+
+            {(metricChart.length > 0 || inspectionResults.length > 0) && (
+                <Card size="small" title={<span style={{ fontWeight: 600 }}>Quality Overview</span>} style={{ marginBottom: 16, borderRadius: 10, background: isDark ? 'rgba(15,15,23,0.7)' : undefined, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                    <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                        {metricChart.length > 0 && (
+                            <div style={{ flex: 2, minWidth: 260, height: 200 }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: isDark ? '#e2e8f0' : '#333' }}>Target vs Actual</div>
+                                <ResponsiveContainer>
+                                    <BarChart data={metricChart} margin={{ left: -10, right: 10, bottom: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} />
+                                        <XAxis dataKey="name" tick={{ fontSize: 9, fill: isDark ? '#94a3b8' : '#64748b' }} interval={0} angle={-20} textAnchor="end" />
+                                        <YAxis tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }} />
+                                        <RTooltip contentStyle={{ background: isDark ? '#1e1e2e' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, borderRadius: 8, fontSize: 12 }} />
+                                        <Bar dataKey="Target" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="Actual" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        )}
+                        {inspectionResults.length > 0 && (
+                            <div style={{ flex: 1, minWidth: 160, textAlign: 'center' }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: isDark ? '#e2e8f0' : '#333' }}>Inspection Results</div>
+                                <div style={{ width: 130, height: 130, margin: '0 auto' }}>
+                                    <ResponsiveContainer>
+                                        <PieChart>
+                                            <Pie data={inspectionResults} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={28} outerRadius={52} paddingAngle={3} strokeWidth={0}>
+                                                {inspectionResults.map((r, i) => <Cell key={i} fill={r.color} />)}
+                                            </Pie>
+                                            <RTooltip />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center', marginTop: 4 }}>
+                                    {inspectionResults.map(r => (
+                                        <div key={r.name} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9 }}>
+                                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: r.color }} />
+                                            <span style={{ color: isDark ? '#94a3b8' : '#64748b', textTransform: 'capitalize' }}>{r.name} ({r.value})</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </Card>
+            )}
+
             <Tabs defaultActiveKey="metrics" items={[
                 {
                     label: 'Quality Metrics', key: 'metrics',
@@ -190,7 +272,7 @@ export default function QualityTab({ projectId }: { projectId: string }) {
 
             {/* Metric Modal */}
             <ModalForm title={editingMetric ? "Edit Metric" : "Add Metric"} open={metricModal} onOpenChange={setMetricModal}
-                onFinish={crudHandler(GET_METRICS, CREATE_METRIC, UPDATE_METRIC, loadMetrics, setMetricModal, editingMetric, "Metric")}
+                onFinish={crudHandler(CREATE_METRIC, UPDATE_METRIC, loadMetrics, setMetricModal, editingMetric, "Metric")}
                 initialValues={editingMetric || { status: 'tracking' }} modalProps={{ destroyOnClose: true }}>
                 <ProFormText name="metricName" label="Metric Name" rules={[{ required: true }]} />
                 <ProFormTextArea name="description" label="Description" />
@@ -219,7 +301,7 @@ export default function QualityTab({ projectId }: { projectId: string }) {
 
             {/* Checklist Modal */}
             <ModalForm title={editingCl ? "Edit Checklist" : "Add Checklist"} open={clModal} onOpenChange={setClModal}
-                onFinish={crudHandler(GET_CHECKLISTS, CREATE_CHECKLIST, UPDATE_CHECKLIST, loadChecklists, setClModal, editingCl, "Checklist")}
+                onFinish={crudHandler(CREATE_CHECKLIST, UPDATE_CHECKLIST, loadChecklists, setClModal, editingCl, "Checklist")}
                 initialValues={editingCl || { status: 'pending' }} modalProps={{ destroyOnClose: true }}>
                 <ProFormText name="checklistName" label="Checklist Name" rules={[{ required: true }]} />
                 <ProFormText name="deliverable" label="Deliverable" />
@@ -236,7 +318,7 @@ export default function QualityTab({ projectId }: { projectId: string }) {
 
             {/* Inspection Modal */}
             <ModalForm title={editingIns ? "Edit Inspection" : "Add Inspection"} open={insModal} onOpenChange={setInsModal}
-                onFinish={crudHandler(GET_INSPECTIONS, CREATE_INSPECTION, UPDATE_INSPECTION, loadInspections, setInsModal, editingIns, "Inspection")}
+                onFinish={crudHandler(CREATE_INSPECTION, UPDATE_INSPECTION, loadInspections, setInsModal, editingIns, "Inspection")}
                 initialValues={editingIns || { result: 'pending' }} modalProps={{ destroyOnClose: true }}>
                 <ProForm.Group>
                     <ProFormSelect name="inspectionType" label="Type" width="sm" options={[

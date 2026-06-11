@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
-import { Table, Card, Typography, Tabs, DatePicker, Button, Space, Spin, Tag, Row, Col, Statistic, Divider, Empty, Alert } from 'antd';
+import { Table, Card, Typography, Tabs, DatePicker, Button, Space, Spin, Tag, Row, Col, Statistic, Divider, Empty, Alert, theme } from 'antd';
 import { DownloadOutlined, FileExcelOutlined, FilePdfOutlined, CheckCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import { accountingService, TrialBalanceRow } from '@/lib/accountingService';
 import { AuroraText } from '@/components/magicui/aurora-text';
@@ -35,6 +35,8 @@ function exportPDF(title: string, headers: string[], rows: string[][], summary?:
 
 export default function FinancialReportsPage() {
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const { startDate, endDate } = useDateRangeStore();
     const [asOfDate, setAsOfDate] = useState<string>(dayjs().format('YYYY-MM-DD'));
     const [trialBalance, setTrialBalance] = useState<TrialBalanceRow[]>([]);
@@ -91,7 +93,7 @@ export default function FinancialReportsPage() {
                         { title: 'Balance', dataIndex: 'balance', width: 160, align: 'right' as const, render: (v: number) => <Text strong style={{ fontFamily: 'monospace', color: Number(v) >= 0 ? undefined : '#ff4d4f' }}>{formatCurrency(v)}</Text> },
                     ]}
                     summary={() => (
-                        <Table.Summary.Row style={{ background: '#f5f5f5' }}>
+                        <Table.Summary.Row style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f5' }}>
                             <Table.Summary.Cell index={0} colSpan={3}><Text strong>TOTAL</Text></Table.Summary.Cell>
                             <Table.Summary.Cell index={1} align="right"><Text strong style={{ fontFamily: 'monospace' }}>{formatCurrency(tbTotalDebit)}</Text></Table.Summary.Cell>
                             <Table.Summary.Cell index={2} align="right"><Text strong style={{ fontFamily: 'monospace' }}>{formatCurrency(tbTotalCredit)}</Text></Table.Summary.Cell>
@@ -106,7 +108,7 @@ export default function FinancialReportsPage() {
     // ─── Income Statement Tab ────────────────────────────
     const ReportSection = ({ title, accounts, type }: { title: string; accounts: TrialBalanceRow[]; type: string }) => (
         <>
-            <tr style={{ background: '#f0f0f0' }}><td colSpan={2} style={{ padding: '8px 12px', fontWeight: 'bold', fontSize: 13 }}>{title}</td></tr>
+            <tr style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f0f0f0' }}><td colSpan={2} style={{ padding: '8px 12px', fontWeight: 'bold', fontSize: 13 }}>{title}</td></tr>
             {accounts.map(a => (
                 <tr key={a.accountId}>
                     <td style={{ padding: '4px 12px 4px 32px', fontSize: 13 }}>{a.accountCode} — {a.accountName}</td>
@@ -133,18 +135,18 @@ export default function FinancialReportsPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <tbody>
                         <ReportSection title="REVENUE" accounts={revenueAccounts} type="revenue" />
-                        <tr style={{ borderTop: '2px solid #52c41a', background: '#f6ffed' }}>
+                        <tr style={{ borderTop: '2px solid #52c41a', background: isDark ? 'rgba(82,196,26,0.08)' : '#f6ffed' }}>
                             <td style={{ padding: '8px 12px', fontWeight: 'bold' }}>Total Revenue</td>
                             <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold', color: '#52c41a' }}>{formatCurrency(totalRevenue)}</td>
                         </tr>
                         <tr><td colSpan={2} style={{ height: 16 }} /></tr>
                         <ReportSection title="EXPENSES" accounts={expenseAccounts} type="expense" />
-                        <tr style={{ borderTop: '2px solid #ff4d4f', background: '#fff2f0' }}>
+                        <tr style={{ borderTop: '2px solid #ff4d4f', background: isDark ? 'rgba(255,77,79,0.08)' : '#fff2f0' }}>
                             <td style={{ padding: '8px 12px', fontWeight: 'bold' }}>Total Expenses</td>
                             <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold', color: '#ff4d4f' }}>{formatCurrency(totalExpenses)}</td>
                         </tr>
                         <tr><td colSpan={2} style={{ height: 16 }} /></tr>
-                        <tr style={{ borderTop: '3px double #333', background: netIncome >= 0 ? '#f6ffed' : '#fff2f0' }}>
+                        <tr style={{ borderTop: '3px double #333', background: netIncome >= 0 ? (isDark ? 'rgba(82,196,26,0.08)' : '#f6ffed') : (isDark ? 'rgba(255,77,79,0.08)' : '#fff2f0') }}>
                             <td style={{ padding: '12px', fontWeight: 'bold', fontSize: 15 }}>NET INCOME</td>
                             <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold', fontSize: 16, color: netIncome >= 0 ? '#52c41a' : '#ff4d4f' }}>{formatCurrency(netIncome)}</td>
                         </tr>
@@ -185,24 +187,24 @@ export default function FinancialReportsPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <tbody>
                         <ReportSection title="ASSETS" accounts={assetAccounts} type="asset" />
-                        <tr style={{ borderTop: '2px solid #1890ff', background: '#e6f7ff' }}>
+                        <tr style={{ borderTop: '2px solid #1890ff', background: isDark ? 'rgba(24,144,255,0.08)' : '#e6f7ff' }}>
                             <td style={{ padding: '8px 12px', fontWeight: 'bold' }}>Total Assets</td>
                             <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold', color: '#1890ff' }}>{formatCurrency(totalAssets)}</td>
                         </tr>
                         <tr><td colSpan={2} style={{ height: 16 }} /></tr>
                         <ReportSection title="LIABILITIES" accounts={liabilityAccounts} type="liability" />
-                        <tr style={{ borderTop: '2px solid #fa8c16', background: '#fff7e6' }}>
+                        <tr style={{ borderTop: '2px solid #fa8c16', background: isDark ? 'rgba(250,140,22,0.08)' : '#fff7e6' }}>
                             <td style={{ padding: '8px 12px', fontWeight: 'bold' }}>Total Liabilities</td>
                             <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold', color: '#fa8c16' }}>{formatCurrency(totalLiabilities)}</td>
                         </tr>
                         <tr><td colSpan={2} style={{ height: 16 }} /></tr>
                         <ReportSection title="EQUITY" accounts={equityAccounts} type="equity" />
-                        <tr style={{ borderTop: '2px solid #722ed1', background: '#f9f0ff' }}>
+                        <tr style={{ borderTop: '2px solid #722ed1', background: isDark ? 'rgba(114,46,209,0.08)' : '#f9f0ff' }}>
                             <td style={{ padding: '8px 12px', fontWeight: 'bold' }}>Total Equity</td>
                             <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold', color: '#722ed1' }}>{formatCurrency(totalEquity)}</td>
                         </tr>
                         <tr><td colSpan={2} style={{ height: 16 }} /></tr>
-                        <tr style={{ borderTop: '3px double #333', background: '#f5f5f5' }}>
+                        <tr style={{ borderTop: '3px double #333', background: isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f5' }}>
                             <td style={{ padding: '12px', fontWeight: 'bold', fontSize: 14 }}>Liabilities + Equity</td>
                             <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold', fontSize: 15 }}>{formatCurrency(totalLiabilities + totalEquity)}</td>
                         </tr>

@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { useTheme } from 'next-themes';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { ProTable, ProColumns, ModalForm, ProFormText, ProFormTextArea, ProForm, ProCard, ProFormSelect } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Tabs, Descriptions, Spin, Space, Empty, Tree } from "antd";
+import { Button, message, Tag, Popconfirm, Tabs, Descriptions, Spin, Space, Empty, Tree, Row, Col, Card, Statistic } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined, RobotOutlined, SaveOutlined, ApartmentOutlined, ScheduleOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 // ─── GraphQL Queries ───────────────────────────────────────
 const GET_SCOPE = `query($projectId: String!) { pmScopeStatement(projectId: $projectId) { id projectObjectives productScopeDescription deliverables acceptanceCriteria exclusions constraints assumptions } }`;
@@ -30,6 +33,11 @@ const CREATE_ACTIVITY = `mutation($tenantId: String!, $input: JSON!) { createPmA
 
 export default function ScopeTab({ projectId }: { projectId: string }) {
     const [messageApi, contextHolder] = message.useMessage();
+    const { resolvedTheme } = useTheme();
+    const { themeColor } = usePreferencesStore();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const isDark = mounted && resolvedTheme === 'dark';
 
     // Scope Statement
     const [scope, setScope] = useState<any>(null);
@@ -57,7 +65,7 @@ export default function ScopeTab({ projectId }: { projectId: string }) {
         try {
             const data = await gql(GET_SCOPE, { projectId });
             setScope(data.pmScopeStatement);
-        } catch { messageApi.error("Failed to load scope statement."); }
+        } catch (err: any) { console.error("PM Error", err);  messageApi.error("Failed to load scope statement."); }
         finally { setScopeLoading(false); }
     }, [projectId, messageApi]);
 
@@ -66,7 +74,7 @@ export default function ScopeTab({ projectId }: { projectId: string }) {
         try {
             const data = await gql(GET_WBS, { projectId });
             setWbsItems(data.pmWbsItems || []);
-        } catch { messageApi.error("Failed to load WBS."); }
+        } catch (err: any) { console.error("PM Error", err);  messageApi.error("Failed to load WBS."); }
         finally { setWbsLoading(false); }
     }, [projectId, messageApi]);
 
@@ -75,11 +83,35 @@ export default function ScopeTab({ projectId }: { projectId: string }) {
         try {
             const data = await gql(GET_REQS, { projectId });
             setReqs(data.pmRequirements || []);
-        } catch { messageApi.error("Failed to load requirements."); }
+        } catch (err: any) { console.error("PM Error", err);  messageApi.error("Failed to load requirements."); }
         finally { setReqsLoading(false); }
     }, [projectId, messageApi]);
 
     useEffect(() => { loadScope(); loadWbs(); loadReqs(); }, [loadScope, loadWbs, loadReqs]);
+
+    const wbsStatusDist = useMemo(() => {
+        const counts: Record<string, number> = {};
+        wbsItems.forEach((w: any) => { const s = w.status || 'pending'; counts[s] = (counts[s] || 0) + 1; });
+        const colors: Record<string, string> = { pending: '#f59e0b', in_progress: '#3b82f6', completed: '#10b981', done: '#10b981', cancelled: '#ef4444' };
+        return Object.entries(counts).map(([status, count]) => ({ name: status.replace('_', ' '), value: count, color: colors[status] || '#6b7280' }));
+    }, [wbsItems]);
+
+    const reqsByCategory = useMemo(() => {
+        const counts: Record<string, number> = {};
+        reqs.forEach((r: any) => { const c = r.category || 'other'; counts[c] = (counts[c] || 0) + 1; });
+        const colors: Record<string, string> = { functional: '#3b82f6', non_functional: '#8b5cf6', business: '#f59e0b', technical: '#10b981' };
+        return Object.entries(counts).map(([cat, count]) => ({ name: cat.replace('_', ' '), value: count, color: colors[cat] || '#6b7280' }));
+    }, [reqs]);
+
+    const reqsByPriority = useMemo(() => {
+        const counts: Record<string, number> = {};
+        reqs.forEach((r: any) => { const p = r.priority || 'medium'; counts[p] = (counts[p] || 0) + 1; });
+        return [
+            { name: 'High', value: counts['high'] || 0, color: '#ef4444' },
+            { name: 'Medium', value: counts['medium'] || 0, color: '#f59e0b' },
+            { name: 'Low', value: counts['low'] || 0, color: '#10b981' },
+        ].filter(p => p.value > 0);
+    }, [reqs]);
 
     // ─── Scope Statement Handlers ──────────────────────
     const handleScopeSave = async (values: any) => {
@@ -307,6 +339,102 @@ export default function ScopeTab({ projectId }: { projectId: string }) {
     return (
         <div>
             {contextHolder}
+
+            {/* WBS Summary Stats */}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                <Col xs={12} md={8}>
+                    <Card size="small" style={{ borderRadius: 10, borderTop: `3px solid ${themeColor}`, background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}>WBS Items</span>} value={wbsItems.length} valueStyle={{ fontSize: 20, fontWeight: 700 }} />
+                    </Card>
+                </Col>
+                <Col xs={12} md={8}>
+                    <Card size="small" style={{ borderRadius: 10, borderTop: '3px solid #10b981', background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}>Completed</span>} value={wbsItems.filter((w: any) => w.status === 'completed' || w.status === 'done').length} valueStyle={{ fontSize: 20, fontWeight: 700, color: '#10b981' }} />
+                    </Card>
+                </Col>
+                <Col xs={12} md={8}>
+                    <Card size="small" style={{ borderRadius: 10, borderTop: '3px solid #3b82f6', background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}>Requirements</span>} value={reqs.length} valueStyle={{ fontSize: 20, fontWeight: 700, color: '#3b82f6' }} />
+                    </Card>
+                </Col>
+            </Row>
+
+            {(wbsItems.length > 0 || reqs.length > 0) && (
+                <Card size="small" title={<span style={{ fontWeight: 600 }}>Scope Overview</span>} style={{ marginBottom: 16, borderRadius: 10, background: isDark ? 'rgba(15,15,23,0.7)' : undefined, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                    <div style={{ display: 'flex', gap: 20, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        {wbsStatusDist.length > 0 && (
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{ width: 120, height: 120, margin: '0 auto' }}>
+                                    <ResponsiveContainer>
+                                        <PieChart>
+                                            <Pie data={wbsStatusDist} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={25} outerRadius={48} paddingAngle={3} strokeWidth={0}>
+                                                {wbsStatusDist.map((s, i) => <Cell key={i} fill={s.color} />)}
+                                            </Pie>
+                                            <RTooltip />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, color: isDark ? '#e2e8f0' : '#333' }}>WBS Status</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center', marginTop: 4 }}>
+                                    {wbsStatusDist.map(s => (
+                                        <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9 }}>
+                                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: s.color }} />
+                                            <span style={{ color: isDark ? '#94a3b8' : '#64748b', textTransform: 'capitalize' }}>{s.name} ({s.value})</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {reqsByCategory.length > 0 && (
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{ width: 120, height: 120, margin: '0 auto' }}>
+                                    <ResponsiveContainer>
+                                        <PieChart>
+                                            <Pie data={reqsByCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={25} outerRadius={48} paddingAngle={3} strokeWidth={0}>
+                                                {reqsByCategory.map((c, i) => <Cell key={i} fill={c.color} />)}
+                                            </Pie>
+                                            <RTooltip />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, color: isDark ? '#e2e8f0' : '#333' }}>Req. Categories</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center', marginTop: 4 }}>
+                                    {reqsByCategory.map(c => (
+                                        <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9 }}>
+                                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: c.color }} />
+                                            <span style={{ color: isDark ? '#94a3b8' : '#64748b', textTransform: 'capitalize' }}>{c.name} ({c.value})</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {reqsByPriority.length > 0 && (
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{ width: 120, height: 120, margin: '0 auto' }}>
+                                    <ResponsiveContainer>
+                                        <PieChart>
+                                            <Pie data={reqsByPriority} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={25} outerRadius={48} paddingAngle={3} strokeWidth={0}>
+                                                {reqsByPriority.map((p, i) => <Cell key={i} fill={p.color} />)}
+                                            </Pie>
+                                            <RTooltip />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, color: isDark ? '#e2e8f0' : '#333' }}>Req. Priority</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center', marginTop: 4 }}>
+                                    {reqsByPriority.map(p => (
+                                        <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9 }}>
+                                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: p.color }} />
+                                            <span style={{ color: isDark ? '#94a3b8' : '#64748b' }}>{p.name} ({p.value})</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </Card>
+            )}
+
             <Tabs defaultActiveKey="scope" items={[
                 {
                     label: 'Scope Statement', key: 'scope',
@@ -474,3 +602,4 @@ export default function ScopeTab({ projectId }: { projectId: string }) {
         </div>
     );
 }
+

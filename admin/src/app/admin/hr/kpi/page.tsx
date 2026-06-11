@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { Card, Button, Space, Tag, Typography, Row, Col, Statistic, Table, Progress, message, Select, Badge, Tooltip, Empty, Spin, Rate, Tabs, Avatar } from "antd";
+import { Card, Button, Space, Tag, Typography, Row, Col, Statistic, Table, Progress, message, Select, Badge, Tooltip, Empty, Spin, Rate, Tabs, Avatar, theme } from "antd";
 import {
     TrophyOutlined, StarOutlined, StarFilled, TeamOutlined, BarChartOutlined,
     FormOutlined, CheckCircleOutlined, ClockCircleOutlined, ArrowRightOutlined,
@@ -30,6 +30,8 @@ function gradeColor(g?: string) {
 
 export default function HrKpiPage() {
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const router = useRouter();
     const [messageApi, ctx] = message.useMessage();
     const [loading, setLoading] = useState(true);
@@ -193,7 +195,7 @@ export default function HrKpiPage() {
                                         <div style={{ height: 260 }}>
                                             <ResponsiveContainer>
                                                 <BarChart data={formBarData}>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'} />
                                                     <XAxis dataKey="name" tick={{ fontSize: 9 }} />
                                                     <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
                                                     <RTooltip />

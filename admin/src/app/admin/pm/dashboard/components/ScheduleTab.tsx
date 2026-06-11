@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useTheme } from 'next-themes';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { ProTable, ProColumns, ModalForm, ProFormText, ProFormTextArea, ProForm, ProFormSelect, ProFormDatePicker, ProFormDigit } from "@ant-design/pro-components";
 import { Button, message, Tag, Popconfirm, Tabs, Space, Progress, Row, Col, Card, Statistic, Empty, Timeline } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, RobotOutlined, FlagOutlined, CalendarOutlined, NodeIndexOutlined } from "@ant-design/icons";
+import { PlusOutlined, DeleteOutlined, EditOutlined, RobotOutlined, FlagOutlined, CalendarOutlined, NodeIndexOutlined, CheckCircleOutlined, WarningOutlined, ToolOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import dayjs from "dayjs";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip } from 'recharts';
 
 // ─── GraphQL ───────────────────────────────────────────────
 const GET_MILESTONES = `query($projectId: String!) { pmMilestones(projectId: $projectId) { id name description dueDate completedDate percentComplete isCritical status sortOrder } }`;
@@ -22,6 +25,11 @@ const AI_GENERATE_SCHEDULE = `query($projectId: String!) { generateScheduleFromW
 
 export default function ScheduleTab({ projectId }: { projectId: string }) {
     const [messageApi, contextHolder] = message.useMessage();
+    const { resolvedTheme } = useTheme();
+    const { themeColor } = usePreferencesStore();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const isDark = mounted && resolvedTheme === 'dark';
 
     // Milestones state
     const [milestones, setMilestones] = useState<any[]>([]);
@@ -43,7 +51,7 @@ export default function ScheduleTab({ projectId }: { projectId: string }) {
         try {
             const d = await gql(GET_MILESTONES, { projectId });
             setMilestones(d.pmMilestones || []);
-        } catch { messageApi.error("Failed to load milestones."); }
+        } catch (err: any) { console.error("PM Error", err);  messageApi.error("Failed to load milestones."); }
         finally { setMsLoading(false); }
     }, [projectId, messageApi]);
 
@@ -52,7 +60,7 @@ export default function ScheduleTab({ projectId }: { projectId: string }) {
         try {
             const d = await gql(GET_ACTIVITIES, { projectId });
             setActivities(d.pmActivities || []);
-        } catch { messageApi.error("Failed to load activities."); }
+        } catch (err: any) { console.error("PM Error", err);  messageApi.error("Failed to load activities."); }
         finally { setActLoading(false); }
     }, [projectId, messageApi]);
 
@@ -152,6 +160,20 @@ export default function ScheduleTab({ projectId }: { projectId: string }) {
     const totalActivities = activities.length;
     const completedAct = activities.filter(a => a.status === 'completed').length;
 
+    const msDist = useMemo(() => {
+        const counts: Record<string, number> = {};
+        milestones.forEach((m: any) => { const s = m.status || 'pending'; counts[s] = (counts[s] || 0) + 1; });
+        const colors: Record<string, string> = { pending: '#f59e0b', in_progress: '#3b82f6', completed: '#10b981', at_risk: '#ef4444', delayed: '#f97316' };
+        return Object.entries(counts).map(([status, count]) => ({ name: status.replace('_', ' '), value: count, color: colors[status] || '#6b7280' }));
+    }, [milestones]);
+
+    const actDist = useMemo(() => {
+        const counts: Record<string, number> = {};
+        activities.forEach((a: any) => { const s = a.status || 'pending'; counts[s] = (counts[s] || 0) + 1; });
+        const colors: Record<string, string> = { pending: '#f59e0b', in_progress: '#3b82f6', completed: '#10b981', cancelled: '#ef4444' };
+        return Object.entries(counts).map(([status, count]) => ({ name: status.replace('_', ' '), value: count, color: colors[status] || '#6b7280' }));
+    }, [activities]);
+
     // ─── Columns ──────────────────────────────────────────
     const msCols: ProColumns<any>[] = [
         { title: "Milestone", dataIndex: "name", width: "25%",
@@ -222,26 +244,79 @@ export default function ScheduleTab({ projectId }: { projectId: string }) {
             {/* Schedule Summary Cards */}
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                 <Col xs={12} sm={6}>
-                    <Card size="small" style={{ borderRadius: 10, border: '1px solid #e6f7ff', background: '#f0f5ff' }}>
-                        <Statistic title={<span style={{ fontSize: 11 }}>📌 Total Milestones</span>} value={milestones.length} />
+                    <Card size="small" style={{ borderRadius: 10, border: isDark ? '1px solid rgba(99,102,241,0.2)' : '1px solid #e6f7ff', background: isDark ? 'rgba(99,102,241,0.08)' : '#f0f5ff' }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}><FlagOutlined style={{ marginRight: 4 }} /> Total Milestones</span>} value={milestones.length} />
                     </Card>
                 </Col>
                 <Col xs={12} sm={6}>
-                    <Card size="small" style={{ borderRadius: 10, border: '1px solid #f6ffed', background: '#f6ffed' }}>
-                        <Statistic title={<span style={{ fontSize: 11 }}>✅ Completed</span>} value={completedMs} suffix={`/ ${milestones.length}`} />
+                    <Card size="small" style={{ borderRadius: 10, border: isDark ? '1px solid rgba(16,185,129,0.2)' : '1px solid #f6ffed', background: isDark ? 'rgba(16,185,129,0.08)' : '#f6ffed' }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}><CheckCircleOutlined style={{ marginRight: 4 }} /> Completed</span>} value={completedMs} suffix={`/ ${milestones.length}`} />
                     </Card>
                 </Col>
                 <Col xs={12} sm={6}>
-                    <Card size="small" style={{ borderRadius: 10, border: '1px solid #fff1f0', background: '#fff1f0' }}>
-                        <Statistic title={<span style={{ fontSize: 11 }}>⚠️ Overdue</span>} value={overdueMs} valueStyle={{ color: overdueMs > 0 ? '#cf1322' : '#3f8600' }} />
+                    <Card size="small" style={{ borderRadius: 10, border: isDark ? '1px solid rgba(239,68,68,0.2)' : '1px solid #fff1f0', background: isDark ? 'rgba(239,68,68,0.08)' : '#fff1f0' }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}><WarningOutlined style={{ marginRight: 4 }} /> Overdue</span>} value={overdueMs} valueStyle={{ color: overdueMs > 0 ? '#cf1322' : '#3f8600' }} />
                     </Card>
                 </Col>
                 <Col xs={12} sm={6}>
-                    <Card size="small" style={{ borderRadius: 10, border: '1px solid #f9f0ff', background: '#f9f0ff' }}>
-                        <Statistic title={<span style={{ fontSize: 11 }}>🔧 Activities</span>} value={completedAct} suffix={`/ ${totalActivities}`} />
+                    <Card size="small" style={{ borderRadius: 10, border: isDark ? '1px solid rgba(139,92,246,0.2)' : '1px solid #f9f0ff', background: isDark ? 'rgba(139,92,246,0.08)' : '#f9f0ff' }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}><ToolOutlined style={{ marginRight: 4 }} /> Activities</span>} value={completedAct} suffix={`/ ${totalActivities}`} />
                     </Card>
                 </Col>
             </Row>
+
+            {(msDist.length > 0 || actDist.length > 0) && (
+                <Card size="small" title={<span style={{ fontWeight: 600 }}>Schedule Status</span>} style={{ marginBottom: 16, borderRadius: 10, background: isDark ? 'rgba(15,15,23,0.7)' : undefined, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                    <div style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        {msDist.length > 0 && (
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{ width: 130, height: 130, margin: '0 auto' }}>
+                                    <ResponsiveContainer>
+                                        <PieChart>
+                                            <Pie data={msDist} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={28} outerRadius={52} paddingAngle={3} strokeWidth={0}>
+                                                {msDist.map((m, i) => <Cell key={i} fill={m.color} />)}
+                                            </Pie>
+                                            <RTooltip />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, color: isDark ? '#e2e8f0' : '#333' }}>Milestones</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center', marginTop: 4 }}>
+                                    {msDist.map(m => (
+                                        <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9 }}>
+                                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: m.color }} />
+                                            <span style={{ color: isDark ? '#94a3b8' : '#64748b', textTransform: 'capitalize' }}>{m.name} ({m.value})</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {actDist.length > 0 && (
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{ width: 130, height: 130, margin: '0 auto' }}>
+                                    <ResponsiveContainer>
+                                        <PieChart>
+                                            <Pie data={actDist} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={28} outerRadius={52} paddingAngle={3} strokeWidth={0}>
+                                                {actDist.map((a, i) => <Cell key={i} fill={a.color} />)}
+                                            </Pie>
+                                            <RTooltip />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, color: isDark ? '#e2e8f0' : '#333' }}>Activities</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center', marginTop: 4 }}>
+                                    {actDist.map(a => (
+                                        <div key={a.name} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9 }}>
+                                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.color }} />
+                                            <span style={{ color: isDark ? '#94a3b8' : '#64748b', textTransform: 'capitalize' }}>{a.name} ({a.value})</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </Card>
+            )}
 
             <Tabs defaultActiveKey="milestones" items={[
                 {
@@ -288,7 +363,7 @@ export default function ScheduleTab({ projectId }: { projectId: string }) {
                                         {ms.isCritical && <Tag color="red" style={{ marginLeft: 8 }}>CRITICAL</Tag>}
                                         <br />
                                         <Tag color={ms.status === 'completed' ? 'green' : 'default'}>{(ms.status || 'pending').toUpperCase()}</Tag>
-                                        {ms.description && <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{ms.description}</div>}
+                                        {ms.description && <div style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#888', marginTop: 4 }}>{ms.description}</div>}
                                     </div>
                                 )
                             }))}
@@ -354,3 +429,4 @@ export default function ScheduleTab({ projectId }: { projectId: string }) {
         </div>
     );
 }
+

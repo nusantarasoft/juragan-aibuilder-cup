@@ -106,23 +106,37 @@ export default function WarehouseHeatmapPage() {
     const [viewMode, setViewMode] = useState<string>('heatmap');
     const [builderLayout, setBuilderLayout] = useState<any[]>([]);
 
-    const load = useCallback(async () => {
+    const load = useCallback(async (whId?: string) => {
         setLoading(true);
         try {
             const whs = await inventoryService.getWarehouses();
             if (whs.length > 0) {
                 setWarehouses(whs);
-                setSelectedWh(whs[0].id);
-                const [zones, bins] = await Promise.all([
-                    inventoryService.getZones(whs[0].id),
+                const targetWhId = whId || whs[0].id;
+                setSelectedWh(targetWhId);
+                const [zones, bins, binContents] = await Promise.all([
+                    inventoryService.getZones(targetWhId),
                     inventoryService.getBins(),
+                    inventoryService.getBinContents().catch(() => []),
                 ]);
                 const zoneIds = new Set(zones.map(z => z.id));
                 const whBins = bins.filter(b => zoneIds.has(b.zoneId));
+
+                // Build bin content count map: binId -> total items
+                const binContentMap = new Map<string, number>();
+                for (const bc of binContents) {
+                    binContentMap.set(bc.binId, (binContentMap.get(bc.binId) || 0) + (bc.quantity || 0));
+                }
+
                 const analytics = zones.map(z => {
                     const zBins = whBins.filter(b => b.zoneId === z.id);
-                    const occupied = zBins.filter(b => b.status === 'occupied').length;
-                    const items = zBins.reduce((s, b) => s + (b.currentItemCount || 0), 0);
+                    // A bin is occupied if it has status='occupied' OR has actual bin contents
+                    const occupied = zBins.filter(b => b.status === 'occupied' || b.isOccupied || binContentMap.has(b.id)).length;
+                    // Item count: prefer actual bin contents, fall back to currentItemCount
+                    const items = zBins.reduce((s, b) => {
+                        const contentQty = binContentMap.get(b.id);
+                        return s + (contentQty !== undefined ? contentQty : (b.currentItemCount || 0));
+                    }, 0);
                     return {
                         code: z.code, name: z.name, type: z.zoneType || 'storage',
                         totalBins: zBins.length, occupied, available: zBins.length - occupied,
@@ -147,7 +161,23 @@ export default function WarehouseHeatmapPage() {
         setLoading(false);
     }, []);
 
-    useEffect(() => { load(); }, [load]);
+    const handleWarehouseChange = useCallback(async (whId: string) => {
+        setSelectedWh(whId);
+        await load(whId);
+    }, [load]);
+
+    useEffect(() => {
+        // Read ?warehouse= URL param for deep-linking
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const whParam = params.get('warehouse');
+            if (whParam) {
+                load(whParam);
+                return;
+            }
+        } catch { /* ignore */ }
+        load();
+    }, [load]);
 
     const totalBins = zoneData.reduce((s, z) => s + z.totalBins, 0);
     const totalOccupied = zoneData.reduce((s, z) => s + z.occupied, 0);
@@ -191,10 +221,13 @@ export default function WarehouseHeatmapPage() {
             title={<AuroraText colors={[themeColor, '#ef4444', '#f59e0b']}>Warehouse Heatmap</AuroraText>}
             subTitle={<DecryptedText text="Zone utilization heatmap and capacity analytics" animateOn="view" revealDirection="start" speed={40} sequential />}
             extra={[
-                <Tooltip key="builder" title="Open Warehouse Builder">
-                    <Button icon={<EnvironmentOutlined />} onClick={() => router.push('/admin/inventory/warehouse-map')}>Builder</Button>
+                <Select key="wh" value={selectedWh} onChange={handleWarehouseChange}
+                    options={warehouses.map(w => ({ value: w.id, label: `${w.code} — ${w.name}` }))}
+                    style={{ minWidth: 200 }} size="small" />,
+                <Tooltip key="builder" title="Open 3D Warehouse Builder">
+                    <Button icon={<EnvironmentOutlined />} onClick={() => router.push(`/admin/inventory/warehouse-map${selectedWh && selectedWh !== 'demo' ? `?warehouse=${selectedWh}` : ''}`)}>3D Builder</Button>
                 </Tooltip>,
-                <Button key="reload" icon={<ReloadOutlined />} onClick={load} />,
+                <Button key="reload" icon={<ReloadOutlined />} onClick={() => load()} />,
             ]}
         >
             {ctx}
@@ -365,7 +398,7 @@ export default function WarehouseHeatmapPage() {
                                     <div style={{ fontSize: 40, marginBottom: 8 }}>🗺️</div>
                                     <Text type="secondary">No builder layout found. Create one in the Warehouse Builder to see the floor plan here.</Text>
                                     <div style={{ marginTop: 12 }}>
-                                        <Button type="primary" icon={<EnvironmentOutlined />} onClick={() => router.push('/admin/inventory/warehouse-map')}>
+                                    <Button type="primary" icon={<EnvironmentOutlined />} onClick={() => router.push(`/admin/inventory/warehouse-map${selectedWh && selectedWh !== 'demo' ? `?warehouse=${selectedWh}` : ''}`)}>
                                             Open Warehouse Builder
                                         </Button>
                                     </div>

@@ -24,7 +24,6 @@ import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 
 const { Text, Title } = Typography;
-const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface LeadScore {
     individualId: string; firstName: string; lastName: string;
@@ -114,7 +113,7 @@ function AIRecommendations({ deals }: { deals: DealInsight[] }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {highRisk.map((d, i) => (
                 <motion.div key={d.dealId} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-                    style={{ ...glass, padding: '10px 14px', borderRadius: 10, borderLeft: `3px solid #ef4444` }}>
+                    style={{ padding: '10px 14px', borderRadius: 10, borderLeft: `3px solid #ef4444` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                         <div>
                             <Text strong style={{ fontSize: 12 }}>{d.dealName}</Text>
@@ -263,7 +262,7 @@ export default function AIIntelligencePage() {
                     ].map((s, i) => (
                         <Col key={i} xs={12} md={4}>
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                                <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
+                                <Card size="small" style={{ borderTop: `3px solid ${s.color}` }}>
                                     <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color, fontSize: 18 }} />
                                 </Card>
                             </motion.div>
@@ -274,24 +273,24 @@ export default function AIIntelligencePage() {
                 {/* Analytics Row */}
                 <Row gutter={[16, 16]}>
                     <Col xs={24} md={12}>
-                        <Card size="small" style={{ ...glass, height: '100%' }} title={<><ThunderboltOutlined /> <Text strong style={{ fontSize: 13 }}>Lead Grade Distribution</Text></>}>
+                        <Card size="small" style={{ height: '100%' }} title={<><ThunderboltOutlined /> <Text strong style={{ fontSize: 13 }}>Lead Grade Distribution</Text></>}>
                             <GradeDistribution leads={leads} />
                         </Card>
                     </Col>
                     <Col xs={24} md={12}>
-                        <Card size="small" style={{ ...glass, height: '100%' }} title={<><FunnelPlotOutlined /> <Text strong style={{ fontSize: 13 }}>Deal Risk Analysis</Text></>}>
+                        <Card size="small" style={{ height: '100%' }} title={<><FunnelPlotOutlined /> <Text strong style={{ fontSize: 13 }}>Deal Risk Analysis</Text></>}>
                             <RiskFunnel deals={deals} />
                         </Card>
                     </Col>
                 </Row>
 
                 {/* AI Recommendations */}
-                <Card size="small" style={{ ...glass }} title={<><BulbOutlined style={{ color: '#f59e0b' }} /> <Text strong style={{ fontSize: 13 }}>AI Action Items — High-Risk Deals</Text></>}>
+                <Card size="small"  title={<><BulbOutlined style={{ color: '#f59e0b' }} /> <Text strong style={{ fontSize: 13 }}>AI Action Items — High-Risk Deals</Text></>}>
                     <AIRecommendations deals={deals} />
                 </Card>
 
                 {/* Data Tables */}
-                <Card style={{ ...glass }}>
+                <Card >
                     <Tabs defaultActiveKey="leads" items={[
                         {
                             key: 'leads', label: <span><UserOutlined /> Lead Scoring <Badge count={leads.length} style={{ backgroundColor: themeColor }} /></span>,

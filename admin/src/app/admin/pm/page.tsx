@@ -1,2 +1,2 @@
 import { redirect } from 'next/navigation';
-export default function Page() { redirect('/admin/pm/portfolio'); }
+export default function Page() { redirect('/admin/pm/my-work'); }

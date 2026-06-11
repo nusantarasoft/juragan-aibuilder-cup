@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
-import { Card, Table, Typography, Button, Space, Tag, Spin, Empty, Row, Col, Select, Modal, Form, Input, Statistic, Progress, Tooltip, message } from 'antd';
+import { Card, Table, Typography, Button, Space, Tag, Spin, Empty, Row, Col, Select, Modal, Form, Input, Statistic, Progress, Tooltip, message, theme } from 'antd';
 import { DollarOutlined, PlusOutlined, BarChartOutlined, CheckCircleOutlined, WarningOutlined, RiseOutlined, FallOutlined, FileExcelOutlined, FilePdfOutlined, ReloadOutlined } from '@ant-design/icons';
 import { accountingService, AcctBudget, BudgetVsActualRow } from '@/lib/accountingService';
 import { AuroraText } from '@/components/magicui/aurora-text';
@@ -18,6 +18,8 @@ const fmt = (v: number) => new Intl.NumberFormat('id-ID', { style: 'currency', c
 
 export default function BudgetsPage() {
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(true);
     const [budgets, setBudgets] = useState<AcctBudget[]>([]);
@@ -145,7 +147,7 @@ export default function BudgetsPage() {
                                 <Table scroll={{ x: 900 }} dataSource={bva.map(r => ({ ...r, key: r.accountId }))} columns={bvaColumns} size="small"
                                     pagination={{ pageSize: 25, showTotal: t => `${t} accounts` }}
                                     summary={() => (
-                                        <Table.Summary.Row style={{ background: '#f5f5f5' }}>
+                                        <Table.Summary.Row style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f5' }}>
                                             <Table.Summary.Cell index={0} colSpan={2}><Text strong>TOTAL</Text></Table.Summary.Cell>
                                             <Table.Summary.Cell index={1} align="right"><Text strong style={{ fontFamily: 'monospace' }}>{fmt(totalBudgeted)}</Text></Table.Summary.Cell>
                                             <Table.Summary.Cell index={2} align="right"><Text strong style={{ fontFamily: 'monospace' }}>{fmt(totalActual)}</Text></Table.Summary.Cell>

@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { ProTable, ProColumns, ModalForm, ProFormText, ProFormSelect, ProFormTextArea, ProForm } from "@ant-design/pro-components";
-import { Button, message, Space, Tag, Popconfirm, Alert } from "antd";
+import { Button, message, Space, Tag, Popconfirm, Alert, Card, Row, Col, Statistic } from "antd";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip } from 'recharts';
 import { ToolOutlined, PlusOutlined, DeleteOutlined, EditOutlined, RobotOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { useTheme } from 'next-themes';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 
 const GET_TAILORING = `
   query GetTailoringLog($projectId: String!) {
@@ -68,6 +71,12 @@ const STATUS_OPTIONS = [
 ];
 
 export default function TailoringTab({ projectId }: { projectId: string }) {
+    const { resolvedTheme } = useTheme();
+    const { themeColor } = usePreferencesStore();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const isDark = mounted && resolvedTheme === 'dark';
+
     const [messageApi, contextHolder] = message.useMessage();
     const [loading, setLoading] = useState(true);
     const [aiLoading, setAiLoading] = useState(false);
@@ -80,14 +89,26 @@ export default function TailoringTab({ projectId }: { projectId: string }) {
         try {
             const data = await gql(GET_TAILORING, { projectId });
             setEntries(data.pmTailoringLog || []);
-        } catch {
-            // empty
-        } finally {
+        } catch (err: any) { console.error("PM Error", err); } finally {
             setLoading(false);
         }
     }, [projectId]);
 
     useEffect(() => { loadData(); }, [loadData]);
+
+    const areaDist = useMemo(() => {
+        const counts: Record<string, number> = {};
+        entries.forEach((e: any) => { const a = e.area || 'other'; counts[a] = (counts[a] || 0) + 1; });
+        const colors: Record<string, string> = { processes: '#3b82f6', engagement: '#10b981', tools: '#f59e0b', methods: '#8b5cf6', artifacts: '#6366f1', life_cycle: '#f97316', governance: '#14b8a6' };
+        return Object.entries(counts).map(([area, count]) => ({ name: area.replace('_', ' '), value: count, color: colors[area] || '#6b7280' }));
+    }, [entries]);
+
+    const statusDist = useMemo(() => {
+        const counts: Record<string, number> = {};
+        entries.forEach((e: any) => { const s = e.status || 'proposed'; counts[s] = (counts[s] || 0) + 1; });
+        const colors: Record<string, string> = { proposed: '#f59e0b', approved: '#3b82f6', implemented: '#10b981', rejected: '#ef4444' };
+        return Object.entries(counts).map(([status, count]) => ({ name: status, value: count, color: colors[status] || '#6b7280' }));
+    }, [entries]);
 
     const handleDelete = async (id: string) => {
         try {
@@ -223,6 +244,73 @@ export default function TailoringTab({ projectId }: { projectId: string }) {
                 style={{ marginBottom: 16, borderRadius: 10 }}
             />
 
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                <Col xs={12} md={8}>
+                    <Card size="small" style={{ borderRadius: 10, borderTop: `3px solid ${themeColor}`, background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}>Total Entries</span>} value={entries.length} valueStyle={{ fontSize: 20, fontWeight: 700 }} />
+                    </Card>
+                </Col>
+                <Col xs={12} md={8}>
+                    <Card size="small" style={{ borderRadius: 10, borderTop: '3px solid #10b981', background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}>Implemented</span>} value={entries.filter((e: any) => e.status === 'implemented').length} valueStyle={{ fontSize: 20, fontWeight: 700, color: '#10b981' }} />
+                    </Card>
+                </Col>
+                <Col xs={12} md={8}>
+                    <Card size="small" style={{ borderRadius: 10, borderTop: '3px solid #f59e0b', background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}>Pending Review</span>} value={entries.filter((e: any) => e.status === 'proposed').length} valueStyle={{ fontSize: 20, fontWeight: 700, color: '#f59e0b' }} />
+                    </Card>
+                </Col>
+            </Row>
+
+            {entries.length > 0 && (
+                <Card size="small" title={<span style={{ fontWeight: 600 }}>Tailoring Distribution</span>} style={{ marginBottom: 16, borderRadius: 10, background: isDark ? 'rgba(15,15,23,0.7)' : undefined, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                    <div style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ width: 130, height: 130, margin: '0 auto' }}>
+                                <ResponsiveContainer>
+                                    <PieChart>
+                                        <Pie data={areaDist} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={28} outerRadius={52} paddingAngle={3} strokeWidth={0}>
+                                            {areaDist.map((a, i) => <Cell key={i} fill={a.color} />)}
+                                        </Pie>
+                                        <RTooltip />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, color: isDark ? '#e2e8f0' : '#333' }}>By Area</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center', marginTop: 4 }}>
+                                {areaDist.map(a => (
+                                    <div key={a.name} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9 }}>
+                                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.color }} />
+                                        <span style={{ color: isDark ? '#94a3b8' : '#64748b', textTransform: 'capitalize' }}>{a.name} ({a.value})</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ width: 130, height: 130, margin: '0 auto' }}>
+                                <ResponsiveContainer>
+                                    <PieChart>
+                                        <Pie data={statusDist} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={28} outerRadius={52} paddingAngle={3} strokeWidth={0}>
+                                            {statusDist.map((s, i) => <Cell key={i} fill={s.color} />)}
+                                        </Pie>
+                                        <RTooltip />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, color: isDark ? '#e2e8f0' : '#333' }}>By Status</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center', marginTop: 4 }}>
+                                {statusDist.map(s => (
+                                    <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9 }}>
+                                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: s.color }} />
+                                        <span style={{ color: isDark ? '#94a3b8' : '#64748b', textTransform: 'capitalize' }}>{s.name} ({s.value})</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </Card>
+            )}
+
             <ProTable
                 headerTitle={
                     <Space>
@@ -252,7 +340,7 @@ export default function TailoringTab({ projectId }: { projectId: string }) {
             <ModalForm
                 title={editing ? "Edit Tailoring Entry" : "Add Tailoring Entry"}
                 open={isModalOpen}
-                onOpenChange={setIsModalOpen}
+                onOpenChange={(open) => { if (!open) setEditing(null); setIsModalOpen(open); }}
                 onFinish={handleFinish}
                 initialValues={editing || { status: 'proposed' }}
                 modalProps={{ destroyOnClose: true }}
@@ -276,3 +364,4 @@ export default function TailoringTab({ projectId }: { projectId: string }) {
         </div>
     );
 }
+

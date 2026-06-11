@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { PageBlock, BlockProps, GridRow, GridColumn } from "./types";
 import { PropField, getBlockSchema, getCategories } from "./PropSchema";
-import { Form, Input, Switch, Empty, Divider, Select, Tabs, Tag, Button, InputNumber, Row, Col, Collapse, ColorPicker, Space, Card } from "antd";
-import { SettingOutlined, BgColorsOutlined, PlusOutlined, DeleteOutlined, DownOutlined } from "@ant-design/icons";
+import { Form, Input, Switch, Empty, Divider, Select, Tabs, Tag, Button, InputNumber, Row, Col, Collapse, ColorPicker, Space, Card, message } from "antd";
+import { SettingOutlined, BgColorsOutlined, PlusOutlined, DeleteOutlined, DownOutlined, RobotOutlined } from "@ant-design/icons";
 import { StyleEditor } from "./StyleEditor";
+import { aiService } from "@/lib/aiService";
 
 interface PropertyEditorProps {
     block: PageBlock | null;
@@ -189,6 +190,8 @@ const ArrayFieldEditor: React.FC<{
 };
 
 export const PropertyEditor: React.FC<PropertyEditorProps> = ({ block, selectedElement, onUpdate }) => {
+    const [aiPrompt, setAiPrompt] = useState("");
+    const [isAiGenerating, setIsAiGenerating] = useState(false);
 
     if (!block) {
         return <Empty description="Select a block to edit" />;
@@ -463,6 +466,40 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({ block, selectedE
         );
     };
 
+    const handleAiGenerate = async () => {
+        if (!aiPrompt) return;
+        setIsAiGenerating(true);
+        try {
+            const schema = getBlockSchema(block.type);
+            if (!schema) {
+                message.error("No schema found for this block type.");
+                setIsAiGenerating(false);
+                return;
+            }
+            
+            const newProps = { ...block.props };
+            const contentProps = schema.props.filter(p => p.category === 'Content');
+            
+            for (const prop of contentProps) {
+                try {
+                    const generatedValue = await aiService.generateBlockProperty(block.type, prop.key, aiPrompt);
+                    if (generatedValue) {
+                        newProps[prop.key] = generatedValue;
+                    }
+                } catch (e) {
+                    console.error("Failed to generate prop", prop.key, e);
+                }
+            }
+            
+            onUpdate(newProps);
+            message.success('Content generated successfully!');
+            setAiPrompt("");
+        } catch (error) {
+            message.error("Failed to generate content.");
+        }
+        setIsAiGenerating(false);
+    };
+
     const items = [
         {
             key: 'settings',
@@ -486,6 +523,37 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({ block, selectedE
                 </div>
             ),
         },
+        {
+            key: 'ai',
+            label: <span className="flex items-center gap-1"><RobotOutlined /> AI</span>,
+            children: (
+                <div className="flex flex-col gap-3 p-1">
+                    <div className="text-xs text-gray-500">
+                        Generate or improve content for this block using AI.
+                    </div>
+                    <Input.TextArea 
+                        placeholder="E.g., Write a catchy hero title about our new product..." 
+                        rows={3} 
+                        className="text-xs rounded-lg"
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        disabled={isAiGenerating}
+                    />
+                    <Button 
+                        type="primary" 
+                        block 
+                        size="small" 
+                        className="rounded-lg shadow-sm"
+                        style={{ background: 'linear-gradient(90deg, #8b5cf6, #3b82f6)', border: 'none' }}
+                        onClick={handleAiGenerate}
+                        loading={isAiGenerating}
+                        disabled={!aiPrompt}
+                    >
+                        {isAiGenerating ? 'Generating...' : '✨ Generate Content'}
+                    </Button>
+                </div>
+            )
+        }
     ];
 
     return (

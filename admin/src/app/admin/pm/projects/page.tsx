@@ -21,7 +21,7 @@ import {
 import {
     Button, message, Tag, Space, Dropdown, MenuProps, Popconfirm,
     Drawer, Descriptions, Progress, Card, Row, Col, Tooltip, Segmented,
-    Empty, Badge, Avatar, Typography, theme
+    Empty, Badge, Avatar, Typography, theme, Input
 } from "antd";
 import {
     PlusOutlined, MoreOutlined, EditOutlined, DeleteOutlined,
@@ -29,7 +29,7 @@ import {
     AppstoreOutlined, UnorderedListOutlined, ProjectOutlined,
     RocketOutlined, CheckCircleOutlined, ClockCircleOutlined,
     DollarOutlined, TeamOutlined, ExperimentOutlined,
-    ThunderboltOutlined, AimOutlined, FlagOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
+    ThunderboltOutlined, AimOutlined, FlagOutlined, FileExcelOutlined, FilePdfOutlined, SearchOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
@@ -174,6 +174,8 @@ export default function ProjectsPage() {
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
     const [selectedPmbokPreset, setSelectedPmbokPreset] = useState<string | null>(null);
+    const [filterStatus, setFilterStatus] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
 
     const loadData = React.useCallback(async () => {
         setLoading(true);
@@ -210,6 +212,21 @@ export default function ProjectsPage() {
         const overdue = projects.filter(p => p.endDate && dayjs(p.endDate).isBefore(dayjs()) && p.status === 'active').length;
         return { active, completed, total, totalBudget, totalSpent, budgetPct, overdue };
     }, [projects]);
+
+    // -- Filtered projects for grid view --
+    const filteredProjects = useMemo(() => {
+        let result = projects;
+        if (filterStatus) result = result.filter(p => p.status === filterStatus);
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            result = result.filter(p =>
+                p.name?.toLowerCase().includes(q) ||
+                p.projectNumber?.toLowerCase().includes(q) ||
+                p.description?.toLowerCase().includes(q)
+            );
+        }
+        return result;
+    }, [projects, filterStatus, searchQuery]);
 
     // â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const handleAdd = () => {
@@ -717,7 +734,57 @@ export default function ProjectsPage() {
                 </Col>
             </Row>
 
-            {/* â”€â”€ View Toggle + Actions â”€â”€ */}
+            {/* -- Quick Filters + Search -- */}
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                <Card size="small" style={{ ...glassCard, marginBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <Tag
+                            style={{
+                                cursor: 'pointer', borderRadius: 12, fontSize: 11, padding: '2px 12px', margin: 0,
+                                background: !filterStatus ? `${themeColor}20` : 'transparent',
+                                color: !filterStatus ? themeColor : (isDark ? '#94a3b8' : '#64748b'),
+                                border: !filterStatus ? `1px solid ${themeColor}44` : `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                                fontWeight: !filterStatus ? 600 : 400,
+                            }}
+                            onClick={() => setFilterStatus(null)}
+                        >
+                            All ({stats.total})
+                        </Tag>
+                        {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
+                            const count = projects.filter(p => p.status === key).length;
+                            if (count === 0) return null;
+                            const isActive = filterStatus === key;
+                            return (
+                                <Tag
+                                    key={key}
+                                    style={{
+                                        cursor: 'pointer', borderRadius: 12, fontSize: 11, padding: '2px 12px', margin: 0,
+                                        background: isActive ? `${cfg.color}20` : 'transparent',
+                                        color: isActive ? cfg.color : (isDark ? '#94a3b8' : '#64748b'),
+                                        border: isActive ? `1px solid ${cfg.color}44` : `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                                        fontWeight: isActive ? 600 : 400,
+                                        transition: 'all 0.2s ease',
+                                    }}
+                                    onClick={() => setFilterStatus(isActive ? null : key)}
+                                >
+                                    {cfg.icon} {cfg.label} ({count})
+                                </Tag>
+                            );
+                        })}
+                        <div style={{ flex: 1 }} />
+                        <Input
+                            prefix={<SearchOutlined style={{ color: isDark ? '#64748b' : '#94a3b8' }} />}
+                            placeholder="Search projects..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            allowClear
+                            style={{ width: 220, borderRadius: 8 }}
+                        />
+                    </div>
+                </Card>
+            </motion.div>
+
+            {/* ——— View Toggle + Actions ——— */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Segmented
                     value={viewMode}
@@ -753,9 +820,29 @@ export default function ProjectsPage() {
                     </Card>
                 ) : (
                     <Row gutter={[16, 16]}>
-                        {projects.map(project => (
+                        {filteredProjects.length === 0 ? (
+                            <Col span={24}>
+                                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
+                                    <Card style={{ ...glassCard, padding: 40, textAlign: 'center', borderStyle: 'dashed', borderWidth: 2 }}>
+                                        <Empty description={
+                                            <span style={{ fontSize: 16, fontWeight: 500, color: isDark ? '#94a3b8' : '#64748b' }}>
+                                                {searchQuery || filterStatus ? "No projects match your current filters" : "No projects found"}
+                                            </span>
+                                        } image={Empty.PRESENTED_IMAGE_SIMPLE}>
+                                            {(searchQuery || filterStatus) && (
+                                                <Button type="primary" size="large" icon={<ReloadOutlined />} onClick={() => { setFilterStatus(null); setSearchQuery(""); }} style={{ marginTop: 16, borderRadius: 8, paddingLeft: 24, paddingRight: 24 }}>
+                                                    Clear All Filters
+                                                </Button>
+                                            )}
+                                        </Empty>
+                                    </Card>
+                                </motion.div>
+                            </Col>
+                        ) : filteredProjects.map((project, index) => (
                             <Col key={project.id} xs={24} sm={12} lg={8} xl={6}>
-                                <ProjectCard project={project} />
+                                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index * 0.05, 0.5), duration: 0.3 }} style={{ height: '100%' }}>
+                                    <ProjectCard project={project} />
+                                </motion.div>
                             </Col>
                         ))}
                     </Row>

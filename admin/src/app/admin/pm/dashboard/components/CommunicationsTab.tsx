@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { ProTable, ProColumns, ModalForm, ProFormText, ProFormTextArea, ProForm, ProCard, ProFormSelect, ProFormDatePicker } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Tabs, Space, Descriptions, Badge } from "antd";
-import { PlusOutlined, DeleteOutlined, EditOutlined, RobotOutlined, MailOutlined } from "@ant-design/icons";
+import { Button, message, Tag, Popconfirm, Tabs, Space, Badge, Row, Col, Card, Statistic } from "antd";
+import { PlusOutlined, DeleteOutlined, EditOutlined, RobotOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { useTheme } from 'next-themes';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip } from 'recharts';
 
 // ─── GraphQL ───────────────────────────────────────────────
 const GET_COMM_PLANS = `query($projectId: String!) { pmCommPlans(projectId: $projectId) { id communicationItem targetAudience frequency method responsiblePerson keyMessage notes status } }`;
@@ -26,6 +29,11 @@ const AI_COMM_PLAN = `query($projectId: String!) { generateCommPlan(projectId: $
 
 export default function CommunicationsTab({ projectId }: { projectId: string }) {
     const [messageApi, contextHolder] = message.useMessage();
+    const { resolvedTheme } = useTheme();
+    const { themeColor } = usePreferencesStore();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const isDark = mounted && resolvedTheme === 'dark';
 
     const [comms, setComms] = useState<any[]>([]);
     const [commLoading, setCommLoading] = useState(true);
@@ -108,6 +116,20 @@ export default function CommunicationsTab({ projectId }: { projectId: string }) 
 
     const healthColor = (h: string) => h === 'green' ? 'success' : h === 'yellow' ? 'warning' : h === 'red' ? 'error' : 'default';
 
+    const freqDist = useMemo(() => {
+        const counts: Record<string, number> = {};
+        comms.forEach((c: any) => { const f = c.frequency || 'unknown'; counts[f] = (counts[f] || 0) + 1; });
+        const colors: Record<string, string> = { daily: '#ef4444', weekly: '#f59e0b', biweekly: '#3b82f6', monthly: '#10b981', quarterly: '#8b5cf6', 'as_needed': '#6b7280', ad_hoc: '#f97316' };
+        return Object.entries(counts).map(([freq, count]) => ({ name: freq.replace('_', ' '), value: count, color: colors[freq] || '#6b7280' }));
+    }, [comms]);
+
+    const methodDist = useMemo(() => {
+        const counts: Record<string, number> = {};
+        comms.forEach((c: any) => { const m = c.method || 'other'; counts[m] = (counts[m] || 0) + 1; });
+        const colors: Record<string, string> = { email: '#3b82f6', meeting: '#10b981', report: '#f59e0b', dashboard: '#8b5cf6', presentation: '#6366f1', chat: '#14b8a6' };
+        return Object.entries(counts).map(([method, count]) => ({ name: method.replace('_', ' '), value: count, color: colors[method] || '#6b7280' }));
+    }, [comms]);
+
     // ─── Columns ───────────────────────────────────────
     const commCols: ProColumns<any>[] = [
         { title: "Communication Item", dataIndex: "communicationItem", width: "22%" },
@@ -166,6 +188,78 @@ export default function CommunicationsTab({ projectId }: { projectId: string }) 
     return (
         <div>
             {contextHolder}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                <Col xs={12} md={6}>
+                    <Card size="small" style={{ borderRadius: 10, borderTop: `3px solid ${themeColor}`, background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}>Comm Plan Items</span>} value={comms.length} valueStyle={{ fontSize: 20, fontWeight: 700 }} />
+                    </Card>
+                </Col>
+                <Col xs={12} md={6}>
+                    <Card size="small" style={{ borderRadius: 10, borderTop: '3px solid #3b82f6', background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}>Status Reports</span>} value={reports.length} valueStyle={{ fontSize: 20, fontWeight: 700, color: '#3b82f6' }} />
+                    </Card>
+                </Col>
+                <Col xs={12} md={6}>
+                    <Card size="small" style={{ borderRadius: 10, borderTop: '3px solid #10b981', background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}>Meetings</span>} value={meetings.length} valueStyle={{ fontSize: 20, fontWeight: 700, color: '#10b981' }} />
+                    </Card>
+                </Col>
+                <Col xs={12} md={6}>
+                    <Card size="small" style={{ borderRadius: 10, borderTop: '3px solid #f59e0b', background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                        <Statistic title={<span style={{ fontSize: 11 }}>Active Plans</span>} value={comms.filter((c: any) => c.status === 'active').length} valueStyle={{ fontSize: 20, fontWeight: 700, color: '#f59e0b' }} />
+                    </Card>
+                </Col>
+            </Row>
+            {comms.length > 0 && (
+                <Card size="small" title={<span style={{ fontWeight: 600 }}>Communications Breakdown</span>} style={{ marginBottom: 16, borderRadius: 10, background: isDark ? 'rgba(15,15,23,0.7)' : undefined, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                    <div style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ width: 130, height: 130, margin: '0 auto' }}>
+                                <ResponsiveContainer>
+                                    <PieChart>
+                                        <Pie data={freqDist} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={28} outerRadius={52} paddingAngle={3} strokeWidth={0}>
+                                            {freqDist.map((f, i) => <Cell key={i} fill={f.color} />)}
+                                        </Pie>
+                                        <RTooltip />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, color: isDark ? '#e2e8f0' : '#333' }}>By Frequency</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center', marginTop: 4 }}>
+                                {freqDist.map(f => (
+                                    <div key={f.name} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9 }}>
+                                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: f.color }} />
+                                        <span style={{ color: isDark ? '#94a3b8' : '#64748b', textTransform: 'capitalize' }}>{f.name} ({f.value})</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        {methodDist.length > 0 && (
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{ width: 130, height: 130, margin: '0 auto' }}>
+                                    <ResponsiveContainer>
+                                        <PieChart>
+                                            <Pie data={methodDist} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={28} outerRadius={52} paddingAngle={3} strokeWidth={0}>
+                                                {methodDist.map((m, i) => <Cell key={i} fill={m.color} />)}
+                                            </Pie>
+                                            <RTooltip />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, color: isDark ? '#e2e8f0' : '#333' }}>By Method</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center', marginTop: 4 }}>
+                                    {methodDist.map(m => (
+                                        <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9 }}>
+                                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: m.color }} />
+                                            <span style={{ color: isDark ? '#94a3b8' : '#64748b', textTransform: 'capitalize' }}>{m.name} ({m.value})</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </Card>
+            )}
             <Tabs defaultActiveKey="comm" items={[
                 {
                     label: 'Communications Plan', key: 'comm',
