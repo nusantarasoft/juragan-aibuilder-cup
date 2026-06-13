@@ -327,11 +327,11 @@ export default function KanbanBoard({ tasks, sprints, projectId, onRefresh }: Ka
                                                                                 {...provided.dragHandleProps}
                                                                                 style={{
                                                                                     ...provided.draggableProps.style,
-                                                                                    marginBottom: 8,
                                                                                     opacity: isChanging ? 0.5 : 1,
                                                                                 }}
                                                                             >
                                                                                 <div style={{
+                                                                                    marginBottom: 8,
                                                                                     background: isDark ? "rgba(30, 30, 44, 0.8)" : "rgba(255,255,255,0.9)",
                                                                                     backdropFilter: "blur(8px)", padding: 12, borderRadius: 10,
                                                                                     border: isDark ? "1px solid rgba(139,92,246,0.12)" : "1px solid rgba(0,0,0,0.06)",
@@ -339,7 +339,7 @@ export default function KanbanBoard({ tasks, sprints, projectId, onRefresh }: Ka
                                                                                     boxShadow: snapshot.isDragging 
                                                                                         ? (isDark ? "0 12px 28px rgba(139,92,246,0.3)" : "0 12px 28px rgba(0,0,0,0.15)")
                                                                                         : (isDark ? "0 2px 8px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.06)"),
-                                                                                    transform: snapshot.isDragging ? "rotate(2deg) scale(1.02)" : "scale(1)",
+                                                                                    transform: snapshot.isDragging ? "scale(1.02)" : "scale(1)",
                                                                                     transition: snapshot.isDragging ? "none" : "all 0.2s ease",
                                                                                 }}>
                                                                                     <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
@@ -361,7 +361,9 @@ export default function KanbanBoard({ tasks, sprints, projectId, onRefresh }: Ka
                                                                                             <ClockCircleOutlined /> {t.estimatedHours || 0}h
                                                                                         </span>
                                                                                         <Tooltip title={t.assignee ? `${t.assignee.firstName} ${t.assignee.lastName}` : "Unassigned"}>
-                                                                                            <Avatar size={22} icon={<UserOutlined />} src={t.assignee?.avatarUrl} style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, fontSize: 10 }} />
+                                                                                            <div onClick={(e) => { e.stopPropagation(); if (t.assignee?.id) router.push(`/admin/pm/workload?user=${t.assignee.id}`); }} style={{ cursor: t.assignee?.id ? "pointer" : "default" }} className="hover:scale-110 transition-transform">
+                                                                                                <Avatar size={22} icon={<UserOutlined />} src={t.assignee?.avatarUrl} style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, fontSize: 10 }} />
+                                                                                            </div>
                                                                                         </Tooltip>
                                                                                     </div>
                                                                                 </div>

@@ -74,6 +74,7 @@ export interface SceneConfig {
   highQualityGraphics?: boolean;
   cameraMode?: "perspective" | "orthographic";
   simulateTime?: boolean;
+  timeOfDay?: "morning" | "noon" | "sunset" | "night";
   autoRotate?: boolean;
 }
 

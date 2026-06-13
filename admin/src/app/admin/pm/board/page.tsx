@@ -156,16 +156,15 @@ export default function KanbanBoardPage() {
                                                             ref={provided.innerRef}
                                                             {...provided.draggableProps}
                                                             {...provided.dragHandleProps}
-                                                            className="mb-3"
                                                             style={{ ...provided.draggableProps.style }}
                                                         >
                                                             <Card
                                                                 size="small"
                                                                 hoverable
-                                                                className="cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow"
+                                                                className="mb-3 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow"
                                                                 style={{ 
                                                                     borderRadius: 12,
-                                                                    transform: snapshot.isDragging ? 'rotate(2deg) scale(1.02)' : 'none',
+                                                                    transform: snapshot.isDragging ? 'scale(1.02)' : 'none',
                                                                     borderLeft: `4px solid ${getPriorityColor(task.priority)}`
                                                                 }}
                                                                 bodyStyle={{ padding: '12px' }}
@@ -177,13 +176,15 @@ export default function KanbanBoardPage() {
                                                                         </Tag>
                                                                         <Button type="text" size="small" icon={<MoreOutlined />} className="h-5 w-5 opacity-40 hover:opacity-100" />
                                                                     </div>
-                                                                    <Text className="text-sm font-medium leading-tight block mb-2">{task.content}</Text>
+                                                                    <Text className="text-sm font-medium leading-tight block mb-2 cursor-pointer hover:text-blue-500 transition-colors" onClick={(e) => { e.stopPropagation(); window.location.href = `/admin/pm/tasks/${task.id}`; }}>{task.content}</Text>
                                                                     <div className="flex justify-between items-end mt-auto">
                                                                         <div className="flex items-center gap-1.5 text-gray-400 text-xs">
                                                                             {column.title === 'Done' ? <CheckCircleOutlined className="text-green-500" /> : <ClockCircleOutlined />}
                                                                             <span>{task.id}</span>
                                                                         </div>
-                                                                        <Avatar src={task.avatar} size="small" className="border-2 border-white dark:border-gray-800" />
+                                                                        <div onClick={(e) => { e.stopPropagation(); window.location.href = `/admin/pm/workload?user=${task.assignee}`; }} className="cursor-pointer hover:scale-110 transition-transform">
+                                                                            <Avatar src={task.avatar} size="small" className="border-2 border-white dark:border-gray-800" />
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </Card>

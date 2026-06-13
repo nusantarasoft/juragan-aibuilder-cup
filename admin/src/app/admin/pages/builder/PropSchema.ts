@@ -407,6 +407,34 @@ export const blockSchemas: Record<string, BlockSchema> = {
             ]}
         ]
     },
+    marquee: {
+        type: 'marquee',
+        name: 'Marquee Logos',
+        icon: '🔄',
+        props: [
+            { key: 'pauseOnHover', label: 'Pause on Hover', type: 'switch', category: 'Behavior', defaultValue: true },
+            { key: 'reverse', label: 'Reverse Direction', type: 'switch', category: 'Behavior', defaultValue: false },
+            { key: 'vertical', label: 'Vertical Scroll', type: 'switch', category: 'Layout', defaultValue: false },
+            {
+                key: 'items', label: 'Marquee Items', type: 'array', category: 'Content', itemSchema: [
+                    { key: 'text', label: 'Text/Name', type: 'text', category: 'Content' },
+                    { key: 'icon', label: 'Icon/Logo', type: 'text', category: 'Content' }
+                ]
+            },
+        ]
+    },
+    globe: {
+        type: 'globe',
+        name: 'Interactive Globe',
+        icon: '🌍',
+        props: [
+            { key: 'title', label: 'Overlay Title', type: 'text', category: 'Content', placeholder: 'Global Reach' },
+            { key: 'theme', label: 'Theme', type: 'select', category: 'Appearance', options: [
+                { label: 'Dark Space', value: 'dark' },
+                { label: 'Light Mode', value: 'light' },
+            ]},
+        ]
+    },
     gridContainer: {
         type: 'gridContainer',
         name: 'Grid Container',

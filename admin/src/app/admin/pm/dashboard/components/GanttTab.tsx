@@ -609,7 +609,7 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
                                                 zIndex: 1,
                                                 overflow: "hidden",
                                             }}
-                                            whileDrag={{ scale: 1.02, boxShadow: "0 4px 12px rgba(0,0,0,0.2)", cursor: "grabbing" }}
+                                            whileDrag={{ boxShadow: "0 4px 12px rgba(0,0,0,0.2)", cursor: "grabbing" }}
                                             onClick={row.isSummary ? undefined : () => router.push(`/admin/pm/tasks/${row.id}`)}
                                             onMouseEnter={(e) => {
                                                 (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";

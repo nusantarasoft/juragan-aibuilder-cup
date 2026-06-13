@@ -138,6 +138,13 @@ const blockCategories = [
                     { type: "leadForm", name: "Lead Gen Form", icon: "📋" },
                 ],
             },
+            {
+                name: "MagicUI",
+                blocks: [
+                    { type: "marquee", name: "Marquee", icon: "🔄" },
+                    { type: "globe", name: "3D Globe", icon: "🌍" },
+                ],
+            },
         ],
     },
     {
@@ -855,8 +862,8 @@ function PageBuilderContent() {
                 {/* Canvas - Full width with dynamic margins based on docked panels */}
                 <div
                     style={{
-                        marginLeft: libraryVisible && libraryDock === 'left' && !libraryMinimized ? 296 : 0,
-                        marginRight: (structureVisible && structureDock === 'right' && !structureMinimized) || (libraryVisible && libraryDock === 'right' && !libraryMinimized) ? 296 : 0,
+                        marginLeft: !previewMode && libraryVisible && libraryDock === 'left' && !libraryMinimized ? 296 : 0,
+                        marginRight: !previewMode && ((structureVisible && structureDock === 'right' && !structureMinimized) || (libraryVisible && libraryDock === 'right' && !libraryMinimized)) ? 296 : 0,
                         transition: 'margin 0.2s ease',
                         flex: 1,
                         minHeight: 0,
@@ -957,7 +964,7 @@ function PageBuilderContent() {
                     </div>
                     <div className={canvasTheme} style={{ flex: 1, width: '100%', height: '100%', display: 'flex', justifyContent: 'center', background: canvasTheme === 'dark' ? '#111' : 'rgba(0,0,0,0.02)', overflowY: 'auto', padding: 24, transition: 'background 0.3s ease' }}>
                         <div style={{ 
-                            width: viewportMode === 'mobile' ? 375 : viewportMode === 'tablet' ? 768 : (viewportMode === 'desktop' && desktopResolution !== 'auto') ? desktopResolution : '100%', 
+                            width: previewMode ? '100%' : (viewportMode === 'mobile' ? 375 : viewportMode === 'tablet' ? 768 : (viewportMode === 'desktop' && desktopResolution !== 'auto') ? desktopResolution : '100%'), 
                             minHeight: '100%',
                             transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                             display: 'flex',

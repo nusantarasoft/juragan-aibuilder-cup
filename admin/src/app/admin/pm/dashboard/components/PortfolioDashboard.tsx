@@ -19,6 +19,8 @@ import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
+import { AnimatedCircularProgressBar } from "@/components/magicui/animated-circular-progress-bar";
 
 const { Text } = Typography;
 
@@ -295,51 +297,66 @@ export default function PortfolioDashboard({ onSelectProject }: PortfolioDashboa
             {contextHolder}
 
             {/* ── Hero Stats ── */}
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-                <Row gutter={[14, 14]} style={{ marginBottom: 20 }}>
-                    <Col xs={24} sm={12} lg={6}>
-                        <StatCard title="Total Projects" value={totalProjects} icon={<ProjectOutlined />}
-                            gradient={`linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`}
-                            extra={
-                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                    {statusBuckets.filter(s => s.count > 0).map(s => (
-                                        <Tag key={s.status} style={{ borderRadius: 10, fontSize: 9, lineHeight: '14px', padding: '0 5px', margin: 0, background: s.color + '18', color: s.color, border: `1px solid ${s.color}33` }}>
-                                            {s.count} {s.label}
-                                        </Tag>
-                                    ))}
-                                </div>
-                            }
-                        />
-                    </Col>
-                    <Col xs={24} sm={12} lg={6}>
-                        <StatCard title="Task Completion" value={taskCompletion} suffix="%" icon={<CheckCircleOutlined />}
-                            gradient="linear-gradient(135deg, #10b981, #34d399)"
-                            extra={
-                                <div>
-                                    <Progress percent={taskCompletion} size="small" showInfo={false} strokeColor={{ '0%': '#10b981', '100%': '#22c55e' }} trailColor={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'} />
-                                    <Text type="secondary" style={{ fontSize: 10 }}>{totalDone} of {totalTasks} tasks done</Text>
-                                </div>
-                            }
-                        />
-                    </Col>
-                    <Col xs={24} sm={12} lg={6}>
-                        <StatCard title="Budget Used" value={budgetUtilization} suffix="%" icon={<DollarOutlined />}
-                            gradient={budgetUtilization > 90 ? 'linear-gradient(135deg, #ef4444, #f87171)' : 'linear-gradient(135deg, #f59e0b, #fbbf24)'}
-                            extra={
-                                <div>
-                                    <Progress percent={budgetUtilization} size="small" showInfo={false} strokeColor={budgetUtilization > 90 ? '#ef4444' : '#f59e0b'} trailColor={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'} />
-                                    <Text type="secondary" style={{ fontSize: 10 }}>${totalSpent.toLocaleString()} / ${totalBudget.toLocaleString()}</Text>
-                                </div>
-                            }
-                        />
-                    </Col>
-                    <Col xs={24} sm={12} lg={6}>
-                        <StatCard title="Active Projects" value={activeProjects} icon={<FundProjectionScreenOutlined />}
-                            gradient={`linear-gradient(135deg, ${themeColor}, #a78bfa)`}
-                            extra={<Text type="secondary" style={{ fontSize: 10 }}>{completedProjects} completed • {projects.filter(p => p.status === 'paused').length} paused</Text>}
-                        />
-                    </Col>
-                </Row>
+            {/* ── Hero Stats ── */}
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-6">
+                <BentoGrid className="max-w-full">
+                    <BentoGridItem
+                        title={
+                            <div className="flex items-center gap-2">
+                                <span className="text-2xl font-black">{totalProjects}</span>
+                                <span>Total Projects</span>
+                            </div>
+                        }
+                        description={
+                            <div className="flex gap-2 flex-wrap">
+                                {statusBuckets.filter(s => s.count > 0).map(s => (
+                                    <Tag key={s.status} style={{ borderRadius: 10, fontSize: 10, background: s.color + '18', color: s.color, border: `1px solid ${s.color}33`, margin: 0 }}>
+                                        {s.count} {s.label}
+                                    </Tag>
+                                ))}
+                            </div>
+                        }
+                        header={<div className="flex h-full w-full flex-1 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10"><ProjectOutlined style={{ fontSize: 64, color: themeColor, opacity: 0.8 }} /></div>}
+                        className="md:col-span-1"
+                        icon={<FundProjectionScreenOutlined style={{ color: themeColor }} />}
+                    />
+                    <BentoGridItem
+                        title={<div className="text-xl font-bold">Task Completion</div>}
+                        description={`${totalDone} of ${totalTasks} tasks done`}
+                        header={
+                            <div className="flex h-full w-full flex-1 items-center justify-center rounded-xl bg-emerald-500/5">
+                                <AnimatedCircularProgressBar
+                                    max={100}
+                                    min={0}
+                                    value={taskCompletion}
+                                    gaugePrimaryColor="#10b981"
+                                    gaugeSecondaryColor="rgba(16, 185, 129, 0.15)"
+                                    className="scale-90"
+                                />
+                            </div>
+                        }
+                        className="md:col-span-1"
+                        icon={<CheckCircleOutlined className="text-emerald-500" />}
+                    />
+                    <BentoGridItem
+                        title={<div className="text-xl font-bold">Budget Used</div>}
+                        description={`$${totalSpent.toLocaleString()} / $${totalBudget.toLocaleString()}`}
+                        header={
+                            <div className="flex h-full w-full flex-1 items-center justify-center rounded-xl bg-amber-500/5">
+                                <AnimatedCircularProgressBar
+                                    max={100}
+                                    min={0}
+                                    value={budgetUtilization}
+                                    gaugePrimaryColor={budgetUtilization > 90 ? "#ef4444" : "#f59e0b"}
+                                    gaugeSecondaryColor={budgetUtilization > 90 ? "rgba(239, 68, 68, 0.15)" : "rgba(245, 158, 11, 0.15)"}
+                                    className="scale-90"
+                                />
+                            </div>
+                        }
+                        className="md:col-span-1"
+                        icon={<DollarOutlined className={budgetUtilization > 90 ? "text-red-500" : "text-amber-500"} />}
+                    />
+                </BentoGrid>
             </motion.div>
 
             {/* ── Sprint Summary + Risk Heat Map ── */}

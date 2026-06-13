@@ -9,6 +9,8 @@ import { InfiniteMovingCards } from "@/components/ui/infinite-moving-cards";
 import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import { FloatingDock } from "@/components/ui/floating-dock";
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
+import { Marquee } from "@/components/magicui/marquee";
+import { Globe } from "@/components/magicui/globe";
 import { cn } from "@/lib/utils";
 import { IconLayoutGrid, IconSignature, IconTableColumn } from "@tabler/icons-react";
 
@@ -361,9 +363,46 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({
                     </div>
                 );
 
+            case "marquee":
+                const marqueeItems = (props.items as any[]) || [];
+                return (
+                    <div className="relative flex h-[300px] w-full flex-col items-center justify-center overflow-hidden rounded-lg border border-gray-100 bg-white dark:bg-black dark:border-white/10 md:shadow-xl" style={styles.container}>
+                        <Marquee 
+                            pauseOnHover={props.pauseOnHover !== false} 
+                            reverse={props.reverse === true}
+                            vertical={props.vertical === true}
+                            className="[--duration:20s]"
+                        >
+                            {marqueeItems.map((item, i) => (
+                                <div key={i} className={cn(
+                                    "relative flex w-64 cursor-pointer flex-col items-center justify-center gap-4 overflow-hidden rounded-xl border p-6",
+                                    "border-gray-950/[.1] bg-gray-950/[.01] hover:bg-gray-950/[.05]",
+                                    "dark:border-gray-50/[.1] dark:bg-gray-50/[.10] dark:hover:bg-gray-50/[.15]"
+                                )}>
+                                    <span className="text-5xl">{item.icon}</span>
+                                    <span className="text-xl font-bold">{item.text}</span>
+                                </div>
+                            ))}
+                        </Marquee>
+                        <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-white dark:from-black"></div>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-white dark:from-black"></div>
+                    </div>
+                );
+
+            case "globe":
+                return (
+                    <div className="relative flex size-full max-w-lg items-center justify-center overflow-hidden rounded-lg border bg-background px-40 pb-40 pt-8 md:pb-60 md:shadow-xl mx-auto min-h-[400px]" style={styles.container}>
+                        <span className="pointer-events-none whitespace-pre-wrap bg-gradient-to-b from-black to-gray-300/80 bg-clip-text text-center text-6xl font-semibold leading-none text-transparent dark:from-white dark:to-slate-900/10">
+                            {String(props.title || "Global Reach")}
+                        </span>
+                        <Globe className="top-28" />
+                        <div className="pointer-events-none absolute inset-0 h-full bg-[radial-gradient(circle_at_50%_200%,rgba(0,0,0,0.2),rgba(255,255,255,0))]" />
+                    </div>
+                );
+
             case "footer":
                 return (
-                    <div className="bg-slate-100 dark:bg-slate-900 p-8 text-center">
+                    <div className="bg-slate-100 dark:bg-slate-900 p-8 text-center" style={styles.container}>
                         <p className="text-slate-600 dark:text-slate-400">{String(props.copyright)}</p>
                     </div>
                 );

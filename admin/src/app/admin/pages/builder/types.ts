@@ -64,6 +64,36 @@ export function getElementTree(block: PageBlock): ElementNode[] {
             return [
                 { key: "container", label: "Grid Container", type: "container", icon: "🔲" },
             ];
+        case "hero3d":
+            return [
+                { key: "container", label: "Container", type: "container", icon: "📦" },
+                { key: "title", label: "Title", type: "text", icon: "📝" },
+                { key: "subtitle", label: "Subtitle", type: "text", icon: "📝" },
+            ];
+        case "bento":
+        case "products":
+        case "glassPricing":
+            return [
+                { key: "container", label: "Container", type: "container", icon: "📦" },
+                { key: "title", label: "Section Title", type: "text", icon: "📝" },
+                { key: "card", label: "Card Item", type: "container", icon: "🃏" },
+            ];
+        case "leadForm":
+            return [
+                { key: "container", label: "Container", type: "container", icon: "📦" },
+                { key: "title", label: "Title", type: "text", icon: "📝" },
+                { key: "subtitle", label: "Subtitle", type: "text", icon: "📝" },
+                { key: "card", label: "Form Card", type: "container", icon: "🃏" },
+            ];
+        case "marquee":
+            return [
+                { key: "container", label: "Container", type: "container", icon: "📦" },
+                { key: "item", label: "Marquee Item", type: "container", icon: "🃏" },
+            ];
+        case "globe":
+            return [
+                { key: "container", label: "Container", type: "container", icon: "📦" },
+            ];
         default:
             return [{ key: "container", label: "Container", type: "container", icon: "📦" }];
     }
@@ -138,6 +168,59 @@ export const blockDefaults: Record<string, BlockProps> = {
         title: "Contact Us",
         email: "contact@example.com",
         showMap: false,
+    },
+    hero3d: {
+        title: "3D Interactive Hero",
+        subtitle: "A premium glassmorphism 3D hero block.",
+        theme: "dark",
+    },
+    bento: {
+        title: "Our Features",
+        theme: "glass-dark",
+        items: [
+            { title: "Feature 1", description: "Desc 1", icon: "🚀", colSpan: 1 },
+            { title: "Feature 2", description: "Desc 2", icon: "⚡", colSpan: 1 },
+            { title: "Feature 3", description: "Desc 3", icon: "🛡️", colSpan: 1 },
+            { title: "Feature 4", description: "Desc 4", icon: "✨", colSpan: 2 },
+        ],
+    },
+    glassPricing: {
+        title: "Choose Your Plan",
+        theme: "amethyst",
+        plans: [
+            { name: "Starter", price: "49", isPopular: false, features: ["Feature A", "Feature B"] },
+            { name: "Pro", price: "99", isPopular: true, features: ["Feature A", "Feature B", "Feature C"] },
+            { name: "Enterprise", price: "299", isPopular: false, features: ["All Features", "24/7 Support"] },
+        ]
+    },
+    products: {
+        title: "Featured Products",
+        theme: "glass",
+        layout: "3",
+    },
+    leadForm: {
+        title: "Get in Touch",
+        subtitle: "Fill out the form below and we'll get back to you.",
+        theme: "glass",
+        buttonText: "Submit",
+        crmPipeline: "General",
+    },
+    marquee: {
+        pauseOnHover: true,
+        reverse: false,
+        vertical: false,
+        items: [
+            { text: "Nusantarasoft", icon: "🚀" },
+            { text: "React", icon: "⚛️" },
+            { text: "Next.js", icon: "▲" },
+            { text: "MagicUI", icon: "✨" },
+            { text: "TailwindCSS", icon: "🌊" },
+            { text: "TypeScript", icon: "📘" },
+        ]
+    },
+    globe: {
+        title: "Global Reach",
+        theme: "dark",
     },
     dock: {
         items: ["Home", "Shop", "Search", "Settings"],

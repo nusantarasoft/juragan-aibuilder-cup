@@ -8,7 +8,7 @@ import DecryptedText from "@/components/react-bits/DecryptedText";
 import {
   Card, Button, Slider, Tag, Space, Progress, Tooltip, Typography,
   Segmented, Switch, Collapse, Badge, Row, Col, message, theme, Divider,
-  Select, Spin, InputNumber, Drawer, Modal, Form, Input
+  Select, Spin, InputNumber, Drawer, Modal, Form, Input, Popover
 } from "antd";
 import {
   PlayCircleOutlined, PauseCircleOutlined, StepForwardOutlined,
@@ -24,7 +24,7 @@ import {
   DragOutlined, EditOutlined, SaveOutlined, FolderOpenOutlined, DeleteOutlined
 } from "@ant-design/icons";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Html, TransformControls, Sky, Stars, Environment, ContactShadows, Grid } from "@react-three/drei";
+import { OrbitControls, Html, TransformControls, Sky, Stars, Environment, ContactShadows, Grid, Line } from "@react-three/drei";
 import { EffectComposer, Bloom, SSAO } from "@react-three/postprocessing";
 import * as THREE from "three";
 import { useTheme } from "next-themes";
@@ -41,35 +41,33 @@ const { Text: AntText, Title } = Typography;
 
 export const CATALOG_ITEMS = [
   // Construction
-  { id: "dumpster", name: "Dumpster", icon: "🗑️", category: "Construction" },
-  { id: "cone", name: "Traffic Cone", icon: "🚧", category: "Construction" },
-  { id: "concrete_mixer", name: "Concrete Mixer", icon: "🛢️", category: "Construction" },
-  { id: "excavator", name: "Excavator", icon: "🚜", category: "Construction" },
+  { id: "dumpster", name: "Dumpster", icon: "🗑️", category: "Construction", image: "https://loremflickr.com/150/150/dumpster" },
+  { id: "cone", name: "Traffic Cone", icon: "🚧", category: "Construction", image: "https://loremflickr.com/150/150/traffic_cone" },
+  { id: "concrete_mixer", name: "Concrete Mixer", icon: "🛢️", category: "Construction", image: "https://loremflickr.com/150/150/concrete_mixer" },
+  { id: "excavator", name: "Excavator", icon: "🚜", category: "Construction", image: "https://loremflickr.com/150/150/excavator" },
   // Farming
-  { id: "tractor", name: "Tractor", icon: "🚜", category: "Farming" },
-  { id: "silo", name: "Silo", icon: "🏭", category: "Farming" },
-  { id: "windmill", name: "Windmill", icon: "🌬️", category: "Farming" },
-  { id: "barn", name: "Barn", icon: "🛖", category: "Farming" },
+  { id: "tractor", name: "Tractor", icon: "🚜", category: "Farming", image: "https://loremflickr.com/150/150/tractor" },
+  { id: "silo", name: "Silo", icon: "🏭", category: "Farming", image: "https://loremflickr.com/150/150/silo" },
+  { id: "windmill", name: "Windmill", icon: "🌬️", category: "Farming", image: "https://loremflickr.com/150/150/windmill" },
+  { id: "barn", name: "Barn", icon: "🛖", category: "Farming", image: "https://loremflickr.com/150/150/barn" },
   // Manufacturing
-  { id: "robotic_arm", name: "Robotic Arm", icon: "🦾", category: "Manufacturing" },
-  { id: "conveyor_belt", name: "Conveyor Belt", icon: "🛤️", category: "Manufacturing" },
-  { id: "forklift", name: "Forklift", icon: "🛻", category: "Manufacturing" },
-  { id: "pallet", name: "Pallet Stack", icon: "📦", category: "Manufacturing" },
+  { id: "robotic_arm", name: "Robotic Arm", icon: "🦾", category: "Manufacturing", image: "https://loremflickr.com/150/150/robotic_arm" },
+  { id: "conveyor_belt", name: "Conveyor Belt", icon: "🛤️", category: "Manufacturing", image: "https://loremflickr.com/150/150/conveyor_belt" },
+  { id: "forklift", name: "Forklift", icon: "🛻", category: "Manufacturing", image: "https://loremflickr.com/150/150/forklift" },
+  { id: "pallet", name: "Pallet Stack", icon: "📦", category: "Manufacturing", image: "https://loremflickr.com/150/150/pallet" },
   // General Amenities
-  { id: "bench", name: "Park Bench", icon: "🪑", category: "Amenities" },
-  { id: "streetlight", name: "Street Light", icon: "💡", category: "Amenities" },
-  { id: "tree", name: "Tree", icon: "🌳", category: "Landscaping" },
-  { id: "bush", name: "Bush", icon: "🌿", category: "Landscaping" },
+  { id: "bench", name: "Park Bench", icon: "🪑", category: "Amenities", image: "https://loremflickr.com/150/150/park_bench" },
+  { id: "streetlight", name: "Street Light", icon: "💡", category: "Amenities", image: "https://loremflickr.com/150/150/streetlight" },
+  { id: "tree", name: "Tree", icon: "🌳", category: "Landscaping", image: "https://loremflickr.com/150/150/tree" },
+  { id: "bush", name: "Bush", icon: "🌿", category: "Landscaping", image: "https://loremflickr.com/150/150/bush" },
   // Healthcare
-  { id: "ambulance", name: "Ambulance", icon: "🚑", category: "Healthcare" },
-  { id: "medical_bed", name: "Medical Bed", icon: "🛏️", category: "Healthcare" },
-  { id: "mri_machine", name: "MRI Machine", icon: "🧲", category: "Healthcare" },
+  { id: "ambulance", name: "Ambulance", icon: "🚑", category: "Healthcare", image: "https://loremflickr.com/150/150/ambulance" },
+  { id: "medical_bed", name: "Medical Bed", icon: "🛏️", category: "Healthcare", image: "https://loremflickr.com/150/150/medical_bed" },
+  { id: "mri_machine", name: "MRI Machine", icon: "🧲", category: "Healthcare", image: "https://loremflickr.com/150/150/mri_machine" },
   // Education
-  { id: "school_bus", name: "School Bus", icon: "🚌", category: "Education" },
-  { id: "desk", name: "School Desk", icon: "🪑", category: "Education" },
-  { id: "whiteboard", name: "Whiteboard", icon: "📋", category: "Education" },
-  { id: "tree", name: "Tree", icon: "🌳", category: "Landscaping" },
-  { id: "bush", name: "Bush", icon: "🌿", category: "Landscaping" },
+  { id: "school_bus", name: "School Bus", icon: "🚌", category: "Education", image: "https://loremflickr.com/150/150/school_bus" },
+  { id: "desk", name: "School Desk", icon: "🪑", category: "Education", image: "https://loremflickr.com/150/150/school_desk" },
+  { id: "whiteboard", name: "Whiteboard", icon: "📋", category: "Education", image: "https://loremflickr.com/150/150/whiteboard" },
 ];
 
 // ---------------------------------------------------------------
@@ -1364,17 +1362,24 @@ function ConstructionCrane({ progress }: { progress: number }) {
 }
 
 // --- Camera Animator (supports target positions for view presets) ---
-function CameraAnimator({ targetPos }: { targetPos: [number, number, number] }) {
+function CameraAnimator({ targetPos, lookAtPos, controlsRef }: { targetPos: [number, number, number]; lookAtPos?: [number, number, number]; controlsRef?: React.MutableRefObject<any> }) {
   const isAnimating = useRef(true);
   const startTime = useRef(Date.now());
   const startPos = useRef(new THREE.Vector3());
+  const startTarget = useRef(new THREE.Vector3());
   const endPos = useMemo(() => new THREE.Vector3(...targetPos), [targetPos]);
+  const endTarget = useMemo(() => new THREE.Vector3(...(lookAtPos || [0, 6, 0])), [lookAtPos]);
   const duration = 1500;
   const initialized = useRef(false);
 
   useFrame(({ camera }) => {
     if (!initialized.current) {
       startPos.current.copy(camera.position);
+      if (controlsRef?.current) {
+        startTarget.current.copy(controlsRef.current.target);
+      } else {
+        startTarget.current.copy(endTarget);
+      }
       initialized.current = true;
       isAnimating.current = true;
       startTime.current = Date.now();
@@ -1385,7 +1390,11 @@ function CameraAnimator({ targetPos }: { targetPos: [number, number, number] }) 
     const eased = 1 - Math.pow(1 - t, 3);
 
     camera.position.lerpVectors(startPos.current, endPos, eased);
-    camera.lookAt(0, 6, 0);
+    if (controlsRef?.current) {
+      controlsRef.current.target.lerpVectors(startTarget.current, endTarget, eased);
+    } else {
+      camera.lookAt(endTarget);
+    }
 
     if (t >= 1) isAnimating.current = false;
   });
@@ -2486,6 +2495,99 @@ function BuildingScene({
       >
         <ConstructionFence progress={progress} />
       </DraggableObject>
+
+      {/* Education Specific Elements */}
+      {isEducation && (
+        <group>
+           {/* Flagpole */}
+           <mesh position={[bw / 2 + 5, 3, bd / 2 + 5]}>
+             <cylinderGeometry args={[0.05, 0.05, 6]} />
+             <meshStandardMaterial color="#ddd" />
+           </mesh>
+           <mesh position={[bw / 2 + 5.5, 5, bd / 2 + 5]}>
+             <planeGeometry args={[1, 0.6]} />
+             <meshStandardMaterial color="#fca5a5" side={THREE.DoubleSide} />
+           </mesh>
+
+           {/* Basketball Court */}
+           <group position={[-bw / 2 - 8, 0.05, 0]}>
+             <mesh rotation={[-Math.PI / 2, 0, 0]}>
+               <planeGeometry args={[10, 16]} />
+               <meshStandardMaterial color="#2d8e5d" />
+             </mesh>
+             {/* Lines */}
+             <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+               <planeGeometry args={[9.6, 15.6]} />
+               <meshStandardMaterial color="#fff" />
+             </mesh>
+             <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+               <planeGeometry args={[9.4, 15.4]} />
+               <meshStandardMaterial color="#2d8e5d" />
+             </mesh>
+             {/* Hoops */}
+             <group position={[0, 0, -7.5]}>
+               <mesh position={[0, 2, 0]}><cylinderGeometry args={[0.05, 0.05, 4]}/><meshStandardMaterial color="#888" /></mesh>
+               <mesh position={[0, 3.5, 0.5]}><boxGeometry args={[1.5, 1, 0.05]} /><meshStandardMaterial color="#eee" /></mesh>
+             </group>
+             <group position={[0, 0, 7.5]} rotation={[0, Math.PI, 0]}>
+               <mesh position={[0, 2, 0]}><cylinderGeometry args={[0.05, 0.05, 4]}/><meshStandardMaterial color="#888" /></mesh>
+               <mesh position={[0, 3.5, 0.5]}><boxGeometry args={[1.5, 1, 0.05]} /><meshStandardMaterial color="#eee" /></mesh>
+             </group>
+           </group>
+
+           {/* School Buses */}
+           <group position={[0, 0, bd / 2 + 8]}>
+             <DraggableObject id="bus1" defaultPosition={[0, 0, 0]} editMode={em} selectedObjectId={selId} onSelect={onSel as any} onPositionChange={onPos}>
+               <CatalogItemRenderer type="school_bus" />
+             </DraggableObject>
+           </group>
+           <group position={[4, 0, bd / 2 + 8]}>
+             <DraggableObject id="bus2" defaultPosition={[0, 0, 0]} editMode={em} selectedObjectId={selId} onSelect={onSel as any} onPositionChange={onPos}>
+               <CatalogItemRenderer type="school_bus" />
+             </DraggableObject>
+           </group>
+        </group>
+      )}
+
+      {/* Healthcare Specific Elements */}
+      {isHealthcare && (
+        <group>
+          {/* Helipad on roof */}
+          {progress >= 80 && (
+             <group position={[0, floors * fh + 0.1, 0]}>
+               <mesh rotation={[-Math.PI / 2, 0, 0]}>
+                 <circleGeometry args={[4, 32]} />
+                 <meshStandardMaterial color="#333" />
+               </mesh>
+               {/* H logo */}
+               <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                 <planeGeometry args={[1, 2.5]} />
+                 <meshStandardMaterial color="#fff" />
+               </mesh>
+               <mesh position={[-1.5, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                 <planeGeometry args={[1, 5]} />
+                 <meshStandardMaterial color="#fff" />
+               </mesh>
+               <mesh position={[1.5, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                 <planeGeometry args={[1, 5]} />
+                 <meshStandardMaterial color="#fff" />
+               </mesh>
+             </group>
+          )}
+
+          {/* Ambulances */}
+           <group position={[bw / 2 + 4, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+             <DraggableObject id="amb1" defaultPosition={[0, 0, 0]} editMode={em} selectedObjectId={selId} onSelect={onSel as any} onPositionChange={onPos}>
+               <CatalogItemRenderer type="ambulance" />
+             </DraggableObject>
+           </group>
+           <group position={[bw / 2 + 4, 0, 3]} rotation={[0, Math.PI / 2, 0]}>
+             <DraggableObject id="amb2" defaultPosition={[0, 0, 0]} editMode={em} selectedObjectId={selId} onSelect={onSel as any} onPositionChange={onPos}>
+               <CatalogItemRenderer type="ambulance" />
+             </DraggableObject>
+           </group>
+        </group>
+      )}
     </group>
   );
 }
@@ -2818,6 +2920,36 @@ function CatalogItemRenderer({ type }: { type: string }) {
   }
 }
 
+// --- Measurement Tool Renderer ---
+function MeasurementRenderer({ points }: { points: [number, number, number][] }) {
+  if (points.length === 0) return null;
+  const p1 = new THREE.Vector3(...points[0]);
+  const p2 = points.length > 1 ? new THREE.Vector3(...points[1]) : null;
+  const distance = p2 ? p1.distanceTo(p2) : 0;
+  return (
+    <group>
+      <mesh position={p1}>
+        <sphereGeometry args={[0.3, 16, 16]} />
+        <meshBasicMaterial color="#ff0000" depthTest={false} />
+      </mesh>
+      {p2 && (
+        <>
+          <mesh position={p2}>
+            <sphereGeometry args={[0.3, 16, 16]} />
+            <meshBasicMaterial color="#ff0000" depthTest={false} />
+          </mesh>
+          <Line points={[p1, p2]} color="#ff0000" lineWidth={4} depthTest={false} />
+          <Html position={p1.clone().lerp(p2, 0.5)} center style={{ pointerEvents: "none" }}>
+            <div style={{ background: "rgba(0,0,0,0.8)", padding: "4px 8px", borderRadius: 4, color: "#fff", fontSize: 13, fontWeight: "bold", whiteSpace: "nowrap" }}>
+              {distance.toFixed(2)}m
+            </div>
+          </Html>
+        </>
+      )}
+    </group>
+  );
+}
+
 export default function Construction3DPage() {
   const { token } = theme.useToken();
   const { resolvedTheme } = useTheme();
@@ -2881,6 +3013,21 @@ export default function Construction3DPage() {
   const [showTaskPanel, setShowTaskPanel] = useState(false);
   const [cameraKey, setCameraKey] = useState(0);
   const [cameraTarget, setCameraTarget] = useState<[number, number, number]>([50, 35, 50]);
+  const [cameraLookAtTarget, setCameraLookAtTarget] = useState<[number, number, number]>([0, 6, 0]);
+  const controlsRef = useRef<any>(null);
+  const [savedViewpoints, setSavedViewpoints] = useState<Array<{ id: string; name: string; position: [number, number, number]; target: [number, number, number] }>>([]);
+
+  const handleSaveViewpoint = useCallback(() => {
+    if (controlsRef.current) {
+      const pos = controlsRef.current.object.position.toArray() as [number, number, number];
+      const tgt = controlsRef.current.target.toArray() as [number, number, number];
+      setSavedViewpoints(prev => [
+        ...prev,
+        { id: `vp-${Date.now()}`, name: `View ${prev.length + 1}`, position: pos, target: tgt }
+      ]);
+      message.success("Viewpoint saved!");
+    }
+  }, []);
 
   // Edit mode (drag-and-drop / build mode) state
   const [editMode, setEditMode] = useState(false);
@@ -3004,6 +3151,23 @@ export default function Construction3DPage() {
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [annotationMode, setAnnotationMode] = useState(false);
   
+  // Measure tool
+  const [measureMode, setMeasureMode] = useState(false);
+  const [measurePoints, setMeasurePoints] = useState<[number, number, number][]>([]);
+
+  const handleSceneClick = useCallback((e: any) => {
+    if (measureMode) {
+      e.stopPropagation();
+      setMeasurePoints(prev => {
+        if (prev.length >= 2) return [e.point.toArray()];
+        return [...prev, e.point.toArray()];
+      });
+    } else if (annotationMode) {
+      e.stopPropagation();
+      addAnnotation([e.point.x, e.point.y, e.point.z]);
+    }
+  }, [measureMode, annotationMode, addAnnotation]);
+
   const [isAnnotationModalOpen, setIsAnnotationModalOpen] = useState(false);
   const [pendingAnnotationPos, setPendingAnnotationPos] = useState<[number, number, number] | null>(null);
   const [annotationForm] = Form.useForm();
@@ -3456,20 +3620,31 @@ export default function Construction3DPage() {
           styles={{ body: { padding: "10px 16px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" } }}
         >
           {/* Template Type */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexDirection: "column", width: "100%" }}>
             <AntText type="secondary" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
-              Template
+              Template Options
             </AntText>
-            <Segmented
-              size="small"
-              value={activeTemplateId}
-              onChange={(val) => { setActiveTemplateId(String(val)); setLivePhases(null); }}
-              options={TEMPLATE_LIST.map(t => ({
-                value: t.id,
-                label: <span>{t.icon} {t.name}</span>,
-              }))}
-              style={{ borderRadius: 8 }}
-            />
+            <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8, width: "100%", padding: "4px" }}>
+              {TEMPLATE_LIST.map(t => (
+                <Card
+                  key={t.id}
+                  hoverable
+                  onClick={() => { setActiveTemplateId(t.id); setLivePhases(null); }}
+                  style={{
+                    minWidth: 100,
+                    border: activeTemplateId === t.id ? "2px solid #3b82f6" : `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
+                    background: activeTemplateId === t.id ? (isDark ? "rgba(59, 130, 246, 0.15)" : "rgba(59, 130, 246, 0.05)") : (isDark ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.4)"),
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                  styles={{ body: { padding: "12px 12px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 } }}
+                >
+                  <span style={{ fontSize: 28 }}>{t.icon}</span>
+                  <AntText style={{ fontSize: 12, fontWeight: activeTemplateId === t.id ? 600 : 500, textAlign: "center" }}>{t.name}</AntText>
+                </Card>
+              ))}
+            </div>
           </div>
 
           <Divider type="vertical" style={{ height: 24, margin: 0 }} />
@@ -3729,15 +3904,64 @@ export default function Construction3DPage() {
               />
             </Tooltip>
             <div style={{ width: 1, height: 16, background: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)", margin: "0 4px" }} />
-            <Tooltip title={isNightMode ? "Day Mode" : "Night Mode"}>
-              <Button
-                type={isNightMode ? "primary" : "text"}
-                shape="circle"
-                icon={<CloudOutlined />}
-                onClick={() => setIsNightMode(!isNightMode)}
-                style={{ color: isNightMode ? "#fff" : (isDark ? "#ccc" : "#555") }}
-              />
-            </Tooltip>
+            <Popover
+              title={<span style={{ fontSize: 13, fontWeight: 600 }}>Environment Settings</span>}
+              trigger="click"
+              placement="bottomRight"
+              content={
+                <div style={{ width: 240, paddingTop: 8 }}>
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, color: isDark ? "#aaa" : "#666", marginBottom: 8, fontWeight: 500 }}>Time of Day</div>
+                    <Segmented
+                      block
+                      value={isNightMode ? "night" : "day"}
+                      onChange={(val) => setIsNightMode(val === "night")}
+                      options={[
+                        { label: "Day", value: "day" },
+                        { label: "Night", value: "night" },
+                      ]}
+                    />
+                  </div>
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, color: isDark ? "#aaa" : "#666", marginBottom: 8, fontWeight: 500 }}>Weather Condition</div>
+                    <Segmented
+                      block
+                      value={sceneConfig.showWeather ? sceneConfig.weatherType || "rain" : "clear"}
+                      onChange={(val) => {
+                        if (val === "clear") {
+                          updateConfig("showWeather", false);
+                        } else {
+                          updateConfig("showWeather", true);
+                          updateConfig("weatherType", val);
+                        }
+                      }}
+                      options={[
+                        { label: "Clear", value: "clear" },
+                        { label: "Rain", value: "rain" },
+                        { label: "Snow", value: "snow" },
+                      ]}
+                    />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ fontSize: 12, color: isDark ? "#aaa" : "#666", fontWeight: 500 }}>Auto-Simulate Time</div>
+                    <Switch
+                      checked={sceneConfig.simulateTime}
+                      onChange={(c) => updateConfig("simulateTime", c)}
+                      size="small"
+                    />
+                  </div>
+                </div>
+              }
+            >
+              <Tooltip title="Environment Controls">
+                <Button
+                  type={isNightMode || sceneConfig.showWeather ? "primary" : "text"}
+                  shape="circle"
+                  icon={<CloudOutlined />}
+                  style={{ color: isNightMode || sceneConfig.showWeather ? "#fff" : (isDark ? "#ccc" : "#555") }}
+                />
+              </Tooltip>
+            </Popover>
             <Tooltip title={sectionCutEnabled ? "Disable Section Cut" : "Section Cut"}>
               <Button
                 type={sectionCutEnabled ? "primary" : "text"}
@@ -3754,6 +3978,18 @@ export default function Construction3DPage() {
                 icon={<AlertOutlined />}
                 onClick={() => setAnnotationMode(!annotationMode)}
                 style={{ color: annotationMode ? "#fff" : (isDark ? "#ccc" : "#555"), ...(annotationMode ? { background: "#e64980", borderColor: "#e64980" } : {}) }}
+              />
+            </Tooltip>
+            <Tooltip title={measureMode ? "Exit Measure Mode" : "Measure Distance"}>
+              <Button
+                type={measureMode ? "primary" : "text"}
+                shape="circle"
+                icon={<AimOutlined />}
+                onClick={() => {
+                  setMeasureMode(!measureMode);
+                  if (measureMode) setMeasurePoints([]); // clear on exit
+                }}
+                style={{ color: measureMode ? "#fff" : (isDark ? "#ccc" : "#555"), ...(measureMode ? { background: "#f59f00", borderColor: "#f59f00" } : {}) }}
               />
             </Tooltip>
             {annotations.length > 0 && (
@@ -3821,7 +4057,7 @@ export default function Construction3DPage() {
               <Tooltip key={key} title={preset.label} placement="right">
                 <Button
                   size="small"
-                  onClick={() => { setCameraTarget(preset.pos); setCameraKey((k) => k + 1); }}
+                  onClick={() => { setCameraTarget(preset.pos); setCameraLookAtTarget([0, 6, 0]); setCameraKey((k) => k + 1); }}
                   style={{
                     borderRadius: 8,
                     fontSize: 11,
@@ -3837,6 +4073,51 @@ export default function Construction3DPage() {
                 </Button>
               </Tooltip>
             ))}
+            
+            {savedViewpoints.length > 0 && <div style={{ height: 1, background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)", margin: "4px 0" }} />}
+            
+            {savedViewpoints.map((vp) => (
+              <Tooltip key={vp.id} title={vp.name} placement="right">
+                <Button
+                  size="small"
+                  onClick={() => { setCameraTarget(vp.position); setCameraLookAtTarget(vp.target); setCameraKey((k) => k + 1); }}
+                  style={{
+                    borderRadius: 8,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    width: 36,
+                    height: 28,
+                    padding: 0,
+                    background: isDark ? "rgba(76, 175, 80, 0.2)" : "rgba(76, 175, 80, 0.1)",
+                    border: isDark ? "1px solid rgba(76, 175, 80, 0.3)" : "1px solid rgba(76, 175, 80, 0.2)",
+                    color: isDark ? "#81c784" : "#2e7d32",
+                  }}
+                >
+                  <EyeOutlined />
+                </Button>
+              </Tooltip>
+            ))}
+
+            <Tooltip title="Save Current Viewpoint" placement="right">
+              <Button
+                size="small"
+                onClick={handleSaveViewpoint}
+                style={{
+                  borderRadius: 8,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  width: 36,
+                  height: 28,
+                  padding: 0,
+                  background: "transparent",
+                  border: isDark ? "1px dashed rgba(255,255,255,0.2)" : "1px dashed rgba(0,0,0,0.2)",
+                  color: isDark ? "#aaa" : "#666",
+                  marginTop: 4,
+                }}
+              >
+                +
+              </Button>
+            </Tooltip>
           </div>
 
           {/* Phase color legend */}
@@ -3969,40 +4250,44 @@ export default function Construction3DPage() {
               />
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", maxWidth: 600 }}>
                 {CATALOG_ITEMS.filter(item => catalogCategory === "All" || item.category === catalogCategory).map(item => (
-                  <Tooltip key={item.id} title={item.name} mouseEnterDelay={0.4}>
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddCatalogItem(item.id);
-                      }}
-                      style={{
-                        width: 50, height: 50,
-                        borderRadius: 16,
-                        background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.6)",
-                        border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.06)",
-                        boxShadow: isDark ? "inset 0 1px 1px rgba(255,255,255,0.1)" : "0 2px 8px rgba(0,0,0,0.04)",
-                        display: "flex", flexDirection: "column",
-                        alignItems: "center", justifyContent: "center",
-                        cursor: "pointer",
-                        transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                        pointerEvents: "auto",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.9)";
-                        e.currentTarget.style.transform = "translateY(-6px) scale(1.1)";
-                        e.currentTarget.style.boxShadow = isDark ? "0 12px 24px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.2)" : "0 12px 24px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.04)";
-                        e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.6)";
-                        e.currentTarget.style.transform = "translateY(0) scale(1)";
-                        e.currentTarget.style.boxShadow = isDark ? "inset 0 1px 1px rgba(255,255,255,0.1)" : "0 2px 8px rgba(0,0,0,0.04)";
-                        e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
-                      }}
-                    >
-                      <span style={{ fontSize: 22, filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.15))" }}>{item.icon}</span>
+                  <div
+                    key={item.id}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("catalogItem", item.id);
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddCatalogItem(item.id);
+                    }}
+                    style={{
+                      width: 90, height: 110,
+                      borderRadius: 12,
+                      background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.6)",
+                      border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.06)",
+                      overflow: "hidden",
+                      display: "flex", flexDirection: "column",
+                      cursor: "grab",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+                      transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-4px)";
+                      e.currentTarget.style.boxShadow = isDark ? "0 8px 24px rgba(0,0,0,0.4)" : "0 8px 24px rgba(0,0,0,0.12)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.05)";
+                    }}
+                  >
+                    <div style={{ height: 65, width: "100%", background: "#f0f0f0", position: "relative" }}>
+                      {/* Using loremflickr for realistic pictures as requested */}
+                      <img src={item.image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }} />
                     </div>
-                  </Tooltip>
+                    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", textAlign: "center" }}>
+                      <AntText style={{ fontSize: 10, fontWeight: 500, lineHeight: 1.1 }}>{item.name}</AntText>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -4103,18 +4388,29 @@ export default function Construction3DPage() {
           </div>
 
           {/* Three.js Canvas */}
-          <Canvas
-            shadows
-            orthographic={sceneConfig.cameraMode === "orthographic"}
-            camera={{ 
-              position: [20, 15, 20], 
-              fov: 45,
-              zoom: sceneConfig.cameraMode === "orthographic" ? 25 : 1
+          <div 
+            style={{ width: "100%", height: "100%" }}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              const itemId = e.dataTransfer.getData("catalogItem");
+              if (itemId) {
+                handleAddCatalogItem(itemId);
+              }
             }}
-            style={{ width: "100%", height: "100%", background: isNightMode ? "#040410" : isDark ? "#0a0a14" : "#f0f4f8" }}
-            gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
-            dpr={[1, 2]}
           >
+            <Canvas
+              shadows
+              orthographic={sceneConfig.cameraMode === "orthographic"}
+              camera={{ 
+                position: [20, 15, 20], 
+                fov: 45,
+                zoom: sceneConfig.cameraMode === "orthographic" ? 25 : 1
+              }}
+              style={{ width: "100%", height: "100%", background: isNightMode ? "#040410" : isDark ? "#0a0a14" : "#f0f4f8" }}
+              gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+              dpr={[1, 2]}
+            >
             {/* Fog for depth */}
             <fog attach="fog" args={[isDark ? "#0a0a14" : "#f0f4f8", 40, 80]} />
 
@@ -4133,7 +4429,7 @@ export default function Construction3DPage() {
             )}
 
             {/* Camera animator */}
-            <CameraAnimator key={cameraKey} targetPos={cameraTarget} />
+            <CameraAnimator key={cameraKey} targetPos={cameraTarget} lookAtPos={cameraLookAtTarget} controlsRef={controlsRef} />
 
             {/* Lighting  no external HDR needed */}
             <ambientLight intensity={isNightMode ? 0.15 : isDark ? 0.5 : 0.7} color={isNightMode ? "#1a1a3e" : "#ffffff"} />
@@ -4277,51 +4573,55 @@ export default function Construction3DPage() {
             ))}
 
             {/* Scene Router  renders the right 3D scene for the active template */}
-            {["construction", "healthcare", "education"].includes(activeTemplateId) && (
-              <BuildingScene
-                progress={progress}
-                selectedPhase={selectedPhase}
-                wireframe={wireframe}
-                xray={xray}
-                config={sceneConfig}
-                editMode={editMode}
-                selectedObjectId={selectedObjectId}
-                onSelectObject={setSelectedObjectId}
-                objectPositions={objectPositions}
-                onObjectPositionChange={handleObjectPositionChange}
-                activeTemplateId={activeTemplateId}
-              />
-            )}
-            {activeTemplateId === "farming" && (
-              <Suspense fallback={null}>
-                <FarmingSceneLazy
+            <group onPointerDown={handleSceneClick}>
+              <MeasurementRenderer points={measurePoints} />
+              {["construction", "healthcare", "education"].includes(activeTemplateId) && (
+                <BuildingScene
                   progress={progress}
                   selectedPhase={selectedPhase}
+                  wireframe={wireframe}
                   xray={xray}
                   config={sceneConfig}
+                  editMode={editMode}
+                  selectedObjectId={selectedObjectId}
+                  onSelectObject={setSelectedObjectId}
+                  objectPositions={objectPositions}
+                  onObjectPositionChange={handleObjectPositionChange}
+                  activeTemplateId={activeTemplateId}
                 />
-              </Suspense>
-            )}
-            {activeTemplateId === "manufacturing" && (
-              <Suspense fallback={null}>
-                <ManufacturingSceneLazy
-                  progress={progress}
-                  selectedPhase={selectedPhase}
-                  xray={xray}
-                  config={sceneConfig}
-                />
-              </Suspense>
-            )}
-            {activeTemplateId === "generic" && (
-              <Suspense fallback={null}>
-                <GenericSceneLazy
-                  progress={progress}
-                  selectedPhase={selectedPhase}
-                  xray={xray}
-                  config={sceneConfig}
-                />
-              </Suspense>
-            )}
+              )}
+              {activeTemplateId === "farming" && (
+                <Suspense fallback={null}>
+                  <FarmingSceneLazy
+                    progress={progress}
+                    selectedPhase={selectedPhase}
+                    xray={xray}
+                    config={sceneConfig}
+                  />
+                </Suspense>
+              )}
+              {activeTemplateId === "manufacturing" && (
+                <Suspense fallback={null}>
+                  <ManufacturingSceneLazy
+                    progress={progress}
+                    selectedPhase={selectedPhase}
+                    xray={xray}
+                    config={sceneConfig}
+                  />
+                </Suspense>
+              )}
+              {activeTemplateId === "generic" && (
+                <Suspense fallback={null}>
+                  <GenericSceneLazy
+                    progress={progress}
+                    selectedPhase={selectedPhase}
+                    xray={xray}
+                    config={sceneConfig}
+                  />
+                </Suspense>
+              )}
+            </group>
+
 
             {/* Dimension guides for construction */}
             {["construction", "healthcare", "education"].includes(activeTemplateId) && !sceneConfig.uploadedModelUrl && (
@@ -4509,6 +4809,7 @@ export default function Construction3DPage() {
 
             {/* Controls */}
             <OrbitControls
+              ref={controlsRef}
               makeDefault
               minPolarAngle={0.1}
               maxPolarAngle={Math.PI / 2 - 0.05}
@@ -4521,6 +4822,7 @@ export default function Construction3DPage() {
               target={[0, 6, 0]}
             />
           </Canvas>
+          </div>
 
           {/* Build Catalog UI has been moved above Canvas */}
 
