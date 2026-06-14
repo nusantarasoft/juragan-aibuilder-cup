@@ -6,7 +6,6 @@ import { motion } from "framer-motion";
 import RbacGuard from "@/components/common/RbacGuard";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
-import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import { Badge, Button, Card, Col, Empty, Input, message, Popover, Progress, Row, Segmented, Select, Space, Spin, Statistic, Tag, Tooltip, Typography } from "antd";
 import {
