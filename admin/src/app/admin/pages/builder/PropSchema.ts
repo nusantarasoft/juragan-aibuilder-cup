@@ -108,6 +108,13 @@ export const blockSchemas: Record<string, BlockSchema> = {
         props: [
             { key: 'title', label: 'Section Title', type: 'text', category: 'Content', placeholder: 'Our Features' },
             {
+                key: 'dataSource', label: 'Dynamic Data', type: 'select', category: 'Data', options: [
+                    { label: 'Manual Input', value: '' },
+                    { label: 'Products (Dynamic)', value: 'products' },
+                    { label: 'Blog Posts (Dynamic)', value: 'blog' },
+                ]
+            },
+            {
                 key: 'columns', label: 'Columns', type: 'select', category: 'Layout', options: [
                     { label: '2 Columns', value: 2 },
                     { label: '3 Columns', value: 3 },
@@ -280,6 +287,152 @@ export const blockSchemas: Record<string, BlockSchema> = {
                     { key: 'suffix', label: 'Suffix', type: 'text', category: 'Content', placeholder: '+' },
                 ]
             },
+        ]
+    },
+    hero3d: {
+        type: 'hero3d',
+        name: '3D Interactive Hero',
+        icon: '🧊',
+        props: [
+            { key: 'title', label: 'Title', type: 'text', category: 'Content', placeholder: 'Welcome to the Future' },
+            { key: 'subtitle', label: 'Subtitle', type: 'textarea', category: 'Content', placeholder: 'Experience true interactivity' },
+            { key: 'modelType', label: '3D Model', type: 'select', category: 'Appearance', options: [
+                { label: 'Floating Spheres', value: 'spheres' },
+                { label: 'Cyberpunk Wireframe', value: 'wireframe' },
+                { label: 'Abstract Geometry', value: 'geometry' },
+            ]},
+            { key: 'theme', label: 'Color Theme', type: 'select', category: 'Appearance', options: [
+                { label: 'Neon Vaporwave', value: 'vaporwave' },
+                { label: 'Deep Space Dark', value: 'dark' },
+                { label: 'Glass & Light', value: 'light' },
+            ]},
+            { key: 'animateOnScroll', label: 'Animate on Scroll', type: 'switch', category: 'Behavior', defaultValue: true },
+        ]
+    },
+    bento: {
+        type: 'bento',
+        name: 'Bento Grid',
+        icon: '🍱',
+        props: [
+            { key: 'title', label: 'Section Title', type: 'text', category: 'Content', placeholder: 'Features' },
+            {
+                key: 'dataSource', label: 'Dynamic Data', type: 'select', category: 'Data', options: [
+                    { label: 'Manual Input', value: '' },
+                    { label: 'Products (Dynamic)', value: 'products' },
+                    { label: 'Team Members (Dynamic)', value: 'team' },
+                ]
+            },
+            { key: 'theme', label: 'Theme Aesthetic', type: 'select', category: 'Appearance', options: [
+                { label: 'Glassmorphism (Dark)', value: 'glass-dark' },
+                { label: 'Glassmorphism (Light)', value: 'glass-light' },
+                { label: 'Neumorphism', value: 'neu' },
+                { label: 'Flat Modern', value: 'flat' }
+            ]},
+            {
+                key: 'items', label: 'Bento Cards', type: 'array', category: 'Content', itemSchema: [
+                    { key: 'title', label: 'Card Title', type: 'text', category: 'Content' },
+                    { key: 'description', label: 'Description', type: 'textarea', category: 'Content' },
+                    { key: 'icon', label: 'Icon', type: 'text', category: 'Content' },
+                    { key: 'colSpan', label: 'Column Span', type: 'number', category: 'Layout', min: 1, max: 3 }
+                ]
+            },
+        ]
+    },
+    glassPricing: {
+        type: 'glassPricing',
+        name: 'Glass Pricing',
+        icon: '💎',
+        props: [
+            { key: 'title', label: 'Section Title', type: 'text', category: 'Content', placeholder: 'Pricing' },
+            { key: 'annualDiscount', label: 'Annual Discount (%)', type: 'number', category: 'Behavior', min: 0, max: 50 },
+            { key: 'theme', label: 'Glass Theme', type: 'select', category: 'Appearance', options: [
+                { label: 'Amethyst Glow', value: 'amethyst' },
+                { label: 'Sapphire Depth', value: 'sapphire' },
+                { label: 'Emerald Mint', value: 'emerald' },
+            ]},
+            {
+                key: 'plans', label: 'Pricing Tiers', type: 'array', category: 'Content', itemSchema: [
+                    { key: 'name', label: 'Plan Name', type: 'text', category: 'Content' },
+                    { key: 'price', label: 'Monthly Price', type: 'number', category: 'Content' },
+                    { key: 'isPopular', label: 'Highlight?', type: 'switch', category: 'Appearance' },
+                    {
+                        key: 'features', label: 'Features', type: 'array', category: 'Content', itemSchema: [
+                            { key: 'value', label: 'Feature', type: 'text', category: 'Content' }
+                        ]
+                    },
+                ]
+            },
+        ]
+    },
+    products: {
+        type: 'products',
+        name: 'Product Showcase',
+        icon: '🛍️',
+        props: [
+            { key: 'title', label: 'Section Title', type: 'text', category: 'Content', placeholder: 'Featured Products' },
+            { key: 'dataSource', label: 'Data Source', type: 'select', category: 'Data', options: [
+                { label: 'Latest Arrivals', value: 'latest' },
+                { label: 'Best Sellers', value: 'bestsellers' },
+                { label: 'On Sale', value: 'sale' }
+            ]},
+            { key: 'layout', label: 'Grid Layout', type: 'select', category: 'Layout', options: [
+                { label: '3 Columns', value: '3' },
+                { label: '4 Columns', value: '4' },
+                { label: 'Carousel', value: 'carousel' }
+            ]},
+            { key: 'theme', label: 'Card Style', type: 'select', category: 'Appearance', options: [
+                { label: 'Glassmorphism', value: 'glass' },
+                { label: 'Minimalist', value: 'minimal' },
+                { label: 'Neumorphism', value: 'neu' }
+            ]}
+        ]
+    },
+    leadForm: {
+        type: 'leadForm',
+        name: 'Lead Gen Form',
+        icon: '📋',
+        props: [
+            { key: 'title', label: 'Form Title', type: 'text', category: 'Content', placeholder: 'Get in Touch' },
+            { key: 'subtitle', label: 'Subtitle', type: 'textarea', category: 'Content', placeholder: 'We would love to hear from you.' },
+            { key: 'crmPipeline', label: 'CRM Pipeline', type: 'select', category: 'Data', options: [
+                { label: 'General Inquiry', value: 'general' },
+                { label: 'Sales Lead', value: 'sales' },
+                { label: 'Support Ticket', value: 'support' }
+            ]},
+            { key: 'buttonText', label: 'Submit Button Text', type: 'text', category: 'Content', placeholder: 'Submit' },
+            { key: 'theme', label: 'Form Style', type: 'select', category: 'Appearance', options: [
+                { label: 'Floating Glass', value: 'glass' },
+                { label: 'Clean White', value: 'clean' },
+                { label: 'Dark Mode Focus', value: 'dark' }
+            ]}
+        ]
+    },
+    marquee: {
+        type: 'marquee',
+        name: 'Marquee Logos',
+        icon: '🔄',
+        props: [
+            { key: 'pauseOnHover', label: 'Pause on Hover', type: 'switch', category: 'Behavior', defaultValue: true },
+            { key: 'reverse', label: 'Reverse Direction', type: 'switch', category: 'Behavior', defaultValue: false },
+            { key: 'vertical', label: 'Vertical Scroll', type: 'switch', category: 'Layout', defaultValue: false },
+            {
+                key: 'items', label: 'Marquee Items', type: 'array', category: 'Content', itemSchema: [
+                    { key: 'text', label: 'Text/Name', type: 'text', category: 'Content' },
+                    { key: 'icon', label: 'Icon/Logo', type: 'text', category: 'Content' }
+                ]
+            },
+        ]
+    },
+    globe: {
+        type: 'globe',
+        name: 'Interactive Globe',
+        icon: '🌍',
+        props: [
+            { key: 'title', label: 'Overlay Title', type: 'text', category: 'Content', placeholder: 'Global Reach' },
+            { key: 'theme', label: 'Theme', type: 'select', category: 'Appearance', options: [
+                { label: 'Dark Space', value: 'dark' },
+                { label: 'Light Mode', value: 'light' },
+            ]},
         ]
     },
     gridContainer: {

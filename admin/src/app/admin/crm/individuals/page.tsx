@@ -26,7 +26,6 @@ import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
-const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface Individual {
     id: string; firstName: string; lastName: string; salutation: string;
@@ -172,12 +171,12 @@ export default function IndividualsPage() {
             <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setIsModalOpen(true); }}>Add Individual</Button>,
         ]}>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35 }}>
-            <Card style={{ ...glass, marginBottom: 16 }}><Space wrap>
+            <Card style={{ marginBottom: 16 }}><Space wrap>
                 <Input prefix={<SearchOutlined />} placeholder="Search by name..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />
                 <Select placeholder="Status" value={statusFilter} onChange={setStatusFilter} allowClear style={{ width: 130 }} options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} />
                 <Select placeholder="Lead Status" value={leadFilter} onChange={setLeadFilter} allowClear style={{ width: 150 }} options={LEAD_STATUSES} />
             </Space></Card>
-            <Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table scroll={{ x: 900 }} columns={columns} dataSource={individuals.map(i => ({ ...i, key: i.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>
+            <Card  styles={{ body: { padding: 0 } }}><Table scroll={{ x: 900 }} columns={columns} dataSource={individuals.map(i => ({ ...i, key: i.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Individual" : "Add Individual"} entityName="individual" steps={formSteps} fields={INDIVIDUAL_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["var(--theme-color, #8b5cf6)", "var(--theme-accent, #a855f7)"]} editMode={!!editing} />
 

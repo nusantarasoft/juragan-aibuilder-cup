@@ -18,7 +18,6 @@ import DecryptedText from "@/components/react-bits/DecryptedText";
 import FormIntegrationWidget from "@/components/forms/FormIntegrationWidget";
 
 const { Text } = Typography;
-const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface DashboardStats {
     totalIndividuals: number; totalAccounts: number; totalContacts: number;
@@ -128,7 +127,7 @@ export default function CrmDashboardPage() {
     const navCard = (title: string, path: string, icon: React.ReactNode, color: string, children: React.ReactNode, delay: number) => (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}>
             <Card hoverable onClick={() => router.push(path)}
-                style={{ ...glass, cursor: 'pointer', borderLeft: `3px solid ${color}`, transition: 'all 0.25s ease' }}
+                style={{ cursor: 'pointer', borderLeft: `3px solid ${color}`, transition: 'all 0.25s ease' }}
                 styles={{ body: { padding: '16px 18px' } }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>{children}</div>
@@ -169,7 +168,7 @@ export default function CrmDashboardPage() {
                     </Col>
                     <Col xs={24} sm={12} md={6}>
                         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                            <Card style={{ ...glass, borderLeft: '3px solid #f59e0b' }} styles={{ body: { padding: '16px 18px' } }}>
+                            <Card style={{ borderLeft: '3px solid #f59e0b' }} styles={{ body: { padding: '16px 18px' } }}>
                                 <WinRateDonut rate={winRate} />
                                 <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 6 }}>{stats.openDeals} open · {stats.totalDeals} total</Text>
                             </Card>
@@ -181,7 +180,7 @@ export default function CrmDashboardPage() {
             {/* Pipeline Funnel Visualization */}
             {stats.totalDeals > 0 && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
-                    <Card size="small" style={{ ...glass }}>
+                    <Card size="small" >
                         <Text strong style={{ fontSize: 13, display: 'block', marginBottom: 10 }}>Deal Pipeline Funnel</Text>
                         <PipelineFunnel pipeline={stats.pipelineValue} won={stats.wonValue} open={stats.openDeals} total={stats.totalDeals} />
                     </Card>

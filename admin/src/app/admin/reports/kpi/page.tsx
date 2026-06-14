@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { Card, Button, Space, Tag, Typography, Row, Col, Statistic, Select, Table, Progress, Spin, message, Divider, Empty, Tooltip, Badge } from "antd";
+import { Card, Button, Space, Tag, Typography, Row, Col, Statistic, Select, Table, Progress, Spin, message, Divider, Empty, Tooltip, Badge, theme } from "antd";
 import {
     TrophyOutlined, BarChartOutlined, DownloadOutlined, ReloadOutlined,
     TeamOutlined, StarOutlined, FileTextOutlined, ArrowUpOutlined,
@@ -27,6 +27,8 @@ function gradeColor(grade?: string) {
 
 export default function FormKpiReportPage() {
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const [messageApi, contextHolder] = message.useMessage();
     const [loading, setLoading] = useState(true);
     const [templates, setTemplates] = useState<any[]>([]);
@@ -221,7 +223,7 @@ export default function FormKpiReportPage() {
                                     <div style={{ height: 260 }}>
                                         <ResponsiveContainer>
                                             <BarChart data={scoreRanges}>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'} />
                                                 <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                                                 <YAxis tick={{ fontSize: 10 }} />
                                                 <RTooltip />
@@ -261,7 +263,7 @@ export default function FormKpiReportPage() {
                                         <div style={{ height: 280 }}>
                                             <ResponsiveContainer>
                                                 <BarChart data={trendData}>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                        <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'} />
                                                     <XAxis dataKey="name" tick={{ fontSize: 9 }} />
                                                     <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} />
                                                     <RTooltip />

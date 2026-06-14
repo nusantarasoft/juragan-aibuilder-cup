@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { ProTable, ProColumns, ModalForm, ProFormText, ProFormSelect, ProFormTextArea, ProForm, ProFormDigit } from "@ant-design/pro-components";
 import { Button, message, Space, Tag, Popconfirm, Row, Col, Card, Statistic, Progress, Alert } from "antd";
 import { GlobalOutlined, PlusOutlined, DeleteOutlined, EditOutlined, RobotOutlined, ThunderboltOutlined, HeartOutlined, TeamOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RTooltip, Legend } from 'recharts';
 
 const GET_METRICS = `
   query GetSustainabilityMetrics($projectId: String!) {
@@ -58,7 +59,7 @@ const DIMENSION_OPTIONS = [
     { label: '🌍 Environmental', value: 'environmental', color: '#10b981', icon: <ThunderboltOutlined /> },
     { label: '👥 Social', value: 'social', color: '#3b82f6', icon: <TeamOutlined /> },
     { label: '💰 Economic', value: 'economic', color: '#f59e0b', icon: <HeartOutlined /> },
-    { label: '🏢 Governance', value: 'governance', color: 'var(--theme-color, #8b5cf6)', icon: <GlobalOutlined /> },
+    { label: '🏢 Governance', value: 'governance', color: '#8b5cf6', icon: <GlobalOutlined /> },
 ];
 
 const STATUS_OPTIONS = [
@@ -86,9 +87,7 @@ export default function SustainabilityTab({ projectId }: { projectId: string }) 
         try {
             const data = await gql(GET_METRICS, { projectId });
             setMetrics(data.pmSustainabilityMetrics || []);
-        } catch {
-            // empty
-        } finally {
+        } catch (err: any) { console.error("PM Error", err); } finally {
             setLoading(false);
         }
     }, [projectId]);
@@ -190,6 +189,14 @@ export default function SustainabilityTab({ projectId }: { projectId: string }) 
         onTarget: metrics.filter(m => m.dimension === d.value && (m.status === 'on_target' || m.status === 'exceeded')).length,
     }));
 
+    const chartData = useMemo(() =>
+        metrics.filter((m: any) => (m.targetValue || m.target_value) || (m.actualValue || m.actual_value)).map((m: any) => ({
+            name: (m.metricName || m.metric_name || '').slice(0, 15),
+            Target: Number(m.targetValue || m.target_value || 0),
+            Actual: Number(m.actualValue || m.actual_value || 0),
+        })),
+    [metrics]);
+
     const getProgress = (actual: number, target: number) => {
         if (!target || target === 0) return 0;
         return Math.min(Math.round((actual / target) * 100), 100);
@@ -288,6 +295,24 @@ export default function SustainabilityTab({ projectId }: { projectId: string }) 
                 ))}
             </Row>
 
+            {chartData.length > 0 && (
+                <Card size="small" title={<Space><span style={{ fontWeight: 600 }}>Target vs Actual Performance</span></Space>} style={{ marginBottom: 16, borderRadius: 10, background: isDark ? 'rgba(15,15,23,0.7)' : undefined, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                    <div style={{ height: 220 }}>
+                        <ResponsiveContainer>
+                            <BarChart data={chartData} margin={{ left: 10, right: 10, bottom: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} />
+                                <XAxis dataKey="name" tick={{ fontSize: 9, fill: isDark ? '#94a3b8' : '#64748b' }} interval={0} angle={-20} textAnchor="end" />
+                                <YAxis tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }} />
+                                <RTooltip contentStyle={{ background: isDark ? '#1e1e2e' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, borderRadius: 8, fontSize: 12 }} />
+                                <Legend />
+                                <Bar dataKey="Target" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="Actual" fill="#10b981" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </Card>
+            )}
+
             <ProTable
                 headerTitle={
                     <Space>
@@ -343,3 +368,4 @@ export default function SustainabilityTab({ projectId }: { projectId: string }) 
         </div>
     );
 }
+

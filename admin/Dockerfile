@@ -29,6 +29,7 @@ ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlI
 
 # Build the application (increase heap for 126+ page compilation)
 ENV NODE_OPTIONS="--max-old-space-size=4096"
+ARG CACHEBUST=1
 RUN npm run build
 
 # ===== Runner Stage =====

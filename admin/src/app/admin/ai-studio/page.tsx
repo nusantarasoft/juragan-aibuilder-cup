@@ -73,6 +73,8 @@ import { AuroraText } from "@/components/magicui/aurora-text";
 import { TooltipWrapper as AnimatedTooltip } from '@/components/mvpblocks/AnimatedTooltip';
 import { motion, AnimatePresence } from "framer-motion";
 
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+
 const { Title, Text, Paragraph } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const { TextArea } = Input;
@@ -134,7 +136,7 @@ export default function AIStudioPage() {
     // ── Layout State ──
     const [showSources, setShowSources] = useState(true);
     const [showChat, setShowChat] = useState(true);
-    const [studioMainTab, setStudioMainTab] = useState<"workspace" | "flows">("workspace");
+    const [studioMainTab, setStudioMainTab] = useState<"workspace" | "playground" | "flows">("workspace");
 
     // ── Report State ──
     const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -801,6 +803,51 @@ export default function AIStudioPage() {
         </div>
     );
 
+    const renderPlayground = () => {
+        const data = [
+            { name: '10:00', latency: 400, tokens: 120 },
+            { name: '10:05', latency: 300, tokens: 132 },
+            { name: '10:10', latency: 200, tokens: 101 },
+            { name: '10:15', latency: 278, tokens: 134 },
+            { name: '10:20', latency: 189, tokens: 90 },
+        ];
+        return (
+            <div className="flex h-full gap-4 px-4 pb-4 pt-2">
+                <div className="flex-1 flex flex-col gap-4">
+                     <Card size="small" title={<Text strong className="text-sm">Prompt Editor</Text>} className="flex-1" style={{ ...glass }}>
+                         <TextArea placeholder="Enter system prompt here..." style={{ height: '100%', minHeight: 180, resize: 'none', background: 'transparent', border: 'none' }} />
+                     </Card>
+                     <Card size="small" title={<Text strong className="text-sm">Generation Preview</Text>} className="flex-1" style={{ ...glass }}>
+                         <TextArea placeholder="AI Output will appear here..." style={{ height: '100%', minHeight: 180, resize: 'none', background: 'rgba(0,0,0,0.02)', border: 'none' }} disabled />
+                     </Card>
+                </div>
+                <div className="w-[300px] flex flex-col gap-4">
+                     <Card size="small" title={<Text strong className="text-sm">Model Config</Text>} style={{ ...glass }}>
+                         <Text className="text-xs mb-1 block">Temperature</Text>
+                         <Input type="range" min={0} max={2} step={0.1} defaultValue={0.7} className="w-full mb-3" />
+                         <Text className="text-xs mb-1 block">Max Tokens</Text>
+                         <Input type="number" defaultValue={2048} className="w-full mb-4" />
+                         <Button type="primary" block style={{ backgroundColor: themeColor, border: 'none' }}>Test Prompt</Button>
+                     </Card>
+                     <Card size="small" title={<Text strong className="text-sm">Performance</Text>} className="flex-1" style={{ ...glass }}>
+                          <div style={{ height: 160, width: '100%' }}>
+                             <ResponsiveContainer>
+                                 <LineChart data={data}>
+                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(150,150,150,0.2)" />
+                                     <XAxis dataKey="name" tick={{fontSize: 10}} axisLine={false} tickLine={false} />
+                                     <YAxis yAxisId="left" tick={{fontSize: 10}} axisLine={false} tickLine={false} width={30} />
+                                     <Line yAxisId="left" type="monotone" dataKey="latency" stroke={themeColor} strokeWidth={3} dot={{r: 4, fill: themeColor}} />
+                                     <RechartsTooltip contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                                 </LineChart>
+                             </ResponsiveContainer>
+                          </div>
+                          <Text type="secondary" className="text-[10px] text-center block mt-2">Latency (ms) over time</Text>
+                     </Card>
+                </div>
+            </div>
+        );
+    };
+
     // ── MAIN RENDER ──
 
     return (
@@ -975,7 +1022,7 @@ export default function AIStudioPage() {
                         </Card>
                         <Tabs
                             activeKey={studioMainTab}
-                            onChange={(k) => setStudioMainTab(k as "workspace" | "flows")}
+                            onChange={(k) => setStudioMainTab(k as "workspace" | "playground" | "flows")}
                             className="studio-main-tabs"
                             items={[
                                 {
@@ -987,6 +1034,16 @@ export default function AIStudioPage() {
                                         </span>
                                     ),
                                     children: renderStudioGuide(),
+                                },
+                                {
+                                    key: "playground",
+                                    label: (
+                                        <span className="text-xs">
+                                            <RobotOutlined className="mr-1" />
+                                            Playground
+                                        </span>
+                                    ),
+                                    children: renderPlayground(),
                                 },
                                 {
                                     key: "flows",

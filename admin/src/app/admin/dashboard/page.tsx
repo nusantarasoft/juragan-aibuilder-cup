@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { motion } from "framer-motion";
 import { ProCard } from "@ant-design/pro-components";
-import { Row, Col, Statistic, Tag, Space, Progress, message, Typography, Card, Badge, Button, Divider, Timeline, Skeleton, Tooltip } from "antd";
+import { Row, Col, Statistic, Tag, Space, Progress, message, Typography, Card, Badge, Button, Divider, Timeline, Skeleton, Tooltip, theme } from "antd";
 import {
     DashboardOutlined, FileTextOutlined, PictureOutlined,
     TeamOutlined, CustomerServiceOutlined, SolutionOutlined,
@@ -81,6 +81,8 @@ export default function DashboardPage() {
     const [itsmMod, setItsmMod] = useState<any>(null);
     const [crm, setCrm] = useState<any>(null);
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     // ITIL v4
     const [cmdbCount, setCmdbCount] = useState(0);
     const [eventsOpen, setEventsOpen] = useState(0);
@@ -104,12 +106,12 @@ export default function DashboardPage() {
     const [hrStats, setHrStats] = useState<{ employees: number; departments: number; pendingLeave: number; openPositions: number }>({ employees: 0, departments: 0, pendingLeave: 0, openPositions: 0 });
     // New widgets state
     const [pmStats, setPmStats] = useState<{ projects: number; tasks: number; sprints: number }>({ projects: 0, tasks: 0, sprints: 0 });
-    const [invStats, setInvStats] = useState<{ items: number; warehouses: number; purchaseOrders: number; fixedAssets: number }>({ items: 0, warehouses: 0, purchaseOrders: 0, fixedAssets: 0 });
     const [secStats, setSecStats] = useState<{ events: number; auditLogs: number; policies: number }>({ events: 0, auditLogs: 0, policies: 0 });
     const [devopsStats, setDevopsStats] = useState<{ pipelines: number; builds: number; workflows: number }>({ pipelines: 0, builds: 0, workflows: 0 });
     const [recentActivity, setRecentActivity] = useState<any[]>([]);
     const [platformCounts, setPlatformCounts] = useState<{ tables: number; modules: number; resolvers: number; extensions: number }>({ tables: 207, modules: 16, resolvers: 37, extensions: 72 });
     const [formsStats, setFormsStats] = useState<{ templates: number; published: number; submissions: number; pending: number; avgScore: number }>({ templates: 0, published: 0, submissions: 0, pending: 0, avgScore: 0 });
+    const [wmsStats, setWmsStats] = useState<{ items: number; warehouses: number; wmsActive: number; binContents: number; pendingPutaway: number; pendingPick: number }>({ items: 0, warehouses: 0, wmsActive: 0, binContents: 0, pendingPutaway: 0, pendingPick: 0 });
 
     useEffect(() => {
         (async () => {
@@ -194,16 +196,6 @@ export default function DashboardPage() {
                     ]);
                     setPmStats({ projects: pmProjects.length, tasks: pmTasks.length, sprints: pmSprints.length });
                 } catch { /* pm tables may not exist */ }
-                // ── Inventory Snapshot widget ──
-                try {
-                    const [invItems, invWh, invPo, invFa] = await Promise.all([
-                        supaRest('pm_milestones', { select: 'id' }),
-                        supaRest('pm_risk_registers', { select: 'id' }),
-                        supaRest('pm_stakeholders', { select: 'id' }),
-                        supaRest('pm_requirements', { select: 'id' }),
-                    ]);
-                    setInvStats({ items: invItems.length, warehouses: invWh.length, purchaseOrders: invPo.length, fixedAssets: invFa.length });
-                } catch { /* inventory tables may not exist */ }
                 // ── Security & Audit widget ──
                 try {
                     const [secEvts, audLogs, secPol] = await Promise.all([
@@ -246,6 +238,23 @@ export default function DashboardPage() {
                     const avg = scored.length > 0 ? scored.reduce((s: number, r: any) => s + (r.percentage || 0), 0) / scored.length : 0;
                     setFormsStats({ templates: fTpls.length, published, submissions: fSubs.length, pending, avgScore: Math.round(avg) });
                 } catch { /* form tables may not exist */ }
+                // ── Inventory & WMS widget ──
+                try {
+                    const wmsData = await gql(`query($t: String!) { wmsStats(tenantId: $t) { pendingPutaway inProgressPutaway completedPutaway pendingPick inProgressPick completedPick totalBinContents } }`, { t: DEFAULT_TENANT });
+                    const [invItems, invWh] = await Promise.all([
+                        supaRest('inv_items', { select: 'id' }),
+                        supaRest('inv_warehouses', { select: 'id' }),
+                    ]);
+                    const ws = wmsData.wmsStats || {};
+                    setWmsStats({
+                        items: invItems.length,
+                        warehouses: invWh.length,
+                        wmsActive: (ws.inProgressPutaway || 0) + (ws.inProgressPick || 0),
+                        binContents: ws.totalBinContents || 0,
+                        pendingPutaway: ws.pendingPutaway || 0,
+                        pendingPick: ws.pendingPick || 0,
+                    });
+                } catch { /* inventory/wms tables may not exist */ }
             } catch (err: any) { messageApi.error(err.message); }
             finally { setLoading(false); }
         })();
@@ -533,35 +542,46 @@ export default function DashboardPage() {
                 </Col>
             </Row>
 
-            {/* ══════ ROW 3.5: Inventory · Security · DevOps ══════ */}
+            {/* ══════ ROW 3.5: Inventory & WMS · Security · DevOps ══════ */}
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                 <Col xs={24} md={8}>
-                    <ProCard title={<Space><InboxOutlined style={{ color: '#52c41a' }} /> PM Governance</Space>} bordered className="dash-card" style={{ height: '100%', animationDelay: '380ms', position: 'relative', overflow: 'hidden' }} extra={<a onClick={() => router.push('/admin/pm/projects')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
-                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, #52c41a, #52c41a88, #52c41a44)' }} />
+                    <ProCard title={<Space><InboxOutlined style={{ color: '#10b981' }} /> Inventory & WMS</Space>} bordered className="dash-card" style={{ height: '100%', animationDelay: '380ms', position: 'relative', overflow: 'hidden' }} extra={<a onClick={() => router.push('/admin/inventory')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6)' }} />
                         {loading ? <Skeleton active paragraph={{ rows: 3 }} /> : (
+                            <>
                             <Row gutter={[8, 12]}>
                                 <Col span={12}>
                                     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                                        <Statistic title="Milestones" value={invStats.items} valueStyle={{ fontSize: 18, color: '#52c41a' }} prefix={<ShoppingOutlined />} />
+                                        <Statistic title="Items" value={wmsStats.items} valueStyle={{ fontSize: 18, color: '#10b981' }} prefix={<ShoppingOutlined />} />
                                     </motion.div>
                                 </Col>
                                 <Col span={12}>
                                     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                                        <Statistic title="Risk Items" value={invStats.warehouses} valueStyle={{ fontSize: 18, color: '#1890ff' }} prefix={<ContainerOutlined />} />
+                                        <Statistic title="Warehouses" value={wmsStats.warehouses} valueStyle={{ fontSize: 18, color: '#3b82f6' }} prefix={<ContainerOutlined />} />
                                     </motion.div>
                                 </Col>
                                 <Col span={12}>
                                     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                                        <Statistic title="Stakeholders" value={invStats.purchaseOrders} valueStyle={{ fontSize: 18, color: '#fa8c16' }} prefix={<CreditCardOutlined />} />
+                                        <Statistic title="WMS Active" value={wmsStats.wmsActive} valueStyle={{ fontSize: 18, color: wmsStats.wmsActive > 0 ? '#f59e0b' : '#10b981' }} prefix={wmsStats.wmsActive > 0 ? <WarningOutlined /> : <CheckCircleOutlined />} />
                                     </motion.div>
                                 </Col>
                                 <Col span={12}>
                                     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-                                        <Statistic title="Requirements" value={invStats.fixedAssets} valueStyle={{ fontSize: 18, color: '#722ed1' }} prefix={<BuildOutlined />} />
+                                        <Statistic title="Bin Contents" value={wmsStats.binContents} valueStyle={{ fontSize: 18, color: '#8b5cf6' }} prefix={<BuildOutlined />} />
                                     </motion.div>
                                 </Col>
                             </Row>
-                        )}
+                            <Divider style={{ margin: '8px 0' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <LinkOutlined style={{ color: '#10b981', fontSize: 12 }} />
+                                <Text type="secondary" style={{ fontSize: 11 }}>
+                                    {wmsStats.pendingPutaway > 0 && <Tag color="orange" style={{ fontSize: 10, borderRadius: 8 }}>{wmsStats.pendingPutaway} pending put-away</Tag>}
+                                    {wmsStats.pendingPick > 0 && <Tag color="blue" style={{ fontSize: 10, borderRadius: 8 }}>{wmsStats.pendingPick} pending pick</Tag>}
+                                    {wmsStats.pendingPutaway === 0 && wmsStats.pendingPick === 0 && 'All WMS operations up to date'}
+                                </Text>
+                            </div>
+                            </>)
+                        }
                     </ProCard>
                 </Col>
                 <Col xs={24} md={8}>
@@ -698,7 +718,7 @@ export default function DashboardPage() {
                                 { label: 'Notifications', href: '/admin/notifications/inbox', color: '#06b6d4', icon: <BellOutlined /> },
                             ].map(a => (
                                 <Col span={12} key={a.label}>
-                                    <Button type="text" block style={{ textAlign: 'left', height: 'auto', padding: '8px 12px', borderRadius: 8, border: '1px solid #f0f0f0' }} onClick={() => router.push(a.href)}>
+                                    <Button type="text" block style={{ textAlign: 'left', height: 'auto', padding: '8px 12px', borderRadius: 8, border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}` }} onClick={() => router.push(a.href)}>
                                         <Space><span style={{ color: a.color }}>{a.icon}</span><Text style={{ fontSize: 12 }}>{a.label}</Text></Space>
                                     </Button>
                                 </Col>

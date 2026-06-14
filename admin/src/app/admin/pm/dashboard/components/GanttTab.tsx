@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useMemo, useRef, useEffect, useState, useCallback } from "react";
-import { ProCard } from "@ant-design/pro-components";
-import { Empty, Tag, Tooltip, Typography, Select, Space, Spin } from "antd";
+import { ProCard, ModalForm, ProFormSelect } from "@ant-design/pro-components";
+import { Empty, Input, Tag, Tooltip, Typography, Select, Space, Spin, theme, message, Button } from "antd";
+import { SearchOutlined, LinkOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
@@ -17,6 +20,26 @@ const GET_ALL_TASKS = `
       id title status priority type estimatedHours loggedHours startDate dueDate sprintId isArchived
       assignee { firstName lastName avatarUrl }
     }
+  }
+`;
+
+const GET_DEPENDENCIES = `
+  query GetDeps($projectId: String!) {
+    pmTaskDependencies(projectId: $projectId) {
+      id taskId dependsOnTaskId type
+    }
+  }
+`;
+
+const UPDATE_TASK = `
+  mutation($id: ID!, $input: UpdatePmTaskInput!) {
+    updatePmTask(id: $id, input: $input) { id startDate dueDate estimatedHours }
+  }
+`;
+
+const CREATE_DEPENDENCY = `
+  mutation($tenantId: String!, $input: CreatePmTaskDependencyInput!) {
+    createPmTaskDependency(tenantId: $tenantId, input: $input) { id }
   }
 `;
 
@@ -90,20 +113,40 @@ function getBarPosition(
 
 export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: GanttTabProps) {
     const [viewMode, setViewMode] = useState<ViewMode>("day");
+    const [searchQuery, setSearchQuery] = useState('');
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase === '#000000' || antToken.colorBgContainer === '#1f1f1f';
+    const colors = {
+        bg: isDark ? 'rgba(15, 15, 23, 0.7)' : '#fff',
+        bgAlt: isDark ? 'rgba(255,255,255,0.03)' : '#fafafa',
+        bgHover: isDark ? 'rgba(255,255,255,0.06)' : '#f5f7fa',
+        bgWeekend: isDark ? 'rgba(255,255,255,0.02)' : '#f8f9fb',
+        border: isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb',
+        borderLight: isDark ? 'rgba(255,255,255,0.04)' : '#f0f0f0',
+        text: isDark ? '#e2e8f0' : '#333',
+        textSecondary: isDark ? '#94a3b8' : '#666',
+        textMuted: isDark ? '#64748b' : '#999',
+        headerBg: isDark ? 'rgba(139,92,246,0.08)' : '#f0f5ff',
+        sprintBg: isDark ? 'rgba(139,92,246,0.06)' : '#f0f5ff',
+    };
+    const router = useRouter();
     const scrollRef = useRef<HTMLDivElement>(null);
     const [allTasks, setAllTasks] = useState<any[]>([]);
+    const [deps, setDeps] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [depModalOpen, setDepModalOpen] = useState(false);
 
     // Fetch ALL tasks for this project (not sprint-filtered)
     const loadAllTasks = useCallback(async () => {
         if (!projectId) return;
         setLoading(true);
         try {
-            const data = await gql(GET_ALL_TASKS, {
-                tenantId: DEFAULT_TENANT_ID,
-                projectId,
-            });
+            const [data, depData] = await Promise.all([
+                gql(GET_ALL_TASKS, { tenantId: DEFAULT_TENANT_ID, projectId }),
+                gql(GET_DEPENDENCIES, { projectId }).catch(() => ({ pmTaskDependencies: [] })),
+            ]);
             setAllTasks(data.pmTasks || []);
+            setDeps(depData.pmTaskDependencies || []);
         } catch (e) {
             console.error("Gantt: Failed to load tasks", e);
         } finally {
@@ -114,6 +157,43 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
     useEffect(() => {
         loadAllTasks();
     }, [loadAllTasks]);
+
+    const handleAddDep = async (values: any) => {
+        try {
+            await gql(CREATE_DEPENDENCY, {
+                tenantId: DEFAULT_TENANT_ID,
+                input: {
+                    projectId,
+                    taskId: values.taskId,
+                    dependsOnTaskId: values.dependsOnTaskId,
+                    type: values.type || 'finish_to_start'
+                }
+            });
+            message.success("Dependency added");
+            setDepModalOpen(false);
+            loadAllTasks();
+            return true;
+        } catch (e: any) {
+            message.error("Failed to add dependency");
+            return false;
+        }
+    };
+
+    // Update task dates on drag
+    const handleTaskDragEnd = async (taskId: string, daysMoved: number, originalTask: any) => {
+        if (daysMoved === 0) return;
+        const newStart = originalTask.startDate ? dayjs(originalTask.startDate).add(daysMoved, "day").format("YYYY-MM-DD") : dayjs().add(daysMoved, "day").format("YYYY-MM-DD");
+        const newEnd = originalTask.dueDate ? dayjs(originalTask.dueDate).add(daysMoved, "day").format("YYYY-MM-DD") : undefined;
+        
+        try {
+            await gql(UPDATE_TASK, { id: taskId, input: { startDate: newStart, dueDate: newEnd } });
+            message.success("Task dates updated");
+            loadAllTasks();
+        } catch (e: any) {
+            message.error("Failed to update task dates");
+            console.error(e);
+        }
+    };
 
     // Build rows: sprints as group headers + their tasks, then backlog tasks
     const rows = useMemo(() => {
@@ -209,6 +289,34 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
         return result;
     }, [sprints, allTasks]);
 
+    // Filter rows based on search query
+    const filteredRows = useMemo(() => {
+        if (!searchQuery.trim()) return rows;
+        const query = searchQuery.toLowerCase();
+        // Find matching task IDs
+        const matchingTaskIds = new Set<string>();
+        const sprintsWithMatchingChildren = new Set<string>();
+        let currentSprintId: string | null = null;
+        rows.forEach((row) => {
+            if (row.type === 'sprint') {
+                currentSprintId = row.id;
+            } else {
+                if (row.label.toLowerCase().includes(query) ||
+                    row.status?.toLowerCase().includes(query) ||
+                    row.assignee?.toLowerCase().includes(query)) {
+                    matchingTaskIds.add(row.id);
+                    if (currentSprintId) {
+                        sprintsWithMatchingChildren.add(currentSprintId);
+                    }
+                }
+            }
+        });
+        return rows.filter((row) => {
+            if (row.type === 'sprint') return sprintsWithMatchingChildren.has(row.id);
+            return matchingTaskIds.has(row.id);
+        });
+    }, [rows, searchQuery]);
+
     const { start: timelineStart, end: timelineEnd } = useMemo(
         () => getDateRange(rows),
         [rows]
@@ -268,6 +376,18 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
             bordered
             extra={
                 <Space>
+                    <Input
+                        prefix={<SearchOutlined style={{ color: colors.textMuted, fontSize: 12 }} />}
+                        placeholder="Search tasks..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        allowClear
+                        size="small"
+                        style={{ width: 160, borderRadius: 6 }}
+                    />
+                    <Button icon={<LinkOutlined />} onClick={() => setDepModalOpen(true)} size="small">
+                        Link
+                    </Button>
                     <Text type="secondary">View:</Text>
                     <Select
                         value={viewMode}
@@ -284,14 +404,14 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
             }
             bodyStyle={{ padding: 0, overflow: "hidden" }}
         >
-            <div style={{ display: "flex", height: rows.length * ROW_HEIGHT + 60, minHeight: 300 }}>
+            <div style={{ display: "flex", height: filteredRows.length * ROW_HEIGHT + 60, minHeight: 300 }}>
                 {/* Fixed Label Column */}
                 <div
                     style={{
                         width: LABEL_WIDTH,
                         flexShrink: 0,
-                        borderRight: "2px solid #e8e8e8",
-                        background: "#fafafa",
+                        borderRight: `2px solid ${colors.border}`,
+                        background: colors.bgAlt,
                         zIndex: 2,
                     }}
                 >
@@ -302,16 +422,16 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
                             display: "flex",
                             alignItems: "center",
                             padding: "0 12px",
-                            borderBottom: "2px solid #e8e8e8",
+                            borderBottom: `2px solid ${colors.border}`,
                             fontWeight: 600,
                             fontSize: 13,
-                            color: "#595959",
+                            color: colors.textSecondary,
                         }}
                     >
                         Task / Sprint
                     </div>
                     {/* Row Labels */}
-                    {rows.map((row) => (
+                    {filteredRows.map((row) => (
                         <div
                             key={row.id}
                             style={{
@@ -319,14 +439,14 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
                                 display: "flex",
                                 alignItems: "center",
                                 padding: row.isSummary ? "0 12px" : "0 12px 0 28px",
-                                borderBottom: "1px solid #f0f0f0",
-                                background: row.isSummary ? "#f5f7fa" : "white",
+                                borderBottom: `1px solid ${colors.borderLight}`,
+                                background: row.isSummary ? colors.sprintBg : colors.bg,
                                 gap: 8,
                             }}
                         >
                             {row.isSummary ? (
-                                <Text strong style={{ fontSize: 13 }}>
-                                    🏃 {row.label}
+                                <Text strong style={{ fontSize: 13, color: colors.text }}>
+                                    {row.label}
                                 </Text>
                             ) : (
                                 <>
@@ -338,7 +458,7 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
                                     </Tag>
                                     <Text
                                         ellipsis
-                                        style={{ fontSize: 12, flex: 1 }}
+                                        style={{ fontSize: 12, flex: 1, color: colors.text }}
                                         title={row.label}
                                     >
                                         {row.label}
@@ -365,11 +485,11 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
                             style={{
                                 height: 60,
                                 display: "flex",
-                                borderBottom: "2px solid #e8e8e8",
+                                borderBottom: `2px solid ${colors.border}`,
                                 position: "sticky",
                                 top: 0,
                                 zIndex: 1,
-                                background: "white",
+                                background: colors.bg,
                             }}
                         >
                             {timeline.map((date, i) => (
@@ -379,21 +499,21 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
                                         width: cellWidth,
                                         flexShrink: 0,
                                         textAlign: "center",
-                                        borderRight: "1px solid #f0f0f0",
+                                        borderRight: `1px solid ${colors.borderLight}`,
                                         display: "flex",
                                         flexDirection: "column",
                                         justifyContent: "center",
                                         background: isToday(date)
                                             ? "rgba(24, 144, 255, 0.08)"
                                             : date.day() === 0 || date.day() === 6
-                                                ? "#fafafa"
-                                                : "white",
+                                                ? colors.bgWeekend
+                                                : colors.bg,
                                     }}
                                 >
-                                    <div style={{ fontSize: 13, fontWeight: 600, color: isToday(date) ? "#1890ff" : "#262626" }}>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: isToday(date) ? "#1890ff" : colors.text }}>
                                         {formatHeader(date)}
                                     </div>
-                                    <div style={{ fontSize: 10, color: "#8c8c8c" }}>
+                                    <div style={{ fontSize: 10, color: colors.textMuted }}>
                                         {formatSubHeader(date)}
                                     </div>
                                 </div>
@@ -401,7 +521,7 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
                         </div>
 
                         {/* Grid Lines + Bars */}
-                        {rows.map((row, rowIdx) => {
+                        {filteredRows.map((row, rowIdx) => {
                             const { left, width } = getBarPosition(
                                 row.start,
                                 row.end,
@@ -420,8 +540,8 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
                                     style={{
                                         height: ROW_HEIGHT,
                                         position: "relative",
-                                        borderBottom: "1px solid #f0f0f0",
-                                        background: row.isSummary ? "#f5f7fa" : "white",
+                                        borderBottom: `1px solid ${colors.borderLight}`,
+                                        background: row.isSummary ? colors.sprintBg : colors.bg,
                                     }}
                                 >
                                     {/* Grid cells */}
@@ -432,12 +552,12 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
                                                 style={{
                                                     width: cellWidth,
                                                     flexShrink: 0,
-                                                    borderRight: "1px solid #f5f5f5",
+                                                    borderRight: `1px solid ${colors.borderLight}`,
                                                     background:
                                                         isToday(date)
                                                             ? "rgba(24, 144, 255, 0.04)"
                                                             : (date.day() === 0 || date.day() === 6)
-                                                                ? "rgba(0,0,0,0.015)"
+                                                                ? colors.bgWeekend
                                                                 : "transparent",
                                                 }}
                                             />
@@ -449,17 +569,26 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
                                         title={
                                             <div>
                                                 <div style={{ fontWeight: 600 }}>{row.label}</div>
-                                                <div>
-                                                    {row.start.format("MMM D")} → {row.end.format("MMM D, YYYY")}
+                                                <div style={{ color: colors.textSecondary }}>
+                                                    {row.start.format("MMM D")} - {row.end.format("MMM D, YYYY")}
                                                 </div>
-                                                {row.assignee && <div>👤 {row.assignee}</div>}
+                                                {row.assignee && <div>Assignee: {row.assignee}</div>}
                                                 {row.priority && (
                                                     <div>Priority: {row.priority.toUpperCase()}</div>
                                                 )}
                                             </div>
                                         }
                                     >
-                                        <div
+                                        <motion.div
+                                            drag={!row.isSummary ? "x" : false}
+                                            dragMomentum={false}
+                                            onDragEnd={(e, info) => {
+                                                const daysMoved = Math.round(info.offset.x / cellWidth);
+                                                if (!row.isSummary) {
+                                                    const task = allTasks.find(t => t.id === row.id);
+                                                    if (task) handleTaskDragEnd(row.id, daysMoved, task);
+                                                }
+                                            }}
                                             style={{
                                                 position: "absolute",
                                                 left,
@@ -470,7 +599,7 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
                                                     ? `repeating-linear-gradient(45deg, ${barColor}, ${barColor} 4px, rgba(114, 46, 209, 0.7) 4px, rgba(114, 46, 209, 0.7) 8px)`
                                                     : barColor,
                                                 borderRadius: row.isSummary ? 2 : 4,
-                                                cursor: "pointer",
+                                                cursor: row.isSummary ? "default" : "grab",
                                                 transition: "box-shadow 0.2s",
                                                 boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
                                                 display: "flex",
@@ -478,14 +607,26 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
                                                 justifyContent: width > 60 ? "flex-start" : "center",
                                                 padding: "0 6px",
                                                 zIndex: 1,
+                                                overflow: "hidden",
                                             }}
+                                            whileDrag={{ boxShadow: "0 4px 12px rgba(0,0,0,0.2)", cursor: "grabbing" }}
+                                            onClick={row.isSummary ? undefined : () => router.push(`/admin/pm/tasks/${row.id}`)}
                                             onMouseEnter={(e) => {
-                                                (e.target as HTMLElement).style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
+                                                (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
                                             }}
                                             onMouseLeave={(e) => {
-                                                (e.target as HTMLElement).style.boxShadow = "0 1px 3px rgba(0,0,0,0.15)";
+                                                (e.currentTarget as HTMLElement).style.boxShadow = "0 1px 3px rgba(0,0,0,0.15)";
                                             }}
                                         >
+                                            {/* Progress fill */}
+                                            {!row.isSummary && (row.status === 'in_progress' || row.status === 'in_review') ? (
+                                                <div style={{
+                                                    position: 'absolute', left: 0, top: 0, bottom: 0,
+                                                    width: row.status === 'in_review' ? '80%' : '40%',
+                                                    background: 'rgba(255,255,255,0.2)',
+                                                    borderRadius: 'inherit',
+                                                }} />
+                                            ) : null}
                                             {width > 60 && !row.isSummary && (
                                                 <span
                                                     style={{
@@ -495,16 +636,91 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
                                                         overflow: "hidden",
                                                         textOverflow: "ellipsis",
                                                         whiteSpace: "nowrap",
+                                                        position: "relative",
+                                                        zIndex: 1,
                                                     }}
                                                 >
                                                     {row.label}
                                                 </span>
                                             )}
-                                        </div>
+                                        </motion.div>
                                     </Tooltip>
                                 </div>
                             );
                         })}
+
+                        {/* Dependency Arrows (SVG overlay) */}
+                        {deps.length > 0 && (() => {
+                            // Build row index map for positioning
+                            const rowIndexMap = new Map<string, number>();
+                            filteredRows.forEach((r, i) => rowIndexMap.set(r.id, i));
+
+                            return (
+                                <svg
+                                    style={{
+                                        position: 'absolute',
+                                        top: 60, // below header
+                                        left: 0,
+                                        width: totalWidth,
+                                        height: filteredRows.length * ROW_HEIGHT,
+                                        pointerEvents: 'none',
+                                        zIndex: 2,
+                                    }}
+                                >
+                                    <defs>
+                                        <marker id="arrowGreen" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                                            <polygon points="0 0, 8 3, 0 6" fill="#10b981" />
+                                        </marker>
+                                        <marker id="arrowRed" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                                            <polygon points="0 0, 8 3, 0 6" fill="#ef4444" />
+                                        </marker>
+                                        <marker id="arrowBlue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                                            <polygon points="0 0, 8 3, 0 6" fill="#3b82f6" />
+                                        </marker>
+                                    </defs>
+                                    {deps.map((dep: any) => {
+                                        const fromIdx = rowIndexMap.get(dep.dependsOnTaskId);
+                                        const toIdx = rowIndexMap.get(dep.taskId);
+                                        if (fromIdx === undefined || toIdx === undefined) return null;
+
+                                        const fromRow = rows[fromIdx];
+                                        const toRow = rows[toIdx];
+                                        if (!fromRow || !toRow) return null;
+
+                                        const fromPos = getBarPosition(fromRow.start, fromRow.end, timelineStart, timelineEnd, totalWidth);
+                                        const toPos = getBarPosition(toRow.start, toRow.end, timelineStart, timelineEnd, totalWidth);
+
+                                        // Arrow from end of 'from' bar to start of 'to' bar
+                                        const x1 = fromPos.left + fromPos.width;
+                                        const y1 = fromIdx * ROW_HEIGHT + ROW_HEIGHT / 2;
+                                        const x2 = toPos.left;
+                                        const y2 = toIdx * ROW_HEIGHT + ROW_HEIGHT / 2;
+
+                                        // Determine color based on dependency status
+                                        const fromStatus = fromRow.status;
+                                        const arrowColor = fromStatus === 'done' ? '#10b981' : fromStatus === 'in_progress' ? '#3b82f6' : '#ef4444';
+                                        const markerId = fromStatus === 'done' ? 'arrowGreen' : fromStatus === 'in_progress' ? 'arrowBlue' : 'arrowRed';
+
+                                        // Bezier curve control points
+                                        const midX = (x1 + x2) / 2;
+                                        const path = `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
+
+                                        return (
+                                            <path
+                                                key={dep.id}
+                                                d={path}
+                                                fill="none"
+                                                stroke={arrowColor}
+                                                strokeWidth={1.5}
+                                                strokeDasharray={fromStatus === 'done' ? 'none' : '4 2'}
+                                                markerEnd={`url(#${markerId})`}
+                                                opacity={0.7}
+                                            />
+                                        );
+                                    })}
+                                </svg>
+                            );
+                        })()}
 
                         {/* Today marker line */}
                         {(() => {
@@ -533,6 +749,40 @@ export default function GanttTab({ sprints, tasks: _parentTasks, projectId }: Ga
                     </div>
                 </div>
             </div>
+
+            {/* Dependency Modal */}
+            <ModalForm
+                title="Add Dependency"
+                open={depModalOpen}
+                onOpenChange={setDepModalOpen}
+                onFinish={handleAddDep}
+                modalProps={{ destroyOnClose: true }}
+                width={400}
+            >
+                <ProFormSelect
+                    name="dependsOnTaskId"
+                    label="Predecessor (Depends On)"
+                    rules={[{ required: true }]}
+                    options={allTasks.map(t => ({ value: t.id, label: t.title }))}
+                    showSearch
+                />
+                <ProFormSelect
+                    name="taskId"
+                    label="Successor (Task)"
+                    rules={[{ required: true }]}
+                    options={allTasks.map(t => ({ value: t.id, label: t.title }))}
+                    showSearch
+                />
+                <ProFormSelect
+                    name="type"
+                    label="Dependency Type"
+                    initialValue="finish_to_start"
+                    options={[
+                        { value: 'finish_to_start', label: 'Finish to Start (FS)' },
+                        { value: 'start_to_start', label: 'Start to Start (SS)' },
+                    ]}
+                />
+            </ModalForm>
         </ProCard>
     );
 }

@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import RbacGuard from "@/components/common/RbacGuard";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
-import { Button, Card, Col, Divider, Empty, message, Progress, Row, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography } from "antd";
+import { Button, Card, Col, Divider, Empty, message, Progress, Row, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography, Skeleton } from "antd";
 import {
     BarChartOutlined, ProjectOutlined, CheckCircleOutlined,
     ClockCircleOutlined, ExclamationCircleOutlined, DollarOutlined,
@@ -14,7 +14,9 @@ import {
     FireOutlined, AimOutlined, TrophyOutlined, WarningOutlined,
     RiseOutlined, FallOutlined, BulbOutlined, ThunderboltOutlined,
     NodeIndexOutlined, FileTextOutlined, SafetyCertificateOutlined,
-    AlertOutlined, RocketOutlined, ForkOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
+    AlertOutlined, RocketOutlined, ForkOutlined, FileExcelOutlined, FilePdfOutlined,
+    ReloadOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid, Legend } from 'recharts';
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
@@ -70,6 +72,7 @@ export default function ReportsPage() {
     const [tasks, setTasks] = useState<any[]>([]);
     const { resolvedTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
+    const [showAllTeam, setShowAllTeam] = useState(false);
     useEffect(() => setMounted(true), []);
     const isDark = mounted && resolvedTheme === 'dark';
 
@@ -90,8 +93,8 @@ export default function ReportsPage() {
             ]);
             setProjects(portData.pmPortfolioSummary || []);
             setTasks(taskData.pmTasks || []);
-        } catch {
-            // empty
+        } catch (err: any) {
+            messageApi.error("Failed to load reports data: " + err.message);
         } finally {
             setLoading(false);
         }
@@ -211,7 +214,7 @@ export default function ReportsPage() {
             const data = await gql(GENERATE_STATUS_REPORT, { projectId: selectedProjectId });
             setStatusReport(data.generateStatusReport);
             messageApi.success('Status report generated!');
-        } catch {
+        } catch (err: any) { console.error("PM Error", err); 
             messageApi.error('AI status report failed. Check your AI service.');
         } finally {
             setStatusReportLoading(false);
@@ -225,7 +228,7 @@ export default function ReportsPage() {
             const data = await gql(GENERATE_CRITICAL_PATH, { projectId: selectedProjectId });
             setCriticalPath(data.generateCriticalPath);
             messageApi.success('Critical path analysis generated!');
-        } catch {
+        } catch (err: any) { console.error("PM Error", err); 
             messageApi.error('AI critical path failed. Check your AI service.');
         } finally {
             setCriticalPathLoading(false);
@@ -332,9 +335,29 @@ export default function ReportsPage() {
     if (loading) {
         return (
             <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Reports</AuroraText>}
-            subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip></RbacGuard>]}>
-                <div style={{ textAlign: 'center', padding: 120 }}>
-                    <Spin size="large" />
+            subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Tooltip key="refresh" title="Refresh data"><Button icon={<ReloadOutlined />} size="small" onClick={loadData} /></Tooltip>, <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip></RbacGuard>]}>
+                <div style={{ padding: '24px 0' }}>
+                    <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                        {[1, 2, 3, 4, 5, 6].map(i => (
+                            <Col xs={24} sm={12} lg={4} key={i}>
+                                <Card style={{ ...glassCard, height: 90 }} size="small">
+                                    <Skeleton active paragraph={{ rows: 1 }} title={false} />
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
+                    <Row gutter={[16, 16]}>
+                        <Col xs={24} md={12}>
+                            <Card style={{ ...glassCard, height: 300 }} size="small">
+                                <Skeleton active paragraph={{ rows: 6 }} />
+                            </Card>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Card style={{ ...glassCard, height: 300 }} size="small">
+                                <Skeleton active paragraph={{ rows: 6 }} />
+                            </Card>
+                        </Col>
+                    </Row>
                 </div>
             </CMSLayout>
         );
@@ -342,7 +365,7 @@ export default function ReportsPage() {
 
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Reports</AuroraText>}
-            subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip></RbacGuard>]}>
+            subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Tooltip key="refresh" title="Refresh data"><Button icon={<ReloadOutlined />} size="small" onClick={loadData} /></Tooltip>, <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip></RbacGuard>]}>
             {contextHolder}
 
             {/* ── Executive Summary ── */}
@@ -351,150 +374,141 @@ export default function ReportsPage() {
                 <Col xs={24} sm={12} lg={4}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #6366f1' }} size="small">
                         <Statistic
-                            title={<span style={{ fontSize: 11 }}>Total Projects</span>}
+                            title={<span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: isDark ? '#94a3b8' : '#64748b' }}>Total Projects</span>}
                             value={totalProjects}
-                            prefix={<ProjectOutlined style={{ color: themeColor }} />}
-                            valueStyle={{ fontSize: 22, fontWeight: 700 }}
+                            prefix={<ProjectOutlined style={{ color: '#6366f1' }} />}
+                            valueStyle={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-heading)' }}
                         />
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={4}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #10b981' }} size="small">
                         <Statistic
-                            title={<span style={{ fontSize: 11 }}>Task Completion</span>}
+                            title={<span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: isDark ? '#94a3b8' : '#64748b' }}>Task Completion</span>}
                             value={totalTasks > 0 ? Math.round((tasksDone / totalTasks) * 100) : 0}
                             suffix="%"
                             prefix={<CheckCircleOutlined style={{ color: '#10b981' }} />}
-                            valueStyle={{ fontSize: 22, fontWeight: 700, color: '#10b981' }}
+                            valueStyle={{ fontSize: 24, fontWeight: 800, color: '#10b981', fontFamily: 'var(--font-heading)' }}
                         />
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={4}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #f59e0b' }} size="small">
                         <Statistic
-                            title={<span style={{ fontSize: 11 }}>Budget Used</span>}
+                            title={<span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: isDark ? '#94a3b8' : '#64748b' }}>Budget Used</span>}
                             value={totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0}
                             suffix="%"
                             prefix={<DollarOutlined style={{ color: '#f59e0b' }} />}
-                            valueStyle={{ fontSize: 22, fontWeight: 700, color: totalSpent > totalBudget ? '#ef4444' : '#f59e0b' }}
+                            valueStyle={{ fontSize: 24, fontWeight: 800, color: totalSpent > totalBudget ? '#ef4444' : '#f59e0b', fontFamily: 'var(--font-heading)' }}
                         />
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={4}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #ef4444' }} size="small">
                         <Statistic
-                            title={<span style={{ fontSize: 11 }}>Overdue Tasks</span>}
+                            title={<span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: isDark ? '#94a3b8' : '#64748b' }}>Overdue Tasks</span>}
                             value={tasksOverdue}
                             prefix={<ExclamationCircleOutlined style={{ color: '#ef4444' }} />}
-                            valueStyle={{ fontSize: 22, fontWeight: 700, color: '#ef4444' }}
+                            valueStyle={{ fontSize: 24, fontWeight: 800, color: '#ef4444', fontFamily: 'var(--font-heading)' }}
                         />
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={4}>
                     <Card style={{ ...glassCard, borderTop: `3px solid ${themeColor}` }} size="small">
                         <Statistic
-                            title={<span style={{ fontSize: 11 }}>Effort Variance</span>}
+                            title={<span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: isDark ? '#94a3b8' : '#64748b' }}>Effort Variance</span>}
                             value={effortVariance}
                             suffix="%"
                             prefix={effortVariance > 0 ? <RiseOutlined style={{ color: '#ef4444' }} /> : <FallOutlined style={{ color: '#10b981' }} />}
-                            valueStyle={{ fontSize: 22, fontWeight: 700, color: effortVariance > 0 ? '#ef4444' : '#10b981' }}
+                            valueStyle={{ fontSize: 24, fontWeight: 800, color: effortVariance > 0 ? '#ef4444' : '#10b981', fontFamily: 'var(--font-heading)' }}
                         />
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={4}>
                     <Card style={{ ...glassCard, borderTop: '3px solid #3b82f6' }} size="small">
                         <Statistic
-                            title={<span style={{ fontSize: 11 }}>Team Members</span>}
+                            title={<span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: isDark ? '#94a3b8' : '#64748b' }}>Team Members</span>}
                             value={teamWorkload.filter(t => t.name !== 'Unassigned').length}
                             prefix={<TeamOutlined style={{ color: '#3b82f6' }} />}
-                            valueStyle={{ fontSize: 22, fontWeight: 700, color: '#3b82f6' }}
+                            valueStyle={{ fontSize: 24, fontWeight: 800, color: '#3b82f6', fontFamily: 'var(--font-heading)' }}
                         />
                     </Card>
                 </Col>
             </Row>
             </motion.div>
 
-            {/* ── Task Flow & Priority Distribution ── */}
+            {/* ── Task Status Distribution & Priority Distribution (Recharts) ── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={24} lg={14}>
-                    <Card
-                        title={<Space><BarChartOutlined style={{ color: themeColor }} /> Task Status Flow</Space>}
-                        size="small"
-                        style={glassCard}
-                    >
-                        <div style={{ display: 'flex', gap: 0, height: 28, borderRadius: 8, overflow: 'hidden', marginBottom: 12 }}>
-                            {[
-                                { key: 'todo', count: tasksTodo, color: '#64748b', label: 'To Do' },
-                                { key: 'in_progress', count: tasksInProgress, color: '#3b82f6', label: 'In Progress' },
-                                { key: 'blocked', count: tasksBlocked, color: '#ef4444', label: 'Blocked' },
-                                { key: 'done', count: tasksDone, color: '#10b981', label: 'Done' },
-                            ].map(item => {
-                                const pct = totalTasks > 0 ? (item.count / totalTasks) * 100 : 0;
-                                if (pct === 0) return null;
-                                return (
-                                    <Tooltip key={item.key} title={`${item.label}: ${item.count} (${Math.round(pct)}%)`}>
-                                        <div style={{
-                                            width: `${pct}%`,
-                                            background: item.color,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            transition: 'width 0.3s ease',
-                                        }}>
-                                            {pct > 8 && (
-                                                <Text style={{ fontSize: 9, fontWeight: 700, color: '#fff' }}>
-                                                    {Math.round(pct)}%
-                                                </Text>
-                                            )}
-                                        </div>
-                                    </Tooltip>
-                                );
-                            })}
+                <Col xs={24} md={12}>
+                    <Card size="small" title={<Space><BarChartOutlined style={{ color: themeColor }} />Task Status Distribution</Space>} style={glassCard}>
+                        <div style={{ height: 220 }}>
+                            <ResponsiveContainer>
+                                <PieChart>
+                                    <Pie
+                                        data={[
+                                            { name: 'Done', value: tasks.filter(t => t.status === 'done').length, color: '#10b981' },
+                                            { name: 'In Progress', value: tasks.filter(t => t.status === 'in_progress').length, color: '#3b82f6' },
+                                            { name: 'To Do', value: tasks.filter(t => t.status === 'todo').length, color: '#6366f1' },
+                                            { name: 'In Review', value: tasks.filter(t => t.status === 'in_review').length, color: '#8b5cf6' },
+                                            { name: 'Blocked', value: tasks.filter(t => t.status === 'blocked').length, color: '#ef4444' },
+                                        ].filter(d => d.value > 0)}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        cx="50%" cy="50%"
+                                        innerRadius={55} outerRadius={85}
+                                        paddingAngle={3}
+                                        strokeWidth={0}
+                                    >
+                                        {[
+                                            { name: 'Done', value: tasks.filter(t => t.status === 'done').length, color: '#10b981' },
+                                            { name: 'In Progress', value: tasks.filter(t => t.status === 'in_progress').length, color: '#3b82f6' },
+                                            { name: 'To Do', value: tasks.filter(t => t.status === 'todo').length, color: '#6366f1' },
+                                            { name: 'In Review', value: tasks.filter(t => t.status === 'in_review').length, color: '#8b5cf6' },
+                                            { name: 'Blocked', value: tasks.filter(t => t.status === 'blocked').length, color: '#ef4444' },
+                                        ].filter(d => d.value > 0).map((entry, i) => (
+                                            <Cell key={i} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <RTooltip />
+                                </PieChart>
+                            </ResponsiveContainer>
                         </div>
-                        <Space size={16} wrap>
-                            {[
-                                { label: 'To Do', count: tasksTodo, color: '#64748b' },
-                                { label: 'In Progress', count: tasksInProgress, color: '#3b82f6' },
-                                { label: 'Blocked', count: tasksBlocked, color: '#ef4444' },
-                                { label: 'Done', count: tasksDone, color: '#10b981' },
-                            ].map(item => (
-                                <Space key={item.label} size={4}>
-                                    <div style={{ width: 10, height: 10, borderRadius: 2, background: item.color }} />
-                                    <Text style={{ fontSize: 11 }}>{item.label}: <strong>{item.count}</strong></Text>
-                                </Space>
+                        <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 12, marginTop: 4 }}>
+                            {[{ name: 'Done', color: '#10b981' }, { name: 'In Progress', color: '#3b82f6' }, { name: 'To Do', color: '#6366f1' }, { name: 'In Review', color: '#8b5cf6' }, { name: 'Blocked', color: '#ef4444' }].map(s => (
+                                <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.color }} />
+                                    <span style={{ color: isDark ? '#94a3b8' : '#64748b' }}>{s.name}</span>
+                                </div>
                             ))}
-                        </Space>
+                        </div>
                     </Card>
                 </Col>
-                <Col xs={24} lg={10}>
-                    <Card
-                        title={<Space><FireOutlined style={{ color: '#ef4444' }} /> Priority Distribution</Space>}
-                        size="small"
-                        style={glassCard}
-                    >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {[
-                                { key: 'critical', label: 'Critical', color: '#ef4444' },
-                                { key: 'high', label: 'High', color: '#f59e0b' },
-                                { key: 'medium', label: 'Medium', color: '#3b82f6' },
-                                { key: 'low', label: 'Low', color: '#6b7280' },
-                            ].map(item => {
-                                const count = priorityDist[item.key] || 0;
-                                const pct = totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0;
-                                return (
-                                    <div key={item.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <Text style={{ width: 60, fontSize: 11, fontWeight: 500 }}>{item.label}</Text>
-                                        <Progress
-                                            percent={pct}
-                                            size="small"
-                                            strokeColor={item.color}
-                                            trailColor={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}
-                                            style={{ flex: 1 }}
-                                            format={() => `${count}`}
-                                        />
-                                    </div>
-                                );
-                            })}
+                <Col xs={24} md={12}>
+                    <Card size="small" title={<Space><FireOutlined style={{ color: '#ef4444' }} />Priority Distribution</Space>} style={glassCard}>
+                        <div style={{ height: 250 }}>
+                            <ResponsiveContainer>
+                                <BarChart data={[
+                                    { name: 'Critical', count: priorityDist.critical, fill: '#ef4444' },
+                                    { name: 'High', count: priorityDist.high, fill: '#f59e0b' },
+                                    { name: 'Medium', count: priorityDist.medium, fill: '#3b82f6' },
+                                    { name: 'Low', count: priorityDist.low, fill: '#6b7280' },
+                                ]} layout="vertical" margin={{ left: 10, right: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} />
+                                    <XAxis type="number" tick={{ fontSize: 11, fill: isDark ? '#94a3b8' : '#64748b' }} />
+                                    <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: isDark ? '#94a3b8' : '#64748b' }} width={60} />
+                                    <RTooltip />
+                                    <Bar dataKey="count" radius={[0, 6, 6, 0]}>
+                                        {[
+                                            { fill: '#ef4444' },
+                                            { fill: '#f59e0b' },
+                                            { fill: '#3b82f6' },
+                                            { fill: '#6b7280' },
+                                        ].map((entry, i) => (
+                                            <Cell key={i} fill={entry.fill} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
                         </div>
                     </Card>
                 </Col>
@@ -577,8 +591,9 @@ export default function ReportsPage() {
                 {teamWorkload.length === 0 ? (
                     <Empty description="No tasks assigned yet." />
                 ) : (
+                    <>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {teamWorkload.slice(0, 10).map((member, i) => {
+                        {(showAllTeam ? teamWorkload : teamWorkload.slice(0, 10)).map((member, i) => {
                             const donePct = member.total > 0 ? Math.round((member.done / member.total) * 100) : 0;
                             return (
                                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -601,6 +616,14 @@ export default function ReportsPage() {
                             );
                         })}
                     </div>
+                    {teamWorkload.length > 10 && (
+                        <div style={{ textAlign: 'center', marginTop: 8 }}>
+                            <Button type="link" size="small" onClick={() => setShowAllTeam(v => !v)}>
+                                {showAllTeam ? 'Show Less' : `Show All (${teamWorkload.length})`}
+                            </Button>
+                        </div>
+                    )}
+                    </>
                 )}
             </Card>
 
@@ -608,8 +631,9 @@ export default function ReportsPage() {
             <Card
                 title={
                     <Space>
-                        <AimOutlined style={{ color: themeColor }} />
+                        <SafetyCertificateOutlined style={{ color: themeColor }} />
                         <span style={{ fontWeight: 600 }}>Project Health Scorecard</span>
+                        <Tooltip title="Score = 40% task completion + 30% timeline health + 30% budget health"><InfoCircleOutlined style={{ color: isDark ? '#64748b' : '#94a3b8', fontSize: 12 }} /></Tooltip>
                         <Tag color="purple">{projectHealth.length}</Tag>
                     </Space>
                 }
@@ -1157,6 +1181,7 @@ export default function ReportsPage() {
         </CMSLayout>
     );
 }
+
 
 
 

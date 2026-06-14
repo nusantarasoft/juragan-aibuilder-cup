@@ -1,17 +1,19 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import RbacGuard from "@/components/common/RbacGuard";
-import { Button, Card, Col, Form, Input, InputNumber, message, Modal, Progress, Row, Select, Space, Table, Tabs, Tag, Tooltip, Typography } from "antd";
+import { Button, Card, Col, Form, Input, InputNumber, message, Modal, Progress, Row, Select, Space, Table, Tabs, Tag, Tooltip, Typography , theme } from "antd";
 import {
     ToolOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
     FileTextOutlined, ScheduleOutlined, CheckCircleOutlined,
     ClockCircleOutlined, ExclamationCircleOutlined, DeleteOutlined,
     EditOutlined, PlayCircleOutlined, PauseCircleOutlined,
     RocketOutlined, UnorderedListOutlined, DollarOutlined,
-    CalendarOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
+    CalendarOutlined, FileExcelOutlined, FilePdfOutlined,
+    BarChartOutlined, ShoppingCartOutlined } from "@ant-design/icons";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { useDateRangeStore } from "@/store/useDateRangeStore";
@@ -81,8 +83,11 @@ const WO_FIELDS: FieldDef[] = [
 ];
 
 export default function ManufacturingPage() {
+    const router = useRouter();
     const [stats, setStats] = useState<ManufacturingStats | null>(null);
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const { startDate, endDate } = useDateRangeStore();
     const [boms, setBoms] = useState<MfgBom[]>([]);
     const [workOrders, setWorkOrders] = useState<MfgWorkOrder[]>([]);
@@ -506,6 +511,10 @@ export default function ManufacturingPage() {
                     animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential
                 />
             }
+            extra={[
+                <Tooltip key="stock" title="View stock levels"><Button icon={<BarChartOutlined />} onClick={() => router.push('/admin/inventory/stock')}>Stock</Button></Tooltip>,
+                <Tooltip key="procurement" title="Manage procurement"><Button icon={<ShoppingCartOutlined />} onClick={() => router.push('/admin/inventory/procurement')}>Procurement</Button></Tooltip>,
+            ]}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
                 {/* KPI Cards */}
@@ -514,7 +523,7 @@ export default function ManufacturingPage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, type: 'spring', stiffness: 260, damping: 20 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    ...glassDark, borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden',
+                                    ...(isDark ? glassDark : glass), borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden',
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -534,7 +543,7 @@ export default function ManufacturingPage() {
 
                 {/* Tabs */}
                 <Card size="small" style={{
-                    flex: 1, ...glassDark, borderLeft: `3px solid var(--theme-color, #7c3aed)`,
+                    flex: 1, ...(isDark ? glassDark : glass), borderLeft: `3px solid var(--theme-color, #7c3aed)`,
                 }}>
                     <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
                         {

@@ -6,7 +6,7 @@ import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { Card, Row, Col, Tag, Button, Space, Input, Tabs, Statistic } from "antd";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     AppstoreOutlined,
     EditOutlined,
@@ -52,44 +52,84 @@ const widgetBlocks: BlockItem[] = [
     { id: "19", name: "Countdown", icon: "⏱️", description: "Countdown timer", category: "widget" },
 ];
 
-const BlockCard = ({ block }: { block: BlockItem }) => (
-    <Card
-        hoverable
-        size="small"
-        style={{ height: "100%" }}
-        actions={[
-            <Button key="edit" type="text" icon={<EditOutlined />}>
-                Edit
-            </Button>,
-            <Button key="preview" type="text">
-                Preview
-            </Button>,
-        ]}
-    >
-        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <div style={{ fontSize: 32 }}>{block.icon}</div>
-            <div>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>{block.name}</div>
-                <div style={{ fontSize: 12, color: "#666" }}>{block.description}</div>
-                <Tag style={{ marginTop: 8 }} color={
-                    block.category === "template" ? "blue" :
-                        block.category === "content" ? "green" : "purple"
-                }>
-                    {block.category}
-                </Tag>
-            </div>
-        </div>
-    </Card>
-);
+const BlockCard = ({ block }: { block: BlockItem }) => {
+    const borderColor = 
+        block.category === "template" ? "rgba(59, 130, 246, 0.8)" :
+        block.category === "content" ? "rgba(16, 185, 129, 0.8)" :
+        "rgba(139, 92, 246, 0.8)";
+
+    return (
+        <motion.div
+            whileHover={{ y: -5, scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            style={{ height: '100%' }}
+        >
+            <Card
+                hoverable
+                size="small"
+                style={{ 
+                    ...glass,
+                    height: "100%", 
+                    borderTop: `3px solid ${borderColor}`,
+                    overflow: 'hidden'
+                }}
+                actions={[
+                    <Button key="edit" type="text" icon={<EditOutlined />} style={{ color: '#6366f1' }}>
+                        Edit
+                    </Button>,
+                    <Button key="preview" type="text">
+                        Preview
+                    </Button>,
+                ]}
+            >
+                <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <div style={{ 
+                        fontSize: 32, 
+                        background: 'rgba(255,255,255,0.5)', 
+                        padding: 12, 
+                        borderRadius: 12,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+                    }}>
+                        {block.icon}
+                    </div>
+                    <div>
+                        <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 16 }}>{block.name}</div>
+                        <div style={{ fontSize: 12, color: "#666", lineHeight: 1.4 }}>{block.description}</div>
+                        <Tag style={{ marginTop: 12, borderRadius: 12, padding: '0 10px', border: 0, background: 'rgba(0,0,0,0.04)' }} color={
+                            block.category === "template" ? "blue" :
+                                block.category === "content" ? "green" : "purple"
+                        }>
+                            {block.category.toUpperCase()}
+                        </Tag>
+                    </div>
+                </div>
+            </Card>
+        </motion.div>
+    );
+};
 
 const BlockGrid = ({ blocks }: { blocks: BlockItem[] }) => (
-    <Row gutter={[16, 16]}>
-        {blocks.map((block) => (
-            <Col key={block.id} xs={24} sm={12} md={8} lg={6}>
-                <BlockCard block={block} />
-            </Col>
-        ))}
-    </Row>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+        <Row gutter={[16, 16]}>
+            <AnimatePresence>
+                {blocks.map((block, i) => (
+                    <Col key={block.id} xs={24} sm={12} md={8} lg={6}>
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.05 }}
+                            style={{ height: '100%' }}
+                        >
+                            <BlockCard block={block} />
+                        </motion.div>
+                    </Col>
+                ))}
+            </AnimatePresence>
+        </Row>
+    </motion.div>
 );
 
 export default function BlocksTemplatesPage() {

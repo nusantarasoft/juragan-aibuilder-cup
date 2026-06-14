@@ -1,17 +1,18 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
     Card, Table, Button, Tag, Input, Space, Tabs, Statistic, Row, Col,
     Form, Select, Rate, message, Popconfirm, Tooltip, DatePicker,
-    InputNumber, Drawer, Descriptions, Badge, Typography,
-} from "antd";
+    InputNumber, Drawer, Descriptions, Badge, Typography, theme } from "antd";
 import {
     PlusOutlined, SearchOutlined, ShopOutlined, FileTextOutlined,
     ShoppingCartOutlined, CheckCircleOutlined, InboxOutlined,
     TeamOutlined, DollarOutlined, ClockCircleOutlined,
     SendOutlined, EyeOutlined, DeleteOutlined, CheckOutlined, CloseOutlined,
     ReloadOutlined, GlobalOutlined, FileExcelOutlined, FilePdfOutlined,
+    BarChartOutlined, UnorderedListOutlined, DownloadOutlined,
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -66,8 +67,11 @@ const PRIORITY_ICONS: Record<string, string> = {
 };
 
 export default function ProcurementPage() {
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState("suppliers");
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const { startDate, endDate } = useDateRangeStore();
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState("");
@@ -328,6 +332,9 @@ export default function ProcurementPage() {
                 />
             }
             extra={[
+                <Tooltip key="stock" title="View stock levels"><Button icon={<BarChartOutlined />} onClick={() => router.push('/admin/inventory/stock')}>Stock</Button></Tooltip>,
+                <Tooltip key="items" title="Manage items"><Button icon={<UnorderedListOutlined />} onClick={() => router.push('/admin/inventory/items')}>Items</Button></Tooltip>,
+                <Tooltip key="putaway" title="Putaway tasks"><Button icon={<DownloadOutlined />} onClick={() => router.push('/admin/inventory/putaway')}>Putaway</Button></Tooltip>,
                 <Tooltip key="excel" title="Export suppliers to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => {
                     exportToExcel({
                         fileName: 'procurement_suppliers',
@@ -374,7 +381,7 @@ export default function ProcurementPage() {
                 ].map((s, i) => (
                     <Col key={i} xs={12} sm={8} md={4}>
                         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, type: 'spring', stiffness: 260, damping: 20 }}>
-                            <Card size="small" style={{ ...glassDark, borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden' }}>
+                            <Card size="small" style={{ ...(isDark ? glassDark : glass), borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden' }}>
                                 <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
                             </Card>
                         </motion.div>

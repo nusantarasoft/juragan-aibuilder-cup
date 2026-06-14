@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { ProTable, ProColumns, ModalForm, ProFormText, ProFormTextArea, ProForm, ProCard, ProFormSelect, ProFormDatePicker } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Tabs, Space, Row, Col } from "antd";
+import { Button, message, Tag, Popconfirm, Tabs, Space, Row, Col, Card } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined, BulbOutlined, SwapOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { useTheme } from 'next-themes';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 
 // ─── GraphQL ───────────────────────────────────────────────
 const GET_CHANGE_REQUESTS = `query($projectId: String!) { pmChangeRequests(projectId: $projectId) { id changeNumber title description reason impactScope impactSchedule impactCost impactQuality requestedBy requestedDate reviewedBy decision decisionDate decisionNotes implementationNotes priority status createdAt updatedAt } }`;
@@ -19,6 +21,11 @@ const DELETE_LESSON = `mutation($id: ID!) { deletePmLessonLearned(id: $id) }`;
 
 export default function ChangeControlTab({ projectId }: { projectId: string }) {
     const [messageApi, contextHolder] = message.useMessage();
+    const { resolvedTheme } = useTheme();
+    const { themeColor } = usePreferencesStore();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const isDark = mounted && resolvedTheme === 'dark';
 
     const [changes, setChanges] = useState<any[]>([]);
     const [crLoading, setCrLoading] = useState(true);
@@ -192,6 +199,27 @@ export default function ChangeControlTab({ projectId }: { projectId: string }) {
                 {
                     label: <Space><BulbOutlined /> Lessons Learned</Space>, key: 'll',
                     children: (
+                        <>
+                        <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
+                            <Col span={8}>
+                                <Card size="small" style={{ borderRadius: 8, textAlign: 'center', borderTop: `3px solid ${themeColor}`, background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                                    <div style={{ fontSize: 20, fontWeight: 700 }}>{lessons.length}</div>
+                                    <div style={{ fontSize: 11, color: isDark ? '#94a3b8' : '#888' }}>Total Lessons</div>
+                                </Card>
+                            </Col>
+                            <Col span={8}>
+                                <Card size="small" style={{ borderRadius: 8, textAlign: 'center', borderTop: '3px solid #3b82f6', background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                                    <div style={{ fontSize: 20, fontWeight: 700, color: '#3b82f6' }}>{[...new Set(lessons.map((l: any) => l.category))].length}</div>
+                                    <div style={{ fontSize: 11, color: isDark ? '#94a3b8' : '#888' }}>Categories</div>
+                                </Card>
+                            </Col>
+                            <Col span={8}>
+                                <Card size="small" style={{ borderRadius: 8, textAlign: 'center', borderTop: '3px solid #10b981', background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                                    <div style={{ fontSize: 20, fontWeight: 700, color: '#10b981' }}>{[...new Set(lessons.map((l: any) => l.phase))].length}</div>
+                                    <div style={{ fontSize: 11, color: isDark ? '#94a3b8' : '#888' }}>Phases</div>
+                                </Card>
+                            </Col>
+                        </Row>
                         <ProTable
                             headerTitle="Lessons Learned Register"
                             rowKey="id"
@@ -205,6 +233,7 @@ export default function ChangeControlTab({ projectId }: { projectId: string }) {
                                 </Button>
                             ]}
                         />
+                        </>
                     )
                 }
             ]} />

@@ -23,7 +23,6 @@ import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 
 const { Text } = Typography;
-const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 interface Contact {
     id: string;
@@ -245,7 +244,7 @@ export default function ContactsPage() {
                 </Button>,
             ]}
         >
-            <Card style={{ ...glass, marginBottom: 16 }}>
+            <Card style={{ marginBottom: 16 }}>
                 <Space wrap>
                     <Input prefix={<SearchOutlined />} placeholder="Search by email or title..." value={search}
                         onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import RbacGuard from "@/components/common/RbacGuard";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
 import { Badge, Button, Col, Form, Input, message, Popconfirm, Row, Select, Space, Switch, Tag, Tooltip, Typography } from "antd";
@@ -20,6 +20,7 @@ import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { useDateRangeStore } from "@/store/useDateRangeStore";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -68,6 +69,11 @@ export default function ItsmTicketsPage() {
     const [selectedReporter, setSelectedReporter] = useState<any>(null);
     const [aiSuggesting, setAiSuggesting] = useState(false);
     const [aiSuggestion, setAiSuggestion] = useState<any>(null);
+    const [showQuickCreate, setShowQuickCreate] = useState(false);
+    const [quickTitle, setQuickTitle] = useState('');
+    const [quickPriority, setQuickPriority] = useState('medium');
+    const [quickChannel, setQuickChannel] = useState('portal');
+    const [quickCreating, setQuickCreating] = useState(false);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -83,6 +89,22 @@ export default function ItsmTicketsPage() {
     }, [filterStatus, filterPriority, searchText, messageApi]);
 
     useEffect(() => { loadData(); }, [loadData]);
+
+    // ── Realtime sync for itsm_tickets ──
+    const { isConnected: realtimeConnected } = useRealtimeSync({
+        table: 'itsm_tickets',
+        onEvent: useCallback((eventType: string, newRecord: any, oldRecord: any) => {
+            const title = newRecord?.title || oldRecord?.title || 'Ticket';
+            if (eventType === 'INSERT') {
+                messageApi.info(`🆕 New ticket created: ${title}`);
+            } else if (eventType === 'UPDATE') {
+                messageApi.info(`✏️ Ticket updated: ${title}`);
+            } else if (eventType === 'DELETE') {
+                messageApi.info(`🗑️ Ticket deleted: ${title}`);
+            }
+            loadData();
+        }, [messageApi, loadData]),
+    });
 
     const handleSearchReporter = async (value: string) => {
         if (value.length < 2) { setReporterResults([]); return; }
@@ -154,6 +176,42 @@ export default function ItsmTicketsPage() {
         catch (err: any) { messageApi.error(`Delete failed: ${err.message}`); }
     };
 
+    // Inline update handler — partial update on a single field
+    const handleInlineUpdate = async (id: string, field: string, value: any) => {
+        try {
+            await gql(UPDATE_TICKET, { id, input: { [field]: value } });
+            setTickets(prev => prev.map(t => t.id === id ? { ...t, [field]: value } : t));
+            messageApi.success(`Updated ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+        } catch (err: any) {
+            messageApi.error(`Update failed: ${err.message}`);
+        }
+    };
+
+    // Quick-create ticket handler
+    const handleQuickCreate = async () => {
+        if (!quickTitle.trim()) { messageApi.warning('Enter a ticket title'); return; }
+        setQuickCreating(true);
+        try {
+            const d = await gql(CREATE_TICKET, {
+                tenantId: DEFAULT_TENANT_ID,
+                input: {
+                    title: quickTitle.trim(),
+                    priority: quickPriority,
+                    channel: quickChannel,
+                    impact: 'medium',
+                    urgency: 'medium',
+                },
+            });
+            messageApi.success(`Ticket ${d.createItsmTicket.ticketNumber} created`);
+            setQuickTitle('');
+            loadData();
+        } catch (err: any) {
+            messageApi.error(`Create failed: ${err.message}`);
+        } finally {
+            setQuickCreating(false);
+        }
+    };
+
     const columns: ProColumns<any>[] = [
         {
             title: 'Ticket #', dataIndex: 'ticketNumber', width: 110,
@@ -161,12 +219,46 @@ export default function ItsmTicketsPage() {
         },
         { title: 'Title', dataIndex: 'title', ellipsis: true },
         {
-            title: 'Priority', dataIndex: 'priority', width: 90,
-            render: (_, r) => <Tag color={priorityColors[r.priority]}>{(r.priority || '').toUpperCase()}</Tag>
+            title: 'Priority', dataIndex: 'priority', width: 100,
+            render: (_, r) => (
+                <Select
+                    value={r.priority}
+                    size="small"
+                    variant="borderless"
+                    style={{ width: '100%' }}
+                    aria-label={`Priority for ${r.ticketNumber}`}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(val) => handleInlineUpdate(r.id, 'priority', val)}
+                    options={[
+                        { value: 'critical', label: <Tag color="#f5222d">CRITICAL</Tag> },
+                        { value: 'high', label: <Tag color="#fa8c16">HIGH</Tag> },
+                        { value: 'medium', label: <Tag color="#1890ff">MEDIUM</Tag> },
+                        { value: 'low', label: <Tag color="#52c41a">LOW</Tag> },
+                    ]}
+                />
+            )
         },
         {
-            title: 'Status', dataIndex: 'status', width: 110,
-            render: (_, r) => <Tag color={statusColors[r.status]}>{(r.status || '').replace('_', ' ').toUpperCase()}</Tag>
+            title: 'Status', dataIndex: 'status', width: 130,
+            render: (_, r) => (
+                <Select
+                    value={r.status}
+                    size="small"
+                    variant="borderless"
+                    style={{ width: '100%' }}
+                    aria-label={`Status for ${r.ticketNumber}`}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(val) => handleInlineUpdate(r.id, 'status', val)}
+                    options={[
+                        { value: 'new', label: <Tag color="blue">NEW</Tag> },
+                        { value: 'open', label: <Tag color="cyan">OPEN</Tag> },
+                        { value: 'in_progress', label: <Tag color="geekblue">IN PROGRESS</Tag> },
+                        { value: 'pending', label: <Tag color="orange">PENDING</Tag> },
+                        { value: 'resolved', label: <Tag color="green">RESOLVED</Tag> },
+                        { value: 'closed', label: <Tag>CLOSED</Tag> },
+                    ]}
+                />
+            )
         },
         {
             title: 'Reporter', dataIndex: 'reporterName', width: 150, ellipsis: true,
@@ -176,8 +268,27 @@ export default function ItsmTicketsPage() {
             }
         },
         {
-            title: 'Assigned To', dataIndex: 'assignedTo', width: 130, ellipsis: true,
-            render: (_, r: any) => r.assignedTo || <Text type="secondary" italic>Unassigned</Text>
+            title: 'Assigned To', dataIndex: 'assignedTo', width: 140, ellipsis: true,
+            render: (_, r: any) => (
+                <Input
+                    size="small"
+                    variant="borderless"
+                    placeholder="Unassigned"
+                    defaultValue={r.assignedTo || ''}
+                    aria-label={`Assignee for ${r.ticketNumber}`}
+                    onClick={(e) => e.stopPropagation()}
+                    onPressEnter={(e) => {
+                        const val = (e.target as HTMLInputElement).value;
+                        handleInlineUpdate(r.id, 'assignedTo', val);
+                    }}
+                    onBlur={(e) => {
+                        if (e.target.value !== (r.assignedTo || '')) {
+                            handleInlineUpdate(r.id, 'assignedTo', e.target.value);
+                        }
+                    }}
+                    style={{ fontStyle: r.assignedTo ? 'normal' : 'italic', color: r.assignedTo ? 'inherit' : '#999' }}
+                />
+            )
         },
         { title: 'Channel', dataIndex: 'channel', width: 90, render: (_: any, r: any) => channelLabels[r.channel] || r.channel },
         {
@@ -215,7 +326,30 @@ export default function ItsmTicketsPage() {
         <div>
             {contextHolder}
             <ProTable
-                headerTitle={<Space><CustomerServiceOutlined /> Helpdesk Tickets</Space>}
+                headerTitle={
+                    <Space>
+                        <CustomerServiceOutlined /> Helpdesk Tickets
+                        {/* LIVE Indicator */}
+                        {realtimeConnected && (
+                            <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 5,
+                                padding: '2px 10px', borderRadius: 12,
+                                background: 'rgba(16, 185, 129, 0.1)',
+                                border: '1px solid rgba(16, 185, 129, 0.25)',
+                                fontSize: 10, fontWeight: 700, color: '#10b981',
+                                textTransform: 'uppercase', letterSpacing: 1,
+                            }}>
+                                <span style={{
+                                    width: 7, height: 7, borderRadius: '50%',
+                                    background: '#10b981',
+                                    animation: 'pulse-live 1.5s ease-in-out infinite',
+                                }} />
+                                LIVE
+                                <style>{`@keyframes pulse-live { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.3); } }`}</style>
+                            </span>
+                        )}
+                    </Space>
+                }
                 rowKey="id"
                 dataSource={tickets}
                 loading={loading}
@@ -239,11 +373,92 @@ export default function ItsmTicketsPage() {
                             { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' },
                         ]}
                     />,
-                    <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setSelectedReporter(null); setAiSuggestion(null); form.resetFields(); setModalOpen(true); }}>
+                    <Button key="quick" type="dashed" icon={<PlusOutlined />}
+                        onClick={() => setShowQuickCreate(!showQuickCreate)}
+                        aria-label="Quick create ticket"
+                        style={{ borderColor: showQuickCreate ? themeColor : undefined, color: showQuickCreate ? themeColor : undefined }}
+                    >
+                        Quick Create
+                    </Button>,
+                    <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setSelectedReporter(null); setAiSuggestion(null); form.resetFields(); setModalOpen(true); }}
+                        style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`, border: 'none', borderRadius: 8 }}
+                    >
                         New Ticket
                     </Button>,
                 ]}
+                onRow={(record) => ({
+                    onClick: () => router.push(`/admin/itsm/tickets/${record.id}`),
+                    style: { cursor: 'pointer' },
+                    'aria-label': `Ticket ${record.ticketNumber}: ${record.title}`,
+                })}
             />
+
+            {/* ─── Quick Create Bar ─── */}
+            <AnimatePresence>
+                {showQuickCreate && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                        animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
+                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                        transition={{ duration: 0.25 }}
+                        style={{ overflow: 'hidden' }}
+                    >
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '10px 16px', borderRadius: 12,
+                            background: `linear-gradient(135deg, ${themeColor}08, ${themeColor}04)`,
+                            border: `1px solid ${themeColor}30`,
+                        }}>
+                            <Input
+                                placeholder="Quick ticket title — describe the issue..."
+                                value={quickTitle}
+                                onChange={(e) => setQuickTitle(e.target.value)}
+                                onPressEnter={handleQuickCreate}
+                                style={{ flex: 1, borderRadius: 8 }}
+                                aria-label="Quick ticket title"
+                            />
+                            <Select
+                                value={quickPriority}
+                                onChange={setQuickPriority}
+                                size="middle"
+                                style={{ width: 120 }}
+                                aria-label="Quick ticket priority"
+                                options={[
+                                    { value: 'critical', label: '🔴 Critical' },
+                                    { value: 'high', label: '🟠 High' },
+                                    { value: 'medium', label: '🔵 Medium' },
+                                    { value: 'low', label: '🟢 Low' },
+                                ]}
+                            />
+                            <Select
+                                value={quickChannel}
+                                onChange={setQuickChannel}
+                                size="middle"
+                                style={{ width: 120 }}
+                                aria-label="Quick ticket channel"
+                                options={[
+                                    { value: 'portal', label: '🌐 Portal' },
+                                    { value: 'email', label: '📧 Email' },
+                                    { value: 'phone', label: '📞 Phone' },
+                                    { value: 'chat', label: '💬 Chat' },
+                                ]}
+                            />
+                            <Button
+                                type="primary"
+                                loading={quickCreating}
+                                onClick={handleQuickCreate}
+                                aria-label="Submit quick ticket"
+                                style={{
+                                    background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`,
+                                    border: 'none', borderRadius: 8,
+                                }}
+                            >
+                                Create
+                            </Button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* â”€â”€â”€ Ticket SteppedFormModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <SteppedFormModal

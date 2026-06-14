@@ -665,6 +665,22 @@ export const inventoryService = {
         await graphqlRequest(`mutation($id: String!) { deleteBin(id: $id) }`, { id });
     },
 
+    async bulkCreateBins(zoneId: string, input: {
+        aisleStart: string; aisleEnd: string;
+        rackStart: number; rackEnd: number;
+        levelStart: number; levelEnd: number;
+        positionStart?: number; positionEnd?: number;
+        binType?: string; maxWeight?: number; maxVolume?: number;
+        codePrefix?: string;
+    }): Promise<{ created: number }> {
+        const data = await graphqlRequest<{ bulkCreateBins: { created: number } }>(`
+            mutation($zoneId: String!, $input: BulkCreateBinsInput!) {
+                bulkCreateBins(zoneId: $zoneId, input: $input) { created }
+            }
+        `, { zoneId, input });
+        return data.bulkCreateBins;
+    },
+
     async getStockTransfers(tenantId = DEFAULT_TENANT_ID, status?: string): Promise<InvStockTransfer[]> {
         const data = await graphqlRequest<{ invStockTransfers: InvStockTransfer[] }>(`
             query($tenantId: String!, $status: String) {
@@ -1820,6 +1836,145 @@ export const inventoryService = {
         `, { tenantId, daysAhead });
         return data.expiryAlerts || [];
     },
+
+    // ═════════════════════════════════════════════════════
+    // ─── WMS PUT-AWAY & PICK ─────────────────────────────
+    // ═════════════════════════════════════════════════════
+
+    async getPutawayTasks(tenantId = DEFAULT_TENANT_ID, status?: string): Promise<PutawayTask[]> {
+        const data = await graphqlRequest<{ putawayTasks: PutawayTask[] }>(`
+            query($tenantId: String!, $status: String) {
+                putawayTasks(tenantId: $tenantId, status: $status) {
+                    id tenantId taskNumber itemId itemName itemSku quantity uom
+                    sourceReference sourceType warehouseId
+                    suggestedBinId suggestedBinCode actualBinId actualBinCode
+                    assignedTo priority lotNumber batchNumber expiryDate
+                    startedAt completedAt notes status createdAt updatedAt
+                }
+            }
+        `, { tenantId, status: status || null });
+        return data.putawayTasks || [];
+    },
+
+    async createPutawayTask(tenantId = DEFAULT_TENANT_ID, input: Record<string, any>): Promise<PutawayTask> {
+        const data = await graphqlRequest<{ createPutawayTask: PutawayTask }>(`
+            mutation($tenantId: String!, $input: CreatePutawayTaskInput!) {
+                createPutawayTask(tenantId: $tenantId, input: $input) {
+                    id taskNumber status suggestedBinCode createdAt
+                }
+            }
+        `, { tenantId, input });
+        return data.createPutawayTask;
+    },
+
+    async confirmPutaway(id: string, actualBinId: string): Promise<PutawayTask> {
+        const data = await graphqlRequest<{ confirmPutaway: PutawayTask }>(`
+            mutation($id: String!, $actualBinId: String!) {
+                confirmPutaway(id: $id, actualBinId: $actualBinId) {
+                    id taskNumber status actualBinCode completedAt
+                }
+            }
+        `, { id, actualBinId });
+        return data.confirmPutaway;
+    },
+
+    async startPutawayTask(id: string): Promise<PutawayTask> {
+        const data = await graphqlRequest<{ startPutawayTask: PutawayTask }>(`
+            mutation($id: String!) {
+                startPutawayTask(id: $id) { id taskNumber status startedAt }
+            }
+        `, { id });
+        return data.startPutawayTask;
+    },
+
+    async cancelPutawayTask(id: string): Promise<PutawayTask> {
+        const data = await graphqlRequest<{ cancelPutawayTask: PutawayTask }>(`
+            mutation($id: String!) {
+                cancelPutawayTask(id: $id) { id taskNumber status }
+            }
+        `, { id });
+        return data.cancelPutawayTask;
+    },
+
+    async getPickTasks(tenantId = DEFAULT_TENANT_ID, status?: string): Promise<PickTask[]> {
+        const data = await graphqlRequest<{ pickTasks: PickTask[] }>(`
+            query($tenantId: String!, $status: String) {
+                pickTasks(tenantId: $tenantId, status: $status) {
+                    id tenantId taskNumber itemId itemName itemSku
+                    quantity pickedQuantity uom
+                    orderReference orderType warehouseId
+                    fromBinId fromBinCode assignedTo priority pickSequence
+                    lotNumber batchNumber startedAt completedAt
+                    notes status createdAt updatedAt
+                }
+            }
+        `, { tenantId, status: status || null });
+        return data.pickTasks || [];
+    },
+
+    async createPickTask(tenantId = DEFAULT_TENANT_ID, input: Record<string, any>): Promise<PickTask> {
+        const data = await graphqlRequest<{ createPickTask: PickTask }>(`
+            mutation($tenantId: String!, $input: CreatePickTaskInput!) {
+                createPickTask(tenantId: $tenantId, input: $input) {
+                    id taskNumber status fromBinCode createdAt
+                }
+            }
+        `, { tenantId, input });
+        return data.createPickTask;
+    },
+
+    async confirmPick(id: string, pickedQuantity: number): Promise<PickTask> {
+        const data = await graphqlRequest<{ confirmPick: PickTask }>(`
+            mutation($id: String!, $pickedQuantity: Float!) {
+                confirmPick(id: $id, pickedQuantity: $pickedQuantity) {
+                    id taskNumber status pickedQuantity completedAt
+                }
+            }
+        `, { id, pickedQuantity });
+        return data.confirmPick;
+    },
+
+    async startPickTask(id: string): Promise<PickTask> {
+        const data = await graphqlRequest<{ startPickTask: PickTask }>(`
+            mutation($id: String!) {
+                startPickTask(id: $id) { id taskNumber status startedAt }
+            }
+        `, { id });
+        return data.startPickTask;
+    },
+
+    async cancelPickTask(id: string): Promise<PickTask> {
+        const data = await graphqlRequest<{ cancelPickTask: PickTask }>(`
+            mutation($id: String!) {
+                cancelPickTask(id: $id) { id taskNumber status }
+            }
+        `, { id });
+        return data.cancelPickTask;
+    },
+
+    async getBinContents(tenantId = DEFAULT_TENANT_ID, binId?: string): Promise<BinContent[]> {
+        const data = await graphqlRequest<{ binContents: BinContent[] }>(`
+            query($tenantId: String!, $binId: String) {
+                binContents(tenantId: $tenantId, binId: $binId) {
+                    id tenantId binId itemId quantity uom
+                    lotNumber batchNumber serialNumber expiryDate receivedAt notes
+                }
+            }
+        `, { tenantId, binId: binId || null });
+        return data.binContents || [];
+    },
+
+    async getWmsStats(tenantId = DEFAULT_TENANT_ID): Promise<WmsStats> {
+        const data = await graphqlRequest<{ wmsStats: WmsStats }>(`
+            query($tenantId: String!) {
+                wmsStats(tenantId: $tenantId) {
+                    pendingPutaway inProgressPutaway completedPutaway
+                    pendingPick inProgressPick completedPick totalBinContents
+                }
+            }
+        `, { tenantId });
+        return data.wmsStats;
+    },
 };
 
 // ─── Warehouse Types ────────────────────────────────────
@@ -2231,3 +2386,53 @@ export interface ExpiryAlert {
     warehouseId?: string; isExpired: boolean;
     daysUntilExpiry: number;
 }
+
+// ═════════════════════════════════════════════════════════
+// ─── WMS Types ───────────────────────────────────────────
+// ═════════════════════════════════════════════════════════
+
+export interface PutawayTask {
+    id: string; tenantId: string; taskNumber: string;
+    itemId: string; itemName?: string; itemSku?: string;
+    quantity: number; uom?: string;
+    sourceReference?: string; sourceType?: string;
+    warehouseId?: string;
+    suggestedBinId?: string; suggestedBinCode?: string;
+    actualBinId?: string; actualBinCode?: string;
+    assignedTo?: string; priority?: string;
+    lotNumber?: string; batchNumber?: string; expiryDate?: string;
+    startedAt?: string; completedAt?: string;
+    notes?: string; status: string;
+    createdAt: string; updatedAt?: string;
+}
+
+export interface PickTask {
+    id: string; tenantId: string; taskNumber: string;
+    itemId: string; itemName?: string; itemSku?: string;
+    quantity: number; pickedQuantity: number; uom?: string;
+    orderReference?: string; orderType?: string;
+    warehouseId?: string;
+    fromBinId?: string; fromBinCode?: string;
+    assignedTo?: string; priority?: string;
+    pickSequence: number;
+    lotNumber?: string; batchNumber?: string;
+    startedAt?: string; completedAt?: string;
+    notes?: string; status: string;
+    createdAt: string; updatedAt?: string;
+}
+
+export interface BinContent {
+    id: string; tenantId: string;
+    binId: string; itemId: string;
+    quantity: number; uom?: string;
+    lotNumber?: string; batchNumber?: string;
+    serialNumber?: string; expiryDate?: string;
+    receivedAt?: string; notes?: string;
+}
+
+export interface WmsStats {
+    pendingPutaway: number; inProgressPutaway: number; completedPutaway: number;
+    pendingPick: number; inProgressPick: number; completedPick: number;
+    totalBinContents: number;
+}
+

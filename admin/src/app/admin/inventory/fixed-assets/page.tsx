@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import RbacGuard from "@/components/common/RbacGuard";
-import { Button, Card, Col, Descriptions, Divider, Drawer, Form, Input, InputNumber, message, Modal, Progress, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { Button, Card, Col, Descriptions, Divider, Drawer, Form, Input, InputNumber, message, Modal, Progress, Row, Select, Space, Table, Tag, Tooltip, Typography , theme } from "antd";
 import {
     CarOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
     DeleteOutlined, EditOutlined, EyeOutlined,
@@ -79,6 +79,8 @@ const ASSET_FIELDS: FieldDef[] = [
 export default function FixedAssetsPage() {
     const [stats, setStats] = useState<FixedAssetStatsType | null>(null);
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const { startDate, endDate } = useDateRangeStore();
     const [assets, setAssets] = useState<FixedAsset[]>([]);
     const [loading, setLoading] = useState(true);
@@ -425,7 +427,7 @@ export default function FixedAssetsPage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, type: 'spring', stiffness: 260, damping: 20 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    ...glassDark, borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden',
+                                    ...(isDark ? glassDark : glass), borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden',
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -483,7 +485,7 @@ export default function FixedAssetsPage() {
 
                 {/* Main Table Card */}
                 <Card size="small" style={{
-                    flex: 1, ...glassDark, borderLeft: `3px solid var(--theme-color, #7c3aed)`,
+                    flex: 1, ...(isDark ? glassDark : glass), borderLeft: `3px solid var(--theme-color, #7c3aed)`,
                 }}>
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">

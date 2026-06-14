@@ -17,12 +17,12 @@ import {
     PageContainer
 } from "@ant-design/pro-components";
 import {
-    Button, message, Tag, Space, Select, Typography, Avatar, Dropdown,
-    Popconfirm, Spin, Modal, List, Row, Col, Card, Empty, Badge, Tooltip, Input
+    Button, message, Tag, Space, Select, Typography, Avatar,
+    Spin, Modal, List, Row, Col, Card, Empty, Badge, Tooltip, Input
 } from "antd";
 import {
     PlusOutlined, FireOutlined, ClockCircleOutlined, CheckCircleOutlined,
-    MoreOutlined, UserOutlined, RobotOutlined, ReloadOutlined,
+    UserOutlined, RobotOutlined, ReloadOutlined,
     MenuFoldOutlined, MenuUnfoldOutlined, DashboardOutlined,
     ProjectOutlined, ApartmentOutlined, SafetyCertificateOutlined,
     TeamOutlined, DollarOutlined, BugOutlined, FileProtectOutlined,
@@ -30,7 +30,7 @@ import {
     AuditOutlined, SolutionOutlined, SearchOutlined, BookOutlined,
     ExperimentOutlined, RadarChartOutlined, TrophyOutlined, ToolOutlined,
     FlagOutlined, BankOutlined, GlobalOutlined, BarChartOutlined,
-    ArrowLeftOutlined, FormOutlined
+    SwapOutlined, FormOutlined
 } from "@ant-design/icons";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
@@ -39,6 +39,7 @@ import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useSearchParams, useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import FormIntegrationWidget from "@/components/forms/FormIntegrationWidget";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 // Tab Components
 import ProjectCharterTab from "./components/ProjectCharterTab";
@@ -64,11 +65,26 @@ import TailoringTab from "./components/TailoringTab";
 import FocusAreasTab from "./components/FocusAreasTab";
 import GovernanceTab from "./components/GovernanceTab";
 import SustainabilityTab from "./components/SustainabilityTab";
+import SprintAnalyticsTab from "./components/SprintAnalyticsTab";
+import KanbanBoard from "./components/KanbanBoard";
+import PortfolioDashboard from "./components/PortfolioDashboard";
+import AiInsightsTab from "./components/AiInsightsTab";
+import PmCommandPalette from "./components/PmCommandPalette";
 
 const { Text, Title } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 // --- GRAPHQL ---
+const GET_PROJECTS_LIST = `
+  query GetProjectsList($tenantId: String!) {
+    pmProjects(tenantId: $tenantId) {
+      id name projectNumber status priority budget spent methodology
+      startDate endDate
+      owner { firstName lastName avatarUrl }
+    }
+  }
+`;
+
 const GET_PROJECT = `
   query GetProjectDetails($id: ID!) {
     pmProject(id: $id) {
@@ -154,45 +170,44 @@ interface NavSection {
 
 const NAV_SECTIONS: NavSection[] = [
     {
-        title: "Execution",
+        title: "Work",
         items: [
+            { key: "ai_insights", label: "AI Insights", icon: <RobotOutlined /> },
             { key: "sprint", label: "Kanban Board", icon: <DashboardOutlined /> },
-            { key: "gantt", label: "Gantt Chart", icon: <BarChartOutlined /> },
+            { key: "analytics", label: "Sprint Analytics", icon: <BarChartOutlined /> },
+            { key: "gantt", label: "Gantt Chart", icon: <FundProjectionScreenOutlined /> },
             { key: "forms", label: "Forms & Checklists", icon: <FormOutlined /> },
         ]
     },
     {
-        title: "PMBOK 6",
-        badge: "11",
+        title: "Planning",
         items: [
             { key: "charter", label: "Project Charter", icon: <FileProtectOutlined />, pmbokFlag: "pmbokScopeEnabled" },
             { key: "scope", label: "Scope / WBS", icon: <ApartmentOutlined />, pmbokFlag: "pmbokScopeEnabled" },
             { key: "schedule", label: "Schedule", icon: <ScheduleOutlined />, pmbokFlag: "pmbokScheduleEnabled" },
-            { key: "quality", label: "Quality", icon: <SafetyCertificateOutlined />, pmbokFlag: "pmbokQualityEnabled" },
             { key: "resources", label: "Resources", icon: <TeamOutlined />, pmbokFlag: "pmbokResourceEnabled" },
-            { key: "communications", label: "Communications", icon: <SolutionOutlined />, pmbokFlag: "pmbokCommsEnabled" },
+            { key: "stakeholders", label: "Stakeholders", icon: <SolutionOutlined />, pmbokFlag: "pmbokStakeholderEnabled" },
+            { key: "communications", label: "Communications", icon: <BookOutlined />, pmbokFlag: "pmbokCommsEnabled" },
+        ]
+    },
+    {
+        title: "Monitoring",
+        items: [
+            { key: "quality", label: "Quality", icon: <SafetyCertificateOutlined />, pmbokFlag: "pmbokQualityEnabled" },
             { key: "risk", label: "Risk Register", icon: <BugOutlined />, pmbokFlag: "pmbokRiskEnabled" },
-            { key: "procurement", label: "Procurement", icon: <ShoppingCartOutlined />, pmbokFlag: "pmbokProcurementEnabled" },
-            { key: "stakeholders", label: "Stakeholders", icon: <TeamOutlined />, pmbokFlag: "pmbokStakeholderEnabled" },
             { key: "evm", label: "Cost / EVM", icon: <DollarOutlined />, pmbokFlag: "pmbokCostEnabled" },
             { key: "change_control", label: "Change Control", icon: <AuditOutlined /> },
+            { key: "procurement", label: "Procurement", icon: <ShoppingCartOutlined />, pmbokFlag: "pmbokProcurementEnabled" },
         ]
     },
     {
-        title: "PMBOK 7",
-        badge: "4",
+        title: "Governance",
         items: [
             { key: "principles", label: "Principles", icon: <RadarChartOutlined /> },
-            { key: "domains", label: "Performance Domains", icon: <FundProjectionScreenOutlined /> },
-            { key: "benefits", label: "Benefits", icon: <TrophyOutlined /> },
+            { key: "domains", label: "Performance Domains", icon: <TrophyOutlined /> },
+            { key: "benefits", label: "Benefits", icon: <FlagOutlined /> },
             { key: "tailoring", label: "Tailoring", icon: <ToolOutlined /> },
-        ]
-    },
-    {
-        title: "PMBOK 8",
-        badge: "3",
-        items: [
-            { key: "focus_areas", label: "Focus Areas", icon: <FlagOutlined /> },
+            { key: "focus_areas", label: "Focus Areas", icon: <ExperimentOutlined /> },
             { key: "governance", label: "Governance", icon: <BankOutlined /> },
             { key: "sustainability", label: "Sustainability", icon: <GlobalOutlined /> },
         ]
@@ -202,7 +217,9 @@ const NAV_SECTIONS: NavSection[] = [
 function PmDashboardContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const projectId = searchParams.get('projectId');
+    const urlProjectId = searchParams.get('projectId');
+    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(urlProjectId);
+    const projectId = selectedProjectId;
     const [messageApi, contextHolder] = message.useMessage();
     const { resolvedTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
@@ -210,22 +227,35 @@ function PmDashboardContent() {
     useEffect(() => setMounted(true), []);
     const isDark = mounted && resolvedTheme === 'dark';
 
+    // Sync URL param to internal state
+    useEffect(() => {
+        if (urlProjectId && urlProjectId !== selectedProjectId) {
+            setSelectedProjectId(urlProjectId);
+        }
+    }, [urlProjectId]);
+
+    // Project list state (for picker)
+    const [projectsList, setProjectsList] = useState<any[]>([]);
+    const [projectsListLoading, setProjectsListLoading] = useState(false);
+    const [projectSearch, setProjectSearch] = useState('');
+
     // Navigation state
     const [showExplorer, setShowExplorer] = useState(true);
-    const [activeTab, setActiveTab] = useState("sprint");
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'sprint');
+    const [navSearch, setNavSearch] = useState('');
 
     // Core state
     const [activeSprintId, setActiveSprintId] = useState<string | null>(null);
     const [isSprintModal, setIsSprintModal] = useState(false);
     const [isTaskModal, setIsTaskModal] = useState(false);
-    const [dragActive, setDragActive] = useState(false);
+
     const formRef = React.useRef<ProFormInstance>(null);
 
     // Data States
     const [project, setProject] = useState<any>(null);
     const [sprints, setSprints] = useState<any[]>([]);
     const [tasks, setTasks] = useState<any[]>([]);
-    const [projLoading, setProjLoading] = useState(true);
+    const [projLoading, setProjLoading] = useState(!!projectId);
     const [tasksLoading, setTasksLoading] = useState(false);
 
     // AI States
@@ -235,6 +265,49 @@ function PmDashboardContent() {
     const [isAnalysisModal, setIsAnalysisModal] = useState(false);
     const [retroContent, setRetroContent] = useState("");
     const [isRetroModal, setIsRetroModal] = useState(false);
+
+    // Command Palette State
+    const [showCommandPalette, setShowCommandPalette] = useState(false);
+
+    // Keyboard listener for Cmd+K
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                setShowCommandPalette(true);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    // Load projects list for picker
+    const loadProjectsList = useCallback(async () => {
+        setProjectsListLoading(true);
+        try {
+            const data = await gql(GET_PROJECTS_LIST, { tenantId: DEFAULT_TENANT_ID });
+            setProjectsList(data.pmProjects || []);
+        } catch (err: any) { console.error("PM Error", err); 
+            messageApi.error("Failed to load projects.");
+        } finally {
+            setProjectsListLoading(false);
+        }
+    }, [messageApi]);
+
+    useEffect(() => {
+        if (!projectId) {
+            loadProjectsList();
+        }
+    }, [projectId, loadProjectsList]);
+
+    // Handle project selection
+    const handleSelectProject = useCallback((id: string) => {
+        setSelectedProjectId(id);
+        // Update URL without full navigation
+        const url = new URL(window.location.href);
+        url.searchParams.set('projectId', id);
+        window.history.replaceState({}, '', url.toString());
+    }, []);
 
     // --- DATA LOADERS ---
     const loadProjectAndSprints = useCallback(async () => {
@@ -277,75 +350,67 @@ function PmDashboardContent() {
     useEffect(() => { loadProjectAndSprints(); }, [loadProjectAndSprints]);
     useEffect(() => { if (activeSprintId !== undefined) loadTasks(); }, [activeSprintId, loadTasks]);
 
+    // ── Realtime sync for pm_tasks ──
+    const { isConnected: realtimeConnected } = useRealtimeSync({
+        table: 'pm_tasks',
+        filter: projectId ? `project_id=eq.${projectId}` : undefined,
+        enabled: !!projectId,
+        onEvent: useCallback((eventType: string, newRecord: any, oldRecord: any) => {
+            const title = newRecord?.title || oldRecord?.title || 'Task';
+            if (eventType === 'INSERT') {
+                messageApi.info(`🆕 New task created: ${title}`);
+            } else if (eventType === 'UPDATE') {
+                messageApi.info(`✏️ Task updated: ${title}`);
+            } else if (eventType === 'DELETE') {
+                messageApi.info(`🗑️ Task deleted: ${title}`);
+            }
+            // Refetch tasks on any event
+            loadTasks();
+        }, [messageApi, loadTasks]),
+    });
+
+    // Sync active tab to URL
+    useEffect(() => {
+        if (!mounted) return;
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', activeTab);
+        window.history.replaceState({}, '', url.toString());
+    }, [activeTab, mounted]);
+
     // Build filtered navigation based on project flags
     const filteredNavSections = useMemo(() => {
-        if (!project) return NAV_SECTIONS;
-        return NAV_SECTIONS.map(section => ({
-            ...section,
-            items: section.items.filter(item => {
-                if (!item.pmbokFlag) return true;
-                // Treat null/undefined as enabled (default show); only hide when explicitly false
-                return project[item.pmbokFlag] !== false;
+        return NAV_SECTIONS
+            .map(section => {
+                const items = section.items.filter(item => {
+                    if (!item.pmbokFlag) return true;
+                    return project?.[item.pmbokFlag] !== false;
+                });
+                return { ...section, items, badge: items.length > 0 ? String(items.length) : section.badge };
             })
-        })).filter(section => section.items.length > 0);
+            .filter(section => section.items.length > 0);
     }, [project]);
 
-    // --- EMPTY STATE ---
+    // Sidebar search filtering
+    const displayedNavSections = useMemo(() => {
+        if (!navSearch.trim()) return filteredNavSections;
+        const q = navSearch.toLowerCase();
+        return filteredNavSections
+            .map(section => ({
+                ...section,
+                items: section.items.filter(item => item.label.toLowerCase().includes(q)),
+            }))
+            .filter(section => section.items.length > 0);
+    }, [filteredNavSections, navSearch]);
+
+    // --- PORTFOLIO DASHBOARD (when no project selected) ---
     if (!projectId) {
         return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', flexDirection: 'column', gap: 24 }}>
-                <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.5 }}
-                >
-                    <ProjectOutlined style={{ fontSize: 64, color: themeColor, opacity: 0.4 }} />
-                </motion.div>
-                <Title level={4} style={{ color: isDark ? '#a78bfa' : '#6d28d9', margin: 0 }}>No Project Selected</Title>
-                <Text type="secondary">Select a project from the Projects list to view its dashboard.</Text>
-                <Button
-                    type="primary"
-                    icon={<ProjectOutlined />}
-                    onClick={() => router.push('/admin/pm/projects')}
-                    style={{
-                        background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`,
-                        border: 'none',
-                        borderRadius: 8,
-                        height: 40,
-                    }}
-                >
-                    Go to Projects
-                </Button>
+            <div style={{ padding: '0 4px' }}>
+                {contextHolder}
+                <PortfolioDashboard onSelectProject={handleSelectProject} />
             </div>
         );
     }
-
-    // Kanban
-    const taskStatusMap = {
-        todo: { title: "To Do", color: themeColor, gradient: "linear-gradient(135deg, var(--theme-color, #8b5cf6)20, #8b5cf610)" },
-        in_progress: { title: "In Progress", color: "#3b82f6", gradient: "linear-gradient(135deg, #3b82f620, #3b82f610)" },
-        review: { title: "In Review", color: "#f59e0b", gradient: "linear-gradient(135deg, #f59e0b20, #f59e0b10)" },
-        done: { title: "Done", color: "#10b981", gradient: "linear-gradient(135deg, #10b98120, #10b98110)" }
-    };
-
-    const getTasksByStatus = (status: string) => tasks.filter((t: any) => t.status === status);
-
-    const onDragStart = (e: any, taskId: string) => {
-        e.dataTransfer.setData("taskId", taskId);
-        setDragActive(true);
-    };
-    const onDragOver = (e: any) => e.preventDefault();
-    const onDrop = async (e: any, newStatus: string) => {
-        setDragActive(false);
-        const taskId = e.dataTransfer.getData("taskId");
-        const draggedTask = tasks.find((t: any) => t.id === taskId);
-        if (!draggedTask || draggedTask.status === newStatus) return;
-        try {
-            await gql(UPDATE_TASK, { id: taskId, input: { status: newStatus } });
-            messageApi.success(`Task moved to ${taskStatusMap[newStatus as keyof typeof taskStatusMap].title}`);
-            loadTasks();
-        } catch (error) { messageApi.error("Failed to move task."); }
-    };
 
     // AI handlers
     const handleAiTaskDescription = async () => {
@@ -415,69 +480,11 @@ function PmDashboardContent() {
         } catch (error: any) { messageApi.error(`Failed: ${error.message}`); return false; }
     };
 
-    // Priority border colors
-    const getPriorityBorder = (priority: string) => {
-        switch (priority) {
-            case 'high': return '#ef4444';
-            case 'medium': return '#f59e0b';
-            case 'low': return '#10b981';
-            default: return 'transparent';
-        }
-    };
-
-    const renderTaskCard = (t: any) => (
-        <motion.div
-            key={t.id}
-            layout
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            whileHover={{ scale: 1.02 }}
-            draggable
-            onDragStart={(e: any) => onDragStart(e, t.id)}
-            style={{
-                background: isDark ? 'rgba(30, 30, 44, 0.8)' : 'rgba(255, 255, 255, 0.9)',
-                backdropFilter: 'blur(8px)',
-                padding: 14,
-                marginBottom: 10,
-                borderRadius: 10,
-                border: isDark ? '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.15)' : '1px solid rgba(0,0,0,0.06)',
-                borderLeft: `3px solid ${getPriorityBorder(t.priority)}`,
-                cursor: "grab",
-                boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.06)',
-                transition: 'all 0.2s ease',
-            }}
-        >
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                <Text strong style={{ fontSize: 13 }}>{t.title}</Text>
-                <Dropdown menu={{
-                    items: [
-                        { key: 'edit', label: 'Edit Task' },
-                        { key: 'log', label: 'Log Time' },
-                        { key: 'del', label: 'Delete', danger: true },
-                    ]
-                }}>
-                    <MoreOutlined style={{ color: isDark ? '#a78bfa' : 'var(--theme-color, #8b5cf6)', cursor: 'pointer' }} />
-                </Dropdown>
-            </div>
-            <Space size={4} style={{ marginBottom: 8 }}>
-                {t.type === 'bug' && <Tag color="error" style={{ borderRadius: 6, fontSize: 10, padding: '0 6px' }}>Bug</Tag>}
-                {t.type === 'story' && <Tag color="success" style={{ borderRadius: 6, fontSize: 10, padding: '0 6px' }}>Story</Tag>}
-                {t.type === 'task' && <Tag color="purple" style={{ borderRadius: 6, fontSize: 10, padding: '0 6px' }}>Task</Tag>}
-                {t.priority === 'high' && <FireOutlined style={{ color: '#ef4444', fontSize: 12 }} />}
-            </Space>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-                <span style={{ fontSize: 11, color: isDark ? '#94a3b8' : '#888', display: "flex", alignItems: "center", gap: 4 }}>
-                    <ClockCircleOutlined /> {t.loggedHours || 0} / {t.estimatedHours || 0}h
-                </span>
-                <Avatar size="small" icon={<UserOutlined />} src={t.assignee?.avatarUrl}
-                    style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)` }} />
-            </div>
-        </motion.div>
-    );
-
     // --- Render active tab content ---
     const renderTabContent = () => {
         switch (activeTab) {
+            case "ai_insights":
+                return <AiInsightsTab projectId={selectedProjectId as string} />;
             case "sprint":
                 return (
                     <>
@@ -519,11 +526,14 @@ function PmDashboardContent() {
 
                         {/* Kanban Board */}
                         <div style={{
-                            background: isDark ? 'rgba(15, 15, 23, 0.4)' : 'rgba(245,243,255,0.5)',
-                            borderRadius: 12,
+                            background: isDark ? 'rgba(15, 15, 23, 0.4)' : 'rgba(255, 255, 255, 0.65)',
+                            backdropFilter: 'blur(16px)',
+                            borderRadius: 16,
                             padding: 16,
-                            border: isDark ? '1px solid rgba(139,92,246,0.1)' : '1px solid rgba(139,92,246,0.1)',
-                        }}>
+                            border: isDark ? '1px solid rgba(139,92,246,0.15)' : '1px solid rgba(255, 255, 255, 0.5)',
+                            boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.2)' : '0 8px 32px rgba(31,38,135,0.05)',
+                            transition: 'all 0.3s ease',
+                        }} className="hover:shadow-lg">
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                                 <span style={{ fontWeight: 600, fontSize: 14, background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                                     Sprint Kanban Board
@@ -541,54 +551,13 @@ function PmDashboardContent() {
                             {tasksLoading ? (
                                 <div style={{ textAlign: 'center', padding: 80 }}><Spin /></div>
                             ) : (
-                                <div style={{ display: "flex", gap: 14, overflowX: "auto" }}>
-                                    {Object.entries(taskStatusMap).map(([status, config]) => (
-                                        <div
-                                            key={status}
-                                            onDragOver={onDragOver}
-                                            onDrop={(e) => onDrop(e, status)}
-                                            style={{
-                                                flex: 1,
-                                                minWidth: 260,
-                                                background: isDark ? 'rgba(20, 20, 32, 0.5)' : 'rgba(255,255,255,0.4)',
-                                                border: isDark ? '1px dashed rgba(139,92,246,0.2)' : '1px dashed rgba(139,92,246,0.15)',
-                                                borderRadius: 12,
-                                                padding: 12,
-                                                display: "flex",
-                                                flexDirection: "column",
-                                                transition: 'background 0.2s ease',
-                                            }}
-                                        >
-                                            {/* Column header */}
-                                            <div style={{
-                                                display: "flex", justifyContent: "space-between", alignItems: "center",
-                                                marginBottom: 14, padding: '6px 10px',
-                                                background: config.gradient,
-                                                borderRadius: 8,
-                                            }}>
-                                                <Text strong style={{ fontSize: 12, color: config.color }}>{config.title}</Text>
-                                                <Badge count={getTasksByStatus(status).length}
-                                                    style={{ backgroundColor: config.color, fontSize: 10, boxShadow: 'none' }}
-                                                    size="small" />
-                                            </div>
-                                            <div style={{ flex: 1, minHeight: 350 }}>
-                                                {getTasksByStatus(status).map(renderTaskCard)}
-                                                {getTasksByStatus(status).length === 0 && (
-                                                    <div style={{
-                                                        height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        opacity: 0.3, fontSize: 12, color: isDark ? '#64748b' : '#94a3b8'
-                                                    }}>
-                                                        Drop tasks here
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                <KanbanBoard tasks={tasks} sprints={sprints} projectId={projectId} onRefresh={loadTasks} />
                             )}
                         </div>
                     </>
                 );
+            case "analytics":
+                return <SprintAnalyticsTab projectId={projectId} />;
             case "gantt":
                 return <GanttTab sprints={sprints} tasks={tasks} projectId={projectId} />;
             case "charter":
@@ -655,12 +624,28 @@ function PmDashboardContent() {
         }
     };
 
-    // Find active item label
+    // Find active item label and section
     const activeItem = NAV_SECTIONS.flatMap(s => s.items).find(i => i.key === activeTab);
+    const activeSection = filteredNavSections.find(s => s.items.some(i => i.key === activeTab));
 
     return (
         <div className="relative" style={{ zIndex: 1 }}>
             {contextHolder}
+
+            {showCommandPalette && (
+                <PmCommandPalette
+                    onClose={() => setShowCommandPalette(false)}
+                    onSelectProject={(id) => handleSelectProject(id)}
+                    onSelectTask={(pid, tid) => {
+                        handleSelectProject(pid);
+                        setActiveTab('sprint');
+                        router.push(`/admin/pm/tasks/${tid}`);
+                    }}
+                    onCreateTask={() => setIsTaskModal(true)}
+                    onCreateSprint={() => setIsSprintModal(true)}
+                />
+            )}
+
             <div style={{ display: 'flex', gap: 16, minHeight: 'calc(100vh - 200px)', alignItems: 'stretch' }}>
                 {/* ─── Left Side Navigation ─── */}
                 <AnimatePresence mode="wait">
@@ -716,33 +701,67 @@ function PmDashboardContent() {
                                         body: { padding: '8px 0', flex: 1, overflow: 'auto' }
                                     }}
                                 >
-                                    {/* Project Info Bar */}
-                                    {project && (
-                                        <div style={{
-                                            padding: '10px 12px',
-                                            marginBottom: 8,
-                                            background: isDark ? 'rgba(var(--theme-color-rgb, 139, 92, 246), 0.08)' : 'rgba(var(--theme-color-rgb, 139, 92, 246), 0.05)',
-                                            borderRadius: 8,
-                                            margin: '0 8px 12px',
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                                <ProjectOutlined style={{ color: themeColor, fontSize: 13 }} />
-                                                <Text strong style={{ fontSize: 12, lineHeight: 1.2 }}>{project.name}</Text>
-                                            </div>
+                                    {/* Project Switcher */}
+                                    <div style={{
+                                        padding: '10px 12px',
+                                        marginBottom: 8,
+                                        background: isDark ? 'rgba(var(--theme-color-rgb, 139, 92, 246), 0.08)' : 'linear-gradient(135deg, rgba(var(--theme-color-rgb, 139, 92, 246), 0.05), rgba(var(--theme-color-rgb, 139, 92, 246), 0.02))',
+                                        border: isDark ? '1px solid rgba(139,92,246,0.1)' : '1px solid rgba(139,92,246,0.05)',
+                                        borderRadius: 12,
+                                        margin: '0 8px 12px',
+                                        transition: 'all 0.3s ease',
+                                    }} className="hover:border-[color:var(--theme-color)] hover:shadow-sm">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                                            <ProjectOutlined style={{ color: themeColor, fontSize: 12 }} />
+                                            <Text style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700, color: isDark ? '#64748b' : '#94a3b8' }}>Project</Text>
+                                        </div>
+                                        <Select
+                                            value={projectId}
+                                            style={{ width: '100%' }}
+                                            size="small"
+                                            placeholder="Switch project..."
+                                            showSearch
+                                            optionFilterProp="label"
+                                            onChange={(val) => handleSelectProject(val)}
+                                            options={projectsList.length > 0
+                                                ? projectsList.map((p: any) => ({ value: p.id, label: `${p.projectNumber} — ${p.name}` }))
+                                                : project ? [{ value: project.id, label: `${project.projectNumber} — ${project.name}` }] : []
+                                            }
+                                            onDropdownVisibleChange={(open) => {
+                                                if (open && projectsList.length === 0) loadProjectsList();
+                                            }}
+                                            dropdownStyle={{ maxWidth: 320 }}
+                                        />
+                                        {project && (
                                             <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                                                <Tag bordered={false} style={{ fontSize: 10, borderRadius: 6, padding: '0 6px', margin: 0, background: isDark ? 'rgba(139,92,246,0.15)' : 'rgba(139,92,246,0.1)', color: themeColor }}>
-                                                    {project.projectNumber}
-                                                </Tag>
-                                                <Tag bordered={false} color={project.status === 'active' ? 'green' : 'default'} style={{ fontSize: 10, borderRadius: 6, padding: '0 6px', margin: 0 }}>
+                                                <Tag bordered={false} color={project.status === 'active' ? 'green' : 'default'} style={{ fontSize: 9, borderRadius: 6, padding: '0 6px', margin: 0 }}>
                                                     {project.status?.toUpperCase()}
                                                 </Tag>
+                                                {project.methodology && (
+                                                    <Tag bordered={false} style={{ fontSize: 9, borderRadius: 6, padding: '0 6px', margin: 0, background: isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)', color: '#6366f1' }}>
+                                                        {project.methodology}
+                                                    </Tag>
+                                                )}
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
+
+                                    {/* Sidebar Search */}
+                                    <div style={{ padding: '0 8px', marginBottom: 4 }}>
+                                        <Input
+                                            prefix={<SearchOutlined style={{ color: isDark ? '#64748b' : '#94a3b8', fontSize: 12 }} />}
+                                            placeholder="Find tab..."
+                                            value={navSearch}
+                                            onChange={e => setNavSearch(e.target.value)}
+                                            allowClear
+                                            size="small"
+                                            style={{ marginBottom: 10, borderRadius: 8, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)' }}
+                                        />
+                                    </div>
 
                                     {/* Navigation Sections */}
-                                    <div className="px-1 custom-scrollbar overflow-x-hidden overflow-y-auto" style={{ maxHeight: 'calc(100vh - 380px)' }}>
-                                        {filteredNavSections.map((section, si) => (
+                                    <div className="px-1 custom-scrollbar overflow-x-hidden overflow-y-auto" style={{ maxHeight: 'calc(100vh - 420px)' }}>
+                                        {displayedNavSections.map((section, si) => (
                                             <div key={section.title} style={{ marginBottom: 8 }}>
                                                 {/* Section Header */}
                                                 <div style={{
@@ -784,7 +803,8 @@ function PmDashboardContent() {
                                                     return (
                                                         <motion.div
                                                             key={item.key}
-                                                            whileHover={!isDisabled ? { x: 3 } : {}}
+                                                            whileHover={!isDisabled ? { x: 4, scale: 1.02 } : {}}
+                                                            whileTap={!isDisabled ? { scale: 0.98 } : {}}
                                                             onClick={() => !isDisabled && setActiveTab(item.key)}
                                                             style={{
                                                                 display: 'flex', alignItems: 'center', gap: 10,
@@ -820,20 +840,30 @@ function PmDashboardContent() {
                                         ))}
                                     </div>
 
-                                    {/* Back to Projects */}
+                                    {/* Switch Project */}
                                     <div style={{ padding: '8px 12px', borderTop: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.1)', marginTop: 'auto' }}>
                                         <Button
                                             type="text"
                                             block
                                             size="small"
-                                            icon={<ArrowLeftOutlined />}
-                                            onClick={() => router.push('/admin/pm/projects')}
+                                            onClick={() => {
+                                                setSelectedProjectId(null);
+                                                setProject(null);
+                                                setSprints([]);
+                                                setTasks([]);
+                                                setActiveSprintId(null);
+                                                const url = new URL(window.location.href);
+                                                url.searchParams.delete('projectId');
+                                                window.history.replaceState({}, '', url.toString());
+                                                loadProjectsList();
+                                            }}
                                             style={{
-                                                fontSize: 12, color: isDark ? '#64748b' : '#94a3b8',
+                                                fontSize: 12, color: themeColor,
                                                 borderRadius: 8, textAlign: 'left',
+                                                fontWeight: 500,
                                             }}
                                         >
-                                            Back to Projects
+                                            ← All Projects
                                         </Button>
                                     </div>
                                 </Card>
@@ -860,6 +890,11 @@ function PmDashboardContent() {
                                     />
                                 </Tooltip>
                             )}
+                            {activeSection && (
+                                <Typography.Text type="secondary" style={{ fontSize: 11, marginRight: 4 }}>
+                                    {activeSection.title} /
+                                </Typography.Text>
+                            )}
                             <span style={{
                                 background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
                                 WebkitBackgroundClip: 'text',
@@ -871,6 +906,25 @@ function PmDashboardContent() {
                             {activeItem && (
                                 <span style={{ color: activeItem.key === activeTab ? 'var(--theme-color, #8b5cf6)' : '#94a3b8', fontSize: 16 }}>
                                     {activeItem.icon}
+                                </span>
+                            )}
+                            {/* LIVE Indicator */}
+                            {realtimeConnected && (
+                                <span style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                                    padding: '2px 10px', borderRadius: 12,
+                                    background: 'rgba(16, 185, 129, 0.1)',
+                                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                                    fontSize: 10, fontWeight: 700, color: '#10b981',
+                                    textTransform: 'uppercase', letterSpacing: 1,
+                                }}>
+                                    <span style={{
+                                        width: 7, height: 7, borderRadius: '50%',
+                                        background: '#10b981',
+                                        animation: 'pulse-live 1.5s ease-in-out infinite',
+                                    }} />
+                                    LIVE
+                                    <style>{`@keyframes pulse-live { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.3); } }`}</style>
                                 </span>
                             )}
                         </Space>
@@ -993,7 +1047,7 @@ function PmDashboardContent() {
                     background: isDark ? 'rgba(15,15,23,0.6)' : '#fafafa',
                 }}>
                     {retroContent ? (
-                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: retroContent.replace(/\\n/g, '<br/>') }} />
+                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{retroContent}</div>
                     ) : <Spin />}
                 </div>
             </Modal>
@@ -1023,3 +1077,4 @@ export default function PmDashboardPage() {
         </CMSLayout>
     );
 }
+

@@ -26,7 +26,13 @@ import {
     EditOutlined,
     MenuFoldOutlined,
     MenuUnfoldOutlined,
-    ExpandAltOutlined
+    ExpandAltOutlined,
+    ScissorOutlined,
+    RedoOutlined,
+    UndoOutlined,
+    ColumnWidthOutlined,
+    ColumnHeightOutlined,
+    FormatPainterOutlined
 } from '@ant-design/icons';
 import { mediaService } from '@/lib/mediaService';
 import type { MediaFile } from '@/lib/mediaService';
@@ -537,6 +543,10 @@ const MediaPreviewContent = ({
     previewUrl // Destructure previewUrl
 }: MediaPreviewContentProps) => {
     const isPublic = isPublicBucket ?? false;
+    const [isEditing, setIsEditing] = useState(false);
+    const [rotation, setRotation] = useState(0);
+    const [scaleX, setScaleX] = useState(1);
+    const [scaleY, setScaleY] = useState(1);
 
     let displayUrl = previewUrl || activeMedia.url; // Use previewUrl if available, otherwise activeMedia.url
     let showGenerated = false;
@@ -555,30 +565,69 @@ const MediaPreviewContent = ({
     return (
         <div className="w-full h-full flex flex-col relative">
             <div className="flex-1 relative flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                {imgDimensions && (
+                {imgDimensions && !isEditing && (
                     <div className="absolute top-3 right-3 z-10 bg-black/50 text-white px-2 py-0.5 rounded text-xs font-mono">
                         {imgDimensions.w} × {imgDimensions.h}
                     </div>
                 )}
 
-                {showGenerated && (
+                {showGenerated && !isEditing && (
                     <div className="absolute top-3 left-3 z-10 bg-[var(--theme-color,#7c3aed)]/90 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm">
                         System Preview
                     </div>
                 )}
 
-                <div className="w-full h-full flex items-center justify-center bg-white relative">
+                <div className="w-full h-full flex flex-col items-center justify-center bg-white relative">
                     {activeMedia.mime_type?.startsWith("image/") ? (
-                        <div className="w-full h-full overflow-auto flex items-center justify-center">
-                            <Image
-                                src={displayUrl}
-                                alt={activeMedia.alt_text || activeMedia.filename}
-                                className="object-contain"
-                                style={{ height: 'auto', width: 'auto', maxWidth: '100%', maxHeight: '100%' }}
-                                onLoad={handleImageLoad}
-                                preview={false}
-                            />
-                        </div>
+                        <>
+                            {isEditing && (
+                                <div className="absolute top-0 left-0 w-full p-2 flex justify-center gap-2 z-20" style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                                    <Tooltip title="Rotate Left">
+                                        <Button size="small" icon={<UndoOutlined />} onClick={() => setRotation(r => r - 90)} />
+                                    </Tooltip>
+                                    <Tooltip title="Rotate Right">
+                                        <Button size="small" icon={<RedoOutlined />} onClick={() => setRotation(r => r + 90)} />
+                                    </Tooltip>
+                                    <Divider type="vertical" />
+                                    <Tooltip title="Flip Horizontal">
+                                        <Button size="small" icon={<ColumnWidthOutlined />} onClick={() => setScaleX(s => s * -1)} />
+                                    </Tooltip>
+                                    <Tooltip title="Flip Vertical">
+                                        <Button size="small" icon={<ColumnHeightOutlined />} onClick={() => setScaleY(s => s * -1)} />
+                                    </Tooltip>
+                                    <Divider type="vertical" />
+                                    <Tooltip title="Crop Mode">
+                                        <Button size="small" icon={<ScissorOutlined />} />
+                                    </Tooltip>
+                                    <Tooltip title="Apply Filters">
+                                        <Button size="small" icon={<FormatPainterOutlined />} />
+                                    </Tooltip>
+                                    <div className="flex-1" />
+                                    <Button size="small" onClick={() => setIsEditing(false)}>Cancel</Button>
+                                    <Button size="small" type="primary" onClick={() => { setIsEditing(false); message.success('Changes saved (stub)'); }}>Save Changes</Button>
+                                </div>
+                            )}
+                            <div className="w-full h-full overflow-auto flex items-center justify-center relative">
+                                <Image
+                                    src={displayUrl}
+                                    alt={activeMedia.alt_text || activeMedia.filename}
+                                    className="object-contain transition-transform duration-300"
+                                    style={{ 
+                                        height: 'auto', width: 'auto', maxWidth: '100%', maxHeight: '100%',
+                                        transform: `rotate(${rotation}deg) scale(${scaleX}, ${scaleY})`
+                                    }}
+                                    onLoad={handleImageLoad}
+                                    preview={!isEditing}
+                                />
+                            </div>
+                            {!isEditing && (
+                                <div className="absolute bottom-4 right-4 z-10">
+                                    <Tooltip title="Edit Image">
+                                        <Button type="primary" shape="circle" icon={<EditOutlined />} size="large" onClick={() => setIsEditing(true)} style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} />
+                                    </Tooltip>
+                                </div>
+                            )}
+                        </>
                     ) : showPdfPreviews ? (
                         <div className="w-full h-full overflow-y-auto bg-gray-100 flex flex-col items-center gap-4 p-4">
                             {activeMedia.previewPages!.map((pageUrl, idx) => (

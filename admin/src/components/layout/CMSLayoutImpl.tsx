@@ -48,6 +48,7 @@ import {
     Divider,
 } from "antd";
 import AIStudioDrawer from "./AIStudioDrawer";
+import CommandPalette from "../common/CommandPalette";
 import ThemeDrawer from "./ThemeDrawer";
 import { useRouter, usePathname } from "next/navigation";
 import menuConfig from "@/config/menuConfig";
@@ -591,6 +592,18 @@ export default function CMSLayoutImpl({
         mediaQuery.addEventListener("change", handleChange);
         return () => mediaQuery.removeEventListener("change", handleChange);
     }, []);
+
+    // Listen for custom events from CommandPalette quick actions
+    React.useEffect(() => {
+        const handleToggleTheme = () => handleDarkModeChange(!darkMode);
+        const handleOpenAI = () => setAIStudioVisible(true);
+        document.addEventListener("toggle-dark-mode", handleToggleTheme);
+        document.addEventListener("open-ai-studio", handleOpenAI);
+        return () => {
+            document.removeEventListener("toggle-dark-mode", handleToggleTheme);
+            document.removeEventListener("open-ai-studio", handleOpenAI);
+        };
+    }, [darkMode]);
 
     // Ref to track if initial ProLayout setup has completed
     // ProLayout calls onCollapse during mount, so we delay allowing saves
@@ -1292,6 +1305,9 @@ export default function CMSLayoutImpl({
 
             {/* AI Studio Drawer */}
             <AIStudioDrawer visible={aiStudioVisible} onClose={() => setAIStudioVisible(false)} />
+
+            {/* Global Command Palette (Ctrl+K / Cmd+K) */}
+            <CommandPalette isDark={darkMode} themeColor={themeColor} />
 
             {/* Theme Customizer Drawer */}
             <ThemeDrawer visible={themeDrawerVisible} onClose={() => setThemeDrawerVisible(false)} darkMode={darkMode} />

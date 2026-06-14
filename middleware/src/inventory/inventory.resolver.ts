@@ -845,6 +845,27 @@ class CreateBinInput {
 }
 
 @InputType()
+class BulkCreateBinsInput {
+    @Field() aisleStart: string;
+    @Field() aisleEnd: string;
+    @Field(() => Int) rackStart: number;
+    @Field(() => Int) rackEnd: number;
+    @Field(() => Int) levelStart: number;
+    @Field(() => Int) levelEnd: number;
+    @Field(() => Int, { nullable: true }) positionStart?: number;
+    @Field(() => Int, { nullable: true }) positionEnd?: number;
+    @Field({ nullable: true }) binType?: string;
+    @Field(() => Float, { nullable: true }) maxWeight?: number;
+    @Field(() => Float, { nullable: true }) maxVolume?: number;
+    @Field({ nullable: true }) codePrefix?: string;
+}
+
+@ObjectType()
+class BulkCreateBinsResult {
+    @Field(() => Int) created: number;
+}
+
+@InputType()
 class CreateStockTransferInput {
     @Field() fromWarehouseId: string;
     @Field() toWarehouseId: string;
@@ -2313,6 +2334,47 @@ function mapFixedAsset(r: any): InvFixedAssetType {
     };
 }
 
+// ─── WMS Input Types (must be defined before Resolver class) ──────
+@InputType()
+class CreatePutawayTaskInput {
+    @Field() itemId: string;
+    @Field({ nullable: true }) itemName?: string;
+    @Field({ nullable: true }) itemSku?: string;
+    @Field(() => Float) quantity: number;
+    @Field({ nullable: true }) uom?: string;
+    @Field({ nullable: true }) sourceReference?: string;
+    @Field({ nullable: true }) sourceType?: string;
+    @Field({ nullable: true }) warehouseId?: string;
+    @Field({ nullable: true }) suggestedBinId?: string;
+    @Field({ nullable: true }) suggestedBinCode?: string;
+    @Field({ nullable: true }) assignedTo?: string;
+    @Field({ nullable: true }) priority?: string;
+    @Field({ nullable: true }) lotNumber?: string;
+    @Field({ nullable: true }) batchNumber?: string;
+    @Field({ nullable: true }) expiryDate?: string;
+    @Field({ nullable: true }) notes?: string;
+}
+
+@InputType()
+class CreatePickTaskInput {
+    @Field() itemId: string;
+    @Field({ nullable: true }) itemName?: string;
+    @Field({ nullable: true }) itemSku?: string;
+    @Field(() => Float) quantity: number;
+    @Field({ nullable: true }) uom?: string;
+    @Field({ nullable: true }) orderReference?: string;
+    @Field({ nullable: true }) orderType?: string;
+    @Field({ nullable: true }) warehouseId?: string;
+    @Field({ nullable: true }) fromBinId?: string;
+    @Field({ nullable: true }) fromBinCode?: string;
+    @Field({ nullable: true }) assignedTo?: string;
+    @Field({ nullable: true }) priority?: string;
+    @Field(() => Int, { nullable: true }) pickSequence?: number;
+    @Field({ nullable: true }) lotNumber?: string;
+    @Field({ nullable: true }) batchNumber?: string;
+    @Field({ nullable: true }) notes?: string;
+}
+
 @Resolver()
 export class InventoryResolver {
     constructor(private inventoryService: InventoryService) { }
@@ -2732,6 +2794,15 @@ export class InventoryResolver {
     @Mutation(() => Boolean)
     async deleteBin(@Args('id') id: string) {
         return this.inventoryService.deleteBin(id);
+    }
+
+    @Mutation(() => BulkCreateBinsResult)
+    async bulkCreateBins(
+        @Args('zoneId') zoneId: string,
+        @Args('input') input: BulkCreateBinsInput,
+    ) {
+        const result = await this.inventoryService.bulkCreateBins(zoneId, input);
+        return { created: result.created };
     }
 
     // Stock Transfers
@@ -3520,6 +3591,240 @@ export class InventoryResolver {
     async runDepreciation(@Args('tenantId') tenantId: string) {
         return this.inventoryService.runDepreciation(tenantId);
     }
+
+    // ═══════════════════════════════════════════════════════
+    // ─── WMS PUT-AWAY & PICK ─────────────────────────────
+    // ═══════════════════════════════════════════════════════
+
+
+    @Query(() => [BinContentType])
+    async binContents(
+        @Args('tenantId') tenantId: string,
+        @Args('binId', { nullable: true }) binId?: string,
+    ) {
+        const data = await this.inventoryService.getBinContents(tenantId, binId);
+        return data.map(mapBinContent);
+    }
+
+    @Query(() => [PutawayTaskType])
+    async putawayTasks(
+        @Args('tenantId') tenantId: string,
+        @Args('status', { nullable: true }) status?: string,
+        @Args('warehouseId', { nullable: true }) warehouseId?: string,
+    ) {
+        const data = await this.inventoryService.getPutawayTasks(tenantId, { status, warehouseId });
+        return data.map(mapPutawayTask);
+    }
+
+    @Mutation(() => PutawayTaskType)
+    async createPutawayTask(
+        @Args('tenantId') tenantId: string,
+        @Args('input') input: CreatePutawayTaskInput,
+    ) {
+        const data = await this.inventoryService.createPutawayTask(tenantId, input);
+        return mapPutawayTask(data);
+    }
+
+    @Mutation(() => PutawayTaskType)
+    async confirmPutaway(
+        @Args('id') id: string,
+        @Args('actualBinId') actualBinId: string,
+    ) {
+        const data = await this.inventoryService.confirmPutaway(id, actualBinId);
+        return mapPutawayTask(data);
+    }
+
+    @Mutation(() => PutawayTaskType)
+    async startPutawayTask(@Args('id') id: string) {
+        const data = await this.inventoryService.startPutawayTask(id);
+        return mapPutawayTask(data);
+    }
+
+    @Mutation(() => PutawayTaskType)
+    async cancelPutawayTask(@Args('id') id: string) {
+        const data = await this.inventoryService.cancelPutawayTask(id);
+        return mapPutawayTask(data);
+    }
+
+    @Query(() => [PickTaskType])
+    async pickTasks(
+        @Args('tenantId') tenantId: string,
+        @Args('status', { nullable: true }) status?: string,
+        @Args('warehouseId', { nullable: true }) warehouseId?: string,
+    ) {
+        const data = await this.inventoryService.getPickTasks(tenantId, { status, warehouseId });
+        return data.map(mapPickTask);
+    }
+
+    @Mutation(() => PickTaskType)
+    async createPickTask(
+        @Args('tenantId') tenantId: string,
+        @Args('input') input: CreatePickTaskInput,
+    ) {
+        const data = await this.inventoryService.createPickTask(tenantId, input);
+        return mapPickTask(data);
+    }
+
+    @Mutation(() => PickTaskType)
+    async confirmPick(
+        @Args('id') id: string,
+        @Args('pickedQuantity', { type: () => Float }) pickedQuantity: number,
+    ) {
+        const data = await this.inventoryService.confirmPick(id, pickedQuantity);
+        return mapPickTask(data);
+    }
+
+    @Mutation(() => PickTaskType)
+    async startPickTask(@Args('id') id: string) {
+        const data = await this.inventoryService.startPickTask(id);
+        return mapPickTask(data);
+    }
+
+    @Mutation(() => PickTaskType)
+    async cancelPickTask(@Args('id') id: string) {
+        const data = await this.inventoryService.cancelPickTask(id);
+        return mapPickTask(data);
+    }
+
+    @Query(() => WmsStatsType)
+    async wmsStats(@Args('tenantId') tenantId: string) {
+        return this.inventoryService.getWmsStats(tenantId);
+    }
+}
+
+// ─── WMS Types ──────────────────────────────────────────
+
+@ObjectType()
+class BinContentType {
+    @Field() id: string;
+    @Field() tenantId: string;
+    @Field() binId: string;
+    @Field() itemId: string;
+    @Field(() => Float) quantity: number;
+    @Field({ nullable: true }) uom?: string;
+    @Field({ nullable: true }) lotNumber?: string;
+    @Field({ nullable: true }) batchNumber?: string;
+    @Field({ nullable: true }) serialNumber?: string;
+    @Field({ nullable: true }) expiryDate?: string;
+    @Field({ nullable: true }) receivedAt?: string;
+    @Field({ nullable: true }) notes?: string;
+}
+
+@ObjectType()
+class PutawayTaskType {
+    @Field() id: string;
+    @Field() tenantId: string;
+    @Field() taskNumber: string;
+    @Field() itemId: string;
+    @Field({ nullable: true }) itemName?: string;
+    @Field({ nullable: true }) itemSku?: string;
+    @Field(() => Float) quantity: number;
+    @Field({ nullable: true }) uom?: string;
+    @Field({ nullable: true }) sourceReference?: string;
+    @Field({ nullable: true }) sourceType?: string;
+    @Field({ nullable: true }) warehouseId?: string;
+    @Field({ nullable: true }) suggestedBinId?: string;
+    @Field({ nullable: true }) suggestedBinCode?: string;
+    @Field({ nullable: true }) actualBinId?: string;
+    @Field({ nullable: true }) actualBinCode?: string;
+    @Field({ nullable: true }) assignedTo?: string;
+    @Field({ nullable: true }) priority?: string;
+    @Field({ nullable: true }) lotNumber?: string;
+    @Field({ nullable: true }) batchNumber?: string;
+    @Field({ nullable: true }) expiryDate?: string;
+    @Field({ nullable: true }) startedAt?: string;
+    @Field({ nullable: true }) completedAt?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field() status: string;
+    @Field() createdAt: string;
+    @Field({ nullable: true }) updatedAt?: string;
+}
+
+@ObjectType()
+class PickTaskType {
+    @Field() id: string;
+    @Field() tenantId: string;
+    @Field() taskNumber: string;
+    @Field() itemId: string;
+    @Field({ nullable: true }) itemName?: string;
+    @Field({ nullable: true }) itemSku?: string;
+    @Field(() => Float) quantity: number;
+    @Field(() => Float) pickedQuantity: number;
+    @Field({ nullable: true }) uom?: string;
+    @Field({ nullable: true }) orderReference?: string;
+    @Field({ nullable: true }) orderType?: string;
+    @Field({ nullable: true }) warehouseId?: string;
+    @Field({ nullable: true }) fromBinId?: string;
+    @Field({ nullable: true }) fromBinCode?: string;
+    @Field({ nullable: true }) assignedTo?: string;
+    @Field({ nullable: true }) priority?: string;
+    @Field(() => Int) pickSequence: number;
+    @Field({ nullable: true }) lotNumber?: string;
+    @Field({ nullable: true }) batchNumber?: string;
+    @Field({ nullable: true }) startedAt?: string;
+    @Field({ nullable: true }) completedAt?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field() status: string;
+    @Field() createdAt: string;
+    @Field({ nullable: true }) updatedAt?: string;
+}
+
+@ObjectType()
+class WmsStatsType {
+    @Field(() => Int) pendingPutaway: number;
+    @Field(() => Int) inProgressPutaway: number;
+    @Field(() => Int) completedPutaway: number;
+    @Field(() => Int) pendingPick: number;
+    @Field(() => Int) inProgressPick: number;
+    @Field(() => Int) completedPick: number;
+    @Field(() => Int) totalBinContents: number;
 }
 
 
+// ─── WMS Mappers ────────────────────────────────────────
+
+function mapBinContent(r: any): any {
+    return {
+        id: r.id, tenantId: r.tenant_id, binId: r.bin_id, itemId: r.item_id,
+        quantity: r.quantity, uom: r.uom, lotNumber: r.lot_number,
+        batchNumber: r.batch_number, serialNumber: r.serial_number,
+        expiryDate: r.expiry_date, receivedAt: r.received_at || r.created_at,
+        notes: r.notes,
+    };
+}
+
+function mapPutawayTask(r: any): any {
+    return {
+        id: r.id, tenantId: r.tenant_id, taskNumber: r.task_number,
+        itemId: r.item_id, itemName: r.item_name, itemSku: r.item_sku,
+        quantity: r.quantity, uom: r.uom,
+        sourceReference: r.source_reference, sourceType: r.source_type,
+        warehouseId: r.warehouse_id,
+        suggestedBinId: r.suggested_bin_id, suggestedBinCode: r.suggested_bin_code,
+        actualBinId: r.actual_bin_id, actualBinCode: r.actual_bin_code,
+        assignedTo: r.assigned_to, priority: r.priority,
+        lotNumber: r.lot_number, batchNumber: r.batch_number,
+        expiryDate: r.expiry_date,
+        startedAt: r.started_at, completedAt: r.completed_at,
+        notes: r.notes, status: r.status,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+}
+
+function mapPickTask(r: any): any {
+    return {
+        id: r.id, tenantId: r.tenant_id, taskNumber: r.task_number,
+        itemId: r.item_id, itemName: r.item_name, itemSku: r.item_sku,
+        quantity: r.quantity, pickedQuantity: r.picked_quantity || 0,
+        uom: r.uom,
+        orderReference: r.order_reference, orderType: r.order_type,
+        warehouseId: r.warehouse_id,
+        fromBinId: r.from_bin_id, fromBinCode: r.from_bin_code,
+        assignedTo: r.assigned_to, priority: r.priority,
+        pickSequence: r.pick_sequence || 0,
+        lotNumber: r.lot_number, batchNumber: r.batch_number,
+        startedAt: r.started_at, completedAt: r.completed_at,
+        notes: r.notes, status: r.status,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+}

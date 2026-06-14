@@ -26,7 +26,6 @@ import { useDateRangeStore } from "@/store/useDateRangeStore";
 import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 
 const { Text } = Typography;
-const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const { TextArea } = Input;
 
 interface Deal {
@@ -176,17 +175,17 @@ export default function DealsPage() {
                 <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'crm_deals', title: 'CRM Deals', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Deal', key: 'dealName' }, { header: 'Amount', key: 'amount' }, { header: 'Stage', key: 'stage' }, { header: 'Win %', key: 'probability' }, { header: 'Account', key: 'accountName' }], data: deals })} /></Tooltip> <Tooltip key="pd" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'crm_deals', title: 'CRM Deals', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Deal', key: 'dealName' }, { header: 'Amount', key: 'amount' }, { header: 'Stage', key: 'stage' }, { header: 'Win %', key: 'probability' }, { header: 'Account', key: 'accountName' }], data: deals })} /></Tooltip></RbacGuard>,
         ]}>
             <Row gutter={16} style={{ marginBottom: 16 }}>
-                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}><Card style={{ ...glass }}><Statistic title="Pipeline Value (Open)" value={totalPipeline} prefix={<DollarOutlined />} precision={0} formatter={(v) => formatAmount(Number(v))} /></Card></motion.div></Col>
-                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}><Card style={{ ...glass }}><Statistic title="Expected Revenue (Open)" value={weightedPipeline} prefix={<FunnelPlotOutlined />} precision={0} valueStyle={{ color: '#52c41a' }} formatter={(v) => formatAmount(Number(v))} /></Card></motion.div></Col>
-                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Card style={{ ...glass }}><Statistic title="Won Revenue" value={wonAmount} prefix={<TrophyOutlined />} precision={0} valueStyle={{ color: '#52c41a' }} formatter={(v) => formatAmount(Number(v))} /></Card></motion.div></Col>
-                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}><Card style={{ ...glass }}><Statistic title="Open Deals" value={openDeals.length} prefix={<FunnelPlotOutlined />} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}><Card ><Statistic title="Pipeline Value (Open)" value={totalPipeline} prefix={<DollarOutlined />} precision={0} formatter={(v) => formatAmount(Number(v))} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}><Card ><Statistic title="Expected Revenue (Open)" value={weightedPipeline} prefix={<FunnelPlotOutlined />} precision={0} valueStyle={{ color: '#52c41a' }} formatter={(v) => formatAmount(Number(v))} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Card ><Statistic title="Won Revenue" value={wonAmount} prefix={<TrophyOutlined />} precision={0} valueStyle={{ color: '#52c41a' }} formatter={(v) => formatAmount(Number(v))} /></Card></motion.div></Col>
+                <Col span={6}><motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}><Card ><Statistic title="Open Deals" value={openDeals.length} prefix={<FunnelPlotOutlined />} /></Card></motion.div></Col>
             </Row>
-            <Card style={{ ...glass, marginBottom: 16 }}><Space wrap>
+            <Card style={{ marginBottom: 16 }}><Space wrap>
                 <Input prefix={<SearchOutlined />} placeholder="Search deals..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 250 }} allowClear />
                 <Select placeholder="Stage" value={stageFilter} onChange={setStageFilter} allowClear style={{ width: 160 }} options={STAGES.map(s => ({ value: s.value, label: s.label }))} />
             </Space></Card>
 
-            {viewMode === 'board' ? renderBoard() : (<Card style={{ ...glass }} styles={{ body: { padding: 0 } }}><Table scroll={{ x: 900 }} columns={columns} dataSource={deals.map(d => ({ ...d, key: d.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>)}
+            {viewMode === 'board' ? renderBoard() : (<Card  styles={{ body: { padding: 0 } }}><Table scroll={{ x: 900 }} columns={columns} dataSource={deals.map(d => ({ ...d, key: d.id }))} loading={loading} pagination={{ pageSize: 20, showSizeChanger: true }} size="middle" /></Card>)}
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Deal" : "New Deal"} entityName="deal" steps={formSteps} fields={DEAL_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["#f59e0b", "#ef4444"]} editMode={!!editing} />
 

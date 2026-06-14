@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Table, Spin, Empty, Tag, Button, Space, message, Tooltip, Statistic, Row, Col, Card, Pagination } from "antd";
+import { Table, Spin, Empty, Tag, Button, Space, message, Tooltip, Statistic, Row, Col, Card, Pagination, theme } from "antd";
 import {
     DownloadOutlined,
     FileExcelOutlined,
@@ -17,6 +17,8 @@ interface DataPreviewProps {
 }
 
 export default function DataPreview({ path, limit = 100 }: DataPreviewProps) {
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const [result, setResult] = useState<QueryResult | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -181,7 +183,7 @@ export default function DataPreview({ path, limit = 100 }: DataPreviewProps) {
                 />
             </div>
 
-            <div className="custom-pagination-wrapper" style={{ padding: '8px 16px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
+            <div className="custom-pagination-wrapper" style={{ padding: '8px 16px', borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}`, display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
                 <style dangerouslySetInnerHTML={{
                     __html: `
                     .custom-pagination-wrapper .ant-pagination-prev .ant-pagination-item-link,

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { Table, Button, Card, Space, Tag, Input, Select, message, Tooltip, Typography, Row, Col, Statistic, Modal, Form, DatePicker, Badge, Progress, Popconfirm, Empty, Tabs, Timeline, Divider } from "antd";
+import { Table, Button, Card, Space, Tag, Input, Select, message, Tooltip, Typography, Row, Col, Statistic, Modal, Form, DatePicker, Badge, Progress, Popconfirm, Empty, Tabs, Timeline, Divider, theme } from "antd";
 import {
     PlusOutlined, SearchOutlined, ReloadOutlined, TeamOutlined, UserOutlined,
     CalendarOutlined, CheckCircleOutlined, ClockCircleOutlined, SendOutlined,
@@ -47,6 +47,8 @@ const TEMPLATE_FRAGMENT = `id name category status createdAt`;
 
 export default function FormAssignmentsPage() {
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const router = useRouter();
     const [templates, setTemplates] = useState<FormTemplate[]>([]);
     const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -290,7 +292,7 @@ export default function FormAssignmentsPage() {
                             {(fields, { add, remove }) => (
                                 <>
                                     {fields.map(({ key, name, ...rest }) => (
-                                        <Card key={key} size="small" style={{ marginBottom: 12, background: '#fafafa', borderRadius: 10 }}
+                                        <Card key={key} size="small" style={{ marginBottom: 12, background: isDark ? 'rgba(255,255,255,0.03)' : '#fafafa', borderRadius: 10 }}
                                             extra={fields.length > 1 ? <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={() => remove(name)} /> : null}>
                                             <Row gutter={12}>
                                                 <Col span={8}>

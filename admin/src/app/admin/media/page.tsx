@@ -153,7 +153,6 @@ import MediaPreviewModal from './MediaPreviewModal';
 
 
 const { Text, Title } = Typography;
-const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 export default function MediaLibraryPage() {
     // Theme state - use resolvedTheme which gives the actual resolved value
@@ -204,16 +203,18 @@ export default function MediaLibraryPage() {
     const [currentPath, setCurrentPath] = useState("");
 
     const glassCardStyle = {
-        background: 'rgba(255, 255, 255, 0.6)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.04)',
-        border: '1px solid rgba(255, 255, 255, 0.5)',
+        background: 'rgba(255, 255, 255, 0.4)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+        border: '1px solid rgba(255, 255, 255, 0.6)',
+        borderRadius: '16px',
     };
 
     const glassHeaderStyle = {
-        background: 'rgba(255, 255, 255, 0.1)',
-        borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
+        background: 'rgba(255, 255, 255, 0.2)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.4)',
+        backdropFilter: 'blur(10px)',
     };
     const [newFolderModalVisible, setNewFolderModalVisible] = useState(false);
     const [newFolderName, setNewFolderName] = useState("");
@@ -990,17 +991,17 @@ export default function MediaLibraryPage() {
         ],
     });
 
-    // Grid item renderer
+    // Grid item renderer (now used in Masonry layout)
     const renderGridItem = (item: MediaFile) => (
-        <Col key={item.id} xs={24} sm={12} md={6} lg={6}>
-            <Card
-                hoverable
-                size="small"
-                className="cursor-pointer transition-all hover:shadow-md hover:border-blue-400"
-                styles={{ body: { padding: 12 } }}
-                cover={
+        <Card
+            key={item.id}
+            hoverable
+            size="small"
+            className="cursor-pointer transition-all hover:shadow-md hover:border-blue-400 w-full"
+            styles={{ body: { padding: 12 } }}
+            cover={
                     (item.thumbnailUrl || item.mime_type?.startsWith("image/")) ? (
-                        <div style={{ height: 194, overflow: "hidden", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: '8px 8px 0 0' }}>
+                        <div style={{ height: 194, overflow: "hidden", background: isDark ? 'rgba(255,255,255,0.06)' : "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: '8px 8px 0 0' }}>
                             <Image
                                 src={item.thumbnailUrl || item.url}
                                 alt={item.alt_text || item.filename}
@@ -1052,7 +1053,6 @@ export default function MediaLibraryPage() {
                     <Tag style={{ fontSize: 10, margin: 0, width: 'fit-content' }}>{formatFileSize(item.size_bytes)}</Tag>
                 </div>
             </Card>
-        </Col>
     );
 
     // State for forcing tree refresh
@@ -1530,7 +1530,13 @@ export default function MediaLibraryPage() {
                                     )}
                                 </Empty>
                             ) : viewMode === "grid" ? (
-                                <Row gutter={[16, 16]}>{filteredMedia.map(renderGridItem)}</Row>
+                                <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+                                    {filteredMedia.map(item => (
+                                        <div key={item.id} className="break-inside-avoid">
+                                            {renderGridItem(item)}
+                                        </div>
+                                    ))}
+                                </div>
                             ) : viewMode === "list" ? (
                                 <List
                                     dataSource={filteredMedia}

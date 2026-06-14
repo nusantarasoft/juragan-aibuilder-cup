@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { ProTable, ProColumns, ModalForm, ProFormText, ProFormTextArea, ProForm, ProCard, ProFormSelect, ProFormDigit } from "@ant-design/pro-components";
-import { Button, message, Tag, Popconfirm, Space, Row, Col, Tooltip } from "antd";
+import { Button, message, Tag, Popconfirm, Space, Row, Col, Tooltip, theme } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined, RobotOutlined, TeamOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 
@@ -16,7 +16,7 @@ const AI_STAKEHOLDERS = `query($projectId: String!) { generateStakeholderAnalysi
 
 // ─── Power/Interest Grid Quadrant ──────────────────────────
 
-function PowerInterestGrid({ stakeholders }: { stakeholders: any[] }) {
+function PowerInterestGrid({ stakeholders, isDark }: { stakeholders: any[]; isDark: boolean }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     const gridSize = 400;
@@ -43,14 +43,14 @@ function PowerInterestGrid({ stakeholders }: { stakeholders: any[] }) {
         quadrants.forEach((q, i) => {
             ctx.fillStyle = q.color;
             ctx.fillRect(q.x, q.y, plotSize / 2, plotSize / 2);
-            ctx.fillStyle = '#999';
+            ctx.fillStyle = isDark ? '#64748b' : '#999';
             ctx.font = '11px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText(q.label, q.x + plotSize / 4, q.y + 15);
         });
 
         // Grid lines
-        ctx.strokeStyle = '#e0e0e0';
+        ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
@@ -64,11 +64,11 @@ function PowerInterestGrid({ stakeholders }: { stakeholders: any[] }) {
         ctx.setLineDash([]);
 
         // Border
-        ctx.strokeStyle = '#d9d9d9';
+        ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.15)' : '#d9d9d9';
         ctx.strokeRect(padding, padding, plotSize, plotSize);
 
         // Axis labels
-        ctx.fillStyle = '#555';
+        ctx.fillStyle = isDark ? '#94a3b8' : '#555';
         ctx.font = 'bold 12px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('Interest Level →', gridSize / 2, gridSize - 5);
@@ -91,25 +91,27 @@ function PowerInterestGrid({ stakeholders }: { stakeholders: any[] }) {
             ctx.arc(x, y, 8, 0, Math.PI * 2);
             ctx.fill();
 
-            ctx.fillStyle = '#333';
+            ctx.fillStyle = isDark ? '#e2e8f0' : '#333';
             ctx.font = '10px sans-serif';
             ctx.textAlign = 'left';
             const displayName = s.name.length > 12 ? s.name.substring(0, 12) + '…' : s.name;
             ctx.fillText(displayName, x + 11, y + 4);
         });
 
-    }, [stakeholders, gridSize, plotSize]);
+    }, [stakeholders, gridSize, plotSize, isDark]);
 
     return (
         <ProCard title={<Space><TeamOutlined /> Power / Interest Grid</Space>} bordered>
             <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <canvas ref={canvasRef} width={gridSize} height={gridSize} style={{ border: '1px solid #f0f0f0', borderRadius: 8 }} />
+                <canvas ref={canvasRef} width={gridSize} height={gridSize} style={{ border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}`, borderRadius: 8 }} />
             </div>
         </ProCard>
     );
 }
 
 export default function StakeholderTab({ projectId }: { projectId: string }) {
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const [messageApi, contextHolder] = message.useMessage();
     const [stakeholders, setStakeholders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -122,7 +124,7 @@ export default function StakeholderTab({ projectId }: { projectId: string }) {
         try {
             const d = await gql(GET_STAKEHOLDERS, { projectId });
             setStakeholders(d.pmStakeholders || []);
-        } catch { messageApi.error("Failed to load stakeholders."); }
+        } catch (err: any) { console.error("PM Error", err);  messageApi.error("Failed to load stakeholders."); }
         finally { setLoading(false); }
     }, [projectId, messageApi]);
 
@@ -205,7 +207,7 @@ export default function StakeholderTab({ projectId }: { projectId: string }) {
             {/* Power / Interest Grid */}
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                 <Col span={24}>
-                    <PowerInterestGrid stakeholders={stakeholders} />
+                    <PowerInterestGrid stakeholders={stakeholders} isDark={isDark} />
                 </Col>
             </Row>
 
@@ -261,3 +263,4 @@ export default function StakeholderTab({ projectId }: { projectId: string }) {
         </div>
     );
 }
+

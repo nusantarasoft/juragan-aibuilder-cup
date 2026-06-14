@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { ProCard } from "@ant-design/pro-components";
-import { Button, message, Space, Statistic, Row, Col, Table, Spin, Alert } from "antd";
+import { Button, Card, message, Space, Statistic, Row, Col, Table, Spin, Alert } from "antd";
 import { RobotOutlined, SyncOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useTheme } from 'next-themes';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import dayjs from "dayjs";
 
 const GET_EVM = `
@@ -28,6 +31,9 @@ export default function EvmTab({ projectId }: { projectId: string }) {
     const [loading, setLoading] = useState(true);
     const [aiLoading, setAiLoading] = useState(false);
     const [metrics, setMetrics] = useState<any[]>([]);
+    const { resolvedTheme } = useTheme();
+    const { themeColor } = usePreferencesStore();
+    const isDark = resolvedTheme === 'dark';
 
     const loadData = React.useCallback(async () => {
         setLoading(true);
@@ -63,6 +69,23 @@ export default function EvmTab({ projectId }: { projectId: string }) {
 
     const spi = latest && latest.plannedValue > 0 ? (latest.earnedValue / latest.plannedValue).toFixed(2) : "-";
     const cpi = latest && latest.actualCost > 0 ? (latest.earnedValue / latest.actualCost).toFixed(2) : "-";
+    const cv = latest ? (latest.earnedValue || latest.earned_value || 0) - (latest.actualCost || latest.actual_cost || 0) : 0;
+    const sv = latest ? (latest.earnedValue || latest.earned_value || 0) - (latest.plannedValue || latest.planned_value || 0) : 0;
+
+    const formatCurrency = (val: number) => {
+        if (Math.abs(val) >= 1000000) return (val / 1000000).toFixed(2) + 'M';
+        if (Math.abs(val) >= 1000) return (val / 1000).toFixed(1) + 'K';
+        return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const chartData = useMemo(() => {
+        return metrics.map((m: any) => ({
+            date: dayjs(m.snapshotDate || m.snapshot_date || m.createdAt).format('MMM DD'),
+            PV: Number(m.plannedValue || m.planned_value || 0),
+            EV: Number(m.earnedValue || m.earned_value || 0),
+            AC: Number(m.actualCost || m.actual_cost || 0),
+        }));
+    }, [metrics]);
 
     return (
         <ProCard title="Cost Management: Earned Value Metrics (EVM)" bordered>
@@ -90,45 +113,96 @@ export default function EvmTab({ projectId }: { projectId: string }) {
             {loading ? <Spin /> : (
                 <>
                     {latest && (
-                        <Row gutter={[16, 16]} style={{ marginBottom: 32 }}>
-                            <Col span={4}>
-                                <ProCard bordered size="small">
-                                    <Statistic title="Planned Value (PV)" value={latest.plannedValue} prefix="$" precision={2} />
-                                </ProCard>
-                            </Col>
-                            <Col span={4}>
-                                <ProCard bordered size="small">
-                                    <Statistic title="Earned Value (EV)" value={latest.earnedValue} valueStyle={{ color: '#52c41a' }} prefix="$" precision={2} />
-                                </ProCard>
-                            </Col>
-                            <Col span={4}>
-                                <ProCard bordered size="small">
-                                    <Statistic title="Actual Cost (AC)" value={latest.actualCost} valueStyle={{ color: '#ff4d4f' }} prefix="$" precision={2} />
-                                </ProCard>
-                            </Col>
-                            <Col span={6}>
-                                <ProCard bordered size="small">
-                                    <Statistic
-                                        title="Schedule Performance Index (SPI)"
-                                        value={spi}
-                                        suffix={Number(spi) >= 1 ? " Ahead" : " Behind"}
-                                        valueStyle={{ color: Number(spi) >= 1 ? '#52c41a' : '#ff4d4f' }}
-                                    />
-                                    <div style={{ fontSize: 11, color: '#888' }}>SPI = EV / PV. (&gt;= 1.0 is good)</div>
-                                </ProCard>
-                            </Col>
-                            <Col span={6}>
-                                <ProCard bordered size="small">
-                                    <Statistic
-                                        title="Cost Performance Index (CPI)"
-                                        value={cpi}
-                                        suffix={Number(cpi) >= 1 ? " Under Budget" : " Over Budget"}
-                                        valueStyle={{ color: Number(cpi) >= 1 ? '#52c41a' : '#ff4d4f' }}
-                                    />
-                                    <div style={{ fontSize: 11, color: '#888' }}>CPI = EV / AC. (&gt;= 1.0 is good)</div>
-                                </ProCard>
-                            </Col>
-                        </Row>
+                        <div style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
+                            gap: '16px', 
+                            marginBottom: '32px' 
+                        }}>
+                            <ProCard bordered size="small" style={{ height: '100%', borderRadius: 12 }}>
+                                <div style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748b', marginBottom: 8, fontWeight: 500 }}>Planned Value (PV)</div>
+                                <div style={{ fontSize: 24, fontWeight: 700, color: isDark ? '#f8fafc' : '#0f172a' }}>${formatCurrency(latest.plannedValue)}</div>
+                                <div style={{ fontSize: 11, color: isDark ? '#64748b' : '#94a3b8', marginTop: 4 }}>Exact: ${latest.plannedValue?.toLocaleString()}</div>
+                            </ProCard>
+
+                            <ProCard bordered size="small" style={{ height: '100%', borderRadius: 12 }}>
+                                <div style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748b', marginBottom: 8, fontWeight: 500 }}>Earned Value (EV)</div>
+                                <div style={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}>${formatCurrency(latest.earnedValue)}</div>
+                                <div style={{ fontSize: 11, color: isDark ? '#64748b' : '#94a3b8', marginTop: 4 }}>Exact: ${latest.earnedValue?.toLocaleString()}</div>
+                            </ProCard>
+
+                            <ProCard bordered size="small" style={{ height: '100%', borderRadius: 12 }}>
+                                <div style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748b', marginBottom: 8, fontWeight: 500 }}>Actual Cost (AC)</div>
+                                <div style={{ fontSize: 24, fontWeight: 700, color: '#ef4444' }}>${formatCurrency(latest.actualCost)}</div>
+                                <div style={{ fontSize: 11, color: isDark ? '#64748b' : '#94a3b8', marginTop: 4 }}>Exact: ${latest.actualCost?.toLocaleString()}</div>
+                            </ProCard>
+
+                            <ProCard bordered size="small" style={{ height: '100%', borderRadius: 12 }}>
+                                <div style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748b', marginBottom: 8, fontWeight: 500 }}>SPI</div>
+                                <div style={{ fontSize: 24, fontWeight: 700, color: Number(spi) >= 1 ? '#10b981' : '#ef4444' }}>
+                                    {spi} <span style={{ fontSize: 14, fontWeight: 500 }}>{Number(spi) >= 1 ? "Ahead" : "Behind"}</span>
+                                </div>
+                                <div style={{ fontSize: 11, color: isDark ? '#64748b' : '#94a3b8', marginTop: 4 }}>SPI = EV / PV. (&gt;= 1.0 is good)</div>
+                            </ProCard>
+
+                            <ProCard bordered size="small" style={{ height: '100%', borderRadius: 12 }}>
+                                <div style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748b', marginBottom: 8, fontWeight: 500 }}>CPI</div>
+                                <div style={{ fontSize: 24, fontWeight: 700, color: Number(cpi) >= 1 ? '#10b981' : '#ef4444' }}>
+                                    {cpi} <span style={{ fontSize: 14, fontWeight: 500 }}>{Number(cpi) >= 1 ? "Under Budget" : "Over Budget"}</span>
+                                </div>
+                                <div style={{ fontSize: 11, color: isDark ? '#64748b' : '#94a3b8', marginTop: 4 }}>CPI = EV / AC. (&gt;= 1.0 is good)</div>
+                            </ProCard>
+
+                            <ProCard bordered size="small" style={{ height: '100%', borderRadius: 12 }}>
+                                <div style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748b', marginBottom: 8, fontWeight: 500 }}>Cost Variance (CV)</div>
+                                <div style={{ fontSize: 24, fontWeight: 700, color: cv >= 0 ? '#10b981' : '#ef4444' }}>
+                                    {cv < 0 ? "-" : ""}${formatCurrency(Math.abs(cv))}
+                                </div>
+                                <div style={{ fontSize: 11, color: isDark ? '#64748b' : '#94a3b8', marginTop: 4 }}>{cv >= 0 ? 'Under Budget' : 'Over Budget'}</div>
+                            </ProCard>
+
+                            <ProCard bordered size="small" style={{ height: '100%', borderRadius: 12 }}>
+                                <div style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748b', marginBottom: 8, fontWeight: 500 }}>Schedule Variance (SV)</div>
+                                <div style={{ fontSize: 24, fontWeight: 700, color: sv >= 0 ? '#10b981' : '#ef4444' }}>
+                                    {sv < 0 ? "-" : ""}${formatCurrency(Math.abs(sv))}
+                                </div>
+                                <div style={{ fontSize: 11, color: isDark ? '#64748b' : '#94a3b8', marginTop: 4 }}>{sv >= 0 ? 'Ahead of Schedule' : 'Behind Schedule'}</div>
+                            </ProCard>
+                        </div>
+                    )}
+
+                    {chartData.length >= 2 && (
+                        <Card size="small" title={<Space><span style={{ fontWeight: 600 }}>S-Curve (EVM Trend)</span></Space>} style={{ marginBottom: 16, borderRadius: 10, background: isDark ? 'rgba(15,15,23,0.7)' : undefined }}>
+                            <div style={{ height: 280 }}>
+                                <ResponsiveContainer>
+                                    <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} />
+                                        <XAxis dataKey="date" tick={{ fontSize: 11, fill: isDark ? '#94a3b8' : '#64748b' }} />
+                                        <YAxis 
+                                            tick={{ fontSize: 11, fill: isDark ? '#94a3b8' : '#64748b' }} 
+                                            width={65}
+                                            tickFormatter={(val: number) => {
+                                                if (val >= 1000000) return `$${(val / 1000000).toFixed(1)}M`;
+                                                if (val >= 1000) return `$${(val / 1000).toFixed(0)}K`;
+                                                return `$${val}`;
+                                            }}
+                                        />
+                                        <RTooltip
+                                            contentStyle={{
+                                                background: isDark ? '#1e1e2e' : '#fff',
+                                                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                                                borderRadius: 8, fontSize: 12,
+                                            }}
+                                            formatter={(value: number) => [`$${value.toLocaleString()}`, undefined]}
+                                        />
+                                        <Legend />
+                                        <Line type="monotone" dataKey="PV" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} name="Planned Value" />
+                                        <Line type="monotone" dataKey="EV" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name="Earned Value" />
+                                        <Line type="monotone" dataKey="AC" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Actual Cost" />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </Card>
                     )}
 
                     <Table
@@ -136,6 +210,7 @@ export default function EvmTab({ projectId }: { projectId: string }) {
                         rowKey="id"
                         pagination={{ pageSize: 15 }}
                         size="small"
+                        scroll={{ x: 'max-content' }}
                         columns={[
                             { title: 'Date', dataIndex: 'snapshotDate', render: (val) => dayjs(val).format('MMM D, YYYY') },
                             { title: 'Planned Value (PV)', dataIndex: 'plannedValue', align: 'right', render: (val) => `$${val.toLocaleString()}` },

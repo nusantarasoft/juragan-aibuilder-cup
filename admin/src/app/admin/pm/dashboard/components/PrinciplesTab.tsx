@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { ProCard } from "@ant-design/pro-components";
-import { Button, message, Space, Typography, Spin, Slider, Input, Progress, Tag, Tooltip, Empty } from "antd";
+import { Button, message, Space, Typography, Spin, Slider, Input, Progress, Tag, Tooltip, Card } from "antd";
+import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RTooltip } from 'recharts';
 import { RadarChartOutlined, SaveOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
 
-const { Text, Title, Paragraph } = Typography;
+const { Text } = Typography;
 const { TextArea } = Input;
 
 const GET_PRINCIPLES = `
@@ -63,9 +64,7 @@ export default function PrinciplesTab({ projectId }: { projectId: string }) {
             const map: Record<string, any> = {};
             items.forEach((item: any) => { map[item.principle_key || item.principleKey] = item; });
             setAssessments(map);
-        } catch {
-            // First load, no data yet
-        } finally {
+        } catch (err: any) { console.error("PM Error", err); } finally {
             setLoading(false);
         }
     }, [projectId]);
@@ -141,6 +140,14 @@ export default function PrinciplesTab({ projectId }: { projectId: string }) {
 
     const avgScore = PRINCIPLES.reduce((sum, p) => sum + (assessments[p.key]?.score || 0), 0) / PRINCIPLES.length;
 
+    const radarData = useMemo(() =>
+        PRINCIPLES.map(p => ({
+            principle: p.name.length > 15 ? p.name.slice(0, 13) + '..' : p.name,
+            score: assessments[p.key]?.score || 0,
+            fullMark: 5,
+        })),
+    [assessments]);
+
     const getScoreColor = (score: number) => {
         if (score >= 4) return '#10b981';
         if (score >= 3) return '#eab308';
@@ -184,6 +191,21 @@ export default function PrinciplesTab({ projectId }: { projectId: string }) {
                     borderRadius: 12,
                 }}
             >
+                {/* Radar Chart Overview */}
+                <Card size="small" title={<Space><RadarChartOutlined style={{ color: isDark ? '#a78bfa' : '#6366f1' }} /><span style={{ fontWeight: 600 }}>Principles Assessment Overview</span><Tag>{(avgScore).toFixed(1)} / 5.0 avg</Tag></Space>} style={{ marginBottom: 16, borderRadius: 10, background: isDark ? 'rgba(15,15,23,0.7)' : undefined, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                    <div style={{ height: 300 }}>
+                        <ResponsiveContainer>
+                            <RadarChart data={radarData} cx="50%" cy="50%">
+                                <PolarGrid stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'} />
+                                <PolarAngleAxis dataKey="principle" tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }} />
+                                <PolarRadiusAxis angle={30} domain={[0, 5]} tick={{ fontSize: 9, fill: isDark ? '#64748b' : '#94a3b8' }} />
+                                <RTooltip contentStyle={{ background: isDark ? '#1e1e2e' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, borderRadius: 8, fontSize: 12 }} />
+                                <Radar name="Score" dataKey="score" stroke="#6366f1" fill="#6366f1" fillOpacity={0.25} strokeWidth={2} />
+                            </RadarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </Card>
+
                 {/* Summary Progress Bar */}
                 <div style={{
                     display: 'grid',
@@ -315,3 +337,4 @@ export default function PrinciplesTab({ projectId }: { projectId: string }) {
         </div>
     );
 }
+

@@ -1604,4 +1604,24 @@ ul.ant-pagination li.ant-pagination-next.ant-pagination-disabled > button {
 .cms-outer-sider .ant-menu-inline .ant-menu-sub {
   transition: height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
               opacity 0.2s ease !important;
-}
+}
+
+/* ========================================
+   Global Word Wrap Fix for PM Submodules
+   ======================================== */
+
+.ant-typography,
+.ant-table-cell,
+.ant-list-item-meta-description,
+.ant-descriptions-item-content,
+.ant-tooltip-inner {
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* Ensure text inside elements with max-width doesn't force horizontal scroll */
+.ant-table-cell * {
+  max-width: 100%;
+}
+

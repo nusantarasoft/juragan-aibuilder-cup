@@ -1002,6 +1002,62 @@ IMPORTANT: Return ONLY valid JSON.`;
         return true;
     }
 
+    async bulkCreateBins(zoneId: string, input: {
+        aisleStart: string; aisleEnd: string;
+        rackStart: number; rackEnd: number;
+        levelStart: number; levelEnd: number;
+        positionStart?: number; positionEnd?: number;
+        binType?: string; maxWeight?: number; maxVolume?: number;
+        codePrefix?: string;
+    }): Promise<{ created: number; bins: any[] }> {
+        const aisles: string[] = [];
+        const startChar = input.aisleStart.charCodeAt(0);
+        const endChar = input.aisleEnd.charCodeAt(0);
+        for (let c = startChar; c <= endChar; c++) aisles.push(String.fromCharCode(c));
+
+        const bins: any[] = [];
+        let sortOrder = 0;
+        const prefix = input.codePrefix || '';
+
+        for (const aisle of aisles) {
+            for (let rack = input.rackStart; rack <= input.rackEnd; rack++) {
+                for (let level = input.levelStart; level <= input.levelEnd; level++) {
+                    const posStart = input.positionStart ?? 1;
+                    const posEnd = input.positionEnd ?? 1;
+                    for (let pos = posStart; pos <= posEnd; pos++) {
+                        const rackStr = String(rack).padStart(2, '0');
+                        const code = `${prefix}${aisle}-${rackStr}-L${level}-P${pos}`;
+                        bins.push({
+                            zone_id: zoneId,
+                            code,
+                            aisle,
+                            rack: rackStr,
+                            level: String(level),
+                            position: String(pos),
+                            bin_type: input.binType || 'standard',
+                            max_weight: input.maxWeight || null,
+                            max_volume: input.maxVolume || null,
+                            sort_order: sortOrder++,
+                            status: 'available',
+                        });
+                    }
+                }
+            }
+        }
+
+        if (bins.length === 0) return { created: 0, bins: [] };
+
+        // Insert in batches of 100
+        const allCreated: any[] = [];
+        for (let i = 0; i < bins.length; i += 100) {
+            const batch = bins.slice(i, i + 100);
+            const { data, error } = await this.db.from('inv_bins').insert(batch).select();
+            if (error) throw error;
+            if (data) allCreated.push(...data);
+        }
+        return { created: allCreated.length, bins: allCreated };
+    }
+
     // ─── STOCK TRANSFERS ─────────────────────────────────────
 
     async getStockTransfers(tenantId: string, filters?: { status?: string }) {
@@ -2791,4 +2847,332 @@ IMPORTANT: Return ONLY valid JSON.`;
             .select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId);
         return `AST-${year}-${String((count || 0) + 1).padStart(3, '0')}`;
     }
+
+    // ═══════════════════════════════════════════════════════
+    // ─── PUT-AWAY & PICK OPERATIONS ──────────────────────
+    // ═══════════════════════════════════════════════════════
+
+    // ─── Bin Contents ───────────────────────────────────────
+    async getBinContents(tenantId: string, binId?: string) {
+        let query = this.db.from('inv_bin_contents').select('*').eq('tenant_id', tenantId);
+        if (binId) query = query.eq('bin_id', binId);
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data || [];
+    }
+
+    async addBinContent(tenantId: string, input: Record<string, any>) {
+        const { data, error } = await this.db.from('inv_bin_contents').insert({
+            tenant_id: tenantId,
+            bin_id: input.binId,
+            item_id: input.itemId,
+            variant_id: input.variantId || null,
+            quantity: input.quantity,
+            uom: input.uom || 'pcs',
+            lot_number: input.lotNumber || null,
+            batch_number: input.batchNumber || null,
+            serial_number: input.serialNumber || null,
+            expiry_date: input.expiryDate || null,
+            notes: input.notes || null,
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateBinContent(id: string, input: Record<string, any>) {
+        const updates: any = { updated_at: new Date().toISOString() };
+        if (input.quantity !== undefined) updates.quantity = input.quantity;
+        if (input.notes !== undefined) updates.notes = input.notes;
+        const { data, error } = await this.db.from('inv_bin_contents').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async removeBinContent(id: string) {
+        const { error } = await this.db.from('inv_bin_contents').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    }
+
+    // ─── Put-Away Tasks ───────────────────────────────────
+    private async generatePutawayNumber(tenantId: string) {
+        const year = new Date().getFullYear();
+        const { count } = await this.db.from('inv_putaway_tasks')
+            .select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId);
+        return `PA-${year}-${String((count || 0) + 1).padStart(4, '0')}`;
+    }
+
+    async getPutawayTasks(tenantId: string, filters?: { status?: string; warehouseId?: string }) {
+        let query = this.db.from('inv_putaway_tasks').select('*').eq('tenant_id', tenantId);
+        if (filters?.status) query = query.eq('status', filters.status);
+        if (filters?.warehouseId) query = query.eq('warehouse_id', filters.warehouseId);
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data || [];
+    }
+
+    async createPutawayTask(tenantId: string, input: Record<string, any>) {
+        const taskNumber = await this.generatePutawayNumber(tenantId);
+        // Try to suggest a bin if not provided
+        let suggestedBinId = input.suggestedBinId || null;
+        let suggestedBinCode = input.suggestedBinCode || null;
+        if (!suggestedBinId && input.warehouseId) {
+            const suggestion = await this.suggestBin(tenantId, input.warehouseId);
+            if (suggestion) {
+                suggestedBinId = suggestion.id;
+                suggestedBinCode = suggestion.code;
+            }
+        }
+        const { data, error } = await this.db.from('inv_putaway_tasks').insert({
+            tenant_id: tenantId,
+            task_number: taskNumber,
+            item_id: input.itemId,
+            item_name: input.itemName || null,
+            item_sku: input.itemSku || null,
+            quantity: input.quantity,
+            uom: input.uom || 'pcs',
+            source_reference: input.sourceReference || null,
+            source_type: input.sourceType || null,
+            source_id: input.sourceId || null,
+            warehouse_id: input.warehouseId || 'default',
+            suggested_bin_id: suggestedBinId,
+            suggested_bin_code: suggestedBinCode,
+            assigned_to: input.assignedTo || null,
+            priority: input.priority || 'normal',
+            lot_number: input.lotNumber || null,
+            batch_number: input.batchNumber || null,
+            expiry_date: input.expiryDate || null,
+            notes: input.notes || null,
+            status: 'pending',
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async confirmPutaway(id: string, actualBinId: string) {
+        // Get the bin code
+        const { data: bin } = await this.db.from('inv_bins').select('code').eq('id', actualBinId).single();
+        const { data, error } = await this.db.from('inv_putaway_tasks').update({
+            actual_bin_id: actualBinId,
+            actual_bin_code: bin?.code || null,
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        }).eq('id', id).select().single();
+        if (error) throw error;
+
+        // Add to bin contents
+        if (data) {
+            await this.addBinContent(data.tenant_id, {
+                binId: actualBinId,
+                itemId: data.item_id,
+                quantity: data.quantity,
+                uom: data.uom,
+                lotNumber: data.lot_number,
+                batchNumber: data.batch_number,
+                expiryDate: data.expiry_date,
+            });
+            // Update bin status to occupied
+            await this.db.from('inv_bins').update({
+                is_occupied: true,
+                current_item_count: this.db.rpc ? 1 : 1,
+                updated_at: new Date().toISOString(),
+            }).eq('id', actualBinId);
+
+            // Create stock IN movement for ledger tracking
+            try {
+                await this.createStockMovement(data.tenant_id, {
+                    itemId: data.item_id,
+                    warehouseId: data.warehouse_id || 'default',
+                    movementType: 'IN',
+                    quantity: data.quantity,
+                    reference: data.task_number,
+                    referenceType: 'putaway',
+                    batchNumber: data.batch_number,
+                    expiryDate: data.expiry_date,
+                    notes: `Put-away to bin ${bin?.code || actualBinId}`,
+                });
+            } catch (e) {
+                this.logger.warn('Failed to create stock movement for putaway', e);
+            }
+        }
+        return data;
+    }
+
+    async cancelPutawayTask(id: string) {
+        const { data, error } = await this.db.from('inv_putaway_tasks').update({
+            status: 'cancelled',
+            updated_at: new Date().toISOString(),
+        }).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async startPutawayTask(id: string) {
+        const { data, error } = await this.db.from('inv_putaway_tasks').update({
+            status: 'in_progress',
+            started_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        }).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    // ─── Bin Suggestion Algorithm ────────────────────────
+    async suggestBin(tenantId: string, warehouseId?: string): Promise<any | null> {
+        // Find available bins not already full, prioritizing empty bins
+        const zonesQuery = this.db.from('inv_zones').select('id');
+        if (warehouseId && warehouseId !== 'default') {
+            zonesQuery.eq('warehouse_id', warehouseId);
+        }
+        const { data: zones } = await zonesQuery;
+        if (!zones || zones.length === 0) return null;
+
+        const zoneIds = zones.map((z: any) => z.id);
+        const { data: bins } = await this.db.from('inv_bins')
+            .select('*')
+            .in('zone_id', zoneIds)
+            .eq('status', 'available')
+            .order('sort_order')
+            .limit(1);
+        return bins && bins.length > 0 ? bins[0] : null;
+    }
+
+    // ─── Pick Tasks ──────────────────────────────────────
+    private async generatePickNumber(tenantId: string) {
+        const year = new Date().getFullYear();
+        const { count } = await this.db.from('inv_pick_tasks')
+            .select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId);
+        return `PK-${year}-${String((count || 0) + 1).padStart(4, '0')}`;
+    }
+
+    async getPickTasks(tenantId: string, filters?: { status?: string; warehouseId?: string }) {
+        let query = this.db.from('inv_pick_tasks').select('*').eq('tenant_id', tenantId);
+        if (filters?.status) query = query.eq('status', filters.status);
+        if (filters?.warehouseId) query = query.eq('warehouse_id', filters.warehouseId);
+        const { data, error } = await query.order('pick_sequence').order('created_at', { ascending: false });
+        if (error) throw error;
+        return data || [];
+    }
+
+    async createPickTask(tenantId: string, input: Record<string, any>) {
+        const taskNumber = await this.generatePickNumber(tenantId);
+        const { data, error } = await this.db.from('inv_pick_tasks').insert({
+            tenant_id: tenantId,
+            task_number: taskNumber,
+            item_id: input.itemId,
+            item_name: input.itemName || null,
+            item_sku: input.itemSku || null,
+            quantity: input.quantity,
+            uom: input.uom || 'pcs',
+            order_reference: input.orderReference || null,
+            order_type: input.orderType || null,
+            order_id: input.orderId || null,
+            warehouse_id: input.warehouseId || 'default',
+            from_bin_id: input.fromBinId || null,
+            from_bin_code: input.fromBinCode || null,
+            assigned_to: input.assignedTo || null,
+            priority: input.priority || 'normal',
+            pick_sequence: input.pickSequence || 0,
+            lot_number: input.lotNumber || null,
+            batch_number: input.batchNumber || null,
+            notes: input.notes || null,
+            status: 'pending',
+        }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async confirmPick(id: string, pickedQuantity: number) {
+        const { data: task } = await this.db.from('inv_pick_tasks').select('*').eq('id', id).single();
+        if (!task) throw new Error('Pick task not found');
+
+        const isShort = pickedQuantity < task.quantity;
+        const { data, error } = await this.db.from('inv_pick_tasks').update({
+            picked_quantity: pickedQuantity,
+            status: isShort ? 'short_picked' : 'completed',
+            completed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        }).eq('id', id).select().single();
+        if (error) throw error;
+
+        // Decrement bin contents if we have a from_bin_id
+        if (task.from_bin_id) {
+            const { data: contents } = await this.db.from('inv_bin_contents')
+                .select('*')
+                .eq('bin_id', task.from_bin_id)
+                .eq('item_id', task.item_id)
+                .limit(1);
+            if (contents && contents.length > 0) {
+                const newQty = Math.max(0, (contents[0].quantity || 0) - pickedQuantity);
+                if (newQty <= 0) {
+                    await this.db.from('inv_bin_contents').delete().eq('id', contents[0].id);
+                } else {
+                    await this.db.from('inv_bin_contents').update({
+                        quantity: newQty,
+                        updated_at: new Date().toISOString(),
+                    }).eq('id', contents[0].id);
+                }
+            }
+        }
+
+        // Create stock OUT movement for ledger tracking
+        if (task && pickedQuantity > 0) {
+            try {
+                await this.createStockMovement(task.tenant_id, {
+                    itemId: task.item_id,
+                    warehouseId: task.warehouse_id || 'default',
+                    movementType: 'OUT',
+                    quantity: pickedQuantity,
+                    reference: task.task_number,
+                    referenceType: 'pick',
+                    batchNumber: task.batch_number,
+                    notes: `Picked from bin ${task.from_bin_code || task.from_bin_id || 'unknown'}${isShort ? ' (short pick)' : ''}`,
+                });
+            } catch (e) {
+                this.logger.warn('Failed to create stock movement for pick', e);
+            }
+        }
+        return data;
+    }
+
+    async cancelPickTask(id: string) {
+        const { data, error } = await this.db.from('inv_pick_tasks').update({
+            status: 'cancelled',
+            updated_at: new Date().toISOString(),
+        }).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    async startPickTask(id: string) {
+        const { data, error } = await this.db.from('inv_pick_tasks').update({
+            status: 'in_progress',
+            started_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        }).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    // ─── WMS Stats ──────────────────────────────────────
+    async getWmsStats(tenantId: string) {
+        const [pa, pk, bc] = await Promise.all([
+            this.db.from('inv_putaway_tasks').select('status').eq('tenant_id', tenantId),
+            this.db.from('inv_pick_tasks').select('status').eq('tenant_id', tenantId),
+            this.db.from('inv_bin_contents').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+        ]);
+        const paTasks = pa.data || [];
+        const pkTasks = pk.data || [];
+        return {
+            pendingPutaway: paTasks.filter((t: any) => t.status === 'pending').length,
+            inProgressPutaway: paTasks.filter((t: any) => t.status === 'in_progress').length,
+            completedPutaway: paTasks.filter((t: any) => t.status === 'completed').length,
+            pendingPick: pkTasks.filter((t: any) => t.status === 'pending').length,
+            inProgressPick: pkTasks.filter((t: any) => t.status === 'in_progress').length,
+            completedPick: pkTasks.filter((t: any) => t.status === 'completed').length,
+            totalBinContents: bc.count || 0,
+        };
+    }
 }
+

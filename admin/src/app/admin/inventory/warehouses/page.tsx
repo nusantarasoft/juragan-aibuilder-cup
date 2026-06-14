@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import RbacGuard from "@/components/common/RbacGuard";
-import { Badge, Button, Card, Col, Descriptions, Empty, Form, Input, InputNumber, message, Modal, Row, Select, Space, Spin, Table, Tabs, Tag, Tooltip, Typography } from "antd";
+import { Badge, Button, Card, Col, Descriptions, Empty, Form, Input, InputNumber, message, Modal, Row, Select, Space, Spin, Table, Tabs, Tag, Tooltip, Typography , theme } from "antd";
 import {
     HomeOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
     EnvironmentOutlined, AppstoreOutlined, InboxOutlined,
@@ -44,6 +44,10 @@ const ZONE_TYPES: Record<string, { label: string; color: string }> = {
     shipping: { label: 'Shipping', color: 'cyan' },
     cold: { label: 'Cold', color: 'geekblue' },
     quarantine: { label: 'Quarantine', color: 'red' },
+    staging: { label: 'Staging', color: 'gold' },
+    hazardous: { label: 'Hazardous', color: 'volcano' },
+    climate_controlled: { label: 'Climate Ctrl', color: 'geekblue' },
+    port: { label: 'Port', color: 'lime' },
 };
 
 const BIN_STATUSES: Record<string, { color: string }> = {
@@ -78,6 +82,8 @@ const WAREHOUSE_FIELDS: FieldDef[] = [
 export default function WarehousesPage() {
     const [stats, setStats] = useState<WarehouseStats | null>(null);
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const { startDate, endDate } = useDateRangeStore();
     const [warehouses, setWarehouses] = useState<InvWarehouse[]>([]);
     const [zones, setZones] = useState<InvZone[]>([]);
@@ -97,6 +103,10 @@ export default function WarehousesPage() {
 
     const [binModalOpen, setBinModalOpen] = useState(false);
     const [binForm] = Form.useForm();
+
+    const [bulkBinModalOpen, setBulkBinModalOpen] = useState(false);
+    const [bulkBinForm] = Form.useForm();
+    const [bulkGenerating, setBulkGenerating] = useState(false);
 
     const [trfModalOpen, setTrfModalOpen] = useState(false);
     const [trfForm] = Form.useForm();
@@ -138,10 +148,20 @@ export default function WarehousesPage() {
         [zones, selectedWarehouseId]
     );
 
-    const filteredBins = useMemo(() =>
-        selectedZoneId ? bins.filter(b => b.zoneId === selectedZoneId) : bins,
-        [bins, selectedZoneId]
-    );
+    const binCountByZone = useMemo(() => {
+        const map = new Map<string, number>();
+        bins.forEach(b => map.set(b.zoneId, (map.get(b.zoneId) || 0) + 1));
+        return map;
+    }, [bins]);
+
+    const filteredBins = useMemo(() => {
+        if (selectedZoneId) return bins.filter(b => b.zoneId === selectedZoneId);
+        if (selectedWarehouseId) {
+            const whZoneIds = new Set(zones.filter(z => z.warehouseId === selectedWarehouseId).map(z => z.id));
+            return bins.filter(b => whZoneIds.has(b.zoneId));
+        }
+        return bins;
+    }, [bins, selectedZoneId, selectedWarehouseId, zones]);
 
     // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Warehouse CRUD Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const handleSaveWarehouse = async (values: any) => {
@@ -206,7 +226,47 @@ export default function WarehousesPage() {
         } catch { message.error("Failed"); }
     };
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Transfer CRUD Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // ─── Bulk Bin Generator ────────────────────────────
+    const bulkBinPreview = useMemo(() => {
+        const vals = bulkBinForm.getFieldsValue();
+        if (!vals.aisleStart || !vals.aisleEnd || !vals.rackStart || !vals.rackEnd || !vals.levelStart || !vals.levelEnd) return 0;
+        const aisleCount = Math.max(0, vals.aisleEnd.charCodeAt(0) - vals.aisleStart.charCodeAt(0) + 1);
+        const rackCount = Math.max(0, (vals.rackEnd || 1) - (vals.rackStart || 1) + 1);
+        const levelCount = Math.max(0, (vals.levelEnd || 1) - (vals.levelStart || 1) + 1);
+        const posCount = Math.max(1, ((vals.positionEnd || 1) - (vals.positionStart || 1) + 1));
+        return aisleCount * rackCount * levelCount * posCount;
+    }, [bulkBinForm]);
+
+    const handleBulkGenerateBins = async () => {
+        try {
+            const values = await bulkBinForm.validateFields();
+            setBulkGenerating(true);
+            const result = await inventoryService.bulkCreateBins(values.zoneId, {
+                aisleStart: values.aisleStart,
+                aisleEnd: values.aisleEnd,
+                rackStart: values.rackStart,
+                rackEnd: values.rackEnd,
+                levelStart: values.levelStart,
+                levelEnd: values.levelEnd,
+                positionStart: values.positionStart || 1,
+                positionEnd: values.positionEnd || 1,
+                binType: values.binType || 'standard',
+                maxWeight: values.maxWeight || undefined,
+                maxVolume: values.maxVolume || undefined,
+                codePrefix: values.codePrefix || '',
+            });
+            message.success(`Successfully generated ${result.created} bins!`);
+            setBulkBinModalOpen(false);
+            bulkBinForm.resetFields();
+            loadAll();
+        } catch (err: any) {
+            message.error(err?.message || 'Failed to generate bins');
+        } finally {
+            setBulkGenerating(false);
+        }
+    };
+
+    // ─── Transfer CRUD ────────────────────────────────────────────
     const handleCreateTransfer = async () => {
         try {
             const values = await trfForm.validateFields();
@@ -232,7 +292,7 @@ export default function WarehousesPage() {
         } catch { message.error("Failed to complete"); }
     };
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ KPI Cards Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // ─── KPI Cards ────────────────────────────────────────────────
     const kpiCards = [
         { title: 'Warehouses', value: stats?.totalWarehouses || 0, icon: <HomeOutlined />, color: 'var(--theme-color, #7c3aed)' },
         { title: 'Zones', value: stats?.totalZones || 0, icon: <AppstoreOutlined />, color: '#0ea5e9' },
@@ -242,7 +302,7 @@ export default function WarehousesPage() {
         { title: 'Used Capacity', value: stats?.usedCapacity || 0, icon: <ColumnHeightOutlined />, color: '#ef4444' },
     ];
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Warehouse Columns Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // ─── Warehouse Columns ────────────────────────────────────────
     const warehouseColumns = [
         { title: 'Code', dataIndex: 'code', width: 120, render: (v: string) => <Text code className="text-xs">{v}</Text> },
         { title: 'Name', dataIndex: 'name', render: (v: string) => <Text strong className="text-sm">{v}</Text> },
@@ -277,9 +337,12 @@ export default function WarehousesPage() {
             render: (v: string) => <Tag color={v === 'active' ? 'green' : v === 'maintenance' ? 'orange' : 'default'} className="rounded-full text-xs">{v}</Tag>,
         },
         {
-            title: '', key: 'actions', width: 100,
+            title: '', key: 'actions', width: 140,
             render: (_: any, r: InvWarehouse) => (
                 <Space size="small">
+                    <Tooltip title="View in 3D"><Button size="small" type="primary" icon={<EnvironmentOutlined />}
+                        onClick={() => window.location.href = `/admin/inventory/warehouse-map?warehouse=${r.id}`}
+                        style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', border: 'none', fontSize: 10 }}>3D</Button></Tooltip>
                     <Button size="small" icon={<EditOutlined />} onClick={() => handleEditWarehouse(r)} />
                     <Button size="small" danger icon={<DeleteOutlined />}
                         onClick={() => Modal.confirm({ title: 'Delete warehouse?', onOk: () => handleDeleteWarehouse(r.id) })} />
@@ -288,59 +351,113 @@ export default function WarehousesPage() {
         },
     ];
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Zone Columns Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // ─── Zone Columns ─────────────────────────────────────────────
     const zoneColumns = [
-        { title: 'Code', dataIndex: 'code', width: 100, render: (v: string) => <Text code className="text-xs">{v}</Text> },
-        { title: 'Name', dataIndex: 'name', render: (v: string) => <Text strong className="text-sm">{v}</Text> },
+        { title: 'Code', dataIndex: 'code', width: 90, render: (v: string) => <Text code style={{ fontSize: 11 }}>{v}</Text> },
+        { title: 'Name', dataIndex: 'name', width: 180, render: (v: string) => <Text strong style={{ fontSize: 12 }}>{v}</Text> },
         {
-            title: 'Warehouse', dataIndex: 'warehouseId', width: 160,
-            render: (v: string) => <Text className="text-xs">{warehouseMap.get(v)?.name || v.slice(0, 8)}</Text>,
+            title: 'Warehouse', dataIndex: 'warehouseId', width: 150,
+            render: (v: string) => {
+                const wh = warehouseMap.get(v);
+                return wh ? (
+                    <Tooltip title={`${wh.code} — ${wh.name}`}>
+                        <Tag color="blue" style={{ borderRadius: 8, fontSize: 10, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <HomeOutlined style={{ marginRight: 4 }} />{wh.name}
+                        </Tag>
+                    </Tooltip>
+                ) : <Text type="secondary" style={{ fontSize: 11 }}>{v?.slice(0, 8)}...</Text>;
+            },
         },
         {
             title: 'Type', dataIndex: 'zoneType', width: 110,
             render: (v: string) => {
-                const t = ZONE_TYPES[v] || { label: v, color: 'default' };
-                return <Tag color={t.color} className="rounded-full text-xs">{t.label}</Tag>;
+                const t = ZONE_TYPES[v] || { label: v || '—', color: 'default' };
+                return <Tag color={t.color} style={{ borderRadius: 10, fontSize: 10 }}>{t.label}</Tag>;
             }
         },
-        { title: 'Capacity', dataIndex: 'capacity', width: 80 },
-        { title: 'Description', dataIndex: 'description', ellipsis: true },
+        {
+            title: 'Bins', key: 'binCount', width: 70,
+            render: (_: any, r: InvZone) => {
+                const count = binCountByZone.get(r.id) || 0;
+                return <Badge count={count} showZero style={{ backgroundColor: count > 0 ? themeColor : '#999', fontSize: 10 }} overflowCount={999} />;
+            },
+        },
         {
             title: 'Status', dataIndex: 'status', width: 80,
-            render: (v: string) => <Tag color={v === 'active' ? 'green' : 'default'} className="rounded-full text-xs">{v}</Tag>,
+            render: (v: string) => <Tag color={v === 'active' ? 'green' : 'default'} style={{ borderRadius: 10, fontSize: 10 }}>{v}</Tag>,
+        },
+        {
+            title: '', key: 'actions', width: 60,
+            render: (_: any, r: InvZone) => (
+                <Tooltip title="Delete zone">
+                    <Button size="small" danger type="text" icon={<DeleteOutlined />}
+                        onClick={(e) => { e.stopPropagation(); Modal.confirm({ title: `Delete zone "${r.name}"?`, content: 'This will also delete all bins in this zone.', onOk: async () => { try { await inventoryService.deleteZone(r.id); message.success('Zone deleted'); loadAll(); } catch { message.error('Failed to delete zone'); } } }); }} />
+                </Tooltip>
+            ),
         },
     ];
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Bin Columns Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // ─── Bin Columns ──────────────────────────────────────────────
     const binColumns = [
-        { title: 'Code', dataIndex: 'code', width: 130, render: (v: string) => <Text code className="text-xs">{v}</Text> },
+        { title: 'Code', dataIndex: 'code', width: 120, render: (v: string) => <Text code style={{ fontSize: 11, fontWeight: 600 }}>{v}</Text> },
         {
-            title: 'Zone', dataIndex: 'zoneId', width: 130,
-            render: (v: string) => <Text className="text-xs">{zoneMap.get(v)?.name || v.slice(0, 8)}</Text>,
+            title: 'Warehouse', key: 'warehouse', width: 140,
+            render: (_: any, r: InvBin) => {
+                const zone = zoneMap.get(r.zoneId);
+                const wh = zone ? warehouseMap.get(zone.warehouseId) : null;
+                return wh ? (
+                    <Text style={{ fontSize: 11 }}>{wh.name}</Text>
+                ) : <Text type="secondary" style={{ fontSize: 11 }}>—</Text>;
+            },
         },
         {
-            title: 'Location', key: 'loc', width: 180,
+            title: 'Zone', dataIndex: 'zoneId', width: 140,
+            render: (v: string) => {
+                const zone = zoneMap.get(v);
+                return zone ? (
+                    <Tooltip title={`${zone.code} — ${zone.name}`}>
+                        <Tag color={ZONE_TYPES[zone.zoneType || '']?.color || 'default'} style={{ borderRadius: 8, fontSize: 10 }}>
+                            {zone.name}
+                        </Tag>
+                    </Tooltip>
+                ) : <Text type="secondary" style={{ fontSize: 11 }}>{v?.slice(0, 8)}...</Text>;
+            },
+        },
+        {
+            title: 'Location', key: 'loc', width: 200,
             render: (_: any, r: InvBin) => (
-                <Text className="text-xs">
-                    Aisle {r.aisle || '-'} / Rack {r.rack || '-'} / L{r.level || '-'} / {r.position || '-'}
-                </Text>
+                <Space size={4}>
+                    {r.aisle && <Tag style={{ borderRadius: 6, fontSize: 10, margin: 0 }}>A:{r.aisle}</Tag>}
+                    {r.rack && r.rack !== 'null' && <Tag style={{ borderRadius: 6, fontSize: 10, margin: 0 }}>R:{r.rack}</Tag>}
+                    {r.level && r.level !== 'null' && <Tag style={{ borderRadius: 6, fontSize: 10, margin: 0 }}>L:{r.level}</Tag>}
+                    {r.position && <Tag style={{ borderRadius: 6, fontSize: 10, margin: 0 }}>P:{r.position}</Tag>}
+                </Space>
             ),
         },
         {
-            title: 'Type', dataIndex: 'binType', width: 90,
-            render: (v: string) => <Tag className="rounded-full text-xs">{v}</Tag>,
+            title: 'Type', dataIndex: 'binType', width: 85,
+            render: (v: string) => <Tag color="blue" style={{ borderRadius: 10, fontSize: 10 }}>{v || '—'}</Tag>,
         },
         {
-            title: 'Max Weight', dataIndex: 'maxWeight', width: 100,
-            render: (v: number) => v ? `${v.toLocaleString()} kg` : '-',
+            title: 'Weight', dataIndex: 'maxWeight', width: 80,
+            render: (v: number) => v ? <Text style={{ fontSize: 11 }}>{v.toLocaleString()} kg</Text> : <Text type="secondary" style={{ fontSize: 11 }}>—</Text>,
         },
         {
-            title: 'Status', dataIndex: 'status', width: 100,
-            render: (v: string) => <Tag color={BIN_STATUSES[v]?.color || 'default'} className="rounded-full text-xs">{v}</Tag>,
+            title: 'Status', dataIndex: 'status', width: 90,
+            render: (v: string) => <Tag color={BIN_STATUSES[v]?.color || 'default'} style={{ borderRadius: 10, fontSize: 10 }}>{v}</Tag>,
+        },
+        {
+            title: '', key: 'actions', width: 50,
+            render: (_: any, r: InvBin) => (
+                <Tooltip title="Delete bin">
+                    <Button size="small" danger type="text" icon={<DeleteOutlined />}
+                        onClick={() => Modal.confirm({ title: `Delete bin "${r.code}"?`, onOk: async () => { try { await inventoryService.deleteBin(r.id); message.success('Bin deleted'); loadAll(); } catch { message.error('Failed to delete bin'); } } })} />
+                </Tooltip>
+            ),
         },
     ];
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Transfer Columns Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // ─── Transfer Columns ─────────────────────────────────────────
     const transferColumns = [
         {
             title: 'Transfer #', dataIndex: 'transferNumber', width: 130,
@@ -479,7 +596,7 @@ export default function WarehousesPage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, type: 'spring', stiffness: 260, damping: 20 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    ...glassDark, borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden',
+                                    ...(isDark ? glassDark : glass), borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden',
                                 }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -499,7 +616,7 @@ export default function WarehousesPage() {
 
                 {/* Tabs */}
                 <Card size="small" style={{
-                    flex: 1, ...glassDark, borderLeft: `3px solid var(--theme-color, #7c3aed)`,
+                    flex: 1, ...(isDark ? glassDark : glass), borderLeft: `3px solid var(--theme-color, #7c3aed)`,
                 }}>
                     <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
                         {
@@ -556,6 +673,11 @@ export default function WarehousesPage() {
                                                 style={{ borderColor: 'var(--theme-color, #7c3aed)', color: 'var(--theme-color, #7c3aed)' }}>
                                                 Add Zone
                                             </Button>
+                                            <Button icon={<PlusOutlined />}
+                                                onClick={() => { bulkBinForm.resetFields(); setBulkBinModalOpen(true); }}
+                                                style={{ borderColor: '#10b981', color: '#10b981' }}>
+                                                Generate Bins
+                                            </Button>
                                             <Button type="primary" icon={<PlusOutlined />}
                                                 onClick={() => { binForm.resetFields(); setBinModalOpen(true); }}
                                                 style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', borderRadius: 8, border: 'none' }}>
@@ -564,34 +686,45 @@ export default function WarehousesPage() {
                                         </Space>
                                     </div>
 
-                                    <Row gutter={16}>
-                                        <Col xs={24} lg={10}>
-                                            <Text strong className="text-sm mb-2 block"
-                                                style={{ background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                                                Zones
+                                    {/* Zones Table */}
+                                    <div style={{ marginBottom: 16 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                            <Text strong style={{ fontSize: 13, background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                                <AppstoreOutlined style={{ marginRight: 6 }} />Zones ({filteredZones.length})
                                             </Text>
-                                            <Table dataSource={filteredZones} columns={zoneColumns}
-                                                rowKey="id" loading={loading} size="small"
-                                                pagination={{ pageSize: 8, showSizeChanger: false }}
-                                                onRow={(record) => ({
-                                                    onClick: () => setSelectedZoneId(record.id),
-                                                    style: { cursor: 'pointer', background: selectedZoneId === record.id ? '#f5f3ff' : undefined },
-                                                })}
-                                                scroll={{ x: 600 }}
-                                            />
-                                        </Col>
-                                        <Col xs={24} lg={14}>
-                                            <Text strong className="text-sm mb-2 block"
-                                                style={{ background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                                                Bins {selectedZoneId ? `(${zoneMap.get(selectedZoneId)?.name || ''})` : '(All)'}
+                                            {selectedZoneId && (
+                                                <Button size="small" type="link" onClick={() => setSelectedZoneId(undefined)} style={{ fontSize: 11 }}>
+                                                    Clear zone filter
+                                                </Button>
+                                            )}
+                                        </div>
+                                        <Table dataSource={filteredZones} columns={zoneColumns}
+                                            rowKey="id" loading={loading} size="small"
+                                            pagination={{ pageSize: 6, showSizeChanger: true, showTotal: (t) => `${t} zones`, size: 'small' }}
+                                            onRow={(record) => ({
+                                                onClick: () => setSelectedZoneId(prev => prev === record.id ? undefined : record.id),
+                                                style: { cursor: 'pointer', background: selectedZoneId === record.id ? (isDark ? 'rgba(124,58,237,0.15)' : '#f5f3ff') : undefined, transition: 'background 0.2s' },
+                                            })}
+                                            scroll={{ x: 750 }}
+                                        />
+                                    </div>
+
+                                    {/* Bins Table */}
+                                    <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                            <Text strong style={{ fontSize: 13, background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                                <InboxOutlined style={{ marginRight: 6 }} />
+                                                Bins ({filteredBins.length})
+                                                {selectedZoneId && <Text type="secondary" style={{ fontSize: 11, marginLeft: 8, fontWeight: 400 }}>in {zoneMap.get(selectedZoneId)?.name || 'zone'}</Text>}
+                                                {!selectedZoneId && selectedWarehouseId && <Text type="secondary" style={{ fontSize: 11, marginLeft: 8, fontWeight: 400 }}>in {warehouseMap.get(selectedWarehouseId)?.name || 'warehouse'}</Text>}
                                             </Text>
-                                            <Table dataSource={filteredBins} columns={binColumns}
-                                                rowKey="id" loading={loading} size="small"
-                                                pagination={{ pageSize: 8, showSizeChanger: false }}
-                                                scroll={{ x: 700 }}
-                                            />
-                                        </Col>
-                                    </Row>
+                                        </div>
+                                        <Table dataSource={filteredBins} columns={binColumns}
+                                            rowKey="id" loading={loading} size="small"
+                                            pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (t) => `${t} bins`, size: 'small' }}
+                                            scroll={{ x: 900 }}
+                                        />
+                                    </div>
                                 </div>
                             ),
                         },
@@ -623,7 +756,7 @@ export default function WarehousesPage() {
                 </Card>
             </div>
 
-            {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Warehouse SteppedFormModal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+            {/* ─── Warehouse SteppedFormModal ───────────────────────────── */}
             <SteppedFormModal
                 open={whModalOpen}
                 onCancel={() => { setWhModalOpen(false); setWhEditId(null); whForm.resetFields(); }}
@@ -640,7 +773,7 @@ export default function WarehousesPage() {
                 editMode={!!whEditId}
             />
 
-            {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Zone Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+            {/* ─── Zone Modal ───────────────────────────────────────────── */}
             <Modal title="Add Zone" open={zoneModalOpen} onCancel={() => setZoneModalOpen(false)}
                 onOk={handleSaveZone} okText="Create">
                 <Form form={zoneForm} layout="vertical">
@@ -678,7 +811,7 @@ export default function WarehousesPage() {
                 </Form>
             </Modal>
 
-            {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Bin Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+            {/* ─── Bin Modal ────────────────────────────────────────────── */}
             <Modal title="Add Bin" open={binModalOpen} onCancel={() => setBinModalOpen(false)}
                 onOk={handleSaveBin} okText="Create">
                 <Form form={binForm} layout="vertical">
@@ -721,7 +854,107 @@ export default function WarehousesPage() {
                 </Form>
             </Modal>
 
-            {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Transfer Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+            {/* ─── Bulk Bin Generator Modal ────────────── */}
+            <Modal
+                title={<span style={{ background: `linear-gradient(to right, #10b981, #059669)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>Bulk Bin Generator</span>}
+                open={bulkBinModalOpen}
+                onCancel={() => setBulkBinModalOpen(false)}
+                onOk={handleBulkGenerateBins}
+                okText={`Generate Bins`}
+                confirmLoading={bulkGenerating}
+                width={640}
+                okButtonProps={{ style: { background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none' } }}
+            >
+                <Form form={bulkBinForm} layout="vertical" onValuesChange={() => bulkBinForm.getFieldsValue()}>
+                    <Form.Item name="zoneId" label="Zone" rules={[{ required: true, message: 'Select a zone' }]}>
+                        <Select placeholder="Select zone" showSearch optionFilterProp="label"
+                            options={zones.map(z => ({ value: z.id, label: `${z.code} - ${z.name} (${warehouseMap.get(z.warehouseId)?.code || ''})` }))} />
+                    </Form.Item>
+                    <Row gutter={12}>
+                        <Col span={12}>
+                            <Form.Item name="aisleStart" label="Aisle Start" rules={[{ required: true }]} initialValue="A">
+                                <Input maxLength={1} placeholder="A" style={{ textTransform: 'uppercase' }} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="aisleEnd" label="Aisle End" rules={[{ required: true }]} initialValue="D">
+                                <Input maxLength={1} placeholder="D" style={{ textTransform: 'uppercase' }} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={12}>
+                        <Col span={12}>
+                            <Form.Item name="rackStart" label="Rack Start" rules={[{ required: true }]} initialValue={1}>
+                                <InputNumber min={1} max={100} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="rackEnd" label="Rack End" rules={[{ required: true }]} initialValue={10}>
+                                <InputNumber min={1} max={100} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={12}>
+                        <Col span={12}>
+                            <Form.Item name="levelStart" label="Level Start" rules={[{ required: true }]} initialValue={1}>
+                                <InputNumber min={1} max={20} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="levelEnd" label="Level End" rules={[{ required: true }]} initialValue={5}>
+                                <InputNumber min={1} max={20} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={12}>
+                        <Col span={12}>
+                            <Form.Item name="positionStart" label="Position Start" initialValue={1}>
+                                <InputNumber min={1} max={10} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="positionEnd" label="Position End" initialValue={1}>
+                                <InputNumber min={1} max={10} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={12}>
+                        <Col span={8}>
+                            <Form.Item name="binType" label="Bin Type" initialValue="standard">
+                                <Select options={[
+                                    { value: 'standard', label: 'Standard' },
+                                    { value: 'pallet', label: 'Pallet' },
+                                    { value: 'shelf', label: 'Shelf' },
+                                    { value: 'floor', label: 'Floor' },
+                                    { value: 'cold', label: 'Cold' },
+                                ]} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item name="maxWeight" label="Max Weight (kg)">
+                                <InputNumber min={0} style={{ width: '100%' }} placeholder="0" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item name="codePrefix" label="Code Prefix">
+                                <Input placeholder="e.g. BLK-" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <div style={{ padding: '12px 16px', borderRadius: 12, background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(5,150,105,0.04))', border: '1px solid rgba(16,185,129,0.2)', marginTop: 8 }}>
+                        <Space direction="vertical" size={2}>
+                            <Text strong style={{ color: '#10b981', fontSize: 14 }}>
+                                Preview: This will create approximately {bulkBinPreview.toLocaleString()} bins
+                            </Text>
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                                Code format: [Prefix]Aisle-Rack-Level-Position (e.g. A-01-L1-P1)
+                            </Text>
+                        </Space>
+                    </div>
+                </Form>
+            </Modal>
+
+            {/* ─── Transfer Modal ────────────────────────────────────────── */}
             <Modal title="New Stock Transfer" open={trfModalOpen} onCancel={() => setTrfModalOpen(false)}
                 onOk={handleCreateTransfer} okText="Create Transfer" width={600}>
                 <Form form={trfForm} layout="vertical">

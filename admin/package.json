@@ -20,6 +20,7 @@
     "@cyntler/react-doc-viewer": "^1.17.0",
     "@emotion/css": "^11.13.5",
     "@gsap/react": "^2.1.2",
+    "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.2.2",
     "@number-flow/react": "^0.5.10",
     "@radix-ui/react-accordion": "^1.2.12",

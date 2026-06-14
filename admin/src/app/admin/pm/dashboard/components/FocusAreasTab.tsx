@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { ProCard } from "@ant-design/pro-components";
-import { Button, message, Space, Typography, Spin, Input, Progress, Tag, Tooltip, Select, Row, Col, Card } from "antd";
-import { FlagOutlined, SaveOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { Button, message, Space, Typography, Spin, Input, Progress, Tag, Select, Row, Col, Card, Slider } from "antd";
+import { FlagOutlined, SaveOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
+import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RTooltip } from 'recharts';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -66,9 +67,7 @@ export default function FocusAreasTab({ projectId }: { projectId: string }) {
             const map: Record<string, any> = {};
             items.forEach((item: any) => { map[item.focus_area_key || item.focusAreaKey] = item; });
             setAreas(map);
-        } catch {
-            // first load
-        } finally {
+        } catch (err: any) { console.error("PM Error", err); } finally {
             setLoading(false);
         }
     }, [projectId]);
@@ -114,6 +113,14 @@ export default function FocusAreasTab({ projectId }: { projectId: string }) {
     const avgProgress = Math.round(
         FOCUS_AREAS.reduce((sum, fa) => sum + (areas[fa.key]?.progressPercent || areas[fa.key]?.progress_percent || 0), 0) / FOCUS_AREAS.length
     );
+
+    const radarData = useMemo(() =>
+        FOCUS_AREAS.map(f => ({
+            area: f.name.length > 12 ? f.name.slice(0, 10) + '..' : f.name,
+            progress: areas[f.key]?.progressPercent || areas[f.key]?.progress_percent || 0,
+            fullMark: 100,
+        })),
+    [areas]);
 
     return (
         <div>
@@ -168,6 +175,22 @@ export default function FocusAreasTab({ projectId }: { projectId: string }) {
                         </Text>
                     </div>
                 </div>
+
+                {radarData.some(d => d.progress > 0) && (
+                    <Card size="small" title={<Space><span style={{ fontWeight: 600 }}>Focus Areas Balance</span></Space>} style={{ marginBottom: 16, borderRadius: 10, background: isDark ? 'rgba(15,15,23,0.7)' : undefined, border: isDark ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                        <div style={{ height: 260 }}>
+                            <ResponsiveContainer>
+                                <RadarChart data={radarData} cx="50%" cy="50%">
+                                    <PolarGrid stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'} />
+                                    <PolarAngleAxis dataKey="area" tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }} />
+                                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 9, fill: isDark ? '#64748b' : '#94a3b8' }} />
+                                    <RTooltip contentStyle={{ background: isDark ? '#1e1e2e' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, borderRadius: 8, fontSize: 12 }} formatter={(v: number) => [`${v}%`]} />
+                                    <Radar name="Progress" dataKey="progress" stroke="#10b981" fill="#10b981" fillOpacity={0.25} strokeWidth={2} />
+                                </RadarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </Card>
+                )}
 
                 <Row gutter={[16, 16]}>
                     {FOCUS_AREAS.map(fa => {
@@ -225,11 +248,10 @@ export default function FocusAreasTab({ projectId }: { projectId: string }) {
                                             showInfo={false}
                                             style={{ marginTop: 4 }}
                                         />
-                                        <input
-                                            type="range" min={0} max={100} step={5}
-                                            value={prog}
-                                            onChange={e => handleChange(fa.key, 'progressPercent', parseInt(e.target.value))}
-                                            style={{ width: '100%', accentColor: fa.color }}
+                                        <Slider
+                                            min={0} max={100}
+                                            value={areas[fa.key]?.progressPercent || areas[fa.key]?.progress_percent || 0}
+                                            onChange={(val: number) => setAreas(prev => ({ ...prev, [fa.key]: { ...prev[fa.key], progressPercent: val, dirty: true } }))}
                                         />
                                     </div>
 
@@ -273,3 +295,4 @@ export default function FocusAreasTab({ projectId }: { projectId: string }) {
         </div>
     );
 }
+

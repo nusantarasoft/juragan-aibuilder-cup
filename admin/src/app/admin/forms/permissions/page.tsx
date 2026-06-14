@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { Card, Button, Space, Tag, Typography, Row, Col, Table, Select, Switch, message, Avatar, Badge, Empty, Spin, Tooltip, Divider, Input, Modal, Checkbox } from "antd";
+import { Card, Button, Space, Tag, Typography, Row, Col, Table, Select, Switch, message, Avatar, Badge, Empty, Spin, Tooltip, Divider, Input, Modal, Checkbox, theme } from "antd";
 import {
     LockOutlined, TeamOutlined, UserOutlined, CheckCircleOutlined,
     EyeOutlined, EditOutlined, DeleteOutlined, PlusOutlined,
@@ -54,6 +54,8 @@ const PERMISSION_LABELS: { key: keyof PermissionEntry; label: string; icon: Reac
 
 export default function FormPermissionsPage() {
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const [messageApi, ctx] = message.useMessage();
     const [permissions, setPermissions] = useState<PermissionEntry[]>(DEFAULT_PERMISSIONS);
     const [selectedRole, setSelectedRole] = useState<string | null>(null);
@@ -180,7 +182,7 @@ export default function FormPermissionsPage() {
                                             <Text style={{ fontSize: 22, fontWeight: 700, color: role.roleColor }}>{grantCount}</Text>
                                             <Text type="secondary" style={{ fontSize: 10 }}> / {PERMISSION_LABELS.length}</Text>
                                         </div>
-                                        <div style={{ height: 4, borderRadius: 2, background: '#f0f0f0', overflow: 'hidden' }}>
+                                        <div style={{ height: 4, borderRadius: 2, background: isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0', overflow: 'hidden' }}>
                                             <div style={{ width: `${(grantCount / PERMISSION_LABELS.length) * 100}%`, height: '100%', background: role.roleColor, borderRadius: 2 }} />
                                         </div>
                                     </Card>
@@ -205,8 +207,8 @@ export default function FormPermissionsPage() {
                                 <div key={perm.key as string} style={{
                                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                     padding: '8px 12px', borderRadius: 8,
-                                    background: (selectedPerm[perm.key] as boolean) ? `${perm.color}08` : '#fafafa',
-                                    border: `1px solid ${(selectedPerm[perm.key] as boolean) ? `${perm.color}20` : '#f0f0f0'}`,
+                                    background: (selectedPerm[perm.key] as boolean) ? `${perm.color}08` : isDark ? 'rgba(255,255,255,0.03)' : '#fafafa',
+                                    border: `1px solid ${(selectedPerm[perm.key] as boolean) ? `${perm.color}20` : isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}`,
                                 }}>
                                     <Space>
                                         <span style={{ color: perm.color }}>{perm.icon}</span>

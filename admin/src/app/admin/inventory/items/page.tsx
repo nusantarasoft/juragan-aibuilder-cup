@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import RbacGuard from "@/components/common/RbacGuard";
-import { Badge, Button, Card, Col, Descriptions, Divider, Drawer, Empty, Form, Image, Input, InputNumber, message, Modal, Popconfirm, Progress, Row, Segmented, Select, Space, Spin, Statistic, Steps, Switch, Table, Tabs, Tag, Tooltip, Typography } from "antd";
+import { Badge, Button, Card, Col, Descriptions, Divider, Drawer, Empty, Form, Image, Input, InputNumber, message, Modal, Popconfirm, Progress, Row, Segmented, Select, Space, Spin, Statistic, Steps, Switch, Table, Tabs, Tag, Tooltip, Typography, theme } from "antd";
 import {
     PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined,
     DropboxOutlined, ShoppingCartOutlined, CalendarOutlined,
@@ -23,10 +23,12 @@ import { AuroraText } from "@/components/magicui/aurora-text";
 import { TooltipWrapper as AnimatedTooltip } from "@/components/mvpblocks/AnimatedTooltip";
 import ItemMediaGallery, { ProductGallery, MediaInfo } from "@/components/inventory/ItemMediaGallery";
 import { inventoryService, InvItem, InvCategory, InvStockStats, AiClassification } from "@/lib/inventoryService";
+import { useRouter } from "next/navigation";
 
 const { Title, Text, Paragraph } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const glassDark = { background: 'rgba(12,12,30,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14 };
+const glassAuto = (dark: boolean) => dark ? glassDark : glass;
 
 const SELLABLE_FULFILLMENT_TYPES = [
     { value: 'physical', label: 'Physical Goods', icon: <DropboxOutlined />, color: 'var(--theme-color, #7c3aed)', desc: 'Tangible products with stock tracking', example: 'Laptop, T-shirt, Bolt', sellable: true },
@@ -75,6 +77,9 @@ const WIZARD_STEPS = [
 export default function ItemMasterPage() {
     const [items, setItems] = useState<InvItem[]>([]);
     const { themeColor } = usePreferencesStore();
+    const router = useRouter();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const { startDate, endDate } = useDateRangeStore();
     const [categories, setCategories] = useState<InvCategory[]>([]);
     const [stats, setStats] = useState<InvStockStats | null>(null);
@@ -367,6 +372,11 @@ export default function ItemMasterPage() {
                                 onClick={() => openMakeSellable(r)} />
                         </AnimatedTooltip>
                     )}
+                    <AnimatedTooltip content="Locate in Warehouse">
+                        <Button type="text" size="small" icon={<InboxOutlined />}
+                            className="text-gray-400 hover:text-green-500"
+                            onClick={() => router.push(`/admin/inventory/item-locator?bin=${encodeURIComponent(r.sku || r.name)}`)} />
+                    </AnimatedTooltip>
                     <Popconfirm title="Delete this item?" onConfirm={() => handleDelete(r.id)}>
                         <AnimatedTooltip content="Delete">
                             <Button type="text" size="small" icon={<DeleteOutlined />}
@@ -406,7 +416,7 @@ export default function ItemMasterPage() {
                         <Col key={i} xs={12} sm={8} md={4}>
                             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, type: 'spring', stiffness: 260, damping: 20 }}>
                                 <Card size="small" className="hover:shadow-md transition-shadow" style={{
-                                    ...glassDark, borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden',
+                                    ...(isDark ? glassDark : glass), borderTop: `3px solid ${s.color}`, position: 'relative', overflow: 'hidden',
                                 }}>
                                     <div style={{ position: 'absolute', top: -10, right: -10, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle, ${s.color}18 0%, transparent 70%)`, pointerEvents: 'none' }} />
                                     <div className="flex items-center gap-3" style={{ position: 'relative' }}>
@@ -415,7 +425,7 @@ export default function ItemMasterPage() {
                                             {s.icon}
                                         </div>
                                         <div>
-                                            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5, textTransform: 'uppercase' as const }} className="block">{s.title}</Text>
+                                            <Text style={{ fontSize: 10, color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', letterSpacing: 0.5, textTransform: 'uppercase' as const }} className="block">{s.title}</Text>
                                             <Text strong style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.value}</Text>
                                         </div>
                                     </div>
@@ -427,7 +437,7 @@ export default function ItemMasterPage() {
 
                 {/* Toolbar */}
                 <Card size="small" style={{
-                    ...glassDark,
+                    ...(isDark ? glassDark : glass),
                 }}>
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -489,7 +499,7 @@ export default function ItemMasterPage() {
                 {/* Table / Grid */}
                 <Card size="small" style={{
                     flex: 1, minHeight: 0,
-                    ...glassDark, borderLeft: `3px solid var(--theme-color, #7c3aed)`,
+                    ...(isDark ? glassDark : glass), borderLeft: `3px solid var(--theme-color, #7c3aed)`,
                 }}>
                     {viewMode === 'table' ? (
                         <Table
@@ -547,7 +557,7 @@ export default function ItemMasterPage() {
                 styles={{ body: { padding: 0 } }}
             >
                 {/* Drawer Header */}
-                <div style={{ padding: '20px 28px 0', borderBottom: '1px solid #f0f0f0', paddingBottom: 20 }}>
+                <div style={{ padding: '20px 28px 0', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}`, paddingBottom: 20 }}>
                     <div className="flex items-center justify-between mb-4">
                         <div>
                             <Title level={4} className="!m-0" style={{ background: 'linear-gradient(135deg, var(--theme-color, #7c3aed), var(--theme-secondary, #6366f1))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -579,7 +589,7 @@ export default function ItemMasterPage() {
                                             return (
                                                 <motion.div key={ft.value} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                                                     <Card hoverable onClick={() => { setSelectedFulfillment(ft.value); form.setFieldsValue({ fulfillmentType: ft.value, itemType: ITEM_TYPE_FOR_FULFILLMENT[ft.value] }); }}
-                                                        style={{ borderRadius: 14, cursor: 'pointer', transition: 'all 0.25s', border: isActive ? `2px solid ${ft.color}` : '2px solid #f0f0f0', background: isActive ? `${ft.color}08` : '#fff', boxShadow: isActive ? `0 4px 20px ${ft.color}20` : 'none' }}
+                                                        style={{ borderRadius: 14, cursor: 'pointer', transition: 'all 0.25s', border: isActive ? `2px solid ${ft.color}` : `2px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}`, background: isActive ? `${ft.color}08` : isDark ? 'rgba(255,255,255,0.03)' : '#fff', boxShadow: isActive ? `0 4px 20px ${ft.color}20` : 'none' }}
                                                         styles={{ body: { padding: '16px' } }}>
                                                         <div className="flex items-start gap-3">
                                                             <div style={{ width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, background: `${ft.color}${isActive ? '20' : '10'}`, color: ft.color }}>{ft.icon}</div>
@@ -601,7 +611,7 @@ export default function ItemMasterPage() {
                                             return (
                                                 <motion.div key={ft.value} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.04 }}>
                                                     <Card hoverable onClick={() => { setSelectedFulfillment(ft.value); form.setFieldsValue({ fulfillmentType: ft.value, itemType: ITEM_TYPE_FOR_FULFILLMENT[ft.value] }); }}
-                                                        style={{ borderRadius: 12, cursor: 'pointer', transition: 'all 0.25s', border: isActive ? `2px solid ${ft.color}` : '2px solid #f0f0f0', background: isActive ? `${ft.color}08` : '#fafafa', boxShadow: isActive ? `0 3px 14px ${ft.color}20` : 'none' }}
+                                                        style={{ borderRadius: 12, cursor: 'pointer', transition: 'all 0.25s', border: isActive ? `2px solid ${ft.color}` : `2px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}`, background: isActive ? `${ft.color}08` : isDark ? 'rgba(255,255,255,0.02)' : '#fafafa', boxShadow: isActive ? `0 3px 14px ${ft.color}20` : 'none' }}
                                                         styles={{ body: { padding: '12px 14px' } }}>
                                                         <div className="flex items-center gap-3">
                                                             <div style={{ width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, background: `${ft.color}${isActive ? '20' : '10'}`, color: ft.color }}>{ft.icon}</div>
@@ -784,7 +794,7 @@ export default function ItemMasterPage() {
                                     </Row>
 
                                     {!isSellableType(selectedFulfillment) && (
-                                        <Card size="small" style={{ borderRadius: 12, background: '#fafafa', border: '1px solid #e5e7eb', marginTop: 8 }}>
+                                        <Card size="small" style={{ borderRadius: 12, background: isDark ? 'rgba(255,255,255,0.04)' : '#fafafa', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}`, marginTop: 8 }}>
                                             <Text type="secondary" className="text-xs">ðŸ’¡ This is an internal item (not for resale). Only cost price is tracked. To make it sellable, change the type in Step 1.</Text>
                                         </Card>
                                     )}
@@ -930,11 +940,11 @@ export default function ItemMasterPage() {
                                                             {galleryMediaIds.slice(0, 6).map(mid => {
                                                                 const m = mediaMap[mid];
                                                                 return m ? (
-                                                                    <img key={mid} src={m.url} alt={m.filename} style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', border: '2px solid #f0f0f0' }} />
-                                                                ) : <div key={mid} style={{ width: 64, height: 64, borderRadius: 10, background: '#f5f5f5' }} />;
+                                                                    <img key={mid} src={m.url} alt={m.filename} style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', border: `2px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}` }} />
+                                                                ) : <div key={mid} style={{ width: 64, height: 64, borderRadius: 10, background: isDark ? 'rgba(255,255,255,0.06)' : '#f5f5f5' }} />;
                                                             })}
                                                             {galleryMediaIds.length > 6 && (
-                                                                <div style={{ width: 64, height: 64, borderRadius: 10, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: '#999' }}>+{galleryMediaIds.length - 6}</div>
+                                                                <div style={{ width: 64, height: 64, borderRadius: 10, background: isDark ? 'rgba(255,255,255,0.06)' : '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: isDark ? 'rgba(255,255,255,0.4)' : '#999' }}>+{galleryMediaIds.length - 6}</div>
                                                             )}
                                                         </div>
                                                     </Card>
@@ -986,7 +996,7 @@ export default function ItemMasterPage() {
                 </div>
 
                 {/* Footer Navigation */}
-                <div style={{ padding: '16px 28px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa' }}>
+                <div style={{ padding: '16px 28px', borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: isDark ? 'rgba(255,255,255,0.02)' : '#fafafa' }}>
                     <Button icon={<ArrowLeftOutlined />} onClick={() => setWizardStep(Math.max(0, wizardStep - 1))}
                         disabled={wizardStep === 0} style={{ borderRadius: 10 }}>Back</Button>
                     <div className="flex items-center gap-2">
@@ -1037,7 +1047,7 @@ export default function ItemMasterPage() {
             >
                 {sellableItem && (
                     <>
-                        <div style={{ padding: '24px 28px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                        <div style={{ padding: '24px 28px 16px', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}` }}>
                             <div className="flex items-center gap-3">
                                 <div style={{ width: 44, height: 44, borderRadius: 12, background: '#10b98115', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
                                     <ShoppingOutlined style={{ color: '#10b981' }} />
@@ -1118,7 +1128,7 @@ export default function ItemMasterPage() {
                     return (
                         <div>
                             {/* Hero Header */}
-                            <div style={{ padding: '24px 24px 16px', background: `linear-gradient(135deg, ${ft?.color || 'var(--theme-color, #7c3aed)'}08, ${ft?.color || 'var(--theme-color, #7c3aed)'}03)`, borderBottom: '1px solid #f0f0f0' }}>
+                            <div style={{ padding: '24px 24px 16px', background: `linear-gradient(135deg, ${ft?.color || 'var(--theme-color, #7c3aed)'}08, ${ft?.color || 'var(--theme-color, #7c3aed)'}03)`, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}` }}>
                                 <div className="flex items-center gap-4 mb-3">
                                     <div style={{ width: 56, height: 56, borderRadius: 14, background: `${ft?.color || 'var(--theme-color, #7c3aed)'}15`, color: ft?.color || 'var(--theme-color, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
                                         {ft?.icon || <DropboxOutlined />}
@@ -1150,19 +1160,19 @@ export default function ItemMasterPage() {
                                             {/* Price Summary Cards */}
                                             <Row gutter={12}>
                                                 <Col span={8}>
-                                                    <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: '#f9fafb' }}>
+                                                    <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb' }}>
                                                         <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Cost</Text>
                                                         <Text strong style={{ fontSize: 14 }}>{(detailDrawer.costPrice || 0).toLocaleString()}</Text>
                                                     </Card>
                                                 </Col>
                                                 <Col span={8}>
-                                                    <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: '#f0fdf4' }}>
+                                                    <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: isDark ? 'rgba(34,197,94,0.08)' : '#f0fdf4' }}>
                                                         <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Sell</Text>
                                                         <Text strong style={{ fontSize: 14, color: themeColor }}>{(detailDrawer.sellingPrice || 0).toLocaleString()}</Text>
                                                     </Card>
                                                 </Col>
                                                 <Col span={8}>
-                                                    <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: profit >= 0 ? '#f0fdf4' : '#fef2f2' }}>
+                                                    <Card size="small" style={{ borderRadius: 10, textAlign: 'center', background: profit >= 0 ? (isDark ? 'rgba(34,197,94,0.08)' : '#f0fdf4') : (isDark ? 'rgba(239,68,68,0.08)' : '#fef2f2') }}>
                                                         <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Margin</Text>
                                                         <Text strong style={{ fontSize: 14, color: profit >= 0 ? '#16a34a' : '#dc2626' }}>
                                                             {(detailDrawer.costPrice || 0) > 0 ? `${marginPct.toFixed(0)}%` : 'â€”'}
@@ -1172,7 +1182,7 @@ export default function ItemMasterPage() {
                                             </Row>
 
                                             {detailDrawer.description && (
-                                                <Card size="small" style={{ borderRadius: 10, background: '#fafafa' }}>
+                                                <Card size="small" style={{ borderRadius: 10, background: isDark ? 'rgba(255,255,255,0.04)' : '#fafafa' }}>
                                                     <Text type="secondary" className="text-xs uppercase tracking-wider block mb-1">Description</Text>
                                                     <Paragraph className="!mb-0" style={{ fontSize: 13 }}>{detailDrawer.description}</Paragraph>
                                                 </Card>

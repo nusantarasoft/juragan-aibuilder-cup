@@ -44,6 +44,12 @@ import {
     LeftOutlined,
     MenuFoldOutlined,
     MenuUnfoldOutlined,
+    RobotOutlined,
+    GlobalOutlined,
+    InfoCircleOutlined,
+    UndoOutlined,
+    RedoOutlined,
+    BgColorsOutlined
 } from "@ant-design/icons";
 import { motion, AnimatePresence } from "framer-motion";
 import { DnDProvider, DraggableLibraryBlock, SortableBlock, CanvasDropZone } from "@/components/dnd/DragDropComponents";
@@ -55,6 +61,7 @@ import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 // Import types and upgraded components
 import { PageBlock, BlockProps, blockDefaults } from "./types";
+import { aiService } from "@/lib/aiService";
 import { BlockRenderer } from "./BlockRenderer";
 import { PropertyEditor } from "./PropertyEditor";
 import { ElementTree, PageStructure } from "./ElementTree";
@@ -115,10 +122,27 @@ const blockCategories = [
                 name: "Sections",
                 blocks: [
                     { type: "hero", name: "Hero Banner", icon: "🎨" },
+                    { type: "hero3d", name: "3D Hero", icon: "🧊" },
                     { type: "features", name: "Features", icon: "📦" },
+                    { type: "bento", name: "Bento Grid", icon: "🍱" },
                     { type: "testimonials", name: "Testimonials", icon: "💬" },
                     { type: "pricing", name: "Pricing", icon: "💰" },
+                    { type: "glassPricing", name: "Glass Pricing", icon: "💎" },
                     { type: "contact", name: "Contact", icon: "📧" },
+                ],
+            },
+            {
+                name: "Integrations",
+                blocks: [
+                    { type: "products", name: "Product Showcase", icon: "🛍️" },
+                    { type: "leadForm", name: "Lead Gen Form", icon: "📋" },
+                ],
+            },
+            {
+                name: "MagicUI",
+                blocks: [
+                    { type: "marquee", name: "Marquee", icon: "🔄" },
+                    { type: "globe", name: "3D Globe", icon: "🌍" },
                 ],
             },
         ],
@@ -228,6 +252,58 @@ function PageBuilderContent() {
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [hasChanges, setHasChanges] = useState(false);
     const [sidebarView, setSidebarView] = useState<'library' | 'properties'>('library');
+
+    // History State (Undo/Redo)
+    const [history, setHistory] = useState<PageBlock[][]>([]);
+    const [future, setFuture] = useState<PageBlock[][]>([]);
+
+    // Canvas Theme State
+    const [canvasTheme, setCanvasTheme] = useState<'light' | 'dark'>('light');
+
+    // AI Generator State
+    const [aiGenerateModalOpen, setAiGenerateModalOpen] = useState(false);
+    const [aiPrompt, setAiPrompt] = useState("");
+    const [isAiGenerating, setIsAiGenerating] = useState(false);
+
+    // Helper to push state to history before updating blocks
+    const updateBlocksWithHistory = (newBlocks: PageBlock[] | ((prev: PageBlock[]) => PageBlock[])) => {
+        setBlocks(prev => {
+            const resolvedBlocks = typeof newBlocks === 'function' ? newBlocks(prev) : newBlocks;
+            setHistory(h => [...h, prev]);
+            setFuture([]);
+            setHasChanges(true);
+            return resolvedBlocks;
+        });
+    };
+
+    const handleUndo = () => {
+        if (history.length > 0) {
+            const prevState = history[history.length - 1];
+            setHistory(h => h.slice(0, -1));
+            setFuture(f => [blocks, ...f]);
+            setBlocks(prevState);
+            setHasChanges(true);
+        }
+    };
+
+    const handleRedo = () => {
+        if (future.length > 0) {
+            const nextState = future[0];
+            setFuture(f => f.slice(1));
+            setHistory(h => [...h, blocks]);
+            setBlocks(nextState);
+            setHasChanges(true);
+        }
+    };
+
+    // SEO Settings State
+    const [seoDrawerOpen, setSeoDrawerOpen] = useState(false);
+    const [seoSettings, setSeoSettings] = useState({
+        title: '',
+        description: '',
+        keywords: '',
+        ogImage: ''
+    });
 
     // Panel states
     const [libraryDock, setLibraryDock] = useState<DockPosition>('left');
@@ -361,14 +437,14 @@ function PageBuilderContent() {
             icon,
             props,
         };
-        setBlocks([...blocks, newBlock]);
+        updateBlocksWithHistory([...blocks, newBlock]);
         setSelectedBlockId(newBlock.id);
         setHasChanges(true);
         message.success(`Added ${name}`);
     };
 
     const removeBlock = (id: string) => {
-        setBlocks(blocks.filter((b) => b.id !== id));
+        updateBlocksWithHistory(blocks.filter((b) => b.id !== id));
         if (selectedBlockId === id) {
             setSelectedBlockId(null);
         }
@@ -381,13 +457,13 @@ function PageBuilderContent() {
         const draggedBlock = newBlocks[dragIndex];
         newBlocks.splice(dragIndex, 1);
         newBlocks.splice(hoverIndex, 0, draggedBlock);
-        setBlocks(newBlocks);
+        updateBlocksWithHistory(newBlocks);
         setHasChanges(true);
     }, [blocks]);
 
     const updateBlockProps = (props: BlockProps) => {
         if (!selectedBlockId) return;
-        setBlocks(blocks.map(b =>
+        updateBlocksWithHistory(blocks.map(b =>
             b.id === selectedBlockId ? { ...b, props } : b
         ));
         setHasChanges(true);
@@ -402,7 +478,7 @@ function PageBuilderContent() {
         blockName: string,
         blockIcon: string
     ) => {
-        setBlocks(prevBlocks => prevBlocks.map(block => {
+        updateBlocksWithHistory(prevBlocks => prevBlocks.map(block => {
             if (block.id === parentBlockId && block.type === "gridContainer") {
                 const rows = [...((block.props.rows as any[]) || [])];
                 if (rows[rowIndex]) {
@@ -498,7 +574,7 @@ function PageBuilderContent() {
                 try {
                     const data = JSON.parse(event.target?.result as string);
                     if (data.blocks && Array.isArray(data.blocks)) {
-                        setBlocks(data.blocks);
+                        updateBlocksWithHistory(data.blocks);
                         if (data.title) setPageTitle(data.title);
                         setHasChanges(true);
                         message.success("Page imported successfully!");
@@ -560,10 +636,26 @@ function PageBuilderContent() {
             icon: b.icon,
             props: (b as any).props || blockDefaults[b.type] || {},
         }));
-        setBlocks([...blocks, ...newBlocks]);
+        updateBlocksWithHistory([...blocks, ...newBlocks]);
         setHasChanges(true);
         setTemplatePreview(null);
         message.success(`Added ${templatePreview.name} template`);
+    };
+
+    // Handle Global AI Generate
+    const handleGeneratePage = async () => {
+        if (!aiPrompt) return;
+        setIsAiGenerating(true);
+        try {
+            const newBlocks = await aiService.generatePage(aiPrompt);
+            updateBlocksWithHistory(newBlocks);
+            setAiGenerateModalOpen(false);
+            setAiPrompt("");
+            message.success("Page generated successfully!");
+        } catch (error) {
+            message.error("Failed to generate page.");
+        }
+        setIsAiGenerating(false);
     };
 
     // Build library items with nested Collapse
@@ -688,6 +780,32 @@ function PageBuilderContent() {
                 </div>
             }
             extra={[
+                <Tooltip key="undo-tip" title="Undo">
+                    <Button
+                        key="undo"
+                        icon={<UndoOutlined />}
+                        onClick={handleUndo}
+                        disabled={history.length === 0}
+                    />
+                </Tooltip>,
+                <Tooltip key="redo-tip" title="Redo">
+                    <Button
+                        key="redo"
+                        icon={<RedoOutlined />}
+                        onClick={handleRedo}
+                        disabled={future.length === 0}
+                    />
+                </Tooltip>,
+                <Tooltip key="ai-tip" title="Generate Page via AI">
+                    <Button
+                        key="ai-generate"
+                        icon={<RobotOutlined />}
+                        onClick={() => setAiGenerateModalOpen(true)}
+                        style={{ color: '#8b5cf6', borderColor: '#8b5cf6' }}
+                    >
+                        AI Generate
+                    </Button>
+                </Tooltip>,
                 <Tooltip key="import-tip" title="Import Page">
                     <Button
                         key="import"
@@ -702,6 +820,15 @@ function PageBuilderContent() {
                         onClick={exportPage}
                         disabled={blocks.length === 0}
                     />
+                </Tooltip>,
+                <Tooltip key="seo-tip" title="SEO Settings">
+                    <Button
+                        key="seo"
+                        icon={<GlobalOutlined />}
+                        onClick={() => setSeoDrawerOpen(true)}
+                    >
+                        SEO
+                    </Button>
                 </Tooltip>,
                 <Button
                     key="preview"
@@ -735,8 +862,8 @@ function PageBuilderContent() {
                 {/* Canvas - Full width with dynamic margins based on docked panels */}
                 <div
                     style={{
-                        marginLeft: libraryVisible && libraryDock === 'left' && !libraryMinimized ? 296 : 0,
-                        marginRight: (structureVisible && structureDock === 'right' && !structureMinimized) || (libraryVisible && libraryDock === 'right' && !libraryMinimized) ? 296 : 0,
+                        marginLeft: !previewMode && libraryVisible && libraryDock === 'left' && !libraryMinimized ? 296 : 0,
+                        marginRight: !previewMode && ((structureVisible && structureDock === 'right' && !structureMinimized) || (libraryVisible && libraryDock === 'right' && !libraryMinimized)) ? 296 : 0,
                         transition: 'margin 0.2s ease',
                         flex: 1,
                         minHeight: 0,
@@ -791,16 +918,17 @@ function PageBuilderContent() {
                         height: '100%', 
                         width: '100%',
                         overflow: 'hidden', 
-                        background: 'rgba(255, 255, 255, 0.6)',
-                        backdropFilter: 'blur(12px)',
-                        WebkitBackdropFilter: 'blur(12px)',
-                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.04)',
-                        border: '1px solid rgba(255, 255, 255, 0.5)',
-                        borderRadius: 8,
+                        background: 'rgba(255, 255, 255, 0.4)',
+                        backdropFilter: 'blur(20px)',
+                        WebkitBackdropFilter: 'blur(20px)',
+                        boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+                        border: '1px solid rgba(255, 255, 255, 0.6)',
+                        borderRadius: 12,
                     }}
                     headStyle={{
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        borderBottom: '1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)',
+                        background: 'rgba(255, 255, 255, 0.2)',
+                        backdropFilter: 'blur(10px)',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.4)',
                         minHeight: 40,
                     }}
                     extra={
@@ -827,9 +955,16 @@ function PageBuilderContent() {
                     }
                     bodyStyle={{ height: 'calc(100% - 40px)', padding: 0, background: 'transparent', overflowY: 'hidden' }}
                 >
-                    <div style={{ flex: 1, width: '100%', height: '100%', display: 'flex', justifyContent: 'center', background: 'rgba(0,0,0,0.02)', overflowY: 'auto', padding: 24 }}>
+                    {/* Toolbar beneath title for theme toggles */}
+                    <div style={{ padding: '8px 24px', borderBottom: '1px solid var(--theme-color, #7c3aed)20', display: 'flex', justifyContent: 'space-between', background: 'white' }}>
+                        <Space>
+                            <Button size="small" type={canvasTheme === 'light' ? 'primary' : 'default'} onClick={() => setCanvasTheme('light')}>Light Mode</Button>
+                            <Button size="small" type={canvasTheme === 'dark' ? 'primary' : 'default'} onClick={() => setCanvasTheme('dark')} style={{ background: canvasTheme === 'dark' ? '#000' : undefined, color: canvasTheme === 'dark' ? '#fff' : undefined }}>Dark Mode</Button>
+                        </Space>
+                    </div>
+                    <div className={canvasTheme} style={{ flex: 1, width: '100%', height: '100%', display: 'flex', justifyContent: 'center', background: canvasTheme === 'dark' ? '#111' : 'rgba(0,0,0,0.02)', overflowY: 'auto', padding: 24, transition: 'background 0.3s ease' }}>
                         <div style={{ 
-                            width: viewportMode === 'mobile' ? 375 : viewportMode === 'tablet' ? 768 : (viewportMode === 'desktop' && desktopResolution !== 'auto') ? desktopResolution : '100%', 
+                            width: previewMode ? '100%' : (viewportMode === 'mobile' ? 375 : viewportMode === 'tablet' ? 768 : (viewportMode === 'desktop' && desktopResolution !== 'auto') ? desktopResolution : '100%'), 
                             minHeight: '100%',
                             transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                             display: 'flex',
@@ -1056,6 +1191,117 @@ function PageBuilderContent() {
                     onUpdate={updateBlockProps}
                 />
             </Drawer>
+
+            {/* SEO Settings Drawer */}
+            <Drawer
+                title="Global SEO Settings"
+                placement="right"
+                onClose={() => setSeoDrawerOpen(false)}
+                open={seoDrawerOpen}
+                width={400}
+                styles={{ header: { background: 'var(--theme-color, #7c3aed)', color: 'white' } }}
+            >
+                <div className="flex flex-col gap-6">
+                    <div>
+                        <label className="text-sm font-semibold text-gray-700 block mb-2">Meta Title</label>
+                        <Input 
+                            placeholder="SEO Title (defaults to page name)" 
+                            value={seoSettings.title}
+                            onChange={(e) => setSeoSettings({...seoSettings, title: e.target.value})}
+                        />
+                        <div className="text-xs text-gray-500 mt-1">
+                            {seoSettings.title.length}/60 characters recommended
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label className="text-sm font-semibold text-gray-700 block mb-2">Meta Description</label>
+                        <Input.TextArea 
+                            rows={4} 
+                            placeholder="Write a compelling description for search engines..."
+                            value={seoSettings.description}
+                            onChange={(e) => setSeoSettings({...seoSettings, description: e.target.value})}
+                        />
+                        <div className="text-xs text-gray-500 mt-1">
+                            {seoSettings.description.length}/160 characters recommended
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-semibold text-gray-700 block mb-2">Keywords</label>
+                        <Input 
+                            placeholder="e.g. software, saas, builder" 
+                            value={seoSettings.keywords}
+                            onChange={(e) => setSeoSettings({...seoSettings, keywords: e.target.value})}
+                        />
+                    </div>
+
+                    <Divider />
+
+                    <div>
+                        <label className="text-sm font-semibold text-gray-700 block mb-2 flex items-center gap-2">
+                            Open Graph Image <Tooltip title="Preview image shown when sharing on social media"><InfoCircleOutlined /></Tooltip>
+                        </label>
+                        <Input 
+                            placeholder="https://example.com/og-image.jpg" 
+                            value={seoSettings.ogImage}
+                            onChange={(e) => setSeoSettings({...seoSettings, ogImage: e.target.value})}
+                            className="mb-2"
+                        />
+                        {seoSettings.ogImage ? (
+                            <div className="w-full h-40 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                                <img src={seoSettings.ogImage} alt="OG Preview" className="w-full h-full object-cover" />
+                            </div>
+                        ) : (
+                            <div className="w-full h-40 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 flex-col">
+                                <GlobalOutlined className="text-2xl mb-2" />
+                                <span className="text-sm">No image specified</span>
+                            </div>
+                        )}
+                    </div>
+
+                    <Button type="primary" block size="large" onClick={() => { setSeoDrawerOpen(false); message.success('SEO Settings saved'); }}>
+                        Save SEO Settings
+                    </Button>
+                </div>
+            </Drawer>
+
+            {/* AI Generator Modal */}
+            <Modal
+                title={
+                    <Space>
+                        <RobotOutlined style={{ color: '#8b5cf6' }} />
+                        <span>Generate Page with AI</span>
+                    </Space>
+                }
+                open={aiGenerateModalOpen}
+                onCancel={() => !isAiGenerating && setAiGenerateModalOpen(false)}
+                footer={null}
+                centered
+            >
+                <div className="py-4">
+                    <p className="text-gray-600 mb-4">Describe the page you want to build. Our AI will automatically select and configure the best blocks for your needs.</p>
+                    <Input.TextArea
+                        rows={4}
+                        placeholder="e.g., A landing page for a new SaaS product that does automated accounting. It needs a hero section, feature list, pricing, and a contact form."
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        disabled={isAiGenerating}
+                        className="mb-4"
+                    />
+                    <Button 
+                        type="primary" 
+                        block 
+                        size="large" 
+                        onClick={handleGeneratePage} 
+                        loading={isAiGenerating}
+                        disabled={!aiPrompt}
+                        style={{ background: '#8b5cf6', borderColor: '#8b5cf6' }}
+                    >
+                        {isAiGenerating ? 'Generating blocks...' : '✨ Generate Page'}
+                    </Button>
+                </div>
+            </Modal>
         </CMSLayout >
     );
 }

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { Card, Button, Space, Tag, Input, Select, message, Typography, Row, Col, Switch, InputNumber, Slider, Divider, Tabs, Form, ColorPicker, Collapse, Badge } from "antd";
+import { Card, Button, Space, Tag, Input, Select, message, Typography, Row, Col, Switch, InputNumber, Slider, Divider, Tabs, Form, ColorPicker, Collapse, Badge, theme } from "antd";
 import {
     SettingOutlined, SaveOutlined, BgColorsOutlined, MailOutlined,
     BellOutlined, SafetyOutlined, DatabaseOutlined, FormOutlined,
@@ -18,6 +18,8 @@ const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px
 
 export default function FormSettingsPage() {
     const { themeColor } = usePreferencesStore();
+    const { token: antToken } = theme.useToken();
+    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
     const [messageApi, contextHolder] = message.useMessage();
 
     // ── Scoring Config ──
@@ -128,7 +130,7 @@ export default function FormSettingsPage() {
                                                     <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}>
                                                         <div style={{
                                                             display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                                                            borderRadius: 10, border: '1px solid #f0f0f0',
+                                                            borderRadius: 10, border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}`,
                                                             background: `${g.color}08`,
                                                         }}>
                                                             <div style={{ width: 10, height: 10, borderRadius: '50%', background: g.color, flexShrink: 0 }} />

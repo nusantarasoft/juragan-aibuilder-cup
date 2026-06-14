@@ -18,9 +18,9 @@ import {
     Popconfirm,
     Dropdown,
     Empty,
-    Card, Row, Col, Statistic, Tooltip,
+    Card, Row, Col, Statistic, Tooltip, Segmented, Spin,
 } from "antd";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     PlusOutlined,
     EditOutlined,
@@ -31,6 +31,8 @@ import {
     GlobalOutlined,
     FileTextOutlined,
     CloudUploadOutlined,
+    AppstoreOutlined,
+    UnorderedListOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
@@ -96,6 +98,7 @@ export default function PagesListPage() {
     const [pages, setPages] = useState<CMSPage[]>([]);
     const [loading, setLoading] = useState(true);
     const [createModalOpen, setCreateModalOpen] = useState(false);
+    const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
     const [form] = Form.useForm();
 
     useEffect(() => {
@@ -302,6 +305,15 @@ export default function PagesListPage() {
             title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Pages</AuroraText>}
             subTitle={<DecryptedText text="Manage your website pages" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
+                <Segmented
+                    key="view"
+                    options={[
+                        { value: 'grid', icon: <AppstoreOutlined /> },
+                        { value: 'table', icon: <UnorderedListOutlined /> }
+                    ]}
+                    value={viewMode}
+                    onChange={(val) => setViewMode(val as "grid" | "table")}
+                />,
                 <Button
                     key="create"
                     type="primary"
@@ -327,33 +339,111 @@ export default function PagesListPage() {
                     </Col>
                 ))}
             </Row>
-            <Table scroll={{ x: 900 }}
-                columns={columns}
-                dataSource={pages}
-                rowKey="id"
-                loading={loading}
-                pagination={{
-                    pageSize: 10,
-                    showSizeChanger: true,
-                    showTotal: (total) => `${total} pages`,
-                }}
-                locale={{
-                    emptyText: (
-                        <Empty
-                            description="No pages yet"
-                            image={Empty.PRESENTED_IMAGE_SIMPLE}
-                        >
-                            <Button
-                                type="primary"
-                                icon={<PlusOutlined />}
-                                onClick={() => setCreateModalOpen(true)}
-                            >
-                                Create Your First Page
-                            </Button>
-                        </Empty>
-                    ),
-                }}
-            />
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                    <Spin size="large" />
+                </div>
+            ) : pages.length === 0 ? (
+                <Empty
+                    description="No pages yet"
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                >
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => setCreateModalOpen(true)}
+                    >
+                        Create Your First Page
+                    </Button>
+                </Empty>
+            ) : viewMode === 'table' ? (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <Table scroll={{ x: 900 }}
+                        columns={columns}
+                        dataSource={pages}
+                        rowKey="id"
+                        pagination={{
+                            pageSize: 10,
+                            showSizeChanger: true,
+                            showTotal: (total) => `${total} pages`,
+                        }}
+                        style={{ ...glass, padding: 12 }}
+                    />
+                </motion.div>
+            ) : (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <Row gutter={[16, 16]}>
+                        <AnimatePresence>
+                            {pages.map((page, index) => (
+                                <Col xs={24} md={12} lg={8} key={page.id}>
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.9 }}
+                                        transition={{ delay: index * 0.05 }}
+                                    >
+                                        <Card
+                                            hoverable
+                                            style={{ ...glass, height: '100%', overflow: 'hidden' }}
+                                            bodyStyle={{ padding: 20 }}
+                                            actions={[
+                                                <Tooltip key="preview" title="Preview"><EyeOutlined onClick={() => window.open(`/${page.slug}`, "_blank")} /></Tooltip>,
+                                                <Tooltip key="edit" title="Edit"><EditOutlined onClick={() => router.push(`/admin/pages/builder?id=${page.id}`)} /></Tooltip>,
+                                                <Tooltip key="duplicate" title="Duplicate"><CopyOutlined onClick={() => handleDuplicatePage(page.id)} /></Tooltip>,
+                                                <Dropdown key="more" menu={{
+                                                    items: [
+                                                        {
+                                                            key: "publish",
+                                                            icon: <CloudUploadOutlined />,
+                                                            label: page.status === "published" ? "Unpublish" : "Publish",
+                                                            onClick: () => handlePublish(page.id, page.status),
+                                                        },
+                                                        { type: 'divider' },
+                                                        {
+                                                            key: "delete",
+                                                            icon: <DeleteOutlined />,
+                                                            label: "Delete",
+                                                            danger: true,
+                                                            onClick: () => {
+                                                                Modal.confirm({
+                                                                    title: "Delete Page?",
+                                                                    content: `Are you sure you want to delete "${page.title}"?`,
+                                                                    okText: "Delete",
+                                                                    okType: "danger",
+                                                                    onOk: () => handleDeletePage(page.id),
+                                                                });
+                                                            },
+                                                        }
+                                                    ]
+                                                }}>
+                                                    <MoreOutlined />
+                                                </Dropdown>
+                                            ]}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                                <div style={{ fontWeight: 600, fontSize: 16 }}>
+                                                    <a onClick={() => router.push(`/admin/pages/builder?id=${page.id}`)} style={{ color: 'inherit' }}>
+                                                        {page.title}
+                                                    </a>
+                                                </div>
+                                            </div>
+                                            <div style={{ marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
+                                                <Tag color={page.status === "published" ? "green" : "orange"} style={{ margin: 0, borderRadius: 12, padding: '0 10px' }}>
+                                                    {page.status === "published" ? <><GlobalOutlined /> Published</> : "Draft"}
+                                                </Tag>
+                                                <Tag style={{ margin: 0, borderRadius: 4, background: 'rgba(0,0,0,0.02)' }}>/{page.slug}</Tag>
+                                            </div>
+                                            <div style={{ color: '#888', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <FileTextOutlined /> Updated: {new Date(page.updated_at || new Date()).toLocaleDateString()}
+                                            </div>
+                                        </Card>
+                                    </motion.div>
+                                </Col>
+                            ))}
+                        </AnimatePresence>
+                    </Row>
+                </motion.div>
+            )}
 
             {/* Create Page Modal */}
             <Modal
