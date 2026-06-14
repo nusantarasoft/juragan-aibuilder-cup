@@ -16,6 +16,8 @@ import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import FormIntegrationWidget from "@/components/forms/FormIntegrationWidget";
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
+import { AnimatedCircularProgressBar } from "@/components/magicui/animated-circular-progress-bar";
 
 const { Text } = Typography;
 
@@ -147,34 +149,65 @@ export default function CrmDashboardPage() {
             subTitle={<DecryptedText text="Overview of your entire CRM at a glance" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {/* Pipeline & Revenue */}
+            {/* Pipeline & Revenue (BENTO GRID) */}
             <div>
                 <SectionTitle icon={<DollarOutlined />} label="Pipeline & Revenue" />
-                <Row gutter={[14, 14]}>
-                    <Col xs={24} sm={12} md={6}>
-                        {navCard("View Deals", "/admin/crm/deals", <DollarOutlined />, "#3b82f6",
-                            <Statistic title="Pipeline Value" value={stats.pipelineValue} formatter={() => fmt(stats.pipelineValue)} valueStyle={{ color: '#3b82f6', fontSize: 20, fontFamily: 'monospace' }} />,
-                        0.05)}
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                        {navCard("View Deals", "/admin/crm/deals", <TrophyOutlined />, "#10b981",
-                            <Statistic title="Won Value" value={stats.wonValue} formatter={() => fmt(stats.wonValue)} valueStyle={{ color: '#10b981', fontSize: 20, fontFamily: 'monospace' }} />,
-                        0.1)}
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                        {navCard("View Quotes", "/admin/crm/quotes", <FileTextOutlined />, "#8b5cf6",
-                            <Statistic title="Quotes Value" value={stats.quotesValue} formatter={() => fmt(stats.quotesValue)} valueStyle={{ color: '#8b5cf6', fontSize: 20, fontFamily: 'monospace' }} />,
-                        0.15)}
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                            <Card style={{ borderLeft: '3px solid #f59e0b' }} styles={{ body: { padding: '16px 18px' } }}>
-                                <WinRateDonut rate={winRate} />
-                                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 6 }}>{stats.openDeals} open · {stats.totalDeals} total</Text>
-                            </Card>
-                        </motion.div>
-                    </Col>
-                </Row>
+                <BentoGrid className="mb-6 max-w-full">
+                    <BentoGridItem
+                        title="Pipeline Value"
+                        description="Total value of active deals"
+                        icon={<DollarOutlined style={{ color: '#3b82f6' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-blue-500/10" onClick={() => router.push("/admin/crm/deals")} style={{ cursor: 'pointer' }}>
+                                <Statistic value={stats.pipelineValue} formatter={() => fmt(stats.pipelineValue)} valueStyle={{ color: '#3b82f6', fontSize: 28, fontWeight: 800 }} />
+                            </div>
+                        }
+                        className="lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Won Value"
+                        description="Total closed-won deals"
+                        icon={<TrophyOutlined style={{ color: '#10b981' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-emerald-500/10" onClick={() => router.push("/admin/crm/deals")} style={{ cursor: 'pointer' }}>
+                                <Statistic value={stats.wonValue} formatter={() => fmt(stats.wonValue)} valueStyle={{ color: '#10b981', fontSize: 28, fontWeight: 800 }} />
+                            </div>
+                        }
+                        className="lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Quotes Value"
+                        description="Total value of generated quotes"
+                        icon={<FileTextOutlined style={{ color: '#8b5cf6' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-purple-500/10" onClick={() => router.push("/admin/crm/quotes")} style={{ cursor: 'pointer' }}>
+                                <Statistic value={stats.quotesValue} formatter={() => fmt(stats.quotesValue)} valueStyle={{ color: '#8b5cf6', fontSize: 28, fontWeight: 800 }} />
+                            </div>
+                        }
+                        className="lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Win Rate"
+                        description={`${stats.openDeals} open · ${stats.totalDeals} total`}
+                        icon={<RiseOutlined style={{ color: '#f59e0b' }} />}
+                        header={
+                            <div className="flex flex-col h-full w-full items-center justify-center rounded-xl bg-amber-500/10">
+                                <AnimatedCircularProgressBar
+                                    max={100}
+                                    min={0}
+                                    value={winRate}
+                                    gaugePrimaryColor={winRate >= 50 ? "#10b981" : "#f59e0b"}
+                                    gaugeSecondaryColor="rgba(16, 185, 129, 0.1)"
+                                    className="w-[80px] h-[80px] scale-90"
+                                />
+                                <div style={{ fontSize: 11, marginTop: 4, color: winRate >= 50 ? "#10b981" : "#f59e0b", fontWeight: 600 }}>
+                                    {winRate >= 50 ? 'Performing well' : 'Room to improve'}
+                                </div>
+                            </div>
+                        }
+                        className="lg:col-span-1"
+                    />
+                </BentoGrid>
             </div>
 
             {/* Pipeline Funnel Visualization */}

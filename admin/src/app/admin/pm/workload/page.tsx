@@ -5,6 +5,7 @@ import CMSLayout from "@/components/layout/CMSLayout";
 import { motion } from "framer-motion";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import { Alert, Avatar, Badge, Button, Card, Col, Divider, Empty, Input, Progress, Row, Segmented, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography } from "antd";
 import {
     TeamOutlined, ClockCircleOutlined, WarningOutlined,
@@ -331,24 +332,30 @@ export default function WorkloadPage() {
 
             {/* ── Summary Stats ── */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-                <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+                <BentoGrid className="max-w-full mb-5">
                     {[
-                        { label: "Team Members", value: totalMembers, color: "#3b82f6", icon: <TeamOutlined />, border: "#3b82f6" },
-                        { label: "Avg Hours/Person", value: avgHours, suffix: "h", color: themeColor, icon: <ClockCircleOutlined />, border: themeColor },
-                        { label: "Overloaded", value: overloaded, color: overloaded > 0 ? "#ef4444" : "#10b981", icon: <FireOutlined />, border: overloaded > 0 ? "#ef4444" : "#10b981" },
-                        { label: "Unassigned Tasks", value: unassignedTasks.length, color: unassignedTasks.length > 0 ? "#f59e0b" : "#10b981", icon: <WarningOutlined />, border: unassignedTasks.length > 0 ? "#f59e0b" : "#10b981" },
+                        { label: "Team Members", value: totalMembers, color: "#3b82f6", icon: <TeamOutlined /> },
+                        { label: "Avg Hours/Person", value: avgHours, suffix: "h", color: themeColor, icon: <ClockCircleOutlined /> },
+                        { label: "Overloaded", value: overloaded, color: overloaded > 0 ? "#ef4444" : "#10b981", icon: <FireOutlined /> },
+                        { label: "Unassigned Tasks", value: unassignedTasks.length, color: unassignedTasks.length > 0 ? "#f59e0b" : "#10b981", icon: <WarningOutlined /> },
                     ].map((s, i) => (
-                        <Col xs={12} sm={12} md={6} key={i}>
-                            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-                                <Card style={{ ...glassCard, borderTop: `3px solid ${s.border}` }} styles={{ body: { padding: "16px 16px", position: "relative" as const } }}>
-                                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${s.border}, ${s.border}88)`, borderRadius: "12px 12px 0 0" }} />
-                                    <Statistic title={<Text style={{ fontSize: 11 }}>{s.label}</Text>} value={s.value}
-                                        suffix={s.suffix} prefix={s.icon} valueStyle={{ fontSize: 22, fontWeight: 700, color: s.color }} />
-                                </Card>
-                            </motion.div>
-                        </Col>
+                        <BentoGridItem
+                            key={i}
+                            title={s.label}
+                            description="Resource metric"
+                            icon={React.cloneElement(s.icon as React.ReactElement, { style: { color: s.color } })}
+                            header={
+                                <div className="flex h-full w-full flex-col items-center justify-center rounded-xl" style={{ backgroundColor: `${s.color}15` }}>
+                                    <div style={{ fontSize: 32, fontWeight: 800, color: s.color }}>
+                                        {s.value}
+                                        {s.suffix && <span style={{ fontSize: 20 }}>{s.suffix}</span>}
+                                    </div>
+                                </div>
+                            }
+                            className="col-span-4 lg:col-span-1"
+                        />
                     ))}
-                </Row>
+                </BentoGrid>
             </motion.div>
 
             {/* ── Team Utilization Charts ── */}

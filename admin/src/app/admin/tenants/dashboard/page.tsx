@@ -7,6 +7,7 @@ import { TeamOutlined, SettingOutlined, BarChartOutlined, ReloadOutlined, CheckC
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -27,11 +28,52 @@ export default function TenantsDashboardPage() {
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, '#8b5cf6', '#10b981']}>Multi-Tenancy</AuroraText>} subTitle={<DecryptedText text="Tenant management, quotas, feature flags & usage analytics" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <Row gutter={[12, 12]}>
-                    {[{ t: 'Active Tenants', v: TENANTS.filter(t => t.status === 'active').length, c: '#10b981', i: <CloudServerOutlined /> }, { t: 'Total Users', v: totalUsers, c: '#3b82f6', i: <TeamOutlined /> }, { t: 'Storage Used', v: `${totalStorage.toFixed(1)} GB`, c: '#8b5cf6', i: <ThunderboltOutlined /> }, { t: 'Modules Available', v: FEATURES.length, c: '#f59e0b', i: <SettingOutlined /> }].map((s, i) => (
-                        <Col key={i} xs={12} md={6}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}><Card size="small" style={{ ...glass, borderTop: `3px solid ${s.c}` }}><Statistic title={s.t} value={s.v} prefix={s.i} valueStyle={{ color: s.c, fontSize: 20 }} /></Card></motion.div></Col>
-                    ))}
-                </Row>
+                <BentoGrid className="max-w-full">
+                    <BentoGridItem
+                        title="Active Tenants"
+                        description="Currently running"
+                        icon={<CloudServerOutlined style={{ color: '#10b981' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-emerald-500/10">
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#10b981' }}>{TENANTS.filter(t => t.status === 'active').length}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Total Users"
+                        description="Across all tenants"
+                        icon={<TeamOutlined style={{ color: '#3b82f6' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-blue-500/10">
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#3b82f6' }}>{totalUsers}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Storage Used"
+                        description="Total allocated storage"
+                        icon={<ThunderboltOutlined style={{ color: '#8b5cf6' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-purple-500/10">
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#8b5cf6' }}>{totalStorage.toFixed(1)} GB</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Modules Available"
+                        description="Total platform modules"
+                        icon={<SettingOutlined style={{ color: '#f59e0b' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-amber-500/10">
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#f59e0b' }}>{FEATURES.length}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                </BentoGrid>
 
                 <Card size="small" style={glass} title={<Space><CloudServerOutlined style={{ color: themeColor }} /><Text strong>Tenants</Text><Badge count={TENANTS.length} style={{ backgroundColor: themeColor }} /></Space>}>
                     <Row gutter={[12, 12]}>

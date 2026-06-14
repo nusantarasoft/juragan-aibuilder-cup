@@ -1,8 +1,9 @@
 import React from "react";
 import {
-    DashboardOutlined,
+    DashboardOutlined, BulbOutlined,
     CrownOutlined,
     FileTextOutlined,
+
     PictureOutlined,
     UserOutlined,
     SettingOutlined,
@@ -108,6 +109,12 @@ import {
     FunnelPlotOutlined,
     BellOutlined,
     UserSwitchOutlined,
+    HeatMapOutlined,
+    ThunderboltOutlined as PowerOutlined,
+    RadarChartOutlined,
+    FireOutlined,
+    KeyOutlined as DoorKeyOutlined,
+
 } from "@ant-design/icons";
 
 // CMS Menu Configuration — v2.19.0 Restructured
@@ -1263,6 +1270,91 @@ const menuConfig = {
                         icon: <HddOutlined />,
                         isLeaf: true,
                     },
+                ],
+            },
+
+            // ═══════════════════════════════════════
+            // FACILITY MANAGEMENT
+            // ═══════════════════════════════════════
+            {
+                path: '/admin/divider-facility',
+                name: 'FACILITY MANAGEMENT',
+                hideInBreadcrumb: true,
+                isLeaf: true,
+            },
+            {
+                path: "/admin/facility",
+                name: "Command Center",
+                icon: <SafetyCertificateOutlined />,
+                isLeaf: true,
+            },
+            {
+                path: "/admin/facility/reports",
+                name: "Automated Reports",
+                icon: <FileTextOutlined />,
+                isLeaf: true,
+            },
+            {
+                path: "/admin/digital-twin",
+                name: "Digital Twin",
+                icon: <GlobalOutlined />,
+                isLeaf: true,
+            },
+            {
+                path: "/admin/dcim",
+                name: "DCIM",
+                icon: <CloudServerOutlined />,
+                routes: [
+                    { path: "/admin/dcim", name: "Dashboard", icon: <DashboardOutlined />, isLeaf: true },
+                    { path: "/admin/dcim/floor-plan", name: "Floor Plan (2D)", icon: <LayoutOutlined />, isLeaf: true },
+                    { path: "/admin/dcim/3d-view", name: "3D View", icon: <GlobalOutlined />, isLeaf: true },
+                    { path: "/admin/dcim/power", name: "Power Monitoring", icon: <PowerOutlined />, isLeaf: true },
+                    { path: "/admin/dcim/thermal", name: "Thermal", icon: <HeatMapOutlined />, isLeaf: true },
+                    { path: "/admin/dcim/capacity", name: "Capacity Planning", icon: <BarChartOutlined />, isLeaf: true },
+                    { path: "/admin/dcim/assets", name: "Assets", icon: <DatabaseOutlined />, isLeaf: true },
+                    { path: "/admin/dcim/cables", name: "Cables", icon: <NodeIndexOutlined />, isLeaf: true },
+                ],
+            },
+            {
+                path: "/admin/bms",
+                name: "BMS",
+                icon: <HomeOutlined />,
+                routes: [
+                    { path: "/admin/bms", name: "Dashboard", icon: <DashboardOutlined />, isLeaf: true },
+                    { path: "/admin/bms/hvac", name: "HVAC", icon: <CloudServerOutlined />, isLeaf: true },
+                    { path: "/admin/bms/lighting", name: "Lighting", icon: <BulbOutlined />, isLeaf: true },
+                    { path: "/admin/bms/fire", name: "Fire Safety", icon: <FireOutlined />, isLeaf: true },
+                    { path: "/admin/bms/access", name: "Access Control", icon: <DoorKeyOutlined />, isLeaf: true },
+                    { path: "/admin/bms/cctv", name: "CCTV & Video", icon: <VideoCameraOutlined />, isLeaf: true },
+                    { path: "/admin/bms/elevator", name: "Elevators", icon: <SwapOutlined2 />, isLeaf: true },
+                    { path: "/admin/bms/water", name: "Water", icon: <ExperimentOutlined />, isLeaf: true },
+                    { path: "/admin/bms/energy", name: "Energy", icon: <PowerOutlined />, isLeaf: true },
+                    { path: "/admin/bms/automation", name: "Smart Automation", icon: <ThunderboltOutlined />, isLeaf: true },
+                ],
+            },
+            {
+                path: "/admin/scada",
+                name: "SCADA",
+                icon: <MonitorOutlined />,
+                routes: [
+                    { path: "/admin/scada", name: "Dashboard", icon: <DashboardOutlined />, isLeaf: true },
+                    { path: "/admin/scada/hmi", name: "HMI", icon: <FundProjectionScreenOutlined />, isLeaf: true },
+                    { path: "/admin/scada/trends", name: "Trends", icon: <LineChartOutlined />, isLeaf: true },
+                    { path: "/admin/scada/alarms", name: "Alarms", icon: <AlertOutlined />, isLeaf: true },
+                    { path: "/admin/scada/predictive", name: "Predictive Maintenance", icon: <ThunderboltOutlined />, isLeaf: true },
+                    { path: "/admin/scada/data-sources", name: "Data Sources", icon: <ApiOutlined />, isLeaf: true },
+                    { path: "/admin/scada/reports", name: "Reports", icon: <FileTextOutlined />, isLeaf: true },
+                ],
+            },
+            {
+                path: "/admin/bim",
+                name: "BIM",
+                icon: <BuildOutlined />,
+                routes: [
+                    { path: "/admin/bim", name: "Model Library", icon: <FolderOutlined />, isLeaf: true },
+                    { path: "/admin/bim/viewer", name: "3D Viewer", icon: <GlobalOutlined />, isLeaf: true },
+                    { path: "/admin/bim/clash-detection", name: "Clash Detection", icon: <BugOutlined />, isLeaf: true },
+                    { path: "/admin/bim/quantity-takeoff", name: "Quantity Takeoff", icon: <CalculatorOutlined />, isLeaf: true },
                 ],
             },
 

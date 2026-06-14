@@ -17,6 +17,8 @@ import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import FormIntegrationWidget from "@/components/forms/FormIntegrationWidget";
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
+import { AnimatedCircularProgressBar } from "@/components/magicui/animated-circular-progress-bar";
 
 const { Text, Title } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -134,20 +136,61 @@ export default function HrDashboardPage() {
             subTitle={<DecryptedText text="Human capital management overview" animateOn="view" revealDirection="start" speed={60} sequential />}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {/* Top Stats */}
-                <Row gutter={[14, 14]}>
-                    {statCards.map((c, i) => (
-                        <Col xs={12} sm={8} md={4} key={i}>
-                            <motion.div {...anim(i)}>
-                                <Card size="small" style={{ ...glass, textAlign: 'center', borderTop: `3px solid ${c.color}` }} hoverable>
-                                    <div style={{ fontSize: 22, color: c.color, marginBottom: 2 }}>{c.icon}</div>
-                                    <Text strong style={{ fontSize: 24, color: c.color }}>{c.value}</Text>
-                                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{c.label}</Text>
-                                </Card>
-                            </motion.div>
-                        </Col>
-                    ))}
-                </Row>
+                {/* Top Stats (BENTO GRID) */}
+                <BentoGrid className="mb-6 max-w-full">
+                    <BentoGridItem
+                        title="Total Employees"
+                        description="Active human capital in the system."
+                        icon={<TeamOutlined style={{ color: '#3b82f6' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-blue-500/10">
+                                <Statistic value={s.totalEmployees || 0} valueStyle={{ color: '#3b82f6', fontSize: 32, fontWeight: 800 }} />
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Open Positions"
+                        description="Current hiring requirements."
+                        icon={<SolutionOutlined style={{ color: '#f59e0b' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-amber-500/10">
+                                <Statistic value={s.openJobPostings || 0} valueStyle={{ color: '#f59e0b', fontSize: 32, fontWeight: 800 }} />
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="New Hires"
+                        description="Onboarded this month."
+                        icon={<UserAddOutlined style={{ color: '#06b6d4' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-cyan-500/10">
+                                <Statistic value={s.newHiresThisMonth || 0} valueStyle={{ color: '#06b6d4', fontSize: 32, fontWeight: 800 }} suffix="/mo" />
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Pending Leave"
+                        description="Requests requiring manager approval."
+                        icon={<CoffeeOutlined style={{ color: '#ef4444' }} />}
+                        header={
+                            <div className="flex flex-col h-full w-full items-center justify-center rounded-xl bg-red-500/10">
+                                <AnimatedCircularProgressBar
+                                    max={100}
+                                    min={0}
+                                    value={s.pendingLeaveRequests || 0}
+                                    gaugePrimaryColor="#ef4444"
+                                    gaugeSecondaryColor="rgba(239, 68, 68, 0.1)"
+                                    className="w-[80px] h-[80px] scale-90"
+                                />
+                                <div style={{ fontSize: 11, marginTop: 4, color: "#ef4444", fontWeight: 600 }}>Action Required</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                </BentoGrid>
 
                 {/* Main Content */}
                 <Row gutter={[16, 16]}>

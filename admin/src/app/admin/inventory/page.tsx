@@ -16,6 +16,8 @@ import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { inventoryService } from '@/lib/inventoryService';
 import { useRouter } from 'next/navigation';
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
+import { AnimatedCircularProgressBar } from "@/components/magicui/animated-circular-progress-bar";
 
 const { Text } = Typography;
 
@@ -64,16 +66,8 @@ export default function InventoryDashboard() {
     const wmsTotalPutaway = (stats.wms?.pendingPutaway || 0) + (stats.wms?.inProgressPutaway || 0) + (stats.wms?.completedPutaway || 0);
     const wmsTotalPick = (stats.wms?.pendingPick || 0) + (stats.wms?.inProgressPick || 0) + (stats.wms?.completedPick || 0);
     const wmsActiveOps = (stats.wms?.inProgressPutaway || 0) + (stats.wms?.inProgressPick || 0);
-
-    // Top KPIs
-    const topKpis = [
-        { label: 'Total Items', value: stats.inv?.totalItems || 0, icon: <DatabaseOutlined />, color: themeColor, route: '/admin/inventory/items' },
-        { label: 'Warehouses', value: stats.wh?.totalWarehouses || 0, icon: <InboxOutlined />, color: '#3b82f6', route: '/admin/inventory/warehouses' },
-        { label: 'Total Bins', value: stats.wh?.totalBins || 0, icon: <EnvironmentOutlined />, color: '#10b981', route: '/admin/inventory/location-browser' },
-        { label: 'Active POs', value: stats.proc?.approvedPos || 0, icon: <ShoppingCartOutlined />, color: '#f59e0b', route: '/admin/inventory/procurement' },
-        { label: 'WMS Active', value: wmsActiveOps, icon: <ThunderboltOutlined />, color: '#ef4444', route: '/admin/inventory/putaway' },
-        { label: 'Bin Contents', value: stats.wms?.totalBinContents || 0, icon: <SafetyCertificateOutlined />, color: '#8b5cf6', route: '/admin/inventory/item-locator' },
-    ];
+    const totalWmsOps = wmsTotalPutaway + wmsTotalPick || 1;
+    const wmsActivePct = Math.round((wmsActiveOps / totalWmsOps) * 100);
 
     // Module cards
     const modules = [
@@ -155,31 +149,61 @@ export default function InventoryDashboard() {
             subTitle={<DecryptedText text="Unified dashboard across all inventory modules" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
             <div style={{ padding: '0 4px' }}>
-                {/* Top KPIs */}
-                <Row gutter={[10, 10]} style={{ marginBottom: 16 }}>
-                    {topKpis.map((k, i) => (
-                        <Col xs={12} sm={8} md={4} key={i}>
-                            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.05, type: 'spring', stiffness: 260, damping: 20 }}>
-                                <div onClick={() => router.push(k.route)} style={{
-                                    ...glass, padding: '14px 16px', borderTop: `3px solid ${k.color}`,
-                                    cursor: 'pointer', position: 'relative', overflow: 'hidden',
-                                    transition: 'transform 0.2s, box-shadow 0.2s',
-                                }}
-                                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 24px ${k.color}20`; }}
-                                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'none'; (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}
-                                >
-                                    <div style={{ position: 'absolute', top: -10, right: -10, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle, ${k.color}15 0%, transparent 70%)` }} />
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                        <span style={{ color: k.color, fontSize: 14 }}>{k.icon}</span>
-                                        <span style={{ color: isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)', fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase' as const }}>{k.label}</span>
-                                    </div>
-                                    <div style={{ fontSize: 22, fontWeight: 800, color: k.color, letterSpacing: -0.5 }}>{k.value}</div>
-                                </div>
-                            </motion.div>
-                        </Col>
-                    ))}
-                </Row>
+                {/* Hero KPIs (BENTO GRID) */}
+                <BentoGrid className="mb-6 max-w-full">
+                    <BentoGridItem
+                        title="Total Items"
+                        description="Cataloged SKUs"
+                        icon={<DatabaseOutlined style={{ color: themeColor }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-indigo-500/10" onClick={() => router.push('/admin/inventory/items')} style={{ cursor: 'pointer' }}>
+                                <div style={{ fontSize: 32, fontWeight: 800, color: themeColor }}>{stats.inv?.totalItems || 0}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Warehouses"
+                        description={`${stats.wh?.totalBins || 0} Total Bins Managed`}
+                        icon={<InboxOutlined style={{ color: '#3b82f6' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-blue-500/10" onClick={() => router.push('/admin/inventory/warehouses')} style={{ cursor: 'pointer' }}>
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#3b82f6' }}>{stats.wh?.totalWarehouses || 0}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Active POs"
+                        description="Approved Purchase Orders"
+                        icon={<ShoppingCartOutlined style={{ color: '#f59e0b' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-amber-500/10" onClick={() => router.push('/admin/inventory/procurement')} style={{ cursor: 'pointer' }}>
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#f59e0b' }}>{stats.proc?.approvedPos || 0}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="WMS Operations"
+                        description="Active Putaway/Pick Tasks"
+                        icon={<ThunderboltOutlined style={{ color: '#ef4444' }} />}
+                        header={
+                            <div className="flex flex-col h-full w-full items-center justify-center rounded-xl bg-red-500/10" onClick={() => router.push('/admin/inventory/putaway')} style={{ cursor: 'pointer' }}>
+                                <AnimatedCircularProgressBar
+                                    max={100}
+                                    min={0}
+                                    value={wmsActivePct}
+                                    gaugePrimaryColor="#ef4444"
+                                    gaugeSecondaryColor="rgba(239, 68, 68, 0.1)"
+                                    className="w-[80px] h-[80px] scale-90"
+                                />
+                                <div style={{ fontSize: 11, marginTop: 4, color: "#ef4444", fontWeight: 600 }}>{wmsActiveOps} Active Ops</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                </BentoGrid>
 
                 {/* Quick Actions */}
                 <Card size="small" style={{ ...glass, marginBottom: 16, borderLeft: `3px solid ${themeColor}` }}

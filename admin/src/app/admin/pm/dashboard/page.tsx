@@ -72,7 +72,7 @@ import AiInsightsTab from "./components/AiInsightsTab";
 import PmCommandPalette from "./components/PmCommandPalette";
 
 const { Text, Title } = Typography;
-const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
+const glass = { background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
 // --- GRAPHQL ---
 const GET_PROJECTS_LIST = `
@@ -527,7 +527,6 @@ function PmDashboardContent() {
                         {/* Kanban Board */}
                         <div style={{
                             background: isDark ? 'rgba(15, 15, 23, 0.4)' : 'rgba(255, 255, 255, 0.65)',
-                            backdropFilter: 'blur(16px)',
                             borderRadius: 16,
                             padding: 16,
                             border: isDark ? '1px solid rgba(139,92,246,0.15)' : '1px solid rgba(255, 255, 255, 0.5)',
@@ -940,8 +939,8 @@ function PmDashboardContent() {
                     <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
                         <motion.div
                             key={activeTab}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
                             transition={{ duration: 0.25 }}
                         >
                             {projLoading ? (

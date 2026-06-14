@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import RbacGuard from "@/components/common/RbacGuard";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import { Badge, Button, Card, Col, Empty, Input, message, Popover, Progress, Row, Segmented, Select, Space, Spin, Statistic, Tag, Tooltip, Typography } from "antd";
 import {
     CalendarOutlined, ProjectOutlined, CheckCircleOutlined,
@@ -399,7 +401,6 @@ export default function TimelinePage() {
 
     const glassCard = {
         background: isDark ? 'rgba(15, 15, 23, 0.7)' : 'rgba(255,255,255,0.85)',
-        backdropFilter: 'blur(12px)',
         border: isDark ? '1px solid rgba(139,92,246,0.15)' : '1px solid rgba(0,0,0,0.06)',
         borderRadius: 12,
     };
@@ -427,22 +428,34 @@ export default function TimelinePage() {
 
             <DndProvider backend={HTML5Backend}>
                 {/* ── Stats ── */}
-                <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                <BentoGrid className="max-w-full mb-6">
                     {[
-                        { label: 'Projects with Timeline', value: withDates.length, suffix: <Progress type="circle" percent={projects.length > 0 ? Math.round((withDates.length / projects.length) * 100) : 0} size={28} strokeWidth={10} strokeColor={themeColor} format={pct => <span style={{ fontSize: 8 }}>{pct}%</span>} />, icon: <CalendarOutlined style={{ color: themeColor }} />, color: themeColor },
-                        { label: 'Active Projects', value: activeProjects.length, icon: <ClockCircleOutlined style={{ color: '#10b981' }} />, color: '#10b981' },
-                        { label: 'Overdue', value: overdueProjects.length, icon: <ExclamationCircleOutlined style={{ color: '#ef4444' }} />, color: '#ef4444' },
-                        { label: 'Due in 30 Days', value: upcomingMilestones.length, icon: <FlagOutlined style={{ color: '#f59e0b' }} />, color: '#f59e0b' },
+                        { label: 'Projects with Timeline', value: withDates.length, suffix: true, icon: <CalendarOutlined />, color: themeColor },
+                        { label: 'Active Projects', value: activeProjects.length, icon: <ClockCircleOutlined />, color: '#10b981' },
+                        { label: 'Overdue', value: overdueProjects.length, icon: <ExclamationCircleOutlined />, color: '#ef4444' },
+                        { label: 'Due in 30 Days', value: upcomingMilestones.length, icon: <FlagOutlined />, color: '#f59e0b' },
                     ].map((s, i) => (
-                        <Col xs={24} sm={12} lg={6} key={i}>
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                                <Card style={{ ...glassCard, borderTop: `3px solid ${s.color}` }} size="small">
-                                    <Statistic title={<span style={{ fontSize: 12 }}>{s.label}</span>} value={s.value} suffix={s.suffix} prefix={s.icon} valueStyle={{ fontSize: 24, fontWeight: 700, color: s.color }} />
-                                </Card>
-                            </motion.div>
-                        </Col>
+                        <BentoGridItem
+                            key={i}
+                            title={s.label}
+                            description="Timeline metric"
+                            icon={React.cloneElement(s.icon as React.ReactElement, { style: { color: s.color } })}
+                            header={
+                                <div className="flex h-full w-full flex-col items-center justify-center rounded-xl" style={{ backgroundColor: `${s.color}15` }}>
+                                    <div style={{ fontSize: 32, fontWeight: 800, color: s.color }}>
+                                        {s.value}
+                                    </div>
+                                    {s.suffix && projects.length > 0 && (
+                                        <div className="mt-2 text-xs" style={{ color: "rgba(255,255,255,0.7)" }}>
+                                            {Math.round((withDates.length / projects.length) * 100)}% of total
+                                        </div>
+                                    )}
+                                </div>
+                            }
+                            className="col-span-4 lg:col-span-1"
+                        />
                     ))}
-                </Row>
+                </BentoGrid>
 
                 {/* ── Filters & Zoom ── */}
                 <Card style={{ ...glassCard, marginBottom: 16 }} size="small">

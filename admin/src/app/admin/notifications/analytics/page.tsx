@@ -9,6 +9,7 @@ import {
     Card, Row, Col, Statistic, Tag, Space, Typography, Spin,
     Progress, Empty, Button, Tooltip,
 } from "antd";
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import { motion } from "framer-motion";
 import {
     MailOutlined, ApiOutlined, BellOutlined, SendOutlined,
@@ -110,20 +111,25 @@ export default function NotificationAnalyticsPage() {
         >
             <Spin spinning={loading}>
                 {/* Top Stats */}
-                <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
-                    {topStats.map((s, i) => (
-                        <Col key={i} xs={12} sm={8} md={4}>
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                                <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
-                                    <Statistic
-                                        title={s.title} value={s.value} suffix={(s as any).suffix}
-                                        prefix={s.icon} valueStyle={{ color: s.color, fontSize: 22 }}
-                                    />
-                                </Card>
-                            </motion.div>
-                        </Col>
+                <BentoGrid className="max-w-full">
+                    {topStats.map((st, i) => (
+                        <BentoGridItem
+                            key={i}
+                            title={st.title}
+                            description="Real-time metric"
+                            icon={React.cloneElement(st.icon as React.ReactElement<any>, { style: { color: st.color } })}
+                            header={
+                                <div className="flex h-full w-full items-center justify-center rounded-xl" style={{ backgroundColor: `${st.color}15` }}>
+                                    <div style={{ fontSize: 32, fontWeight: 800, color: st.color }}>
+                                        {st.value}
+                                        {st.suffix && <span style={{ fontSize: 20 }}>{st.suffix}</span>}
+                                    </div>
+                                </div>
+                            }
+                            className="col-span-3 lg:col-span-1"
+                        />
                     ))}
-                </Row>
+                </BentoGrid>
 
                 {/* Row 1: Success Rate Circle + Channel Distribution + Read Rate */}
                 <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>

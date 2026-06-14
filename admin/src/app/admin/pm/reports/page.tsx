@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import RbacGuard from "@/components/common/RbacGuard";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import { Button, Card, Col, Divider, Empty, message, Progress, Row, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography, Skeleton } from "antd";
 import {
     BarChartOutlined, ProjectOutlined, CheckCircleOutlined,
@@ -370,71 +371,32 @@ export default function ReportsPage() {
 
             {/* ── Executive Summary ── */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #6366f1' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: isDark ? '#94a3b8' : '#64748b' }}>Total Projects</span>}
-                            value={totalProjects}
-                            prefix={<ProjectOutlined style={{ color: '#6366f1' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-heading)' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #10b981' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: isDark ? '#94a3b8' : '#64748b' }}>Task Completion</span>}
-                            value={totalTasks > 0 ? Math.round((tasksDone / totalTasks) * 100) : 0}
-                            suffix="%"
-                            prefix={<CheckCircleOutlined style={{ color: '#10b981' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 800, color: '#10b981', fontFamily: 'var(--font-heading)' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #f59e0b' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: isDark ? '#94a3b8' : '#64748b' }}>Budget Used</span>}
-                            value={totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0}
-                            suffix="%"
-                            prefix={<DollarOutlined style={{ color: '#f59e0b' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 800, color: totalSpent > totalBudget ? '#ef4444' : '#f59e0b', fontFamily: 'var(--font-heading)' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #ef4444' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: isDark ? '#94a3b8' : '#64748b' }}>Overdue Tasks</span>}
-                            value={tasksOverdue}
-                            prefix={<ExclamationCircleOutlined style={{ color: '#ef4444' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 800, color: '#ef4444', fontFamily: 'var(--font-heading)' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: `3px solid ${themeColor}` }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: isDark ? '#94a3b8' : '#64748b' }}>Effort Variance</span>}
-                            value={effortVariance}
-                            suffix="%"
-                            prefix={effortVariance > 0 ? <RiseOutlined style={{ color: '#ef4444' }} /> : <FallOutlined style={{ color: '#10b981' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 800, color: effortVariance > 0 ? '#ef4444' : '#10b981', fontFamily: 'var(--font-heading)' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={4}>
-                    <Card style={{ ...glassCard, borderTop: '3px solid #3b82f6' }} size="small">
-                        <Statistic
-                            title={<span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: isDark ? '#94a3b8' : '#64748b' }}>Team Members</span>}
-                            value={teamWorkload.filter(t => t.name !== 'Unassigned').length}
-                            prefix={<TeamOutlined style={{ color: '#3b82f6' }} />}
-                            valueStyle={{ fontSize: 24, fontWeight: 800, color: '#3b82f6', fontFamily: 'var(--font-heading)' }}
-                        />
-                    </Card>
-                </Col>
-            </Row>
+            <BentoGrid className="max-w-full mb-6">
+                {[
+                    { label: 'Total Projects', value: totalProjects, icon: <ProjectOutlined />, color: '#6366f1' },
+                    { label: 'Task Completion', value: totalTasks > 0 ? Math.round((tasksDone / totalTasks) * 100) : 0, suffix: '%', icon: <CheckCircleOutlined />, color: '#10b981' },
+                    { label: 'Budget Used', value: totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0, suffix: '%', icon: <DollarOutlined />, color: totalSpent > totalBudget ? '#ef4444' : '#f59e0b' },
+                    { label: 'Overdue Tasks', value: tasksOverdue, icon: <ExclamationCircleOutlined />, color: '#ef4444' },
+                    { label: 'Effort Variance', value: effortVariance, suffix: '%', icon: effortVariance > 0 ? <RiseOutlined /> : <FallOutlined />, color: effortVariance > 0 ? '#ef4444' : '#10b981' },
+                    { label: 'Team Members', value: teamWorkload.filter(t => t.name !== 'Unassigned').length, icon: <TeamOutlined />, color: '#3b82f6' },
+                ].map((s, i) => (
+                    <BentoGridItem
+                        key={i}
+                        title={s.label}
+                        description="Executive metric"
+                        icon={React.cloneElement(s.icon as React.ReactElement, { style: { color: s.color } })}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl" style={{ backgroundColor: `${s.color}15` }}>
+                                <div style={{ fontSize: 32, fontWeight: 800, color: s.color }}>
+                                    {s.value}
+                                    {s.suffix && <span style={{ fontSize: 20 }}>{s.suffix}</span>}
+                                </div>
+                            </div>
+                        }
+                        className="col-span-6 md:col-span-3 lg:col-span-2"
+                    />
+                ))}
+            </BentoGrid>
             </motion.div>
 
             {/* ── Task Status Distribution & Priority Distribution (Recharts) ── */}

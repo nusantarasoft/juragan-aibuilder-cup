@@ -1,0 +1,56 @@
+name: Nusantarasoft v3.1 CI
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: |
+          admin/package-lock.json
+          middleware/package-lock.json
+
+    - name: Install Admin Dependencies
+      working-directory: ./admin
+      run: npm install --legacy-peer-deps
+
+    - name: Install Playwright Browsers
+      working-directory: ./admin
+      run: npx playwright install --with-deps
+
+    - name: Build Admin (Next.js)
+      working-directory: ./admin
+      run: npm run build
+
+    - name: Run E2E Tests (Playwright)
+      working-directory: ./admin
+      run: npm run test:e2e
+      
+    - name: Upload Playwright Report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: playwright-report
+        path: admin/playwright-report/
+        retention-days: 30
+
+    - name: Install Middleware Dependencies
+      working-directory: ./middleware
+      run: npm install
+
+    - name: Build Middleware (NestJS)
+      working-directory: ./middleware
+      run: npm run build

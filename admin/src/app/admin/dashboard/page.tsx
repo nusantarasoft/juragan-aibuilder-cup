@@ -112,6 +112,7 @@ export default function DashboardPage() {
     const [platformCounts, setPlatformCounts] = useState<{ tables: number; modules: number; resolvers: number; extensions: number }>({ tables: 207, modules: 16, resolvers: 37, extensions: 72 });
     const [formsStats, setFormsStats] = useState<{ templates: number; published: number; submissions: number; pending: number; avgScore: number }>({ templates: 0, published: 0, submissions: 0, pending: 0, avgScore: 0 });
     const [wmsStats, setWmsStats] = useState<{ items: number; warehouses: number; wmsActive: number; binContents: number; pendingPutaway: number; pendingPick: number }>({ items: 0, warehouses: 0, wmsActive: 0, binContents: 0, pendingPutaway: 0, pendingPick: 0 });
+    const [fmStats, setFmStats] = useState<{ dcimRacks: number; bmsAlarms: number; scadaTags: number; bimModels: number }>({ dcimRacks: 0, bmsAlarms: 0, scadaTags: 0, bimModels: 0 });
 
     useEffect(() => {
         (async () => {
@@ -255,6 +256,16 @@ export default function DashboardPage() {
                         pendingPick: ws.pendingPick || 0,
                     });
                 } catch { /* inventory/wms tables may not exist */ }
+                // ── Facility Management widget ──
+                try {
+                    const [dcimRacks, bmsAlarms, scadaTags, bimModels] = await Promise.all([
+                        supaRest('dcim_racks', { select: 'id' }),
+                        supaRest('bms_alarm_events', { select: 'id' }),
+                        supaRest('scada_tags', { select: 'id' }),
+                        supaRest('bim_models', { select: 'id' }),
+                    ]);
+                    setFmStats({ dcimRacks: dcimRacks.length, bmsAlarms: bmsAlarms.length, scadaTags: scadaTags.length, bimModels: bimModels.length });
+                } catch { /* fm tables may not exist yet */ }
             } catch (err: any) { messageApi.error(err.message); }
             finally { setLoading(false); }
         })();
@@ -542,7 +553,40 @@ export default function DashboardPage() {
                 </Col>
             </Row>
 
-            {/* ══════ ROW 3.5: Inventory & WMS · Security · DevOps ══════ */}
+            {/* ══════ ROW 3.5: Facility Management ══════ */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                <Col xs={24}>
+                    <ProCard title={<Space><BuildOutlined style={{ color: '#0ea5e9' }} /> Facility Management (Digital Twin)</Space>} bordered className="dash-card" style={{ animationDelay: '360ms', position: 'relative', overflow: 'hidden' }} extra={<a onClick={() => router.push('/admin/dcim/dashboard')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, #0ea5e9, #38bdf8, #7dd3fc)' }} />
+                        {loading ? <Skeleton active paragraph={{ rows: 1 }} /> : (
+                            <Row gutter={[16, 12]}>
+                                <Col xs={12} sm={6}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                                        <Statistic title="DCIM (Racks)" value={fmStats.dcimRacks} valueStyle={{ fontSize: 18, color: '#0ea5e9' }} prefix={<DatabaseOutlined />} />
+                                    </motion.div>
+                                </Col>
+                                <Col xs={12} sm={6}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                                        <Statistic title="BMS (Alarms)" value={fmStats.bmsAlarms} valueStyle={{ fontSize: 18, color: '#f59e0b' }} prefix={<AlertOutlined />} />
+                                    </motion.div>
+                                </Col>
+                                <Col xs={12} sm={6}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                                        <Statistic title="SCADA (Tags)" value={fmStats.scadaTags} valueStyle={{ fontSize: 18, color: '#10b981' }} prefix={<ApiOutlined />} />
+                                    </motion.div>
+                                </Col>
+                                <Col xs={12} sm={6}>
+                                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+                                        <Statistic title="BIM (Models)" value={fmStats.bimModels} valueStyle={{ fontSize: 18, color: '#8b5cf6' }} prefix={<PictureOutlined />} />
+                                    </motion.div>
+                                </Col>
+                            </Row>
+                        )}
+                    </ProCard>
+                </Col>
+            </Row>
+
+            {/* ══════ ROW 3.75: Inventory & WMS · Security · DevOps ══════ */}
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                 <Col xs={24} md={8}>
                     <ProCard title={<Space><InboxOutlined style={{ color: '#10b981' }} /> Inventory & WMS</Space>} bordered className="dash-card" style={{ height: '100%', animationDelay: '380ms', position: 'relative', overflow: 'hidden' }} extra={<a onClick={() => router.push('/admin/inventory')} style={{ cursor: 'pointer' }}><ArrowRightOutlined /></a>}>
@@ -742,6 +786,10 @@ export default function DashboardPage() {
                                 { name: 'AI Studio', count: 'ML Models', color: '#3b82f6', href: '/admin/ai-studio' },
                                 { name: 'DevOps', count: 'CI/CD & Automation', color: '#8b5cf6', href: '/admin/devops/gitlab' },
                                 { name: 'Platform', count: 'Infra & Monitoring', color: '#fa541c', href: '/admin/infrastructure/docker' },
+                                { name: 'DCIM', count: 'Data Center', color: '#0ea5e9', href: '/admin/dcim/dashboard' },
+                                { name: 'BMS', count: 'Building Mgmt', color: '#f59e0b', href: '/admin/bms' },
+                                { name: 'SCADA', count: 'Telemetry', color: '#10b981', href: '/admin/scada' },
+                                { name: 'BIM', count: '3D Models', color: '#8b5cf6', href: '/admin/bim' },
                             ].map(m => (
                                 <Col span={12} key={m.name}>
                                     <Card size="small" bordered hoverable style={{ cursor: 'pointer', borderLeft: `3px solid ${m.color}` }} onClick={() => router.push(m.href)}>
