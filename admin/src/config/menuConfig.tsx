@@ -1181,6 +1181,7 @@ const menuConfig = {
             },
             {
                 path: "/admin/ai-studio",
+                key: "/admin/ai-studio-menu",
                 name: "AI Studio",
                 icon: <RobotOutlined />,
                 routes: [
@@ -1197,21 +1198,22 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/ai-studio/ai-gateway",
-                        name: "WhatsApp",
-                        icon: <NodeIndexOutlined />,
+                        path: "/admin/ai-studio/umkm",
+                        name: "UMKM Penjualan",
+                        icon: <ShopOutlined />,
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/ai-studio/anythingllm",
-                        name: "AnythingLLM",
-                        icon: <RobotOutlined />,
+                        path: "/admin/ai-studio/ai-gateway",
+                        name: "WhatsApp",
+                        icon: <NodeIndexOutlined />,
                         isLeaf: true,
                     },
                 ],
             },
             {
                 path: "/admin/datasets",
+                key: "/admin/datasets-menu",
                 name: "Big Data",
                 icon: <FundOutlined />,
                 routes: [

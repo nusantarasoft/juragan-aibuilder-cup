@@ -14,6 +14,7 @@ import { DremioModule } from '../dremio/dremio.module';
 import { WahaModule } from '../waha/waha.module';
 import { StudioWhatsAppController } from './studio-whatsapp.controller';
 import { StudioWhatsAppService } from './studio-whatsapp.service';
+import { StudioUmkmService } from './studio-umkm.service';
 
 @Module({
     imports: [ConfigModule, SupabaseModule, AiModule, RagModule, DremioModule, WahaModule],
@@ -26,7 +27,15 @@ import { StudioWhatsAppService } from './studio-whatsapp.service';
         StudioContextService,
         StudioDbContextService,
         StudioWhatsAppService,
+        StudioUmkmService,
     ],
-    exports: [StudioService, GuideFlowService, StudioIngestionService, StudioContextService, StudioWhatsAppService],
+    exports: [
+        StudioService,
+        GuideFlowService,
+        StudioIngestionService,
+        StudioContextService,
+        StudioWhatsAppService,
+        StudioUmkmService,
+    ],
 })
 export class StudioModule { }

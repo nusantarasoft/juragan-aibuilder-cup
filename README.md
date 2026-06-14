@@ -175,7 +175,7 @@ sequenceDiagram
 |-------|----------|-------|---------|
 | **Data & Storage** | MinIO, PostgreSQL, pgAdmin | 9000, 9001, 5432 | Object storage, RDBMS |
 | **Supabase** | Kong, Auth, REST, Realtime, Storage, Studio | 8000, 4000 | Backend-as-a-Service |
-| **CMS & AI** | Admin, Middleware, Label Studio, RAGFlow | 3003, 4001, 8080 | Content management + AI |
+| **CMS & AI** | Admin, Middleware, Label Studio, AI Studio (RAG) | 3003, 4001, 8080 | Content management + AI |
 | **Big Data** | Dremio, Nessie, MinIO (Lakehouse) | 9047 | Lakehouse analytics |
 | **Frontend** | Landing Page | 3000 | Public website |
 | **Infrastructure** | Traefik, NPM, Pi-hole, BIND9, Portainer | 80, 443, 8081 | Proxy, DNS, monitoring |
@@ -336,7 +336,7 @@ docker compose up -d openldap phpldapadmin nginx-proxy-manager traefik portainer
 ### Start by Stack
 ```bash
 # 1. Data & Analytics
-docker compose up -d minio postgres pgadmin dremio superset nessie anythingllm
+docker compose up -d minio postgres pgadmin dremio superset nessie
 
 # 2. Supabase (Backend)
 docker compose up -d supabase-db supabase-studio kong supabase-auth supabase-rest supabase-realtime supabase-storage
@@ -393,7 +393,6 @@ docker compose up -d
 | Minio | http://localhost:9001 | `supa-storage` | `secret1234` |
 | Dremio | http://localhost:9047 | *(setup)* / `admin` | `secret1234` |
 | Superset | http://localhost:8080 | `admin` | `admin` |
-| AnythingLLM | http://localhost:3001 | *(setup)* | - |
 | PgAdmin | http://localhost:8888 | `spygunsoft@gmail.com` | `password` |
 
 ### 2. Supabase
@@ -714,10 +713,10 @@ MIT
 
 ### v2.16.0 (2026-05-22)
 - **Settings Gap Closure** — 2 new pages: SEO Configuration (meta tags, robots.txt, sitemap, Open Graph scoring, page-level overrides), Navigation Manager (menu trees, footer links, breadcrumbs, menu entry table)
-- **AI Studio** — AnythingLLM workspace management (AI workspaces, document processor, embedding status, chat session analytics)
+- **AI Studio** — Notebook RAG (workspaces, ingestion, guided flows, WhatsApp)
 - **DevOps** — Docker Registry management (repositories, image tags, layer sizes, pull analytics)
 - **Big Data** — 2 new pages: Nessie Catalog (branches, tables, version history, catalog entries), Dremio Lakehouse Admin (job analytics, reflections, source connections, query history)
-- **Menu expansion** — +1 AI Studio sub-item (AnythingLLM), +1 DevOps sub-item (Docker Registry), +2 Big Data sub-items (Nessie Catalog, Dremio Admin)
+- **Menu expansion** — +1 DevOps sub-item (Docker Registry), +2 Big Data sub-items (Nessie Catalog, Dremio Admin)
 - **Build verified**: 190+ pages, exit code 0
 
 ### v2.15.0 (2026-05-22)
@@ -795,5 +794,5 @@ MIT
 ### v2.8.0
 - CRM Intelligence, Accounting Suite, HR Management
 - Ops Automation, Project Management, ITSM
-- AI Studio (RAGFlow integration)
+- AI Studio (internal RAG + pgvector)
 - Big Data / Dremio Lakehouse

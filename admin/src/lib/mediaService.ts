@@ -1012,7 +1012,6 @@ export const mediaService = {
         status: string;
         progress: number;
         chunkCount: number;
-        ragflowDocId: string | null;
         progressMsg: string;
     }> {
         const query = `
@@ -1021,7 +1020,6 @@ export const mediaService = {
                     status
                     progress
                     chunkCount
-                    ragflowDocId
                     progressMsg
                 }
             }
@@ -1032,7 +1030,7 @@ export const mediaService = {
             return data.embeddingStatus;
         } catch (error) {
             console.error("[mediaService] Error getting embedding status:", error);
-            return { status: 'error', progress: 0, chunkCount: 0, ragflowDocId: null, progressMsg: 'Failed to fetch status' };
+            return { status: 'error', progress: 0, chunkCount: 0, progressMsg: 'Failed to fetch status' };
         }
     },
 

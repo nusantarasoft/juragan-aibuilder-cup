@@ -41,7 +41,7 @@ export default function GeneralSettingsPage() {
     const sysInfo = [
         { label: 'Platform', value: 'Nusantarasoft Enterprise Suite' }, { label: 'Version', value: 'v2.10.0' }, { label: 'Build', value: '2025.05.11' },
         { label: 'Framework', value: 'Next.js 14 + NestJS + Supabase' }, { label: 'Node.js', value: 'v20.x' }, { label: 'Database', value: 'PostgreSQL 15.8 (Supabase)' },
-        { label: 'Big Data', value: 'Dremio 25.1 + Nessie + MinIO' }, { label: 'AI Engine', value: 'RAGFlow v0.17.2 + Gemini' },
+        { label: 'Big Data', value: 'Dremio 25.1 + Nessie + MinIO' }, { label: 'AI Engine', value: 'AI Studio RAG + Vertex/Gemini' },
         { label: 'Docker Services', value: '18 containers' }, { label: 'Total Pages', value: '145+ static routes' }, { label: 'License', value: 'Enterprise' },
     ];
 

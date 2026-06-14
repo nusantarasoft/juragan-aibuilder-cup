@@ -990,40 +990,71 @@ export class MediaService implements OnModuleInit {
         await this.ragService.autoLabelMedia(id);
     }
 
-    /**
-     * Embedding generation is disabled (RAGFlow removed).
-     * Keep API contract stable for existing callers.
-     */
-    async resolveEmbedding(id: string): Promise<boolean> {
-        this.logger.warn(`resolveEmbedding(${id}) ignored: RAGFlow integration has been removed.`);
+    /** Generate pgvector embedding for media via internal RAG (Vertex / Google AI). */
+    async resolveEmbedding(id: string, content = ''): Promise<boolean> {
+        this.logger.log(`resolveEmbedding(${id}) via internal RAG`);
         const { data: currentMedia } = await this.supabase.getAdminClient()
             .from('media')
             .select('metadata')
             .eq('id', id)
             .single();
+
         await this.supabase.getAdminClient()
             .from('media')
             .update({
                 metadata: {
                     ...(currentMedia?.metadata || {}),
-                    embedding_status: 'none',
-                    embedding_progress: 0,
+                    embedding_status: 'parsing',
+                    embedding_progress: 0.1,
                     embedding_chunk_count: 0,
-                    embedding_error: 'RAGFlow removed',
+                    embedding_error: null,
                 },
             })
             .eq('id', id);
-        return false;
+
+        try {
+            const ok = await this.ragService.generateMediaEmbeddings(id, content);
+            const { data: refreshed } = await this.supabase.getAdminClient()
+                .from('media')
+                .select('metadata')
+                .eq('id', id)
+                .single();
+
+            await this.supabase.getAdminClient()
+                .from('media')
+                .update({
+                    metadata: {
+                        ...(refreshed?.metadata || {}),
+                        embedding_status: ok ? 'done' : 'error',
+                        embedding_progress: ok ? 1 : 0,
+                        embedding_chunk_count: ok ? 1 : 0,
+                        embedding_error: ok ? null : 'Embedding generation failed',
+                    },
+                })
+                .eq('id', id);
+            return ok;
+        } catch (e: any) {
+            this.logger.error(`resolveEmbedding failed for ${id}: ${e?.message ?? e}`);
+            await this.supabase.getAdminClient()
+                .from('media')
+                .update({
+                    metadata: {
+                        ...(currentMedia?.metadata || {}),
+                        embedding_status: 'error',
+                        embedding_progress: 0,
+                        embedding_chunk_count: 0,
+                        embedding_error: e?.message || 'Embedding generation failed',
+                    },
+                })
+                .eq('id', id);
+            return false;
+        }
     }
 
-    /**
-     * RAGFlow was removed; return disabled status while preserving payload shape.
-     */
     async checkEmbeddingStatus(id: string): Promise<{
         status: 'none' | 'pending' | 'parsing' | 'done' | 'error';
         progress: number;
         chunkCount: number;
-        ragflowDocId: string | null;
         progressMsg: string;
     }> {
         const { data: mediaRecord } = await this.supabase
@@ -1034,22 +1065,50 @@ export class MediaService implements OnModuleInit {
             .single();
 
         const meta = mediaRecord?.metadata || {};
+        const { data: embRow } = await this.supabase.getAdminClient()
+            .from('media_embeddings')
+            .select('id')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (embRow) {
+            return {
+                status: 'done',
+                progress: 1,
+                chunkCount: meta.embedding_chunk_count ?? 1,
+                progressMsg: 'Indexed in media_embeddings (pgvector)',
+            };
+        }
+
+        const status = meta.embedding_status as string | undefined;
+        if (status === 'parsing' || status === 'pending') {
+            return {
+                status: status as 'parsing' | 'pending',
+                progress: meta.embedding_progress ?? 0,
+                chunkCount: meta.embedding_chunk_count ?? 0,
+                progressMsg: 'Generating embedding…',
+            };
+        }
+        if (status === 'error') {
+            return {
+                status: 'error',
+                progress: 0,
+                chunkCount: 0,
+                progressMsg: meta.embedding_error || 'Embedding failed',
+            };
+        }
+
         return {
             status: 'none',
             progress: 0,
             chunkCount: 0,
-            ragflowDocId: meta?.ragflow_doc_id || null,
-            progressMsg: 'RAGFlow removed',
+            progressMsg: 'No embedding — generate here or add to an AI Studio notebook',
         };
     }
 
-    /**
-     * Remove embedding metadata. External RAGFlow cleanup is no longer needed.
-     */
     async removeEmbedding(id: string): Promise<boolean> {
         this.logger.log(`Removing embedding for media ID: ${id}`);
         try {
-            // 1. Get media metadata to find RAGFlow doc ID
             const { data: mediaRecord } = await this.supabase.getAdminClient()
                 .from('media')
                 .select('metadata')
@@ -1058,16 +1117,12 @@ export class MediaService implements OnModuleInit {
 
             const meta = mediaRecord?.metadata || {};
 
-            // 2. Also clean up legacy pgvector embeddings if they exist
             await this.supabase.getAdminClient()
                 .from('media_embeddings')
                 .delete()
                 .eq('id', id);
 
-            // 3. Clear embedding metadata from media record
             const cleanMeta = { ...meta };
-            delete cleanMeta.ragflow_doc_id;
-            delete cleanMeta.ragflow_dataset_id;
             delete cleanMeta.embedding_status;
             delete cleanMeta.embedding_progress;
             delete cleanMeta.embedding_chunk_count;

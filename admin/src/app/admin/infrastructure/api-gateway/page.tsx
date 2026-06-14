@@ -18,7 +18,7 @@ const ROUTES = [
     { id: 'r-4', name: 'Storage', path: '/storage/*', service: 'storage-api', methods: ['GET', 'POST', 'DELETE'], status: 'active', avgLatency: 35, rps: 210, plugins: ['cors', 'jwt-auth'] },
     { id: 'r-5', name: 'Realtime', path: '/realtime/*', service: 'realtime-service', methods: ['GET'], status: 'active', avgLatency: 15, rps: 450, plugins: ['cors'] },
     { id: 'r-6', name: 'Dremio Proxy', path: '/api/dremio/*', service: 'dremio-service', methods: ['GET', 'POST'], status: 'active', avgLatency: 200, rps: 45, plugins: ['rate-limiting', 'jwt-auth', 'cors'] },
-    { id: 'r-7', name: 'AI Studio', path: '/api/ai/*', service: 'ragflow-service', methods: ['POST'], status: 'degraded', avgLatency: 3500, rps: 12, plugins: ['rate-limiting', 'jwt-auth', 'request-size-limiting'] },
+    { id: 'r-7', name: 'AI Studio', path: '/graphql', service: 'middleware', methods: ['POST'], status: 'active', avgLatency: 420, rps: 48, plugins: ['rate-limiting', 'jwt-auth', 'request-size-limiting'] },
 ];
 
 const SERVICES = [
@@ -28,7 +28,7 @@ const SERVICES = [
     { id: 's-4', name: 'storage-api', host: 'supabase-storage', port: 5000, protocol: 'http', status: 'healthy', uptime: 99.99 },
     { id: 's-5', name: 'realtime-service', host: 'supabase-realtime', port: 4000, protocol: 'http', status: 'healthy', uptime: 99.7 },
     { id: 's-6', name: 'dremio-service', host: 'dremio', port: 9047, protocol: 'http', status: 'healthy', uptime: 98.5 },
-    { id: 's-7', name: 'ragflow-service', host: 'ragflow', port: 9380, protocol: 'http', status: 'degraded', uptime: 94.2 },
+    { id: 's-7', name: 'studio-rag', host: 'middleware', port: 4001, protocol: 'http', status: 'healthy', uptime: 99.5 },
 ];
 
 const PLUGINS = [

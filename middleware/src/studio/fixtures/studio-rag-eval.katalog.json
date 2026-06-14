@@ -1,0 +1,91 @@
+{
+  "id": "katalog-produk-rag",
+  "description": "Retrieval eval untuk samples/katalog-produk-rag.txt — upload file tersebut ke notebook sebelum menjalankan eval.",
+  "source_filename_hint": "katalog-produk",
+  "cases": [
+    {
+      "id": "x100-price",
+      "question": "Berapa harga Produk X NS-X-100?",
+      "expected_source_substrings": ["katalog-produk"],
+      "expected_content_markers": ["99.000", "NS-X-100"],
+      "tags": ["price", "product-x"]
+    },
+    {
+      "id": "x100-wifi",
+      "question": "Apakah sensor X mendukung Wi-Fi 5 GHz?",
+      "expected_source_substrings": ["katalog-produk"],
+      "expected_content_markers": ["2,4 GHz", "tidak mendukung 5 GHz"],
+      "tags": ["spec", "anti-hallucination"]
+    },
+    {
+      "id": "x100-garansi",
+      "question": "Berapa lama garansi Produk X?",
+      "expected_source_substrings": ["katalog-produk"],
+      "expected_content_markers": ["12 bulan"],
+      "tags": ["warranty"]
+    },
+    {
+      "id": "y200-price",
+      "question": "Harga gateway Y200 NS-Y-200?",
+      "expected_source_substrings": ["katalog-produk"],
+      "expected_content_markers": ["649.000", "NS-Y-200"],
+      "tags": ["price", "product-y"]
+    },
+    {
+      "id": "y200-garansi",
+      "question": "Garansi Gateway Y berapa bulan?",
+      "expected_source_substrings": ["katalog-produk"],
+      "expected_content_markers": ["24 bulan"],
+      "tags": ["warranty", "anti-hallucination"]
+    },
+    {
+      "id": "cms-pro-price",
+      "question": "Berapa harga langganan CMS Pro per bulan?",
+      "expected_source_substrings": ["katalog-produk"],
+      "expected_content_markers": ["499.000"],
+      "tags": ["price", "cms"]
+    },
+    {
+      "id": "promo-bundel",
+      "question": "Diskon bundel Produk X dan Gateway Y berapa persen?",
+      "expected_source_substrings": ["katalog-produk"],
+      "expected_content_markers": ["15%"],
+      "tags": ["promo"]
+    },
+    {
+      "id": "support-email",
+      "question": "Email dukungan resmi NusantaraSoft?",
+      "expected_source_substrings": ["katalog-produk"],
+      "expected_content_markers": ["support@nusantarasoft.com"],
+      "tags": ["contact"]
+    },
+    {
+      "id": "return-policy",
+      "question": "Kebijakan retur barang fisik berapa hari?",
+      "expected_source_substrings": ["katalog-produk"],
+      "expected_content_markers": ["7 hari"],
+      "tags": ["policy"]
+    },
+    {
+      "id": "google-home",
+      "question": "Apakah Gateway Y200 kompatibel Google Home?",
+      "expected_source_substrings": ["katalog-produk"],
+      "expected_content_markers": ["Google Home", "2.4.0"],
+      "tags": ["faq"]
+    },
+    {
+      "id": "wrong-price-trap",
+      "question": "Harga Produk X Rp 79.000 benar?",
+      "expected_source_substrings": ["katalog-produk"],
+      "expected_content_markers": ["BUKAN Rp 79.000", "99.000"],
+      "tags": ["anti-hallucination"]
+    },
+    {
+      "id": "operational-hours",
+      "question": "Jam operasional layanan pelanggan?",
+      "expected_source_substrings": ["katalog-produk"],
+      "expected_content_markers": ["09.00", "17.00"],
+      "tags": ["contact"]
+    }
+  ]
+}

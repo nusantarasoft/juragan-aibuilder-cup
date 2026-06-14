@@ -159,7 +159,6 @@ export class DockerService {
             { name: 'minio', image: 'minio/minio:RELEASE.2025', state: 'running', cpu: 0.4, memory: 92, memoryLimit: 512 },
             { name: 'nessie', image: 'ghcr.io/projectnessie/nessie:0.103.0', state: 'running', cpu: 0.3, memory: 128, memoryLimit: 512 },
             { name: 'middleware', image: 'node:20-slim', state: 'running', cpu: 0.5, memory: 105, memoryLimit: 512 },
-            { name: 'ragflow', image: 'infiniflow/ragflow:v0.17.2', state: 'running', cpu: 1.2, memory: 520, memoryLimit: 2048 },
             { name: 'waha', image: 'devlikeapro/waha:latest-2026.4.3', state: 'running', cpu: 0.2, memory: 128, memoryLimit: 2048 },
         ];
         return services.map((s, i) => ({

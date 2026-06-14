@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
 import {
@@ -14,6 +16,7 @@ import {
     Select,
     Switch,
     Form,
+    Input,
     message,
     Spin,
     Alert,
@@ -34,6 +37,7 @@ import {
     StudioNotebook,
     StudioWhatsAppConfig,
     StudioWhatsAppSessionStatus,
+    StudioWhatsAppSecurityMeta,
 } from '@/lib/studioService';
 import { useAuth } from '@/context/AuthContext';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -50,6 +54,9 @@ const WAHA_DASHBOARD =
     process.env.NEXT_PUBLIC_WAHA_DASHBOARD_URL || 'http://localhost:3010/dashboard';
 
 export default function WhatsAppGatewayPage() {
+    const searchParams = useSearchParams();
+    const tenantFromUrl = searchParams.get('tenant') || 'default';
+
     const { themeColor } = usePreferencesStore();
     const { user: contextUser, loading: authLoading } = useAuth();
     const authUser = useAuthStore((s) => s.user);
@@ -57,8 +64,11 @@ export default function WhatsAppGatewayPage() {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [activeTenant, setActiveTenant] = useState(tenantFromUrl);
+    const [waConfigs, setWaConfigs] = useState<StudioWhatsAppConfig[]>([]);
     const [notebooks, setNotebooks] = useState<StudioNotebook[]>([]);
     const [sessionStatus, setSessionStatus] = useState<StudioWhatsAppSessionStatus | null>(null);
+    const [securityMeta, setSecurityMeta] = useState<StudioWhatsAppSecurityMeta | null>(null);
     const [restartingWaha, setRestartingWaha] = useState(false);
     const [syncingWaha, setSyncingWaha] = useState(false);
 
@@ -79,8 +89,15 @@ export default function WhatsAppGatewayPage() {
             }
 
             try {
-                const cfg = await studioService.getWhatsAppConfig();
+                const list = await studioService.listWhatsAppConfigs();
+                setWaConfigs(list);
+                const tenant = activeTenant || list[0]?.tenant_id || 'default';
+                const cfg = await studioService.getWhatsAppConfig(tenant);
                 form.setFieldsValue({
+                    tenantId: cfg?.tenant_id ?? tenant,
+                    label: cfg?.label ?? '',
+                    wahaSession: cfg?.waha_session ?? '',
+                    businessPhone: cfg?.business_phone ?? '',
                     notebookId: cfg?.notebook_id ?? undefined,
                     enabled: cfg?.enabled ?? false,
                     allowlistPhones: cfg?.allowlist_phones ?? [],
@@ -96,10 +113,20 @@ export default function WhatsAppGatewayPage() {
             } catch {
                 setSessionStatus(null);
             }
+
+            try {
+                setSecurityMeta(await studioService.getWhatsAppSecurityMeta());
+            } catch {
+                setSecurityMeta(null);
+            }
         } finally {
             setLoading(false);
         }
-    }, [form, userId]);
+    }, [form, userId, activeTenant]);
+
+    useEffect(() => {
+        setActiveTenant(tenantFromUrl);
+    }, [tenantFromUrl]);
 
     useEffect(() => {
         if (authLoading) return;
@@ -116,15 +143,29 @@ export default function WhatsAppGatewayPage() {
         return () => clearInterval(t);
     }, [authLoading, wahaConnected]);
 
+    const allowlistRequired = securityMeta?.allowlistRequired ?? false;
+
     const handleSave = async () => {
         const values = await form.validateFields();
+        if (
+            allowlistRequired &&
+            values.enabled &&
+            (!values.allowlistPhones || values.allowlistPhones.length === 0)
+        ) {
+            message.error('Allowlist nomor wajib diisi saat WhatsApp diaktifkan.');
+            return;
+        }
         setSaving(true);
         try {
             await studioService.updateWhatsAppConfig({
+                tenantId: values.tenantId || activeTenant,
                 notebookId: values.notebookId || null,
                 enabled: values.enabled,
                 allowlistPhones: values.allowlistPhones || [],
                 useGuidedFlow: values.useGuidedFlow,
+                wahaSession: 'default',
+                businessPhone: values.businessPhone?.replace(/\D/g, '') || null,
+                label: values.label || null,
             });
             message.success('Konfigurasi WhatsApp disimpan');
             await load();
@@ -194,6 +235,9 @@ export default function WhatsAppGatewayPage() {
                 />
             }
             extra={[
+                <Link key="umkm" href="/admin/ai-studio/umkm">
+                    <Button>Kelola UMKM</Button>
+                </Link>,
                 pairedButStuck ? (
                     <Button key="sync" loading={syncingWaha} onClick={handleSyncWaha} type="primary">
                         Sync status → WORKING
@@ -333,6 +377,40 @@ export default function WhatsAppGatewayPage() {
                         </div>
                     ) : (
                         <Form form={form} layout="vertical" onFinish={handleSave}>
+                            <Form.Item label="UMKM / tenant">
+                                <Select
+                                    value={activeTenant}
+                                    onChange={(t) => setActiveTenant(t)}
+                                    options={waConfigs.map((c) => ({
+                                        value: c.tenant_id,
+                                        label: c.label || c.tenant_id,
+                                    }))}
+                                    placeholder="Pilih UMKM"
+                                />
+                            </Form.Item>
+                            <Form.Item name="tenantId" hidden>
+                                <Input />
+                            </Form.Item>
+                            <Alert
+                                type="info"
+                                showIcon
+                                style={{ marginBottom: 16 }}
+                                message="Satu nomor WA admin untuk semua UMKM"
+                                description="Routing ke UMKM berdasarkan nomor pengirim (pemilik). Kelola daftar UMKM di halaman UMKM Penjualan."
+                            />
+                            <Form.Item name="label" label="Nama toko (UMKM)">
+                                <Input placeholder="Warung Bu Ani" />
+                            </Form.Item>
+                            <Form.Item name="wahaSession" hidden initialValue="default">
+                                <Input />
+                            </Form.Item>
+                            <Form.Item
+                                name="businessPhone"
+                                label="Nomor HP pemilik UMKM"
+                                extra="Nomor yang mengirim chat ke nomor admin WA"
+                            >
+                                <Input placeholder="6288123456789" />
+                            </Form.Item>
                             <Form.Item
                                 name="enabled"
                                 label="Aktifkan balasan WhatsApp"
@@ -367,10 +445,52 @@ export default function WhatsAppGatewayPage() {
                             >
                                 <Switch />
                             </Form.Item>
+                            {allowlistRequired ? (
+                                <Alert
+                                    type="warning"
+                                    showIcon
+                                    style={{ marginBottom: 16 }}
+                                    message="Allowlist wajib"
+                                    description="Mode production / STUDIO_WHATSAPP_REQUIRE_ALLOWLIST aktif — isi minimal satu nomor sebelum mengaktifkan balasan WhatsApp."
+                                />
+                            ) : (
+                                <Alert
+                                    type="info"
+                                    showIcon
+                                    style={{ marginBottom: 16 }}
+                                    message="Mode development"
+                                    description="Allowlist kosong mengizinkan semua nomor. Di production, allowlist otomatis wajib."
+                                />
+                            )}
                             <Form.Item
                                 name="allowlistPhones"
-                                label="Allowlist nomor (kosong = semua)"
-                                extra="Format: 628123456789 tanpa +. Kosongkan untuk izinkan semua (dev)."
+                                label="Allowlist nomor"
+                                rules={
+                                    allowlistRequired
+                                        ? [
+                                              ({ getFieldValue }) => ({
+                                                  validator(_, value: string[] | undefined) {
+                                                      if (
+                                                          !getFieldValue('enabled') ||
+                                                          (value && value.length > 0)
+                                                      ) {
+                                                          return Promise.resolve();
+                                                      }
+                                                      return Promise.reject(
+                                                          new Error(
+                                                              'Isi minimal satu nomor saat WhatsApp aktif',
+                                                          ),
+                                                      );
+                                                  },
+                                              }),
+                                          ]
+                                        : undefined
+                                }
+                                extra={
+                                    securityMeta
+                                        ? `Format: 628123456789 tanpa +. Batas: ${securityMeta.rateLimitPerMinute} pesan/menit per nomor.`
+                                        : 'Format: 628123456789 tanpa +.'
+                                }
                             >
                                 <Select mode="tags" placeholder="628..." tokenSeparators={[',', ' ']} />
                             </Form.Item>

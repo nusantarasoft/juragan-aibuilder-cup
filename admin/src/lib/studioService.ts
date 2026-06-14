@@ -109,12 +109,17 @@ export const studioService = {
         return data.studioNotebook;
     },
 
-    async createNotebook(name: string, description: string, userId: string): Promise<StudioNotebook> {
+    async createNotebook(
+        name: string,
+        description: string,
+        userId: string,
+        audience: 'admin' | 'customer' = 'admin',
+    ): Promise<StudioNotebook> {
         const data = await graphqlRequest(`
-            mutation($name: String!, $description: String, $userId: String!) {
-                createStudioNotebook(name: $name, description: $description, userId: $userId)
+            mutation($name: String!, $description: String, $userId: String!, $audience: String) {
+                createStudioNotebook(name: $name, description: $description, userId: $userId, audience: $audience)
             }
-        `, { name, description, userId });
+        `, { name, description, userId, audience });
         return data.createStudioNotebook;
     },
 
@@ -325,11 +330,44 @@ export const studioService = {
         return data.reindexStudioNotebook;
     },
 
+    // ── UMKM ────────────────────────────────────────────────
+
+    async setupUmkmNotebook(
+        notebookId: string,
+        tenantId?: string,
+        publishGuideFlow = true,
+    ): Promise<StudioUmkmSetupResult> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!, $tenantId: String, $publishGuideFlow: Boolean) {
+                studioSetupUmkmNotebook(
+                    notebookId: $notebookId
+                    tenantId: $tenantId
+                    publishGuideFlow: $publishGuideFlow
+                )
+            }
+        `, { notebookId, tenantId: tenantId ?? null, publishGuideFlow });
+        return data.studioSetupUmkmNotebook;
+    },
+
     // ── WhatsApp (WAHA) ─────────────────────────────────────
 
-    async getWhatsAppConfig(): Promise<StudioWhatsAppConfig | null> {
-        const data = await graphqlRequest(`query { studioWhatsAppConfig }`);
+    async listWhatsAppConfigs(): Promise<StudioWhatsAppConfig[]> {
+        const data = await graphqlRequest(`query { studioWhatsAppConfigs }`);
+        return data.studioWhatsAppConfigs || [];
+    },
+
+    async getWhatsAppConfig(tenantId?: string): Promise<StudioWhatsAppConfig | null> {
+        const data = await graphqlRequest(`
+            query($tenantId: String) {
+                studioWhatsAppConfig(tenantId: $tenantId)
+            }
+        `, { tenantId: tenantId ?? null });
         return data.studioWhatsAppConfig;
+    },
+
+    async getWhatsAppSecurityMeta(): Promise<StudioWhatsAppSecurityMeta> {
+        const data = await graphqlRequest(`query { studioWhatsAppSecurityMeta }`);
+        return data.studioWhatsAppSecurityMeta;
     },
 
     async getWhatsAppSessionStatus(): Promise<StudioWhatsAppSessionStatus> {
@@ -348,37 +386,73 @@ export const studioService = {
     },
 
     async updateWhatsAppConfig(params: {
+        tenantId?: string;
         notebookId?: string | null;
         enabled: boolean;
         allowlistPhones?: string[];
         useGuidedFlow?: boolean;
+        wahaSession?: string | null;
+        businessPhone?: string | null;
+        label?: string | null;
     }): Promise<StudioWhatsAppConfig> {
         const data = await graphqlRequest(`
-            mutation($notebookId: String, $enabled: Boolean!, $allowlistPhones: [String!], $useGuidedFlow: Boolean) {
+            mutation(
+                $tenantId: String
+                $notebookId: String
+                $enabled: Boolean!
+                $allowlistPhones: [String!]
+                $useGuidedFlow: Boolean
+                $wahaSession: String
+                $businessPhone: String
+                $label: String
+            ) {
                 updateStudioWhatsAppConfig(
+                    tenantId: $tenantId
                     notebookId: $notebookId
                     enabled: $enabled
                     allowlistPhones: $allowlistPhones
                     useGuidedFlow: $useGuidedFlow
+                    wahaSession: $wahaSession
+                    businessPhone: $businessPhone
+                    label: $label
                 )
             }
         `, {
+            tenantId: params.tenantId ?? null,
             notebookId: params.notebookId ?? null,
             enabled: params.enabled,
             allowlistPhones: params.allowlistPhones ?? [],
             useGuidedFlow: params.useGuidedFlow ?? false,
+            wahaSession: params.wahaSession ?? null,
+            businessPhone: params.businessPhone ?? null,
+            label: params.label ?? null,
         });
         return data.updateStudioWhatsAppConfig;
     },
 };
 
+export interface StudioUmkmSetupResult {
+    notebookId: string;
+    tenantId: string;
+    contextConfig: Record<string, unknown>;
+    flow?: StudioGuideFlow | null;
+}
+
 export interface StudioWhatsAppConfig {
     tenant_id: string;
     notebook_id: string | null;
+    waha_session?: string | null;
+    business_phone?: string | null;
+    label?: string | null;
     enabled: boolean;
     allowlist_phones: string[];
     use_guided_flow: boolean;
     updated_at?: string;
+}
+
+export interface StudioWhatsAppSecurityMeta {
+    allowlistRequired: boolean;
+    rateLimitPerMinute: number;
 }
 
 export interface StudioWhatsAppSessionStatus {

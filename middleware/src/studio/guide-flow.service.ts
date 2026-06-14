@@ -8,13 +8,23 @@ import {
     validateGuideFlowGraph,
     type GuideFlowDefinition,
 } from './guide-flow.definition';
-import { getNode, resolveListenTarget, substituteInstruction, type FlowContext } from './guide-flow.interpreter';
+import {
+    getNode,
+    isUmkmSalesListenNode,
+    resolveListenTarget,
+    resolveUmkmListenTarget,
+    substituteInstruction,
+    type FlowContext,
+} from './guide-flow.interpreter';
 import {
     forceProceedAfterClarificationCap,
     shouldAskClarification,
 } from './query-understanding';
 import { DremioService } from '../dremio/dremio.service';
 import { StudioDbContextService } from './studio-db-context.service';
+import { StudioUmkmService } from './studio-umkm.service';
+import { defaultUmkmGuideFlowDefinition } from './guide-flow.definition';
+import { formatUnknownUmkmCommand } from './studio-umkm.util';
 
 @Injectable()
 export class GuideFlowService {
@@ -25,6 +35,7 @@ export class GuideFlowService {
         private readonly studioService: StudioService,
         private readonly dremioService: DremioService,
         private readonly dbContextService: StudioDbContextService,
+        private readonly umkmService: StudioUmkmService,
     ) { }
 
     private admin() {
@@ -128,6 +139,17 @@ export class GuideFlowService {
         if (error) throw error;
         this.logger.log(`Published guide flow ${flowId} v${nextVersion} for notebook ${row.notebook_id}`);
         return data;
+    }
+
+    async createAndPublishUmkmFlow(notebookId: string): Promise<any> {
+        const def = defaultUmkmGuideFlowDefinition();
+        const existing = await this.getPublishedFlowForNotebook(notebookId);
+        if (existing?.name === 'UMKM Penjualan WA') {
+            await this.updateFlow(existing.id, { definition: def });
+            return this.publishFlow(existing.id);
+        }
+        const created = await this.createFlow(notebookId, 'UMKM Penjualan WA', def);
+        return this.publishFlow(created.id);
     }
 
     async getPublishedFlowForNotebook(notebookId: string): Promise<any | null> {
@@ -329,7 +351,9 @@ export class GuideFlowService {
                 case 'listen':
                     if (userJust != null) {
                         lastResolvedListenNodeId = nodeId;
-                        const next = resolveListenTarget(node, userJust);
+                        const next = isUmkmSalesListenNode(node)
+                            ? resolveUmkmListenTarget(node, userJust)
+                            : resolveListenTarget(node, userJust);
                         await this.recordEvent(conversation.id, flowRowId, nodeId, next, 'listen', userJust);
                         nodeId = next;
                         userJust = null;
@@ -448,6 +472,58 @@ export class GuideFlowService {
                     await this.studioService.appendStudioMessage(conversation.id, 'assistant', summary);
                     replies.push({ content: summary });
                     await this.recordEvent(conversation.id, flowRowId, nodeId, node.next, 'sql');
+                    nodeId = node.next;
+                    break;
+                }
+                case 'action': {
+                    const notebook = await this.studioService.getNotebook(notebookId);
+                    const cfg = this.dbContextService.parseConfig(notebook.context_config);
+                    const tenantId = this.umkmService.resolveTenantId(cfg);
+                    const raw =
+                        typeof ctx.lastUserMessage === 'string' ? ctx.lastUserMessage : '';
+                    let content = '';
+                    switch (node.action) {
+                        case 'record_sale': {
+                            // Fallback when published flow predates list_products transitions.
+                            const intent = this.umkmService.detectIntent(raw);
+                            if (intent === 'list_products') {
+                                content = await this.umkmService.buildProductListMessage(tenantId);
+                            } else if (intent === 'sales_report') {
+                                content = await this.umkmService.buildDailyReportMessage(tenantId);
+                            } else if (intent === 'help') {
+                                content =
+                                    (await this.umkmService.handleMessage('bantuan', tenantId, undefined, cfg)) ||
+                                    '';
+                            } else if (intent === 'unknown') {
+                                content = formatUnknownUmkmCommand();
+                            } else {
+                                content = await this.umkmService.recordSaleFromText(raw, tenantId, undefined, cfg);
+                            }
+                            break;
+                        }
+                        case 'sales_report':
+                            content = await this.umkmService.buildDailyReportMessage(tenantId);
+                            break;
+                        case 'list_products':
+                            content = await this.umkmService.buildProductListMessage(tenantId);
+                            break;
+                        case 'umkm_help': {
+                            const helpIntent = this.umkmService.detectIntent(raw);
+                            content =
+                                helpIntent === 'unknown'
+                                    ? formatUnknownUmkmCommand()
+                                    : (await this.umkmService.handleMessage('bantuan', tenantId, undefined, cfg)) ||
+                                      '';
+                            break;
+                        }
+                        default:
+                            throw new BadRequestException(`Unknown action "${(node as any).action}"`);
+                    }
+                    await this.studioService.appendStudioMessage(conversation.id, 'assistant', content);
+                    replies.push({ content });
+                    await this.recordEvent(conversation.id, flowRowId, nodeId, node.next, 'action', raw, {
+                        action: node.action,
+                    });
                     nodeId = node.next;
                     break;
                 }

@@ -15,12 +15,15 @@ export type StudioChunkHit = {
     score: number;
 };
 
+export type DocumentRetrievalStatus = 'matched' | 'no_relevant_chunks' | 'not_indexed';
+
 export type RetrievalResult = {
     chunks: StudioChunkHit[];
     fileContext: string;
     dbContext: string;
     references: { content: string; docName: string; score: number }[];
     rawChunks: { chunkId: string; sourceId: string; filename: string; score: number }[];
+    documentRetrievalStatus: DocumentRetrievalStatus;
 };
 
 @Injectable()
@@ -92,21 +95,22 @@ export class StudioContextService {
     ): Promise<RetrievalResult> {
         const chunks = await this.semanticSearchNotebook(notebookId, query);
 
+        let documentRetrievalStatus: DocumentRetrievalStatus = 'matched';
         if (chunks.length === 0) {
-            const { data: fallback } = await this.admin()
+            const { count, error } = await this.admin()
                 .from('studio_source_chunks')
-                .select('id, source_id, content, studio_notebook_sources(filename)')
-                .eq('notebook_id', notebookId)
-                .limit(5);
-            for (const row of fallback || []) {
-                const fn = (row as any).studio_notebook_sources?.filename || 'source';
-                chunks.push({
-                    chunkId: row.id,
-                    sourceId: row.source_id,
-                    filename: fn,
-                    content: row.content,
-                    score: 0,
-                });
+                .select('id', { count: 'exact', head: true })
+                .eq('notebook_id', notebookId);
+            if (error) {
+                this.logger.warn(`chunk count check failed for notebook ${notebookId}: ${error.message}`);
+                documentRetrievalStatus = 'not_indexed';
+            } else {
+                documentRetrievalStatus = (count ?? 0) > 0 ? 'no_relevant_chunks' : 'not_indexed';
+            }
+            if (documentRetrievalStatus === 'no_relevant_chunks') {
+                this.logger.debug(
+                    `Vector search returned no chunks above threshold for notebook ${notebookId}`,
+                );
             }
         }
 
@@ -134,7 +138,25 @@ export class StudioContextService {
             score: c.score,
         }));
 
-        return { chunks, fileContext, dbContext, references, rawChunks };
+        return { chunks, fileContext, dbContext, references, rawChunks, documentRetrievalStatus };
+    }
+
+    private fileContextRule(
+        status: DocumentRetrievalStatus,
+        hasDb: boolean,
+    ): string {
+        switch (status) {
+            case 'matched':
+                return 'Jawab pertanyaan HANYA berdasarkan cuplikan dokumen sumber di bawah. Jika tidak ada di sumber, katakan dengan jujur.';
+            case 'no_relevant_chunks':
+                return hasDb
+                    ? 'Tidak ditemukan cuplikan dokumen yang relevan untuk pertanyaan ini. Jawab dari data database operasional jika tersedia; jangan mengarang dari dokumen.'
+                    : 'Tidak ditemukan cuplikan dokumen yang relevan untuk pertanyaan ini. Katakan dengan jujur bahwa informasi tidak ada di sumber notebook; jangan mengarang.';
+            case 'not_indexed':
+                return hasDb
+                    ? 'Belum ada dokumen terindeks di notebook ini. Gunakan data database operasional untuk pertanyaan status/order/analitik jika tersedia.'
+                    : 'Belum ada dokumen terindeks di notebook ini. Minta pengguna menunggu indexing selesai atau menambahkan sumber; jangan mengarang jawaban faktual.';
+        }
     }
 
     async generateGroundedAnswer(params: {
@@ -148,6 +170,8 @@ export class StudioContextService {
         const { notebookName, audience, question, instruction, conversationLines, retrieval } = params;
         const hasFile = retrieval.fileContext.length > 0;
         const hasDb = retrieval.dbContext.length > 0;
+        const docStatus =
+            retrieval.documentRetrievalStatus ?? (hasFile ? 'matched' : 'not_indexed');
 
         const roleLine =
             audience === 'customer'
@@ -157,9 +181,7 @@ export class StudioContextService {
         const rules = [
             roleLine,
             `Basis pengetahuan notebook: "${notebookName}".`,
-            hasFile
-                ? 'Jawab pertanyaan HANYA berdasarkan cuplikan dokumen sumber di bawah. Jika tidak ada di sumber, katakan dengan jujur.'
-                : 'Belum ada dokumen terindeks di notebook ini. Jawab secara umum atau minta pengguna menunggu indexing selesai.',
+            this.fileContextRule(docStatus, hasDb),
             hasDb
                 ? 'Gunakan juga data database operasional di bawah untuk pertanyaan status/order/analitik.'
                 : '',

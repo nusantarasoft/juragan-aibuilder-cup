@@ -32,7 +32,6 @@ keycloak
 portainer
 rabbitmq
 registry
-anythingllm
 labelstudio
 minio
 middleware

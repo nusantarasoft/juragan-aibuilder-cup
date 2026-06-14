@@ -46,7 +46,7 @@ Get-Content .\middleware\sql\studio_whatsapp.sql -Raw | docker exec -i postgres 
 1. Pilih **notebook** (harus punya sumber terindeks / sales views untuk pertanyaan penjualan)
 2. Aktifkan **Aktifkan balasan WhatsApp**
 3. Simpan
-4. (Opsional) Allowlist nomor; kosong = semua nomor (hanya untuk dev)
+4. Isi **allowlist nomor** (wajib di `NODE_ENV=production` atau `STUDIO_WHATSAPP_REQUIRE_ALLOWLIST=true`; di dev kosong = semua nomor)
 
 ### 6. Uji
 
@@ -56,9 +56,13 @@ Kirim pesan ke nomor yang terhubung:
 - "Produk apa yang paling laris?"
 - Kirim gambar + caption
 
+## UMKM (catat penjualan + laporan)
+
+Untuk use case **UMKM** — catat penjualan dan laporan harian lewat WA — lihat **[STUDIO_UMKM.md](./STUDIO_UMKM.md)** (setup) dan **[STUDIO_UMKM_FLOW.md](./STUDIO_UMKM_FLOW.md)** (alur & diagram flow).
+
 ## Arsitektur
 
-- **Inbound:** WAHA → `POST /api/studio/whatsapp/webhook` → `StudioWhatsAppService` → `StudioService.chat()` atau guided flow
+- **Inbound:** WAHA → `POST /api/studio/whatsapp/webhook` → `StudioWhatsAppService` → UMKM / `StudioService.chat()` / guided flow
 - **Outbound:** `WahaClientService.sendText` / `sendImage` / `sendFile`
 - **Sesi:** `studio_whatsapp_sessions` maps `chat_id` ↔ `studio_conversations` (`channel=whatsapp`)
 
@@ -93,7 +97,8 @@ Cek log middleware: `Webhook message session=default` harus muncul saat chat mas
 ## Keamanan
 
 - Set `WAHA_WEBHOOK_HMAC_KEY` di production; middleware memvalidasi header `X-Webhook-Hmac`
-- Gunakan allowlist nomor di admin untuk membatasi siapa yang boleh chat
+- **Allowlist:** di production (`NODE_ENV=production`) atau `STUDIO_WHATSAPP_REQUIRE_ALLOWLIST=true`, allowlist wajib — tanpa nomor terdaftar, pesan ditolak dan aktivasi di admin ditolak
+- **Rate limit:** `STUDIO_WHATSAPP_RATE_LIMIT_PER_MINUTE` (default `10`) per nomor pengirim; kelebihan mendapat balasan singkat tanpa memanggil LLM
 - Protokol WhatsApp Web berisiko session putus / pembatasan; gunakan nomor dedicated
 
 ## Notifikasi

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 const FEATURES = [
   { icon: "📊", title: "Big Data Analytics", desc: "Dremio Lakehouse with SQL Runner, VDS management, and Iceberg/Nessie integration." },
-  { icon: "🤖", title: "AI Studio", desc: "RAGFlow-powered intelligent document analysis, chat assistants, and report generation." },
+  { icon: "🤖", title: "AI Studio", desc: "Notebook RAG — intelligent document analysis, guided chat, and report generation." },
   { icon: "💼", title: "CRM Intelligence", desc: "Full-cycle CRM with contacts, deals, campaigns, AI-driven insights, and pipeline analytics." },
   { icon: "🎫", title: "ITSM & Service Desk", desc: "17-process ITIL framework: incidents, problems, changes, CMDB, SLA, and knowledge base." },
   { icon: "📈", title: "Accounting & Finance", desc: "Chart of accounts, journal entries, AR/AP, bank reconciliation, and financial reports." },

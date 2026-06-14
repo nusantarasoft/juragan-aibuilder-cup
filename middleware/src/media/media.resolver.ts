@@ -25,8 +25,6 @@ export class EmbeddingStatusType {
     @Field(() => Int)
     chunkCount: number;
     @Field({ nullable: true })
-    ragflowDocId?: string;
-    @Field({ nullable: true })
     progressMsg?: string;
 }
 
@@ -510,7 +508,7 @@ export class MediaResolver {
         @Args('id') id: string,
         @Args('content', { nullable: true }) content?: string
     ): Promise<boolean> {
-        return this.mediaService.resolveEmbedding(id);
+        return this.mediaService.resolveEmbedding(id, content || '');
     }
 
     @Query(() => EmbeddingStatusType, { name: 'embeddingStatus' })
