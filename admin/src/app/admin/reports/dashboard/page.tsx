@@ -14,6 +14,7 @@ import { gql, DEFAULT_TENANT_ID } from '@/lib/graphql';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const { Text } = Typography;
@@ -224,30 +225,53 @@ export default function ReportsDashboardPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                 style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                {/* ═══ 1. KPI Stats Row — 6 cards with gradient borders ═══ */}
-                <Row gutter={[12, 12]}>
-                    {kpiCards.map((s, i) => (
-                        <Col key={i} xs={12} sm={8} md={4}>
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.05 }}>
-                                <Card size="small" style={{
-                                    ...glassCard,
-                                    borderTop: `3px solid ${s.c}`,
-                                    background: isDark
-                                        ? `linear-gradient(135deg, rgba(12,12,30,0.92) 0%, ${s.c}11 100%)`
-                                        : `linear-gradient(135deg, rgba(255,255,255,0.65) 0%, ${s.c}11 100%)`,
-                                }}>
-                                    {loading ? (
-                                        <Skeleton.Input active size="small" style={{ width: '100%' }} />
-                                    ) : (
-                                        <Statistic title={s.t} value={s.v} prefix={s.i}
-                                            valueStyle={{ color: s.c, fontSize: 20, fontWeight: 700 }} />
-                                    )}
-                                </Card>
-                            </motion.div>
-                        </Col>
-                    ))}
-                </Row>
+                {/* ═══ 1. KPI Stats Row (BENTO GRID) ═══ */}
+                <BentoGrid className="max-w-full">
+                    <BentoGridItem
+                        title="Total Reports"
+                        description="Across all modules"
+                        icon={<FileTextOutlined style={{ color: '#3b82f6' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-blue-500/10">
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#3b82f6' }}>{stats.total}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Active & Drafts"
+                        description={`${stats.active} active, ${stats.drafts} drafts`}
+                        icon={<CheckCircleOutlined style={{ color: '#10b981' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-emerald-500/10">
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#10b981' }}>{stats.active + stats.drafts}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Scheduled"
+                        description="Automated reports"
+                        icon={<CalendarOutlined style={{ color: '#8b5cf6' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-purple-500/10">
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#8b5cf6' }}>{stats.scheduled}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Exports & Speed"
+                        description={`${stats.totalExports} exports @ ${stats.avgGen} avg speed`}
+                        icon={<ThunderboltOutlined style={{ color: '#06b6d4' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-cyan-500/10">
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#06b6d4' }}>{stats.totalExports}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                </BentoGrid>
 
                 {/* ═══ 2. Reports Table + Sidebar (donut chart & activity feed) ═══ */}
                 <Row gutter={[14, 14]}>

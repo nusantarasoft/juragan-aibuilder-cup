@@ -16,6 +16,8 @@ import { useTheme } from "next-themes";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { useRouter } from "next/navigation";
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
+import { AnimatedCircularProgressBar } from "@/components/magicui/animated-circular-progress-bar";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
 const { Text, Title } = Typography;
@@ -184,44 +186,61 @@ export default function EcommerceDashboard() {
             subTitle={<DecryptedText text="Orders, revenue, customers & promotions at a glance" animateOn="view" revealDirection="start" speed={60} sequential />}
         >
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {/* Hero KPIs */}
-                <Row gutter={[14, 14]}>
-                    <Col xs={24} sm={12} md={6}>
-                        {navCard('View Orders', '/admin/ecommerce/orders', <ShoppingCartOutlined />, '#3b82f6',
-                            <Statistic title={<span style={{ color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>Total Orders</span>} value={s.totalOrders || 0} valueStyle={{ color: '#3b82f6', fontSize: 24, fontWeight: 'bold' }} />, 0.05)}
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                        {navCard('Revenue Detail', '/admin/ecommerce/orders', <DollarOutlined />, '#10b981',
-                            <Statistic title={<span style={{ color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>Total Revenue</span>} value={fmtShort(s.totalRevenue || 0)} valueStyle={{ color: '#10b981', fontSize: 24, fontFamily: 'monospace', fontWeight: 'bold' }} />, 0.1)}
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                        {navCard('Manage Customers', '/admin/ecommerce/customers', <UserOutlined />, '#8b5cf6',
-                            <Statistic title={<span style={{ color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}>Customers</span>} value={s.totalCustomers || 0} suffix={<Text type="secondary" style={{ fontSize: 11 }}>{s.activeCustomers || 0} active</Text>} valueStyle={{ color: '#8b5cf6', fontSize: 24, fontWeight: 'bold' }} />, 0.15)}
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                            <Card style={{ borderLeft: '3px solid #f59e0b' }} styles={{ body: { padding: '14px 16px' } }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                    <div style={{ position: 'relative' }}>
-                                        <svg viewBox="0 0 80 80" width={56} height={56}>
-                                            <circle cx="40" cy="40" r="30" fill="none" stroke={isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)"} strokeWidth="8" />
-                                            <circle cx="40" cy="40" r="30" fill="none" stroke="#10b981" strokeWidth="8"
-                                                strokeDasharray={`${(completionRate / 100) * 188.5} ${188.5 - (completionRate / 100) * 188.5}`}
-                                                strokeLinecap="round" style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }}>
-                                                <animate attributeName="stroke-dasharray" from={`0 188.5`} to={`${(completionRate / 100) * 188.5} ${188.5 - (completionRate / 100) * 188.5}`} dur="1s" fill="freeze" />
-                                            </circle>
-                                            <text x="40" y="44" textAnchor="middle" fontSize="13" fontWeight="700" fill={textColor}>{completionRate}%</text>
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <Text strong style={{ fontSize: 13, display: 'block', color: textColor }}>Completion Rate</Text>
-                                        <Text type="secondary" style={{ fontSize: 11 }}>AOV: {fmt(s.avgOrderValue || 0)}</Text>
-                                    </div>
-                                </div>
-                            </Card>
-                        </motion.div>
-                    </Col>
-                </Row>
+                {/* Hero KPIs (BENTO GRID) */}
+                <BentoGrid className="max-w-full">
+                    <BentoGridItem
+                        title="Total Orders"
+                        description="All-time processed orders"
+                        icon={<ShoppingCartOutlined style={{ color: '#3b82f6' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-blue-500/10" onClick={() => router.push('/admin/ecommerce/orders')} style={{ cursor: 'pointer' }}>
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#3b82f6' }}>{s.totalOrders || 0}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Total Revenue"
+                        description="Lifetime generated revenue"
+                        icon={<DollarOutlined style={{ color: '#10b981' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-emerald-500/10" onClick={() => router.push('/admin/ecommerce/orders')} style={{ cursor: 'pointer' }}>
+                                <div style={{ fontSize: 24, fontWeight: 800, color: '#10b981', fontFamily: 'monospace' }}>{fmtShort(s.totalRevenue || 0)}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Customers"
+                        description={`${s.activeCustomers || 0} active users`}
+                        icon={<UserOutlined style={{ color: '#8b5cf6' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-purple-500/10" onClick={() => router.push('/admin/ecommerce/customers')} style={{ cursor: 'pointer' }}>
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#8b5cf6' }}>{s.totalCustomers || 0}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Completion Rate"
+                        description={`${s.completed || 0} of ${s.totalOrders || 0} orders`}
+                        icon={<CheckCircleOutlined style={{ color: '#0ea5e9' }} />}
+                        header={
+                            <div className="flex flex-col h-full w-full items-center justify-center rounded-xl bg-sky-500/10">
+                                <AnimatedCircularProgressBar
+                                    max={100}
+                                    min={0}
+                                    value={completionRate}
+                                    gaugePrimaryColor="#0ea5e9"
+                                    gaugeSecondaryColor="rgba(14, 165, 233, 0.1)"
+                                    className="w-[80px] h-[80px] scale-90"
+                                />
+                                <div style={{ fontSize: 11, marginTop: 4, color: "#0ea5e9", fontWeight: 600 }}>Fulfilled</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                </BentoGrid>
 
                 {/* Order Funnel */}
                 <Card size="small" title={<Text strong style={{ fontSize: 14, color: textColor }}>📊 Order Pipeline</Text>}>

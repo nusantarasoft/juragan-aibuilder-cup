@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import RbacGuard from "@/components/common/RbacGuard";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import {
     ProTable,
     ProForm,
@@ -29,7 +30,7 @@ import {
     AppstoreOutlined, UnorderedListOutlined, ProjectOutlined,
     RocketOutlined, CheckCircleOutlined, ClockCircleOutlined,
     DollarOutlined, TeamOutlined, ExperimentOutlined,
-    ThunderboltOutlined, AimOutlined, FlagOutlined, FileExcelOutlined, FilePdfOutlined, SearchOutlined } from "@ant-design/icons";
+    ThunderboltOutlined, AimOutlined, FlagOutlined, FileExcelOutlined, FilePdfOutlined, SearchOutlined, BuildOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
@@ -410,6 +411,10 @@ export default function ProjectsPage() {
                 const items: MenuProps['items'] = [
                     { key: 'view', icon: <EyeOutlined />, label: 'View Details', onClick: () => setViewingProject(record) },
                     { key: 'dashboard', icon: <DashboardOutlined />, label: 'Open Dashboard', onClick: () => handleOpenDashboard(record.id) },
+                    { key: 'board', icon: <AppstoreOutlined />, label: 'Kanban Board', onClick: () => router.push(`/admin/pm/board?projectId=${record.id}`) },
+                    { key: 'timeline', icon: <ClockCircleOutlined />, label: 'Timeline / Gantt', onClick: () => router.push(`/admin/pm/timeline?projectId=${record.id}`) },
+                    { key: 'workload', icon: <TeamOutlined />, label: 'Team Workload', onClick: () => router.push(`/admin/pm/workload?projectId=${record.id}`) },
+                    { key: 'bim3d', icon: <BuildOutlined />, label: '3D BIM Model', onClick: () => router.push(`/admin/pm/construction-3d?projectId=${record.id}`) },
                     { key: 'edit', icon: <EditOutlined />, label: 'Edit', onClick: () => handleEdit(record) },
                     { type: 'divider' },
                     {
@@ -478,6 +483,10 @@ export default function ProjectsPage() {
 
         const items: MenuProps['items'] = [
             { key: 'view', icon: <EyeOutlined />, label: 'View Details', onClick: () => setViewingProject(project) },
+            { key: 'board', icon: <AppstoreOutlined />, label: 'Kanban Board', onClick: () => router.push(`/admin/pm/board?projectId=${project.id}`) },
+            { key: 'timeline', icon: <ClockCircleOutlined />, label: 'Timeline / Gantt', onClick: () => router.push(`/admin/pm/timeline?projectId=${project.id}`) },
+            { key: 'workload', icon: <TeamOutlined />, label: 'Team Workload', onClick: () => router.push(`/admin/pm/workload?projectId=${project.id}`) },
+            { key: 'bim3d', icon: <BuildOutlined />, label: '3D BIM Model', onClick: () => router.push(`/admin/pm/construction-3d?projectId=${project.id}`) },
             { key: 'edit', icon: <EditOutlined />, label: 'Edit', onClick: () => handleEdit(project) },
             { type: 'divider' },
             {
@@ -647,92 +656,81 @@ export default function ProjectsPage() {
             subTitle={<DecryptedText text="Manage all your project portfolios" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
             {contextHolder}
 
-            {/* â”€â”€ Gradient Stat Cards â”€â”€ */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={12} lg={6}>
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
-                    <StatCard
-                        title="Total Projects"
-                        value={stats.total}
-                        icon={<ProjectOutlined />}
-                        gradient={`linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`}
-                        extra={
-                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {/* â”€â”€ BentoGrid Stat Cards â”€â”€ */}
+            <BentoGrid className="max-w-full mb-6">
+                <BentoGridItem
+                    title="Total Projects"
+                    description="Portfolio scope"
+                    icon={<ProjectOutlined style={{ color: themeColor }} />}
+                    header={
+                        <div className="flex h-full w-full flex-col items-center justify-center rounded-xl" style={{ backgroundColor: `${themeColor}15` }}>
+                            <div style={{ fontSize: 32, fontWeight: 800, color: themeColor }}>{stats.total}</div>
+                            <div className="flex gap-1 flex-wrap justify-center mt-2 px-2">
                                 {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
                                     const count = projects.filter(p => p.status === key).length;
                                     return count > 0 ? (
-                                        <Tag key={key} style={{
-                                            borderRadius: 10, fontSize: 10, lineHeight: '16px',
-                                            padding: '0 6px', margin: 0, background: cfg.color + '18',
-                                            color: cfg.color, border: `1px solid ${cfg.color}33`
-                                        }}>
+                                        <Tag key={key} style={{ borderRadius: 10, fontSize: 9, padding: '0 4px', margin: 0, background: cfg.color + '18', color: cfg.color, border: `1px solid ${cfg.color}33` }}>
                                             {count} {cfg.label}
                                         </Tag>
                                     ) : null;
                                 })}
                             </div>
-                        }
-                    />
-                        </motion.div>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
-                    <StatCard
-                        title="Active Projects"
-                        value={stats.active}
-                        icon={<RocketOutlined />}
-                        gradient="linear-gradient(135deg, #10b981, #34d399)"
-                        extra={
-                            stats.overdue > 0 ? (
-                                <Tag color="red" style={{ borderRadius: 10, fontSize: 10 }}>
-                                    {stats.overdue} overdue
-                                </Tag>
-                            ) : (
-                                <Text type="secondary" style={{ fontSize: 11 }}>All on schedule âœ“</Text>
-                            )
-                        }
-                    />
-                        </motion.div>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
-                    <StatCard
-                        title="Budget Utilization"
-                        value={stats.budgetPct}
-                        suffix="%"
-                        icon={<DollarOutlined />}
-                        gradient={stats.budgetPct > 90
-                            ? 'linear-gradient(135deg, #ef4444, #f87171)'
-                            : 'linear-gradient(135deg, #f59e0b, #fbbf24)'}
-                        extra={
-                            <Text type="secondary" style={{ fontSize: 11 }}>
+                        </div>
+                    }
+                    className="col-span-4 lg:col-span-1"
+                />
+                
+                <BentoGridItem
+                    title="Active Projects"
+                    description="Currently in progress"
+                    icon={<RocketOutlined style={{ color: "#10b981" }} />}
+                    header={
+                        <div className="flex h-full w-full flex-col items-center justify-center rounded-xl" style={{ backgroundColor: "#10b98115" }}>
+                            <div style={{ fontSize: 32, fontWeight: 800, color: "#10b981" }}>{stats.active}</div>
+                            <div className="mt-2">
+                                {stats.overdue > 0 ? (
+                                    <Tag color="red" style={{ borderRadius: 10, fontSize: 10 }}>{stats.overdue} overdue</Tag>
+                                ) : (
+                                    <span style={{ fontSize: 11, color: "rgba(16, 185, 129, 0.8)" }}>All on schedule âœ“</span>
+                                )}
+                            </div>
+                        </div>
+                    }
+                    className="col-span-4 lg:col-span-1"
+                />
+
+                <BentoGridItem
+                    title="Budget Utilization"
+                    description="Total spent vs budget"
+                    icon={<DollarOutlined style={{ color: stats.budgetPct > 90 ? "#ef4444" : "#f59e0b" }} />}
+                    header={
+                        <div className="flex h-full w-full flex-col items-center justify-center rounded-xl" style={{ backgroundColor: stats.budgetPct > 90 ? "#ef444415" : "#f59e0b15" }}>
+                            <div style={{ fontSize: 32, fontWeight: 800, color: stats.budgetPct > 90 ? "#ef4444" : "#f59e0b" }}>{stats.budgetPct}%</div>
+                            <div className="mt-2 text-xs" style={{ color: isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)" }}>
                                 ${stats.totalSpent.toLocaleString()} / ${stats.totalBudget.toLocaleString()}
-                            </Text>
-                        }
-                    />
-                        </motion.div>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
-                    <StatCard
-                        title="Completed"
-                        value={stats.completed}
-                        icon={<CheckCircleOutlined />}
-                        gradient="linear-gradient(135deg, #22c55e, #4ade80)"
-                        extra={
-                            stats.total > 0 ? (
-                                <Progress
-                                    percent={Math.round((stats.completed / stats.total) * 100)}
-                                    size="small" showInfo={false}
-                                    strokeColor={{ '0%': '#22c55e', '100%': '#4ade80' }}
-                                    trailColor={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}
-                                />
-                            ) : null
-                        }
-                    />
-                        </motion.div>
-                </Col>
-            </Row>
+                            </div>
+                        </div>
+                    }
+                    className="col-span-4 lg:col-span-1"
+                />
+
+                <BentoGridItem
+                    title="Completed"
+                    description="Successfully delivered"
+                    icon={<CheckCircleOutlined style={{ color: "#22c55e" }} />}
+                    header={
+                        <div className="flex h-full w-full flex-col items-center justify-center rounded-xl" style={{ backgroundColor: "#22c55e15" }}>
+                            <div style={{ fontSize: 32, fontWeight: 800, color: "#22c55e" }}>{stats.completed}</div>
+                            <div className="mt-2 w-3/4">
+                                {stats.total > 0 && (
+                                    <Progress percent={Math.round((stats.completed / stats.total) * 100)} size="small" showInfo={false} strokeColor={{ '0%': '#22c55e', '100%': '#4ade80' }} trailColor={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'} />
+                                )}
+                            </div>
+                        </div>
+                    }
+                    className="col-span-4 lg:col-span-1"
+                />
+            </BentoGrid>
 
             {/* -- Quick Filters + Search -- */}
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>

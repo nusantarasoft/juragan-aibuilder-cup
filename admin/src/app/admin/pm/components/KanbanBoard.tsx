@@ -216,20 +216,17 @@ export default function KanbanBoard({
                 key={task.id}
                 role="listitem"
                 aria-label={`Task: ${task.title}`}
-                layout
                 initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: isBeingDragged ? 0.4 : 1, y: 0, scale: isBeingDragged ? 0.97 : 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: isBeingDragged ? 0.4 : 1, y: 0 }}
+                exit={{ opacity: 0 }}
                 transition={{ duration: 0.2, delay: index * 0.03 }}
                 draggable
                 onDragStart={(e: any) => handleDragStart(e, task.id)}
                 onDragEnd={handleDragEnd}
                 onClick={() => onTaskClick(task)}
-                whileHover={{ y: -2, boxShadow: isDark ? "0 6px 20px rgba(0,0,0,0.4)" : "0 6px 20px rgba(0,0,0,0.1)" }}
                 style={{
-                    background: isDark ? "rgba(30, 30, 44, 0.8)" : "rgba(255,255,255,0.92)",
-                    backdropFilter: "blur(8px)",
-                    border: isDark ? "1px solid rgba(139,92,246,0.15)" : "1px solid rgba(0,0,0,0.06)",
+                    background: isDark ? "rgba(30, 30, 44, 0.4)" : "rgba(248,250,252,0.6)",
+                    border: isDark ? "1px solid rgba(139,92,246,0.15)" : "1px solid rgba(0,0,0,0.05)",
                     borderRadius: 10,
                     padding: "12px 14px",
                     marginBottom: 8,
@@ -427,7 +424,6 @@ export default function KanbanBoard({
                                 background: isDark
                                     ? `rgba(15, 15, 23, ${isOver ? 0.85 : 0.6})`
                                     : `rgba(255,255,255, ${isOver ? 0.75 : 0.5})`,
-                                backdropFilter: "blur(12px)",
                                 border: isOver
                                     ? `2px dashed ${col.color}`
                                     : isDark

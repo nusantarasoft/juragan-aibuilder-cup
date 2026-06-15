@@ -22,6 +22,10 @@ import { AiModule } from './ai/ai.module';
 import { PmModule } from './pm/pm.module';
 import { StarsModule } from './stars/stars.module';
 import { InventoryModule } from './inventory/inventory.module';
+import { DcimModule } from './dcim/dcim.module';
+import { BmsModule } from './bms/bms.module';
+import { ScadaModule } from './scada/scada.module';
+import { BimModule } from './bim/bim.module';
 import { ItsmModule } from './itsm/itsm.module';
 import { StudioModule } from './studio/studio.module';
 import { AccountingModule } from './accounting/accounting.module';
@@ -47,7 +51,7 @@ import { DocumentsModule } from './documents/documents.module';
 import { ReportsModule } from './reports/reports.module';
 import { FormsModule } from './forms/forms.module';
 import { WahaModule } from './waha/waha.module';
-
+import { FacilityModule } from './facility/facility.module';
 @Module({
     imports: [
         // Environment configuration
@@ -88,6 +92,10 @@ import { WahaModule } from './waha/waha.module';
         PmModule,
         StarsModule,
         InventoryModule,
+        DcimModule,
+        BmsModule,
+        ScadaModule,
+        BimModule,
         ItsmModule,
         StudioModule,
         AccountingModule,
@@ -114,6 +122,7 @@ import { WahaModule } from './waha/waha.module';
         ReportsModule,
         // v3.0 — Form Builder
         FormsModule,
+        FacilityModule,
     ],
 })
 export class AppModule { }

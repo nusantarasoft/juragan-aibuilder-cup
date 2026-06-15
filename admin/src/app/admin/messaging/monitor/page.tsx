@@ -17,6 +17,7 @@ import { gql, DEFAULT_TENANT_ID } from '@/lib/graphql';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid,
     Tooltip as RTooltip, ResponsiveContainer,
@@ -253,33 +254,22 @@ export default function QueueMonitorPage() {
             </motion.div>
 
             {/* ─── 2. Stats Cards ────────────────────── */}
-            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
-                {stats.map((s, i) => (
-                    <Col xs={12} sm={8} md={4} key={s.t}>
-                        <motion.div
-                            initial={{ opacity: 0, y: 14 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.05 }}
-                        >
-                            <Card
-                                size="small"
-                                style={{ ...glass, borderTop: `3px solid ${s.c}`, overflow: 'hidden' }}
-                                styles={{ body: { padding: '14px 16px' } }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                    <span style={{ color: s.c, fontSize: 16 }}>{s.i}</span>
-                                    <Text style={{ fontSize: 10, color: isDark ? 'rgba(255,255,255,0.5)' : '#999' }}>
-                                        {s.t}
-                                    </Text>
-                                </div>
-                                <Text strong style={{ fontSize: 22, color: s.c, display: 'block', lineHeight: 1.2 }}>
-                                    {s.v}
-                                </Text>
-                            </Card>
-                        </motion.div>
-                    </Col>
+            <BentoGrid className="max-w-full mb-4">
+                {stats.map((st, i) => (
+                    <BentoGridItem
+                        key={i}
+                        title={st.t}
+                        description="Monitor metric"
+                        icon={React.cloneElement(st.i as React.ReactElement<any>, { style: { color: st.c } })}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl" style={{ backgroundColor: `${st.c}15` }}>
+                                <div style={{ fontSize: 32, fontWeight: 800, color: st.c }}>{st.v}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
                 ))}
-            </Row>
+            </BentoGrid>
 
             {/* ─── 3. Message Throughput Chart ───────── */}
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>

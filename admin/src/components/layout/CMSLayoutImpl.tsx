@@ -56,6 +56,7 @@ import GlitchText from "@/components/react-bits/GlitchText";
 import { usePreferencesStore, hexToRgb } from "@/store/usePreferencesStore";
 import GlobalDateRangePicker from "@/components/common/GlobalDateRangePicker";
 import NotificationBell from "@/components/common/NotificationBell";
+import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
 // Dynamic import for MetaBalls to prevent SSR crash (ogl WebGL library requires browser)
 const MetaBalls = dynamic(
     () => import("@/components/react-bits/MetaBalls"),
@@ -1066,8 +1067,9 @@ export default function CMSLayoutImpl({
                                                 </GlitchText>
                                             </div>
                                         </div>
-                                        {/* Right: Notification Bell + Dark/Light Toggle */}
+                                        {/* Right: Notification Bell + Language + Dark/Light Toggle */}
                                         <div style={{ marginLeft: 16, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <LanguageSwitcher isDark={darkMode} />
                                             <NotificationBell />
                                             <AnimatedThemeToggler
                                                 isDark={darkMode}

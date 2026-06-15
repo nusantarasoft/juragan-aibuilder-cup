@@ -9,6 +9,7 @@ import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import RbacGuard from '@/components/common/RbacGuard';
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
@@ -71,24 +72,74 @@ export default function NewsDashboardPage() {
             extra={[<Button key="r" icon={<ReloadOutlined />} onClick={load}>Refresh</Button>]}
         >
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <Row gutter={[12, 12]}>
-                    {[
-                        { title: 'Total Articles', value: dashboard.totalArticles, icon: <FileSearchOutlined />, color: '#3b82f6' },
-                        { title: 'Active Sources', value: dashboard.activeSources, icon: <GlobalOutlined />, color: '#10b981' },
-                        { title: 'Active Crawlers', value: dashboard.activeCrawlers, icon: <RobotOutlined />, color: '#f59e0b' },
-                        { title: 'Social Accounts', value: dashboard.connectedAccounts, icon: <ShareAltOutlined />, color: '#8b5cf6' },
-                        { title: 'Total Reach', value: dashboard.totalReach, icon: <RiseOutlined />, color: '#06b6d4' },
-                        { title: 'Active Alerts', value: dashboard.activeAlerts, icon: <AlertOutlined />, color: '#ef4444' },
-                    ].map((st, i) => (
-                        <Col key={i} xs={12} md={4}>
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                                <Card size="small" style={{ ...glass, borderTop: `3px solid ${st.color}` }}>
-                                    <Statistic title={st.title} value={st.value} prefix={st.icon} valueStyle={{ color: st.color, fontSize: 20 }} />
-                                </Card>
-                            </motion.div>
-                        </Col>
-                    ))}
-                </Row>
+                <BentoGrid className="max-w-full">
+                    <BentoGridItem
+                        title="Total Articles"
+                        description="Indexed across all sources"
+                        icon={<FileSearchOutlined style={{ color: '#3b82f6' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-blue-500/10">
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#3b82f6' }}>{dashboard.totalArticles.toLocaleString()}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Active Sources"
+                        description="Tracked media outlets"
+                        icon={<GlobalOutlined style={{ color: '#10b981' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-emerald-500/10">
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#10b981' }}>{dashboard.activeSources.toLocaleString()}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Active Crawlers"
+                        description="Automated scrapers"
+                        icon={<RobotOutlined style={{ color: '#f59e0b' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-amber-500/10">
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#f59e0b' }}>{dashboard.activeCrawlers.toLocaleString()}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Social Accounts"
+                        description="Connected API integrations"
+                        icon={<ShareAltOutlined style={{ color: '#8b5cf6' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-purple-500/10">
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#8b5cf6' }}>{dashboard.connectedAccounts.toLocaleString()}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Total Reach"
+                        description="Estimated audience footprint"
+                        icon={<RiseOutlined style={{ color: '#06b6d4' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-cyan-500/10">
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#06b6d4' }}>{dashboard.totalReach.toLocaleString()}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Active Alerts"
+                        description="Real-time notifications"
+                        icon={<AlertOutlined style={{ color: '#ef4444' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-red-500/10">
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#ef4444' }}>{dashboard.activeAlerts.toLocaleString()}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                </BentoGrid>
 
                 <Row gutter={[14, 14]}>
                     <Col xs={24} md={10}>

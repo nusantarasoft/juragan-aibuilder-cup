@@ -19,7 +19,7 @@ import { AuroraText } from '@/components/magicui/aurora-text';
 import { motion } from 'framer-motion';
 
 const { Text, Title } = Typography;
-const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)' };
+const glass = { background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.45)' };
 
 // Initial Mock Data
 const initialData = {
@@ -164,7 +164,8 @@ export default function KanbanBoardPage() {
                                                                 className="mb-3 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow"
                                                                 style={{ 
                                                                     borderRadius: 12,
-                                                                    transform: snapshot.isDragging ? 'scale(1.02)' : 'none',
+                                                                    boxShadow: snapshot.isDragging ? '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)' : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+                                                                    transition: snapshot.isDragging ? 'none' : 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                                                     borderLeft: `4px solid ${getPriorityColor(task.priority)}`
                                                                 }}
                                                                 bodyStyle={{ padding: '12px' }}

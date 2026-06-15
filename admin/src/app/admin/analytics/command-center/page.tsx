@@ -21,6 +21,7 @@ import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -217,41 +218,65 @@ export default function CommandCenterPage() {
         >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-            {/* 1. Platform Vital Signs Banner */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-                <div style={{
-                    background: isDark
-                        ? `linear-gradient(135deg, rgba(6,182,212,0.15), rgba(139,92,246,0.12), rgba(16,185,129,0.10))`
-                        : `linear-gradient(135deg, rgba(6,182,212,0.08), rgba(139,92,246,0.06), rgba(16,185,129,0.05))`,
-                    borderRadius: 16, padding: '20px 24px', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
-                    backdropFilter: 'blur(16px)',
-                }}>
-                    <Row gutter={[16, 12]} align="middle">
-                        {[
-                            { label: 'Platform Uptime', value: '99.97%', color: '#10b981', icon: <CheckCircleOutlined /> },
-                            { label: 'Active Users Now', value: userCount ? userCount.toLocaleString() : '847', color: '#3b82f6', icon: <TeamOutlined /> },
-                            { label: 'API Calls/min', value: '12,450', color: '#8b5cf6', icon: <ApiOutlined /> },
-                            { label: 'Error Rate', value: '0.03%', color: '#06b6d4', icon: <SafetyCertificateOutlined /> },
-                        ].map((v, i) => (
-                            <Col key={i} xs={12} md={6}>
-                                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.08 }}
-                                    style={{ textAlign: 'center', padding: '8px 0' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
-                                        <div style={{
-                                            width: 8, height: 8, borderRadius: '50%', background: v.color,
-                                            boxShadow: `0 0 8px ${v.color}`, animation: 'pulse 2s infinite',
-                                        }} />
-                                        <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>{v.label}</Text>
-                                    </div>
-                                    <div style={{ fontSize: 32, fontWeight: 800, color: v.color, fontFamily: 'monospace', lineHeight: 1.2 }}>
-                                        {v.icon} {v.value}
-                                    </div>
-                                </motion.div>
-                            </Col>
-                        ))}
-                    </Row>
-                </div>
-            </motion.div>
+            {/* 1. Platform Vital Signs Banner (BENTO GRID) */}
+            <BentoGrid className="max-w-full">
+                <BentoGridItem
+                    title="Platform Uptime"
+                    description="Last 30 days"
+                    icon={<CheckCircleOutlined style={{ color: '#10b981' }} />}
+                    header={
+                        <div className="flex h-full w-full items-center justify-center rounded-xl bg-emerald-500/10">
+                            <div className="flex items-center gap-2">
+                                <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 12px #10b981', animation: 'pulse 2s infinite' }} />
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#10b981', fontFamily: 'monospace' }}>99.97%</div>
+                            </div>
+                        </div>
+                    }
+                    className="col-span-3 lg:col-span-1"
+                />
+                <BentoGridItem
+                    title="Active Users Now"
+                    description="Real-time online users"
+                    icon={<TeamOutlined style={{ color: '#3b82f6' }} />}
+                    header={
+                        <div className="flex h-full w-full items-center justify-center rounded-xl bg-blue-500/10">
+                            <div className="flex items-center gap-2">
+                                <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#3b82f6', boxShadow: '0 0 12px #3b82f6', animation: 'pulse 2s infinite' }} />
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#3b82f6', fontFamily: 'monospace' }}>{userCount ? userCount.toLocaleString() : '847'}</div>
+                            </div>
+                        </div>
+                    }
+                    className="col-span-3 lg:col-span-1"
+                />
+                <BentoGridItem
+                    title="API Calls/min"
+                    description="Current request volume"
+                    icon={<ApiOutlined style={{ color: '#8b5cf6' }} />}
+                    header={
+                        <div className="flex h-full w-full items-center justify-center rounded-xl bg-purple-500/10">
+                            <div className="flex items-center gap-2">
+                                <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#8b5cf6', boxShadow: '0 0 12px #8b5cf6', animation: 'pulse 2s infinite' }} />
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#8b5cf6', fontFamily: 'monospace' }}>12,450</div>
+                            </div>
+                        </div>
+                    }
+                    className="col-span-3 lg:col-span-1"
+                />
+                <BentoGridItem
+                    title="Error Rate"
+                    description="Server 5xx errors"
+                    icon={<SafetyCertificateOutlined style={{ color: '#06b6d4' }} />}
+                    header={
+                        <div className="flex h-full w-full items-center justify-center rounded-xl bg-cyan-500/10">
+                            <div className="flex items-center gap-2">
+                                <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#06b6d4', boxShadow: '0 0 12px #06b6d4', animation: 'pulse 2s infinite' }} />
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#06b6d4', fontFamily: 'monospace' }}>0.03%</div>
+                            </div>
+                        </div>
+                    }
+                    className="col-span-3 lg:col-span-1"
+                />
+            </BentoGrid>
 
             {/* 2. Real-Time Traffic */}
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>

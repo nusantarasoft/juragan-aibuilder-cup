@@ -1,0 +1,59 @@
+name: Docker Publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  ADMIN_IMAGE_NAME: ${{ github.repository_owner }}/nusantarasoft-admin
+  MIDDLEWARE_IMAGE_NAME: ${{ github.repository_owner }}/nusantarasoft-middleware
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Admin
+        id: meta-admin
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.ADMIN_IMAGE_NAME }}
+
+      - name: Build and push Admin image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./admin
+          push: true
+          tags: ${{ steps.meta-admin.outputs.tags }}
+          labels: ${{ steps.meta-admin.outputs.labels }}
+          build-args: |
+            NPM_FLAGS=--legacy-peer-deps
+
+      - name: Extract metadata (tags, labels) for Middleware
+        id: meta-mid
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.MIDDLEWARE_IMAGE_NAME }}
+
+      - name: Build and push Middleware image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./middleware
+          push: true
+          tags: ${{ steps.meta-mid.outputs.tags }}
+          labels: ${{ steps.meta-mid.outputs.labels }}

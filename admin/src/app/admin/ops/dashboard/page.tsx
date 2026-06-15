@@ -6,6 +6,8 @@ import CMSLayout from "@/components/layout/CMSLayout";
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
+import { AnimatedCircularProgressBar } from "@/components/magicui/animated-circular-progress-bar";
 import {
     Card, Row, Col, Statistic, Tag, Space, Typography, Spin, List, Progress,
     Empty, Button, Tooltip, Timeline, Divider,
@@ -144,32 +146,64 @@ export default function OpsDashboardPage() {
             ]}
         >
             <Spin spinning={loading}>
-                {/* Stats Row */}
-                <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
-                    {stats.map((s, i) => (
-                        <Col key={i} xs={12} sm={8} md={4}>
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                                <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
-                                    <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color, fontSize: 22 }} />
-                                </Card>
-                            </motion.div>
-                        </Col>
-                    ))}
-                </Row>
+                {/* Stats Row (BENTO GRID) */}
+                <BentoGrid className="mb-6 max-w-full">
+                    <BentoGridItem
+                        title="Completion Rate"
+                        description={`${completedRuns.length} of ${runs.length} runs completed`}
+                        icon={<BarChartOutlined style={{ color: '#3b82f6' }} />}
+                        header={
+                            <div className="flex flex-col h-full w-full items-center justify-center rounded-xl bg-blue-500/10">
+                                <AnimatedCircularProgressBar
+                                    max={100}
+                                    min={0}
+                                    value={completionRate}
+                                    gaugePrimaryColor={completionRate >= 80 ? "#22c55e" : "#3b82f6"}
+                                    gaugeSecondaryColor="rgba(59, 130, 246, 0.1)"
+                                    className="w-[80px] h-[80px] scale-90"
+                                />
+                                <div style={{ fontSize: 11, marginTop: 4, color: completionRate >= 80 ? "#22c55e" : "#3b82f6", fontWeight: 600 }}>System Health</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Playbooks"
+                        description="Active operational workflows"
+                        icon={<BookOutlined style={{ color: '#8b5cf6' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-purple-500/10" onClick={() => router.push('/admin/ops/playbooks')} style={{ cursor: 'pointer' }}>
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#8b5cf6' }}>{playbooks.length}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Active Runs"
+                        description="Currently executing"
+                        icon={<RocketOutlined style={{ color: '#3b82f6' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-blue-500/10" onClick={() => router.push('/admin/ops/runs')} style={{ cursor: 'pointer' }}>
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#3b82f6' }}>{activeRuns.length}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                    <BentoGridItem
+                        title="Overdue"
+                        description="Requires immediate action"
+                        icon={<WarningOutlined style={{ color: '#ef4444' }} />}
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl bg-red-500/10" onClick={() => router.push('/admin/ops/runs')} style={{ cursor: 'pointer' }}>
+                                <div style={{ fontSize: 32, fontWeight: 800, color: '#ef4444' }}>{overdueRuns.length}</div>
+                            </div>
+                        }
+                        className="col-span-3 lg:col-span-1"
+                    />
+                </BentoGrid>
 
-                {/* Row 1: Completion + Active Runs + Overdue */}
+                {/* Row 1: Active Runs */}
                 <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                    <Col xs={24} md={8}>
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
-                            <Card title={<Space><BarChartOutlined /> Completion Rate</Space>} size="small" style={glass}>
-                                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                                    <Progress type="dashboard" percent={completionRate} strokeColor={{ '0%': '#3b82f6', '100%': '#22c55e' }} size={140} />
-                                    <br />
-                                    <Text type="secondary">{completedRuns.length} of {runs.length} runs completed</Text>
-                                </div>
-                            </Card>
-                        </motion.div>
-                    </Col>
 
                     <Col xs={24} md={8}>
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>

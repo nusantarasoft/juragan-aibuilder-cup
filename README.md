@@ -1,6 +1,6 @@
 # Nusantarasoft Docker Infrastructure
 
-Complete enterprise infrastructure with 11 integrated stacks and 65+ services. **v2.19.0**
+Complete enterprise infrastructure with 16 integrated stacks and 70+ services. **v3.1.0**
 
 ---
 
@@ -685,6 +685,21 @@ MIT
 ---
 
 ## 📋 Changelog
+
+### v3.1.0 (2026-06-14)
+- **Playwright E2E Integration** — Added full end-to-end headless testing pipeline to `admin/playwright.config.ts`. Tests Auth, Global Navigation, and the Command Palette to ensure monolithic CI/CD stability.
+- **Enterprise Command Center** — Added global `Cmd+K` Omni-Search palette that natively indexes tasks, tickets, and module routes.
+- **Global WebSocket Notifications** — Integrated Supabase Realtime across the app to fire native desktop browser notifications and Web Audio API chimes for critical backend alarms.
+- **Build verified**: 205+ pages, exit code 0, CI/CD automated deployment enabled.
+
+### v3.0.0 (2026-06-10)
+- **Facility Management Expansion** — Massive structural upgrade introducing 4 new pillars:
+  - **BIM & 3D Construction** (`Construction3D.tsx`): Real-time WebGL building renderer with dynamic construction phase timelines, RFI marker systems (with sonar ripples), animated workers, and a robust 3-Rule Clash Detection Engine (Sequence, Resource, Cost) plotting physical 3D beacons.
+  - **DCIM (Data Center Infrastructure Management)**: Power line monitoring, 3D rack visualization, temperature heatmaps, and capacity planning.
+  - **SCADA (Supervisory Control and Data Acquisition)**: Node-OPC-UA/MQTT live sensor tracking, interactive HMI mimics, and predictive anomaly detection.
+  - **BMS (Building Management System)**: HVAC zoning, Live CCTV matrix, intelligent lighting control, and access monitoring.
+- **Next.js Turbopack Optimization** — Optimized the build compiler for the 200+ page application.
+- **Database Schema Expansion** — Added 25+ new tables via `36-facility-management.sql` for telemetry tracking.
 
 ### v2.19.0 (2026-05-22)
 - **Menu Restructuring** — Consolidated 26 sidebar sections into 16 with 6 domain groups (Business, People, Service Management, Intelligence, Platform, System)

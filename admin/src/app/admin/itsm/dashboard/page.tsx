@@ -26,6 +26,8 @@ import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import FormIntegrationWidget from "@/components/forms/FormIntegrationWidget";
 import dynamic from "next/dynamic";
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
+import { AnimatedCircularProgressBar } from "@/components/magicui/animated-circular-progress-bar";
 
 // ── Dynamic chart imports (SSR-safe) ──────────────────────
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -138,34 +140,50 @@ export default function ItsmDashboardPage() {
     // ═══════════════════════════════════════════════════════
     const overviewTab = (
         <>
-            {/* ROW 1: Core ITSM Modules */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                <Col xs={24} sm={12} md={6}>
-                    <ProCard bordered hoverable style={{ background: 'linear-gradient(135deg, rgba(245,34,45,0.08) 0%, rgba(245,34,45,0.02) 100%)', borderLeft: `4px solid ${themeColor}`, cursor: 'pointer', backdropFilter: 'blur(20px)', borderRadius: 12 }} onClick={() => router.push('/admin/itsm/tickets')}>
-                        <Statistic title={<Space><AlertOutlined style={{ color: themeColor }} /> Incidents</Space>} value={stats?.totalOpen || 0} suffix={<Text type="secondary" style={{ fontSize: 12 }}>/ {stats?.totalTickets || 0}</Text>} loading={loading} />
-                        <div style={{ marginTop: 8 }}>
-                            {stats?.totalSlaBreach > 0 && <Tag color="red" icon={<WarningOutlined />}>{stats.totalSlaBreach} SLA Breach</Tag>}
-                            {stats?.totalUnassigned > 0 && <Tag color="orange">{stats.totalUnassigned} Unassigned</Tag>}
+            {/* ROW 1: Core ITSM Modules (BENTO GRID) */}
+            <BentoGrid className="mb-4">
+                <BentoGridItem
+                    title="Active Incidents"
+                    description={`${stats?.totalOpen || 0} open out of ${stats?.totalTickets || 0} total.`}
+                    icon={<AlertOutlined />}
+                    onClick={() => router.push('/admin/itsm/tickets')}
+                    header={
+                        <div style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)', opacity: 0.8 }}>
+                            <AnimatedCircularProgressBar
+                                max={100}
+                                min={0}
+                                value={stats?.slaCompliance || 0}
+                                gaugePrimaryColor={themeColor}
+                                gaugeSecondaryColor="rgba(255,255,255,0.1)"
+                                className="w-[80px] h-[80px]"
+                            />
+                            <div style={{ textAlign: 'center', fontSize: 10, marginTop: 4 }}>SLA Compliance</div>
                         </div>
-                    </ProCard>
-                </Col>
-                <Col xs={24} sm={12} md={6}>
-                    <ProCard bordered hoverable style={{ background: 'linear-gradient(135deg, rgba(24,144,255,0.08) 0%, rgba(24,144,255,0.02) 100%)', borderLeft: '4px solid #1890ff', cursor: 'pointer', backdropFilter: 'blur(20px)', borderRadius: 12 }} onClick={() => router.push('/admin/itsm/requests')}>
-                        <Statistic title={<Space><FileTextOutlined style={{ color: '#1890ff' }} /> Service Requests</Space>} value={modules?.serviceRequests?.open || 0} suffix={<Text type="secondary" style={{ fontSize: 12 }}>/ {modules?.serviceRequests?.total || 0}</Text>} loading={loading} />
-                    </ProCard>
-                </Col>
-                <Col xs={24} sm={12} md={6}>
-                    <ProCard bordered hoverable style={{ background: 'linear-gradient(135deg, rgba(250,140,22,0.08) 0%, rgba(250,140,22,0.02) 100%)', borderLeft: '4px solid #fa8c16', cursor: 'pointer', backdropFilter: 'blur(20px)', borderRadius: 12 }} onClick={() => router.push('/admin/itsm/problems')}>
-                        <Statistic title={<Space><BugOutlined style={{ color: '#fa8c16' }} /> Problems</Space>} value={modules?.problems?.open || 0} suffix={<Text type="secondary" style={{ fontSize: 12 }}>/ {modules?.problems?.total || 0}</Text>} loading={loading} />
-                        {(modules?.problems?.knownErrors || 0) > 0 && <Tag color="volcano" style={{ marginTop: 4 }}>{modules.problems.knownErrors} Known Errors</Tag>}
-                    </ProCard>
-                </Col>
-                <Col xs={24} sm={12} md={6}>
-                    <ProCard bordered hoverable style={{ background: 'linear-gradient(135deg, rgba(82,196,26,0.08) 0%, rgba(82,196,26,0.02) 100%)', borderLeft: '4px solid #52c41a', cursor: 'pointer', backdropFilter: 'blur(20px)', borderRadius: 12 }} onClick={() => router.push('/admin/itsm/changes')}>
-                        <Statistic title={<Space><SyncOutlined style={{ color: '#52c41a' }} /> Changes</Space>} value={modules?.changes?.open || 0} suffix={<Text type="secondary" style={{ fontSize: 12 }}>/ {modules?.changes?.total || 0}</Text>} loading={loading} />
-                    </ProCard>
-                </Col>
-            </Row>
+                    }
+                    className="col-span-3 lg:col-span-1"
+                />
+                <BentoGridItem
+                    title="Service Requests"
+                    description={`${modules?.serviceRequests?.open || 0} open requests awaiting action.`}
+                    icon={<FileTextOutlined />}
+                    onClick={() => router.push('/admin/itsm/requests')}
+                    className="col-span-3 lg:col-span-1"
+                />
+                <BentoGridItem
+                    title="Problem Management"
+                    description={`${modules?.problems?.open || 0} active problems. ${modules?.problems?.knownErrors || 0} known errors.`}
+                    icon={<BugOutlined />}
+                    onClick={() => router.push('/admin/itsm/problems')}
+                    className="col-span-3 lg:col-span-1"
+                />
+                <BentoGridItem
+                    title="Change Control"
+                    description={`${modules?.changes?.open || 0} pending changes requiring approval or scheduling.`}
+                    icon={<SyncOutlined />}
+                    onClick={() => router.push('/admin/itsm/changes')}
+                    className="col-span-3 lg:col-span-1"
+                />
+            </BentoGrid>
 
             {/* ROW 2: ITIL v4 Modules */}
             <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>

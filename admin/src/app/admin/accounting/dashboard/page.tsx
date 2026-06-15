@@ -15,6 +15,7 @@ import { accountingService, AcctDashboard, AcctInvoiceSummary } from '@/lib/acco
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 
 const { Text } = Typography;
 const fmt = (v: number | string) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(v) || 0);
@@ -208,21 +209,53 @@ export default function AccountingDashboardPage() {
             subTitle={<DecryptedText text="Financial overview and real-time insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
         >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            {/* ─── KPI Row ─────────────────────────────────── */}
-            <Row gutter={[14, 14]}>
-                {kpis.map((kpi, i) => (
-                    <Col xs={24} sm={12} lg={6} key={i}>
-                        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, duration: 0.4 }}>
-                            <Card hoverable style={{ ...glass, overflow: 'hidden', position: 'relative' }} styles={{ body: { padding: '18px 20px' } }}>
-                                <div style={{ position: 'absolute', top: -8, right: -8, fontSize: 60, opacity: 0.06, color: kpi.color }}>{kpi.icon}</div>
-                                <Text style={{ fontSize: 12, opacity: 0.55, display: 'block', marginBottom: 4 }}>{kpi.title}</Text>
-                                <Text style={{ fontSize: 22, fontWeight: 800, color: kpi.color, display: 'block', fontFamily: 'monospace', letterSpacing: -0.5 }}>{fmt(kpi.value)}</Text>
-                                <Text style={{ fontSize: 11, opacity: 0.4 }}>{kpi.sub}</Text>
-                            </Card>
-                        </motion.div>
-                    </Col>
-                ))}
-            </Row>
+            {/* ─── KPI Row (BENTO GRID) ─────────────────────────────────── */}
+            <BentoGrid className="max-w-full">
+                <BentoGridItem
+                    title="Total Revenue"
+                    description="Income from operations"
+                    icon={<RiseOutlined style={{ color: '#10b981' }} />}
+                    header={
+                        <div className="flex h-full w-full items-center justify-center rounded-xl bg-emerald-500/10">
+                            <div style={{ fontSize: 24, fontWeight: 800, color: '#10b981', fontFamily: 'monospace' }}>{fmt(data.totalRevenue)}</div>
+                        </div>
+                    }
+                    className="col-span-3 lg:col-span-1"
+                />
+                <BentoGridItem
+                    title="Total Expenses"
+                    description="Operating costs"
+                    icon={<FallOutlined style={{ color: '#ef4444' }} />}
+                    header={
+                        <div className="flex h-full w-full items-center justify-center rounded-xl bg-red-500/10">
+                            <div style={{ fontSize: 24, fontWeight: 800, color: '#ef4444', fontFamily: 'monospace' }}>{fmt(data.totalExpenses)}</div>
+                        </div>
+                    }
+                    className="col-span-3 lg:col-span-1"
+                />
+                <BentoGridItem
+                    title="Net Income"
+                    description={`Margin: ${profitMargin.toFixed(1)}%`}
+                    icon={<DollarOutlined style={{ color: data.netIncome >= 0 ? '#3b82f6' : '#ef4444' }} />}
+                    header={
+                        <div className={`flex h-full w-full items-center justify-center rounded-xl ${data.netIncome >= 0 ? 'bg-blue-500/10' : 'bg-red-500/10'}`}>
+                            <div style={{ fontSize: 24, fontWeight: 800, color: data.netIncome >= 0 ? '#3b82f6' : '#ef4444', fontFamily: 'monospace' }}>{fmt(data.netIncome)}</div>
+                        </div>
+                    }
+                    className="col-span-3 lg:col-span-1"
+                />
+                <BentoGridItem
+                    title="Total Assets"
+                    description={`Equity: ${fmtShort(data.totalEquity)}`}
+                    icon={<BankOutlined style={{ color: '#8b5cf6' }} />}
+                    header={
+                        <div className="flex h-full w-full items-center justify-center rounded-xl bg-purple-500/10">
+                            <div style={{ fontSize: 24, fontWeight: 800, color: '#8b5cf6', fontFamily: 'monospace' }}>{fmt(data.totalAssets)}</div>
+                        </div>
+                    }
+                    className="col-span-3 lg:col-span-1"
+                />
+            </BentoGrid>
 
             {/* ─── Middle Row: Charts + AP/AR ──────────────── */}
             <Row gutter={[14, 14]}>

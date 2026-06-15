@@ -5,6 +5,7 @@ import CMSLayout from "@/components/layout/CMSLayout";
 import { motion } from "framer-motion";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import { Card, Col, Empty, Input, message, Progress, Row, Segmented, Select, Space, Spin, Statistic, Tag, Tooltip, Typography, Button } from "antd";
 import {
     ProjectOutlined, CheckCircleOutlined, FlagOutlined,
@@ -572,7 +573,6 @@ export default function RoadmapPage() {
 
     const glassCard = {
         background: isDark ? 'rgba(15, 15, 23, 0.7)' : 'rgba(255,255,255,0.85)',
-        backdropFilter: 'blur(12px)',
         border: isDark ? '1px solid rgba(139,92,246,0.15)' : '1px solid rgba(0,0,0,0.06)',
         borderRadius: 12,
     };
@@ -615,21 +615,34 @@ export default function RoadmapPage() {
 
             <DndProvider backend={HTML5Backend}>
                 {/* ── Summary Stats ── */}
-                <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                <BentoGrid className="max-w-full mb-6">
                     {[
-                        { label: 'Active Projects', value: activeCount, icon: <RocketOutlined style={{ color: themeColor }} />, color: themeColor },
-                        { label: 'Upcoming Milestones', value: upcomingMs, icon: <FlagOutlined style={{ color: '#f59e0b' }} />, color: '#f59e0b' },
-                        { label: 'Completion Rate', value: `${completionRate}%`, icon: <CheckCircleOutlined style={{ color: '#10b981' }} />, color: '#10b981', suffix: <Progress type="circle" percent={completionRate} size={28} strokeWidth={10} strokeColor={completionRate >= 70 ? '#10b981' : completionRate >= 40 ? '#f59e0b' : '#ef4444'} format={() => ''} /> },
+                        { label: 'Active Projects', value: activeCount, icon: <RocketOutlined />, color: themeColor },
+                        { label: 'Upcoming Milestones', value: upcomingMs, icon: <FlagOutlined />, color: '#f59e0b' },
+                        { label: 'Completion Rate', value: completionRate, icon: <CheckCircleOutlined />, color: '#10b981', suffix: "%" },
                     ].map((s, i) => (
-                        <Col xs={24} sm={8} key={i}>
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                                <Card style={{ ...glassCard, borderTop: `3px solid ${s.color}` }} size="small">
-                                    <Statistic title={<span style={{ fontSize: 12 }}>{s.label}</span>} value={s.value} prefix={s.icon} suffix={'suffix' in s ? s.suffix : undefined} valueStyle={{ fontSize: 24, fontWeight: 700, color: s.color }} />
-                                </Card>
-                            </motion.div>
-                        </Col>
+                        <BentoGridItem
+                            key={i}
+                            title={s.label}
+                            description="Roadmap summary"
+                            icon={React.cloneElement(s.icon as React.ReactElement, { style: { color: s.color } })}
+                            header={
+                                <div className="flex h-full w-full flex-col items-center justify-center rounded-xl" style={{ backgroundColor: `${s.color}15` }}>
+                                    <div style={{ fontSize: 32, fontWeight: 800, color: s.color }}>
+                                        {s.value}
+                                        {s.suffix && <span style={{ fontSize: 20 }}>{s.suffix}</span>}
+                                    </div>
+                                    {s.label === 'Completion Rate' && (
+                                        <div className="mt-2 w-1/2">
+                                            <Progress percent={completionRate} size="small" showInfo={false} strokeColor={{ '0%': '#10b981', '100%': '#34d399' }} />
+                                        </div>
+                                    )}
+                                </div>
+                            }
+                            className="col-span-3 lg:col-span-1"
+                        />
                     ))}
-                </Row>
+                </BentoGrid>
 
                 {/* ── Filters & Navigation ── */}
                 <Card style={{ ...glassCard, marginBottom: 16 }} size="small">

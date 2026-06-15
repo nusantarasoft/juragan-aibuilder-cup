@@ -126,7 +126,6 @@ export default function KanbanBoard({ tasks, sprints, projectId, onRefresh }: Ka
     // ─── Styles ────────────────────────────────────────────
     const glassCard: React.CSSProperties = {
         background: isDark ? "rgba(15, 15, 23, 0.7)" : "rgba(255,255,255,0.85)",
-        backdropFilter: "blur(12px)",
         border: isDark ? "1px solid rgba(139,92,246,0.15)" : "1px solid rgba(0,0,0,0.06)",
         borderRadius: 12,
     };
@@ -333,13 +332,12 @@ export default function KanbanBoard({ tasks, sprints, projectId, onRefresh }: Ka
                                                                                 <div style={{
                                                                                     marginBottom: 8,
                                                                                     background: isDark ? "rgba(30, 30, 44, 0.8)" : "rgba(255,255,255,0.9)",
-                                                                                    backdropFilter: "blur(8px)", padding: 12, borderRadius: 10,
+                                                                                    padding: 12, borderRadius: 10,
                                                                                     border: isDark ? "1px solid rgba(139,92,246,0.12)" : "1px solid rgba(0,0,0,0.06)",
                                                                                     borderLeft: `3px solid ${getPriorityBorder(t.priority)}`,
                                                                                     boxShadow: snapshot.isDragging 
                                                                                         ? (isDark ? "0 12px 28px rgba(139,92,246,0.3)" : "0 12px 28px rgba(0,0,0,0.15)")
                                                                                         : (isDark ? "0 2px 8px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.06)"),
-                                                                                    transform: snapshot.isDragging ? "scale(1.02)" : "scale(1)",
                                                                                     transition: snapshot.isDragging ? "none" : "all 0.2s ease",
                                                                                 }}>
                                                                                     <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
