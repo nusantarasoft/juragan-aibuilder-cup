@@ -4038,6 +4038,25 @@ function MeasurementRenderer({ points }: { points: [number, number, number][] })
     </group>
   );
 }
+const GlassPanel = React.forwardRef<HTMLDivElement, any>(({ isDark, intensity, style, children, ...props }, ref) => {
+  const getIntensityStyle = () => {
+    switch(intensity) {
+      case "low": return { background: isDark ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.4)", backdropFilter: "blur(4px)", border: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` };
+      case "high": return { background: isDark ? "rgba(0,0,0,0.8)" : "rgba(255,255,255,0.8)", backdropFilter: "blur(16px)", border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"}` };
+      default: return { background: isDark ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.6)", backdropFilter: "blur(8px)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}` };
+    }
+  };
+  return (
+    <motion.div
+      ref={ref}
+      style={{ ...getIntensityStyle(), ...style }}
+      {...props}
+    >
+      {children}
+    </motion.div>
+  );
+});
+GlassPanel.displayName = "GlassPanel";
 
 export default function Construction3DPage() {
   const { token } = theme.useToken();
@@ -4059,8 +4078,8 @@ export default function Construction3DPage() {
   const [taskCreating, setTaskCreating] = useState(false);
   const [connectedTasks, setConnectedTasks] = useState<any[]>([]);
   const [rfis, setRfis] = useState<any[]>([
-    { id: "rfi-1", bimId: "col-1-1-1", title: "Concrete spalling on column base", priority: "high", status: "open" },
-    { id: "rfi-2", bimId: "slab-2", title: "Verify slab thickness matches drawing", priority: "medium", status: "open" }
+    { id: "rfi-1", bimId: "col-1-1-1", title: "Concrete spalling on column base", priority: "high", status: "open", description: "Observed severe spalling on the southeast column. Need structural engineer review immediately.", comments: [{ id: "c1", author: "QA Engineer", text: "Please verify concrete strength.", date: new Date().toISOString() }], attachments: ["IMG_4021.jpg"] },
+    { id: "rfi-2", bimId: "slab-2", title: "Verify slab thickness matches drawing", priority: "medium", status: "open", description: "Level 2 slab thickness appears to be 50mm thinner than specified in structural drawings.", comments: [], attachments: [] }
   ]);
   const [connectedMilestones, setConnectedMilestones] = useState<any[]>([]);
 
@@ -4431,8 +4450,8 @@ export default function Construction3DPage() {
       }
     }
 
-    return results;
-  }, [currentPhases, connectedProject]);
+    return results.filter(r => !resolvedClashIds.includes(r.id));
+  }, [currentPhases, connectedProject, resolvedClashIds]);
 
   // Update config helper
   const updateConfig = useCallback((key: keyof SceneConfig, value: any) => {
@@ -4474,6 +4493,10 @@ export default function Construction3DPage() {
   const [measurementMode, setMeasurementMode] = useState<"off" | "distance" | "area">("off");
   const [showRfiPanel, setShowRfiPanel] = useState(false);
   const [rfiFilter, setRfiFilter] = useState<"all" | "open" | "resolved">("all");
+  const [expandedRfiId, setExpandedRfiId] = useState<string | null>(null);
+  const [rfiCommentText, setRfiCommentText] = useState("");
+  const [resolvedClashIds, setResolvedClashIds] = useState<string[]>([]);
+  const [previewAttachment, setPreviewAttachment] = useState<string | null>(null);
 
   const [cameraKey, setCameraKey] = useState(0);
   const [cameraTarget, setCameraTarget] = useState<[number, number, number]>([50, 35, 50]);
@@ -4833,17 +4856,7 @@ export default function Construction3DPage() {
     [isDark]
   );
 
-  const glassPanel = useMemo(
-    () => ({
-      background: isDark ? "rgba(15, 15, 23, 0.75)" : "rgba(255,255,255,0.85)",
-      backdropFilter: "blur(24px)",
-      WebkitBackdropFilter: "blur(24px)",
-      border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.6)",
-      boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.4)" : "0 8px 32px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.02)",
-      borderRadius: 16,
-    }),
-    [isDark]
-  );
+
 
   // Get phase status
   const getPhaseStatus = (phase: PhaseDefinition) => {
@@ -5287,7 +5300,10 @@ export default function Construction3DPage() {
               }}
             >
               <div style={{ padding: "14px 14px 8px", borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.06)" }}>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Construction Phases</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>Construction Phases</div>
+                  <Button size="small" type="text" icon={<UploadOutlined />} style={{ color: isDark ? "#fff" : "#000" }} />
+                </div>
                 <AntText type="secondary" style={{ fontSize: 11 }}>
                   {completedPhases} of {currentPhases.length} completed
                 </AntText>
@@ -5557,221 +5573,256 @@ export default function Construction3DPage() {
           </div>
 
           {/* ─── Clash Detection Alert Banner ─── */}
-          {showClashes && clashResults.length > 0 && !clashBannerDismissed && (
-            <div
-              style={{
-                position: "absolute",
-                top: 60,
-                left: "50%",
-                transform: "translateX(-50%)",
-                zIndex: 50,
-                display: "flex",
-                flexDirection: "column",
-                gap: 6,
-                maxWidth: 480,
-                width: "100%",
-                animation: "clashBannerSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-              }}
-            >
-              <style>{`
-                @keyframes clashBannerSlideIn {
-                  from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-                  to { opacity: 1; transform: translateX(-50%) translateY(0); }
-                }
-                @keyframes clashPulseDot {
-                  0%, 100% { opacity: 1; transform: scale(1); }
-                  50% { opacity: 0.4; transform: scale(0.7); }
-                }
-                .clash-item:hover {
-                  background: rgba(0,0,0,0.35) !important;
-                  transform: translateX(2px);
-                }
-              `}</style>
-              <div style={{
-                background: "rgba(220, 38, 38, 0.92)",
-                backdropFilter: "blur(16px)",
-                border: "1px solid rgba(255,120,120,0.4)",
-                borderRadius: 12,
-                padding: "10px 16px",
-                color: "white",
-                boxShadow: "0 8px 32px rgba(220, 38, 38, 0.35)",
-              }}>
-                {/* Header with dismiss button */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    {/* Pulsing live-detection dot */}
-                    <span style={{
-                      width: 8, height: 8, borderRadius: "50%",
-                      background: "#fff",
-                      display: "inline-block",
-                      animation: "clashPulseDot 1.5s ease-in-out infinite",
-                      boxShadow: "0 0 6px rgba(255,255,255,0.6)",
-                    }} />
-                    <ThunderboltOutlined style={{ fontSize: 16 }} />
-                    <span style={{ fontWeight: 700, fontSize: 13 }}>
-                      {clashResults.length} Schedule {clashResults.length === 1 ? "Clash" : "Clashes"} Detected
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Badge count={clashResults.filter((c: any) => c.severity === "critical").length} style={{ background: "#fff", color: "#dc2626" }} size="small">
-                      <span style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>CRITICAL</span>
-                    </Badge>
-                    <button
-                      onClick={() => setClashBannerDismissed(true)}
-                      style={{
-                        background: "rgba(255,255,255,0.15)",
-                        border: "none",
-                        borderRadius: 6,
-                        color: "white",
-                        cursor: "pointer",
-                        padding: "2px 6px",
-                        fontSize: 14,
-                        lineHeight: 1,
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                      title="Dismiss"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-
-                {/* Severity summary bar */}
-                {(() => {
-                  const criticalCount = clashResults.filter((c: any) => c.severity === "critical").length;
-                  const warningCount = clashResults.filter((c: any) => c.severity === "warning").length;
-                  const total = clashResults.length || 1;
-                  return (
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                      <div style={{
-                        flex: 1, height: 4, borderRadius: 2,
-                        background: "rgba(0,0,0,0.25)",
-                        overflow: "hidden",
-                        display: "flex",
-                      }}>
-                        <div style={{ width: `${(criticalCount / total) * 100}%`, background: "#FF0040", borderRadius: "2px 0 0 2px", transition: "width 0.3s" }} />
-                        <div style={{ width: `${(warningCount / total) * 100}%`, background: "#FF8C00", borderRadius: "0 2px 2px 0", transition: "width 0.3s" }} />
-                      </div>
-                      <span style={{ fontSize: 9, opacity: 0.8, whiteSpace: "nowrap" }}>
-                        {criticalCount} critical · {warningCount} warning
-                      </span>
+          <AnimatePresence>
+            {showClashes && clashResults.length > 0 && !clashBannerDismissed && (
+              <motion.div
+                initial={{ opacity: 0, y: -40, x: "-50%", scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, x: "-50%", scale: 1 }}
+                exit={{ opacity: 0, y: -20, x: "-50%", scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                style={{
+                  position: "absolute",
+                  top: 60,
+                  left: "50%",
+                  zIndex: 50,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  maxWidth: 520,
+                  width: "100%",
+                }}
+              >
+                <GlassPanel isDark={isDark} intensity="high" style={{
+                  background: "rgba(100, 0, 0, 0.45)",
+                  border: "1px solid rgba(255,100,100,0.3)",
+                  borderRadius: 16,
+                  padding: "16px 20px",
+                  color: "white",
+                  boxShadow: "0 16px 40px rgba(220, 38, 38, 0.25)",
+                }}>
+                  {/* Header with dismiss button */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <motion.div
+                        animate={{ opacity: [1, 0.4, 1], scale: [1, 0.8, 1] }}
+                        transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                        style={{
+                          width: 10, height: 10, borderRadius: "50%",
+                          background: "#ef4444",
+                          boxShadow: "0 0 10px rgba(239, 68, 68, 0.8)",
+                        }}
+                      />
+                      <ThunderboltOutlined style={{ fontSize: 18, color: "#ef4444" }} />
+                      <AuroraText className="font-bold text-lg" style={{ margin: 0, padding: 0 }}>
+                        {clashResults.length} Schedule {clashResults.length === 1 ? "Clash" : "Clashes"} Detected
+                      </AuroraText>
                     </div>
-                  );
-                })()}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Badge count={clashResults.filter((c: any) => c.severity === "critical").length} style={{ background: "rgba(220,38,38,0.2)", border: "1px solid #ef4444", color: "#fca5a5" }} />
+                      <Button
+                        type="text"
+                        icon={<CloseOutlined />}
+                        onClick={() => setClashBannerDismissed(true)}
+                        style={{ color: "rgba(255,255,255,0.6)" }}
+                      />
+                    </div>
+                  </div>
 
-                {/* Clickable clash items */}
-                {clashResults.slice(0, 5).map((clash: any) => {
-                  const isFocused = focusedClashId === clash.id;
-                  let suggestion = "";
-                  let actionLabel = "";
-                  let fixAction = () => { message.info("Fix applied!"); setFocusedClashId(null); };
+                  {/* Clickable clash items */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <AnimatePresence>
+                      {clashResults.slice(0, 4).map((clash: any) => {
+                        const isFocused = focusedClashId === clash.id;
+                        let suggestion = "";
+                        let actionLabel = "";
+                        let fixAction = () => { 
+                          setClashToFix(clash);
+                          setClashFixModalVisible(true);
+                          setFocusedClashId(null); 
+                        };
 
-                  if (clash.clashType === "sequence") {
-                    suggestion = "Phase overlap detected. Delay successor phase by 4 days to resolve.";
-                    actionLabel = "Auto-Schedule";
-                  } else if (clash.clashType === "resource") {
-                    suggestion = "High crew density. Stagger shifts or allocate an extra team.";
-                    actionLabel = "Allocate +1 Crew";
-                  } else if (clash.clashType === "cost") {
-                    suggestion = "Budget overrun risk. Review material procurement alternatives.";
-                    actionLabel = "Review Budget";
-                  }
-
-                  return (
-                    <div
-                      key={clash.id}
-                      className="clash-item"
-                      onClick={() => {
-                        setFocusedClashId(clash.id);
-                        // Pan 3D camera to clash position
-                        if (clash.position && controlsRef.current) {
-                          const [cx, cy, cz] = clash.position;
-                          controlsRef.current.target.set(cx, cy, cz);
-                          controlsRef.current.object.position.set(cx + 15, cy + 10, cz + 15);
-                          controlsRef.current.update();
+                        if (clash.clashType === "sequence") {
+                          suggestion = "Phase overlap detected. Delay successor phase by 4 days to resolve.";
+                          actionLabel = "Auto-Schedule";
+                        } else if (clash.clashType === "resource") {
+                          suggestion = "High crew density. Stagger shifts or allocate an extra team.";
+                          actionLabel = "Allocate +1 Crew";
+                        } else if (clash.clashType === "cost") {
+                          suggestion = "Budget overrun risk. Review material procurement alternatives.";
+                          actionLabel = "Review Budget";
                         }
+
+                        return (
+                          <motion.div
+                            layout
+                            key={clash.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            onClick={() => {
+                              setFocusedClashId(isFocused ? null : clash.id);
+                              if (!isFocused && clash.position && controlsRef.current) {
+                                const [cx, cy, cz] = clash.position;
+                                controlsRef.current.target.set(cx, cy, cz);
+                                controlsRef.current.object.position.set(cx + 15, cy + 10, cz + 15);
+                                controlsRef.current.update();
+                              }
+                            }}
+                            style={{
+                              background: isFocused ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
+                              border: isFocused ? "1px solid rgba(255,255,255,0.2)" : "1px solid transparent",
+                              borderRadius: 8,
+                              padding: "10px 12px",
+                              cursor: "pointer",
+                              overflow: "hidden",
+                              transition: "background 0.2s, border 0.2s"
+                            }}
+                            whileHover={{ scale: 1.01, background: "rgba(255,255,255,0.08)" }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <span style={{ fontSize: 16 }}>{clash.severity === "critical" ? "🔴" : clash.severity === "info" ? "🔵" : "🟠"}</span>
+                              <Tag color={clash.clashType === "sequence" ? "red-inverse" : clash.clashType === "resource" ? "orange-inverse" : "blue-inverse"} style={{ border: 0, margin: 0 }}>
+                                {clash.clashType === "sequence" ? "SEQ" : clash.clashType === "resource" ? "CREW" : "COST"}
+                              </Tag>
+                              <span style={{ opacity: 0.9, flex: 1, fontSize: 13, fontWeight: 500 }}>{clash.message}</span>
+                              <span style={{ fontSize: 12, opacity: 0.5 }}>📍</span>
+                            </div>
+                            
+                            <AnimatePresence>
+                              {isFocused && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  style={{ overflow: "hidden" }}
+                                >
+                                  <div style={{
+                                    marginTop: 12, paddingTop: 12,
+                                    borderTop: "1px dashed rgba(255,255,255,0.2)",
+                                  }}>
+                                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", marginBottom: 12, lineHeight: 1.5 }}>
+                                      <span style={{ color: "#34d399", fontWeight: 600, marginRight: 6 }}>AI Suggestion:</span>
+                                      {suggestion}
+                                    </div>
+                                    <div style={{ display: "flex", gap: 8 }}>
+                                      <Button 
+                                        type="primary" 
+                                        style={{ background: "linear-gradient(135deg, #8b5cf6, #d946ef)", border: 0, flex: 1, fontWeight: 600 }}
+                                        onClick={(e) => { e.stopPropagation(); fixAction(); }}
+                                      >
+                                        ✨ {actionLabel}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </motion.div>
+                        );
+                      })}
+                    </AnimatePresence>
+                    {clashResults.length > 4 && (
+                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", textAlign: "center", marginTop: 8 }}>
+                        +{clashResults.length - 4} more clashes...
+                      </div>
+                    )}
+                  </div>
+                </GlassPanel>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Clash Fix Confirmation Modal */}
+          <AnimatePresence>
+            {clashFixModalVisible && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{
+                  position: "absolute",
+                  top: 0, left: 0, right: 0, bottom: 0,
+                  zIndex: 1000,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "rgba(0,0,0,0.4)",
+                  backdropFilter: "blur(4px)",
+                }}
+              >
+                <GlassPanel
+                  isDark={isDark}
+                  intensity="high"
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  style={{
+                    width: 400,
+                    padding: "24px",
+                    borderRadius: "16px",
+                    boxShadow: "0 20px 40px rgba(0,0,0,0.3)",
+                    border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                    <CheckCircleOutlined style={{ color: '#22c55e', fontSize: 24 }} />
+                    <h3 style={{ margin: 0, color: isDark ? "#fff" : "#000", fontSize: 18, fontWeight: 600 }}>Clash Resolution Applied</h3>
+                  </div>
+                  
+                  <p style={{ color: isDark ? "#cbd5e1" : "#475569", marginBottom: 16 }}>
+                    The system has successfully applied the suggested fix for:
+                  </p>
+                  
+                  {clashToFix && (
+                    <div style={{ 
+                      background: isDark ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.05)", 
+                      padding: "12px 16px", 
+                      borderRadius: 8, 
+                      marginBottom: 16,
+                      borderLeft: "4px solid #3b82f6"
+                    }}>
+                      <strong style={{ color: isDark ? "#e2e8f0" : "#1e293b", fontSize: 13 }}>{clashToFix.message}</strong>
+                    </div>
+                  )}
+                  
+                  <p style={{ color: isDark ? "#94a3b8" : "#64748b", fontSize: 12, marginBottom: 24, lineHeight: 1.5 }}>
+                    The schedule and resource allocations have been automatically updated to reflect this change. The updated BIM timeline will resync shortly.
+                  </p>
+
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <Button 
+                      type="primary" 
+                      onClick={() => {
+                        if (clashToFix) {
+                          setResolvedClashIds(prev => [...prev, clashToFix.id]);
+                        }
+                        setClashFixModalVisible(false);
                       }}
-                      style={{
-                        display: "flex", flexDirection: "column",
-                        padding: "5px 8px",
-                        background: isFocused ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.2)",
-                        borderRadius: 6,
-                        marginTop: 4,
-                        fontSize: 11,
-                        cursor: "pointer",
-                        transition: "all 0.15s ease",
-                        border: isFocused ? "1px solid rgba(255,255,255,0.3)" : "1px solid transparent",
+                      style={{ 
+                        background: "linear-gradient(135deg, #3b82f6, #6366f1)", 
+                        border: 0, 
+                        fontWeight: 600, 
+                        padding: "0 24px", 
+                        borderRadius: 8 
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span>{clash.severity === "critical" ? "🔴" : clash.severity === "info" ? "🔵" : "🟠"}</span>
-                        <span style={{
-                          fontSize: 8, fontWeight: 600, textTransform: "uppercase" as const, opacity: 0.6,
-                          background: clash.clashType === "sequence" ? "rgba(255,0,64,0.3)" : clash.clashType === "resource" ? "rgba(255,140,0,0.3)" : "rgba(59,130,246,0.3)",
-                          padding: "1px 4px", borderRadius: 3, letterSpacing: 0.5,
-                        }}>
-                          {clash.clashType === "sequence" ? "SEQ" : clash.clashType === "resource" ? "CREW" : "COST"}
-                        </span>
-                        <span style={{ opacity: 0.9, flex: 1 }}>{clash.message}</span>
-                        <span style={{ fontSize: 9, opacity: 0.5 }}>📍</span>
-                      </div>
-                      
-                      {/* Resolution Suggestion Expanded Area */}
-                      {isFocused && (
-                        <div style={{
-                          marginTop: 8, paddingTop: 8,
-                          borderTop: "1px dashed rgba(255,255,255,0.2)",
-                          animation: "clashBannerSlideIn 0.3s ease-out",
-                        }}>
-                          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.8)", marginBottom: 8, lineHeight: 1.4 }}>
-                            <span style={{ color: "#22c55e", fontWeight: 600, marginRight: 4 }}>Suggestion:</span>
-                            {suggestion}
-                          </div>
-                          <div style={{ display: "flex", gap: 6 }}>
-                            <Button 
-                              size="small" 
-                              type="primary" 
-                              style={{ fontSize: 10, height: 22, background: "#7c3aed", borderColor: "#7c3aed", flex: 1 }}
-                              onClick={(e) => { e.stopPropagation(); fixAction(); }}
-                            >
-                              {actionLabel}
-                            </Button>
-                            <Button 
-                              size="small" 
-                              type="text" 
-                              style={{ fontSize: 10, height: 22, color: "rgba(255,255,255,0.8)", background: "rgba(255,255,255,0.1)" }}
-                              onClick={(e) => { e.stopPropagation(); setFocusedClashId(null); }}
-                            >
-                              Dismiss
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {clashResults.length > 5 && (
-                  <div style={{ fontSize: 10, opacity: 0.7, textAlign: "center", marginTop: 4 }}>
-                    +{clashResults.length - 5} more...
+                      Done
+                    </Button>
                   </div>
-                )}
-              </div>
-            </div>
-          )}
+                </GlassPanel>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {sectionCutEnabled && (
-            <div
+            <GlassPanel
+              isDark={isDark}
+              intensity="low"
               style={{
                 position: "absolute",
                 top: 50,
                 right: 10,
                 zIndex: 10,
-                background: isDark ? "rgba(20,20,40,0.9)" : "rgba(255,255,255,0.95)",
-                backdropFilter: "blur(12px)",
-                borderRadius: 12,
                 padding: "12px 16px",
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"}`,
                 width: 160,
               }}
             >
@@ -5791,28 +5842,29 @@ export default function Construction3DPage() {
               <AntText type="secondary" style={{ fontSize: 10, display: "block", textAlign: "center", marginTop: 4 }}>
                 Slicing below {sectionFloor.toFixed(1)}
               </AntText>
-            </div>
+            </GlassPanel>
           )}
 
           {/* BIM Object Details Panel */}
           {selectedBimObject && (
-            <Card
-              size="small"
-              title={<span style={{ display: "flex", alignItems: "center", gap: 8 }}><InfoCircleOutlined /> BIM Metadata</span>}
-              extra={<Button type="text" size="small" icon={<CloseOutlined />} onClick={() => setSelectedBimObject(null)} />}
+            <GlassPanel
+              isDark={isDark}
+              intensity="medium"
               style={{
                 position: "absolute",
                 top: sectionCutEnabled ? 200 : 80,
                 right: 16,
                 width: 280,
                 zIndex: 40,
-                background: isDark ? "rgba(30,41,59,0.85)" : "rgba(255,255,255,0.9)",
-                backdropFilter: "blur(12px)",
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
-                boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+                padding: "12px 16px",
               }}
-              styles={{ body: { padding: "12px 16px" } }}
             >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingBottom: 8, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, color: isDark ? '#fff' : '#000' }}>
+                  <InfoCircleOutlined /> BIM Metadata
+                </span>
+                <Button type="text" size="small" icon={<CloseOutlined />} onClick={() => setSelectedBimObject(null)} style={{ color: isDark ? '#fff' : '#000' }} />
+              </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <AntText type="secondary" style={{ fontSize: 12 }}>Type</AntText>
@@ -5857,11 +5909,13 @@ export default function Construction3DPage() {
                   Create PM Task
                 </Button>
               </div>
-            </Card>
+            </GlassPanel>
           )}
 
           {/* View Preset Buttons */}
-          <div
+          <GlassPanel
+            isDark={isDark}
+            intensity="low"
             style={{
               position: "absolute",
               top: 10,
@@ -5937,10 +5991,12 @@ export default function Construction3DPage() {
                 +
               </Button>
             </Tooltip>
-          </div>
+          </GlassPanel>
 
           {/* Phase color legend */}
-          <div
+          <GlassPanel
+            isDark={isDark}
+            intensity="low"
             style={{
               position: "absolute",
               bottom: 10,
@@ -5949,9 +6005,6 @@ export default function Construction3DPage() {
               display: "flex",
               gap: 6,
               flexWrap: "wrap",
-              background: isDark ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.85)",
-              backdropFilter: "blur(8px)",
-              borderRadius: 10,
               padding: "6px 10px",
               maxWidth: 500,
             }}
@@ -5987,7 +6040,7 @@ export default function Construction3DPage() {
                 </Tooltip>
               );
             })}
-          </div>
+          </GlassPanel>
 
           {/* Connected Project Loading Overlay */}
           <AnimatePresence>
@@ -6045,17 +6098,17 @@ export default function Construction3DPage() {
 
           {/* Connected Project HUD */}
           {connectedProject && (
-            <motion.div
+            <GlassPanel
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
+              isDark={isDark}
+              intensity="high"
               style={{
                 position: "absolute",
                 top: 10,
                 left: 10,
                 right: 10,
                 zIndex: 20,
-                background: isDark ? "rgba(15,23,42,0.88)" : "rgba(255,255,255,0.92)",
-                backdropFilter: "blur(16px)",
                 borderRadius: 16,
                 padding: "12px 20px",
                 border: `1px solid ${isDark ? "rgba(99,102,241,0.3)" : "rgba(99,102,241,0.15)"}`,
@@ -6256,7 +6309,7 @@ export default function Construction3DPage() {
                   </div>
                 </div>
               )}
-            </motion.div>
+            </GlassPanel>
           )}
 
           {/* Stats HUD overlay */}
@@ -6639,7 +6692,9 @@ export default function Construction3DPage() {
 
 
             {(sceneConfig.showCompass ?? true) && <CompassIndicator />}
-            <WeatherEffects enabled={!!(sceneConfig.showWeather) && !isNightMode} type={sceneConfig.weatherType ?? "rain"} />
+            {sceneConfig.weatherType !== "clear" && (
+              <WeatherEffects enabled={!!(sceneConfig.showWeather) && !isNightMode} type={sceneConfig.weatherType as any} />
+            )}
 
             {/* Ghost Object for Placement */}
             {editMode && placingItem && (
@@ -8112,185 +8167,317 @@ export default function Construction3DPage() {
       </Modal>
 
       {/* ─── RFI Management Panel Drawer ─── */}
-      <Drawer
-        title={
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <FileTextOutlined style={{ color: "#7c3aed", fontSize: 18 }} />
-            <span style={{ fontWeight: 700, fontSize: 16 }}>RFI Management</span>
-            <Tag color="purple" style={{ marginLeft: "auto", fontWeight: 600 }}>{rfis.length} Total</Tag>
-          </div>
-        }
-        placement="right"
-        width={420}
-        open={showRfiPanel}
-        onClose={() => setShowRfiPanel(false)}
-        styles={{
-          header: { background: isDark ? "rgba(30,30,40,0.95)" : "rgba(255,255,255,0.97)", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` },
-          body: { background: isDark ? "rgba(20,20,30,0.97)" : "rgba(248,248,255,0.97)", padding: "12px 16px" },
-        }}
-      >
-        {/* Filter Tabs */}
-        <Segmented
-          block
-          value={rfiFilter}
-          onChange={(v: any) => setRfiFilter(v)}
-          options={[
-            { label: `All (${rfis.length})`, value: "all" },
-            { label: `Open (${rfis.filter(r => r.status === "open").length})`, value: "open" },
-            { label: `Resolved (${rfis.filter(r => r.status === "resolved").length})`, value: "resolved" },
-          ]}
-          style={{ marginBottom: 16 }}
-        />
+      {/* ─── RFI Management Panel Drawer ─── */}
+      <AnimatePresence>
+        {showRfiPanel && (
+          <GlassPanel
+            isDark={isDark}
+            intensity="high"
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 100 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            style={{
+              position: "absolute",
+              top: 80,
+              right: 16,
+              bottom: 16,
+              width: 420,
+              zIndex: 100,
+              display: "flex",
+              flexDirection: "column",
+              padding: "16px",
+              boxShadow: isDark ? "-8px 0 32px rgba(0,0,0,0.5)" : "-8px 0 32px rgba(0,0,0,0.1)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, paddingBottom: 12, borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <FileTextOutlined style={{ color: "#7c3aed", fontSize: 18 }} />
+                <span style={{ fontWeight: 700, fontSize: 16, color: isDark ? "#fff" : "#000" }}>RFI Management</span>
+                <Tag color="purple" style={{ marginLeft: "auto", fontWeight: 600 }}>{rfis.length} Total</Tag>
+              </div>
+              <Button type="text" icon={<CloseOutlined />} onClick={() => setShowRfiPanel(false)} style={{ color: isDark ? "#fff" : "#000" }} />
+            </div>
 
-        {/* RFI List */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", maxHeight: "calc(100vh - 200px)" }}>
-          {rfis
-            .filter(r => rfiFilter === "all" ? true : r.status === rfiFilter)
-            .map((rfi: any) => {
-              const priorityColors: Record<string, string> = { high: "#ef4444", critical: "#dc2626", medium: "#f59e0b", low: "#22c55e" };
-              const statusColors: Record<string, string> = { open: "#3b82f6", resolved: "#22c55e", "in-progress": "#f59e0b" };
-              return (
-                <div
-                  key={rfi.id}
-                  style={{
-                    background: isDark ? "rgba(40,40,60,0.7)" : "rgba(255,255,255,0.9)",
-                    border: `1px solid ${isDark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.1)"}`,
-                    borderRadius: 12,
-                    padding: "14px 16px",
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                    borderLeft: `4px solid ${priorityColors[rfi.priority] || "#94a3b8"}`,
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.transform = "translateX(-2px)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 20px rgba(124,58,237,0.15)"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = "none"; (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}
-                >
-                  {/* Header */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                    <div style={{ flex: 1, marginRight: 8 }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: isDark ? "#e2e8f0" : "#1e293b", lineHeight: 1.3 }}>{rfi.title}</div>
-                      <div style={{ fontSize: 11, color: isDark ? "#94a3b8" : "#64748b", marginTop: 2 }}>
-                        {rfi.bimId} {rfi.floor ? `• Floor ${rfi.floor}` : ""} {rfi.type ? `• ${rfi.type}` : ""}
-                      </div>
-                    </div>
-                    <Tag
-                      color={statusColors[rfi.status] || "#94a3b8"}
-                      style={{ borderRadius: 20, fontWeight: 600, fontSize: 10, textTransform: "uppercase", margin: 0, lineHeight: "18px" }}
-                    >
-                      {rfi.status}
-                    </Tag>
-                  </div>
+            {/* Filter Tabs */}
+            <Segmented
+              block
+              value={rfiFilter}
+              onChange={(v: any) => setRfiFilter(v)}
+              options={[
+                { label: `All (${rfis.length})`, value: "all" },
+                { label: `Open (${rfis.filter(r => r.status === "open").length})`, value: "open" },
+                { label: `Resolved (${rfis.filter(r => r.status === "resolved").length})`, value: "resolved" },
+              ]}
+              style={{ marginBottom: 16 }}
+            />
 
-                  {/* Meta row */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-                    <Tag color={priorityColors[rfi.priority] || "#94a3b8"} style={{ borderRadius: 6, fontSize: 10, margin: 0 }}>
-                      {(rfi.priority || "medium").toUpperCase()}
-                    </Tag>
-                    {rfi.category && (
-                      <Tag style={{ borderRadius: 6, fontSize: 10, margin: 0, background: isDark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.08)", color: "#7c3aed", border: "none" }}>
-                        {rfi.category}
-                      </Tag>
-                    )}
-                    {rfi.severity && (
-                      <Tag style={{ borderRadius: 6, fontSize: 10, margin: 0, background: isDark ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.06)", color: "#ef4444", border: "none" }}>
-                        {rfi.severity}
-                      </Tag>
-                    )}
-                    {rfi.createdAt && (
-                      <span style={{ fontSize: 10, color: isDark ? "#64748b" : "#94a3b8", marginLeft: "auto" }}>
-                        <ClockCircleOutlined style={{ marginRight: 3 }} />
-                        {dayjs(rfi.createdAt).format("MMM D")}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Description */}
-                  {rfi.description && (
-                    <div style={{
-                      fontSize: 11, color: isDark ? "#94a3b8" : "#64748b", lineHeight: 1.5,
-                      background: isDark ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.02)",
-                      borderRadius: 8, padding: "8px 10px", marginBottom: 10,
-                      maxHeight: 60, overflow: "hidden",
-                    }}>
-                      {rfi.description}
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <Button
-                      size="small"
-                      type="primary"
-                      ghost
-                      icon={<AimOutlined />}
-                      style={{ fontSize: 11, borderRadius: 8, flex: 1 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Find BIM element position based on floor if available
-                        let pos: [number, number, number] = [0, 5, 0];
-                        if (rfi.floor) {
-                          const floorNum = parseInt(rfi.floor.toString().replace(/[^0-9]/g, ''), 10);
-                          if (!isNaN(floorNum)) {
-                            pos = [0, floorNum * 3, 0];
-                          }
-                        }
-                        setCameraTarget([pos[0] + 15, pos[1] + 10, pos[2] + 15]);
-                        setCameraLookAtTarget([pos[0], pos[1], pos[2]]);
-                        setCameraKey(prev => prev + 1);
-                        message.info(`Navigating to ${rfi.title}`);
-                      }}
-                    >
-                      Fly To
-                    </Button>
-                    <Button
-                      size="small"
-                      type={rfi.status === "resolved" ? "default" : "primary"}
-                      icon={rfi.status === "resolved" ? <SyncOutlined /> : <CheckCircleOutlined />}
+            {/* RFI List */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", flex: 1, paddingRight: 4 }}>
+              {rfis
+                .filter(r => rfiFilter === "all" ? true : r.status === rfiFilter)
+                .map((rfi: any) => {
+                  const priorityColors: Record<string, string> = { high: "#ef4444", critical: "#dc2626", medium: "#f59e0b", low: "#22c55e" };
+                  const statusColors: Record<string, string> = { open: "#3b82f6", resolved: "#22c55e", "in-progress": "#f59e0b" };
+                  return (
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      key={rfi.id}
                       style={{
-                        fontSize: 11, borderRadius: 8, flex: 1,
-                        ...(rfi.status !== "resolved" ? { background: "#22c55e", borderColor: "#22c55e" } : {}),
+                        background: isDark ? "rgba(40,40,60,0.7)" : "rgba(255,255,255,0.9)",
+                        border: `1px solid ${isDark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.1)"}`,
+                        borderRadius: 12,
+                        padding: "14px 16px",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        borderLeft: `4px solid ${priorityColors[rfi.priority] || "#94a3b8"}`,
                       }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setRfis(prev => prev.map(r =>
-                          r.id === rfi.id
-                            ? { ...r, status: r.status === "resolved" ? "open" : "resolved" }
-                            : r
-                        ));
-                        message.success(rfi.status === "resolved" ? "RFI reopened" : "RFI resolved!");
-                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.transform = "translateX(-2px)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 20px rgba(124,58,237,0.15)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = "none"; (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}
                     >
-                      {rfi.status === "resolved" ? "Reopen" : "Resolve"}
-                    </Button>
-                    <Button
-                      size="small"
-                      danger
-                      icon={<DeleteOutlined />}
-                      style={{ fontSize: 11, borderRadius: 8 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setRfis(prev => prev.filter(r => r.id !== rfi.id));
-                        message.success("RFI removed");
-                      }}
-                    />
+                      {/* Header */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                        <div style={{ flex: 1, marginRight: 8 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: isDark ? "#e2e8f0" : "#1e293b", lineHeight: 1.3 }}>{rfi.title}</div>
+                          <div style={{ fontSize: 11, color: isDark ? "#94a3b8" : "#64748b", marginTop: 2 }}>
+                            {rfi.bimId} {rfi.floor ? `• Floor ${rfi.floor}` : ""} {rfi.type ? `• ${rfi.type}` : ""}
+                          </div>
+                        </div>
+                        <Tag
+                          color={statusColors[rfi.status] || "#94a3b8"}
+                          style={{ borderRadius: 20, fontWeight: 600, fontSize: 10, textTransform: "uppercase", margin: 0, lineHeight: "18px" }}
+                        >
+                          {rfi.status}
+                        </Tag>
+                      </div>
+
+                      {/* Meta row */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                        <Tag color={priorityColors[rfi.priority] || "#94a3b8"} style={{ borderRadius: 6, fontSize: 10, margin: 0 }}>
+                          {(rfi.priority || "medium").toUpperCase()}
+                        </Tag>
+                        {rfi.category && (
+                          <Tag style={{ borderRadius: 6, fontSize: 10, margin: 0, background: isDark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.08)", color: "#7c3aed", border: "none" }}>
+                            {rfi.category}
+                          </Tag>
+                        )}
+                        {rfi.severity && (
+                          <Tag style={{ borderRadius: 6, fontSize: 10, margin: 0, background: isDark ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.06)", color: "#ef4444", border: "none" }}>
+                            {rfi.severity}
+                          </Tag>
+                        )}
+                        {rfi.createdAt && (
+                          <span style={{ fontSize: 10, color: isDark ? "#64748b" : "#94a3b8", marginLeft: "auto" }}>
+                            <ClockCircleOutlined style={{ marginRight: 3 }} />
+                            {dayjs(rfi.createdAt).format("MMM D")}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Description */}
+                      {rfi.description && (
+                        <div style={{
+                          fontSize: 11, color: isDark ? "#94a3b8" : "#64748b", lineHeight: 1.5,
+                          background: isDark ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.02)",
+                          borderRadius: 8, padding: "8px 10px", marginBottom: 10,
+                          maxHeight: 60, overflow: "hidden",
+                        }}>
+                          {rfi.description}
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <Button
+                          size="small"
+                          type="primary"
+                          ghost
+                          icon={<AimOutlined />}
+                          style={{ fontSize: 11, borderRadius: 8, flex: 1 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Find BIM element position based on floor if available
+                            let pos: [number, number, number] = [0, 5, 0];
+                            if (rfi.floor) {
+                              const floorNum = parseInt(rfi.floor.toString().replace(/[^0-9]/g, ''), 10);
+                              if (!isNaN(floorNum)) {
+                                pos = [0, floorNum * 3, 0];
+                              }
+                            }
+                            setCameraTarget([pos[0] + 15, pos[1] + 10, pos[2] + 15]);
+                            setCameraLookAtTarget([pos[0], pos[1], pos[2]]);
+                            setCameraKey(prev => prev + 1);
+                            message.info(`Navigating to ${rfi.title}`);
+                          }}
+                        >
+                          Fly To
+                        </Button>
+                        <Button
+                          size="small"
+                          type={rfi.status === "resolved" ? "default" : "primary"}
+                          icon={rfi.status === "resolved" ? <SyncOutlined /> : <CheckCircleOutlined />}
+                          style={{
+                            fontSize: 11, borderRadius: 8, flex: 1,
+                            ...(rfi.status !== "resolved" ? { background: "#22c55e", borderColor: "#22c55e" } : {}),
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRfis(prev => prev.map(r =>
+                              r.id === rfi.id
+                                ? { ...r, status: r.status === "resolved" ? "open" : "resolved" }
+                                : r
+                            ));
+                            message.success(rfi.status === "resolved" ? "RFI reopened" : "RFI resolved!");
+                          }}
+                        >
+                          {rfi.status === "resolved" ? "Reopen" : "Resolve"}
+                        </Button>
+                        <Button
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedRfiId(expandedRfiId === rfi.id ? null : rfi.id);
+                          }}
+                          style={{ fontSize: 11, borderRadius: 8, flex: 1, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: "none" }}
+                        >
+                          {expandedRfiId === rfi.id ? "Hide Details" : "Details"}
+                        </Button>
+                      </div>
+
+                      {/* Expanded Comments & Attachments */}
+                      <AnimatePresence>
+                        {expandedRfiId === rfi.id && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            style={{ overflow: "hidden", marginTop: 12, borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, paddingTop: 12 }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: isDark ? "#e2e8f0" : "#1e293b" }}>Attachments</div>
+                              <Button
+                                size="small"
+                                type="text"
+                                icon={<UploadOutlined />}
+                                style={{ fontSize: 11, color: "#3b82f6", padding: "0 4px", height: "auto" }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Mock upload
+                                  const mockFileName = `document_${Math.floor(Math.random() * 1000)}.pdf`;
+                                  setRfis(prev => prev.map(r => {
+                                    if (r.id === rfi.id) {
+                                      return { ...r, attachments: [...(r.attachments || []), mockFileName] };
+                                    }
+                                    return r;
+                                  }));
+                                  message.success(`Uploaded ${mockFileName}`);
+                                }}
+                              >
+                                Add File
+                              </Button>
+                            </div>
+                            {rfi.attachments && rfi.attachments.length > 0 ? (
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+                                {rfi.attachments.map((att: string, i: number) => (
+                                  <Tag 
+                                    key={i} 
+                                    icon={<FileTextOutlined />} 
+                                    color="blue" 
+                                    style={{ borderRadius: 6, margin: 0, padding: "2px 8px", cursor: "pointer" }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPreviewAttachment(att);
+                                    }}
+                                  >
+                                    {att}
+                                  </Tag>
+                                ))}
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: 11, color: isDark ? "#64748b" : "#94a3b8", marginBottom: 16, fontStyle: "italic" }}>No attachments</div>
+                            )}
+
+                            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: isDark ? "#e2e8f0" : "#1e293b" }}>Comments</div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12, maxHeight: 150, overflowY: "auto" }}>
+                              {rfi.comments && rfi.comments.length > 0 ? (
+                                rfi.comments.map((comment: any) => (
+                                  <div key={comment.id} style={{ background: isDark ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.03)", padding: "8px 10px", borderRadius: 8 }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                                      <span style={{ fontSize: 11, fontWeight: 600, color: isDark ? "#cbd5e1" : "#334155" }}>{comment.author}</span>
+                                      <span style={{ fontSize: 10, color: isDark ? "#64748b" : "#94a3b8" }}>{dayjs(comment.date).format("MMM D, h:mm A")}</span>
+                                    </div>
+                                    <div style={{ fontSize: 11, color: isDark ? "#94a3b8" : "#475569", lineHeight: 1.4 }}>{comment.text}</div>
+                                  </div>
+                                ))
+                              ) : (
+                                <div style={{ fontSize: 11, color: isDark ? "#64748b" : "#94a3b8", fontStyle: "italic" }}>No comments yet</div>
+                              )}
+                            </div>
+
+                            <div style={{ display: "flex", gap: 8 }} onClick={(e) => e.stopPropagation()}>
+                              <Input
+                                placeholder="Add a comment..."
+                                size="small"
+                                value={rfiCommentText}
+                                onChange={(e) => setRfiCommentText(e.target.value)}
+                                onPressEnter={() => {
+                                  if (!rfiCommentText.trim()) return;
+                                  setRfis(prev => prev.map(r => {
+                                    if (r.id === rfi.id) {
+                                      const newComment = { id: `c-${Date.now()}`, author: "Current User", text: rfiCommentText, date: new Date().toISOString() };
+                                      return { ...r, comments: [...(r.comments || []), newComment] };
+                                    }
+                                    return r;
+                                  }));
+                                  setRfiCommentText("");
+                                }}
+                                style={{ borderRadius: 6, background: isDark ? "rgba(0,0,0,0.2)" : "#fff", color: isDark ? "#fff" : "#000", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#d9d9d9"}` }}
+                              />
+                              <Button
+                                size="small"
+                                type="primary"
+                                onClick={() => {
+                                  if (!rfiCommentText.trim()) return;
+                                  setRfis(prev => prev.map(r => {
+                                    if (r.id === rfi.id) {
+                                      const newComment = { id: `c-${Date.now()}`, author: "Current User", text: rfiCommentText, date: new Date().toISOString() };
+                                      return { ...r, comments: [...(r.comments || []), newComment] };
+                                    }
+                                    return r;
+                                  }));
+                                  setRfiCommentText("");
+                                }}
+                                style={{ borderRadius: 6 }}
+                              >
+                                Send
+                              </Button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  );
+                })}
+
+              {rfis.filter(r => rfiFilter === "all" ? true : r.status === rfiFilter).length === 0 && (
+                <div style={{
+                  textAlign: "center", padding: "40px 20px",
+                  color: isDark ? "#64748b" : "#94a3b8",
+                }}>
+                  <FileTextOutlined style={{ fontSize: 36, marginBottom: 12, opacity: 0.4 }} />
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>No RFIs found</div>
+                  <div style={{ fontSize: 11, marginTop: 4 }}>
+                    {rfiFilter === "all" ? "Click a BIM element to create an RFI" : `No ${rfiFilter} RFIs`}
                   </div>
                 </div>
-              );
-            })}
-
-          {rfis.filter(r => rfiFilter === "all" ? true : r.status === rfiFilter).length === 0 && (
-            <div style={{
-              textAlign: "center", padding: "40px 20px",
-              color: isDark ? "#64748b" : "#94a3b8",
-            }}>
-              <FileTextOutlined style={{ fontSize: 36, marginBottom: 12, opacity: 0.4 }} />
-              <div style={{ fontSize: 13, fontWeight: 600 }}>No RFIs found</div>
-              <div style={{ fontSize: 11, marginTop: 4 }}>
-                {rfiFilter === "all" ? "Click a BIM element to create an RFI" : `No ${rfiFilter} RFIs`}
-              </div>
+              )}
             </div>
-          )}
-        </div>
-      </Drawer>
+          </GlassPanel>
+        )}
+      </AnimatePresence>
 
     </CMSLayout>
   );

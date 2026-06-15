@@ -65,7 +65,7 @@ export interface SceneConfig {
   glassColor?: string;
   // Site Feature Toggles
   showWeather?: boolean;
-  weatherType?: "rain" | "snow";
+  weatherType?: "rain" | "snow" | "clear";
   showSafetyZones?: boolean;
   showVehicles?: boolean;
   showWorkers?: boolean;

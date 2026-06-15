@@ -186,91 +186,100 @@ export default function ItsmDashboardPage() {
             </BentoGrid>
 
             {/* ROW 2: ITIL v4 Modules */}
-            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+            <BentoGrid className="mb-4">
                 {[
-                    { title: 'CMDB', value: cmdbCount, sub: `CIs · ${ciRelCount} Links`, icon: <ClusterOutlined />, color: themeColor, gradient: `linear-gradient(135deg, rgba(114,46,209,0.07) 0%, rgba(114,46,209,0.02) 100%)`, href: '/admin/itsm/cmdb' },
-                    { title: 'Events', value: openEvents, sub: critEvents > 0 ? `${critEvents} Critical` : 'All Clear', icon: <ThunderboltOutlined />, color: critEvents > 0 ? '#f5222d' : '#52c41a', gradient: critEvents > 0 ? 'linear-gradient(135deg, rgba(245,34,45,0.07) 0%, rgba(245,34,45,0.02) 100%)' : 'linear-gradient(135deg, rgba(82,196,26,0.07) 0%, rgba(82,196,26,0.02) 100%)', href: '/admin/itsm/events', danger: critEvents > 0 },
-                    { title: 'Releases', value: activeReleases, sub: `${releasesData.length} Total`, icon: <RocketOutlined />, color: '#9254de', gradient: 'linear-gradient(135deg, rgba(146,84,222,0.07) 0%, rgba(146,84,222,0.02) 100%)', href: '/admin/itsm/releases' },
-                    { title: 'Agents', value: activeAgents, sub: `${avgUtil}% Utilized`, icon: <TeamOutlined />, color: '#13c2c2', gradient: 'linear-gradient(135deg, rgba(19,194,194,0.07) 0%, rgba(19,194,194,0.02) 100%)', href: '/admin/itsm/agents' },
-                    { title: 'Continuity', value: activePlans, sub: `${continuityData.length} Plans`, icon: <SafetyOutlined />, color: '#f5222d', gradient: 'linear-gradient(135deg, rgba(245,34,45,0.07) 0%, rgba(250,140,22,0.02) 100%)', href: '/admin/itsm/continuity' },
-                    { title: 'Availability', value: avgAvail || '-', sub: `${availData.length} Records`, icon: <FieldTimeOutlined />, color: avgAvail >= 99.9 ? '#52c41a' : '#fa8c16', gradient: avgAvail >= 99.9 ? 'linear-gradient(135deg, rgba(82,196,26,0.07) 0%, rgba(82,196,26,0.02) 100%)' : 'linear-gradient(135deg, rgba(250,140,22,0.07) 0%, rgba(250,140,22,0.02) 100%)', href: '/admin/itsm/availability', suffix: '%' },
-                ].map(card => (
-                    <Col xs={24} sm={12} md={4} key={card.title}>
-                        <ProCard bordered hoverable size="small" style={{ background: card.gradient, borderTop: `3px solid ${card.color}`, cursor: 'pointer', borderRadius: 12, backdropFilter: 'blur(20px)', padding: 0 }} onClick={() => router.push(card.href)}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{
-                                    width: 44, height: 44, borderRadius: 10,
-                                    background: `${card.color}14`,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    flexShrink: 0,
-                                    border: `1px solid ${card.color}20`,
-                                }}>
-                                    <span style={{ fontSize: 22, color: card.color, lineHeight: 1 }}>{card.icon}</span>
-                                </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <Text type="secondary" style={{ fontSize: 11, display: 'block', lineHeight: 1.2 }}>{card.title}</Text>
-                                    <Text strong style={{ fontSize: 22, color: card.danger ? '#f5222d' : undefined, lineHeight: 1.2 }}>
-                                        {loading ? '...' : card.value}{card.suffix ? <span style={{ fontSize: 13, fontWeight: 400 }}> {card.suffix}</span> : null}
-                                    </Text>
-                                    <Text type={card.danger ? 'danger' : 'secondary'} style={{ fontSize: 10, display: 'block', lineHeight: 1.3 }}>{card.sub}</Text>
+                    { title: 'CMDB', value: cmdbCount, sub: `CIs · ${ciRelCount} Links`, icon: <ClusterOutlined />, color: themeColor, href: '/admin/itsm/cmdb' },
+                    { title: 'Events', value: openEvents, sub: critEvents > 0 ? `${critEvents} Critical` : 'All Clear', icon: <ThunderboltOutlined />, color: critEvents > 0 ? '#f5222d' : '#52c41a', href: '/admin/itsm/events', danger: critEvents > 0 },
+                    { title: 'Releases', value: activeReleases, sub: `${releasesData.length} Total`, icon: <RocketOutlined />, color: '#9254de', href: '/admin/itsm/releases' },
+                    { title: 'Agents', value: activeAgents, sub: `${avgUtil}% Utilized`, icon: <TeamOutlined />, color: '#13c2c2', href: '/admin/itsm/agents' },
+                    { title: 'Continuity', value: activePlans, sub: `${continuityData.length} Plans`, icon: <SafetyOutlined />, color: '#f5222d', href: '/admin/itsm/continuity' },
+                    { title: 'Availability', value: avgAvail || '-', sub: `${availData.length} Records`, icon: <FieldTimeOutlined />, color: avgAvail >= 99.9 ? '#52c41a' : '#fa8c16', href: '/admin/itsm/availability', suffix: '%' },
+                ].map((card, i) => (
+                    <BentoGridItem
+                        key={i}
+                        title={card.title}
+                        description={card.sub}
+                        icon={<span style={{ color: card.color }}>{card.icon}</span>}
+                        onClick={() => router.push(card.href)}
+                        className="col-span-3 lg:col-span-1 cursor-pointer"
+                        header={
+                            <div className="flex h-full w-full items-center justify-center rounded-xl" style={{ backgroundColor: `${card.color}15` }}>
+                                <div style={{ fontSize: 32, fontWeight: 800, color: card.danger ? '#f5222d' : card.color }}>
+                                    {loading ? '...' : card.value}{card.suffix ? <span style={{ fontSize: 13, fontWeight: 400 }}> {card.suffix}</span> : null}
                                 </div>
                             </div>
-                        </ProCard>
-                    </Col>
+                        }
+                    />
                 ))}
-            </Row>
+            </BentoGrid>
 
             {/* ROW 3: KPIs */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                <Col xs={24} md={8}>
-                    <ProCard title={<Space><AimOutlined style={{ color: themeColor }} /> SLA Compliance</Space>} bordered loading={loading} style={{ background: 'linear-gradient(135deg, rgba(82,196,26,0.05) 0%, rgba(24,144,255,0.03) 100%)', borderRadius: 12 }}>
-                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 180 }}>
-                            <Progress type="dashboard" percent={stats?.slaCompliance || 0} strokeColor={(stats?.slaCompliance || 100) >= 90 ? '#52c41a' : (stats?.slaCompliance || 100) >= 70 ? '#fa8c16' : '#f5222d'} format={(pct) => <div style={{ textAlign: 'center' }}><div style={{ fontSize: 28, fontWeight: 700 }}>{pct}%</div><div style={{ fontSize: 11, color: '#999' }}>SLA Target</div></div>} size={160} />
-                        </div>
-                        <Row gutter={16} style={{ textAlign: 'center', marginTop: 8 }}>
-                            <Col span={8}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="CSAT" value={avgCsat} valueStyle={{ fontSize: 16, color: avgCsat >= 4.5 ? '#52c41a' : '#fa8c16' }} prefix="⭐" /></motion.div></Col>
-                            <Col span={8}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Agent SLA" value={avgSla} suffix="%" valueStyle={{ fontSize: 16, color: avgSla >= 95 ? '#52c41a' : '#fa8c16' }} /></motion.div></Col>
-                            <Col span={8}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Resolved" value={totalResolved} valueStyle={{ fontSize: 16, color: themeColor }} /></motion.div></Col>
-                        </Row>
-                    </ProCard>
-                </Col>
-                <Col xs={24} md={8}>
-                    <ProCard title={<Space><ThunderboltOutlined style={{ color: '#fa8c16' }} /> Priority Breakdown</Space>} bordered loading={loading} style={{ background: 'linear-gradient(135deg, rgba(250,140,22,0.05) 0%, rgba(245,34,45,0.03) 100%)', borderRadius: 12 }}>
-                        <Space direction="vertical" style={{ width: '100%' }} size={12}>
-                            {[
-                                { label: 'Critical', key: 'byCritical', color: '#f5222d', icon: '🔴' },
-                                { label: 'High', key: 'byHigh', color: '#fa8c16', icon: '🟠' },
-                                { label: 'Medium', key: 'byMedium', color: '#1890ff', icon: '🔵' },
-                                { label: 'Low', key: 'byLow', color: '#52c41a', icon: '🟢' },
-                            ].map(p => (
-                                <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span>{p.icon}</span>
-                                    <Text style={{ width: 55, fontSize: 13 }}>{p.label}</Text>
-                                    <Progress percent={stats?.totalOpen ? Math.round((stats[p.key] / stats.totalOpen) * 100) : 0} strokeColor={p.color} format={() => <Text strong>{stats?.[p.key] || 0}</Text>} style={{ flex: 1 }} size="small" />
-                                </div>
-                            ))}
-                        </Space>
-                        <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', marginTop: 16, paddingTop: 12 }}>
-                            <Row>
-                                {[
-                                    { label: 'New', key: 'statusNew', color: 'blue' },
-                                    { label: 'Open', key: 'statusOpen', color: 'cyan' },
-                                    { label: 'Progress', key: 'statusInProgress', color: 'geekblue' },
-                                    { label: 'Pending', key: 'statusPending', color: 'orange' },
-                                    { label: 'Resolved', key: 'statusResolved', color: 'green' },
-                                ].map(s => (
-                                    <Col span={4} key={s.key} style={{ textAlign: 'center' }}>
-                                        <Tag color={s.color} style={{ fontSize: 10, padding: '0 4px' }}>{stats?.[s.key] || 0}</Tag>
-                                        <div style={{ fontSize: 9, color: '#999', marginTop: 2 }}>{s.label}</div>
-                                    </Col>
-                                ))}
+            <BentoGrid className="mb-4">
+                <BentoGridItem
+                    title="SLA Compliance"
+                    description="SLA targets and CSAT score."
+                    icon={<span style={{ color: themeColor }}><AimOutlined /></span>}
+                    className="col-span-3 lg:col-span-1"
+                    header={
+                        <div className="flex h-full w-full flex-col justify-center rounded-xl p-4" style={{ backgroundColor: `rgba(82,196,26,0.05)`, border: '1px solid rgba(0,0,0,0.04)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 180 }}>
+                                <Progress type="dashboard" percent={stats?.slaCompliance || 0} strokeColor={(stats?.slaCompliance || 100) >= 90 ? '#52c41a' : (stats?.slaCompliance || 100) >= 70 ? '#fa8c16' : '#f5222d'} format={(pct) => <div style={{ textAlign: 'center' }}><div style={{ fontSize: 28, fontWeight: 700 }}>{pct}%</div><div style={{ fontSize: 11, color: '#999' }}>SLA Target</div></div>} size={160} />
+                            </div>
+                            <Row gutter={16} style={{ textAlign: 'center', marginTop: 8 }}>
+                                <Col span={8}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="CSAT" value={avgCsat} valueStyle={{ fontSize: 16, color: avgCsat >= 4.5 ? '#52c41a' : '#fa8c16' }} prefix="⭐" /></motion.div></Col>
+                                <Col span={8}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Agent SLA" value={avgSla} suffix="%" valueStyle={{ fontSize: 16, color: avgSla >= 95 ? '#52c41a' : '#fa8c16' }} /></motion.div></Col>
+                                <Col span={8}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}><Statistic title="Resolved" value={totalResolved} valueStyle={{ fontSize: 16, color: themeColor }} /></motion.div></Col>
                             </Row>
                         </div>
-                    </ProCard>
-                </Col>
-                <Col xs={24} md={8}>
-                    <ProCard title={<Space><CloudUploadOutlined style={{ color: '#1890ff' }} /> Deployments & Releases</Space>} bordered loading={loading} style={{ background: 'linear-gradient(135deg, rgba(24,144,255,0.05) 0%, rgba(146,84,222,0.03) 100%)', borderRadius: 12 }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    }
+                />
+                <BentoGridItem
+                    title="Priority Breakdown"
+                    description="Open incidents by priority level."
+                    icon={<span style={{ color: '#fa8c16' }}><ThunderboltOutlined /></span>}
+                    className="col-span-3 lg:col-span-1"
+                    header={
+                        <div className="flex h-full w-full flex-col justify-center rounded-xl p-4" style={{ backgroundColor: `rgba(250,140,22,0.05)`, border: '1px solid rgba(0,0,0,0.04)' }}>
+                            <Space direction="vertical" style={{ width: '100%' }} size={12}>
+                                {[
+                                    { label: 'Critical', key: 'byCritical', color: '#f5222d', icon: '🔴' },
+                                    { label: 'High', key: 'byHigh', color: '#fa8c16', icon: '🟠' },
+                                    { label: 'Medium', key: 'byMedium', color: '#1890ff', icon: '🔵' },
+                                    { label: 'Low', key: 'byLow', color: '#52c41a', icon: '🟢' },
+                                ].map(p => (
+                                    <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <span>{p.icon}</span>
+                                        <Text style={{ width: 55, fontSize: 13 }}>{p.label}</Text>
+                                        <Progress percent={stats?.totalOpen ? Math.round((stats[p.key] / stats.totalOpen) * 100) : 0} strokeColor={p.color} format={() => <Text strong>{stats?.[p.key] || 0}</Text>} style={{ flex: 1 }} size="small" />
+                                    </div>
+                                ))}
+                            </Space>
+                            <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', marginTop: 16, paddingTop: 12 }}>
+                                <Row>
+                                    {[
+                                        { label: 'New', key: 'statusNew', color: 'blue' },
+                                        { label: 'Open', key: 'statusOpen', color: 'cyan' },
+                                        { label: 'Progress', key: 'statusInProgress', color: 'geekblue' },
+                                        { label: 'Pending', key: 'statusPending', color: 'orange' },
+                                        { label: 'Resolved', key: 'statusResolved', color: 'green' },
+                                    ].map(s => (
+                                        <Col span={4} key={s.key} style={{ textAlign: 'center' }}>
+                                            <Tag color={s.color} style={{ fontSize: 10, padding: '0 4px' }}>{stats?.[s.key] || 0}</Tag>
+                                            <div style={{ fontSize: 9, color: '#999', marginTop: 2 }}>{s.label}</div>
+                                        </Col>
+                                    ))}
+                                </Row>
+                            </div>
+                        </div>
+                    }
+                />
+                <BentoGridItem
+                    title="Deployments & Releases"
+                    description="Recent environments and status."
+                    icon={<span style={{ color: '#1890ff' }}><CloudUploadOutlined /></span>}
+                    className="col-span-3 lg:col-span-1"
+                    header={
+                        <div className="flex h-full w-full flex-col gap-2 rounded-xl p-4" style={{ backgroundColor: `rgba(24,144,255,0.05)`, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                             {deploymentsData.slice(0, 4).map((d, i) => {
                                 const sColors: Record<string, string> = { planned: '#1890ff', in_progress: '#fa8c16', completed: '#52c41a', failed: '#f5222d', rolled_back: '#ff4d4f' };
                                 const sTagColors: Record<string, string> = { planned: 'blue', in_progress: 'orange', completed: 'green', failed: 'red', rolled_back: 'volcano' };
@@ -280,9 +289,8 @@ export default function ItsmDashboardPage() {
                                     <div key={d.id} style={{
                                         display: 'flex', alignItems: 'stretch', gap: 0,
                                         borderRadius: 8, overflow: 'hidden',
-                                        background: 'rgba(255,255,255,0.35)',
+                                        background: 'rgba(255,255,255,0.65)',
                                         border: '1px solid rgba(0,0,0,0.04)',
-                                        transition: 'all 0.2s ease',
                                     }}>
                                         <div style={{ width: 4, background: accentColor, flexShrink: 0 }} />
                                         <div style={{ flex: 1, padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
@@ -302,24 +310,13 @@ export default function ItsmDashboardPage() {
                                 );
                             })}
                             {deploymentsData.length === 0 && <div style={{ textAlign: 'center', padding: '20px 0' }}><Text type="secondary">No deployments yet</Text></div>}
+                            <div style={{ marginTop: 'auto', textAlign: 'center', paddingTop: 8, borderTop: '1px dashed rgba(0,0,0,0.06)' }}>
+                                <Text type="secondary" style={{ fontSize: 11 }}>{completedDeps} Total Completed <CheckCircleOutlined style={{ color: '#52c41a' }} /></Text>
+                            </div>
                         </div>
-                        <Row gutter={8} style={{ marginTop: 14 }}>
-                            <Col span={12}>
-                                <div style={{ background: 'rgba(82,196,26,0.08)', borderRadius: 8, padding: '8px 12px', textAlign: 'center', border: '1px solid rgba(82,196,26,0.12)' }}>
-                                    <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Completed</Text>
-                                    <Text strong style={{ fontSize: 18, color: '#52c41a' }}>{completedDeps}</Text>
-                                </div>
-                            </Col>
-                            <Col span={12}>
-                                <div style={{ background: `${themeColor}0a`, borderRadius: 8, padding: '8px 12px', textAlign: 'center', border: `1px solid ${themeColor}18` }}>
-                                    <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>Active Releases</Text>
-                                    <Text strong style={{ fontSize: 18, color: themeColor }}>{activeReleases}</Text>
-                                </div>
-                            </Col>
-                        </Row>
-                    </ProCard>
-                </Col>
-            </Row>
+                    }
+                />
+            </BentoGrid>
 
             {/* ROW 4: Events + Agents */}
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>

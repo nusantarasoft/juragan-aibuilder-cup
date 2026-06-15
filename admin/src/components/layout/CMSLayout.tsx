@@ -54,9 +54,11 @@ import { useRouter, usePathname } from "next/navigation";
 import menuConfig from "@/config/menuConfig";
 import GlitchText from "@/components/react-bits/GlitchText";
 import { usePreferencesStore, hexToRgb } from "@/store/usePreferencesStore";
+import { useWebSocketStore } from "@/store/useWebSocketStore";
 import GlobalDateRangePicker from "@/components/common/GlobalDateRangePicker";
 import NotificationBell from "@/components/common/NotificationBell";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
+import LiveCursors from "@/components/common/LiveCursors";
 import { useLocaleStore } from "@/store/useLocaleStore";
 // Dynamic import for MetaBalls to prevent SSR crash (ogl WebGL library requires browser)
 const MetaBalls = dynamic(
@@ -682,12 +684,15 @@ export default function CMSLayout({
         root.style.setProperty('--theme-header-bg', themePalette.headerBg);
         // RGB variants for rgba() usage
         const pRgb = hexToRgb(themePalette.primary);
-        root.style.setProperty('--theme-color-rgb', `${pRgb.r}, ${pRgb.g}, ${pRgb.b}`);
+root.style.setProperty('--theme-color-rgb', `${pRgb.r}, ${pRgb.g}, ${pRgb.b}`);
         const sRgb = hexToRgb(themePalette.secondary);
         root.style.setProperty('--theme-secondary-rgb', `${sRgb.r}, ${sRgb.g}, ${sRgb.b}`);
         const aRgb = hexToRgb(themePalette.accent);
         root.style.setProperty('--theme-accent-rgb', `${aRgb.r}, ${aRgb.g}, ${aRgb.b}`);
     }, [themePalette]);
+
+    const { t } = useLocaleStore();
+    const { cursors } = useWebSocketStore();
 
     // Force sticky sidebar for inner layout
     React.useEffect(() => {
@@ -1086,9 +1091,17 @@ export default function CMSLayout({
                                                 </GlitchText>
                                             </div>
                                         </div>
-                                        {/* Right: Notification Bell + Language + Dark/Light Toggle */}
-                                        <div style={{ marginLeft: 16, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <LanguageSwitcher isDark={darkMode} />
+                                        {/* Right: Presence + Language + Notification + Dark/Light */}
+                                        <div style={{ marginLeft: 16, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <Avatar.Group maxCount={3} size="small" style={{ display: 'flex', alignItems: 'center' }}>
+                                                {Object.values(cursors).map((c: any) => (
+                                                    <Avatar key={c.id} style={{ backgroundColor: c.color }}>
+                                                        {c.name.charAt(0)}
+                                                    </Avatar>
+                                                ))}
+                                            </Avatar.Group>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                <LanguageSwitcher isDark={darkMode} />
                                             <NotificationBell />
                                             <AnimatedThemeToggler
                                                 isDark={darkMode}
@@ -1098,6 +1111,7 @@ export default function CMSLayout({
                                                     color: darkMode ? "#fff" : "#000",
                                                 }}
                                             />
+                                            </div>
                                         </div>
                                     </>
                                 )}
@@ -1403,6 +1417,7 @@ export default function CMSLayout({
 
             {/* Global Command Palette (Ctrl+K / Cmd+K) */}
             <CommandPalette isDark={darkMode} themeColor={themeColor} />
+            <LiveCursors />
 
             {/* Theme Customizer Drawer */}
             <ThemeDrawer visible={themeDrawerVisible} onClose={() => setThemeDrawerVisible(false)} darkMode={darkMode} />

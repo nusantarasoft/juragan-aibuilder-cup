@@ -3,14 +3,16 @@
 import React, { Suspense, useState, useRef, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Environment, Grid, Html, ContactShadows, RoundedBox, useCursor } from "@react-three/drei";
+import { EffectComposer, Bloom, SSAO } from "@react-three/postprocessing";
 import * as THREE from "three";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { theme, Segmented, Drawer, Descriptions, Tag, Progress, Spin, Space, Badge, Card, Button } from "antd";
+import { theme, Badge, Card, Descriptions, Drawer, Progress, Segmented, Spin, Typography, Switch } from 'antd';
 import { motion } from "framer-motion";
-
+import { EditOutlined } from '@ant-design/icons';
+import { useTheme } from "next-themes";
 import { useDcimStore } from "@/store/useDcimStore";
 import { DataCenterScene } from "@/components/dcim/DataCenterScene";
 
@@ -18,10 +20,15 @@ import { DataCenterScene } from "@/components/dcim/DataCenterScene";
 
 export default function Dcim3DView() {
     const { themeColor } = usePreferencesStore();
-    const { token: antToken } = theme.useToken();
-    const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
+    const { resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
     
-    const { viewMode, setViewMode, racks, selectedRackId, setSelectedRackId } = useDcimStore();
+    React.useEffect(() => { setMounted(true); }, []);
+    const isDark = mounted && resolvedTheme === "dark";
+
+    const { token: antToken } = theme.useToken();
+    
+    const { viewMode, setViewMode, editMode, setEditMode, racks, selectedRackId, setSelectedRackId } = useDcimStore();
     const [drawerVisible, setDrawerVisible] = useState(false);
 
     const selectedRack = React.useMemo(() => racks.find(r => r.id === selectedRackId) || null, [racks, selectedRackId]);
@@ -56,6 +63,20 @@ export default function Dcim3DView() {
                         
                         <DataCenterScene />
                         
+                        <EffectComposer>
+                            <SSAO
+                                samples={21}
+                                radius={0.15}
+                                intensity={15}
+                                luminanceInfluence={0.6}
+                            />
+                            <Bloom
+                                luminanceThreshold={0.5}
+                                luminanceSmoothing={0.9}
+                                intensity={1.5}
+                            />
+                        </EffectComposer>
+
                         <OrbitControls 
                             makeDefault 
                             minPolarAngle={0} 
@@ -79,6 +100,13 @@ export default function Dcim3DView() {
                             options={['Normal', 'Thermal', 'Power', 'Utilization']} 
                             value={viewMode}
                             onChange={(val) => setViewMode(val as any)}
+                        />
+                        <div style={{ width: 1, height: 24, background: isDark ? '#333' : '#ddd', margin: '0 8px' }} />
+                        <Switch 
+                            checkedChildren={<EditOutlined />} 
+                            unCheckedChildren="Build Mode" 
+                            checked={editMode} 
+                            onChange={setEditMode} 
                         />
                     </div>
                 </motion.div>

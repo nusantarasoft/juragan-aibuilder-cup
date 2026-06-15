@@ -10,15 +10,19 @@ interface RackData {
     temp: number;
     power: number;
     status: 'normal' | 'warning' | 'critical';
+    rotationY?: number;
 }
 
 interface DcimState {
     racks: RackData[];
     selectedRackId: string | null;
     viewMode: 'Normal' | 'Thermal' | 'Power' | 'Utilization';
+    editMode: boolean;
     setRacks: (racks: RackData[]) => void;
     setSelectedRackId: (id: string | null) => void;
     setViewMode: (mode: 'Normal' | 'Thermal' | 'Power' | 'Utilization') => void;
+    setEditMode: (mode: boolean) => void;
+    updateRackPosition: (id: string, x: number, z: number, rotationY?: number) => void;
 }
 
 // Generate demo racks
@@ -52,7 +56,12 @@ export const useDcimStore = create<DcimState>((set) => ({
     racks: generateRacks(),
     selectedRackId: null,
     viewMode: 'Normal',
+    editMode: false,
     setRacks: (racks) => set({ racks }),
     setSelectedRackId: (id) => set({ selectedRackId: id }),
     setViewMode: (viewMode) => set({ viewMode }),
+    setEditMode: (editMode) => set({ editMode }),
+    updateRackPosition: (id, x, z, rotationY) => set((state) => ({
+        racks: state.racks.map(r => r.id === id ? { ...r, x, z, ...(rotationY !== undefined ? { rotationY } : {}) } : r)
+    })),
 }));

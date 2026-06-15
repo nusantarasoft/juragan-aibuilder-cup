@@ -9,7 +9,11 @@ export function ServerUnit({ position, status }: { position: [number, number, nu
         if (ledRef.current) {
             // Blinking activity light
             if (status === 'normal') {
-                ledRef.current.emissiveIntensity = Math.random() > 0.9 ? 1 : 0;
+                ledRef.current.emissiveIntensity = Math.random() > 0.9 ? 5 : 0;
+            } else if (status === 'critical') {
+                ledRef.current.emissiveIntensity = Math.random() > 0.5 ? 8 : 2;
+            } else {
+                ledRef.current.emissiveIntensity = 4;
             }
         }
     });
@@ -26,6 +30,7 @@ export function ServerUnit({ position, status }: { position: [number, number, nu
                     ref={ledRef}
                     color={status === 'critical' ? '#ff4d4f' : '#52c41a'} 
                     emissive={status === 'critical' ? '#ff4d4f' : '#52c41a'}
+                    toneMapped={false}
                 />
             </mesh>
         </group>
