@@ -681,7 +681,7 @@ services:
 
   waha:
     # Pin via WAHA_IMAGE — default latest-2026.4.3 (includes WEBJS SCAN_QR fix from waha#1690)
-    image: ${WAHA_IMAGE:-devlikeapro/waha:latest-2026.4.3}
+    image: ${WAHA_IMAGE:-devlikeapro/waha:latest}
     container_name: waha
     restart: unless-stopped
     shm_size: "2gb"

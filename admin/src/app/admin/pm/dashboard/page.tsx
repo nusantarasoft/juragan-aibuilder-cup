@@ -1054,7 +1054,8 @@ function PmDashboardContent() {
     );
 }
 
-export default function PmDashboardPage() {
+export default function PmDashboardPage() { return <React.Suspense fallback={<div>Loading...</div>}><PmDashboardPageContent /></React.Suspense>; } 
+function PmDashboardPageContent() {
     const { themeColor } = usePreferencesStore();
     return (
         <CMSLayout

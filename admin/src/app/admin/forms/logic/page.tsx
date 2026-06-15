@@ -277,7 +277,8 @@ function LogicContent() {
     );
 }
 
-export default function FormLogicPage() {
+export default function FormLogicPage() { return <React.Suspense fallback={<div>Loading...</div>}><FormLogicPageContent /></React.Suspense>; } 
+function FormLogicPageContent() {
     return (
         <Suspense fallback={<div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>}>
             <LogicContent />

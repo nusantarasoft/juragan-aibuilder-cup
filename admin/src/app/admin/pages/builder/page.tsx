@@ -1307,7 +1307,8 @@ function PageBuilderContent() {
 }
 
 // Wrap with DnD Provider and Suspense for useSearchParams
-export default function PageBuilderPage() {
+export default function PageBuilderPage() { return <React.Suspense fallback={<div>Loading...</div>}><PageBuilderPageContent /></React.Suspense>; } 
+function PageBuilderPageContent() {
     return (
         <DnDProvider>
             <Suspense fallback={<div style={{ padding: 48, textAlign: 'center' }}>Loading page builder...</div>}>

@@ -430,7 +430,8 @@ function FormFillContent() {
     );
 }
 
-export default function FormFillPage() {
+export default function FormFillPage() { return <React.Suspense fallback={<div>Loading...</div>}><FormFillPageContent /></React.Suspense>; } 
+function FormFillPageContent() {
     return (
         <Suspense fallback={<CMSLayout title="Fill Form"><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh' }}><Spin size="large" /></div></CMSLayout>}>
             <FormFillContent />

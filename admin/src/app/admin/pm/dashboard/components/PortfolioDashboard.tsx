@@ -296,10 +296,10 @@ export default function PortfolioDashboard({ onSelectProject }: PortfolioDashboa
         <div>
             {contextHolder}
 
-            {/* ── Hero Stats ── */}
-            {/* ── Hero Stats ── */}
+            {/* ── Portfolio Overview BentoGrid ── */}
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-6">
-                <BentoGrid className="max-w-full">
+                <BentoGrid className="max-w-full md:grid-cols-3 md:auto-rows-[18rem]">
+                    {/* Projects Stat */}
                     <BentoGridItem
                         title={
                             <div className="flex items-center gap-2">
@@ -320,6 +320,8 @@ export default function PortfolioDashboard({ onSelectProject }: PortfolioDashboa
                         className="md:col-span-1"
                         icon={<FundProjectionScreenOutlined style={{ color: themeColor }} />}
                     />
+                    
+                    {/* Task Completion Stat */}
                     <BentoGridItem
                         title={<div className="text-xl font-bold">Task Completion</div>}
                         description={`${totalDone} of ${totalTasks} tasks done`}
@@ -338,6 +340,8 @@ export default function PortfolioDashboard({ onSelectProject }: PortfolioDashboa
                         className="md:col-span-1"
                         icon={<CheckCircleOutlined className="text-emerald-500" />}
                     />
+                    
+                    {/* Budget Used Stat */}
                     <BentoGridItem
                         title={<div className="text-xl font-bold">Budget Used</div>}
                         description={`$${totalSpent.toLocaleString()} / $${totalBudget.toLocaleString()}`}
@@ -356,102 +360,106 @@ export default function PortfolioDashboard({ onSelectProject }: PortfolioDashboa
                         className="md:col-span-1"
                         icon={<DollarOutlined className={budgetUtilization > 90 ? "text-red-500" : "text-amber-500"} />}
                     />
-                </BentoGrid>
-            </motion.div>
-
-            {/* ── Sprint Summary + Risk Heat Map ── */}
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                <Row gutter={[14, 14]} style={{ marginBottom: 20 }}>
-                    {/* Sprint Summary */}
-                    <Col xs={24} lg={10}>
-                        <Card title={<Space><ThunderboltOutlined style={{ color: '#f59e0b' }} /> Sprint Summary</Space>} size="small" style={glassCard} extra={<Tag color="blue">{sprintSummary.projectCount} projects</Tag>}>
-                            <Row gutter={[10, 10]}>
-                                {[
-                                    { label: 'In Progress', value: sprintSummary.inProgressTasks, color: themeColor, bg: 'rgba(99,102,241,0.1)', border: 'rgba(99,102,241,0.15)' },
-                                    { label: 'To Do', value: sprintSummary.todoTasks, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.15)' },
-                                    { label: 'Done', value: sprintSummary.doneTasks, color: '#10b981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.15)' },
-                                ].map(item => (
-                                    <Col span={8} key={item.label}>
-                                        <div style={{ textAlign: 'center', padding: '10px 6px', borderRadius: 10, background: isDark ? item.bg : item.bg.replace('0.1', '0.05'), border: `1px solid ${item.border}` }}>
-                                            <div style={{ fontSize: 22, fontWeight: 800, color: item.color }}>{item.value}</div>
-                                            <Text type="secondary" style={{ fontSize: 10 }}>{item.label}</Text>
-                                        </div>
-                                    </Col>
-                                ))}
-                            </Row>
-
-                            {/* Progress bar */}
-                            <div style={{ marginTop: 10 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                                    <Text style={{ fontSize: 11, fontWeight: 600 }}>Sprint Progress</Text>
-                                    <Text type="secondary" style={{ fontSize: 11 }}>
-                                        {sprintSummary.totalActiveTasks > 0 ? Math.round((sprintSummary.doneTasks / sprintSummary.totalActiveTasks) * 100) : 0}%
-                                    </Text>
-                                </div>
-                                <div style={{ height: 6, borderRadius: 3, overflow: 'hidden', background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', display: 'flex' }}>
-                                    <div style={{ width: `${sprintSummary.totalActiveTasks > 0 ? (sprintSummary.doneTasks / sprintSummary.totalActiveTasks) * 100 : 0}%`, background: 'linear-gradient(90deg, #10b981, #34d399)', borderRadius: '3px 0 0 3px', transition: 'width 0.5s ease' }} />
-                                    <div style={{ width: `${sprintSummary.totalActiveTasks > 0 ? (sprintSummary.inProgressTasks / sprintSummary.totalActiveTasks) * 100 : 0}%`, background: 'linear-gradient(90deg, #6366f1, #818cf8)', transition: 'width 0.5s ease' }} />
-                                </div>
-                            </div>
-
-                            {/* Velocity */}
-                            <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', borderRadius: 8, background: isDark ? 'rgba(139,92,246,0.08)' : 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.12)' }}>
-                                <Text style={{ fontSize: 11 }}>Avg. tasks done per project</Text>
-                                <Text strong style={{ fontSize: 14, color: themeColor }}>{sprintSummary.velocity}</Text>
-                            </div>
-                        </Card>
-                    </Col>
 
                     {/* Risk Heat Map */}
-                    <Col xs={24} lg={14}>
-                        <Card
-                            title={<Space><FireOutlined style={{ color: '#ef4444' }} /> Risk Heat Map</Space>} size="small" style={glassCard}
-                            extra={
-                                <Space size={8}>
-                                    <Badge color="#10b981" text={<Text style={{ fontSize: 10 }}>Low</Text>} />
-                                    <Badge color="#f59e0b" text={<Text style={{ fontSize: 10 }}>Elevated</Text>} />
-                                    <Badge color="#ef4444" text={<Text style={{ fontSize: 10 }}>Critical</Text>} />
-                                </Space>
-                            }
-                        >
-                            {riskData.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: 20 }}>
-                                    <SafetyCertificateOutlined style={{ fontSize: 28, color: '#10b981', opacity: 0.5 }} />
-                                    <div><Text type="secondary" style={{ fontSize: 12 }}>No active projects to assess</Text></div>
-                                </div>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
-                                    {riskData.sort((a, b) => b.riskScore - a.riskScore).map(project => {
-                                        const rs = getRiskCellColor(project.riskScore);
-                                        return (
-                                            <div key={project.id} onClick={() => onSelectProject(project.id)}
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8,
-                                                    background: rs.bg, border: `1px solid ${rs.border}22`, cursor: 'pointer', transition: 'all 0.2s ease',
-                                                }}>
-                                                <div style={{ width: 3, alignSelf: 'stretch', borderRadius: 2, background: rs.border, minHeight: 24 }} />
-                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <Text strong style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{project.name}</Text>
-                                                        <Tag style={{ borderRadius: 8, fontSize: 9, lineHeight: '14px', padding: '0 5px', margin: 0, background: rs.bg, color: rs.text, border: `1px solid ${rs.border}33`, fontWeight: 600 }}>
-                                                            {project.riskLevel === 'critical' ? '🔴' : project.riskLevel === 'elevated' ? '🟡' : '🟢'} {project.riskScore}
-                                                        </Tag>
-                                                    </div>
-                                                    <div style={{ display: 'flex', gap: 12, marginTop: 2 }}>
-                                                        <Text type="secondary" style={{ fontSize: 10 }}>📊 {project.progress}%</Text>
-                                                        <Text type="secondary" style={{ fontSize: 10 }}>💰 {project.budgetPct}%</Text>
-                                                        <Text type="secondary" style={{ fontSize: 10 }}>⏱ {project.timelinePct}%</Text>
-                                                        {project.isOverdue && <Text style={{ fontSize: 10, color: '#ef4444', fontWeight: 600 }}>OVERDUE</Text>}
+                    <BentoGridItem
+                        title={<div className="flex items-center gap-2"><FireOutlined className="text-red-500" /> <span className="text-xl font-bold">Risk Heat Map</span></div>}
+                        description={
+                            <div className="flex items-center gap-2">
+                                <Badge color="#10b981" text={<Text style={{ fontSize: 10 }}>Low</Text>} />
+                                <Badge color="#f59e0b" text={<Text style={{ fontSize: 10 }}>Elevated</Text>} />
+                                <Badge color="#ef4444" text={<Text style={{ fontSize: 10 }}>Critical</Text>} />
+                            </div>
+                        }
+                        header={
+                            <div className="flex h-full w-full flex-1 flex-col gap-2 rounded-xl bg-red-500/5 p-3 overflow-y-auto" style={{ maxHeight: '180px' }}>
+                                {riskData.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: 20 }}>
+                                        <SafetyCertificateOutlined style={{ fontSize: 28, color: '#10b981', opacity: 0.5 }} />
+                                        <div><Text type="secondary" style={{ fontSize: 12 }}>No active projects to assess</Text></div>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        {riskData.sort((a, b) => b.riskScore - a.riskScore).map(project => {
+                                            const rs = getRiskCellColor(project.riskScore);
+                                            return (
+                                                <div key={project.id} onClick={() => onSelectProject(project.id)}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8,
+                                                        background: rs.bg, border: `1px solid ${rs.border}22`, cursor: 'pointer', transition: 'all 0.2s ease',
+                                                    }}>
+                                                    <div style={{ width: 3, alignSelf: 'stretch', borderRadius: 2, background: rs.border, minHeight: 24 }} />
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                            <Text strong style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{project.name}</Text>
+                                                            <Tag style={{ borderRadius: 8, fontSize: 9, lineHeight: '14px', padding: '0 5px', margin: 0, background: rs.bg, color: rs.text, border: `1px solid ${rs.border}33`, fontWeight: 600 }}>
+                                                                {project.riskLevel === 'critical' ? '🔴' : project.riskLevel === 'elevated' ? '🟡' : '🟢'} {project.riskScore}
+                                                            </Tag>
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: 12, marginTop: 2 }}>
+                                                            <Text type="secondary" style={{ fontSize: 10 }}>📊 {project.progress}%</Text>
+                                                            <Text type="secondary" style={{ fontSize: 10 }}>💰 {project.budgetPct}%</Text>
+                                                            <Text type="secondary" style={{ fontSize: 10 }}>⏱ {project.timelinePct}%</Text>
+                                                            {project.isOverdue && <Text style={{ fontSize: 10, color: '#ef4444', fontWeight: 600 }}>OVERDUE</Text>}
+                                                        </div>
                                                     </div>
                                                 </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        }
+                        className="md:col-span-2"
+                        icon={null}
+                    />
+
+                    {/* Sprint Summary */}
+                    <BentoGridItem
+                        title={<div className="flex items-center justify-between w-full"><Space><ThunderboltOutlined className="text-amber-500" /> <span className="text-xl font-bold">Sprint Summary</span></Space> <Tag color="blue">{sprintSummary.projectCount} projects</Tag></div>}
+                        description={<div className="text-xs text-neutral-500">Cross-project task velocity</div>}
+                        header={
+                            <div className="flex h-full w-full flex-1 flex-col justify-center rounded-xl bg-indigo-500/5 p-4">
+                                <Row gutter={[10, 10]}>
+                                    {[
+                                        { label: 'In Progress', value: sprintSummary.inProgressTasks, color: themeColor, bg: 'rgba(99,102,241,0.1)', border: 'rgba(99,102,241,0.15)' },
+                                        { label: 'To Do', value: sprintSummary.todoTasks, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.15)' },
+                                        { label: 'Done', value: sprintSummary.doneTasks, color: '#10b981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.15)' },
+                                    ].map(item => (
+                                        <Col span={8} key={item.label}>
+                                            <div style={{ textAlign: 'center', padding: '10px 6px', borderRadius: 10, background: isDark ? item.bg : item.bg.replace('0.1', '0.05'), border: `1px solid ${item.border}` }}>
+                                                <div style={{ fontSize: 22, fontWeight: 800, color: item.color }}>{item.value}</div>
+                                                <Text type="secondary" style={{ fontSize: 10 }}>{item.label}</Text>
                                             </div>
-                                        );
-                                    })}
+                                        </Col>
+                                    ))}
+                                </Row>
+
+                                {/* Progress bar */}
+                                <div style={{ marginTop: 10 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                                        <Text style={{ fontSize: 11, fontWeight: 600 }}>Sprint Progress</Text>
+                                        <Text type="secondary" style={{ fontSize: 11 }}>
+                                            {sprintSummary.totalActiveTasks > 0 ? Math.round((sprintSummary.doneTasks / sprintSummary.totalActiveTasks) * 100) : 0}%
+                                        </Text>
+                                    </div>
+                                    <div style={{ height: 6, borderRadius: 3, overflow: 'hidden', background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', display: 'flex' }}>
+                                        <div style={{ width: `${sprintSummary.totalActiveTasks > 0 ? (sprintSummary.doneTasks / sprintSummary.totalActiveTasks) * 100 : 0}%`, background: 'linear-gradient(90deg, #10b981, #34d399)', borderRadius: '3px 0 0 3px', transition: 'width 0.5s ease' }} />
+                                        <div style={{ width: `${sprintSummary.totalActiveTasks > 0 ? (sprintSummary.inProgressTasks / sprintSummary.totalActiveTasks) * 100 : 0}%`, background: 'linear-gradient(90deg, #6366f1, #818cf8)', transition: 'width 0.5s ease' }} />
+                                    </div>
                                 </div>
-                            )}
-                        </Card>
-                    </Col>
-                </Row>
+
+                                {/* Velocity */}
+                                <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', borderRadius: 8, background: isDark ? 'rgba(139,92,246,0.08)' : 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.12)' }}>
+                                    <Text style={{ fontSize: 11 }}>Avg. tasks done per project</Text>
+                                    <Text strong style={{ fontSize: 14, color: themeColor }}>{sprintSummary.velocity}</Text>
+                                </div>
+                            </div>
+                        }
+                        className="md:col-span-1"
+                        icon={null}
+                    />
+                </BentoGrid>
             </motion.div>
 
             {/* ── Charts Row: Status + Priority + AI ── */}

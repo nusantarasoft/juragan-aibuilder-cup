@@ -1645,7 +1645,7 @@ services:
   # ╚═══════════════════════════════════════════════════════════════════════════╝
 
   waha:
-    image: ${WAHA_IMAGE:-devlikeapro/waha:latest-2026.4.3}
+    image: ${WAHA_IMAGE:-devlikeapro/waha:latest}
     container_name: waha
     restart: unless-stopped
     shm_size: "2gb"

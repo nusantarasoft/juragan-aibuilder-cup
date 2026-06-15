@@ -14,17 +14,17 @@ export function SitePrep({ progress, highlighted, phase }: { progress: number; h
       {/* Excavation pit - layered soil */}
       <mesh position={[0, -0.3, 0]} receiveShadow>
         <boxGeometry args={[BUILDING.width + 4, 0.6, BUILDING.depth + 4]} />
-        <meshStandardMaterial color={highlighted ? "#D4A574" : "#8B6914"} transparent opacity={opacity * 0.9} roughness={0.9} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={highlighted ? "#D4A574" : "#8B6914"} transparent opacity={opacity * 0.9} roughness={0.9} />
       </mesh>
       {/* Subsoil layer */}
       <mesh position={[0, -0.65, 0]} receiveShadow>
         <boxGeometry args={[BUILDING.width + 5, 0.1, BUILDING.depth + 5]} />
-        <meshStandardMaterial color="#5C3A0A" transparent opacity={opacity * 0.7} roughness={1} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#5C3A0A" transparent opacity={opacity * 0.7} roughness={1} />
       </mesh>
       {/* Clay layer */}
       <mesh position={[0, -0.8, 0]} receiveShadow>
         <boxGeometry args={[BUILDING.width + 6, 0.2, BUILDING.depth + 6]} />
-        <meshStandardMaterial color="#8B7355" transparent opacity={opacity * 0.5} roughness={1} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#8B7355" transparent opacity={opacity * 0.5} roughness={1} />
       </mesh>
 
       {/* Construction fence posts with safety tape */}
@@ -37,13 +37,13 @@ export function SitePrep({ progress, highlighted, phase }: { progress: number; h
           <group key={`fence-${i}`}>
             <mesh position={[x, 0.5, z]}>
               <cylinderGeometry args={[0.05, 0.05, 1.5, 8]} />
-              <meshStandardMaterial color="#F59E0B" transparent opacity={opacity} />
+              <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#F59E0B" transparent opacity={opacity} />
             </mesh>
             {/* Safety tape between posts */}
             {i < 11 && (
               <mesh position={[(x + Math.cos(((i + 1) / 12) * Math.PI * 2) * r) / 2, 0.9, (z + Math.sin(((i + 1) / 12) * Math.PI * 2) * r) / 2]}>
                 <boxGeometry args={[0.8, 0.08, 0.02]} />
-                <meshStandardMaterial color="#FF6600" transparent opacity={opacity * 0.8} emissive="#FF4400" emissiveIntensity={0.2} />
+                <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#FF6600" transparent opacity={opacity * 0.8} emissive="#FF4400" emissiveIntensity={0.2} />
               </mesh>
             )}
           </group>
@@ -60,11 +60,11 @@ export function SitePrep({ progress, highlighted, phase }: { progress: number; h
         <group key={`stake-${i}`}>
           <mesh position={[sx, 0.3, sz]}>
             <cylinderGeometry args={[0.03, 0.03, 1, 6]} />
-            <meshStandardMaterial color="#FF0000" transparent opacity={opacity} />
+            <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#FF0000" transparent opacity={opacity} />
           </mesh>
           <mesh position={[sx, 0.65, sz]}>
             <boxGeometry args={[0.15, 0.15, 0.01]} />
-            <meshStandardMaterial color="#FF8800" transparent opacity={opacity} emissive="#FF4400" emissiveIntensity={0.3} />
+            <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#FF8800" transparent opacity={opacity} emissive="#FF4400" emissiveIntensity={0.3} />
           </mesh>
         </group>
       ))}
@@ -73,7 +73,7 @@ export function SitePrep({ progress, highlighted, phase }: { progress: number; h
       {Array.from({ length: 8 }).map((_, i) => (
         <mesh key={`track-${i}`} position={[-BUILDING.width / 2 + 2 + i * 1.2, -0.25, BUILDING.depth / 2 + 1.5]} rotation={[-Math.PI / 2, 0, 0.15]}>
           <planeGeometry args={[0.6, 0.15]} />
-          <meshStandardMaterial color="#5A3A10" transparent opacity={opacity * 0.6} roughness={1} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#5A3A10" transparent opacity={opacity * 0.6} roughness={1} />
         </mesh>
       ))}
 
@@ -83,7 +83,7 @@ export function SitePrep({ progress, highlighted, phase }: { progress: number; h
         {[0, 0.4, 0.8].map((dy, i) => (
           <mesh key={`rebar-${i}`} position={[0, 0.15 + dy * 0.3, 0]} rotation={[0, 0, Math.PI / 2]}>
             <cylinderGeometry args={[0.15, 0.15, 2.5, 8]} />
-            <meshStandardMaterial color="#8B4513" transparent opacity={opacity * 0.8} metalness={0.6} roughness={0.5} />
+            <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#8B4513" transparent opacity={opacity * 0.8} metalness={0.6} roughness={0.5} />
           </mesh>
         ))}
         {/* Cement bags stack */}
@@ -91,18 +91,18 @@ export function SitePrep({ progress, highlighted, phase }: { progress: number; h
           Array.from({ length: 2 }).map((_, j) => (
             <mesh key={`cement-${i}-${j}`} position={[2, 0.2 + i * 0.35, -1 + j * 0.8]}>
               <boxGeometry args={[0.6, 0.3, 0.7]} />
-              <meshStandardMaterial color="#A0A0A0" transparent opacity={opacity * 0.85} roughness={0.9} />
+              <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#A0A0A0" transparent opacity={opacity * 0.85} roughness={0.9} />
             </mesh>
           ))
         )}
         {/* Wooden planks */}
         <mesh position={[3.5, 0.15, 0]}>
           <boxGeometry args={[0.3, 0.08, 3]} />
-          <meshStandardMaterial color="#C49A6C" transparent opacity={opacity * 0.8} roughness={0.8} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#C49A6C" transparent opacity={opacity * 0.8} roughness={0.8} />
         </mesh>
         <mesh position={[3.5, 0.25, 0]}>
           <boxGeometry args={[0.3, 0.08, 3]} />
-          <meshStandardMaterial color="#B8905A" transparent opacity={opacity * 0.8} roughness={0.8} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#B8905A" transparent opacity={opacity * 0.8} roughness={0.8} />
         </mesh>
       </group>
 
@@ -110,16 +110,16 @@ export function SitePrep({ progress, highlighted, phase }: { progress: number; h
       <group position={[BUILDING.width / 2 + 4, 0, BUILDING.depth / 2]}>
         <mesh position={[0, 0.8, 0]} castShadow>
           <boxGeometry args={[3, 1.6, 2]} />
-          <meshStandardMaterial color="#E8E0D0" transparent opacity={opacity} roughness={0.7} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#E8E0D0" transparent opacity={opacity} roughness={0.7} />
         </mesh>
         <mesh position={[0, 1.2, 1.01]}>
           <boxGeometry args={[1.2, 0.6, 0.02]} />
-          <meshStandardMaterial color="#88AACC" transparent opacity={opacity * 0.5} roughness={0.1} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#88AACC" transparent opacity={opacity * 0.5} roughness={0.1} />
         </mesh>
         {/* Door */}
         <mesh position={[-0.8, 0.6, 1.01]}>
           <boxGeometry args={[0.6, 1.2, 0.02]} />
-          <meshStandardMaterial color="#666" transparent opacity={opacity} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#666" transparent opacity={opacity} />
         </mesh>
       </group>
     </group>
@@ -213,7 +213,7 @@ export function StructuralFrame({ progress, highlighted, xray, explodeLevel = 0,
       <group key={`sf-floor-${floor}`}>
         <Instances limit={floorColumns.length} castShadow>
           <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2}
             color={columnColor}
             transparent
             opacity={xray ? 0.5 : opacity * floorProgress}
@@ -225,7 +225,7 @@ export function StructuralFrame({ progress, highlighted, xray, explodeLevel = 0,
         {floorBeamsX.length > 0 && (
           <Instances limit={floorBeamsX.length} castShadow>
             <boxGeometry args={[1, 1, 1]} />
-            <meshStandardMaterial
+            <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2}
               color={beamColor}
               transparent
               opacity={xray ? 0.4 : opacity * floorProgress}
@@ -238,7 +238,7 @@ export function StructuralFrame({ progress, highlighted, xray, explodeLevel = 0,
         {floorBeamsZ.length > 0 && (
           <Instances limit={floorBeamsZ.length} castShadow>
             <boxGeometry args={[1, 1, 1]} />
-            <meshStandardMaterial
+            <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2}
               color={beamColor}
               transparent
               opacity={xray ? 0.4 : opacity * floorProgress}
@@ -260,13 +260,13 @@ export function StructuralFrame({ progress, highlighted, xray, explodeLevel = 0,
   stairElements.push(
     <mesh key="stair-wall-1" position={[stairX, 0.4 + totalH * opacity / 2, -BUILDING.depth / 2 + 1.5]}>
       <boxGeometry args={[0.2, totalH * opacity, 3]} />
-      <meshStandardMaterial color="#708090" transparent opacity={xray ? 0.3 : opacity * 0.7} roughness={0.7} metalness={0.3} />
+      <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#708090" transparent opacity={xray ? 0.3 : opacity * 0.7} roughness={0.7} metalness={0.3} />
     </mesh>
   );
   stairElements.push(
     <mesh key="stair-wall-2" position={[stairX - 1.3, 0.4 + totalH * opacity / 2, -BUILDING.depth / 2 + 1.5]}>
       <boxGeometry args={[0.2, totalH * opacity, 3]} />
-      <meshStandardMaterial color="#708090" transparent opacity={xray ? 0.3 : opacity * 0.7} roughness={0.7} metalness={0.3} />
+      <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#708090" transparent opacity={xray ? 0.3 : opacity * 0.7} roughness={0.7} metalness={0.3} />
     </mesh>
   );
   // Stair flights per floor
@@ -275,7 +275,7 @@ export function StructuralFrame({ progress, highlighted, xray, explodeLevel = 0,
     stairElements.push(
       <mesh key={`stair-flight-${f}`} position={[stairX - 0.65, sy + BUILDING.floorHeight / 2, -BUILDING.depth / 2 + 1.5]} rotation={[0.3, 0, 0]}>
         <boxGeometry args={[1.8, 0.1, 2.5]} />
-        <meshStandardMaterial color="#607080" transparent opacity={xray ? 0.25 : opacity * 0.5} roughness={0.6} metalness={0.4} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#607080" transparent opacity={xray ? 0.25 : opacity * 0.5} roughness={0.6} metalness={0.4} />
       </mesh>
     );
   }
@@ -287,26 +287,26 @@ export function StructuralFrame({ progress, highlighted, xray, explodeLevel = 0,
   elevElements.push(
     <mesh key="elev-front" position={[elevX, 0.4 + totalH * opacity / 2, -BUILDING.depth / 2 + 0.7]}>
       <boxGeometry args={[2, totalH * opacity, 0.15]} />
-      <meshStandardMaterial color="#555" transparent opacity={xray ? 0.2 : opacity * 0.6} roughness={0.5} metalness={0.5} />
+      <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#555" transparent opacity={xray ? 0.2 : opacity * 0.6} roughness={0.5} metalness={0.5} />
     </mesh>
   );
   elevElements.push(
     <mesh key="elev-back" position={[elevX, 0.4 + totalH * opacity / 2, -BUILDING.depth / 2 + 2.5]}>
       <boxGeometry args={[2, totalH * opacity, 0.15]} />
-      <meshStandardMaterial color="#555" transparent opacity={xray ? 0.2 : opacity * 0.6} roughness={0.5} metalness={0.5} />
+      <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#555" transparent opacity={xray ? 0.2 : opacity * 0.6} roughness={0.5} metalness={0.5} />
     </mesh>
   );
   // Elevator guide rails
   elevElements.push(
     <mesh key="elev-rail-1" position={[elevX - 0.7, 0.4 + totalH * opacity / 2, -BUILDING.depth / 2 + 1.6]}>
       <boxGeometry args={[0.06, totalH * opacity, 0.06]} />
-      <meshStandardMaterial color="#888" transparent opacity={opacity * 0.5} metalness={0.8} roughness={0.2} />
+      <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#888" transparent opacity={opacity * 0.5} metalness={0.8} roughness={0.2} />
     </mesh>
   );
   elevElements.push(
     <mesh key="elev-rail-2" position={[elevX + 0.7, 0.4 + totalH * opacity / 2, -BUILDING.depth / 2 + 1.6]}>
       <boxGeometry args={[0.06, totalH * opacity, 0.06]} />
-      <meshStandardMaterial color="#888" transparent opacity={opacity * 0.5} metalness={0.8} roughness={0.2} />
+      <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#888" transparent opacity={opacity * 0.5} metalness={0.8} roughness={0.2} />
     </mesh>
   );
 
@@ -351,7 +351,7 @@ export function FloorSlabs({ progress, highlighted, xray, explodeLevel = 0, onSe
             }}
           >
             <boxGeometry args={[BUILDING.width + 0.2, 0.25, BUILDING.depth + 0.2]} />
-            <meshStandardMaterial
+            <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2}
               color={highlighted ? "#B8A0E0" : "#9080C0"}
               transparent
               opacity={xray ? 0.3 : opacity * floorOpacity}
@@ -449,7 +449,7 @@ export function ExternalWalls({ progress, highlighted, xray, config, explodeLeve
       <group key={`ew-floor-${floor}`}>
         <Instances limit={floorWalls.length} castShadow>
           <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2}
             color={wallColor}
             transparent
             opacity={xray ? 0.15 : opacity * floorOpacity * 0.95}
@@ -543,7 +543,7 @@ export function WindowsGlazing({ progress, highlighted, xray, config, explodeLev
         </Instances>
         <Instances limit={frames.length}>
           <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2}
             color="#404040"
             transparent
             opacity={opacity * floorOpacity}
@@ -583,7 +583,7 @@ export function Roofing({ progress, highlighted, config, explodeLevel = 0, onSel
         }}
       >
         <boxGeometry args={[BUILDING.width + 0.8, 0.35, BUILDING.depth + 0.8]} />
-        <meshStandardMaterial color={roofColor} transparent opacity={opacity} roughness={0.6} metalness={0.2} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={roofColor} transparent opacity={opacity} roughness={0.6} metalness={0.2} />
       </mesh>
       {/* Parapet walls */}
       {[
@@ -594,25 +594,25 @@ export function Roofing({ progress, highlighted, config, explodeLevel = 0, onSel
       ].map((p, i) => (
         <mesh key={`parapet-${i}`} position={p.pos} castShadow>
           <boxGeometry args={p.size} />
-          <meshStandardMaterial color="#888" transparent opacity={opacity * 0.9} roughness={0.7} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#888" transparent opacity={opacity * 0.9} roughness={0.7} />
         </mesh>
       ))}
 
       {/* Mechanical Penthouse */}
       <mesh position={[-2, roofY + 1.5, -1]} castShadow>
         <boxGeometry args={[3.5, 2.5, 3]} />
-        <meshStandardMaterial color="#606068" transparent opacity={opacity * 0.85} roughness={0.7} metalness={0.2} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#606068" transparent opacity={opacity * 0.85} roughness={0.7} metalness={0.2} />
       </mesh>
       {/* Penthouse door */}
       <mesh position={[-2, roofY + 1.2, 0.51]}>
         <boxGeometry args={[0.8, 1.6, 0.02]} />
-        <meshStandardMaterial color="#444" transparent opacity={opacity} metalness={0.5} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#444" transparent opacity={opacity} metalness={0.5} />
       </mesh>
       {/* Penthouse vent grilles */}
       {[-3.1, -0.9].map((dz, i) => (
         <mesh key={`vent-${i}`} position={[-3.76, roofY + 1.8, dz]}>
           <boxGeometry args={[0.02, 0.8, 0.6]} />
-          <meshStandardMaterial color="#555" transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.3} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#555" transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.3} />
         </mesh>
       ))}
 
@@ -621,12 +621,12 @@ export function Roofing({ progress, highlighted, config, explodeLevel = 0, onSel
         <group key={`hvac-${i}`} position={[dx, roofY + 0.35, dz]}>
           <mesh position={[0, 0.35, 0]} castShadow>
             <boxGeometry args={[1.8, 0.7, 1.2]} />
-            <meshStandardMaterial color="#778888" transparent opacity={opacity * 0.8} metalness={0.5} roughness={0.4} />
+            <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#778888" transparent opacity={opacity * 0.8} metalness={0.5} roughness={0.4} />
           </mesh>
           {/* Fan grill on top */}
           <mesh position={[0, 0.75, 0]}>
             <cylinderGeometry args={[0.4, 0.4, 0.06, 12]} />
-            <meshStandardMaterial color="#444" transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.3} />
+            <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#444" transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.3} />
           </mesh>
         </group>
       ))}
@@ -634,32 +634,32 @@ export function Roofing({ progress, highlighted, config, explodeLevel = 0, onSel
       {/* Elevator overrun */}
       <mesh position={[BUILDING.width / 2 - 1.5, roofY + 1.2, -BUILDING.depth / 2 + 1.6]} castShadow>
         <boxGeometry args={[2.2, 2, 2]} />
-        <meshStandardMaterial color="#606068" transparent opacity={opacity * 0.8} roughness={0.7} metalness={0.2} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#606068" transparent opacity={opacity * 0.8} roughness={0.7} metalness={0.2} />
       </mesh>
 
       {/* Roof access stair enclosure */}
       <mesh position={[-BUILDING.width / 2 + 1.5, roofY + 1, -BUILDING.depth / 2 + 1.5]} castShadow>
         <boxGeometry args={[2.5, 1.5, 2.5]} />
-        <meshStandardMaterial color="#666670" transparent opacity={opacity * 0.75} roughness={0.7} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#666670" transparent opacity={opacity * 0.75} roughness={0.7} />
       </mesh>
 
       {/* Solar panel area */}
       <mesh position={[3, roofY + 0.2, -1]} rotation={[0.15, 0, 0]}>
         <boxGeometry args={[4, 0.05, 3]} />
-        <meshStandardMaterial color="#1a237e" transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.2} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#1a237e" transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.2} />
       </mesh>
       {/* Solar panel grid lines */}
       {Array.from({ length: 4 }).map((_, i) => (
         <mesh key={`solar-line-${i}`} position={[1.5 + i * 1, roofY + 0.23, -1]} rotation={[0.15, 0, 0]}>
           <boxGeometry args={[0.02, 0.02, 3]} />
-          <meshStandardMaterial color="#283593" transparent opacity={opacity * 0.5} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#283593" transparent opacity={opacity * 0.5} />
         </mesh>
       ))}
 
       {/* Drainage slopes (slight raised edges) */}
       <mesh position={[0, roofY + 0.12, 0]} rotation={[0.02, 0, 0.01]}>
         <boxGeometry args={[BUILDING.width - 1, 0.08, BUILDING.depth - 1]} />
-        <meshStandardMaterial color="#888080" transparent opacity={opacity * 0.3} roughness={0.9} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#888080" transparent opacity={opacity * 0.3} roughness={0.9} />
       </mesh>
     </group>
   );
@@ -736,7 +736,7 @@ export function Scaffolding({ progress }: { progress: number }) {
       {/* Instances for all pipes */}
       <Instances limit={pipes.length} range={pipes.length}>
         <cylinderGeometry args={[0.04, 0.04, 1, 6]} />
-        <meshStandardMaterial color={pipeColor} transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.4} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={pipeColor} transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.4} />
         {pipes.map((pipe) => (
           <Instance
             key={pipe.key}
@@ -750,7 +750,7 @@ export function Scaffolding({ progress }: { progress: number }) {
       {/* Instances for all planks */}
       <Instances limit={planks.length} range={planks.length}>
         <boxGeometry args={[1, 0.04, 0.6]} />
-        <meshStandardMaterial color="#B8905A" transparent opacity={opacity * 0.5} roughness={0.8} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#B8905A" transparent opacity={opacity * 0.5} roughness={0.8} />
         {planks.map((plank) => (
           <Instance
             key={plank.key}
@@ -763,7 +763,7 @@ export function Scaffolding({ progress }: { progress: number }) {
       {/* Safety netting (semi-transparent green on one side) */}
       <mesh position={[0, 0.4 + (scaffoldLevels * BUILDING.floorHeight) / 2, BUILDING.depth / 2 + 1.3]}>
         <boxGeometry args={[BUILDING.width + 1, scaffoldLevels * BUILDING.floorHeight, 0.02]} />
-        <meshStandardMaterial color="#22AA44" transparent opacity={opacity * 0.12} roughness={0.8} side={THREE.DoubleSide} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#22AA44" transparent opacity={opacity * 0.12} roughness={0.8} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
@@ -784,7 +784,7 @@ export function MEPSystems({ progress, highlighted, explodeLevel = 0, onSelectBi
       pipes.push(
         <mesh key={`pipe-v-${x}-${z}`} position={[x, 0.4 + totalH / 2, z]}>
           <cylinderGeometry args={[0.08, 0.08, totalH * opacity, 8]} />
-          <meshStandardMaterial color={pipeColor} transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.3} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={pipeColor} transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.3} />
         </mesh>
       );
     }
@@ -814,7 +814,7 @@ export function MEPSystems({ progress, highlighted, explodeLevel = 0, onSelectBi
         }}
       >
         <cylinderGeometry args={[0.06, 0.06, BUILDING.width * 0.8, 8]} />
-        <meshStandardMaterial color="#3B82F6" transparent opacity={opacity * floorOpacity * 0.6} metalness={0.5} roughness={0.4} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#3B82F6" transparent opacity={opacity * floorOpacity * 0.6} metalness={0.5} roughness={0.4} />
       </mesh>
     );
   }
@@ -853,7 +853,7 @@ export function InteriorFinishing({ progress, highlighted, explodeLevel = 0, onS
         }}
       >
         <boxGeometry args={[BUILDING.width - 0.6, 0.05, BUILDING.depth - 0.6]} />
-        <meshStandardMaterial
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2}
           color={highlighted ? "#FFB0D0" : "#E890B0"}
           transparent
           opacity={opacity * floorOpacity * 0.6}
@@ -877,7 +877,7 @@ export function InteriorFinishing({ progress, highlighted, explodeLevel = 0, onS
           }}
         >
           <boxGeometry args={[0.12, BUILDING.floorHeight - 0.5, BUILDING.depth * 0.6]} />
-          <meshStandardMaterial
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2}
             color="#F0E0E8"
             transparent
             opacity={opacity * floorOpacity * 0.5}
@@ -901,7 +901,7 @@ export function ExteriorFinishing({ progress, highlighted, phase }: { progress: 
       {/* Entrance canopy */}
       <mesh position={[0, 2, BUILDING.depth / 2 + 1]} castShadow>
         <boxGeometry args={[4, 0.15, 2]} />
-        <meshStandardMaterial
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2}
           color={highlighted ? "#60E8D0" : "#40C8B0"}
           transparent
           opacity={opacity}
@@ -913,7 +913,7 @@ export function ExteriorFinishing({ progress, highlighted, phase }: { progress: 
       {[-1.5, 1.5].map((x) => (
         <mesh key={`canopy-sup-${x}`} position={[x, 1, BUILDING.depth / 2 + 1.8]}>
           <cylinderGeometry args={[0.08, 0.08, 2, 8]} />
-          <meshStandardMaterial color="#555" transparent opacity={opacity} metalness={0.7} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#555" transparent opacity={opacity} metalness={0.7} />
         </mesh>
       ))}
       {/* Landscaping - simplified trees */}
@@ -927,19 +927,19 @@ export function ExteriorFinishing({ progress, highlighted, phase }: { progress: 
           {/* Trunk */}
           <mesh position={[0, 0.8, 0]}>
             <cylinderGeometry args={[0.1, 0.15, 1.6, 8]} />
-            <meshStandardMaterial color="#5D3A1A" transparent opacity={opacity} />
+            <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#5D3A1A" transparent opacity={opacity} />
           </mesh>
           {/* Canopy */}
           <mesh position={[0, 2, 0]}>
             <sphereGeometry args={[0.9, 16, 12]} />
-            <meshStandardMaterial color="#228B22" transparent opacity={opacity * 0.85} />
+            <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#228B22" transparent opacity={opacity * 0.85} />
           </mesh>
         </group>
       ))}
       {/* Parking markers */}
       <mesh position={[0, 0.01, -BUILDING.depth / 2 - 3]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[BUILDING.width, 4]} />
-        <meshStandardMaterial color="#444" transparent opacity={opacity * 0.6} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#444" transparent opacity={opacity * 0.6} />
       </mesh>
     </group>
   );

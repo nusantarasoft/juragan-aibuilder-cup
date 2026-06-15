@@ -746,7 +746,8 @@ function FormBuilderContent() {
     );
 }
 
-export default function FormBuilderPage() {
+export default function FormBuilderPage() { return <React.Suspense fallback={<div>Loading...</div>}><FormBuilderPageContent /></React.Suspense>; } 
+function FormBuilderPageContent() {
     return (
         <Suspense fallback={
             <CMSLayout title="Form Builder">

@@ -59,18 +59,18 @@ export function ForkliftLoader({ progress }: { progress: number }) {
       {[[-0.45, -0.3], [-0.45, 0.55], [0.45, -0.3], [0.45, 0.55]].map(([gx, gz], i) => (
         <mesh key={`fg-${i}`} position={[gx, 1.0, gz]}>
           <boxGeometry args={[0.05, 0.7, 0.05]} />
-          <meshStandardMaterial color="#D4A020" transparent opacity={opacity} roughness={0.5} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#D4A020" transparent opacity={opacity} roughness={0.5} />
         </mesh>
       ))}
       {/* Seat */}
       <mesh position={[0, 0.85, -0.1]}>
         <boxGeometry args={[0.4, 0.25, 0.4]} />
-        <meshStandardMaterial color="#333" transparent opacity={opacity} roughness={0.8} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#333" transparent opacity={opacity} roughness={0.8} />
       </mesh>
       {/* Steering wheel */}
       <mesh position={[0, 1.0, 0.35]} rotation={[0.4, 0, 0]}>
         <torusGeometry args={[0.1, 0.02, 6, 12]} />
-        <meshStandardMaterial color="#111" transparent opacity={opacity} roughness={0.5} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#111" transparent opacity={opacity} roughness={0.5} />
       </mesh>
       {/* Mast (vertical rails) */}
       {[-0.2, 0.2].map((mx, i) => (
@@ -106,14 +106,14 @@ export function ForkliftLoader({ progress }: { progress: number }) {
       {[-0.5, 0.5].map((wx, i) => (
         <mesh key={`ffw-${i}`} ref={(el) => { if (el) wheelRefs.current[i] = el; }} position={[wx, 0.18, 0.55]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.18, 0.18, 0.12, 10]} />
-          <meshStandardMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#222" transparent opacity={opacity} roughness={0.9} />
         </mesh>
       ))}
       {/* Rear wheels */}
       {[-0.5, 0.5].map((wx, i) => (
         <mesh key={`frw-${i}`} ref={(el) => { if (el) wheelRefs.current[i + 2] = el; }} position={[wx, 0.18, -0.55]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.18, 0.18, 0.12, 10]} />
-          <meshStandardMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#222" transparent opacity={opacity} roughness={0.9} />
         </mesh>
       ))}
       {/* Label */}
@@ -276,57 +276,57 @@ function SingleWorker({ worker, progress }: { worker: typeof WORKER_PATHS[0]; pr
       {/* Hard hat */}
       <mesh position={[0, 1.65, 0]} castShadow>
         <sphereGeometry args={[0.14, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color={worker.hatColor} transparent opacity={opacity} roughness={0.4} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={worker.hatColor} transparent opacity={opacity} roughness={0.4} />
       </mesh>
       <mesh position={[0, 1.62, 0]}>
         <cylinderGeometry args={[0.18, 0.18, 0.04, 10]} />
-        <meshStandardMaterial color={worker.hatColor} transparent opacity={opacity} roughness={0.4} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={worker.hatColor} transparent opacity={opacity} roughness={0.4} />
       </mesh>
       {/* Head */}
       <mesh position={[0, 1.5, 0]}>
         <sphereGeometry args={[0.12, 8, 8]} />
-        <meshStandardMaterial color="#FDBCB4" transparent opacity={opacity} roughness={0.7} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#FDBCB4" transparent opacity={opacity} roughness={0.7} />
       </mesh>
       {/* Torso */}
       <mesh position={[0, 1.15, 0]}>
         <boxGeometry args={[0.3, 0.5, 0.18]} />
-        <meshStandardMaterial color={worker.color} transparent opacity={opacity} roughness={0.6} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={worker.color} transparent opacity={opacity} roughness={0.6} />
       </mesh>
       {/* Left arm */}
       <group ref={leftArmRef} position={[-0.22, 1.3, 0]}>
         <mesh position={[0, -0.18, 0]}>
           <boxGeometry args={[0.1, 0.35, 0.1]} />
-          <meshStandardMaterial color={worker.color} transparent opacity={opacity} roughness={0.6} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={worker.color} transparent opacity={opacity} roughness={0.6} />
         </mesh>
       </group>
       {/* Right arm */}
       <group ref={rightArmRef} position={[0.22, 1.3, 0]}>
         <mesh position={[0, -0.18, 0]}>
           <boxGeometry args={[0.1, 0.35, 0.1]} />
-          <meshStandardMaterial color={worker.color} transparent opacity={opacity} roughness={0.6} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={worker.color} transparent opacity={opacity} roughness={0.6} />
         </mesh>
       </group>
       {/* Left leg */}
       <group ref={leftLegRef} position={[-0.08, 0.85, 0]}>
         <mesh position={[0, -0.22, 0]}>
           <boxGeometry args={[0.12, 0.45, 0.12]} />
-          <meshStandardMaterial color="#374151" transparent opacity={opacity} roughness={0.7} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#374151" transparent opacity={opacity} roughness={0.7} />
         </mesh>
         {/* Boot */}
         <mesh position={[0, -0.47, 0.04]}>
           <boxGeometry args={[0.13, 0.08, 0.2]} />
-          <meshStandardMaterial color="#1a1a1a" transparent opacity={opacity} roughness={0.9} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#1a1a1a" transparent opacity={opacity} roughness={0.9} />
         </mesh>
       </group>
       {/* Right leg */}
       <group ref={rightLegRef} position={[0.08, 0.85, 0]}>
         <mesh position={[0, -0.22, 0]}>
           <boxGeometry args={[0.12, 0.45, 0.12]} />
-          <meshStandardMaterial color="#374151" transparent opacity={opacity} roughness={0.7} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#374151" transparent opacity={opacity} roughness={0.7} />
         </mesh>
         <mesh position={[0, -0.47, 0.04]}>
           <boxGeometry args={[0.13, 0.08, 0.2]} />
-          <meshStandardMaterial color="#1a1a1a" transparent opacity={opacity} roughness={0.9} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#1a1a1a" transparent opacity={opacity} roughness={0.9} />
         </mesh>
       </group>
       {/* Role label */}
@@ -386,42 +386,42 @@ export function TowerCrane({ progress }: { progress: number }) {
       {/* Mast */}
       <mesh position={[0, 10, 0]}>
         <boxGeometry args={[0.8, 20, 0.8]} />
-        <meshStandardMaterial color="#EAB308" metalness={0.6} roughness={0.4} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#EAB308" metalness={0.6} roughness={0.4} />
       </mesh>
       {/* Cabin & Jib Group */}
       <group ref={craneRef} position={[0, 20, 0]}>
         <mesh position={[0, 0.5, 0]}>
           <boxGeometry args={[1.2, 1.2, 1.2]} />
-          <meshStandardMaterial color="#222" />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#222" />
         </mesh>
         {/* Jib */}
         <mesh position={[8, 0.5, 0]}>
           <boxGeometry args={[16, 0.6, 0.6]} />
-          <meshStandardMaterial color="#EAB308" metalness={0.6} roughness={0.4} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#EAB308" metalness={0.6} roughness={0.4} />
         </mesh>
         {/* Counter-jib */}
         <mesh position={[-3, 0.5, 0]}>
           <boxGeometry args={[6, 0.6, 0.6]} />
-          <meshStandardMaterial color="#EAB308" metalness={0.6} roughness={0.4} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#EAB308" metalness={0.6} roughness={0.4} />
         </mesh>
         {/* Counter-weight */}
         <mesh position={[-5, 0, 0]}>
           <boxGeometry args={[2, 1.5, 1]} />
-          <meshStandardMaterial color="#555" />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#555" />
         </mesh>
         {/* Hook */}
         <group ref={hookRef} position={[12, 0, 0]}>
           <mesh position={[0, -0.5, 0]}>
             <cylinderGeometry args={[0.02, 0.02, 15]} />
-            <meshStandardMaterial color="#111" />
+            <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#111" />
           </mesh>
           <mesh position={[0, -8, 0]}>
             <boxGeometry args={[0.5, 0.5, 0.5]} />
-            <meshStandardMaterial color="#111" />
+            <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#111" />
           </mesh>
           <mesh position={[0, -8.4, 0]}>
             <torusGeometry args={[0.15, 0.05, 8, 12]} />
-            <meshStandardMaterial color="#ff2222" />
+            <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#ff2222" />
           </mesh>
         </group>
       </group>
@@ -455,51 +455,51 @@ export function ConstructionCrane({ progress }: { progress: number }) {
       {/* Mast (vertical tower) */}
       <mesh position={[0, craneHeight / 2, 0]}>
         <boxGeometry args={[0.8, craneHeight, 0.8]} />
-        <meshStandardMaterial color={craneColor} transparent opacity={opacity} metalness={0.4} roughness={0.5} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={craneColor} transparent opacity={opacity} metalness={0.4} roughness={0.5} />
       </mesh>
       {/* Mast lattice lines */}
       {Array.from({ length: Math.floor(craneHeight / 2) }).map((_, i) => (
         <mesh key={`lattice-${i}`} position={[0, i * 2 + 1, 0]}>
           <boxGeometry args={[1, 0.08, 1]} />
-          <meshStandardMaterial color={"#DD9918"} transparent opacity={opacity * 0.8} metalness={0.3} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={"#DD9918"} transparent opacity={opacity * 0.8} metalness={0.3} />
         </mesh>
       ))}
       {/* Base */}
       <mesh position={[0, 0.2, 0]}>
         <boxGeometry args={[2.5, 0.4, 2.5]} />
-        <meshStandardMaterial color={"#555"} transparent opacity={opacity} metalness={0.5} roughness={0.6} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={"#555"} transparent opacity={opacity} metalness={0.5} roughness={0.6} />
       </mesh>
       {/* Rotating boom group */}
       <group ref={boomRef} position={[0, craneHeight, 0]}>
         {/* Boom (horizontal arm) */}
         <mesh position={[-boomLength / 2 + 2, 0.4, 0]}>
           <boxGeometry args={[boomLength, 0.5, 0.5]} />
-          <meshStandardMaterial color={craneColor} transparent opacity={opacity} metalness={0.4} roughness={0.5} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={craneColor} transparent opacity={opacity} metalness={0.4} roughness={0.5} />
         </mesh>
         {/* Counter-boom */}
         <mesh position={[4, 0.4, 0]}>
           <boxGeometry args={[5, 0.5, 0.5]} />
-          <meshStandardMaterial color={counterColor} transparent opacity={opacity} metalness={0.4} roughness={0.5} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={counterColor} transparent opacity={opacity} metalness={0.4} roughness={0.5} />
         </mesh>
         {/* Counterweight */}
         <mesh position={[6, -0.2, 0]}>
           <boxGeometry args={[1.5, 1, 1]} />
-          <meshStandardMaterial color={"#666"} transparent opacity={opacity} metalness={0.3} roughness={0.7} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={"#666"} transparent opacity={opacity} metalness={0.3} roughness={0.7} />
         </mesh>
         {/* Operator cabin */}
         <mesh position={[0.5, -0.3, 0]}>
           <boxGeometry args={[1.2, 1.2, 1]} />
-          <meshStandardMaterial color={craneColor} transparent opacity={opacity} metalness={0.3} roughness={0.5} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={craneColor} transparent opacity={opacity} metalness={0.3} roughness={0.5} />
         </mesh>
         {/* Hook cable */}
         <mesh position={[-boomLength / 2, -2, 0]}>
           <cylinderGeometry args={[0.02, 0.02, 4, 6]} />
-          <meshStandardMaterial color={"#333"} transparent opacity={opacity * 0.7} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={"#333"} transparent opacity={opacity * 0.7} />
         </mesh>
         {/* Hook */}
         <mesh position={[-boomLength / 2, -4.2, 0]}>
           <boxGeometry args={[0.3, 0.3, 0.3]} />
-          <meshStandardMaterial color={"#444"} transparent opacity={opacity} metalness={0.7} roughness={0.3} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color={"#444"} transparent opacity={opacity} metalness={0.7} roughness={0.3} />
         </mesh>
       </group>
     </group>
@@ -574,11 +574,11 @@ export function ConstructionFence({ progress }: { progress: number }) {
     posts.push(
       <mesh key={`fp-f-${x}`} position={[x, postHeight / 2, fenceD / 2]}>
         <cylinderGeometry args={[0.05, 0.05, postHeight, 6]} />
-        <meshStandardMaterial color="#FF6600" transparent opacity={finalOpacity} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#FF6600" transparent opacity={finalOpacity} />
       </mesh>,
       <mesh key={`fp-b-${x}`} position={[x, postHeight / 2, -fenceD / 2]}>
         <cylinderGeometry args={[0.05, 0.05, postHeight, 6]} />
-        <meshStandardMaterial color="#FF6600" transparent opacity={finalOpacity} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#FF6600" transparent opacity={finalOpacity} />
       </mesh>
     );
   }
@@ -586,11 +586,11 @@ export function ConstructionFence({ progress }: { progress: number }) {
     posts.push(
       <mesh key={`fp-l-${z}`} position={[-fenceW / 2, postHeight / 2, z]}>
         <cylinderGeometry args={[0.05, 0.05, postHeight, 6]} />
-        <meshStandardMaterial color="#FF6600" transparent opacity={finalOpacity} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#FF6600" transparent opacity={finalOpacity} />
       </mesh>,
       <mesh key={`fp-r-${z}`} position={[fenceW / 2, postHeight / 2, z]}>
         <cylinderGeometry args={[0.05, 0.05, postHeight, 6]} />
-        <meshStandardMaterial color="#FF6600" transparent opacity={finalOpacity} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#FF6600" transparent opacity={finalOpacity} />
       </mesh>
     );
   }
@@ -602,22 +602,22 @@ export function ConstructionFence({ progress }: { progress: number }) {
     rails.push(
       <mesh key={`rail-f-${h}`} position={[0, h, fenceD / 2]}>
         <boxGeometry args={[fenceW, 0.04, 0.04]} />
-        <meshStandardMaterial color="#FF8800" transparent opacity={finalOpacity * 0.8} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#FF8800" transparent opacity={finalOpacity * 0.8} />
       </mesh>,
       <mesh key={`rail-b-${h}`} position={[0, h, -fenceD / 2]}>
         <boxGeometry args={[fenceW, 0.04, 0.04]} />
-        <meshStandardMaterial color="#FF8800" transparent opacity={finalOpacity * 0.8} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#FF8800" transparent opacity={finalOpacity * 0.8} />
       </mesh>
     );
     // Left & right
     rails.push(
       <mesh key={`rail-l-${h}`} position={[-fenceW / 2, h, 0]}>
         <boxGeometry args={[0.04, 0.04, fenceD]} />
-        <meshStandardMaterial color="#FF8800" transparent opacity={finalOpacity * 0.8} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#FF8800" transparent opacity={finalOpacity * 0.8} />
       </mesh>,
       <mesh key={`rail-r-${h}`} position={[fenceW / 2, h, 0]}>
         <boxGeometry args={[0.04, 0.04, fenceD]} />
-        <meshStandardMaterial color="#FF8800" transparent opacity={finalOpacity * 0.8} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#FF8800" transparent opacity={finalOpacity * 0.8} />
       </mesh>
     );
   }
@@ -717,24 +717,24 @@ export function Excavator({ progress }: { progress: number }) {
       {/* Left track */}
       <mesh ref={leftTrackRef} position={[0, 0.2, 0.65]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.2, 0.2, 2.4, 8]} />
-        <meshStandardMaterial color="#333" transparent opacity={opacity} roughness={0.9} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#333" transparent opacity={opacity} roughness={0.9} />
       </mesh>
       {/* Right track */}
       <mesh ref={rightTrackRef} position={[0, 0.2, -0.65]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.2, 0.2, 2.4, 8]} />
-        <meshStandardMaterial color="#333" transparent opacity={opacity} roughness={0.9} />
+        <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#333" transparent opacity={opacity} roughness={0.9} />
       </mesh>
       {/* Arm assembly */}
       <group ref={armRef} position={[-0.8, 1.6, 0]}>
         {/* Boom */}
         <mesh position={[-1, 0.4, 0]} rotation={[0, 0, 0.4]}>
           <boxGeometry args={[2.2, 0.3, 0.25]} />
-          <meshStandardMaterial color="#D4A020" transparent opacity={opacity} roughness={0.5} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#D4A020" transparent opacity={opacity} roughness={0.5} />
         </mesh>
         {/* Stick */}
         <mesh position={[-2.3, 0.2, 0]} rotation={[0, 0, -0.3]}>
           <boxGeometry args={[1.5, 0.22, 0.2]} />
-          <meshStandardMaterial color="#C09018" transparent opacity={opacity} roughness={0.5} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#C09018" transparent opacity={opacity} roughness={0.5} />
         </mesh>
         {/* Bucket */}
         <mesh position={[-3.1, -0.15, 0]} rotation={[0, 0, -0.6]}>
@@ -826,14 +826,14 @@ export function ConcreteMixer({ progress }: { progress: number }) {
       {[-0.9, -0.4, 0.7, 1.2].map((wx, i) => (
         <mesh key={`mw-${i}`} ref={(el) => { if (el) wheelRefs.current[i] = el; }} position={[wx, 0.2, 0.8]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.22, 0.22, 0.15, 10]} />
-          <meshStandardMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#222" transparent opacity={opacity} roughness={0.9} />
         </mesh>
       ))}
       {/* Wheels - right side */}
       {[-0.9, -0.4, 0.7, 1.2].map((wx, i) => (
         <mesh key={`mw2-${i}`} ref={(el) => { if (el) wheelRefs.current[i + 4] = el; }} position={[wx, 0.2, -0.8]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.22, 0.22, 0.15, 10]} />
-          <meshStandardMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
+          <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#222" transparent opacity={opacity} roughness={0.9} />
         </mesh>
       ))}
     </group>
@@ -914,7 +914,7 @@ export function DumpTruck({ progress }: { progress: number }) {
           {/* Dirt Load */}
           <mesh position={[0, 1.1, 0]}>
             <boxGeometry args={[1.5, 0.2, 2.5]} />
-            <meshStandardMaterial color="#654321" transparent opacity={opacity} roughness={1.0} />
+            <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#654321" transparent opacity={opacity} roughness={1.0} />
           </mesh>
         </group>
       </group>
@@ -923,11 +923,11 @@ export function DumpTruck({ progress }: { progress: number }) {
         <group key={`dt-w-${i}`}>
           <mesh ref={(el) => { if (el) wheelRefs.current[i * 2] = el; }} position={[0.9, 0.4, wz]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.4, 0.4, 0.3, 12]} />
-            <meshStandardMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
+            <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#222" transparent opacity={opacity} roughness={0.9} />
           </mesh>
           <mesh ref={(el) => { if (el) wheelRefs.current[i * 2 + 1] = el; }} position={[-0.9, 0.4, wz]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.4, 0.4, 0.3, 12]} />
-            <meshStandardMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
+            <meshPhysicalMaterial clearcoat={0.3} clearcoatRoughness={0.2} color="#222" transparent opacity={opacity} roughness={0.9} />
           </mesh>
         </group>
       ))}

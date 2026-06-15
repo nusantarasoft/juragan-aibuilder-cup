@@ -1,8 +1,8 @@
 "use client";
 import React, { useRef, useState, Suspense, useCallback, useMemo, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Html, ContactShadows, PointerLockControls } from "@react-three/drei";
-import { EffectComposer, Bloom, SSAO, Vignette } from "@react-three/postprocessing";
+import { OrbitControls, Html, ContactShadows, PointerLockControls, SoftShadows } from "@react-three/drei";
+import { EffectComposer, Bloom, SSAO, Vignette, SMAA, DepthOfField } from "@react-three/postprocessing";
 import * as THREE from "three";
 import type { PlacedObject, PlacedObjectType, BuilderPaletteItem, BinOccupancy, RackInventory, ZoneInventory } from "./builderState";
 import { GRID_SIZE, gridCoordsLabel, locationCode, suggestRow } from "./builderState";
@@ -2233,10 +2233,12 @@ export default function WarehouseScene(props: WarehouseSceneProps) {
         >
             <Suspense fallback={null}>
                 <SceneContent {...props} />
+                {isHigh && <SoftShadows size={15} samples={16} focus={0.5} />}
             </Suspense>
             {/* Post-processing pipeline (high quality only) */}
             {isHigh && (
                 <EffectComposer multisampling={0}>
+                    <SMAA />
                     <SSAO
                         radius={0.4}
                         intensity={15}
@@ -2253,6 +2255,7 @@ export default function WarehouseScene(props: WarehouseSceneProps) {
                         offset={0.3}
                         darkness={props.isDark !== false ? 0.5 : 0.25}
                     />
+                    <DepthOfField focusDistance={0.05} focalLength={0.15} bokehScale={4} />
                 </EffectComposer>
             )}
         </Canvas>

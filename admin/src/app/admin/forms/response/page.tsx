@@ -282,7 +282,8 @@ function ResponseDetailContent() {
     );
 }
 
-export default function FormResponseDetailPage() {
+export default function FormResponseDetailPage() { return <React.Suspense fallback={<div>Loading...</div>}><FormResponseDetailPageContent /></React.Suspense>; } 
+function FormResponseDetailPageContent() {
     return (
         <Suspense fallback={<CMSLayout title="Response Detail"><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh' }}><Spin size="large" /></div></CMSLayout>}>
             <ResponseDetailContent />

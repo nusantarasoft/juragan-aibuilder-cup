@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
@@ -25,7 +26,8 @@ function ItemLocatorRedirect() {
     );
 }
 
-export default function ItemLocatorPage() {
+export default function ItemLocatorPage() { return <React.Suspense fallback={<div>Loading...</div>}><ItemLocatorPageContent /></React.Suspense>; } 
+function ItemLocatorPageContent() {
     return (
         <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}><Spin size="large" /></div>}>
             <ItemLocatorRedirect />
