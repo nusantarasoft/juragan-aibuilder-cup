@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 2280" font-family="Segoe UI, system-ui, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#475569"/>
+    </marker>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .title { font-size: 28px; font-weight: 700; fill: #0f172a; }
+      .subtitle { font-size: 14px; fill: #64748b; }
+      .section-title { font-size: 16px; font-weight: 700; fill: #1e293b; }
+      .box-label { font-size: 13px; font-weight: 600; fill: #0f172a; }
+      .box-desc { font-size: 11px; fill: #475569; }
+      .diamond-text { font-size: 11px; font-weight: 600; fill: #92400e; text-anchor: middle; }
+      .flow-label { font-size: 10px; fill: #64748b; }
+      .legend-text { font-size: 11px; fill: #334155; }
+    </style>
+  </defs>
+
+  <rect width="1100" height="2280" fill="#f8fafc"/>
+
+  <!-- Header -->
+  <rect x="40" y="30" width="1020" height="90" rx="12" fill="#ffffff" stroke="#e2e8f0" filter="url(#shadow)"/>
+  <text x="550" y="68" text-anchor="middle" class="title">Alur Proses Sistem WhatsApp UMKM</text>
+  <text x="550" y="95" text-anchor="middle" class="subtitle">Catat Penjualan &amp; Laporan via WhatsApp - AI Studio Nusantarasoft</text>
+
+  <!-- Legend -->
+  <rect x="40" y="140" width="1020" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="60" y="165" class="legend-text" font-weight="700">Legenda:</text>
+  <rect x="130" y="152" width="18" height="18" rx="4" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="155" y="166" class="legend-text">Aktor / Kanal</text>
+  <rect x="260" y="152" width="18" height="18" rx="4" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="285" y="166" class="legend-text">WAHA / API</text>
+  <rect x="390" y="152" width="18" height="18" rx="4" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="415" y="166" class="legend-text">Middleware</text>
+  <rect x="540" y="152" width="18" height="18" rx="4" fill="#ffedd5" stroke="#ea580c"/>
+  <text x="565" y="166" class="legend-text">Database</text>
+  <polygon points="680,161 700,152 720,161 700,170" fill="#fef3c7" stroke="#d97706"/>
+  <text x="730" y="166" class="legend-text">Keputusan</text>
+  <rect x="820" y="152" width="18" height="18" rx="4" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="845" y="166" class="legend-text">Sub-proses</text>
+
+  <!-- 1. Komponen -->
+  <text x="60" y="235" class="section-title">1. Komponen Sistem</text>
+  <rect x="40" y="250" width="1020" height="120" rx="12" fill="#ffffff" stroke="#e2e8f0" filter="url(#shadow)"/>
+
+  <rect x="60" y="275" width="130" height="75" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="125" y="305" text-anchor="middle" class="box-label">UMKM</text>
+  <text x="125" y="325" text-anchor="middle" class="box-desc">Pemilik / staff toko</text>
+
+  <rect x="210" y="275" width="120" height="75" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="270" y="305" text-anchor="middle" class="box-label">WhatsApp</text>
+  <text x="270" y="325" text-anchor="middle" class="box-desc">Kanal bisnis</text>
+
+  <rect x="350" y="275" width="120" height="75" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="410" y="305" text-anchor="middle" class="box-label">WAHA</text>
+  <text x="410" y="325" text-anchor="middle" class="box-desc">Web to HTTP API</text>
+
+  <rect x="490" y="275" width="170" height="75" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="575" y="300" text-anchor="middle" class="box-label">Middleware</text>
+  <text x="575" y="318" text-anchor="middle" class="box-desc">WhatsApp + GuideFlow</text>
+  <text x="575" y="334" text-anchor="middle" class="box-desc">+ StudioUmkmService</text>
+
+  <rect x="680" y="275" width="150" height="75" rx="8" fill="#ffedd5" stroke="#ea580c"/>
+  <text x="755" y="300" text-anchor="middle" class="box-label">Postgres</text>
+  <text x="755" y="318" text-anchor="middle" class="box-desc">ecom_orders (WRITE)</text>
+  <text x="755" y="334" text-anchor="middle" class="box-desc">v_studio_sales_* (READ)</text>
+
+  <rect x="850" y="275" width="90" height="75" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="895" y="305" text-anchor="middle" class="box-label">Admin</text>
+  <text x="895" y="325" text-anchor="middle" class="box-desc">Setup sekali</text>
+
+  <!-- 2. Inbound flow -->
+  <text x="60" y="410" class="section-title">2. Alur Teknis - Pesan Masuk (Inbound)</text>
+  <rect x="40" y="425" width="1020" height="860" rx="12" fill="#ffffff" stroke="#e2e8f0" filter="url(#shadow)"/>
+
+  <rect x="470" y="450" width="160" height="44" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="550" y="477" text-anchor="middle" class="box-label">UMKM kirim pesan</text>
+  <line x1="550" y1="494" x2="550" y2="518" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="470" y="518" width="160" height="44" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="550" y="545" text-anchor="middle" class="box-label">WhatsApp</text>
+  <line x1="550" y1="562" x2="550" y2="586" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="400" y="586" width="300" height="44" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="550" y="613" text-anchor="middle" class="box-label">WAHA: POST /api/studio/whatsapp/webhook</text>
+  <line x1="550" y1="630" x2="550" y2="654" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="400" y="654" width="300" height="50" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="550" y="678" text-anchor="middle" class="box-label">StudioWhatsAppService</text>
+  <text x="550" y="694" text-anchor="middle" class="box-desc">handleWebhook()</text>
+  <line x1="550" y1="704" x2="550" y2="728" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <polygon points="550,728 640,768 550,808 460,768" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="550" y="763" class="diamond-text">enabled +</text>
+  <text x="550" y="778" class="diamond-text">notebook_id?</text>
+  <line x1="640" y1="768" x2="730" y2="768" stroke="#ef4444" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="730" y="748" width="80" height="40" rx="6" fill="#fee2e2" stroke="#ef4444"/>
+  <text x="770" y="773" text-anchor="middle" class="box-desc">Stop</text>
+
+  <line x1="550" y1="808" x2="550" y2="832" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <polygon points="550,832 650,872 550,912 450,872" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="550" y="867" class="diamond-text">allowlist +</text>
+  <text x="550" y="882" class="diamond-text">rate limit OK?</text>
+  <line x1="650" y1="872" x2="740" y2="872" stroke="#ef4444" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="740" y="852" width="110" height="40" rx="6" fill="#fee2e2" stroke="#ef4444"/>
+  <text x="795" y="877" text-anchor="middle" class="box-desc">Drop / tunggu</text>
+
+  <line x1="550" y1="912" x2="550" y2="936" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="380" y="936" width="340" height="50" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="550" y="960" text-anchor="middle" class="box-label">resolveSession(chat_id)</text>
+  <text x="550" y="976" text-anchor="middle" class="box-desc">studio_whatsapp_sessions to conversation</text>
+  <line x1="550" y1="986" x2="550" y2="1010" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <polygon points="550,1010 660,1050 550,1090 440,1050" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="550" y="1045" class="diamond-text">use_guided_flow</text>
+  <text x="550" y="1060" class="diamond-text">= true?</text>
+
+  <!-- Routing branches -->
+  <line x1="440" y1="1050" x2="180" y2="1050" stroke="#7c3aed" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="280" y="1042" class="flow-label">tidak + umkm_mode</text>
+  <rect x="60" y="1025" width="120" height="50" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="120" y="1050" text-anchor="middle" class="box-label">StudioUmkm</text>
+  <text x="120" y="1065" text-anchor="middle" class="box-desc">handleMessage()</text>
+
+  <line x1="440" y1="1050" x2="180" y2="1120" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="270" y="1095" class="flow-label">tidak + generik</text>
+  <rect x="60" y="1100" width="120" height="50" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="120" y="1125" text-anchor="middle" class="box-label">StudioService</text>
+  <text x="120" y="1140" text-anchor="middle" class="box-desc">chat() RAG</text>
+
+  <line x1="550" y1="1090" x2="550" y2="1115" stroke="#16a34a" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="565" y="1108" class="flow-label" fill="#16a34a">ya (disarankan)</text>
+  <rect x="390" y="1115" width="320" height="60" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="550" y="1140" text-anchor="middle" class="box-label">GuideFlowService.runGuidedTurn()</text>
+  <text x="550" y="1158" text-anchor="middle" class="box-desc">Flow: UMKM Penjualan WA</text>
+  <text x="550" y="1172" text-anchor="middle" class="box-desc">action: record_sale | sales_report | umkm_help</text>
+
+  <!-- Merge to response -->
+  <line x1="120" y1="1075" x2="120" y2="1220" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="120" y1="1220" x2="390" y2="1220" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="550" y1="1175" x2="550" y2="1220" stroke="#475569" stroke-width="2"/>
+  <line x1="550" y1="1220" x2="390" y2="1220" stroke="#475569" stroke-width="2"/>
+
+  <rect x="340" y="1220" width="420" height="50" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="550" y="1245" text-anchor="middle" class="box-label">WAHA sendText (chunk max 4000)</text>
+  <text x="550" y="1260" text-anchor="middle" class="box-desc">WhatsApp to UMKM terima balasan</text>
+
+  <!-- 3. Guide Flow -->
+  <text x="60" y="1320" class="section-title">3. Guide Flow - UMKM Penjualan WA</text>
+  <rect x="40" y="1335" width="1020" height="430" rx="12" fill="#ffffff" stroke="#e2e8f0" filter="url(#shadow)"/>
+
+  <rect x="70" y="1365" width="90" height="40" rx="20" fill="#e0e7ff" stroke="#4f46e5"/>
+  <text x="115" y="1390" text-anchor="middle" class="box-label">start</text>
+  <line x1="160" y1="1385" x2="185" y2="1385" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="185" y="1365" width="100" height="40" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="235" y="1390" text-anchor="middle" class="box-label">welcome</text>
+  <line x1="285" y1="1385" x2="310" y2="1385" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="310" y="1355" width="140" height="60" rx="8" fill="#fef3c7" stroke="#d97706"/>
+  <text x="380" y="1380" text-anchor="middle" class="box-label">listen_intent</text>
+  <text x="380" y="1398" text-anchor="middle" class="box-desc">routing keyword</text>
+
+  <line x1="380" y1="1415" x2="380" y2="1445" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <polygon points="380,1445 455,1480 380,1515 305,1480" fill="#fef3c7" stroke="#d97706"/>
+  <text x="380" y="1477" class="diamond-text">Jenis pesan?</text>
+
+  <rect x="70" y="1540" width="110" height="48" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="125" y="1562" text-anchor="middle" class="box-label">help</text>
+  <text x="125" y="1578" text-anchor="middle" class="box-desc">bantuan / menu</text>
+  <line x1="305" y1="1480" x2="180" y2="1540" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="200" y="1540" width="120" height="48" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="260" y="1562" text-anchor="middle" class="box-label">do_record</text>
+  <text x="260" y="1578" text-anchor="middle" class="box-desc">jual / catat</text>
+  <line x1="360" y1="1515" x2="260" y2="1540" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="285" y="1530" class="flow-label">default</text>
+
+  <rect x="340" y="1540" width="120" height="48" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="400" y="1562" text-anchor="middle" class="box-label">do_report</text>
+  <text x="400" y="1578" text-anchor="middle" class="box-desc">laporan / omzet</text>
+  <line x1="420" y1="1515" x2="400" y2="1540" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="480" y="1540" width="100" height="48" rx="8" fill="#fee2e2" stroke="#ef4444"/>
+  <text x="530" y="1568" text-anchor="middle" class="box-label">goodbye</text>
+  <line x1="455" y1="1480" x2="530" y2="1540" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="70" y="1610" width="120" height="40" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="130" y="1635" text-anchor="middle" class="box-desc">umkm_help</text>
+  <line x1="125" y1="1588" x2="130" y2="1610" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="210" y="1610" width="120" height="40" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="270" y="1635" text-anchor="middle" class="box-desc">record_sale</text>
+  <line x1="260" y1="1588" x2="270" y2="1610" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="350" y="1610" width="120" height="40" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="410" y="1635" text-anchor="middle" class="box-desc">sales_report</text>
+  <line x1="400" y1="1588" x2="410" y2="1610" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <path d="M 270 1650 Q 270 1690 380 1690 Q 490 1690 490 1415" fill="none" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow)"/>
+  <text x="380" y="1710" text-anchor="middle" class="flow-label" fill="#7c3aed">loop kembali ke listen_intent</text>
+
+  <rect x="620" y="1360" width="420" height="210" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="640" y="1385" class="box-label">Prioritas listen_intent:</text>
+  <text x="640" y="1410" class="box-desc">1. bye to goodbye</text>
+  <text x="640" y="1430" class="box-desc">2. bantuan / help / menu to help</text>
+  <text x="640" y="1450" class="box-desc">3. laporan / rekap / omzet to do_report</text>
+  <text x="640" y="1470" class="box-desc">4. regex penjualan hari ini to do_report</text>
+  <text x="640" y="1490" class="box-desc">5. regex jual / catat / order to do_record</text>
+  <text x="640" y="1510" class="box-desc">6. default (sisanya) to do_record</text>
+  <text x="640" y="1540" class="box-desc" font-style="italic">Parsing gagal: minta format ulang</text>
+  <text x="640" y="1565" class="box-desc">Contoh: jual 3 es kopi 45000 tunai</text>
+
+  <!-- 4. Sub-alur -->
+  <text x="60" y="1800" class="section-title">4. Sub-Alur Bisnis</text>
+
+  <rect x="40" y="1815" width="500" height="260" rx="12" fill="#ffffff" stroke="#e2e8f0" filter="url(#shadow)"/>
+  <text x="60" y="1845" class="box-label" fill="#16a34a">A. Catat Penjualan (WRITE)</text>
+
+  <rect x="60" y="1860" width="120" height="38" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="120" y="1884" text-anchor="middle" class="box-desc">Teks pesan</text>
+  <line x1="180" y1="1879" x2="210" y2="1879" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="210" y="1860" width="140" height="38" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="280" y="1884" text-anchor="middle" class="box-desc">parseSaleMessage</text>
+  <line x1="350" y1="1879" x2="380" y2="1879" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <polygon points="430,1879 480,1904 430,1929 380,1904" fill="#fef3c7" stroke="#d97706"/>
+  <text x="430" y="1909" class="diamond-text">OK?</text>
+
+  <rect x="60" y="1920" width="120" height="38" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="120" y="1944" text-anchor="middle" class="box-desc">LLM fallback</text>
+  <line x1="380" y1="1904" x2="180" y2="1904" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="260" y="1896" class="flow-label">heuristic gagal</text>
+
+  <rect x="340" y="1950" width="180" height="44" rx="8" fill="#ffedd5" stroke="#ea580c"/>
+  <text x="430" y="1977" text-anchor="middle" class="box-desc">INSERT ecom_orders + items</text>
+  <line x1="430" y1="1929" x2="430" y2="1950" stroke="#16a34a" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="310" y="2010" width="240" height="44" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="430" y="2037" text-anchor="middle" class="box-desc">Konfirmasi: No. order + total</text>
+  <line x1="430" y1="1994" x2="430" y2="2010" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="560" y="1815" width="500" height="260" rx="12" fill="#ffffff" stroke="#e2e8f0" filter="url(#shadow)"/>
+  <text x="580" y="1845" class="box-label" fill="#2563eb">B. Laporan Penjualan (READ)</text>
+
+  <rect x="580" y="1860" width="140" height="38" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="650" y="1884" text-anchor="middle" class="box-desc">laporan / rekap</text>
+  <line x1="720" y1="1879" x2="750" y2="1879" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="750" y="1860" width="150" height="38" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="825" y="1884" text-anchor="middle" class="box-desc">fetchDailyReport()</text>
+
+  <rect x="660" y="1920" width="300" height="80" rx="8" fill="#ffedd5" stroke="#ea580c"/>
+  <text x="810" y="1945" text-anchor="middle" class="box-desc">SELECT view Postgres:</text>
+  <text x="810" y="1963" text-anchor="middle" class="box-desc">v_studio_sales_today</text>
+  <text x="810" y="1980" text-anchor="middle" class="box-desc">v_studio_top_products, v_studio_recent_orders</text>
+  <line x1="825" y1="1898" x2="825" y2="1920" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="660" y="2020" width="300" height="44" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="810" y="2047" text-anchor="middle" class="box-desc">Ringkasan: order, omzet, produk terlaris</text>
+  <line x1="825" y1="2000" x2="825" y2="2020" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- 5. Setup -->
+  <text x="60" y="2110" class="section-title">5. Alur Setup Admin (Sekali)</text>
+  <rect x="40" y="2125" width="1020" height="90" rx="12" fill="#ffffff" stroke="#e2e8f0" filter="url(#shadow)"/>
+
+  <rect x="55" y="2148" width="110" height="44" rx="8" fill="#ffedd5" stroke="#ea580c"/>
+  <text x="110" y="2175" text-anchor="middle" class="box-desc">DB schema</text>
+  <text x="175" y="2175" class="flow-label">-&gt;</text>
+  <rect x="190" y="2148" width="100" height="44" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="240" y="2175" text-anchor="middle" class="box-desc">Pair WAHA</text>
+  <text x="305" y="2175" class="flow-label">-&gt;</text>
+  <rect x="320" y="2148" width="110" height="44" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="375" y="2175" text-anchor="middle" class="box-desc">Notebook</text>
+  <text x="445" y="2175" class="flow-label">-&gt;</text>
+  <rect x="460" y="2148" width="150" height="44" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="535" y="2175" text-anchor="middle" class="box-desc">Setup UMKM flow</text>
+  <text x="625" y="2175" class="flow-label">-&gt;</text>
+  <rect x="640" y="2148" width="160" height="44" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="720" y="2175" text-anchor="middle" class="box-desc">WA config + allowlist</text>
+  <text x="815" y="2175" class="flow-label">-&gt;</text>
+  <rect x="830" y="2148" width="100" height="44" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="880" y="2175" text-anchor="middle" class="box-desc">Uji dari HP</text>
+
+  <text x="550" y="2250" text-anchor="middle" class="subtitle">middleware/docs/whatsapp-umkm-flow.svg | Mode disarankan: umkm_mode + use_guided_flow</text>
+</svg>
