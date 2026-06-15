@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -54,6 +54,14 @@ const WAHA_DASHBOARD =
     process.env.NEXT_PUBLIC_WAHA_DASHBOARD_URL || 'http://localhost:3010/dashboard';
 
 export default function WhatsAppGatewayPage() {
+    return (
+        <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>}>
+            <WhatsAppGatewayPageContent />
+        </Suspense>
+    );
+}
+
+function WhatsAppGatewayPageContent() {
     const searchParams = useSearchParams();
     const tenantFromUrl = searchParams.get('tenant') || 'default';
 

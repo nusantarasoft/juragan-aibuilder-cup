@@ -135,7 +135,7 @@ services:
           memory: 2g
 
   waha:
-    image: ${WAHA_IMAGE:-devlikeapro/waha:latest-2026.4.3}
+    image: ${WAHA_IMAGE:-devlikeapro/waha:latest}
     restart: always
     shm_size: "2gb"
     logging:

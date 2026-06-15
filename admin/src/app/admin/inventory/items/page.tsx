@@ -77,6 +77,14 @@ const WIZARD_STEPS = [
 ];
 
 export default function ItemMasterPage() {
+    return (
+        <React.Suspense fallback={<div style={{ padding: 40, textAlign: "center" }}>Loading...</div>}>
+            <ItemMasterPageContent />
+        </React.Suspense>
+    );
+}
+
+function ItemMasterPageContent() {
     const searchParams = useSearchParams();
     const catalogTenantId = searchParams.get("tenantId") || "default";
 

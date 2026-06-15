@@ -358,95 +358,112 @@ export default function WorkloadPage() {
                 </BentoGrid>
             </motion.div>
 
-            {/* ── Team Utilization Charts ── */}
+            {/* ── Team Utilization BentoGrid ── */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
-                <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-                    <Col xs={24} md={10}>
-                        <Card title={<Space><TeamOutlined style={{ color: themeColor }} /> Capacity Distribution</Space>} size="small" style={glassCard}>
-                            {(() => {
-                                const capacityDistribution = [
-                                    { name: "Available", value: teamData.filter(m => m.totalEstimated <= 30).length, color: "#10b981" },
-                                    { name: "At Capacity", value: teamData.filter(m => m.totalEstimated > 30 && m.totalEstimated <= 40).length, color: "#f59e0b" },
-                                    { name: "Overloaded", value: teamData.filter(m => m.totalEstimated > 40).length, color: "#ef4444" },
-                                ];
-                                const total = capacityDistribution.reduce((s, d) => s + d.value, 0);
-                                return (
-                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 24 }}>
-                                        <div style={{ width: 160, height: 160, position: "relative" }}>
-                                            <ResponsiveContainer>
-                                                <PieChart>
-                                                    <Pie data={capacityDistribution} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value" stroke="none" isAnimationActive={true} animationDuration={1000} animationBegin={200} animationEasing="ease-out">
-                                                        {capacityDistribution.map((entry, idx) => (
-                                                            <Cell key={idx} fill={entry.color} style={{ outline: 'none', transition: 'all 0.3s ease' }} className="hover:opacity-80" />
-                                                        ))}
-                                                    </Pie>
-                                                    <RTooltip contentStyle={{ background: isDark ? "rgba(15,15,23,0.95)" : "#fff", border: isDark ? "1px solid rgba(139,92,246,0.2)" : "1px solid #e5e7eb", borderRadius: 8, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} cursor={{ fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' }} />
-                                                </PieChart>
-                                            </ResponsiveContainer>
-                                            <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center" }}>
-                                                <Text style={{ fontSize: 18, fontWeight: 700, display: "block", lineHeight: 1.1 }}>{total}</Text>
-                                                <Text type="secondary" style={{ fontSize: 9 }}>members</Text>
+                <BentoGrid className="max-w-full mb-5 md:grid-cols-3 md:auto-rows-[20rem]">
+                    {/* Capacity Distribution */}
+                    <BentoGridItem
+                        title={<div className="flex items-center gap-2"><TeamOutlined className="text-blue-500" /> <span className="text-lg font-bold">Capacity Distribution</span></div>}
+                        description="Team workload balancing"
+                        header={
+                            <div className="flex h-full w-full flex-1 flex-col items-center justify-center rounded-xl bg-blue-500/5 p-4">
+                                {(() => {
+                                    const capacityDistribution = [
+                                        { name: "Available", value: teamData.filter(m => m.totalEstimated <= 30).length, color: "#10b981" },
+                                        { name: "At Capacity", value: teamData.filter(m => m.totalEstimated > 30 && m.totalEstimated <= 40).length, color: "#f59e0b" },
+                                        { name: "Overloaded", value: teamData.filter(m => m.totalEstimated > 40).length, color: "#ef4444" },
+                                    ];
+                                    const total = capacityDistribution.reduce((s, d) => s + d.value, 0);
+                                    return (
+                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, width: '100%', height: '100%' }}>
+                                            <div style={{ width: 140, height: 140, position: "relative" }}>
+                                                <ResponsiveContainer>
+                                                    <PieChart>
+                                                        <Pie data={capacityDistribution} cx="50%" cy="50%" innerRadius={40} outerRadius={65} paddingAngle={3} dataKey="value" stroke="none" isAnimationActive={true} animationDuration={1000} animationBegin={200} animationEasing="ease-out">
+                                                            {capacityDistribution.map((entry, idx) => (
+                                                                <Cell key={idx} fill={entry.color} style={{ outline: 'none', transition: 'all 0.3s ease' }} className="hover:opacity-80" />
+                                                            ))}
+                                                        </Pie>
+                                                        <RTooltip contentStyle={{ background: isDark ? "rgba(15,15,23,0.95)" : "#fff", border: isDark ? "1px solid rgba(139,92,246,0.2)" : "1px solid #e5e7eb", borderRadius: 8, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} cursor={{ fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' }} />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                                <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center" }}>
+                                                    <Text style={{ fontSize: 18, fontWeight: 700, display: "block", lineHeight: 1.1 }}>{total}</Text>
+                                                    <Text type="secondary" style={{ fontSize: 9 }}>members</Text>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                                {capacityDistribution.map(d => (
+                                                    <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                                        <div style={{ width: 10, height: 10, borderRadius: 3, background: d.color }} />
+                                                        <Text type="secondary" style={{ fontSize: 11, minWidth: 70 }}>{d.name}</Text>
+                                                        <Text style={{ fontSize: 13, fontWeight: 600 }}>{d.value}</Text>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
-                                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                            {capacityDistribution.map(d => (
-                                                <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                                    <div style={{ width: 10, height: 10, borderRadius: 3, background: d.color }} />
-                                                    <Text type="secondary" style={{ fontSize: 11, minWidth: 70 }}>{d.name}</Text>
-                                                    <Text style={{ fontSize: 13, fontWeight: 600 }}>{d.value}</Text>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                );
-                            })()}
-                        </Card>
-                    </Col>
-                    <Col xs={24} md={14}>
-                        <Card title={<Space><ProjectOutlined style={{ color: themeColor }} /> Hours by Project</Space>} size="small" style={glassCard}>
-                            {(() => {
-                                const projectHoursData = projectNameList.map(pn => {
-                                    let sum = 0;
-                                    teamData.forEach(m => {
-                                        sum += m.byProject.get(pn) || 0;
-                                    });
-                                    return { name: pn, hours: sum };
-                                }).sort((a,b) => b.hours - a.hours).slice(0, 5); // top 5 projects
-                                
-                                return (
-                                    <div style={{ height: 160 }}>
-                                        <ResponsiveContainer>
-                                            <BarChart data={projectHoursData} margin={{ left: 0, right: 10, top: 5, bottom: 5 }}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? "rgba(255,255,255,0.06)" : "#f0f0f0"} />
-                                                <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                                                <YAxis tick={{ fontSize: 10 }} unit="h" axisLine={false} tickLine={false} />
-                                                <RTooltip contentStyle={{ background: isDark ? "rgba(15,15,23,0.95)" : "#fff", border: isDark ? "1px solid rgba(139,92,246,0.2)" : "1px solid #e5e7eb", borderRadius: 8, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} cursor={{ fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' }} />
-                                                <Bar dataKey="hours" radius={[4, 4, 0, 0]} isAnimationActive={true} animationDuration={1000} animationBegin={300} animationEasing="ease-out">
-                                                    {projectHoursData.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={PROJECT_COLORS[index % PROJECT_COLORS.length]} style={{ outline: 'none', transition: 'all 0.3s ease' }} className="hover:opacity-80" />
-                                                    ))}
-                                                </Bar>
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                );
-                            })()}
-                        </Card>
-                    </Col>
-                </Row>
-            </motion.div>
+                                    );
+                                })()}
+                            </div>
+                        }
+                        className="md:col-span-1"
+                        icon={null}
+                    />
 
-            {/* ── Total Hours Summary ── */}
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
-                <Card size="small" style={{ ...glassCard, marginBottom: 20, borderLeft: `4px solid ${themeColor}` }}>
-                    <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center", gap: 20 }}>
-                        <Statistic title={<Text style={{ fontSize: 11 }}>Total Estimated</Text>} value={totalEstimated} suffix="h" valueStyle={{ fontSize: 20, fontWeight: 700, color: themeColor }} />
-                        <div style={{ width: 1, height: 40, background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }} />
-                        <Statistic title={<Text style={{ fontSize: 11 }}>Total Logged</Text>} value={teamData.reduce((s, m) => s + m.totalLogged, 0)} suffix="h" valueStyle={{ fontSize: 20, fontWeight: 700, color: "#10b981" }} />
-                        <div style={{ width: 1, height: 40, background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }} />
-                        <Statistic title={<Text style={{ fontSize: 11 }}>Capacity Used</Text>} value={totalMembers > 0 ? Math.round((totalEstimated / (totalMembers * 40)) * 100) : 0} suffix="%" valueStyle={{ fontSize: 20, fontWeight: 700 }} />
-                    </div>
-                </Card>
+                    {/* Hours by Project */}
+                    <BentoGridItem
+                        title={<div className="flex items-center gap-2"><ProjectOutlined className="text-purple-500" /> <span className="text-lg font-bold">Hours by Project</span></div>}
+                        description="Top 5 projects by estimated hours"
+                        header={
+                            <div className="flex h-full w-full flex-1 flex-col justify-center rounded-xl bg-purple-500/5 p-4">
+                                {(() => {
+                                    const projectHoursData = projectNameList.map(pn => {
+                                        let sum = 0;
+                                        teamData.forEach(m => { sum += m.byProject.get(pn) || 0; });
+                                        return { name: pn, hours: sum };
+                                    }).sort((a,b) => b.hours - a.hours).slice(0, 5); // top 5 projects
+                                    
+                                    return (
+                                        <div style={{ height: '100%', minHeight: 180, width: '100%' }}>
+                                            <ResponsiveContainer>
+                                                <BarChart data={projectHoursData} margin={{ left: 0, right: 10, top: 5, bottom: 20 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? "rgba(255,255,255,0.06)" : "#f0f0f0"} />
+                                                    <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-15} textAnchor="end" />
+                                                    <YAxis tick={{ fontSize: 10 }} unit="h" axisLine={false} tickLine={false} />
+                                                    <RTooltip contentStyle={{ background: isDark ? "rgba(15,15,23,0.95)" : "#fff", border: isDark ? "1px solid rgba(139,92,246,0.2)" : "1px solid #e5e7eb", borderRadius: 8, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} cursor={{ fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' }} />
+                                                    <Bar dataKey="hours" radius={[4, 4, 0, 0]} isAnimationActive={true} animationDuration={1000} animationBegin={300} animationEasing="ease-out">
+                                                        {projectHoursData.map((entry, index) => (
+                                                            <Cell key={`cell-${index}`} fill={PROJECT_COLORS[index % PROJECT_COLORS.length]} style={{ outline: 'none', transition: 'all 0.3s ease' }} className="hover:opacity-80" />
+                                                        ))}
+                                                    </Bar>
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+                        }
+                        className="md:col-span-2"
+                        icon={null}
+                    />
+
+                    {/* Total Hours Summary */}
+                    <BentoGridItem
+                        title={<div className="flex items-center gap-2"><ClockCircleOutlined className="text-emerald-500" /> <span className="text-lg font-bold">Total Hours Summary</span></div>}
+                        description="Overall estimated vs logged hours"
+                        header={
+                            <div className="flex h-full w-full flex-1 flex-row items-center justify-around rounded-xl bg-emerald-500/5 p-4">
+                                <Statistic title={<Text style={{ fontSize: 12 }}>Total Estimated</Text>} value={totalEstimated} suffix="h" valueStyle={{ fontSize: 28, fontWeight: 700, color: themeColor }} />
+                                <div style={{ width: 1, height: 50, background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }} />
+                                <Statistic title={<Text style={{ fontSize: 12 }}>Total Logged</Text>} value={teamData.reduce((s, m) => s + m.totalLogged, 0)} suffix="h" valueStyle={{ fontSize: 28, fontWeight: 700, color: "#10b981" }} />
+                                <div style={{ width: 1, height: 50, background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }} />
+                                <Statistic title={<Text style={{ fontSize: 12 }}>Capacity Used</Text>} value={totalMembers > 0 ? Math.round((totalEstimated / (totalMembers * 40)) * 100) : 0} suffix="%" valueStyle={{ fontSize: 28, fontWeight: 700 }} />
+                            </div>
+                        }
+                        className="md:col-span-3 md:auto-rows-[10rem]"
+                        icon={null}
+                    />
+                </BentoGrid>
             </motion.div>
 
             {/* ── Filters ── */}

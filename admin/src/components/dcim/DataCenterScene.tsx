@@ -11,9 +11,9 @@ export function DataCenterScene() {
     return (
         <group>
             {/* Raised Floor */}
-            <Grid args={[20, 20]} position={[0, 0, 0]} sectionSize={0.6} sectionColor="#444" cellColor="#333" fadeDistance={30} />
-            <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <planeGeometry args={[20, 20]} />
+            <Grid args={[40, 40]} position={[0, 0, 0]} sectionSize={0.6} sectionColor="#444" cellColor="#333" fadeDistance={30} />
+            <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+                <planeGeometry args={[40, 40]} />
                 <meshStandardMaterial color="#1a1a1a" roughness={0.8} />
             </mesh>
 
@@ -38,7 +38,7 @@ export function DataCenterScene() {
             )}
 
             {/* Ambient Shadow */}
-            <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={20} blur={2} far={2} />
+            <ContactShadows position={[0, 0, 0]} opacity={0.6} scale={20} blur={2} far={4} />
         </group>
     );
 }

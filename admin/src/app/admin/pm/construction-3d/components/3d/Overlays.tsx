@@ -349,7 +349,7 @@ export function InSceneGantt({ phases, progress, bw }: { phases: ConstructionPha
             </Text>
             <mesh position={[startX + w / 2, y, 0.05]}>
               <boxGeometry args={[w, 0.4, 0.1]} />
-              <meshStandardMaterial color={barColor} emissive={isActive ? barColor : "#000000"} emissiveIntensity={isActive ? 0.8 : 0} />
+              <meshPhysicalMaterial color={barColor} emissive={isActive ? barColor : "#000000"} emissiveIntensity={isActive ? 0.8 : 0} />
             </mesh>
           </group>
         );
@@ -396,7 +396,7 @@ export function RfiMarker3D({ rfi, position }: { rfi: any; position: [number, nu
     <group position={position}>
       <mesh ref={sphereRef} position={[0, 1.5, 0]}>
         <sphereGeometry args={[0.28, 24, 24]} />
-        <meshStandardMaterial
+        <meshPhysicalMaterial
           color={markerColor}
           emissive={markerColor}
           emissiveIntensity={0.8}

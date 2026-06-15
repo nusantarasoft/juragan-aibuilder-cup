@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
@@ -25,7 +26,8 @@ function LocationBrowserRedirect() {
     );
 }
 
-export default function LocationBrowserPage() {
+export default function LocationBrowserPage() { return <React.Suspense fallback={<div>Loading...</div>}><LocationBrowserPageContent /></React.Suspense>; } 
+function LocationBrowserPageContent() {
     return (
         <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}><Spin size="large" /></div>}>
             <LocationBrowserRedirect />
