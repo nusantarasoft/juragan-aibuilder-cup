@@ -9,7 +9,7 @@ import CMSLayout from "@/components/layout/CMSLayout";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { theme, Badge, Card, Descriptions, Drawer, Progress, Segmented, Spin, Typography, Switch } from 'antd';
+import { theme, Badge, Button, Card, Descriptions, Drawer, Progress, Segmented, Spin, Typography, Switch } from 'antd';
 import { motion } from "framer-motion";
 import { EditOutlined } from '@ant-design/icons';
 import { useTheme } from "next-themes";

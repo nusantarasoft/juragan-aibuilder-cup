@@ -124,6 +124,8 @@ export function SitePrep({ progress, highlighted, phase }: { progress: number; h
       </group>
     </group>
   );
+}
+
 // --- Structural Frame (Columns + Beams per floor) ---
 export function StructuralFrame({ progress, highlighted, xray, explodeLevel = 0, onSelectBimObject, phase }: { progress: number; highlighted: boolean; xray: boolean; explodeLevel?: number; onSelectBimObject?: (obj: any) => void; phase: ConstructionPhase }) {
   const opacity = getPhaseOpacity(progress, phase.startPercent, phase.endPercent);

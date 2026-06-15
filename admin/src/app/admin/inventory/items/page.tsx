@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -76,7 +76,7 @@ const WIZARD_STEPS = [
     { title: 'Review', icon: <CheckCircleOutlined /> },
 ];
 
-export default function ItemMasterPage() {
+function ItemMasterContent() {
     const searchParams = useSearchParams();
     const catalogTenantId = searchParams.get("tenantId") || "default";
 
@@ -1255,7 +1255,11 @@ export default function ItemMasterPage() {
     );
 }
 
-
-
-
+export default function ItemMasterPage() {
+    return (
+        <Suspense fallback={<div style={{ padding: 48, textAlign: "center" }}>Loading items...</div>}>
+            <ItemMasterContent />
+        </Suspense>
+    );
+}
 

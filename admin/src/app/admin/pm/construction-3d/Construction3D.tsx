@@ -4066,6 +4066,16 @@ export default function Construction3DPage() {
   useEffect(() => setMounted(true), []);
   const isDark = mounted && resolvedTheme === "dark";
 
+  const glassPanelStyle = useMemo(
+    () => ({
+      background: isDark ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.6)",
+      backdropFilter: "blur(8px)",
+      border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
+      borderRadius: 12,
+    }),
+    [isDark],
+  );
+
   // URL-based project connection
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -4324,6 +4334,10 @@ export default function Construction3DPage() {
 
   const currentPhases = dynamicPhases;
 
+  const [resolvedClashIds, setResolvedClashIds] = useState<string[]>([]);
+  const [clashToFix, setClashToFix] = useState<any | null>(null);
+  const [clashFixModalVisible, setClashFixModalVisible] = useState(false);
+
   // ─── Clash / Delay Detection Engine ───────────────────────────────────
   // Multi-rule validation: sequential deps, resource conflicts, cost overruns
   const PHASE_ORDER = ["site_prep", "foundation", "structure", "floor_slabs", "ext_walls", "windows", "roofing", "mep", "interior", "exterior"];
@@ -4495,7 +4509,6 @@ export default function Construction3DPage() {
   const [rfiFilter, setRfiFilter] = useState<"all" | "open" | "resolved">("all");
   const [expandedRfiId, setExpandedRfiId] = useState<string | null>(null);
   const [rfiCommentText, setRfiCommentText] = useState("");
-  const [resolvedClashIds, setResolvedClashIds] = useState<string[]>([]);
   const [previewAttachment, setPreviewAttachment] = useState<string | null>(null);
 
   const [cameraKey, setCameraKey] = useState(0);
@@ -5292,7 +5305,7 @@ export default function Construction3DPage() {
               exit={{ width: 0, opacity: 0 }}
               transition={{ duration: 0.3 }}
               style={{
-                ...glassPanel,
+                ...glassPanelStyle,
                 overflow: "hidden",
                 flexShrink: 0,
                 display: "flex",
@@ -5321,7 +5334,7 @@ export default function Construction3DPage() {
         <div
           style={{
             flex: 1,
-            ...glassPanel,
+            ...glassPanelStyle,
             overflow: "hidden",
             position: "relative",
           }}
@@ -5336,7 +5349,7 @@ export default function Construction3DPage() {
               display: "flex",
               gap: 4,
               padding: "4px 6px",
-              ...glassPanel,
+              ...glassPanelStyle,
               borderRadius: 24,
               alignItems: "center",
               boxShadow: isDark ? "0 12px 40px rgba(0,0,0,0.5)" : "0 12px 40px rgba(0,0,0,0.1)",
@@ -5613,9 +5626,11 @@ export default function Construction3DPage() {
                         }}
                       />
                       <ThunderboltOutlined style={{ fontSize: 18, color: "#ef4444" }} />
-                      <AuroraText className="font-bold text-lg" style={{ margin: 0, padding: 0 }}>
-                        {clashResults.length} Schedule {clashResults.length === 1 ? "Clash" : "Clashes"} Detected
-                      </AuroraText>
+                      <div style={{ margin: 0, padding: 0 }}>
+                        <AuroraText className="font-bold text-lg">
+                          {clashResults.length} Schedule {clashResults.length === 1 ? "Clash" : "Clashes"} Detected
+                        </AuroraText>
+                      </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <Badge count={clashResults.filter((c: any) => c.severity === "critical").length} style={{ background: "rgba(220,38,38,0.2)", border: "1px solid #ef4444", color: "#fca5a5" }} />
@@ -6378,7 +6393,7 @@ export default function Construction3DPage() {
                 bottom: 120, // Sit above the timeline scrubber
                 left: "50%",
                 transform: "translateX(-50%)",
-                ...glassPanel,
+                ...glassPanelStyle,
                 padding: "12px 20px",
                 borderRadius: 24,
                 boxShadow: isDark ? "0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)" : "0 16px 48px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)",
@@ -7070,7 +7085,7 @@ export default function Construction3DPage() {
               exit={{ width: 0, opacity: 0 }}
               transition={{ duration: 0.3 }}
               style={{
-                ...glassPanel,
+                ...glassPanelStyle,
                 overflow: "hidden",
                 flexShrink: 0,
                 display: "flex",
@@ -7238,7 +7253,7 @@ export default function Construction3DPage() {
               exit={{ width: 0, opacity: 0 }}
               transition={{ duration: 0.3 }}
               style={{
-                ...glassPanel,
+                ...glassPanelStyle,
                 overflow: "hidden",
                 flexShrink: 0,
                 display: "flex",
