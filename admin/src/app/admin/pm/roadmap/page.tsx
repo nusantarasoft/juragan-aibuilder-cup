@@ -625,7 +625,7 @@ export default function RoadmapPage() {
                             key={i}
                             title={s.label}
                             description="Roadmap summary"
-                            icon={React.cloneElement(s.icon as React.ReactElement, { style: { color: s.color } })}
+                            icon={<span style={{ color: s.color }}>{s.icon}</span>}
                             header={
                                 <div className="flex h-full w-full flex-col items-center justify-center rounded-xl" style={{ backgroundColor: `${s.color}15` }}>
                                     <div style={{ fontSize: 32, fontWeight: 800, color: s.color }}>

@@ -6,8 +6,10 @@ import CMSLayout from "@/components/layout/CMSLayout";
 import { motion } from "framer-motion";
 import {
     Card, Row, Col, Statistic, Tag, Table, Space, Progress, message,
-    Typography, Button, Tooltip, Badge, Avatar, Select, Collapse,
+    Typography, Tooltip, Avatar, Select, Segmented, Drawer, Badge, Button,
+    Popconfirm, Dropdown, MenuProps, Collapse
 } from "antd";
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import {
     TeamOutlined, UserOutlined, ClockCircleOutlined, WarningOutlined,
     ReloadOutlined, DashboardOutlined, CheckCircleOutlined,
@@ -446,26 +448,24 @@ export default function AgentWorkloadPage() {
             {ctx}
 
             {/* ─── 1. Team Overview Stats ─────────────── */}
-            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+            <BentoGrid className="mb-4">
                 {kpis.map((k, i) => (
-                    <Col xs={12} sm={6} key={k.title}>
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.05 }}
-                        >
-                            <Card size="small" style={{ ...glassCard, borderTop: `3px solid ${k.color}` }}>
-                                <Statistic
-                                    title={k.title}
-                                    value={k.value}
-                                    prefix={k.icon}
-                                    valueStyle={{ color: k.color }}
-                                />
-                            </Card>
-                        </motion.div>
-                    </Col>
+                    <BentoGridItem
+                        key={k.title}
+                        title={k.title}
+                        description="Agent workload metric"
+                        icon={<span style={{ color: k.color }}>{k.icon}</span>}
+                        className="col-span-3 lg:col-span-1"
+                        header={
+                            <div className="flex h-full w-full flex-col items-center justify-center rounded-xl" style={{ backgroundColor: `${k.color}15` }}>
+                                <div style={{ fontSize: 32, fontWeight: 800, color: k.color }}>
+                                    {k.value}
+                                </div>
+                            </div>
+                        }
+                    />
                 ))}
-            </Row>
+            </BentoGrid>
 
             {/* ─── Team Capacity Summary ──────────────── */}
             {teamSummary.length > 0 && (

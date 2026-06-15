@@ -57,6 +57,8 @@ import { usePreferencesStore, hexToRgb } from "@/store/usePreferencesStore";
 import GlobalDateRangePicker from "@/components/common/GlobalDateRangePicker";
 import NotificationBell from "@/components/common/NotificationBell";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
+import LiveCursors from "@/components/common/LiveCursors";
+import { useWebSocketStore } from "@/store/useWebSocketStore";
 // Dynamic import for MetaBalls to prevent SSR crash (ogl WebGL library requires browser)
 const MetaBalls = dynamic(
     () => import("@/components/react-bits/MetaBalls"),
@@ -349,6 +351,7 @@ export default function CMSLayoutImpl({
     const [themeDrawerVisible, setThemeDrawerVisible] = useState(false);
     const { themePalette } = usePreferencesStore();
     const themeColor = themePalette.primary;
+    const { cursors } = useWebSocketStore();
 
     // Controlled openKeys to prevent submenu collapse on navigation
     const [openKeys, setOpenKeys] = useState<string[]>(() => {
@@ -1067,8 +1070,16 @@ export default function CMSLayoutImpl({
                                                 </GlitchText>
                                             </div>
                                         </div>
-                                        {/* Right: Notification Bell + Language + Dark/Light Toggle */}
-                                        <div style={{ marginLeft: 16, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        {/* Right: Presence + Language + Notification + Dark/Light */}
+                                        <div style={{ marginLeft: 16, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <Avatar.Group maxCount={3} size="small" style={{ display: 'flex', alignItems: 'center' }}>
+                                                {Object.values(cursors).map((c: { id: string; color: string; name: string }) => (
+                                                    <Avatar key={c.id} style={{ backgroundColor: c.color }}>
+                                                        {c.name.charAt(0)}
+                                                    </Avatar>
+                                                ))}
+                                            </Avatar.Group>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                             <LanguageSwitcher isDark={darkMode} />
                                             <NotificationBell />
                                             <AnimatedThemeToggler
@@ -1079,6 +1090,7 @@ export default function CMSLayoutImpl({
                                                     color: darkMode ? "#fff" : "#000",
                                                 }}
                                             />
+                                            </div>
                                         </div>
                                     </>
                                 )}
@@ -1310,6 +1322,7 @@ export default function CMSLayoutImpl({
 
             {/* Global Command Palette (Ctrl+K / Cmd+K) */}
             <CommandPalette isDark={darkMode} themeColor={themeColor} />
+            <LiveCursors />
 
             {/* Theme Customizer Drawer */}
             <ThemeDrawer visible={themeDrawerVisible} onClose={() => setThemeDrawerVisible(false)} darkMode={darkMode} />

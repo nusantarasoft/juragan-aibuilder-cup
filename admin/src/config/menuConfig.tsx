@@ -1781,6 +1781,12 @@ const menuConfig = {
                 isLeaf: true,
             },
             {
+                path: "/admin/system/erd-viewer",
+                name: "Database Schema",
+                icon: <NodeIndexOutlined />,
+                isLeaf: true,
+            },
+            {
                 path: "/admin/reports",
                 name: "Reports & Analytics",
                 icon: <BarChartOutlined />,

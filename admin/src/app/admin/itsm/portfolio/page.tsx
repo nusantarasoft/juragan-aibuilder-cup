@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import RbacGuard from "@/components/common/RbacGuard";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
 import { Button, message, Tag, Popconfirm, Space, Select, Form, Input, Row, Col, InputNumber, Typography, Card, Statistic, Badge, Tooltip } from "antd";
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import { PlusOutlined, DeleteOutlined, EditOutlined, ProjectOutlined, RocketOutlined, SendOutlined, CheckCircleOutlined, ClockCircleOutlined, FileExcelOutlined, FilePdfOutlined  } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
@@ -142,7 +143,7 @@ export default function ItsmPortfolioPage() {
             subTitle={<DecryptedText text="Manage the lifecycle of IT services" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <div>
             {contextHolder}
-            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+            <BentoGrid className="mb-4">
                 {[
                     { title: 'Total Services', value: data.length, icon: <ProjectOutlined />, color: '#3b82f6' },
                     { title: 'Active', value: data.filter((d: any) => d.lifecycleStatus === 'active' || d.lifecycleStatus === 'operational').length, icon: <CheckCircleOutlined />, color: '#10b981' },
@@ -150,15 +151,22 @@ export default function ItsmPortfolioPage() {
                     { title: 'Retiring', value: data.filter((d: any) => d.lifecycleStatus === 'retiring' || d.lifecycleStatus === 'retired').length, icon: <ClockCircleOutlined />, color: '#ef4444' },
                     { title: 'Published', value: data.filter((d: any) => d.publishedToCatalog).length, icon: <SendOutlined />, color: '#8b5cf6' },
                 ].map((s, i) => (
-                    <Col key={i} xs={12} md={Math.floor(24 / 5)}>
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                            <Card size="small" style={{ ...glass, borderTop: `3px solid ${s.color}` }}>
-                                <Statistic title={s.title} value={s.value} prefix={s.icon} valueStyle={{ color: s.color }} />
-                            </Card>
-                        </motion.div>
-                    </Col>
+                    <BentoGridItem
+                        key={i}
+                        title={s.title}
+                        description="Service lifecycle metric"
+                        icon={<span style={{ color: s.color }}>{s.icon}</span>}
+                        className={i === 4 ? "col-span-3 lg:col-span-1 lg:col-start-2" : "col-span-3 lg:col-span-1"}
+                        header={
+                            <div className="flex h-full w-full flex-col items-center justify-center rounded-xl" style={{ backgroundColor: `${s.color}15` }}>
+                                <div style={{ fontSize: 32, fontWeight: 800, color: s.color }}>
+                                    {s.value}
+                                </div>
+                            </div>
+                        }
+                    />
                 ))}
-            </Row>
+            </BentoGrid>
             <ProTable
                 headerTitle={<Space><ProjectOutlined /> Service Portfolio <Badge count={data.length} style={{ backgroundColor: themeColor }} /></Space>}
                 rowKey="id" dataSource={data} loading={loading} columns={columns} search={false}
