@@ -16,7 +16,7 @@ const NODE_COLORS: Record<string, string> = {
     end: "red",
 };
 
-function buildEdges(def: GuideFlowDefinition): string[] {
+export function buildGuideFlowEdges(def: GuideFlowDefinition): string[] {
     const lines: string[] = [];
     for (const n of def.nodes) {
         if (
@@ -47,7 +47,7 @@ type Props = {
 };
 
 export default function GuideFlowPreview({ definition }: Props) {
-    const edges = useMemo(() => buildEdges(definition), [definition]);
+    const edges = useMemo(() => buildGuideFlowEdges(definition), [definition]);
     const flowKind = definition.meta?.flowKind;
 
     return (

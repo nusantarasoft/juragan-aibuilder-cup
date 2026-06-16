@@ -8,6 +8,7 @@ Use case diagram untuk halaman **Studio** (`/admin/ai-studio`) di modul AI Studi
 |------|-----------|
 | [use-case-diagram.svg](./use-case-diagram.svg) | Diagram use case (SVG, siap dibuka di browser) |
 | [use-case-diagram.puml](./use-case-diagram.puml) | Sumber PlantUML untuk diedit / diekspor ulang |
+| [TESTING.md](./TESTING.md) | Panduan unit, integration, dan E2E test Studio |
 
 ## Aktor
 
