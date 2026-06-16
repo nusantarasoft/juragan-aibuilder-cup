@@ -1329,6 +1329,7 @@ const menuConfig = {
                 icon: <HomeOutlined />,
                 routes: [
                     { path: "/admin/bms", name: "Dashboard", icon: <DashboardOutlined />, isLeaf: true },
+                    { path: "/admin/bms/3d", name: "3D View", icon: <GlobalOutlined />, isLeaf: true }, /* Trigger NextJS reload */
                     { path: "/admin/bms/hvac", name: "HVAC", icon: <CloudServerOutlined />, isLeaf: true },
                     { path: "/admin/bms/lighting", name: "Lighting", icon: <BulbOutlined />, isLeaf: true },
                     { path: "/admin/bms/fire", name: "Fire Safety", icon: <FireOutlined />, isLeaf: true },

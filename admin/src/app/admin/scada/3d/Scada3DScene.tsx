@@ -256,6 +256,91 @@ const Pump = ({ position, onClick, id, animateFlow }: { position: [number,number
 
 import DraggableModel from '@/components/3d/DraggableModel';
 
+
+const AlarmBeacon = ({ position, active }: { position: [number,number,number], active: boolean }) => {
+    const lightRef = useRef<THREE.PointLight>(null);
+    const beaconRef = useRef<THREE.Mesh>(null);
+    
+    useFrame((state) => {
+        if (active && lightRef.current && beaconRef.current) {
+            const time = state.clock.elapsedTime * 10;
+            const intensity = (Math.sin(time) + 1) / 2; // Pulsing
+            lightRef.current.intensity = intensity * 15;
+            beaconRef.current.rotation.y += 0.2;
+        }
+    });
+
+    return (
+        <group position={position}>
+            <Cylinder args={[0.2, 0.2, 0.5, 16]} position={[0, 0.25, 0]}>
+                <meshStandardMaterial color={active ? "#ff0000" : "#550000"} emissive={active ? "#ff0000" : "#000000"} emissiveIntensity={active ? 2 : 0} transparent opacity={0.8} />
+            </Cylinder>
+            <mesh ref={beaconRef} position={[0, 0.25, 0]}>
+                <boxGeometry args={[0.05, 0.4, 0.3]} />
+                <meshStandardMaterial color="#222" />
+            </mesh>
+            {active && <pointLight ref={lightRef} color="#ff0000" distance={10} decay={2} />}
+        </group>
+    );
+};
+
+const RoboticArm = ({ position, isRunning, id, onClick }: { position: [number,number,number], isRunning: boolean, id: string, onClick: (id: string) => void }) => {
+    const baseRef = useRef<THREE.Group>(null);
+    const joint1Ref = useRef<THREE.Group>(null);
+    const joint2Ref = useRef<THREE.Group>(null);
+
+    useFrame((state) => {
+        if (isRunning && baseRef.current && joint1Ref.current && joint2Ref.current) {
+            const time = state.clock.elapsedTime * 1.5;
+            baseRef.current.rotation.y = Math.sin(time * 0.5) * 1.5;
+            joint1Ref.current.rotation.z = Math.sin(time) * 0.5 + 0.5;
+            joint2Ref.current.rotation.z = Math.cos(time * 1.2) * 0.5 - 0.5;
+        }
+    });
+
+    return (
+        <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+            {/* Base */}
+            <Cylinder args={[1, 1.2, 0.5, 32]} position={[0, 0.25, 0]} castShadow>
+                <meshStandardMaterial color="#ffaa00" />
+            </Cylinder>
+            <group ref={baseRef} position={[0, 0.5, 0]}>
+                <Box args={[0.8, 1.5, 0.8]} position={[0, 0.75, 0]} castShadow>
+                    <meshStandardMaterial color="#444" />
+                </Box>
+                {/* Joint 1 */}
+                <group ref={joint1Ref} position={[0, 1.5, 0]}>
+                    <Cylinder args={[0.5, 0.5, 1, 16]} rotation={[Math.PI/2, 0, 0]} castShadow>
+                        <meshStandardMaterial color="#222" />
+                    </Cylinder>
+                    <Box args={[0.5, 3, 0.5]} position={[0, 1.5, 0]} castShadow>
+                        <meshStandardMaterial color="#ffaa00" />
+                    </Box>
+                    {/* Joint 2 */}
+                    <group ref={joint2Ref} position={[0, 3, 0]}>
+                        <Cylinder args={[0.4, 0.4, 0.8, 16]} rotation={[Math.PI/2, 0, 0]} castShadow>
+                            <meshStandardMaterial color="#222" />
+                        </Cylinder>
+                        <Box args={[0.3, 2, 0.3]} position={[0, 1, 0]} castShadow>
+                            <meshStandardMaterial color="#444" />
+                        </Box>
+                        {/* End Effector */}
+                        <Box args={[0.8, 0.2, 0.8]} position={[0, 2, 0]} castShadow>
+                            <meshStandardMaterial color="#ff2222" />
+                        </Box>
+                    </group>
+                </group>
+            </group>
+            <Html position={[0, 6, 0]} center>
+                <div style={{ background: 'rgba(0,0,0,0.8)', color: '#fff', padding: '4px 8px', borderRadius: 4, whiteSpace: 'nowrap', fontSize: 12, border: `1px solid ${isRunning ? '#52c41a' : '#faad14'}`, pointerEvents: 'none' }}>
+                    <strong>{id}</strong><br/>
+                    <span style={{ color: isRunning ? '#52c41a' : '#aaa' }}>{isRunning ? 'ASSEMBLY: ON' : 'STANDBY'}</span>
+                </div>
+            </Html>
+        </group>
+    );
+};
+
 export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarmActive, editMode = false }: { onSelect: (id: any) => void, animateFlow: boolean, thermalMode: boolean, alarmActive: boolean, editMode?: boolean }) {
     
     // Valve states
@@ -285,7 +370,8 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
         const equipData: any = {
             'CHILLER-01': { id: 'CHILLER-01', name: 'Primary Centrifugal Chiller', status: alarmActive ? 'Fault' : 'Running', telemetry: { 'Leaving Water Temp': '6.5 °C', 'Entering Water Temp': '12.1 °C', 'Compressor Load': '78%' } },
             'PUMP-CW-01': { id: 'PUMP-CW-01', name: 'Condenser Water Pump', status: (animateFlow && valve1Open) ? 'Running' : 'Stopped', telemetry: { 'Frequency': (animateFlow && valve1Open) ? '60.0 Hz' : '0.0 Hz', 'Flow Rate': (animateFlow && valve1Open) ? '1250 GPM' : '0 GPM', 'Vibration': '0.04 in/s' } },
-            'CT-01': { id: 'CT-01', name: 'Cooling Tower 1', status: alarmActive ? 'High Vib Alarm' : 'Running', telemetry: { 'Fan Speed': '100%', 'Basin Temp': '22.0 °C' } }
+                        'CT-01': { id: 'CT-01', name: 'Cooling Tower 1', status: alarmActive ? 'High Vib Alarm' : 'Running', telemetry: { 'Fan Speed': '100%', 'Basin Temp': '22.0 °C' } },
+            'ROBOT-01': { id: 'ROBOT-01', name: 'Assembly Arm Unit A', status: animateFlow ? 'Running' : 'Standby', telemetry: { 'Cycles/Min': animateFlow ? '42' : '0', 'Joint Temp': '45.2 °C' } }
         };
         if (equipData[id]) onSelect(equipData[id]);
     };
@@ -356,6 +442,11 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
                 <DraggableModel id="CT-01" position={ctPos} editMode={editMode} selectedId={selectedEquipId} onSelect={handleSelect} onPositionChange={handlePositionChange}>
                     <CoolingTower position={[0, 0, 0]} id="CT-01" isRunning={secondaryFlow} onClick={handleSelect} alarm={alarmActive} />
                 </DraggableModel>
+
+            
+                {/* Robotic Arm Assembly */}
+                <RoboticArm position={[0, 0, 8]} id="ROBOT-01" isRunning={animateFlow} onClick={handleSelect} />
+                <AlarmBeacon position={[0, 4.5, 8]} active={alarmActive} />
 
             </group>
 

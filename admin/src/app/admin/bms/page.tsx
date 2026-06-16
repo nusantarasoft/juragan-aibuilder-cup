@@ -14,6 +14,7 @@ import { motion } from "framer-motion";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Legend, Cell } from 'recharts';
 import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import dynamic from 'next/dynamic';
+import { useRouter } from "next/navigation";
 
 const Bms3dView = dynamic(() => import('./Bms3dView'), { ssr: false });
 import { AnimatedCircularProgressBar } from "@/components/magicui/animated-circular-progress-bar";
@@ -31,11 +32,10 @@ export default function BmsDashboard() {
     const { themeColor } = usePreferencesStore();
     const { token: antToken } = theme.useToken();
     const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
+    const router = useRouter();
 
     const [realSystems, setRealSystems] = useState<BmsSystem[]>([]);
     const [realAlarms, setRealAlarms] = useState<BmsAlarm[]>([]);
-    const [viewMode, setViewMode] = useState<'dashboard' | '3d'>('dashboard');
-    const [editMode, setEditMode] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -96,30 +96,14 @@ export default function BmsDashboard() {
             subTitle={<DecryptedText text="Facility Building Operations" speed={60} />}
         >
             <style>{dashAnimStyle}</style>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-                <Button 
-                    type={viewMode === '3d' ? 'primary' : 'default'} 
-                    icon={<HomeOutlined />} 
-                    onClick={() => setViewMode(viewMode === '3d' ? 'dashboard' : '3d')}
-                >
-                    {viewMode === '3d' ? 'Back to Dashboard' : 'Open 3D Digital Twin'}
-                </Button>
-            </div>
-            
-            {viewMode === '3d' ? (
-                <div style={{ position: 'relative' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <Title level={4} style={{ margin: 0, color: themeColor }}>BMS 3D View</Title>
-                        <Space>
-                            <span style={{ color: themeColor, fontWeight: 600 }}>Edit Mode</span>
-                            <Switch checked={editMode} onChange={setEditMode} />
-                            <Button onClick={() => setViewMode('dashboard')}>Back to Dashboard</Button>
-                        </Space>
-                    </div>
-                    <Bms3dView isDark={isDark} editMode={editMode} />
+
+            <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', top: -16, right: 16, zIndex: 10 }}>
+                    <Button type="primary" onClick={() => router.push('/admin/bms/3d')}>
+                        Open 3D Digital Twin
+                    </Button>
                 </div>
-            ) : (
-                <React.Fragment>
+
 
             {/* KPI ROW (BENTO GRID) */}
             <BentoGrid className="mb-6">
@@ -271,8 +255,7 @@ export default function BmsDashboard() {
                     </motion.div>
                 </Col>
             </Row>
-                </React.Fragment>
-            )}
+            </div>
         </CMSLayout>
     );
 }

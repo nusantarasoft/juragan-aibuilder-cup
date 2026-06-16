@@ -3,6 +3,7 @@ import { Grid, ContactShadows, Line, RoundedBox } from '@react-three/drei';
 import { RackModel } from './RackModel';
 import { CoolingUnit } from './CoolingUnit';
 import { ThermalOverlay } from './ThermalOverlay';
+import { AirflowParticles } from './AirflowParticles';
 import { ContainmentPod } from './ContainmentPod';
 import { useDcimStore } from '@/store/useDcimStore';
 import DraggableModel from '../3d/DraggableModel';
@@ -28,6 +29,7 @@ export function DataCenterScene() {
                 <ContainmentPod key={pod.id} data={pod} viewMode={viewMode} />
             ))}
 
+            
             {/* PDU & Cables */}
             {viewMode === 'Power' && (
                 <group>
@@ -37,7 +39,6 @@ export function DataCenterScene() {
                     {racks.map((rack, i) => {
                         const start = new THREE.Vector3(10, 2.5, 10);
                         const end = new THREE.Vector3(rack.x, 2.0, rack.z);
-                        // Make an L-shape cable route overhead
                         const mid1 = new THREE.Vector3(10, 3.5, 10);
                         const mid2 = new THREE.Vector3(rack.x, 3.5, 10);
                         const mid3 = new THREE.Vector3(rack.x, 3.5, rack.z);
@@ -55,8 +56,31 @@ export function DataCenterScene() {
                     })}
                 </group>
             )}
-
-            {/* Racks */}
+            
+            {/* Network Topology Streams (Always visible in Power mode for demo) */}
+            {viewMode === 'Power' && (
+                <group>
+                    <RoundedBox args={[1, 3, 1]} position={[-10, 1.5, 10]} radius={0.05} smoothness={4}>
+                        <meshStandardMaterial color="#722ed1" roughness={0.3} metalness={0.8} emissive="#722ed1" emissiveIntensity={0.2} />
+                    </RoundedBox>
+                    {racks.map((rack, i) => {
+                        const start = new THREE.Vector3(-10, 3, 10);
+                        const end = new THREE.Vector3(rack.x, 2.0, rack.z);
+                        return (
+                            <Line 
+                                key={`net-${i}`}
+                                points={[start, end]} 
+                                color="#d3adf7" 
+                                lineWidth={1} 
+                                dashed 
+                                dashScale={50}
+                                dashSize={0.2}
+                            />
+                        );
+                    })}
+                </group>
+            )}
+{/* Racks */}
             {racks.map(rack => (
                 <DraggableModel
                     key={rack.id}
@@ -80,9 +104,12 @@ export function DataCenterScene() {
                 </DraggableModel>
             ))}
 
-            {/* Thermal Map Overlay */}
+            {/* Thermal Map Overlay & Airflow */}
             {viewMode === 'Thermal' && (
-                <ThermalOverlay width={20} length={20} />
+                <group>
+                    <ThermalOverlay width={20} length={20} />
+                    <AirflowParticles count={1000} />
+                </group>
             )}
 
             {/* Ambient Shadow */}

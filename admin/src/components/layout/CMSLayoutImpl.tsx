@@ -1076,6 +1076,10 @@ export default function CMSLayoutImpl({
                                 )}
                             </div>
                         )}
+                        actionsRender={(props) => {
+                            if (props.isMobile) return [];
+                            return [<HeaderActions key="header-actions" />];
+                        }}
                         menuRender={(props, defaultDom) => (
                             <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                                 <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
@@ -1195,7 +1199,6 @@ export default function CMSLayoutImpl({
                                 position: 'sticky',
                                 top: 0,
                                 height: '100vh',
-                                overflowY: 'auto',
                             }}
                             collapsed={innerCollapsed}
                             breakpoint={false}
@@ -1234,85 +1237,59 @@ export default function CMSLayoutImpl({
                                     />
                                 </div>
                             )}
-                            menuRender={(props, defaultDom) => (
-                                <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-                                    <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
-                                        {defaultDom}
-                                    </div>
-                                    <div style={{
-                                        padding: innerCollapsed ? "16px 0" : "16px",
-                                        borderTop: darkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid #f0f0f0",
-                                        display: "flex",
-                                        justifyContent: "center",
-                                    }}>
-                                        <Dropdown
-                                            menu={{
-                                                items: [
-                                                    {
-                                                        key: 'settings',
-                                                        icon: <SettingOutlined />,
-                                                        label: 'Account Settings',
-                                                    },
-                                                    {
-                                                        key: 'switch',
-                                                        icon: <SwapOutlined />,
-                                                        label: 'Sign in another account',
-                                                    },
-                                                    {
-                                                        type: 'divider',
-                                                    },
-                                                    {
-                                                        key: 'logout',
-                                                        icon: <LogoutOutlined />,
-                                                        label: 'Sign Out',
-                                                        danger: true,
-                                                    },
-                                                ],
-                                                onClick: ({ key }) => {
-                                                    if (key === 'logout') {
-                                                        message.success('Signed out successfully');
-                                                    } else if (key === 'settings') {
-                                                        message.info('Navigating to settings...');
-                                                    } else if (key === 'switch') {
-                                                        message.info('Switching account...');
-                                                    }
+                            actionsRender={(props) => {
+                                if (props.isMobile) return [];
+                                return [
+                                    <Dropdown
+                                        key="account-menu"
+                                        menu={{
+                                            items: [
+                                                {
+                                                    key: 'settings',
+                                                    icon: <SettingOutlined />,
+                                                    label: 'Account Settings',
+                                                },
+                                                {
+                                                    key: 'switch',
+                                                    icon: <SwapOutlined />,
+                                                    label: 'Sign in another account',
+                                                },
+                                                {
+                                                    type: 'divider',
+                                                },
+                                                {
+                                                    key: 'logout',
+                                                    icon: <LogoutOutlined />,
+                                                    label: 'Sign Out',
+                                                    danger: true,
+                                                },
+                                            ],
+                                            onClick: ({ key }) => {
+                                                if (key === 'logout') {
+                                                    message.success('Signed out successfully');
+                                                } else if (key === 'settings') {
+                                                    message.info('Navigating to settings...');
+                                                } else if (key === 'switch') {
+                                                    message.info('Switching account...');
                                                 }
-                                            }}
-                                            trigger={['click']}
-                                            placement={innerCollapsed ? "topRight" : "top"}
-                                        >
-                                            <div style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: innerCollapsed ? 'center' : 'space-between',
-                                                cursor: 'pointer',
-                                                padding: innerCollapsed ? '8px' : '8px 12px',
-                                                borderRadius: '8px',
-                                                background: darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
-                                                width: innerCollapsed ? 'auto' : '100%',
-                                                transition: 'background 0.2s',
-                                            }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'}
-                                            onMouseLeave={(e) => e.currentTarget.style.background = darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'}
-                                            >
-                                                {innerCollapsed ? (
-                                                    <Avatar icon={<UserOutlined />} size="small" style={{ backgroundColor: themePalette.primary }} />
-                                                ) : (
-                                                    <>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, overflow: 'hidden' }}>
-                                                            <Avatar icon={<UserOutlined />} style={{ backgroundColor: themePalette.primary, flexShrink: 0 }} />
-                                                            <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                                                                <span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.2, color: darkMode ? '#fff' : '#000', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>Admin User</span>
-                                                                <span style={{ fontSize: 12, color: darkMode ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>admin@nusantarasoft.com</span>
-                                                            </div>
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </Dropdown>
-                                    </div>
-                                </div>
-                            )}
+                                            }
+                                        }}
+                                        trigger={['click']}
+                                        placement="topRight"
+                                    >
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            cursor: 'pointer',
+                                            padding: '4px',
+                                            borderRadius: '50%',
+                                            background: darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+                                        }}>
+                                            <Avatar icon={<UserOutlined />} size="small" style={{ backgroundColor: themePalette.primary }} />
+                                        </div>
+                                    </Dropdown>
+                                ];
+                            }}
 
                             menuItemRender={(item, dom) => {
                                 const isPinnedOrStarred = selectedSegment === "pinned" || selectedSegment === "starred";
@@ -1375,7 +1352,7 @@ export default function CMSLayoutImpl({
                             <PageContainer
                                 title={title}
                                 subTitle={subTitle}
-                                extra={[<GlobalDateRangePicker key="global-date" compact />, ...(extra || []), <HeaderActions key="pin-star-actions" />]}
+                                extra={[<GlobalDateRangePicker key="global-date" compact />, ...(extra || [])]}
                                 breadcrumb={{
                                     items: breadcrumbItems.map((item, index) => ({
                                         key: index,
