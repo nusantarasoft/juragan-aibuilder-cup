@@ -72,6 +72,7 @@ export interface SceneConfig {
   showCompass?: boolean;
   // Visual Quality
   highQualityGraphics?: boolean;
+  visualStyle?: "realistic" | "sketchup";
   cameraMode?: "perspective" | "orthographic";
   simulateTime?: boolean;
   timeOfDay?: "morning" | "noon" | "sunset" | "night";

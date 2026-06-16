@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import RbacGuard from "@/components/common/RbacGuard";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import { Badge, Button, Card, Col, DatePicker, Empty, Input, InputNumber, message, Modal, Progress, Row, Segmented, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography } from "antd";
 import {
     UnorderedListOutlined, SearchOutlined, FilterOutlined,
@@ -498,7 +499,7 @@ export default function BacklogPage() {
             {contextHolder}
 
             {/* ── Stats Row ── */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <BentoGrid className="max-w-none md:auto-rows-auto grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
                 {[
                     { title: 'Total Tasks', value: totalTasks, icon: <ProjectOutlined style={{ color: themeColor }} />, color: themeColor },
                     { title: 'To Do', value: todoCount, icon: <ClockCircleOutlined style={{ color: '#6366f1' }} />, color: '#6366f1' },
@@ -507,15 +508,20 @@ export default function BacklogPage() {
                     { title: 'Done', value: doneCount, icon: <CheckCircleOutlined style={{ color: '#10b981' }} />, color: '#10b981' },
                     { title: 'Overdue', value: overdueCount, icon: <ExclamationCircleOutlined style={{ color: '#ef4444' }} />, color: '#ef4444' },
                 ].map((s, i) => (
-                    <Col key={i} xs={24} sm={12} lg={4}>
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                            <Card style={{ ...glassCard, borderTop: `3px solid ${s.color}` }} size="small">
-                                <Statistic title={<span style={{ fontSize: 12 }}>{s.title}</span>} value={s.value} prefix={s.icon} valueStyle={{ fontSize: 24, fontWeight: 700, color: s.color }} />
-                            </Card>
-                        </motion.div>
-                    </Col>
+                    <BentoGridItem
+                        key={i}
+                        className="shadow-sm border border-black/[0.05] dark:border-white/[0.05]"
+                        styles={{ item: { ...glassCard, borderTop: `3px solid ${s.color}` } }}
+                        title={<span style={{ fontSize: 13, fontWeight: 500 }}>{s.title}</span>}
+                        description={
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                                <span style={{ fontSize: 18 }}>{s.icon}</span>
+                                <span style={{ fontSize: 24, fontWeight: 700, color: s.color }}>{s.value}</span>
+                            </div>
+                        }
+                    />
                 ))}
-            </Row>
+            </BentoGrid>
 
             {/* ── Effort Summary ── */}
             <Card style={{ ...glassCard, marginBottom: 16 }} size="small">

@@ -18,7 +18,7 @@ export const dcimService = {
                 }
             }
         `;
-        return graphql(query, { variables: { tenantId } });
+        return graphql<any>(query, { variables: { tenantId } });
     },
     
     async getDevicesByRack(rackId: string) {
@@ -37,7 +37,7 @@ export const dcimService = {
                 }
             }
         `;
-        return graphql(query, { variables: { rackId } });
+        return graphql<any>(query, { variables: { rackId } });
     },
 
     async getThermalMap(roomId: string) {
@@ -53,6 +53,6 @@ export const dcimService = {
                 }
             }
         `;
-        return graphql(query, { variables: { roomId } });
+        return graphql<any>(query, { variables: { roomId } });
     }
 };

@@ -19,13 +19,13 @@ import {
   CameraOutlined, BlockOutlined, ColumnWidthOutlined,
   ThunderboltOutlined, AlertOutlined, CalendarOutlined,
   RocketOutlined, SafetyCertificateOutlined, ExperimentOutlined,
-  FormatPainterOutlined, ExpandOutlined, CloudOutlined,
+  FormatPainterOutlined, ExpandOutlined, CloudOutlined, ExpandAltOutlined,
   DatabaseOutlined, SyncOutlined, UploadOutlined,
   DragOutlined, EditOutlined, SaveOutlined, FolderOpenOutlined, DeleteOutlined, InfoCircleOutlined,
-  CloseOutlined, PlusOutlined, DollarOutlined, HeatMapOutlined, LinkOutlined, ArrowLeftOutlined, FileTextOutlined
+  CloseOutlined, PlusOutlined, DollarOutlined, HeatMapOutlined, LinkOutlined, ArrowLeftOutlined, FileTextOutlined, FastForwardOutlined
 } from "@ant-design/icons";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Html, TransformControls, Sky, Stars, Environment, ContactShadows, Grid, Line, Instances, Instance, Text, SoftShadows } from "@react-three/drei";
+import { OrbitControls, Html, TransformControls, Sky, Stars, Environment, ContactShadows, Grid, Line, Instances, Instance, Text, SoftShadows, Outlines } from "@react-three/drei";
 import { EffectComposer, Bloom, SSAO, Vignette, SMAA, DepthOfField } from "@react-three/postprocessing";
 import * as THREE from "three";
 import { useTheme } from "next-themes";
@@ -38,11 +38,14 @@ import {
   getPhaseOpacity, acresToFieldGrid,
   type PhaseDefinition, type PhaseTask, type SceneProps, type SceneConfig,
 } from "./templates";
+import { SmartMaterial } from "./components/3d/BuildingStructure";
 
 const { Text: AntText, Title } = Typography;
 
 export const CATALOG_ITEMS = [
   // Construction
+  { id: "crane", name: "Construction Crane", icon: "🏗️", category: "Construction", image: "https://loremflickr.com/150/150/crane" },
+  { id: "bulldozer", name: "Bulldozer", icon: "🚜", category: "Construction", image: "https://loremflickr.com/150/150/bulldozer" },
   { id: "dumpster", name: "Dumpster", icon: "🗑️", category: "Construction", image: "https://loremflickr.com/150/150/dumpster" },
   { id: "cone", name: "Traffic Cone", icon: "🚧", category: "Construction", image: "https://loremflickr.com/150/150/traffic_cone" },
   { id: "concrete_mixer", name: "Concrete Mixer", icon: "🛢️", category: "Construction", image: "https://loremflickr.com/150/150/concrete_mixer" },
@@ -418,6 +421,10 @@ function UploadedModel({ url, scale, rotationDeg }: { url: string; scale: number
 }
 
 // --- Ground / Site ---
+
+
+
+
 function SitePrep({ progress, highlighted, phase = CONSTRUCTION_PHASES[0] }: { progress: number; highlighted: boolean; phase?: ConstructionPhase }) {
   const opacity = getPhaseOpacity(progress, phase.startPercent, phase.endPercent);
   if (opacity <= 0) return null;
@@ -427,17 +434,17 @@ function SitePrep({ progress, highlighted, phase = CONSTRUCTION_PHASES[0] }: { p
       {/* Excavation pit - layered soil */}
       <mesh position={[0, -0.3, 0]} receiveShadow>
         <boxGeometry args={[BUILDING.width + 4, 0.6, BUILDING.depth + 4]} />
-        <meshPhysicalMaterial color={highlighted ? "#D4A574" : "#8B6914"} transparent opacity={opacity * 0.9} roughness={0.9} />
+        <SmartMaterial color={highlighted ? "#D4A574" : "#8B6914"} transparent opacity={opacity * 0.9} roughness={0.9} />
       </mesh>
       {/* Subsoil layer */}
       <mesh position={[0, -0.65, 0]} receiveShadow>
         <boxGeometry args={[BUILDING.width + 5, 0.1, BUILDING.depth + 5]} />
-        <meshPhysicalMaterial color="#5C3A0A" transparent opacity={opacity * 0.7} roughness={1} />
+        <SmartMaterial color="#5C3A0A" transparent opacity={opacity * 0.7} roughness={1} />
       </mesh>
       {/* Clay layer */}
       <mesh position={[0, -0.8, 0]} receiveShadow>
         <boxGeometry args={[BUILDING.width + 6, 0.2, BUILDING.depth + 6]} />
-        <meshPhysicalMaterial color="#8B7355" transparent opacity={opacity * 0.5} roughness={1} />
+        <SmartMaterial color="#8B7355" transparent opacity={opacity * 0.5} roughness={1} />
       </mesh>
 
       {/* Construction fence posts with safety tape */}
@@ -450,13 +457,13 @@ function SitePrep({ progress, highlighted, phase = CONSTRUCTION_PHASES[0] }: { p
           <group key={`fence-${i}`}>
             <mesh position={[x, 0.5, z]}>
               <cylinderGeometry args={[0.05, 0.05, 1.5, 8]} />
-              <meshPhysicalMaterial color="#F59E0B" transparent opacity={opacity} />
+              <SmartMaterial color="#F59E0B" transparent opacity={opacity} />
             </mesh>
             {/* Safety tape between posts */}
             {i < 11 && (
               <mesh position={[(x + Math.cos(((i + 1) / 12) * Math.PI * 2) * r) / 2, 0.9, (z + Math.sin(((i + 1) / 12) * Math.PI * 2) * r) / 2]}>
                 <boxGeometry args={[0.8, 0.08, 0.02]} />
-                <meshPhysicalMaterial color="#FF6600" transparent opacity={opacity * 0.8} emissive="#FF4400" emissiveIntensity={0.2} />
+                <SmartMaterial color="#FF6600" transparent opacity={opacity * 0.8} emissive="#FF4400" emissiveIntensity={0.2} />
               </mesh>
             )}
           </group>
@@ -473,11 +480,11 @@ function SitePrep({ progress, highlighted, phase = CONSTRUCTION_PHASES[0] }: { p
         <group key={`stake-${i}`}>
           <mesh position={[sx, 0.3, sz]}>
             <cylinderGeometry args={[0.03, 0.03, 1, 6]} />
-            <meshPhysicalMaterial color="#FF0000" transparent opacity={opacity} />
+            <SmartMaterial color="#FF0000" transparent opacity={opacity} />
           </mesh>
           <mesh position={[sx, 0.65, sz]}>
             <boxGeometry args={[0.15, 0.15, 0.01]} />
-            <meshPhysicalMaterial color="#FF8800" transparent opacity={opacity} emissive="#FF4400" emissiveIntensity={0.3} />
+            <SmartMaterial color="#FF8800" transparent opacity={opacity} emissive="#FF4400" emissiveIntensity={0.3} />
           </mesh>
         </group>
       ))}
@@ -486,7 +493,7 @@ function SitePrep({ progress, highlighted, phase = CONSTRUCTION_PHASES[0] }: { p
       {Array.from({ length: 8 }).map((_, i) => (
         <mesh key={`track-${i}`} position={[-BUILDING.width / 2 + 2 + i * 1.2, -0.25, BUILDING.depth / 2 + 1.5]} rotation={[-Math.PI / 2, 0, 0.15]}>
           <planeGeometry args={[0.6, 0.15]} />
-          <meshPhysicalMaterial color="#5A3A10" transparent opacity={opacity * 0.6} roughness={1} />
+          <SmartMaterial color="#5A3A10" transparent opacity={opacity * 0.6} roughness={1} />
         </mesh>
       ))}
 
@@ -496,7 +503,7 @@ function SitePrep({ progress, highlighted, phase = CONSTRUCTION_PHASES[0] }: { p
         {[0, 0.4, 0.8].map((dy, i) => (
           <mesh key={`rebar-${i}`} position={[0, 0.15 + dy * 0.3, 0]} rotation={[0, 0, Math.PI / 2]}>
             <cylinderGeometry args={[0.15, 0.15, 2.5, 8]} />
-            <meshPhysicalMaterial color="#8B4513" transparent opacity={opacity * 0.8} metalness={0.6} roughness={0.5} />
+            <SmartMaterial color="#8B4513" transparent opacity={opacity * 0.8} metalness={0.6} roughness={0.5} />
           </mesh>
         ))}
         {/* Cement bags stack */}
@@ -504,18 +511,18 @@ function SitePrep({ progress, highlighted, phase = CONSTRUCTION_PHASES[0] }: { p
           Array.from({ length: 2 }).map((_, j) => (
             <mesh key={`cement-${i}-${j}`} position={[2, 0.2 + i * 0.35, -1 + j * 0.8]}>
               <boxGeometry args={[0.6, 0.3, 0.7]} />
-              <meshPhysicalMaterial color="#A0A0A0" transparent opacity={opacity * 0.85} roughness={0.9} />
+              <SmartMaterial color="#A0A0A0" transparent opacity={opacity * 0.85} roughness={0.9} />
             </mesh>
           ))
         )}
         {/* Wooden planks */}
         <mesh position={[3.5, 0.15, 0]}>
           <boxGeometry args={[0.3, 0.08, 3]} />
-          <meshPhysicalMaterial color="#C49A6C" transparent opacity={opacity * 0.8} roughness={0.8} />
+          <SmartMaterial color="#C49A6C" transparent opacity={opacity * 0.8} roughness={0.8} />
         </mesh>
         <mesh position={[3.5, 0.25, 0]}>
           <boxGeometry args={[0.3, 0.08, 3]} />
-          <meshPhysicalMaterial color="#B8905A" transparent opacity={opacity * 0.8} roughness={0.8} />
+          <SmartMaterial color="#B8905A" transparent opacity={opacity * 0.8} roughness={0.8} />
         </mesh>
       </group>
 
@@ -523,18 +530,21 @@ function SitePrep({ progress, highlighted, phase = CONSTRUCTION_PHASES[0] }: { p
       <group position={[BUILDING.width / 2 + 4, 0, BUILDING.depth / 2]}>
         <mesh position={[0, 0.8, 0]} castShadow>
           <boxGeometry args={[3, 1.6, 2]} />
-          <meshPhysicalMaterial color="#E8E0D0" transparent opacity={opacity} roughness={0.7} />
+          <SmartMaterial color="#E8E0D0" transparent opacity={opacity} roughness={0.7} />
         </mesh>
         <mesh position={[0, 1.2, 1.01]}>
           <boxGeometry args={[1.2, 0.6, 0.02]} />
-          <meshPhysicalMaterial color="#88AACC" transparent opacity={opacity * 0.5} roughness={0.1} />
+          <SmartMaterial color="#88AACC" transparent opacity={opacity * 0.5} roughness={0.1} />
         </mesh>
         {/* Door */}
         <mesh position={[-0.8, 0.6, 1.01]}>
           <boxGeometry args={[0.6, 1.2, 0.02]} />
-          <meshPhysicalMaterial color="#666" transparent opacity={opacity} />
+          <SmartMaterial color="#666" transparent opacity={opacity} />
         </mesh>
       </group>
+
+      {/* Animated Excavator */}
+      <Excavator position={[-BUILDING.width / 2 + 4, -0.25, BUILDING.depth / 2]} rotation={[0, Math.PI / 4, 0]} opacity={opacity} isAnimated={false} />
     </group>
   );
 }
@@ -551,24 +561,24 @@ function Foundation({ progress, highlighted, phase = CONSTRUCTION_PHASES[1] }: {
       {/* Waterproofing membrane */}
       <mesh position={[0, -0.1, 0]} receiveShadow>
         <boxGeometry args={[BUILDING.width + 1.5, 0.05, BUILDING.depth + 1.5]} />
-        <meshPhysicalMaterial color="#1A1A1A" transparent opacity={opacity * 0.7} roughness={0.4} />
+        <SmartMaterial color="#1A1A1A" transparent opacity={opacity * 0.7} roughness={0.4} />
       </mesh>
       {/* Main slab */}
       <mesh position={[0, 0.15, 0]} castShadow receiveShadow>
         <boxGeometry args={[BUILDING.width + 1, 0.5, BUILDING.depth + 1]} />
-        <meshPhysicalMaterial color={baseColor} transparent opacity={opacity} roughness={0.8} metalness={0.1} />
+        <SmartMaterial color={baseColor} transparent opacity={opacity} roughness={0.8} metalness={0.1} />
       </mesh>
       {/* Rebar grid on slab surface */}
       {Array.from({ length: 10 }).map((_, i) => (
         <mesh key={`rb-x-${i}`} position={[-BUILDING.width / 2 + 0.5 + (i * BUILDING.width) / 9, 0.42, 0]} rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry args={[0.02, 0.02, BUILDING.depth + 0.5, 4]} />
-          <meshPhysicalMaterial color="#6B3A1F" transparent opacity={opacity * 0.5} metalness={0.7} roughness={0.4} />
+          <SmartMaterial color="#6B3A1F" transparent opacity={opacity * 0.5} metalness={0.7} roughness={0.4} />
         </mesh>
       ))}
       {Array.from({ length: 7 }).map((_, i) => (
         <mesh key={`rb-z-${i}`} position={[0, 0.42, -BUILDING.depth / 2 + 0.5 + (i * BUILDING.depth) / 6]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.02, 0.02, BUILDING.width + 0.5, 4]} />
-          <meshPhysicalMaterial color="#6B3A1F" transparent opacity={opacity * 0.5} metalness={0.7} roughness={0.4} />
+          <SmartMaterial color="#6B3A1F" transparent opacity={opacity * 0.5} metalness={0.7} roughness={0.4} />
         </mesh>
       ))}
       {/* Footings with pile caps */}
@@ -580,11 +590,11 @@ function Foundation({ progress, highlighted, phase = CONSTRUCTION_PHASES[1] }: {
             <group key={`ft-${i}-${j}`}>
               <mesh position={[x, -0.15, z]} castShadow>
                 <boxGeometry args={[1.2, 0.6, 1.2]} />
-                <meshPhysicalMaterial color={highlighted ? "#909090" : "#707070"} transparent opacity={opacity * 0.95} roughness={0.85} />
+                <SmartMaterial color={highlighted ? "#909090" : "#707070"} transparent opacity={opacity * 0.95} roughness={0.85} />
               </mesh>
               <mesh position={[x, -0.7, z]}>
                 <cylinderGeometry args={[0.2, 0.2, 0.8, 8]} />
-                <meshPhysicalMaterial color="#606060" transparent opacity={opacity * 0.5} roughness={0.9} />
+                <SmartMaterial color="#606060" transparent opacity={opacity * 0.5} roughness={0.9} />
               </mesh>
             </group>
           );
@@ -594,7 +604,7 @@ function Foundation({ progress, highlighted, phase = CONSTRUCTION_PHASES[1] }: {
       {Array.from({ length: 3 }).map((_, j) => (
         <mesh key={`gb-${j}`} position={[0, -0.1, -BUILDING.depth / 2 + (j * BUILDING.depth) / 2]}>
           <boxGeometry args={[BUILDING.width, 0.35, 0.5]} />
-          <meshPhysicalMaterial color="#757575" transparent opacity={opacity * 0.65} roughness={0.85} />
+          <SmartMaterial color="#757575" transparent opacity={opacity * 0.65} roughness={0.85} />
         </mesh>
       ))}
       {/* Formwork edges */}
@@ -606,13 +616,13 @@ function Foundation({ progress, highlighted, phase = CONSTRUCTION_PHASES[1] }: {
       ].map((fw, i) => (
         <mesh key={`fw-${i}`} position={fw.pos}>
           <boxGeometry args={fw.size} />
-          <meshPhysicalMaterial color="#B8905A" transparent opacity={opacity * 0.7} roughness={0.8} />
+          <SmartMaterial color="#B8905A" transparent opacity={opacity * 0.7} roughness={0.8} />
         </mesh>
       ))}
       {/* Drainage pipe */}
       <mesh position={[BUILDING.width / 2 + 0.8, -0.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.1, 0.1, BUILDING.depth + 2, 8]} />
-        <meshPhysicalMaterial color="#2266AA" transparent opacity={opacity * 0.45} roughness={0.4} metalness={0.3} />
+        <SmartMaterial color="#2266AA" transparent opacity={opacity * 0.45} roughness={0.4} metalness={0.3} />
       </mesh>
     </group>
   );
@@ -705,7 +715,7 @@ function StructuralFrame({ progress, highlighted, xray, explodeLevel = 0, onSele
       <group key={`sf-floor-${floor}`}>
         <Instances limit={floorColumns.length} castShadow>
           <boxGeometry args={[1, 1, 1]} />
-          <meshPhysicalMaterial
+          <SmartMaterial
             color={columnColor}
             transparent
             opacity={xray ? 0.5 : opacity * floorProgress}
@@ -717,7 +727,7 @@ function StructuralFrame({ progress, highlighted, xray, explodeLevel = 0, onSele
         {floorBeamsX.length > 0 && (
           <Instances limit={floorBeamsX.length} castShadow>
             <boxGeometry args={[1, 1, 1]} />
-            <meshPhysicalMaterial
+            <SmartMaterial
               color={beamColor}
               transparent
               opacity={xray ? 0.4 : opacity * floorProgress}
@@ -730,7 +740,7 @@ function StructuralFrame({ progress, highlighted, xray, explodeLevel = 0, onSele
         {floorBeamsZ.length > 0 && (
           <Instances limit={floorBeamsZ.length} castShadow>
             <boxGeometry args={[1, 1, 1]} />
-            <meshPhysicalMaterial
+            <SmartMaterial
               color={beamColor}
               transparent
               opacity={xray ? 0.4 : opacity * floorProgress}
@@ -752,13 +762,13 @@ function StructuralFrame({ progress, highlighted, xray, explodeLevel = 0, onSele
   stairElements.push(
     <mesh key="stair-wall-1" position={[stairX, 0.4 + totalH * opacity / 2, -BUILDING.depth / 2 + 1.5]}>
       <boxGeometry args={[0.2, totalH * opacity, 3]} />
-      <meshPhysicalMaterial color="#708090" transparent opacity={xray ? 0.3 : opacity * 0.7} roughness={0.7} metalness={0.3} />
+      <SmartMaterial color="#708090" transparent opacity={xray ? 0.3 : opacity * 0.7} roughness={0.7} metalness={0.3} />
     </mesh>
   );
   stairElements.push(
     <mesh key="stair-wall-2" position={[stairX - 1.3, 0.4 + totalH * opacity / 2, -BUILDING.depth / 2 + 1.5]}>
       <boxGeometry args={[0.2, totalH * opacity, 3]} />
-      <meshPhysicalMaterial color="#708090" transparent opacity={xray ? 0.3 : opacity * 0.7} roughness={0.7} metalness={0.3} />
+      <SmartMaterial color="#708090" transparent opacity={xray ? 0.3 : opacity * 0.7} roughness={0.7} metalness={0.3} />
     </mesh>
   );
   // Stair flights per floor
@@ -767,7 +777,7 @@ function StructuralFrame({ progress, highlighted, xray, explodeLevel = 0, onSele
     stairElements.push(
       <mesh key={`stair-flight-${f}`} position={[stairX - 0.65, sy + BUILDING.floorHeight / 2, -BUILDING.depth / 2 + 1.5]} rotation={[0.3, 0, 0]}>
         <boxGeometry args={[1.8, 0.1, 2.5]} />
-        <meshPhysicalMaterial color="#607080" transparent opacity={xray ? 0.25 : opacity * 0.5} roughness={0.6} metalness={0.4} />
+        <SmartMaterial color="#607080" transparent opacity={xray ? 0.25 : opacity * 0.5} roughness={0.6} metalness={0.4} />
       </mesh>
     );
   }
@@ -779,26 +789,26 @@ function StructuralFrame({ progress, highlighted, xray, explodeLevel = 0, onSele
   elevElements.push(
     <mesh key="elev-front" position={[elevX, 0.4 + totalH * opacity / 2, -BUILDING.depth / 2 + 0.7]}>
       <boxGeometry args={[2, totalH * opacity, 0.15]} />
-      <meshPhysicalMaterial color="#555" transparent opacity={xray ? 0.2 : opacity * 0.6} roughness={0.5} metalness={0.5} />
+      <SmartMaterial color="#555" transparent opacity={xray ? 0.2 : opacity * 0.6} roughness={0.5} metalness={0.5} />
     </mesh>
   );
   elevElements.push(
     <mesh key="elev-back" position={[elevX, 0.4 + totalH * opacity / 2, -BUILDING.depth / 2 + 2.5]}>
       <boxGeometry args={[2, totalH * opacity, 0.15]} />
-      <meshPhysicalMaterial color="#555" transparent opacity={xray ? 0.2 : opacity * 0.6} roughness={0.5} metalness={0.5} />
+      <SmartMaterial color="#555" transparent opacity={xray ? 0.2 : opacity * 0.6} roughness={0.5} metalness={0.5} />
     </mesh>
   );
   // Elevator guide rails
   elevElements.push(
     <mesh key="elev-rail-1" position={[elevX - 0.7, 0.4 + totalH * opacity / 2, -BUILDING.depth / 2 + 1.6]}>
       <boxGeometry args={[0.06, totalH * opacity, 0.06]} />
-      <meshPhysicalMaterial color="#888" transparent opacity={opacity * 0.5} metalness={0.8} roughness={0.2} />
+      <SmartMaterial color="#888" transparent opacity={opacity * 0.5} metalness={0.8} roughness={0.2} />
     </mesh>
   );
   elevElements.push(
     <mesh key="elev-rail-2" position={[elevX + 0.7, 0.4 + totalH * opacity / 2, -BUILDING.depth / 2 + 1.6]}>
       <boxGeometry args={[0.06, totalH * opacity, 0.06]} />
-      <meshPhysicalMaterial color="#888" transparent opacity={opacity * 0.5} metalness={0.8} roughness={0.2} />
+      <SmartMaterial color="#888" transparent opacity={opacity * 0.5} metalness={0.8} roughness={0.2} />
     </mesh>
   );
 
@@ -843,7 +853,7 @@ function FloorSlabs({ progress, highlighted, xray, explodeLevel = 0, onSelectBim
             }}
           >
             <boxGeometry args={[BUILDING.width + 0.2, 0.25, BUILDING.depth + 0.2]} />
-            <meshPhysicalMaterial
+            <SmartMaterial
               color={highlighted ? "#B8A0E0" : "#9080C0"}
               transparent
               opacity={xray ? 0.3 : opacity * floorOpacity}
@@ -941,7 +951,7 @@ function ExternalWalls({ progress, highlighted, xray, config, explodeLevel = 0, 
       <group key={`ew-floor-${floor}`}>
         <Instances limit={floorWalls.length} castShadow>
           <boxGeometry args={[1, 1, 1]} />
-          <meshPhysicalMaterial
+          <SmartMaterial
             color={wallColor}
             transparent
             opacity={xray ? 0.15 : opacity * floorOpacity * 0.95}
@@ -1022,7 +1032,7 @@ function WindowsGlazing({ progress, highlighted, xray, config, explodeLevel = 0,
       <group key={`win-floor-${floor}`}>
         <Instances limit={glassPanes.length}>
           <planeGeometry args={[segmentWidth * 0.9, BUILDING.windowHeight]} />
-          <meshPhysicalMaterial
+          <SmartMaterial
             color={glassColor}
             transparent
             opacity={xray ? 0.1 : opacity * floorOpacity * 0.45}
@@ -1035,7 +1045,7 @@ function WindowsGlazing({ progress, highlighted, xray, config, explodeLevel = 0,
         </Instances>
         <Instances limit={frames.length}>
           <boxGeometry args={[1, 1, 1]} />
-          <meshPhysicalMaterial
+          <SmartMaterial
             color="#404040"
             transparent
             opacity={opacity * floorOpacity}
@@ -1075,7 +1085,7 @@ function Roofing({ progress, highlighted, config, explodeLevel = 0, onSelectBimO
         }}
       >
         <boxGeometry args={[BUILDING.width + 0.8, 0.35, BUILDING.depth + 0.8]} />
-        <meshPhysicalMaterial color={roofColor} transparent opacity={opacity} roughness={0.6} metalness={0.2} />
+        <SmartMaterial color={roofColor} transparent opacity={opacity} roughness={0.6} metalness={0.2} />
       </mesh>
       {/* Parapet walls */}
       {[
@@ -1086,25 +1096,25 @@ function Roofing({ progress, highlighted, config, explodeLevel = 0, onSelectBimO
       ].map((p, i) => (
         <mesh key={`parapet-${i}`} position={p.pos} castShadow>
           <boxGeometry args={p.size} />
-          <meshPhysicalMaterial color="#888" transparent opacity={opacity * 0.9} roughness={0.7} />
+          <SmartMaterial color="#888" transparent opacity={opacity * 0.9} roughness={0.7} />
         </mesh>
       ))}
 
       {/* Mechanical Penthouse */}
       <mesh position={[-2, roofY + 1.5, -1]} castShadow>
         <boxGeometry args={[3.5, 2.5, 3]} />
-        <meshPhysicalMaterial color="#606068" transparent opacity={opacity * 0.85} roughness={0.7} metalness={0.2} />
+        <SmartMaterial color="#606068" transparent opacity={opacity * 0.85} roughness={0.7} metalness={0.2} />
       </mesh>
       {/* Penthouse door */}
       <mesh position={[-2, roofY + 1.2, 0.51]}>
         <boxGeometry args={[0.8, 1.6, 0.02]} />
-        <meshPhysicalMaterial color="#444" transparent opacity={opacity} metalness={0.5} />
+        <SmartMaterial color="#444" transparent opacity={opacity} metalness={0.5} />
       </mesh>
       {/* Penthouse vent grilles */}
       {[-3.1, -0.9].map((dz, i) => (
         <mesh key={`vent-${i}`} position={[-3.76, roofY + 1.8, dz]}>
           <boxGeometry args={[0.02, 0.8, 0.6]} />
-          <meshPhysicalMaterial color="#555" transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.3} />
+          <SmartMaterial color="#555" transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.3} />
         </mesh>
       ))}
 
@@ -1113,12 +1123,12 @@ function Roofing({ progress, highlighted, config, explodeLevel = 0, onSelectBimO
         <group key={`hvac-${i}`} position={[dx, roofY + 0.35, dz]}>
           <mesh position={[0, 0.35, 0]} castShadow>
             <boxGeometry args={[1.8, 0.7, 1.2]} />
-            <meshPhysicalMaterial color="#778888" transparent opacity={opacity * 0.8} metalness={0.5} roughness={0.4} />
+            <SmartMaterial color="#778888" transparent opacity={opacity * 0.8} metalness={0.5} roughness={0.4} />
           </mesh>
           {/* Fan grill on top */}
           <mesh position={[0, 0.75, 0]}>
             <cylinderGeometry args={[0.4, 0.4, 0.06, 12]} />
-            <meshPhysicalMaterial color="#444" transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.3} />
+            <SmartMaterial color="#444" transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.3} />
           </mesh>
         </group>
       ))}
@@ -1126,32 +1136,32 @@ function Roofing({ progress, highlighted, config, explodeLevel = 0, onSelectBimO
       {/* Elevator overrun */}
       <mesh position={[BUILDING.width / 2 - 1.5, roofY + 1.2, -BUILDING.depth / 2 + 1.6]} castShadow>
         <boxGeometry args={[2.2, 2, 2]} />
-        <meshPhysicalMaterial color="#606068" transparent opacity={opacity * 0.8} roughness={0.7} metalness={0.2} />
+        <SmartMaterial color="#606068" transparent opacity={opacity * 0.8} roughness={0.7} metalness={0.2} />
       </mesh>
 
       {/* Roof access stair enclosure */}
       <mesh position={[-BUILDING.width / 2 + 1.5, roofY + 1, -BUILDING.depth / 2 + 1.5]} castShadow>
         <boxGeometry args={[2.5, 1.5, 2.5]} />
-        <meshPhysicalMaterial color="#666670" transparent opacity={opacity * 0.75} roughness={0.7} />
+        <SmartMaterial color="#666670" transparent opacity={opacity * 0.75} roughness={0.7} />
       </mesh>
 
       {/* Solar panel area */}
       <mesh position={[3, roofY + 0.2, -1]} rotation={[0.15, 0, 0]}>
         <boxGeometry args={[4, 0.05, 3]} />
-        <meshPhysicalMaterial color="#1a237e" transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.2} />
+        <SmartMaterial color="#1a237e" transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.2} />
       </mesh>
       {/* Solar panel grid lines */}
       {Array.from({ length: 4 }).map((_, i) => (
         <mesh key={`solar-line-${i}`} position={[1.5 + i * 1, roofY + 0.23, -1]} rotation={[0.15, 0, 0]}>
           <boxGeometry args={[0.02, 0.02, 3]} />
-          <meshPhysicalMaterial color="#283593" transparent opacity={opacity * 0.5} />
+          <SmartMaterial color="#283593" transparent opacity={opacity * 0.5} />
         </mesh>
       ))}
 
       {/* Drainage slopes (slight raised edges) */}
       <mesh position={[0, roofY + 0.12, 0]} rotation={[0.02, 0, 0.01]}>
         <boxGeometry args={[BUILDING.width - 1, 0.08, BUILDING.depth - 1]} />
-        <meshPhysicalMaterial color="#888080" transparent opacity={opacity * 0.3} roughness={0.9} />
+        <SmartMaterial color="#888080" transparent opacity={opacity * 0.3} roughness={0.9} />
       </mesh>
     </group>
   );
@@ -1177,7 +1187,7 @@ function Scaffolding({ progress }: { progress: number }) {
     elements.push(
       <mesh key={`sc-h-f-${level}`} position={[0, y, z]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.04, 0.04, BUILDING.width + 1, 6]} />
-        <meshPhysicalMaterial color={pipeColor} transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.4} />
+        <SmartMaterial color={pipeColor} transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.4} />
       </mesh>
     );
 
@@ -1186,7 +1196,7 @@ function Scaffolding({ progress }: { progress: number }) {
       elements.push(
         <mesh key={`sc-plat-f-${level}`} position={[0, y + 0.01, z - 0.3]}>
           <boxGeometry args={[BUILDING.width + 0.5, 0.04, 0.6]} />
-          <meshPhysicalMaterial color="#B8905A" transparent opacity={opacity * 0.5} roughness={0.8} />
+          <SmartMaterial color="#B8905A" transparent opacity={opacity * 0.5} roughness={0.8} />
         </mesh>
       );
     }
@@ -1199,7 +1209,7 @@ function Scaffolding({ progress }: { progress: number }) {
     elements.push(
       <mesh key={`sc-v-f-${xi}`} position={[x, 0.4 + totalH / 2, BUILDING.depth / 2 + 1]}>
         <cylinderGeometry args={[0.04, 0.04, totalH, 6]} />
-        <meshPhysicalMaterial color={pipeColor} transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.4} />
+        <SmartMaterial color={pipeColor} transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.4} />
       </mesh>
     );
   }
@@ -1208,7 +1218,7 @@ function Scaffolding({ progress }: { progress: number }) {
   elements.push(
     <mesh key="sc-net" position={[0, 0.4 + (scaffoldLevels * BUILDING.floorHeight) / 2, BUILDING.depth / 2 + 1.3]}>
       <boxGeometry args={[BUILDING.width + 1, scaffoldLevels * BUILDING.floorHeight, 0.02]} />
-      <meshPhysicalMaterial color="#22AA44" transparent opacity={opacity * 0.12} roughness={0.8} side={THREE.DoubleSide} />
+      <SmartMaterial color="#22AA44" transparent opacity={opacity * 0.12} roughness={0.8} side={THREE.DoubleSide} />
     </mesh>
   );
 
@@ -1219,7 +1229,7 @@ function Scaffolding({ progress }: { progress: number }) {
     elements.push(
       <mesh key={`sc-h-s-${level}`} position={[x, y, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.04, 0.04, BUILDING.depth + 1, 6]} />
-        <meshPhysicalMaterial color={pipeColor} transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.4} />
+        <SmartMaterial color={pipeColor} transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.4} />
       </mesh>
     );
   }
@@ -1242,7 +1252,7 @@ function MEPSystems({ progress, highlighted, explodeLevel = 0, onSelectBimObject
       pipes.push(
         <mesh key={`pipe-v-${x}-${z}`} position={[x, 0.4 + totalH / 2, z]}>
           <cylinderGeometry args={[0.08, 0.08, totalH * opacity, 8]} />
-          <meshPhysicalMaterial color={pipeColor} transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.3} />
+          <SmartMaterial color={pipeColor} transparent opacity={opacity * 0.7} metalness={0.6} roughness={0.3} />
         </mesh>
       );
     }
@@ -1272,7 +1282,7 @@ function MEPSystems({ progress, highlighted, explodeLevel = 0, onSelectBimObject
         }}
       >
         <cylinderGeometry args={[0.06, 0.06, BUILDING.width * 0.8, 8]} />
-        <meshPhysicalMaterial color="#3B82F6" transparent opacity={opacity * floorOpacity * 0.6} metalness={0.5} roughness={0.4} />
+        <SmartMaterial color="#3B82F6" transparent opacity={opacity * floorOpacity * 0.6} metalness={0.5} roughness={0.4} />
       </mesh>
     );
   }
@@ -1311,7 +1321,7 @@ function InteriorFinishing({ progress, highlighted, explodeLevel = 0, onSelectBi
         }}
       >
         <boxGeometry args={[BUILDING.width - 0.6, 0.05, BUILDING.depth - 0.6]} />
-        <meshPhysicalMaterial
+        <SmartMaterial
           color={highlighted ? "#FFB0D0" : "#E890B0"}
           transparent
           opacity={opacity * floorOpacity * 0.6}
@@ -1335,7 +1345,7 @@ function InteriorFinishing({ progress, highlighted, explodeLevel = 0, onSelectBi
           }}
         >
           <boxGeometry args={[0.12, BUILDING.floorHeight - 0.5, BUILDING.depth * 0.6]} />
-          <meshPhysicalMaterial
+          <SmartMaterial
             color="#F0E0E8"
             transparent
             opacity={opacity * floorOpacity * 0.5}
@@ -1359,7 +1369,7 @@ function ExteriorFinishing({ progress, highlighted, phase = CONSTRUCTION_PHASES[
       {/* Entrance canopy */}
       <mesh position={[0, 2, BUILDING.depth / 2 + 1]} castShadow>
         <boxGeometry args={[4, 0.15, 2]} />
-        <meshPhysicalMaterial
+        <SmartMaterial
           color={highlighted ? "#60E8D0" : "#40C8B0"}
           transparent
           opacity={opacity}
@@ -1371,7 +1381,7 @@ function ExteriorFinishing({ progress, highlighted, phase = CONSTRUCTION_PHASES[
       {[-1.5, 1.5].map((x) => (
         <mesh key={`canopy-sup-${x}`} position={[x, 1, BUILDING.depth / 2 + 1.8]}>
           <cylinderGeometry args={[0.08, 0.08, 2, 8]} />
-          <meshPhysicalMaterial color="#555" transparent opacity={opacity} metalness={0.7} />
+          <SmartMaterial color="#555" transparent opacity={opacity} metalness={0.7} />
         </mesh>
       ))}
       {/* Landscaping - simplified trees */}
@@ -1385,33 +1395,72 @@ function ExteriorFinishing({ progress, highlighted, phase = CONSTRUCTION_PHASES[
           {/* Trunk */}
           <mesh position={[0, 0.8, 0]}>
             <cylinderGeometry args={[0.1, 0.15, 1.6, 8]} />
-            <meshPhysicalMaterial color="#5D3A1A" transparent opacity={opacity} />
+            <SmartMaterial color="#5D3A1A" transparent opacity={opacity} />
           </mesh>
           {/* Canopy */}
           <mesh position={[0, 2, 0]}>
             <sphereGeometry args={[0.9, 16, 12]} />
-            <meshPhysicalMaterial color="#228B22" transparent opacity={opacity * 0.85} />
+            <SmartMaterial color="#228B22" transparent opacity={opacity * 0.85} />
           </mesh>
         </group>
       ))}
       {/* Parking markers */}
       <mesh position={[0, 0.01, -BUILDING.depth / 2 - 3]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[BUILDING.width, 4]} />
-        <meshPhysicalMaterial color="#444" transparent opacity={opacity * 0.6} />
+        <SmartMaterial color="#444" transparent opacity={opacity * 0.6} />
+      </mesh>
+    </group>
+  );
+}
+
+// --- Bulldozer ---
+function Bulldozer({ progress, position, rotation, opacity: overrideOpacity, isAnimated = true }: any) {
+  const opacity = overrideOpacity !== undefined ? overrideOpacity : (progress !== undefined ? getPhaseOpacity(progress, 0, 30) : 1);
+  if (opacity <= 0) return null;
+  return (
+    <group position={position || [0, 0, 0]} rotation={rotation || [0, 0, 0]}>
+      <mesh position={[0, 0.8, 0]} castShadow>
+        <boxGeometry args={[2.2, 1.0, 1.4]} />
+        <SmartMaterial color="#FFA500" transparent opacity={opacity} roughness={0.4} />
+      </mesh>
+      <mesh position={[-1.4, 0.6, 0]} rotation={[0, 0, -0.2]}>
+        <boxGeometry args={[0.3, 1.2, 1.6]} />
+        <SmartMaterial color="#555" transparent opacity={opacity} roughness={0.8} />
+      </mesh>
+      {/* Tracks */}
+      <mesh position={[0, 0.2, 0.7]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.25, 0.25, 2.5, 8]} />
+        <SmartMaterial color="#222" transparent opacity={opacity} />
+      </mesh>
+      <mesh position={[0, 0.2, -0.7]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.25, 0.25, 2.5, 8]} />
+        <SmartMaterial color="#222" transparent opacity={opacity} />
       </mesh>
     </group>
   );
 }
 
 // --- Construction Crane ---
-function ConstructionCrane({ progress }: { progress: number }) {
-  const craneOpacity = Math.min(1, Math.max(0, (progress - 5) / 10));
-  const fadeOut = progress > 85 ? Math.max(0, (95 - progress) / 10) : 1;
-  const opacity = craneOpacity * fadeOut;
+function ConstructionCrane({
+  progress,
+  position,
+  rotation,
+  opacity: overrideOpacity,
+  isAnimated = true,
+}: {
+  progress?: number;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  opacity?: number;
+  isAnimated?: boolean;
+}) {
+  const opacity = overrideOpacity !== undefined ? overrideOpacity : (progress !== undefined ? Math.min(1, Math.max(0, (progress - 5) / 10)) * (progress > 85 ? Math.max(0, (95 - progress) / 10) : 1) : 1);
   if (opacity <= 0) return null;
 
   const craneX = BUILDING.width / 2 + 3;
   const craneZ = -BUILDING.depth / 2 + 2;
+  const actualPos = position || [craneX, 0, craneZ];
+
   const craneHeight = BUILDING.floors * BUILDING.floorHeight + 8;
   const boomLength = 16;
   const craneColor = "#FFB020";
@@ -1420,61 +1469,61 @@ function ConstructionCrane({ progress }: { progress: number }) {
   // Slow rotation of the boom
   const boomRef = useRef<THREE.Group>(null);
   useFrame((state) => {
-    if (boomRef.current) {
+    if (boomRef.current && isAnimated) {
       boomRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.15) * 0.4;
     }
   });
 
   return (
-    <group position={[craneX, 0, craneZ]}>
+    <group position={actualPos} rotation={rotation || [0, 0, 0]}>
       {/* Mast (vertical tower) */}
       <mesh position={[0, craneHeight / 2, 0]}>
         <boxGeometry args={[0.8, craneHeight, 0.8]} />
-        <meshPhysicalMaterial color={craneColor} transparent opacity={opacity} metalness={0.4} roughness={0.5} />
+        <SmartMaterial color={craneColor} transparent opacity={opacity} metalness={0.4} roughness={0.5} />
       </mesh>
       {/* Mast lattice lines */}
       {Array.from({ length: Math.floor(craneHeight / 2) }).map((_, i) => (
         <mesh key={`lattice-${i}`} position={[0, i * 2 + 1, 0]}>
           <boxGeometry args={[1, 0.08, 1]} />
-          <meshPhysicalMaterial color={"#DD9918"} transparent opacity={opacity * 0.8} metalness={0.3} />
+          <SmartMaterial color={"#DD9918"} transparent opacity={opacity * 0.8} metalness={0.3} />
         </mesh>
       ))}
       {/* Base */}
       <mesh position={[0, 0.2, 0]}>
         <boxGeometry args={[2.5, 0.4, 2.5]} />
-        <meshPhysicalMaterial color={"#555"} transparent opacity={opacity} metalness={0.5} roughness={0.6} />
+        <SmartMaterial color={"#555"} transparent opacity={opacity} metalness={0.5} roughness={0.6} />
       </mesh>
       {/* Rotating boom group */}
       <group ref={boomRef} position={[0, craneHeight, 0]}>
         {/* Boom (horizontal arm) */}
         <mesh position={[-boomLength / 2 + 2, 0.4, 0]}>
           <boxGeometry args={[boomLength, 0.5, 0.5]} />
-          <meshPhysicalMaterial color={craneColor} transparent opacity={opacity} metalness={0.4} roughness={0.5} />
+          <SmartMaterial color={craneColor} transparent opacity={opacity} metalness={0.4} roughness={0.5} />
         </mesh>
         {/* Counter-boom */}
         <mesh position={[4, 0.4, 0]}>
           <boxGeometry args={[5, 0.5, 0.5]} />
-          <meshPhysicalMaterial color={counterColor} transparent opacity={opacity} metalness={0.4} roughness={0.5} />
+          <SmartMaterial color={counterColor} transparent opacity={opacity} metalness={0.4} roughness={0.5} />
         </mesh>
         {/* Counterweight */}
         <mesh position={[6, -0.2, 0]}>
           <boxGeometry args={[1.5, 1, 1]} />
-          <meshPhysicalMaterial color={"#666"} transparent opacity={opacity} metalness={0.3} roughness={0.7} />
+          <SmartMaterial color={"#666"} transparent opacity={opacity} metalness={0.3} roughness={0.7} />
         </mesh>
         {/* Operator cabin */}
         <mesh position={[0.5, -0.3, 0]}>
           <boxGeometry args={[1.2, 1.2, 1]} />
-          <meshPhysicalMaterial color={craneColor} transparent opacity={opacity} metalness={0.3} roughness={0.5} />
+          <SmartMaterial color={craneColor} transparent opacity={opacity} metalness={0.3} roughness={0.5} />
         </mesh>
         {/* Hook cable */}
         <mesh position={[-boomLength / 2, -2, 0]}>
           <cylinderGeometry args={[0.02, 0.02, 4, 6]} />
-          <meshPhysicalMaterial color={"#333"} transparent opacity={opacity * 0.7} />
+          <SmartMaterial color={"#333"} transparent opacity={opacity * 0.7} />
         </mesh>
         {/* Hook */}
         <mesh position={[-boomLength / 2, -4.2, 0]}>
           <boxGeometry args={[0.3, 0.3, 0.3]} />
-          <meshPhysicalMaterial color={"#444"} transparent opacity={opacity} metalness={0.7} roughness={0.3} />
+          <SmartMaterial color={"#444"} transparent opacity={opacity} metalness={0.7} roughness={0.3} />
         </mesh>
       </group>
     </group>
@@ -1549,11 +1598,11 @@ function ConstructionFence({ progress }: { progress: number }) {
     posts.push(
       <mesh key={`fp-f-${x}`} position={[x, postHeight / 2, fenceD / 2]}>
         <cylinderGeometry args={[0.05, 0.05, postHeight, 6]} />
-        <meshPhysicalMaterial color="#FF6600" transparent opacity={finalOpacity} />
+        <SmartMaterial color="#FF6600" transparent opacity={finalOpacity} />
       </mesh>,
       <mesh key={`fp-b-${x}`} position={[x, postHeight / 2, -fenceD / 2]}>
         <cylinderGeometry args={[0.05, 0.05, postHeight, 6]} />
-        <meshPhysicalMaterial color="#FF6600" transparent opacity={finalOpacity} />
+        <SmartMaterial color="#FF6600" transparent opacity={finalOpacity} />
       </mesh>
     );
   }
@@ -1561,11 +1610,11 @@ function ConstructionFence({ progress }: { progress: number }) {
     posts.push(
       <mesh key={`fp-l-${z}`} position={[-fenceW / 2, postHeight / 2, z]}>
         <cylinderGeometry args={[0.05, 0.05, postHeight, 6]} />
-        <meshPhysicalMaterial color="#FF6600" transparent opacity={finalOpacity} />
+        <SmartMaterial color="#FF6600" transparent opacity={finalOpacity} />
       </mesh>,
       <mesh key={`fp-r-${z}`} position={[fenceW / 2, postHeight / 2, z]}>
         <cylinderGeometry args={[0.05, 0.05, postHeight, 6]} />
-        <meshPhysicalMaterial color="#FF6600" transparent opacity={finalOpacity} />
+        <SmartMaterial color="#FF6600" transparent opacity={finalOpacity} />
       </mesh>
     );
   }
@@ -1577,22 +1626,22 @@ function ConstructionFence({ progress }: { progress: number }) {
     rails.push(
       <mesh key={`rail-f-${h}`} position={[0, h, fenceD / 2]}>
         <boxGeometry args={[fenceW, 0.04, 0.04]} />
-        <meshPhysicalMaterial color="#FF8800" transparent opacity={finalOpacity * 0.8} />
+        <SmartMaterial color="#FF8800" transparent opacity={finalOpacity * 0.8} />
       </mesh>,
       <mesh key={`rail-b-${h}`} position={[0, h, -fenceD / 2]}>
         <boxGeometry args={[fenceW, 0.04, 0.04]} />
-        <meshPhysicalMaterial color="#FF8800" transparent opacity={finalOpacity * 0.8} />
+        <SmartMaterial color="#FF8800" transparent opacity={finalOpacity * 0.8} />
       </mesh>
     );
     // Left & right
     rails.push(
       <mesh key={`rail-l-${h}`} position={[-fenceW / 2, h, 0]}>
         <boxGeometry args={[0.04, 0.04, fenceD]} />
-        <meshPhysicalMaterial color="#FF8800" transparent opacity={finalOpacity * 0.8} />
+        <SmartMaterial color="#FF8800" transparent opacity={finalOpacity * 0.8} />
       </mesh>,
       <mesh key={`rail-r-${h}`} position={[fenceW / 2, h, 0]}>
         <boxGeometry args={[0.04, 0.04, fenceD]} />
-        <meshPhysicalMaterial color="#FF8800" transparent opacity={finalOpacity * 0.8} />
+        <SmartMaterial color="#FF8800" transparent opacity={finalOpacity * 0.8} />
       </mesh>
     );
   }
@@ -1607,8 +1656,20 @@ function ConstructionFence({ progress }: { progress: number }) {
 
 // --- Construction Site Vehicles & Equipment ---
 
-function Excavator({ progress }: { progress: number }) {
-  const opacity = getPhaseOpacity(progress, 0, 25);
+function Excavator({
+  progress,
+  position,
+  rotation,
+  opacity: overrideOpacity,
+  isAnimated = true,
+}: {
+  progress?: number;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  opacity?: number;
+  isAnimated?: boolean;
+}) {
+  const opacity = overrideOpacity !== undefined ? overrideOpacity : (progress !== undefined ? getPhaseOpacity(progress, 0, 25) : 1);
   const groupRef = useRef<THREE.Group>(null);
   const armRef = useRef<THREE.Group>(null);
   const leftTrackRef = useRef<THREE.Mesh>(null);
@@ -1626,7 +1687,7 @@ function Excavator({ progress }: { progress: number }) {
       armRef.current.rotation.x = Math.sin(t * 0.8) * 0.12;
     }
     // Driving along rectangular path around foundation
-    if (groupRef.current) {
+    if (groupRef.current && isAnimated) {
       const speed = 0.06; // slow traversal
       const d = ((t * speed) % 1 + 1) % 1; // normalized 0-1 along perimeter
       const seg1 = (pathHalfW * 2) / perimeter;
@@ -1668,16 +1729,16 @@ function Excavator({ progress }: { progress: number }) {
   });
   if (opacity <= 0) return null;
   return (
-    <group ref={groupRef} position={[-BUILDING.width / 2 - 5, 0, -2]}>
+    <group ref={groupRef} position={position || [-BUILDING.width / 2 - 5, 0, -2]} rotation={rotation || [0, 0, 0]}>
       {/* Body */}
       <mesh position={[0, 1.05, 0]} castShadow>
         <boxGeometry args={[2, 1.2, 1.5]} />
-        <meshPhysicalMaterial color="#E8B230" transparent opacity={opacity} roughness={0.4} metalness={0.3} clearcoat={0.5} />
+        <SmartMaterial color="#E8B230" transparent opacity={opacity} roughness={0.4} metalness={0.3} clearcoat={0.5} />
       </mesh>
       {/* Cab */}
       <mesh position={[0.5, 1.9, 0]} castShadow>
         <boxGeometry args={[1, 0.8, 1.2]} />
-        <meshPhysicalMaterial color="#D4A020" transparent opacity={opacity} roughness={0.3} metalness={0.4} clearcoat={0.6} />
+        <SmartMaterial color="#D4A020" transparent opacity={opacity} roughness={0.3} metalness={0.4} clearcoat={0.6} />
         <Html position={[0, 1.5, 0]} center>
           <div style={{ background: "rgba(0,0,0,0.7)", color: "white", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", whiteSpace: "nowrap", pointerEvents: "none", opacity: opacity > 0.5 ? 1 : 0, transition: "opacity 0.3s" }}>
             Excavating
@@ -1687,42 +1748,54 @@ function Excavator({ progress }: { progress: number }) {
       {/* Cab window */}
       <mesh position={[1.01, 2, 0]}>
         <boxGeometry args={[0.02, 0.45, 0.8]} />
-        <meshPhysicalMaterial color="#88CCEE" transparent opacity={opacity * 0.5} roughness={0.1} metalness={0.9} clearcoat={1.0} />
+        <SmartMaterial color="#88CCEE" transparent opacity={opacity * 0.5} roughness={0.1} metalness={0.9} clearcoat={1.0} />
       </mesh>
       {/* Left track */}
       <mesh ref={leftTrackRef} position={[0, 0.2, 0.65]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.2, 0.2, 2.4, 8]} />
-        <meshPhysicalMaterial color="#333" transparent opacity={opacity} roughness={0.9} />
+        <SmartMaterial color="#333" transparent opacity={opacity} roughness={0.9} />
       </mesh>
       {/* Right track */}
       <mesh ref={rightTrackRef} position={[0, 0.2, -0.65]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.2, 0.2, 2.4, 8]} />
-        <meshPhysicalMaterial color="#333" transparent opacity={opacity} roughness={0.9} />
+        <SmartMaterial color="#333" transparent opacity={opacity} roughness={0.9} />
       </mesh>
       {/* Arm assembly */}
       <group ref={armRef} position={[-0.8, 1.6, 0]}>
         {/* Boom */}
         <mesh position={[-1, 0.4, 0]} rotation={[0, 0, 0.4]}>
           <boxGeometry args={[2.2, 0.3, 0.25]} />
-          <meshPhysicalMaterial color="#D4A020" transparent opacity={opacity} roughness={0.5} />
+          <SmartMaterial color="#D4A020" transparent opacity={opacity} roughness={0.5} />
         </mesh>
         {/* Stick */}
         <mesh position={[-2.3, 0.2, 0]} rotation={[0, 0, -0.3]}>
           <boxGeometry args={[1.5, 0.22, 0.2]} />
-          <meshPhysicalMaterial color="#C09018" transparent opacity={opacity} roughness={0.5} />
+          <SmartMaterial color="#C09018" transparent opacity={opacity} roughness={0.5} />
         </mesh>
         {/* Bucket */}
         <mesh position={[-3.1, -0.15, 0]} rotation={[0, 0, -0.6]}>
           <boxGeometry args={[0.6, 0.5, 0.7]} />
-          <meshPhysicalMaterial color="#888" transparent opacity={opacity} roughness={0.4} metalness={0.8} clearcoat={0.2} />
+          <SmartMaterial color="#888" transparent opacity={opacity} roughness={0.4} metalness={0.8} clearcoat={0.2} />
         </mesh>
       </group>
     </group>
   );
 }
 
-function ConcreteMixer({ progress }: { progress: number }) {
-  const opacity = getPhaseOpacity(progress, 10, 45);
+function ConcreteMixer({
+  progress,
+  position,
+  rotation,
+  opacity: overrideOpacity,
+  isAnimated = true,
+}: {
+  progress?: number;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  opacity?: number;
+  isAnimated?: boolean;
+}) {
+  const opacity = overrideOpacity !== undefined ? overrideOpacity : (progress !== undefined ? getPhaseOpacity(progress, 10, 45) : 1);
   const groupRef = useRef<THREE.Group>(null);
   const drumRef = useRef<THREE.Mesh>(null);
   const wheelRefs = useRef<THREE.Mesh[]>([]);
@@ -1735,11 +1808,11 @@ function ConcreteMixer({ progress }: { progress: number }) {
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
     // Drum rotation (existing)
-    if (drumRef.current) {
+    if (drumRef.current && isAnimated) {
       drumRef.current.rotation.x += 0.02;
     }
     // Driving animation: approach → pause → reverse → pause (12s cycle)
-    if (groupRef.current) {
+    if (groupRef.current && isAnimated) {
       const cycle = 12; // seconds per full cycle
       const phase = (t % cycle) / cycle; // 0-1 normalized
       let px: number;
@@ -1776,21 +1849,21 @@ function ConcreteMixer({ progress }: { progress: number }) {
   });
   if (opacity <= 0) return null;
   return (
-    <group ref={groupRef} position={[startX, 0, pz]}>
+    <group ref={groupRef} position={position || [startX, 0, pz]} rotation={rotation || [0, 0, 0]}>
       {/* Truck body */}
       <mesh position={[0, 0.75, 0]} castShadow>
         <boxGeometry args={[3, 1.2, 1.5]} />
-        <meshPhysicalMaterial color="#E0E0E0" transparent opacity={opacity} roughness={0.4} metalness={0.2} clearcoat={0.8} />
+        <SmartMaterial color="#E0E0E0" transparent opacity={opacity} roughness={0.4} metalness={0.2} clearcoat={0.8} />
       </mesh>
       {/* Cab */}
       <mesh position={[1.7, 1.1, 0]} castShadow>
         <boxGeometry args={[1, 1, 1.4]} />
-        <meshPhysicalMaterial color="#CCCCCC" transparent opacity={opacity} roughness={0.3} metalness={0.3} clearcoat={0.9} />
+        <SmartMaterial color="#CCCCCC" transparent opacity={opacity} roughness={0.3} metalness={0.3} clearcoat={0.9} />
       </mesh>
       {/* Drum */}
       <mesh ref={drumRef} position={[-0.2, 1.7, 0]} rotation={[0, 0, 0.25]}>
         <cylinderGeometry args={[0.7, 0.9, 2.2, 12]} />
-        <meshPhysicalMaterial color="#F0F0F0" transparent opacity={opacity} roughness={0.3} metalness={0.6} clearcoat={0.4} />
+        <SmartMaterial color="#F0F0F0" transparent opacity={opacity} roughness={0.3} metalness={0.6} clearcoat={0.4} />
         <Html position={[0, 1.5, 0]} center>
           <div style={{ background: "rgba(0,0,0,0.7)", color: "white", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", whiteSpace: "nowrap", pointerEvents: "none", opacity: opacity > 0.5 ? 1 : 0, transition: "opacity 0.3s" }}>
             Mixing Concrete
@@ -1801,22 +1874,34 @@ function ConcreteMixer({ progress }: { progress: number }) {
       {[-0.9, -0.4, 0.7, 1.2].map((wx, i) => (
         <mesh key={`mw-${i}`} ref={(el) => { if (el) wheelRefs.current[i] = el; }} position={[wx, 0.2, 0.8]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.22, 0.22, 0.15, 10]} />
-          <meshPhysicalMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
+          <SmartMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
         </mesh>
       ))}
       {/* Wheels - right side */}
       {[-0.9, -0.4, 0.7, 1.2].map((wx, i) => (
         <mesh key={`mw2-${i}`} ref={(el) => { if (el) wheelRefs.current[i + 4] = el; }} position={[wx, 0.2, -0.8]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.22, 0.22, 0.15, 10]} />
-          <meshPhysicalMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
+          <SmartMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
         </mesh>
       ))}
     </group>
   );
 }
 
-function DumpTruck({ progress }: { progress: number }) {
-  const opacity = getPhaseOpacity(progress, 0, 30);
+function DumpTruck({
+  progress,
+  position,
+  rotation,
+  opacity: overrideOpacity,
+  isAnimated = true,
+}: {
+  progress?: number;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  opacity?: number;
+  isAnimated?: boolean;
+}) {
+  const opacity = overrideOpacity !== undefined ? overrideOpacity : (progress !== undefined ? getPhaseOpacity(progress, 0, 30) : 1);
   const groupRef = useRef<THREE.Group>(null);
   const bedRef = useRef<THREE.Group>(null);
   const wheelRefs = useRef<THREE.Mesh[]>([]);
@@ -1828,7 +1913,7 @@ function DumpTruck({ progress }: { progress: number }) {
 
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
-    if (groupRef.current) {
+    if (groupRef.current && isAnimated) {
       const cycle = 16; // seconds per full cycle
       const phase = (t % cycle) / cycle; // 0-1 normalized
       let pz: number;
@@ -1872,11 +1957,11 @@ function DumpTruck({ progress }: { progress: number }) {
   });
   if (opacity <= 0) return null;
   return (
-    <group ref={groupRef} position={[driveX, 0, offSiteZ]}>
+    <group ref={groupRef} position={position || [driveX, 0, offSiteZ]} rotation={rotation || [0, 0, 0]}>
       {/* Cab */}
       <mesh position={[0, 1.2, 1.5]} castShadow>
         <boxGeometry args={[1.6, 1.2, 1.2]} />
-        <meshPhysicalMaterial color="#CC2222" transparent opacity={opacity} roughness={0.3} metalness={0.4} clearcoat={0.8} />
+        <SmartMaterial color="#CC2222" transparent opacity={opacity} roughness={0.3} metalness={0.4} clearcoat={0.8} />
       </mesh>
       {/* Dump Bed Pivot Group */}
       <group position={[0, 0.9, 0.9]}>
@@ -1884,12 +1969,12 @@ function DumpTruck({ progress }: { progress: number }) {
           {/* Dump Bed */}
           <mesh position={[0, 0.6, 0]} castShadow>
             <boxGeometry args={[1.8, 1, 2.8]} />
-            <meshPhysicalMaterial color="#888888" transparent opacity={opacity} roughness={0.6} metalness={0.5} />
+            <SmartMaterial color="#888888" transparent opacity={opacity} roughness={0.6} metalness={0.5} />
           </mesh>
           {/* Dirt Load */}
           <mesh position={[0, 1.1, 0]}>
             <boxGeometry args={[1.5, 0.2, 2.5]} />
-            <meshPhysicalMaterial color="#654321" transparent opacity={opacity} roughness={1.0} />
+            <SmartMaterial color="#654321" transparent opacity={opacity} roughness={1.0} />
           </mesh>
         </group>
       </group>
@@ -1898,11 +1983,11 @@ function DumpTruck({ progress }: { progress: number }) {
         <group key={`dt-w-${i}`}>
           <mesh ref={(el) => { if (el) wheelRefs.current[i * 2] = el; }} position={[0.9, 0.4, wz]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.4, 0.4, 0.3, 12]} />
-            <meshPhysicalMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
+            <SmartMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
           </mesh>
           <mesh ref={(el) => { if (el) wheelRefs.current[i * 2 + 1] = el; }} position={[-0.9, 0.4, wz]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.4, 0.4, 0.3, 12]} />
-            <meshPhysicalMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
+            <SmartMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
           </mesh>
         </group>
       ))}
@@ -1953,35 +2038,35 @@ function ForkliftLoader({ progress }: { progress: number }) {
       {/* Main body */}
       <mesh position={[0, 0.65, 0]} castShadow>
         <boxGeometry args={[1.0, 0.7, 1.6]} />
-        <meshPhysicalMaterial color="#E8B230" transparent opacity={opacity} roughness={0.4} metalness={0.3} clearcoat={0.5} />
+        <SmartMaterial color="#E8B230" transparent opacity={opacity} roughness={0.4} metalness={0.3} clearcoat={0.5} />
       </mesh>
       {/* Overhead guard / cage */}
       <mesh position={[0, 1.3, -0.1]} castShadow>
         <boxGeometry args={[1.0, 0.06, 1.4]} />
-        <meshPhysicalMaterial color="#D4A020" transparent opacity={opacity} roughness={0.5} metalness={0.4} clearcoat={0.3} />
+        <SmartMaterial color="#D4A020" transparent opacity={opacity} roughness={0.5} metalness={0.4} clearcoat={0.3} />
       </mesh>
       {/* Guard posts */}
       {[[-0.45, -0.3], [-0.45, 0.55], [0.45, -0.3], [0.45, 0.55]].map(([gx, gz], i) => (
         <mesh key={`fg-${i}`} position={[gx, 1.0, gz]}>
           <boxGeometry args={[0.05, 0.7, 0.05]} />
-          <meshPhysicalMaterial color="#D4A020" transparent opacity={opacity} roughness={0.5} />
+          <SmartMaterial color="#D4A020" transparent opacity={opacity} roughness={0.5} />
         </mesh>
       ))}
       {/* Seat */}
       <mesh position={[0, 0.85, -0.1]}>
         <boxGeometry args={[0.4, 0.25, 0.4]} />
-        <meshPhysicalMaterial color="#333" transparent opacity={opacity} roughness={0.8} />
+        <SmartMaterial color="#333" transparent opacity={opacity} roughness={0.8} />
       </mesh>
       {/* Steering wheel */}
       <mesh position={[0, 1.0, 0.35]} rotation={[0.4, 0, 0]}>
         <torusGeometry args={[0.1, 0.02, 6, 12]} />
-        <meshPhysicalMaterial color="#111" transparent opacity={opacity} roughness={0.5} />
+        <SmartMaterial color="#111" transparent opacity={opacity} roughness={0.5} />
       </mesh>
       {/* Mast (vertical rails) */}
       {[-0.2, 0.2].map((mx, i) => (
         <mesh key={`mast-${i}`} position={[mx, 0.9, 0.85]}>
           <boxGeometry args={[0.06, 1.6, 0.06]} />
-          <meshPhysicalMaterial color="#D4A020" transparent opacity={opacity} roughness={0.4} metalness={0.5} clearcoat={0.3} />
+          <SmartMaterial color="#D4A020" transparent opacity={opacity} roughness={0.4} metalness={0.5} clearcoat={0.3} />
         </mesh>
       ))}
       {/* Fork carriage (moves up/down) */}
@@ -1989,36 +2074,36 @@ function ForkliftLoader({ progress }: { progress: number }) {
         {/* Carriage plate */}
         <mesh position={[0, 0, 0.05]}>
           <boxGeometry args={[0.5, 0.3, 0.05]} />
-          <meshPhysicalMaterial color="#888" transparent opacity={opacity} roughness={0.5} metalness={0.6} />
+          <SmartMaterial color="#888" transparent opacity={opacity} roughness={0.5} metalness={0.6} />
         </mesh>
         {/* Left fork tine */}
         <mesh position={[-0.15, -0.15, 0.4]} castShadow>
           <boxGeometry args={[0.08, 0.04, 0.7]} />
-          <meshPhysicalMaterial color="#666" transparent opacity={opacity} roughness={0.4} metalness={0.8} clearcoat={0.2} />
+          <SmartMaterial color="#666" transparent opacity={opacity} roughness={0.4} metalness={0.8} clearcoat={0.2} />
         </mesh>
         {/* Right fork tine */}
         <mesh position={[0.15, -0.15, 0.4]} castShadow>
           <boxGeometry args={[0.08, 0.04, 0.7]} />
-          <meshPhysicalMaterial color="#666" transparent opacity={opacity} roughness={0.4} metalness={0.8} clearcoat={0.2} />
+          <SmartMaterial color="#666" transparent opacity={opacity} roughness={0.4} metalness={0.8} clearcoat={0.2} />
         </mesh>
       </group>
       {/* Counter weight (rear) */}
       <mesh position={[0, 0.5, -0.7]}>
         <boxGeometry args={[0.8, 0.4, 0.3]} />
-        <meshPhysicalMaterial color="#555" transparent opacity={opacity} roughness={0.7} metalness={0.4} />
+        <SmartMaterial color="#555" transparent opacity={opacity} roughness={0.7} metalness={0.4} />
       </mesh>
       {/* Front wheels */}
       {[-0.5, 0.5].map((wx, i) => (
         <mesh key={`ffw-${i}`} ref={(el) => { if (el) wheelRefs.current[i] = el; }} position={[wx, 0.18, 0.55]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.18, 0.18, 0.12, 10]} />
-          <meshPhysicalMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
+          <SmartMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
         </mesh>
       ))}
       {/* Rear wheels */}
       {[-0.5, 0.5].map((wx, i) => (
         <mesh key={`frw-${i}`} ref={(el) => { if (el) wheelRefs.current[i + 2] = el; }} position={[wx, 0.18, -0.55]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.18, 0.18, 0.12, 10]} />
-          <meshPhysicalMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
+          <SmartMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
         </mesh>
       ))}
       {/* Label */}
@@ -2167,57 +2252,57 @@ function SingleWorker({ worker, progress }: { worker: typeof WORKER_PATHS[0]; pr
       {/* Hard hat */}
       <mesh position={[0, 1.65, 0]} castShadow>
         <sphereGeometry args={[0.14, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshPhysicalMaterial color={worker.hatColor} transparent opacity={opacity} roughness={0.4} />
+        <SmartMaterial color={worker.hatColor} transparent opacity={opacity} roughness={0.4} />
       </mesh>
       <mesh position={[0, 1.62, 0]}>
         <cylinderGeometry args={[0.18, 0.18, 0.04, 10]} />
-        <meshPhysicalMaterial color={worker.hatColor} transparent opacity={opacity} roughness={0.4} />
+        <SmartMaterial color={worker.hatColor} transparent opacity={opacity} roughness={0.4} />
       </mesh>
       {/* Head */}
       <mesh position={[0, 1.5, 0]}>
         <sphereGeometry args={[0.12, 8, 8]} />
-        <meshPhysicalMaterial color="#FDBCB4" transparent opacity={opacity} roughness={0.7} />
+        <SmartMaterial color="#FDBCB4" transparent opacity={opacity} roughness={0.7} />
       </mesh>
       {/* Torso */}
       <mesh position={[0, 1.15, 0]}>
         <boxGeometry args={[0.3, 0.5, 0.18]} />
-        <meshPhysicalMaterial color={worker.color} transparent opacity={opacity} roughness={0.6} />
+        <SmartMaterial color={worker.color} transparent opacity={opacity} roughness={0.6} />
       </mesh>
       {/* Left arm */}
       <group ref={leftArmRef} position={[-0.22, 1.3, 0]}>
         <mesh position={[0, -0.18, 0]}>
           <boxGeometry args={[0.1, 0.35, 0.1]} />
-          <meshPhysicalMaterial color={worker.color} transparent opacity={opacity} roughness={0.6} />
+          <SmartMaterial color={worker.color} transparent opacity={opacity} roughness={0.6} />
         </mesh>
       </group>
       {/* Right arm */}
       <group ref={rightArmRef} position={[0.22, 1.3, 0]}>
         <mesh position={[0, -0.18, 0]}>
           <boxGeometry args={[0.1, 0.35, 0.1]} />
-          <meshPhysicalMaterial color={worker.color} transparent opacity={opacity} roughness={0.6} />
+          <SmartMaterial color={worker.color} transparent opacity={opacity} roughness={0.6} />
         </mesh>
       </group>
       {/* Left leg */}
       <group ref={leftLegRef} position={[-0.08, 0.85, 0]}>
         <mesh position={[0, -0.22, 0]}>
           <boxGeometry args={[0.12, 0.45, 0.12]} />
-          <meshPhysicalMaterial color="#374151" transparent opacity={opacity} roughness={0.7} />
+          <SmartMaterial color="#374151" transparent opacity={opacity} roughness={0.7} />
         </mesh>
         {/* Boot */}
         <mesh position={[0, -0.47, 0.04]}>
           <boxGeometry args={[0.13, 0.08, 0.2]} />
-          <meshPhysicalMaterial color="#1a1a1a" transparent opacity={opacity} roughness={0.9} />
+          <SmartMaterial color="#1a1a1a" transparent opacity={opacity} roughness={0.9} />
         </mesh>
       </group>
       {/* Right leg */}
       <group ref={rightLegRef} position={[0.08, 0.85, 0]}>
         <mesh position={[0, -0.22, 0]}>
           <boxGeometry args={[0.12, 0.45, 0.12]} />
-          <meshPhysicalMaterial color="#374151" transparent opacity={opacity} roughness={0.7} />
+          <SmartMaterial color="#374151" transparent opacity={opacity} roughness={0.7} />
         </mesh>
         <mesh position={[0, -0.47, 0.04]}>
           <boxGeometry args={[0.13, 0.08, 0.2]} />
-          <meshPhysicalMaterial color="#1a1a1a" transparent opacity={opacity} roughness={0.9} />
+          <SmartMaterial color="#1a1a1a" transparent opacity={opacity} roughness={0.9} />
         </mesh>
       </group>
       {/* Role label */}
@@ -2259,25 +2344,25 @@ function MaterialPiles({ progress }: { progress: number }) {
       {/* Sand pile */}
       <mesh position={[BUILDING.width / 2 + 4, 0.5, -4]} castShadow>
         <coneGeometry args={[1, 1, 8]} />
-        <meshPhysicalMaterial color="#D2B48C" transparent opacity={opacity} roughness={1} />
+        <SmartMaterial color="#D2B48C" transparent opacity={opacity} roughness={1} />
       </mesh>
       {/* Gravel pile */}
       <mesh position={[BUILDING.width / 2 + 4, 0.4, -6]} castShadow>
         <coneGeometry args={[0.8, 0.8, 8]} />
-        <meshPhysicalMaterial color="#888888" transparent opacity={opacity} roughness={1} />
+        <SmartMaterial color="#888888" transparent opacity={opacity} roughness={1} />
       </mesh>
       {/* Lumber stack */}
       {[0, 0.22, 0.44].map((dy, i) => (
         <mesh key={`lum-${i}`} position={[-BUILDING.width / 2 - 4, 0.12 + dy, -5]}>
           <boxGeometry args={[2, 0.18, 0.5]} />
-          <meshPhysicalMaterial color={i % 2 === 0 ? "#A0724A" : "#8B6333"} transparent opacity={opacity} roughness={0.8} />
+          <SmartMaterial color={i % 2 === 0 ? "#A0724A" : "#8B6333"} transparent opacity={opacity} roughness={0.8} />
         </mesh>
       ))}
       {/* Steel rebar bundles */}
       {[0, 0.15, 0.3].map((dy, i) => (
         <mesh key={`reb-${i}`} position={[-BUILDING.width / 2 - 4, 0.1 + dy, -7]} rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry args={[0.08, 0.08, 2.5, 6]} />
-          <meshPhysicalMaterial color="#555" transparent opacity={opacity} roughness={0.5} metalness={0.6} />
+          <SmartMaterial color="#555" transparent opacity={opacity} roughness={0.5} metalness={0.6} />
         </mesh>
       ))}
       {/* Concrete blocks */}
@@ -2285,7 +2370,7 @@ function MaterialPiles({ progress }: { progress: number }) {
         [0, 0.55].map((dx, j) => (
           <mesh key={`cb-${i}-${j}`} position={[BUILDING.width / 2 + 6 + dx, 0.17 + dy, -5]}>
             <boxGeometry args={[0.5, 0.3, 0.5]} />
-            <meshPhysicalMaterial color="#999" transparent opacity={opacity} roughness={0.9} />
+            <SmartMaterial color="#999" transparent opacity={opacity} roughness={0.9} />
           </mesh>
         ))
       )}
@@ -2305,41 +2390,41 @@ function SiteOffice({ progress }: { progress: number }) {
       {/* Main body */}
       <mesh position={[0, 1.1, 0]} castShadow>
         <boxGeometry args={[4, 2.2, 2.5]} />
-        <meshPhysicalMaterial color="#F5F0E8" transparent opacity={opacity} roughness={0.7} />
+        <SmartMaterial color="#F5F0E8" transparent opacity={opacity} roughness={0.7} />
       </mesh>
       {/* Door */}
       <mesh position={[-1.2, 0.7, 1.26]}>
         <boxGeometry args={[0.7, 1.4, 0.05]} />
-        <meshPhysicalMaterial color="#6B4226" transparent opacity={opacity} roughness={0.8} />
+        <SmartMaterial color="#6B4226" transparent opacity={opacity} roughness={0.8} />
       </mesh>
       {/* Window 1 */}
       <mesh position={[0.3, 1.3, 1.26]}>
         <boxGeometry args={[0.8, 0.5, 0.03]} />
-        <meshPhysicalMaterial color="#88BBDD" transparent opacity={opacity * 0.5} />
+        <SmartMaterial color="#88BBDD" transparent opacity={opacity * 0.5} />
       </mesh>
       {/* Window 2 */}
       <mesh position={[1.4, 1.3, 1.26]}>
         <boxGeometry args={[0.8, 0.5, 0.03]} />
-        <meshPhysicalMaterial color="#88BBDD" transparent opacity={opacity * 0.5} />
+        <SmartMaterial color="#88BBDD" transparent opacity={opacity * 0.5} />
       </mesh>
       {/* Steps */}
       <mesh position={[-1.2, 0.12, 1.6]}>
         <boxGeometry args={[0.8, 0.12, 0.4]} />
-        <meshPhysicalMaterial color="#777" transparent opacity={opacity} roughness={0.8} />
+        <SmartMaterial color="#777" transparent opacity={opacity} roughness={0.8} />
       </mesh>
       <mesh position={[-1.2, 0.24, 1.4]}>
         <boxGeometry args={[0.8, 0.12, 0.3]} />
-        <meshPhysicalMaterial color="#777" transparent opacity={opacity} roughness={0.8} />
+        <SmartMaterial color="#777" transparent opacity={opacity} roughness={0.8} />
       </mesh>
       {/* Sign indicator */}
       <mesh position={[0.5, 2.35, 1.26]}>
         <boxGeometry args={[1.5, 0.25, 0.04]} />
-        <meshPhysicalMaterial color="#2255AA" transparent opacity={opacity} />
+        <SmartMaterial color="#2255AA" transparent opacity={opacity} />
       </mesh>
       {/* Roof */}
       <mesh position={[0, 2.25, 0]}>
         <boxGeometry args={[4.2, 0.08, 2.7]} />
-        <meshPhysicalMaterial color="#AAA" transparent opacity={opacity} roughness={0.6} metalness={0.2} />
+        <SmartMaterial color="#AAA" transparent opacity={opacity} roughness={0.6} metalness={0.2} />
       </mesh>
     </group>
   );
@@ -2356,13 +2441,13 @@ function ParkingArea({ progress }: { progress: number }) {
       {/* Parking surface */}
       <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[7, 4]} />
-        <meshPhysicalMaterial color="#444" transparent opacity={opacity * 0.5} roughness={0.9} />
+        <SmartMaterial color="#444" transparent opacity={opacity * 0.5} roughness={0.9} />
       </mesh>
       {/* Parking lines */}
       {[-2, 0, 2].map((lx, i) => (
         <mesh key={`pline-${i}`} position={[lx, 0.02, 0]}>
           <boxGeometry args={[0.06, 0.01, 3.5]} />
-          <meshPhysicalMaterial color="#FFF" transparent opacity={opacity * 0.7} />
+          <SmartMaterial color="#FFF" transparent opacity={opacity * 0.7} />
         </mesh>
       ))}
       {/* Cars */}
@@ -2371,18 +2456,18 @@ function ParkingArea({ progress }: { progress: number }) {
           {/* Car body */}
           <mesh position={[0, 0.4, 0]} castShadow>
             <boxGeometry args={[1.4, 0.5, 0.8]} />
-            <meshPhysicalMaterial color={cc} transparent opacity={opacity} roughness={0.4} />
+            <SmartMaterial color={cc} transparent opacity={opacity} roughness={0.4} />
           </mesh>
           {/* Car roof */}
           <mesh position={[0, 0.72, 0]} castShadow>
             <boxGeometry args={[0.9, 0.3, 0.75]} />
-            <meshPhysicalMaterial color={cc} transparent opacity={opacity} roughness={0.4} />
+            <SmartMaterial color={cc} transparent opacity={opacity} roughness={0.4} />
           </mesh>
           {/* Wheels */}
           {[[-0.5, 0.5], [-0.5, -0.5], [0.5, 0.5], [0.5, -0.5]].map(([cwx, cwz], wi) => (
             <mesh key={`cw-${wi}`} position={[cwx, 0.12, cwz]} rotation={[Math.PI / 2, 0, 0]}>
               <cylinderGeometry args={[0.12, 0.12, 0.08, 8]} />
-              <meshPhysicalMaterial color="#111" transparent opacity={opacity} roughness={0.9} />
+              <SmartMaterial color="#111" transparent opacity={opacity} roughness={0.9} />
             </mesh>
           ))}
         </group>
@@ -2399,27 +2484,27 @@ function CompassIndicator() {
       {/* Base ring */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[1.4, 1.5, 32]} />
-        <meshPhysicalMaterial color="#888" />
+        <SmartMaterial color="#888" />
       </mesh>
       {/* North arrow (red cone pointing +Z) */}
       <mesh position={[0, 0.05, 1]} rotation={[-Math.PI / 2, 0, 0]}>
         <coneGeometry args={[0.18, 1.2, 8]} />
-        <meshPhysicalMaterial color="#EE3333" />
+        <SmartMaterial color="#EE3333" />
       </mesh>
       {/* South line */}
       <mesh position={[0, 0.02, -0.7]}>
         <boxGeometry args={[0.04, 0.02, 0.8]} />
-        <meshPhysicalMaterial color="#888" />
+        <SmartMaterial color="#888" />
       </mesh>
       {/* East line */}
       <mesh position={[0.7, 0.02, 0]}>
         <boxGeometry args={[0.8, 0.02, 0.04]} />
-        <meshPhysicalMaterial color="#888" />
+        <SmartMaterial color="#888" />
       </mesh>
       {/* West line */}
       <mesh position={[-0.7, 0.02, 0]}>
         <boxGeometry args={[0.8, 0.02, 0.04]} />
-        <meshPhysicalMaterial color="#888" />
+        <SmartMaterial color="#888" />
       </mesh>
       {/* "N" label */}
       <Html position={[0, 0.3, 1.8]} center style={{ pointerEvents: "none" }}>
@@ -2472,7 +2557,7 @@ function WeatherEffects({ enabled, type }: { enabled: boolean; type: "rain" | "s
           ) : (
             <boxGeometry args={[0.02, 0.3, 0.02]} />
           )}
-          <meshPhysicalMaterial 
+          <SmartMaterial 
             color={type === "snow" ? "#FFFFFF" : "#6688CC"} 
             transparent 
             opacity={type === "snow" ? 0.8 : 0.35} 
@@ -2505,14 +2590,14 @@ function SafetyZones({ progress }: { progress: number }) {
       {([-hd, hd] as number[]).map((z) => (
         <mesh key={`tape-x-${z}`} position={[0, tapeY, z]}>
           <boxGeometry args={[hw * 2, tapeH, tapeT]} />
-          <meshPhysicalMaterial color="#DDCC00" transparent opacity={opacity * 0.85} />
+          <SmartMaterial color="#DDCC00" transparent opacity={opacity * 0.85} />
         </mesh>
       ))}
       {/* Left & Right (along Z) */}
       {([-hw, hw] as number[]).map((x) => (
         <mesh key={`tape-z-${x}`} position={[x, tapeY, 0]}>
           <boxGeometry args={[tapeT, tapeH, hd * 2]} />
-          <meshPhysicalMaterial color="#DDCC00" transparent opacity={opacity * 0.85} />
+          <SmartMaterial color="#DDCC00" transparent opacity={opacity * 0.85} />
         </mesh>
       ))}
       {/* Warning posts at corners */}
@@ -2521,12 +2606,12 @@ function SafetyZones({ progress }: { progress: number }) {
           {/* Pole */}
           <mesh position={[cx, 0.5, cz]}>
             <cylinderGeometry args={[0.04, 0.04, 1.2, 6]} />
-            <meshPhysicalMaterial color="#888" transparent opacity={opacity} />
+            <SmartMaterial color="#888" transparent opacity={opacity} />
           </mesh>
           {/* Red triangle sign */}
           <mesh position={[cx, 1.15, cz]} rotation={[0, 0, Math.PI]}>
             <coneGeometry args={[0.2, 0.3, 3]} />
-            <meshPhysicalMaterial color="#EE2222" transparent opacity={opacity} />
+            <SmartMaterial color="#EE2222" transparent opacity={opacity} />
           </mesh>
         </group>
       ))}
@@ -2549,27 +2634,27 @@ function GroundAccessRoad({ progress }: { progress: number }) {
       {/* Main road surface */}
       <mesh position={[roadX, 0.01, roadZ]}>
         <boxGeometry args={[roadW, 0.02, roadLen]} />
-        <meshPhysicalMaterial color="#3a3a3a" transparent opacity={opacity * 0.9} roughness={0.95} />
+        <SmartMaterial color="#3a3a3a" transparent opacity={opacity * 0.9} roughness={0.95} />
       </mesh>
       {/* Sidewalk edges */}
       {([-1, 1] as number[]).map((side) => (
         <mesh key={`sw-${side}`} position={[roadX + side * (roadW / 2 + 0.3), 0.03, roadZ]}>
           <boxGeometry args={[0.5, 0.06, roadLen]} />
-          <meshPhysicalMaterial color="#aaaaaa" transparent opacity={opacity * 0.8} roughness={0.85} />
+          <SmartMaterial color="#aaaaaa" transparent opacity={opacity * 0.8} roughness={0.85} />
         </mesh>
       ))}
       {/* Center dashed line */}
       {Array.from({ length: 10 }).map((_, i) => (
         <mesh key={`dash-${i}`} position={[roadX, 0.025, roadZ - roadLen / 2 + 1.5 + i * 3]}>
           <boxGeometry args={[0.12, 0.02, 1.5]} />
-          <meshPhysicalMaterial color="#DDCC00" transparent opacity={opacity * 0.9} />
+          <SmartMaterial color="#DDCC00" transparent opacity={opacity * 0.9} />
         </mesh>
       ))}
       {/* Speed bumps */}
       {([roadZ - 4, roadZ + 6] as number[]).map((bz, i) => (
         <mesh key={`bump-${i}`} position={[roadX, 0.06, bz]} rotation={[0, 0, 0]}>
           <boxGeometry args={[roadW - 0.6, 0.1, 0.5]} />
-          <meshPhysicalMaterial color="#CCAA00" transparent opacity={opacity * 0.85} roughness={0.7} />
+          <SmartMaterial color="#CCAA00" transparent opacity={opacity * 0.85} roughness={0.7} />
         </mesh>
       ))}
     </group>
@@ -2600,7 +2685,7 @@ function BuildingWing({
       {foundationOpacity > 0 && (
         <mesh position={[0, 0.15, 0]} castShadow receiveShadow>
           <boxGeometry args={[wingWidth + 0.5, 0.5, wingDepth + 0.5]} />
-          <meshPhysicalMaterial color="#808080" transparent opacity={foundationOpacity * 0.9} roughness={0.8} />
+          <SmartMaterial color="#808080" transparent opacity={foundationOpacity * 0.9} roughness={0.8} />
         </mesh>
       )}
       {/* Structural columns + beams per floor */}
@@ -2618,7 +2703,7 @@ function BuildingWing({
             cols.push(
               <mesh key={`wc-${f}-${xi}-${zi}`} position={[cx, baseY + floorHeight / 2, cz]}>
                 <boxGeometry args={[0.35, floorHeight * fp, 0.35]} />
-                <meshPhysicalMaterial color="#4080D0" transparent opacity={structureOpacity} metalness={0.5} roughness={0.3} />
+                <SmartMaterial color="#4080D0" transparent opacity={structureOpacity} metalness={0.5} roughness={0.3} />
               </mesh>
             );
           }
@@ -2632,7 +2717,7 @@ function BuildingWing({
         return (
           <mesh key={`ws-${f}`} position={[0, 0.4 + (f + 1) * floorHeight, 0]} castShadow>
             <boxGeometry args={[wingWidth, 0.25, wingDepth]} />
-            <meshPhysicalMaterial color="#A0A0B0" transparent opacity={slabOpacity * fp} roughness={0.7} />
+            <SmartMaterial color="#A0A0B0" transparent opacity={slabOpacity * fp} roughness={0.7} />
           </mesh>
         );
       })}
@@ -2650,7 +2735,7 @@ function BuildingWing({
             {walls.map((w, i) => (
               <mesh key={i} position={w.p} castShadow>
                 <boxGeometry args={w.s} />
-                <meshPhysicalMaterial color={config.wallColor ?? "#E8D5B5"} transparent opacity={wallOpacity * (xray ? 0.15 : 0.85)} roughness={0.7} />
+                <SmartMaterial color={config.wallColor ?? "#E8D5B5"} transparent opacity={wallOpacity * (xray ? 0.15 : 0.85)} roughness={0.7} />
               </mesh>
             ))}
           </group>
@@ -2666,13 +2751,13 @@ function BuildingWing({
           wins.push(
             <mesh key={`wwin-f-${f}-${wi}`} position={[wx, baseY + floorHeight * 0.5, wingDepth / 2 + 0.13]}>
               <boxGeometry args={[1.4, 1.3, 0.05]} />
-              <meshPhysicalMaterial color={config.glassColor ?? "#88ccee"} transparent opacity={windowOpacity * 0.6} metalness={0.8} roughness={0.1} />
+              <SmartMaterial color={config.glassColor ?? "#88ccee"} transparent opacity={windowOpacity * 0.6} metalness={0.8} roughness={0.1} />
             </mesh>
           );
           wins.push(
             <mesh key={`wwin-b-${f}-${wi}`} position={[wx, baseY + floorHeight * 0.5, -wingDepth / 2 - 0.13]}>
               <boxGeometry args={[1.4, 1.3, 0.05]} />
-              <meshPhysicalMaterial color={config.glassColor ?? "#88ccee"} transparent opacity={windowOpacity * 0.6} metalness={0.8} roughness={0.1} />
+              <SmartMaterial color={config.glassColor ?? "#88ccee"} transparent opacity={windowOpacity * 0.6} metalness={0.8} roughness={0.1} />
             </mesh>
           );
         }
@@ -2682,7 +2767,7 @@ function BuildingWing({
       {roofOpacity > 0 && (
         <mesh position={[0, 0.4 + totalH + 0.2, 0]} castShadow>
           <boxGeometry args={[wingWidth + 0.8, 0.35, wingDepth + 0.8]} />
-          <meshPhysicalMaterial color={config.roofColor ?? "#607080"} transparent opacity={roofOpacity} roughness={0.5} metalness={0.3} />
+          <SmartMaterial color={config.roofColor ?? "#607080"} transparent opacity={roofOpacity} roughness={0.5} metalness={0.3} />
         </mesh>
       )}
     </group>
@@ -2690,67 +2775,80 @@ function BuildingWing({
 }
 
 // --- Animated Equipment ---
-function TowerCrane({ progress }: { progress: number }) {
+function TowerCrane({
+  progress,
+  position,
+  rotation,
+  opacity: overrideOpacity,
+  isAnimated = true,
+}: {
+  progress?: number;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  opacity?: number;
+  isAnimated?: boolean;
+}) {
   const craneRef = useRef<THREE.Group>(null!);
   const hookRef = useRef<THREE.Group>(null!);
-  const active = progress > 15 && progress < 90;
+  const active = progress !== undefined ? (progress > 15 && progress < 90) : true;
+  const opacity = overrideOpacity !== undefined ? overrideOpacity : (active ? 1 : 0);
   
   useFrame(({ clock }) => {
-    if (craneRef.current && active) {
+    if (craneRef.current && active && isAnimated) {
       const t = clock.getElapsedTime();
       // Slow slewing (rotation)
       craneRef.current.rotation.y = Math.sin(t * 0.2) * 1.5;
     }
-    if (hookRef.current && active) {
+    if (hookRef.current && active && isAnimated) {
       const t = clock.getElapsedTime();
       // Hook going up and down
       hookRef.current.position.y = 8 + Math.sin(t * 0.5) * 4;
     }
   });
 
-  if (!active) return null;
+  if (opacity <= 0) return null;
 
   return (
-    <group position={[-12, 0, 10]}>
+    <group position={position || [-12, 0, 10]} rotation={rotation || [0, 0, 0]}>
       {/* Mast */}
       <mesh position={[0, 10, 0]}>
         <boxGeometry args={[0.8, 20, 0.8]} />
-        <meshPhysicalMaterial color="#EAB308" metalness={0.6} roughness={0.4} />
+        <SmartMaterial color="#EAB308" metalness={0.6} roughness={0.4} />
       </mesh>
       {/* Cabin & Jib Group */}
       <group ref={craneRef} position={[0, 20, 0]}>
         <mesh position={[0, 0.5, 0]}>
           <boxGeometry args={[1.2, 1.2, 1.2]} />
-          <meshPhysicalMaterial color="#222" />
+          <SmartMaterial color="#222" />
         </mesh>
         {/* Jib */}
         <mesh position={[8, 0.5, 0]}>
           <boxGeometry args={[16, 0.6, 0.6]} />
-          <meshPhysicalMaterial color="#EAB308" metalness={0.6} roughness={0.4} />
+          <SmartMaterial color="#EAB308" metalness={0.6} roughness={0.4} />
         </mesh>
         {/* Counter-jib */}
         <mesh position={[-3, 0.5, 0]}>
           <boxGeometry args={[6, 0.6, 0.6]} />
-          <meshPhysicalMaterial color="#EAB308" metalness={0.6} roughness={0.4} />
+          <SmartMaterial color="#EAB308" metalness={0.6} roughness={0.4} />
         </mesh>
         {/* Counter-weight */}
         <mesh position={[-5, 0, 0]}>
           <boxGeometry args={[2, 1.5, 1]} />
-          <meshPhysicalMaterial color="#555" />
+          <SmartMaterial color="#555" />
         </mesh>
         {/* Hook */}
         <group ref={hookRef} position={[12, 0, 0]}>
           <mesh position={[0, -0.5, 0]}>
             <cylinderGeometry args={[0.02, 0.02, 15]} />
-            <meshPhysicalMaterial color="#111" />
+            <SmartMaterial color="#111" />
           </mesh>
           <mesh position={[0, -8, 0]}>
             <boxGeometry args={[0.5, 0.5, 0.5]} />
-            <meshPhysicalMaterial color="#111" />
+            <SmartMaterial color="#111" />
           </mesh>
           <mesh position={[0, -8.4, 0]}>
             <torusGeometry args={[0.15, 0.05, 8, 12]} />
-            <meshPhysicalMaterial color="#ff2222" />
+            <SmartMaterial color="#ff2222" />
           </mesh>
         </group>
       </group>
@@ -2763,29 +2861,34 @@ function PlacedObject({
   id,
   defaultPosition,
   rotationY = 0,
+  scale = [1, 1, 1],
   pathType,
   editMode,
   selectedObjectId,
   onSelect,
   onMove,
   onRotate,
+  onScaleChange,
   onDelete,
   children,
 }: {
   id: string;
   defaultPosition: [number, number, number];
   rotationY?: number;
+  scale?: [number, number, number];
   pathType?: string;
   editMode: boolean;
   selectedObjectId: string | null;
   onSelect: (id: string | null) => void;
-  onMove?: (id: string) => void;
-  onRotate?: (id: string) => void;
+  onMove?: (id: string, pos?: [number, number, number]) => void;
+  onRotate?: (id: string, rot?: number) => void;
+  onScaleChange?: (id: string, scale: [number, number, number]) => void;
   onDelete?: (id: string) => void;
   children: React.ReactNode;
 }) {
   const isSelected = editMode && selectedObjectId === id;
   const groupRef = useRef<THREE.Group>(null);
+  const [transformMode, setTransformMode] = useState<'translate' | 'rotate' | 'scale'>('translate');
 
   const handleClick = useCallback((e: any) => {
     if (!editMode) return;
@@ -2803,17 +2906,32 @@ function PlacedObject({
         defaultPosition[1],
         defaultPosition[2] + Math.cos(rotationY) * offset
       );
-    } else if (groupRef.current) {
+    } else if (groupRef.current && !isSelected) {
+      // Only force position if not selected (TransformControls handles selected state)
       groupRef.current.position.set(defaultPosition[0], defaultPosition[1], defaultPosition[2]);
+      groupRef.current.rotation.set(0, rotationY, 0);
+      groupRef.current.scale.set(scale[0], scale[1], scale[2]);
     }
   });
 
-  return (
-    <group ref={groupRef} position={defaultPosition} rotation={[0, rotationY, 0]} onClick={handleClick}>
+  const handleDragEnd = useCallback(() => {
+    if (groupRef.current) {
+      if (transformMode === 'translate' && onMove) {
+        onMove(id, [groupRef.current.position.x, groupRef.current.position.y, groupRef.current.position.z]);
+      } else if (transformMode === 'rotate' && onRotate) {
+        onRotate(id, groupRef.current.rotation.y);
+      } else if (transformMode === 'scale' && onScaleChange) {
+        onScaleChange(id, [groupRef.current.scale.x, groupRef.current.scale.y, groupRef.current.scale.z]);
+      }
+    }
+  }, [id, transformMode, onMove, onRotate, onScaleChange]);
+
+  const InnerContent = (
+    <group ref={groupRef} position={defaultPosition} rotation={[0, rotationY, 0]} scale={scale} onClick={handleClick}>
       {editMode && (
         <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[2, 2.3, 32]} />
-          <meshBasicMaterial color={isSelected ? "#00ff88" : "#ffffff"} transparent opacity={isSelected ? 0.6 : 0.3} side={THREE.DoubleSide} />
+          <SmartMaterial color={isSelected ? "#00ff88" : "#ffffff"} transparent opacity={isSelected ? 0.6 : 0.3} side={THREE.DoubleSide} />
         </mesh>
       )}
       {children}
@@ -2824,14 +2942,31 @@ function PlacedObject({
             padding: "4px 8px", borderRadius: 8, pointerEvents: "auto",
             boxShadow: "0 4px 12px rgba(0,0,0,0.3)"
           }}>
-            <Button type="text" size="small" style={{ color: "#fff" }} icon={<DragOutlined />} onClick={(e) => { e.stopPropagation(); onMove?.(id); }}>Move</Button>
-            <Button type="text" size="small" style={{ color: "#fff" }} icon={<SyncOutlined />} onClick={(e) => { e.stopPropagation(); onRotate?.(id); }}>Rotate</Button>
+            <Button type="text" size="small" style={{ color: transformMode === 'translate' ? "#00ff88" : "#fff" }} icon={<DragOutlined />} onClick={(e) => { e.stopPropagation(); setTransformMode('translate'); }}>Move</Button>
+            <Button type="text" size="small" style={{ color: transformMode === 'rotate' ? "#00ff88" : "#fff" }} icon={<SyncOutlined />} onClick={(e) => { e.stopPropagation(); setTransformMode('rotate'); }}>Rotate</Button>
+            <Button type="text" size="small" style={{ color: transformMode === 'scale' ? "#00ff88" : "#fff" }} icon={<ExpandAltOutlined />} onClick={(e) => { e.stopPropagation(); setTransformMode('scale'); }}>Scale</Button>
             <Button type="text" size="small" danger icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); onDelete?.(id); }}>Delete</Button>
           </div>
         </Html>
       )}
     </group>
   );
+
+  if (isSelected) {
+    return (
+      <TransformControls
+        mode={transformMode}
+        showY={transformMode === 'translate' ? false : true}
+        translationSnap={0.5}
+        rotationSnap={Math.PI / 8}
+        onMouseUp={handleDragEnd}
+      >
+        {InnerContent}
+      </TransformControls>
+    );
+  }
+
+  return InnerContent;
 }
 
 // --- Draggable Object Wrapper ---
@@ -2839,27 +2974,34 @@ function DraggableObject({
   id,
   defaultPosition,
   rotationY = 0,
+  scale = [1, 1, 1],
   editMode,
   selectedObjectId,
+  transformMode = 'translate',
   onSelect,
   onPositionChange,
   onRotate,
+  onScaleChange,
   onDelete,
   children,
 }: {
   id: string;
   defaultPosition: [number, number, number];
   rotationY?: number;
+  scale?: [number, number, number];
   editMode: boolean;
   selectedObjectId: string | null;
+  transformMode?: 'translate' | 'rotate' | 'scale';
   onSelect: (id: string | null) => void;
   onPositionChange: (id: string, pos: [number, number, number]) => void;
-  onRotate?: (id: string) => void;
+  onRotate?: (id: string, rotY?: number) => void;
+  onScaleChange?: (id: string, scale: [number, number, number]) => void;
   onDelete?: (id: string) => void;
   children: React.ReactNode;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const isSelected = editMode && selectedObjectId === id;
+  const [internalMode, setInternalMode] = useState<'translate' | 'rotate' | 'scale'>(transformMode || 'translate');
 
   const handleClick = useCallback((e: any) => {
     if (!editMode) return;
@@ -2867,25 +3009,35 @@ function DraggableObject({
     onSelect(selectedObjectId === id ? null : id);
   }, [editMode, id, selectedObjectId, onSelect]);
 
-  const handleDragEnd = useCallback(() => {
+  const handleDragEnd = useCallback((e: any) => {
     if (groupRef.current) {
-      const p = groupRef.current.position;
-      onPositionChange(id, [p.x, p.y, p.z]);
+      if (internalMode === 'translate') {
+        const p = groupRef.current.position;
+        onPositionChange(id, [p.x, p.y, p.z]);
+      } else if (internalMode === 'rotate') {
+        const r = groupRef.current.rotation;
+        if (onRotate) onRotate(id, r.y);
+      } else if (internalMode === 'scale') {
+        const s = groupRef.current.scale;
+        if (onScaleChange) onScaleChange(id, [s.x, s.y, s.z]);
+      }
     }
-  }, [id, onPositionChange]);
+  }, [id, internalMode, onPositionChange, onRotate, onScaleChange]);
 
   if (isSelected) {
     return (
       <TransformControls
-        mode="translate"
-        showY={false}
+        mode={internalMode}
+        showY={internalMode === 'translate' ? false : true}
+        translationSnap={0.5}
+        rotationSnap={Math.PI / 8}
         onMouseUp={handleDragEnd}
       >
-        <group ref={groupRef} position={defaultPosition} rotation={[0, rotationY, 0]} onClick={handleClick}>
+        <group ref={groupRef} position={defaultPosition} rotation={[0, rotationY, 0]} scale={scale} onClick={handleClick}>
           {/* Selection glow ring */}
           <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <ringGeometry args={[2, 2.3, 32]} />
-            <meshBasicMaterial color="#00ff88" transparent opacity={0.6} side={THREE.DoubleSide} />
+            <SmartMaterial color="#00ff88" transparent opacity={0.6} side={THREE.DoubleSide} />
           </mesh>
           {children}
 
@@ -2896,8 +3048,10 @@ function DraggableObject({
               padding: "4px 8px", borderRadius: 8, pointerEvents: "auto",
               boxShadow: "0 4px 12px rgba(0,0,0,0.3)"
             }}>
-              <Button type="text" size="small" style={{ color: "#fff" }} icon={<SyncOutlined />} onClick={(e) => { e.stopPropagation(); onRotate?.(id); }}>Rotate</Button>
-              <Button type="text" size="small" danger icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); onDelete?.(id); }}>Delete</Button>
+              <Button type="text" size="small" style={{ color: internalMode === 'translate' ? "#00ff88" : "#fff" }} icon={<DragOutlined />} onClick={(e) => { e.stopPropagation(); setInternalMode('translate'); }}>Move</Button>
+              <Button type="text" size="small" style={{ color: internalMode === 'rotate' ? "#00ff88" : "#fff" }} icon={<SyncOutlined />} onClick={(e) => { e.stopPropagation(); setInternalMode('rotate'); }}>Rotate</Button>
+              <Button type="text" size="small" style={{ color: internalMode === 'scale' ? "#00ff88" : "#fff" }} icon={<ExpandAltOutlined />} onClick={(e) => { e.stopPropagation(); setInternalMode('scale'); }}>Scale</Button>
+              <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={(e) => { e.stopPropagation(); onDelete?.(id); }}>Delete</Button>
             </div>
           </Html>
         </group>
@@ -2906,11 +3060,11 @@ function DraggableObject({
   }
 
   return (
-    <group position={defaultPosition} rotation={[0, rotationY, 0]} onClick={handleClick}>
+    <group position={defaultPosition} rotation={[0, rotationY, 0]} scale={scale} onClick={handleClick}>
       {editMode && (
         <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[1.8, 2, 32]} />
-          <meshBasicMaterial color="#ffffff" transparent opacity={0.15} side={THREE.DoubleSide} />
+          <SmartMaterial color="#ffffff" transparent opacity={0.15} side={THREE.DoubleSide} />
         </mesh>
       )}
       {children}
@@ -3016,7 +3170,7 @@ function CostScheduleHeatmap({
         return (
           <mesh key={`hm-${i}`} position={[0, y, 0]}>
             <boxGeometry args={[bw * 0.95, fh * 0.85, bd * 0.95]} />
-            <meshBasicMaterial
+            <SmartMaterial
               color={color}
               transparent
               opacity={0.18 + risk * 0.15}
@@ -3040,7 +3194,7 @@ function InSceneGantt({ phases, progress, bw }: { phases: ConstructionPhase[], p
       {/* Background board */}
       <mesh position={[ganttWidth / 2, -ganttHeight / 2 + 0.5, -0.1]}>
         <planeGeometry args={[ganttWidth + 6, ganttHeight + 3]} />
-        <meshBasicMaterial color="#111827" transparent opacity={0.6} depthWrite={false} />
+        <SmartMaterial color="#111827" transparent opacity={0.6} depthWrite={false} />
       </mesh>
       
       <Text position={[ganttWidth / 2, 1.5, 0]} fontSize={0.8} color="#ffffff" anchorX="center" outlineWidth={0.02} outlineColor="#000000">
@@ -3073,7 +3227,7 @@ function InSceneGantt({ phases, progress, bw }: { phases: ConstructionPhase[], p
             </Text>
             <mesh position={[startX + w / 2, y, 0.05]}>
               <boxGeometry args={[w, 0.4, 0.1]} />
-              <meshPhysicalMaterial color={barColor} emissive={isActive ? barColor : "#000000"} emissiveIntensity={isActive ? 0.8 : 0} />
+              <SmartMaterial color={barColor} emissive={isActive ? barColor : "#000000"} emissiveIntensity={isActive ? 0.8 : 0} />
             </mesh>
           </group>
         );
@@ -3084,7 +3238,7 @@ function InSceneGantt({ phases, progress, bw }: { phases: ConstructionPhase[], p
         <Line points={[[0, 0, 0], [0, -ganttHeight - 0.5, 0]]} color="#ef4444" lineWidth={2} />
         <mesh position={[0, 0, 0.05]}>
           <circleGeometry args={[0.15, 16]} />
-          <meshBasicMaterial color="#ef4444" />
+          <SmartMaterial color="#ef4444" />
         </mesh>
       </group>
     </group>
@@ -3128,7 +3282,7 @@ function RfiMarker3D({ rfi, position }: { rfi: any; position: [number, number, n
       {/* Animated glowing sphere */}
       <mesh ref={sphereRef} position={[0, 1.5, 0]}>
         <sphereGeometry args={[0.28, 24, 24]} />
-        <meshPhysicalMaterial
+        <SmartMaterial
           color={markerColor}
           emissive={markerColor}
           emissiveIntensity={0.8}
@@ -3139,7 +3293,7 @@ function RfiMarker3D({ rfi, position }: { rfi: any; position: [number, number, n
       {/* Sonar ring ripple effect */}
       <mesh ref={ringRef} position={[0, 1.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.5, 0.03, 8, 32]} />
-        <meshBasicMaterial color={markerColor} transparent opacity={0.6} depthWrite={false} />
+        <SmartMaterial color={markerColor} transparent opacity={0.6} depthWrite={false} />
       </mesh>
 
       {/* 3D Text exclamation mark (bobbing) */}
@@ -3251,24 +3405,24 @@ function PulsingClashMarker({ clash }: { clash: { id: string; severity: "critica
       {/* Wireframe pulse box */}
       <mesh ref={meshRef}>
         <boxGeometry args={[1.8, 1.8, 1.8]} />
-        <meshBasicMaterial color={baseColor} wireframe opacity={0.9} transparent />
+        <SmartMaterial color={baseColor} wireframe opacity={0.9} transparent />
       </mesh>
       {/* Inner glow */}
       <mesh ref={glowRef}>
         <boxGeometry args={[1.6, 1.6, 1.6]} />
-        <meshBasicMaterial color={baseColor} opacity={0.25} transparent depthWrite={false} />
+        <SmartMaterial color={baseColor} opacity={0.25} transparent depthWrite={false} />
       </mesh>
 
       {/* Rotating scanner ring */}
       <mesh ref={ringRef}>
         <torusGeometry args={[1.6, 0.04, 8, 48]} />
-        <meshBasicMaterial color={baseColor} transparent opacity={0.7} depthWrite={false} />
+        <SmartMaterial color={baseColor} transparent opacity={0.7} depthWrite={false} />
       </mesh>
 
       {/* Vertical beacon beam extending upward */}
       <mesh ref={beamRef} position={[0, 4, 0]}>
         <cylinderGeometry args={[0.02, 0.4, 6, 8, 1, true]} />
-        <meshBasicMaterial color={baseColor} transparent opacity={0.2} depthWrite={false} side={THREE.DoubleSide} />
+        <SmartMaterial color={baseColor} transparent opacity={0.2} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
 
       {/* Floating label */}
@@ -3589,36 +3743,36 @@ function BuildingScene({
            {/* Flagpole */}
            <mesh position={[bw / 2 + 5, 3, bd / 2 + 5]}>
              <cylinderGeometry args={[0.05, 0.05, 6]} />
-             <meshPhysicalMaterial color="#ddd" />
+             <SmartMaterial color="#ddd" />
            </mesh>
            <mesh position={[bw / 2 + 5.5, 5, bd / 2 + 5]}>
              <planeGeometry args={[1, 0.6]} />
-             <meshPhysicalMaterial color="#fca5a5" side={THREE.DoubleSide} />
+             <SmartMaterial color="#fca5a5" side={THREE.DoubleSide} />
            </mesh>
 
            {/* Basketball Court */}
            <group position={[-bw / 2 - 8, 0.05, 0]}>
              <mesh rotation={[-Math.PI / 2, 0, 0]}>
                <planeGeometry args={[10, 16]} />
-               <meshPhysicalMaterial color="#2d8e5d" />
+               <SmartMaterial color="#2d8e5d" />
              </mesh>
              {/* Lines */}
              <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                <planeGeometry args={[9.6, 15.6]} />
-               <meshPhysicalMaterial color="#fff" />
+               <SmartMaterial color="#fff" />
              </mesh>
              <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                <planeGeometry args={[9.4, 15.4]} />
-               <meshPhysicalMaterial color="#2d8e5d" />
+               <SmartMaterial color="#2d8e5d" />
              </mesh>
              {/* Hoops */}
              <group position={[0, 0, -7.5]}>
-               <mesh position={[0, 2, 0]}><cylinderGeometry args={[0.05, 0.05, 4]}/><meshPhysicalMaterial color="#888" /></mesh>
-               <mesh position={[0, 3.5, 0.5]}><boxGeometry args={[1.5, 1, 0.05]} /><meshPhysicalMaterial color="#eee" /></mesh>
+               <mesh position={[0, 2, 0]}><cylinderGeometry args={[0.05, 0.05, 4]}/><SmartMaterial color="#888" /></mesh>
+               <mesh position={[0, 3.5, 0.5]}><boxGeometry args={[1.5, 1, 0.05]} /><SmartMaterial color="#eee" /></mesh>
              </group>
              <group position={[0, 0, 7.5]} rotation={[0, Math.PI, 0]}>
-               <mesh position={[0, 2, 0]}><cylinderGeometry args={[0.05, 0.05, 4]}/><meshPhysicalMaterial color="#888" /></mesh>
-               <mesh position={[0, 3.5, 0.5]}><boxGeometry args={[1.5, 1, 0.05]} /><meshPhysicalMaterial color="#eee" /></mesh>
+               <mesh position={[0, 2, 0]}><cylinderGeometry args={[0.05, 0.05, 4]}/><SmartMaterial color="#888" /></mesh>
+               <mesh position={[0, 3.5, 0.5]}><boxGeometry args={[1.5, 1, 0.05]} /><SmartMaterial color="#eee" /></mesh>
              </group>
            </group>
 
@@ -3644,20 +3798,20 @@ function BuildingScene({
              <group position={[0, floors * fh + 0.1, 0]}>
                <mesh rotation={[-Math.PI / 2, 0, 0]}>
                  <circleGeometry args={[4, 32]} />
-                 <meshPhysicalMaterial color="#333" />
+                 <SmartMaterial color="#333" />
                </mesh>
                {/* H logo */}
                <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                  <planeGeometry args={[1, 2.5]} />
-                 <meshPhysicalMaterial color="#fff" />
+                 <SmartMaterial color="#fff" />
                </mesh>
                <mesh position={[-1.5, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                  <planeGeometry args={[1, 5]} />
-                 <meshPhysicalMaterial color="#fff" />
+                 <SmartMaterial color="#fff" />
                </mesh>
                <mesh position={[1.5, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                  <planeGeometry args={[1, 5]} />
-                 <meshPhysicalMaterial color="#fff" />
+                 <SmartMaterial color="#fff" />
                </mesh>
              </group>
           )}
@@ -3676,6 +3830,50 @@ function BuildingScene({
         </group>
       )}
     </group>
+  );
+}
+// --- Measure Toolbar ---
+function MeasureToolbar({ measurePoints, setMeasurePoints, setMeasureMode, isDark }: { measurePoints: [number, number, number][], setMeasurePoints: any, setMeasureMode: any, isDark: boolean }) {
+  if (measurePoints.length < 2) return null;
+  const dx = measurePoints[1][0] - measurePoints[0][0];
+  const dy = measurePoints[1][1] - measurePoints[0][1];
+  const dz = measurePoints[1][2] - measurePoints[0][2];
+  const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  return (
+    <div style={{
+      position: 'absolute',
+      bottom: 24,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      background: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)',
+      padding: '12px 24px',
+      borderRadius: 16,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 16,
+      boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+      backdropFilter: 'blur(10px)',
+      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+      zIndex: 100
+    }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <span style={{ fontSize: 12, color: isDark ? '#aaa' : '#666', fontWeight: 600 }}>Measured Distance</span>
+        <span style={{ fontSize: 24, fontWeight: 800, color: '#f59f00' }}>{dist.toFixed(2)} m</span>
+      </div>
+      <div style={{ width: 1, height: 32, background: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)' }} />
+      <Button 
+        type="primary" 
+        danger
+        icon={<CloseOutlined />}
+        onClick={() => {
+          setMeasurePoints([]);
+          setMeasureMode(false);
+        }}
+        style={{ borderRadius: 8 }}
+      >
+        Clear
+      </Button>
+    </div>
   );
 }
 
@@ -3771,8 +3969,12 @@ function mapTasksToPhases(
 // --- Catalog Item Renderer ---
 function CatalogItemRenderer({ type }: { type: string }) {
   switch (type) {
+    case "crane":
+      return <ConstructionCrane progress={100} isAnimated={false} />;
+    case "bulldozer":
+      return <Bulldozer progress={100} isAnimated={false} />;
     case "excavator":
-      return <Excavator progress={100} />;
+      return <Excavator progress={100} isAnimated={false} />;
     case "concrete_mixer":
       return <ConcreteMixer progress={100} />;
     case "forklift":
@@ -3780,47 +3982,75 @@ function CatalogItemRenderer({ type }: { type: string }) {
     case "cone":
       return (
         <group scale={1.5}>
-          <mesh position={[0, 0.4, 0]}>
-            <coneGeometry args={[0.3, 0.8, 16]} />
-            <meshPhysicalMaterial color="#FF5500" roughness={0.6} />
-          </mesh>
+          {/* Base */}
           <mesh position={[0, 0.05, 0]}>
             <boxGeometry args={[0.7, 0.1, 0.7]} />
-            <meshPhysicalMaterial color="#333" />
+            <SmartMaterial color="#FF4500" roughness={0.8} />
+          </mesh>
+          {/* Main Cone */}
+          <mesh position={[0, 0.45, 0]}>
+            <cylinderGeometry args={[0.05, 0.3, 0.8, 16]} />
+            <SmartMaterial color="#FF4500" roughness={0.6} />
+          </mesh>
+          {/* White Reflective Strip */}
+          <mesh position={[0, 0.5, 0]}>
+            <cylinderGeometry args={[0.15, 0.22, 0.2, 16]} />
+            <SmartMaterial color="#FFFFFF" roughness={0.2} metalness={0.1} />
           </mesh>
         </group>
       );
     case "bench":
       return (
         <group>
-          {/* Seat */}
-          <mesh position={[0, 0.5, 0]}>
-            <boxGeometry args={[2, 0.1, 0.8]} />
-            <meshPhysicalMaterial color="#8B4513" roughness={0.8} />
-          </mesh>
-          {/* Backrest */}
-          <mesh position={[0, 1, -0.35]} rotation={[0.2, 0, 0]}>
-            <boxGeometry args={[2, 0.6, 0.1]} />
-            <meshPhysicalMaterial color="#8B4513" roughness={0.8} />
-          </mesh>
-          {/* Legs */}
-          <mesh position={[-0.8, 0.25, 0.2]}><boxGeometry args={[0.1, 0.5, 0.1]} /><meshPhysicalMaterial color="#222" /></mesh>
-          <mesh position={[0.8, 0.25, 0.2]}><boxGeometry args={[0.1, 0.5, 0.1]} /><meshPhysicalMaterial color="#222" /></mesh>
-          <mesh position={[-0.8, 0.25, -0.2]}><boxGeometry args={[0.1, 0.5, 0.1]} /><meshPhysicalMaterial color="#222" /></mesh>
-          <mesh position={[0.8, 0.25, -0.2]}><boxGeometry args={[0.1, 0.5, 0.1]} /><meshPhysicalMaterial color="#222" /></mesh>
+          {/* Frame/Legs */}
+          <mesh position={[-0.9, 0.4, 0]}><boxGeometry args={[0.1, 0.8, 0.8]} /><SmartMaterial color="#333" metalness={0.8} roughness={0.4} /></mesh>
+          <mesh position={[0.9, 0.4, 0]}><boxGeometry args={[0.1, 0.8, 0.8]} /><SmartMaterial color="#333" metalness={0.8} roughness={0.4} /></mesh>
+          {/* Armrests */}
+          <mesh position={[-0.9, 0.85, 0.1]}><boxGeometry args={[0.1, 0.05, 0.9]} /><SmartMaterial color="#333" metalness={0.8} roughness={0.4} /></mesh>
+          <mesh position={[0.9, 0.85, 0.1]}><boxGeometry args={[0.1, 0.05, 0.9]} /><SmartMaterial color="#333" metalness={0.8} roughness={0.4} /></mesh>
+          {/* Seat Slats */}
+          {[...Array(4)].map((_, i) => (
+            <mesh key={`seat-${i}`} position={[0, 0.5, -0.3 + i * 0.2]}>
+              <boxGeometry args={[1.8, 0.05, 0.15]} />
+              <SmartMaterial color="#8B4513" roughness={0.8} />
+            </mesh>
+          ))}
+          {/* Backrest Slats */}
+          {[...Array(3)].map((_, i) => (
+            <mesh key={`back-${i}`} position={[0, 0.7 + i * 0.2, -0.4]} rotation={[0.15, 0, 0]}>
+              <boxGeometry args={[1.8, 0.15, 0.05]} />
+              <SmartMaterial color="#8B4513" roughness={0.8} />
+            </mesh>
+          ))}
         </group>
       );
     case "dumpster":
       return (
         <group>
-          <mesh position={[0, 0.75, 0]}>
-            <boxGeometry args={[2.5, 1.5, 1.5]} />
-            <meshPhysicalMaterial color="#2E8B57" roughness={0.7} metalness={0.2} />
+          {/* Main Body */}
+          <mesh position={[0, 0.8, 0]}>
+            <boxGeometry args={[2.5, 1.4, 1.5]} />
+            <SmartMaterial color="#1E5B37" roughness={0.7} metalness={0.3} />
           </mesh>
-          <mesh position={[0, 1.5, 0]} rotation={[0.2, 0, 0]}>
-            <boxGeometry args={[2.5, 0.1, 1.5]} />
-            <meshPhysicalMaterial color="#111" roughness={0.9} />
+          {/* Front Angle Cut (Simulated with a wedge) */}
+          <mesh position={[0, 1.1, 0.8]} rotation={[-Math.PI / 6, 0, 0]}>
+            <boxGeometry args={[2.5, 0.8, 0.1]} />
+            <SmartMaterial color="#1E5B37" roughness={0.7} metalness={0.3} />
           </mesh>
+          {/* Lids */}
+          <mesh position={[-0.6, 1.5, 0]} rotation={[0.1, 0, 0]}>
+            <boxGeometry args={[1.2, 0.05, 1.6]} />
+            <SmartMaterial color="#111" roughness={0.9} />
+          </mesh>
+          <mesh position={[0.6, 1.5, 0]} rotation={[0.1, 0, 0]}>
+            <boxGeometry args={[1.2, 0.05, 1.6]} />
+            <SmartMaterial color="#111" roughness={0.9} />
+          </mesh>
+          {/* Wheels */}
+          <mesh position={[-1.1, 0.1, -0.6]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.15, 0.15, 0.1, 16]} /><SmartMaterial color="#222" /></mesh>
+          <mesh position={[1.1, 0.1, -0.6]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.15, 0.15, 0.1, 16]} /><SmartMaterial color="#222" /></mesh>
+          <mesh position={[-1.1, 0.1, 0.6]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.15, 0.15, 0.1, 16]} /><SmartMaterial color="#222" /></mesh>
+          <mesh position={[1.1, 0.1, 0.6]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.15, 0.15, 0.1, 16]} /><SmartMaterial color="#222" /></mesh>
         </group>
       );
     case "streetlight":
@@ -3828,15 +4058,15 @@ function CatalogItemRenderer({ type }: { type: string }) {
         <group>
           <mesh position={[0, 3, 0]}>
             <cylinderGeometry args={[0.05, 0.1, 6, 8]} />
-            <meshPhysicalMaterial color="#555" metalness={0.8} roughness={0.3} />
+            <SmartMaterial color="#555" metalness={0.8} roughness={0.3} />
           </mesh>
           <mesh position={[0.5, 6, 0]} rotation={[0, 0, Math.PI / 2]}>
             <cylinderGeometry args={[0.03, 0.05, 1, 8]} />
-            <meshPhysicalMaterial color="#555" metalness={0.8} roughness={0.3} />
+            <SmartMaterial color="#555" metalness={0.8} roughness={0.3} />
           </mesh>
           <mesh position={[1, 5.9, 0]}>
             <boxGeometry args={[0.4, 0.1, 0.2]} />
-            <meshPhysicalMaterial color="#fff" emissive="#fff" emissiveIntensity={1} />
+            <SmartMaterial color="#fff" emissive="#fff" emissiveIntensity={1} />
           </mesh>
         </group>
       );
@@ -3845,11 +4075,11 @@ function CatalogItemRenderer({ type }: { type: string }) {
         <group>
           <mesh position={[0, 1, 0]}>
             <cylinderGeometry args={[0.2, 0.3, 2]} />
-            <meshPhysicalMaterial color="#5c4033" roughness={0.9} />
+            <SmartMaterial color="#5c4033" roughness={0.9} />
           </mesh>
           <mesh position={[0, 3, 0]}>
             <dodecahedronGeometry args={[1.5]} />
-            <meshPhysicalMaterial color="#2e8b57" roughness={0.8} />
+            <SmartMaterial color="#2e8b57" roughness={0.8} />
           </mesh>
         </group>
       );
@@ -3858,152 +4088,152 @@ function CatalogItemRenderer({ type }: { type: string }) {
         <group>
           <mesh position={[0, 0.6, 0]}>
             <dodecahedronGeometry args={[0.8]} />
-            <meshPhysicalMaterial color="#3cb371" roughness={0.9} />
+            <SmartMaterial color="#3cb371" roughness={0.9} />
           </mesh>
         </group>
       );
     case "ambulance":
       return (
         <group>
-          <mesh position={[0, 0.6, 0]}><boxGeometry args={[1.2, 1.2, 2.8]} /><meshPhysicalMaterial color="#ffffff" roughness={0.4} clearcoat={0.5} /></mesh>
-          <mesh position={[0, 0.6, 0]}><boxGeometry args={[1.25, 0.3, 0.3]} /><meshPhysicalMaterial color="#e63946" /></mesh>
-          <mesh position={[0, 1.3, 0]}><boxGeometry args={[0.4, 0.1, 0.8]} /><meshPhysicalMaterial color="#0055ff" emissive="#0055ff" emissiveIntensity={0.8} /></mesh>
-          <mesh position={[-0.6, 0.3, 0.9]} rotation={[0, 0, Math.PI/2]}><cylinderGeometry args={[0.3, 0.3, 0.2]} /><meshPhysicalMaterial color="#222" /></mesh>
-          <mesh position={[0.6, 0.3, 0.9]} rotation={[0, 0, Math.PI/2]}><cylinderGeometry args={[0.3, 0.3, 0.2]} /><meshPhysicalMaterial color="#222" /></mesh>
-          <mesh position={[-0.6, 0.3, -0.9]} rotation={[0, 0, Math.PI/2]}><cylinderGeometry args={[0.3, 0.3, 0.2]} /><meshPhysicalMaterial color="#222" /></mesh>
-          <mesh position={[0.6, 0.3, -0.9]} rotation={[0, 0, Math.PI/2]}><cylinderGeometry args={[0.3, 0.3, 0.2]} /><meshPhysicalMaterial color="#222" /></mesh>
+          <mesh position={[0, 0.6, 0]}><boxGeometry args={[1.2, 1.2, 2.8]} /><SmartMaterial color="#ffffff" roughness={0.4} clearcoat={0.5} /></mesh>
+          <mesh position={[0, 0.6, 0]}><boxGeometry args={[1.25, 0.3, 0.3]} /><SmartMaterial color="#e63946" /></mesh>
+          <mesh position={[0, 1.3, 0]}><boxGeometry args={[0.4, 0.1, 0.8]} /><SmartMaterial color="#0055ff" emissive="#0055ff" emissiveIntensity={0.8} /></mesh>
+          <mesh position={[-0.6, 0.3, 0.9]} rotation={[0, 0, Math.PI/2]}><cylinderGeometry args={[0.3, 0.3, 0.2]} /><SmartMaterial color="#222" /></mesh>
+          <mesh position={[0.6, 0.3, 0.9]} rotation={[0, 0, Math.PI/2]}><cylinderGeometry args={[0.3, 0.3, 0.2]} /><SmartMaterial color="#222" /></mesh>
+          <mesh position={[-0.6, 0.3, -0.9]} rotation={[0, 0, Math.PI/2]}><cylinderGeometry args={[0.3, 0.3, 0.2]} /><SmartMaterial color="#222" /></mesh>
+          <mesh position={[0.6, 0.3, -0.9]} rotation={[0, 0, Math.PI/2]}><cylinderGeometry args={[0.3, 0.3, 0.2]} /><SmartMaterial color="#222" /></mesh>
         </group>
       );
     case "medical_bed":
       return (
         <group>
-          <mesh position={[0, 0.4, 0]}><boxGeometry args={[1.0, 0.1, 2.0]} /><meshPhysicalMaterial color="#e0e0e0" metalness={0.8} roughness={0.2} /></mesh>
-          <mesh position={[0, 0.5, 0]}><boxGeometry args={[0.9, 0.15, 1.9]} /><meshPhysicalMaterial color="#88ccff" /></mesh>
-          <mesh position={[0, 0.7, -0.9]} rotation={[0.4, 0, 0]}><boxGeometry args={[0.9, 0.6, 0.1]} /><meshPhysicalMaterial color="#e0e0e0" metalness={0.8} roughness={0.2} /></mesh>
+          <mesh position={[0, 0.4, 0]}><boxGeometry args={[1.0, 0.1, 2.0]} /><SmartMaterial color="#e0e0e0" metalness={0.8} roughness={0.2} /></mesh>
+          <mesh position={[0, 0.5, 0]}><boxGeometry args={[0.9, 0.15, 1.9]} /><SmartMaterial color="#88ccff" /></mesh>
+          <mesh position={[0, 0.7, -0.9]} rotation={[0.4, 0, 0]}><boxGeometry args={[0.9, 0.6, 0.1]} /><SmartMaterial color="#e0e0e0" metalness={0.8} roughness={0.2} /></mesh>
         </group>
       );
     case "mri_machine":
       return (
         <group>
-          <mesh position={[0, 1, -0.5]}><boxGeometry args={[2, 2, 1.5]} /><meshPhysicalMaterial color="#ffffff" clearcoat={0.8} roughness={0.1} /></mesh>
-          <mesh position={[0, 1, -0.5]} rotation={[Math.PI/2, 0, 0]}><cylinderGeometry args={[0.6, 0.6, 1.6]} /><meshPhysicalMaterial color="#222" /></mesh>
-          <mesh position={[0, 0.4, 0.8]}><boxGeometry args={[0.8, 0.1, 2]} /><meshPhysicalMaterial color="#aaccff" /></mesh>
+          <mesh position={[0, 1, -0.5]}><boxGeometry args={[2, 2, 1.5]} /><SmartMaterial color="#ffffff" clearcoat={0.8} roughness={0.1} /></mesh>
+          <mesh position={[0, 1, -0.5]} rotation={[Math.PI/2, 0, 0]}><cylinderGeometry args={[0.6, 0.6, 1.6]} /><SmartMaterial color="#222" /></mesh>
+          <mesh position={[0, 0.4, 0.8]}><boxGeometry args={[0.8, 0.1, 2]} /><SmartMaterial color="#aaccff" /></mesh>
         </group>
       );
     case "school_bus":
       return (
         <group>
-          <mesh position={[0, 0.9, 0]}><boxGeometry args={[1.4, 1.4, 3.8]} /><meshPhysicalMaterial color="#ffcc00" roughness={0.5} clearcoat={0.3} /></mesh>
-          <mesh position={[0, 0.9, 1.8]}><boxGeometry args={[1.4, 0.6, 0.4]} /><meshPhysicalMaterial color="#ffcc00" /></mesh>
-          <mesh position={[0, 0.4, 1.4]} rotation={[0, 0, Math.PI/2]}><cylinderGeometry args={[0.4, 0.4, 1.6]} /><meshPhysicalMaterial color="#222" /></mesh>
-          <mesh position={[0, 0.4, -1.4]} rotation={[0, 0, Math.PI/2]}><cylinderGeometry args={[0.4, 0.4, 1.6]} /><meshPhysicalMaterial color="#222" /></mesh>
-          <mesh position={[0, 1.2, 0]}><boxGeometry args={[1.45, 0.4, 3.0]} /><meshPhysicalMaterial color="#111" /></mesh>
+          <mesh position={[0, 0.9, 0]}><boxGeometry args={[1.4, 1.4, 3.8]} /><SmartMaterial color="#ffcc00" roughness={0.5} clearcoat={0.3} /></mesh>
+          <mesh position={[0, 0.9, 1.8]}><boxGeometry args={[1.4, 0.6, 0.4]} /><SmartMaterial color="#ffcc00" /></mesh>
+          <mesh position={[0, 0.4, 1.4]} rotation={[0, 0, Math.PI/2]}><cylinderGeometry args={[0.4, 0.4, 1.6]} /><SmartMaterial color="#222" /></mesh>
+          <mesh position={[0, 0.4, -1.4]} rotation={[0, 0, Math.PI/2]}><cylinderGeometry args={[0.4, 0.4, 1.6]} /><SmartMaterial color="#222" /></mesh>
+          <mesh position={[0, 1.2, 0]}><boxGeometry args={[1.45, 0.4, 3.0]} /><SmartMaterial color="#111" /></mesh>
         </group>
       );
     case "desk":
       return (
         <group>
-          <mesh position={[0, 0.7, 0]}><boxGeometry args={[1.2, 0.05, 0.6]} /><meshPhysicalMaterial color="#d2b48c" roughness={0.8} /></mesh>
-          <mesh position={[-0.5, 0.35, -0.2]}><cylinderGeometry args={[0.03, 0.03, 0.7]} /><meshPhysicalMaterial color="#444" metalness={0.8} /></mesh>
-          <mesh position={[0.5, 0.35, -0.2]}><cylinderGeometry args={[0.03, 0.03, 0.7]} /><meshPhysicalMaterial color="#444" metalness={0.8} /></mesh>
-          <mesh position={[-0.5, 0.35, 0.2]}><cylinderGeometry args={[0.03, 0.03, 0.7]} /><meshPhysicalMaterial color="#444" metalness={0.8} /></mesh>
-          <mesh position={[0.5, 0.35, 0.2]}><cylinderGeometry args={[0.03, 0.03, 0.7]} /><meshPhysicalMaterial color="#444" metalness={0.8} /></mesh>
+          <mesh position={[0, 0.7, 0]}><boxGeometry args={[1.2, 0.05, 0.6]} /><SmartMaterial color="#d2b48c" roughness={0.8} /></mesh>
+          <mesh position={[-0.5, 0.35, -0.2]}><cylinderGeometry args={[0.03, 0.03, 0.7]} /><SmartMaterial color="#444" metalness={0.8} /></mesh>
+          <mesh position={[0.5, 0.35, -0.2]}><cylinderGeometry args={[0.03, 0.03, 0.7]} /><SmartMaterial color="#444" metalness={0.8} /></mesh>
+          <mesh position={[-0.5, 0.35, 0.2]}><cylinderGeometry args={[0.03, 0.03, 0.7]} /><SmartMaterial color="#444" metalness={0.8} /></mesh>
+          <mesh position={[0.5, 0.35, 0.2]}><cylinderGeometry args={[0.03, 0.03, 0.7]} /><SmartMaterial color="#444" metalness={0.8} /></mesh>
         </group>
       );
     case "whiteboard":
       return (
         <group>
-          <mesh position={[0, 1.5, 0]}><boxGeometry args={[2.4, 1.2, 0.05]} /><meshPhysicalMaterial color="#ffffff" roughness={0.1} /></mesh>
-          <mesh position={[-1.1, 0.7, 0]}><boxGeometry args={[0.05, 1.4, 0.05]} /><meshPhysicalMaterial color="#888" /></mesh>
-          <mesh position={[1.1, 0.7, 0]}><boxGeometry args={[0.05, 1.4, 0.05]} /><meshPhysicalMaterial color="#888" /></mesh>
-          <mesh position={[-1.1, 0, 0.3]} rotation={[-0.3, 0, 0]}><boxGeometry args={[0.05, 1.5, 0.05]} /><meshPhysicalMaterial color="#888" /></mesh>
-          <mesh position={[1.1, 0, 0.3]} rotation={[-0.3, 0, 0]}><boxGeometry args={[0.05, 1.5, 0.05]} /><meshPhysicalMaterial color="#888" /></mesh>
+          <mesh position={[0, 1.5, 0]}><boxGeometry args={[2.4, 1.2, 0.05]} /><SmartMaterial color="#ffffff" roughness={0.1} /></mesh>
+          <mesh position={[-1.1, 0.7, 0]}><boxGeometry args={[0.05, 1.4, 0.05]} /><SmartMaterial color="#888" /></mesh>
+          <mesh position={[1.1, 0.7, 0]}><boxGeometry args={[0.05, 1.4, 0.05]} /><SmartMaterial color="#888" /></mesh>
+          <mesh position={[-1.1, 0, 0.3]} rotation={[-0.3, 0, 0]}><boxGeometry args={[0.05, 1.5, 0.05]} /><SmartMaterial color="#888" /></mesh>
+          <mesh position={[1.1, 0, 0.3]} rotation={[-0.3, 0, 0]}><boxGeometry args={[0.05, 1.5, 0.05]} /><SmartMaterial color="#888" /></mesh>
         </group>
       );
     case "tractor":
       return (
         <group>
-          <mesh position={[0, 0.8, 0]}><boxGeometry args={[1.2, 0.8, 2]} /><meshPhysicalMaterial color="#d32f2f" roughness={0.7} /></mesh>
-          <mesh position={[0, 1.6, -0.4]}><boxGeometry args={[1.2, 1, 1]} /><meshPhysicalMaterial color="#444" transparent opacity={0.8} /></mesh>
-          <mesh position={[-0.7, 0.6, -0.6]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.6, 0.6, 0.3, 16]} /><meshPhysicalMaterial color="#111" /></mesh>
-          <mesh position={[0.7, 0.6, -0.6]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.6, 0.6, 0.3, 16]} /><meshPhysicalMaterial color="#111" /></mesh>
-          <mesh position={[-0.7, 0.4, 0.7]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.4, 0.4, 0.2, 16]} /><meshPhysicalMaterial color="#111" /></mesh>
-          <mesh position={[0.7, 0.4, 0.7]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.4, 0.4, 0.2, 16]} /><meshPhysicalMaterial color="#111" /></mesh>
+          <mesh position={[0, 0.8, 0]}><boxGeometry args={[1.2, 0.8, 2]} /><SmartMaterial color="#d32f2f" roughness={0.7} /></mesh>
+          <mesh position={[0, 1.6, -0.4]}><boxGeometry args={[1.2, 1, 1]} /><SmartMaterial color="#444" transparent opacity={0.8} /></mesh>
+          <mesh position={[-0.7, 0.6, -0.6]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.6, 0.6, 0.3, 16]} /><SmartMaterial color="#111" /></mesh>
+          <mesh position={[0.7, 0.6, -0.6]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.6, 0.6, 0.3, 16]} /><SmartMaterial color="#111" /></mesh>
+          <mesh position={[-0.7, 0.4, 0.7]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.4, 0.4, 0.2, 16]} /><SmartMaterial color="#111" /></mesh>
+          <mesh position={[0.7, 0.4, 0.7]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.4, 0.4, 0.2, 16]} /><SmartMaterial color="#111" /></mesh>
         </group>
       );
     case "silo":
       return (
         <group>
-          <mesh position={[0, 3, 0]}><cylinderGeometry args={[2, 2, 6, 16]} /><meshPhysicalMaterial color="#a0a0a0" metalness={0.6} roughness={0.3} /></mesh>
-          <mesh position={[0, 6.5, 0]}><coneGeometry args={[2.1, 1, 16]} /><meshPhysicalMaterial color="#d32f2f" /></mesh>
+          <mesh position={[0, 3, 0]}><cylinderGeometry args={[2, 2, 6, 16]} /><SmartMaterial color="#a0a0a0" metalness={0.6} roughness={0.3} /></mesh>
+          <mesh position={[0, 6.5, 0]}><coneGeometry args={[2.1, 1, 16]} /><SmartMaterial color="#d32f2f" /></mesh>
         </group>
       );
     case "windmill":
       return (
         <group>
-          <mesh position={[0, 4, 0]}><cylinderGeometry args={[0.3, 0.8, 8, 8]} /><meshPhysicalMaterial color="#888" metalness={0.5} roughness={0.5} /></mesh>
+          <mesh position={[0, 4, 0]}><cylinderGeometry args={[0.3, 0.8, 8, 8]} /><SmartMaterial color="#888" metalness={0.5} roughness={0.5} /></mesh>
           <group position={[0, 8, 0.5]}>
-            <mesh><boxGeometry args={[4, 0.2, 0.1]} /><meshPhysicalMaterial color="#e0e0e0" /></mesh>
-            <mesh rotation={[0, 0, Math.PI / 2]}><boxGeometry args={[4, 0.2, 0.1]} /><meshPhysicalMaterial color="#e0e0e0" /></mesh>
+            <mesh><boxGeometry args={[4, 0.2, 0.1]} /><SmartMaterial color="#e0e0e0" /></mesh>
+            <mesh rotation={[0, 0, Math.PI / 2]}><boxGeometry args={[4, 0.2, 0.1]} /><SmartMaterial color="#e0e0e0" /></mesh>
           </group>
         </group>
       );
     case "barn":
       return (
         <group>
-          <mesh position={[0, 1.5, 0]}><boxGeometry args={[4, 3, 6]} /><meshPhysicalMaterial color="#b71c1c" /></mesh>
-          <mesh position={[-1.2, 3.5, 0]} rotation={[0, 0, 0.5]}><boxGeometry args={[2.5, 0.2, 6.2]} /><meshPhysicalMaterial color="#444" /></mesh>
-          <mesh position={[1.2, 3.5, 0]} rotation={[0, 0, -0.5]}><boxGeometry args={[2.5, 0.2, 6.2]} /><meshPhysicalMaterial color="#444" /></mesh>
+          <mesh position={[0, 1.5, 0]}><boxGeometry args={[4, 3, 6]} /><SmartMaterial color="#b71c1c" /></mesh>
+          <mesh position={[-1.2, 3.5, 0]} rotation={[0, 0, 0.5]}><boxGeometry args={[2.5, 0.2, 6.2]} /><SmartMaterial color="#444" /></mesh>
+          <mesh position={[1.2, 3.5, 0]} rotation={[0, 0, -0.5]}><boxGeometry args={[2.5, 0.2, 6.2]} /><SmartMaterial color="#444" /></mesh>
         </group>
       );
     case "robotic_arm":
       return (
         <group>
-          <mesh position={[0, 0.2, 0]}><cylinderGeometry args={[0.6, 0.8, 0.4, 16]} /><meshPhysicalMaterial color="#e67e22" /></mesh>
-          <mesh position={[0, 1, 0]}><boxGeometry args={[0.3, 1.6, 0.3]} /><meshPhysicalMaterial color="#e67e22" /></mesh>
-          <mesh position={[0.4, 1.6, 0]} rotation={[0, 0, Math.PI / 4]}><boxGeometry args={[1.2, 0.25, 0.25]} /><meshPhysicalMaterial color="#e67e22" /></mesh>
-          <mesh position={[0.9, 1.1, 0]}><boxGeometry args={[0.1, 0.5, 0.4]} /><meshPhysicalMaterial color="#333" /></mesh>
+          <mesh position={[0, 0.2, 0]}><cylinderGeometry args={[0.6, 0.8, 0.4, 16]} /><SmartMaterial color="#e67e22" /></mesh>
+          <mesh position={[0, 1, 0]}><boxGeometry args={[0.3, 1.6, 0.3]} /><SmartMaterial color="#e67e22" /></mesh>
+          <mesh position={[0.4, 1.6, 0]} rotation={[0, 0, Math.PI / 4]}><boxGeometry args={[1.2, 0.25, 0.25]} /><SmartMaterial color="#e67e22" /></mesh>
+          <mesh position={[0.9, 1.1, 0]}><boxGeometry args={[0.1, 0.5, 0.4]} /><SmartMaterial color="#333" /></mesh>
         </group>
       );
     case "conveyor_belt":
       return (
         <group>
-          <mesh position={[0, 0.5, 0]}><boxGeometry args={[4, 0.1, 1]} /><meshPhysicalMaterial color="#222" /></mesh>
-          <mesh position={[-1.8, 0.25, 0]} rotation={[Math.PI/2, 0, 0]}><cylinderGeometry args={[0.1, 0.1, 1, 8]} /><meshPhysicalMaterial color="#888" /></mesh>
-          <mesh position={[1.8, 0.25, 0]} rotation={[Math.PI/2, 0, 0]}><cylinderGeometry args={[0.1, 0.1, 1, 8]} /><meshPhysicalMaterial color="#888" /></mesh>
-          <mesh position={[-1.8, 0.25, 0.4]}><boxGeometry args={[0.1, 0.5, 0.1]} /><meshPhysicalMaterial color="#f39c12" /></mesh>
-          <mesh position={[-1.8, 0.25, -0.4]}><boxGeometry args={[0.1, 0.5, 0.1]} /><meshPhysicalMaterial color="#f39c12" /></mesh>
-          <mesh position={[1.8, 0.25, 0.4]}><boxGeometry args={[0.1, 0.5, 0.1]} /><meshPhysicalMaterial color="#f39c12" /></mesh>
-          <mesh position={[1.8, 0.25, -0.4]}><boxGeometry args={[0.1, 0.5, 0.1]} /><meshPhysicalMaterial color="#f39c12" /></mesh>
+          <mesh position={[0, 0.5, 0]}><boxGeometry args={[4, 0.1, 1]} /><SmartMaterial color="#222" /></mesh>
+          <mesh position={[-1.8, 0.25, 0]} rotation={[Math.PI/2, 0, 0]}><cylinderGeometry args={[0.1, 0.1, 1, 8]} /><SmartMaterial color="#888" /></mesh>
+          <mesh position={[1.8, 0.25, 0]} rotation={[Math.PI/2, 0, 0]}><cylinderGeometry args={[0.1, 0.1, 1, 8]} /><SmartMaterial color="#888" /></mesh>
+          <mesh position={[-1.8, 0.25, 0.4]}><boxGeometry args={[0.1, 0.5, 0.1]} /><SmartMaterial color="#f39c12" /></mesh>
+          <mesh position={[-1.8, 0.25, -0.4]}><boxGeometry args={[0.1, 0.5, 0.1]} /><SmartMaterial color="#f39c12" /></mesh>
+          <mesh position={[1.8, 0.25, 0.4]}><boxGeometry args={[0.1, 0.5, 0.1]} /><SmartMaterial color="#f39c12" /></mesh>
+          <mesh position={[1.8, 0.25, -0.4]}><boxGeometry args={[0.1, 0.5, 0.1]} /><SmartMaterial color="#f39c12" /></mesh>
         </group>
       );
     case "forklift":
       return (
         <group>
-          <mesh position={[0, 0.6, 0]}><boxGeometry args={[1.6, 0.8, 1]} /><meshPhysicalMaterial color="#f1c40f" /></mesh>
-          <mesh position={[-0.4, 1.4, 0]}><boxGeometry args={[0.8, 0.8, 0.8]} /><meshPhysicalMaterial color="#222" transparent opacity={0.6} /></mesh>
-          <mesh position={[0.9, 0.8, 0]}><boxGeometry args={[0.2, 1.6, 0.8]} /><meshPhysicalMaterial color="#333" /></mesh>
-          <mesh position={[1.4, 0.1, 0.2]}><boxGeometry args={[1, 0.1, 0.15]} /><meshPhysicalMaterial color="#888" /></mesh>
-          <mesh position={[1.4, 0.1, -0.2]}><boxGeometry args={[1, 0.1, 0.15]} /><meshPhysicalMaterial color="#888" /></mesh>
-          <mesh position={[-0.5, 0.3, 0.5]} rotation={[Math.PI/2, 0, 0]}><cylinderGeometry args={[0.3, 0.3, 0.2, 16]} /><meshPhysicalMaterial color="#111" /></mesh>
-          <mesh position={[0.5, 0.3, 0.5]} rotation={[Math.PI/2, 0, 0]}><cylinderGeometry args={[0.3, 0.3, 0.2, 16]} /><meshPhysicalMaterial color="#111" /></mesh>
-          <mesh position={[-0.5, 0.3, -0.5]} rotation={[Math.PI/2, 0, 0]}><cylinderGeometry args={[0.3, 0.3, 0.2, 16]} /><meshPhysicalMaterial color="#111" /></mesh>
-          <mesh position={[0.5, 0.3, -0.5]} rotation={[Math.PI/2, 0, 0]}><cylinderGeometry args={[0.3, 0.3, 0.2, 16]} /><meshPhysicalMaterial color="#111" /></mesh>
+          <mesh position={[0, 0.6, 0]}><boxGeometry args={[1.6, 0.8, 1]} /><SmartMaterial color="#f1c40f" /></mesh>
+          <mesh position={[-0.4, 1.4, 0]}><boxGeometry args={[0.8, 0.8, 0.8]} /><SmartMaterial color="#222" transparent opacity={0.6} /></mesh>
+          <mesh position={[0.9, 0.8, 0]}><boxGeometry args={[0.2, 1.6, 0.8]} /><SmartMaterial color="#333" /></mesh>
+          <mesh position={[1.4, 0.1, 0.2]}><boxGeometry args={[1, 0.1, 0.15]} /><SmartMaterial color="#888" /></mesh>
+          <mesh position={[1.4, 0.1, -0.2]}><boxGeometry args={[1, 0.1, 0.15]} /><SmartMaterial color="#888" /></mesh>
+          <mesh position={[-0.5, 0.3, 0.5]} rotation={[Math.PI/2, 0, 0]}><cylinderGeometry args={[0.3, 0.3, 0.2, 16]} /><SmartMaterial color="#111" /></mesh>
+          <mesh position={[0.5, 0.3, 0.5]} rotation={[Math.PI/2, 0, 0]}><cylinderGeometry args={[0.3, 0.3, 0.2, 16]} /><SmartMaterial color="#111" /></mesh>
+          <mesh position={[-0.5, 0.3, -0.5]} rotation={[Math.PI/2, 0, 0]}><cylinderGeometry args={[0.3, 0.3, 0.2, 16]} /><SmartMaterial color="#111" /></mesh>
+          <mesh position={[0.5, 0.3, -0.5]} rotation={[Math.PI/2, 0, 0]}><cylinderGeometry args={[0.3, 0.3, 0.2, 16]} /><SmartMaterial color="#111" /></mesh>
         </group>
       );
     case "pallet":
       return (
         <group>
-          <mesh position={[0, 0.1, 0]}><boxGeometry args={[1.2, 0.2, 1.2]} /><meshPhysicalMaterial color="#d4ac0d" /></mesh>
-          <mesh position={[0, 0.6, 0]}><boxGeometry args={[1, 0.8, 1]} /><meshPhysicalMaterial color="#aab7b8" /></mesh>
-          <mesh position={[0, 1.4, 0]}><boxGeometry args={[1, 0.8, 1]} /><meshPhysicalMaterial color="#aab7b8" /></mesh>
+          <mesh position={[0, 0.1, 0]}><boxGeometry args={[1.2, 0.2, 1.2]} /><SmartMaterial color="#d4ac0d" /></mesh>
+          <mesh position={[0, 0.6, 0]}><boxGeometry args={[1, 0.8, 1]} /><SmartMaterial color="#aab7b8" /></mesh>
+          <mesh position={[0, 1.4, 0]}><boxGeometry args={[1, 0.8, 1]} /><SmartMaterial color="#aab7b8" /></mesh>
         </group>
       );
     default:
       return (
         <mesh position={[0, 0.5, 0]}>
           <boxGeometry args={[1, 1, 1]} />
-          <meshPhysicalMaterial color="magenta" />
+          <SmartMaterial color="magenta" />
         </mesh>
       );
   }
@@ -4019,13 +4249,13 @@ function MeasurementRenderer({ points }: { points: [number, number, number][] })
     <group>
       <mesh position={p1}>
         <sphereGeometry args={[0.3, 16, 16]} />
-        <meshBasicMaterial color="#ff0000" depthTest={false} />
+        <SmartMaterial color="#ff0000" depthTest={false} />
       </mesh>
       {p2 && (
         <>
           <mesh position={p2}>
             <sphereGeometry args={[0.3, 16, 16]} />
-            <meshBasicMaterial color="#ff0000" depthTest={false} />
+            <SmartMaterial color="#ff0000" depthTest={false} />
           </mesh>
           <Line points={[p1, p2]} color="#ff0000" lineWidth={4} depthTest={false} />
           <Html position={p1.clone().lerp(p2, 0.5)} center style={{ pointerEvents: "none" }}>
@@ -4040,6 +4270,117 @@ function MeasurementRenderer({ points }: { points: [number, number, number][] })
 }
 
 import { GlassPanel } from "@/components/ui/GlassPanel";
+
+
+// ---------------------------------------------------------------
+// --  VISUAL STYLE MANAGER (SKETCHUP BLUEPRINT)  --
+// ---------------------------------------------------------------
+const VisualStyleManager = ({ style }: { style: 'realistic' | 'sketchup' }) => {
+  const { scene } = useThree();
+  
+  useEffect(() => {
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        
+        materials.forEach(mat => {
+          if (!mat.userData) mat.userData = {};
+          
+          if (style === 'sketchup') {
+            if (mat.userData.origColor === undefined) {
+              mat.userData.origColor = (mat as any).color ? (mat as any).color.clone() : null;
+              mat.userData.origWireframe = (mat as any).wireframe;
+            }
+            if ((mat as any).color) (mat as any).color.set('#ffffff');
+            (mat as any).wireframe = true;
+          } else {
+            if (mat.userData.origColor && (mat as any).color) {
+              (mat as any).color.copy(mat.userData.origColor);
+            }
+            if (mat.userData.origWireframe !== undefined) {
+              (mat as any).wireframe = mat.userData.origWireframe;
+            }
+          }
+        });
+      }
+    });
+  }, [style, scene]);
+
+  return null;
+};
+
+// ---------------------------------------------------------------
+// --  EDITOR MODE TYPES & CONTROLLER  --
+// ---------------------------------------------------------------
+export interface CatalogItemInstance {
+  id: string;
+  catalogId: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale: [number, number, number];
+}
+
+const PlacementController = ({ 
+  activeTool, 
+  onPlace, 
+  editMode 
+}: { 
+  activeTool: string | null; 
+  onPlace: (pos: [number, number, number]) => void;
+  editMode: boolean;
+}) => {
+  if (!editMode || !activeTool) return null;
+  return (
+    <mesh 
+      rotation={[-Math.PI / 2, 0, 0]} 
+      position={[0, 0.05, 0]} 
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        onPlace([e.point.x, e.point.y, e.point.z]);
+      }}
+    >
+      <planeGeometry args={[200, 200]} />
+      <SmartMaterial visible={false} />
+    </mesh>
+  );
+};
+
+const EditorPlacedItemRenderer = ({ 
+  obj, 
+  onSelect, 
+  isSelected 
+}: { 
+  obj: CatalogItemInstance; 
+  onSelect: (id: string) => void;
+  isSelected: boolean;
+}) => {
+  const ref = useRef<THREE.Group>(null);
+  const catalogItem = CATALOG_ITEMS.find(c => c.id === obj.catalogId);
+  
+  return (
+    <group 
+      ref={ref} 
+      position={obj.position} 
+      rotation={obj.rotation}
+      onClick={(e) => { e.stopPropagation(); onSelect(obj.id); }}
+    >
+      {/* Box placeholder since we don't have real 3D models for the catalog items yet */}
+      <mesh position={[0, 0.5, 0]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <SmartMaterial color={isSelected ? "#ff0000" : "#888888"} />
+      </mesh>
+      <Html position={[0, 1.2, 0]} center style={{ pointerEvents: 'none' }}>
+        <div style={{ background: 'rgba(0,0,0,0.7)', color: '#fff', padding: '2px 6px', borderRadius: 4, fontSize: 10, whiteSpace: 'nowrap' }}>
+          {catalogItem?.icon} {catalogItem?.name}
+        </div>
+      </Html>
+      {isSelected && <TransformControls object={ref as any} mode="translate" />}
+    </group>
+  );
+};
+
+
 
 export default function Construction3DPage() {
   const { token } = theme.useToken();
@@ -4318,9 +4659,6 @@ export default function Construction3DPage() {
 
   const currentPhases = dynamicPhases;
 
-  const [resolvedClashIds, setResolvedClashIds] = useState<string[]>([]);
-  const [clashToFix, setClashToFix] = useState<any | null>(null);
-  const [clashFixModalVisible, setClashFixModalVisible] = useState(false);
 
   // ─── Clash / Delay Detection Engine ───────────────────────────────────
   // Multi-rule validation: sequential deps, resource conflicts, cost overruns
@@ -4473,6 +4811,7 @@ export default function Construction3DPage() {
   // Core State
   const [progress, setProgress] = useState(58);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isTimeLapse, setIsTimeLapse] = useState(false);
   const [playSpeed, setPlaySpeed] = useState(1);
   const [materialsModalVisible, setMaterialsModalVisible] = useState(false);
   const [clashToFix, setClashToFix] = useState<any>(null);
@@ -4506,6 +4845,12 @@ export default function Construction3DPage() {
   const [rfiCommentText, setRfiCommentText] = useState("");
   const [previewAttachment, setPreviewAttachment] = useState<string | null>(null);
 
+  // Measurement Tool State
+  const [measureMode, setMeasureMode] = useState(false);
+  const [measurePoints, setMeasurePoints] = useState<[number, number, number][]>([]);
+
+  // Selected Object Properties
+  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [cameraKey, setCameraKey] = useState(0);
   const [cameraTarget, setCameraTarget] = useState<[number, number, number]>([50, 35, 50]);
   const [cameraLookAtTarget, setCameraLookAtTarget] = useState<[number, number, number]>([0, 6, 0]);
@@ -4526,8 +4871,24 @@ export default function Construction3DPage() {
 
   // Edit mode (drag-and-drop / build mode) state
   const [editMode, setEditMode] = useState(false);
+  const [placedCatalogItems, setPlacedCatalogItems] = useState<CatalogItemInstance[]>([]);
+  const [activeCatalogTool, setActiveCatalogTool] = useState<string | null>(null);
+  const [selectedCatalogItemId, setSelectedCatalogItemId] = useState<string | null>(null);
+
+  const handlePlaceCatalogItem = useCallback((pos: [number, number, number]) => {
+    if (!activeCatalogTool) return;
+    const newObj: CatalogItemInstance = {
+      id: `cat_${Date.now()}`,
+      catalogId: activeCatalogTool,
+      position: pos,
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1]
+    };
+    setPlacedCatalogItems(prev => [...prev, newObj]);
+    setActiveCatalogTool(null);
+  }, [activeCatalogTool]);
+
   const [catalogCategory, setCatalogCategory] = useState("All");
-  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [objectPositions, setObjectPositions] = useState<Record<string, [number, number, number]>>({});
 
   type PlacedObject = {
@@ -4535,12 +4896,33 @@ export default function Construction3DPage() {
     type: string;
     position: [number, number, number];
     rotationY: number;
+    scale?: [number, number, number];
     pathType?: string;
   };
-  const [customObjects, setCustomObjects] = useState<PlacedObject[]>([]);
+  const [customObjects, setCustomObjects] = useState<PlacedObject[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("sketchup_custom_objects");
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error("Error parsing saved custom objects", e);
+        }
+      }
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("sketchup_custom_objects", JSON.stringify(customObjects));
+      const layout = { customObjects, sceneConfig };
+      localStorage.setItem(`3d_layout_${activeTemplateId}`, JSON.stringify(layout));
+    }
+  }, [customObjects, sceneConfig, activeTemplateId]);
   
   // Placement Mode States
-  const [placingItem, setPlacingItem] = useState<{ id: string, type: string, rotationY: number } | null>(null);
+  const [placingItem, setPlacingItem] = useState<{ id: string, type: string, rotationY: number, scale?: [number, number, number] } | null>(null);
   const [placementPos, setPlacementPos] = useState<[number, number, number]>([0, 0, 0]);
 
   // Keyboard shortcut for rotating/canceling placement
@@ -4566,9 +4948,13 @@ export default function Construction3DPage() {
     setCustomObjects(prev => prev.map(obj => obj.id === id ? { ...obj, rotationY: newRotation !== undefined ? newRotation : obj.rotationY + Math.PI / 4 } : obj));
   }, []);
 
+  const handleObjectScale = useCallback((id: string, newScale: [number, number, number]) => {
+    setCustomObjects(prev => prev.map(obj => obj.id === id ? { ...obj, scale: newScale } : obj));
+  }, []);
+
   const handleObjectDelete = useCallback((id: string) => {
     setCustomObjects(prev => prev.filter(obj => obj.id !== id));
-    setSelectedObjectId(null);
+    setSelectedCatalogItemId(null);
   }, []);
 
   const handleObjectMove = useCallback((id: string, newPos?: [number, number, number]) => {
@@ -4584,43 +4970,16 @@ export default function Construction3DPage() {
       }
       return prev;
     });
-    setSelectedObjectId(null);
+    setSelectedCatalogItemId(null);
   }, []);
 
   const handleAddCatalogItem = useCallback((type: string) => {
     const id = `custom_${type}_${Date.now()}`;
     setPlacingItem({ id, type, rotationY: 0 });
-    setSelectedObjectId(null);
+    setSelectedCatalogItemId(null);
   }, []);
 
-  const saveLayout = useCallback(() => {
-    const layout = {
-      customObjects,
-      sceneConfig,
-    };
-    try {
-      localStorage.setItem(`3d_layout_${activeTemplateId}`, JSON.stringify(layout));
-      message.success("Layout saved successfully!");
-    } catch (e) {
-      message.error("Failed to save layout.");
-    }
-  }, [customObjects, sceneConfig, activeTemplateId]);
 
-  const loadLayout = useCallback(() => {
-    try {
-      const saved = localStorage.getItem(`3d_layout_${activeTemplateId}`);
-      if (saved) {
-        const layout = JSON.parse(saved);
-        if (layout.customObjects) setCustomObjects(layout.customObjects);
-        if (layout.sceneConfig) setSceneConfig(layout.sceneConfig);
-        message.success("Layout loaded!");
-      } else {
-        message.info("No saved layout found for this template.");
-      }
-    } catch (e) {
-      message.error("Failed to load layout.");
-    }
-  }, [activeTemplateId]);
 
   // Day/Night mode
   const [isNightMode, setIsNightMode] = useState(false);
@@ -4646,9 +5005,7 @@ export default function Construction3DPage() {
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [annotationMode, setAnnotationMode] = useState(false);
   
-  // Measure tool
-  const [measureMode, setMeasureMode] = useState(false);
-  const [measurePoints, setMeasurePoints] = useState<[number, number, number][]>([]);
+
 
   const [isAnnotationModalOpen, setIsAnnotationModalOpen] = useState(false);
   const [pendingAnnotationPos, setPendingAnnotationPos] = useState<[number, number, number] | null>(null);
@@ -4740,6 +5097,26 @@ export default function Construction3DPage() {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
   }, [isPlaying, playSpeed]);
+
+  useEffect(() => {
+    if (!isTimeLapse) return;
+    let startTime = performance.now();
+    const duration = 30000;
+    const animate = (time: number) => {
+      const elapsed = time - startTime;
+      const nextProgress = Math.min((elapsed / duration) * 100, 100);
+      setProgress(nextProgress);
+      if (nextProgress < 100) {
+        animFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        setIsTimeLapse(false);
+      }
+    };
+    animFrameRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [isTimeLapse]);
 
   // Fullscreen toggle
   const toggleFullscreen = useCallback(() => {
@@ -5256,7 +5633,7 @@ export default function Construction3DPage() {
               type={editMode ? "primary" : "text"}
               size="small"
               icon={<DragOutlined />}
-              onClick={() => { setEditMode(!editMode); if (editMode) setSelectedObjectId(null); }}
+              onClick={() => { setEditMode(!editMode); if (editMode) setSelectedCatalogItemId(null); }}
               style={{
                 borderRadius: 8,
                 ...(editMode ? { background: "linear-gradient(135deg, #52c41a, #389e0d)", border: "none" } : {}),
@@ -6561,6 +6938,7 @@ export default function Construction3DPage() {
             }}
           >
             <Canvas
+            onPointerMissed={() => setSelectedCatalogItemId(null)}
               shadows
               orthographic={sceneConfig.cameraMode === "orthographic"}
               camera={{ 
@@ -6586,8 +6964,13 @@ export default function Construction3DPage() {
               y={sectionFloor * (sceneConfig.floorHeight ?? 3.2) + 0.1} 
             />
 
-            {/* High Quality Environment */}
-            {sceneConfig.highQualityGraphics && (
+            {/* SketchUp Blueprint Mode */}
+            <VisualStyleManager style={sceneConfig.visualStyle || 'realistic'} />
+            
+            {/* Environment Sky */}
+            {sceneConfig.visualStyle === 'sketchup' ? (
+              <color attach="background" args={["#c6e2ff"]} />
+            ) : sceneConfig.highQualityGraphics ? (
               <>
                 {isNightMode ? (
                   <Stars radius={50} depth={50} count={3000} factor={4} saturation={0} fade speed={1} />
@@ -6595,21 +6978,21 @@ export default function Construction3DPage() {
                   <Sky sunPosition={[15, 25, 10]} inclination={0.2} azimuth={0.25} />
                 )}
               </>
-            )}
+            ) : null}
 
             {/* Camera animator */}
             <CameraAnimator key={cameraKey} targetPos={cameraTarget} lookAtPos={cameraLookAtTarget} controlsRef={controlsRef} />
 
             {/* Lighting  no external HDR needed */}
-            <ambientLight intensity={isNightMode ? 0.15 : isDark ? 0.5 : 0.7} color={isNightMode ? "#1a1a3e" : "#ffffff"} />
+            <ambientLight intensity={sceneConfig.visualStyle === 'sketchup' ? 1.0 : (isNightMode ? 0.15 : isDark ? 0.5 : 0.7)} color={isNightMode ? "#1a1a3e" : "#ffffff"} />
             <hemisphereLight
               color={isNightMode ? "#1a1a4e" : isDark ? "#6666aa" : "#aaccff"}
               groundColor={isNightMode ? "#0a0a1a" : isDark ? "#222222" : "#886644"}
-              intensity={isNightMode ? 0.2 : isDark ? 0.6 : 0.5}
+              intensity={sceneConfig.visualStyle === 'sketchup' ? 0.6 : (isNightMode ? 0.2 : isDark ? 0.6 : 0.5)}
             />
             <directionalLight
-              position={isNightMode ? [5, 15, 5] : [15, 25, 10]}
-              intensity={isNightMode ? 0.3 : isDark ? 1.4 : 1.8}
+              position={sceneConfig.visualStyle === 'sketchup' ? [20, 40, 20] : (isNightMode ? [5, 15, 5] : [15, 25, 10])}
+              intensity={sceneConfig.visualStyle === 'sketchup' ? 2.5 : (isNightMode ? 0.3 : isDark ? 1.4 : 1.8)}
               color={isNightMode ? "#4466aa" : "#ffffff"}
               castShadow
               shadow-mapSize-width={2048}
@@ -6623,9 +7006,9 @@ export default function Construction3DPage() {
             />
             <directionalLight 
               position={[-10, 10, -5]} 
-              intensity={isNightMode ? 0.05 : 0.3} 
+              intensity={sceneConfig.visualStyle === 'sketchup' ? 0.8 : (isNightMode ? 0.05 : 0.3)} 
               color={isNightMode ? "#334477" : "#8888ff"} 
-              castShadow
+              castShadow={sceneConfig.visualStyle !== 'sketchup'} // avoid multiple shadows in sketchup mode
               shadow-bias={-0.0005}
             />
             <pointLight position={[0, 20, 0]} intensity={isNightMode ? 0.1 : 0.3} color="#ffffff" />
@@ -6659,17 +7042,19 @@ export default function Construction3DPage() {
                       id: placingItem.id,
                       type: placingItem.type,
                       position: placementPos,
-                      rotationY: placingItem.rotationY
+                      rotationY: placingItem.rotationY,
+                      scale: [1,1,1],
+                      pathType: undefined
                     }]);
                     setPlacingItem(null);
                   } else {
-                    setSelectedObjectId(null);
+                    setSelectedCatalogItemId(null);
                   }
                 }
               }}
             >
               <planeGeometry args={[120, 120]} />
-              <meshPhysicalMaterial
+              <SmartMaterial
                 color={isNightMode ? "#020617" : isDark ? "#0f172a" : "#cbd5e1"}
                 roughness={0.8}
                 metalness={0.2}
@@ -6716,7 +7101,7 @@ export default function Construction3DPage() {
               <group position={placementPos} rotation={[0, placingItem.rotationY, 0]}>
                 <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                   <ringGeometry args={[2, 2.3, 32]} />
-                  <meshBasicMaterial color="#339af0" transparent opacity={0.8} side={THREE.DoubleSide} />
+                  <SmartMaterial color="#339af0" transparent opacity={0.8} side={THREE.DoubleSide} />
                 </mesh>
                 <group>
                   <CatalogItemRenderer type={placingItem.type} />
@@ -6731,12 +7116,14 @@ export default function Construction3DPage() {
                 id={obj.id}
                 defaultPosition={obj.position}
                 rotationY={obj.rotationY}
+                scale={obj.scale}
                 pathType={obj.pathType}
                 editMode={editMode}
                 selectedObjectId={selectedObjectId}
                 onSelect={setSelectedObjectId}
                 onMove={handleObjectMove}
                 onRotate={handleObjectRotate}
+                onScaleChange={handleObjectScale}
                 onDelete={handleObjectDelete}
               >
                 <CatalogItemRenderer type={obj.type} />
@@ -6825,11 +7212,11 @@ export default function Construction3DPage() {
                         {/* Pulsing sphere marker */}
                         <mesh>
                           <sphereGeometry args={[0.15, 16, 16]} />
-                          <meshBasicMaterial color={statusColor} />
+                          <SmartMaterial color={statusColor} />
                         </mesh>
                         <mesh>
                           <sphereGeometry args={[0.25, 16, 16]} />
-                          <meshBasicMaterial color={statusColor} transparent opacity={0.2} />
+                          <SmartMaterial color={statusColor} transparent opacity={0.2} />
                         </mesh>
                         {/* Vertical line to floor */}
                         <Line
@@ -6877,7 +7264,7 @@ export default function Construction3DPage() {
                 {/* Width dimension line (X axis) */}
                 <mesh position={[0, -0.3, (sceneConfig.buildingDepth ?? 8) / 2 + 2]}>
                   <boxGeometry args={[sceneConfig.buildingWidth ?? 12, 0.02, 0.02]} />
-                  <meshBasicMaterial color="#ff6b6b" />
+                  <SmartMaterial color="#ff6b6b" />
                 </mesh>
                 {/* Width label */}
                 <Html position={[0, 0.3, (sceneConfig.buildingDepth ?? 8) / 2 + 2]} center distanceFactor={20} style={{ pointerEvents: "none" }}>
@@ -6888,7 +7275,7 @@ export default function Construction3DPage() {
                 {/* Depth dimension line (Z axis) */}
                 <mesh position={[(sceneConfig.buildingWidth ?? 12) / 2 + 2, -0.3, 0]} rotation={[0, Math.PI / 2, 0]}>
                   <boxGeometry args={[sceneConfig.buildingDepth ?? 8, 0.02, 0.02]} />
-                  <meshBasicMaterial color="#51cf66" />
+                  <SmartMaterial color="#51cf66" />
                 </mesh>
                 {/* Depth label */}
                 <Html position={[(sceneConfig.buildingWidth ?? 12) / 2 + 2, 0.3, 0]} center distanceFactor={20} style={{ pointerEvents: "none" }}>
@@ -6904,7 +7291,7 @@ export default function Construction3DPage() {
                     <>
                       <mesh position={[-(sceneConfig.buildingWidth ?? 12) / 2 - 2, totalH * scaleY / 2, 0]}>
                         <boxGeometry args={[0.02, totalH, 0.02]} />
-                        <meshBasicMaterial color="#339af0" />
+                        <SmartMaterial color="#339af0" />
                       </mesh>
                       <Html position={[-(sceneConfig.buildingWidth ?? 12) / 2 - 2, totalH * scaleY / 2 + 1, 0]} center distanceFactor={20} style={{ pointerEvents: "none" }}>
                         <div style={{ background: "rgba(51,154,240,0.2)", backdropFilter: "blur(8px)", border: "1px solid rgba(51,154,240,0.5)", boxShadow: "0 4px 12px rgba(51,154,240,0.3)", color: "#fff", padding: "4px 10px", borderRadius: 12, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
@@ -6939,12 +7326,12 @@ export default function Construction3DPage() {
               <group>
                 <mesh position={[0, sectionFloor * (sceneConfig.floorHeight ?? 3.2), 0]} rotation={[-Math.PI / 2, 0, 0]}>
                   <planeGeometry args={[40, 40]} />
-                  <meshBasicMaterial color="#ff4444" transparent opacity={0.08} side={THREE.DoubleSide} />
+                  <SmartMaterial color="#ff4444" transparent opacity={0.08} side={THREE.DoubleSide} />
                 </mesh>
                 {/* Cut line edges */}
                 <mesh position={[0, sectionFloor * (sceneConfig.floorHeight ?? 3.2), 0]} rotation={[-Math.PI / 2, 0, 0]}>
                   <ringGeometry args={[19.5, 20, 64]} />
-                  <meshBasicMaterial color="#ff4444" transparent opacity={0.3} side={THREE.DoubleSide} />
+                  <SmartMaterial color="#ff4444" transparent opacity={0.3} side={THREE.DoubleSide} />
                 </mesh>
                 <Html position={[20, sectionFloor * (sceneConfig.floorHeight ?? 3.2) + 0.5, 0]} center distanceFactor={20} style={{ pointerEvents: "none" }}>
                   <div style={{ background: "rgba(255,68,68,0.85)", color: "#fff", padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700 }}>
@@ -6960,12 +7347,12 @@ export default function Construction3DPage() {
                 {/* Pin pole */}
                 <mesh position={[0, 0.75, 0]}>
                   <cylinderGeometry args={[0.03, 0.03, 1.5, 8]} />
-                  <meshPhysicalMaterial color={pin.color} />
+                  <SmartMaterial color={pin.color} />
                 </mesh>
                 {/* Pin head */}
                 <mesh position={[0, 1.6, 0]}>
                   <sphereGeometry args={[0.2, 16, 16]} />
-                  <meshPhysicalMaterial color={pin.color} emissive={pin.color} emissiveIntensity={0.3} />
+                  <SmartMaterial color={pin.color} emissive={pin.color} emissiveIntensity={0.3} />
                 </mesh>
                 {/* Pin label */}
                 <Html position={[0, 2.2, 0]} center distanceFactor={15}>
@@ -7029,7 +7416,7 @@ export default function Construction3DPage() {
                 }}
               >
                 <planeGeometry args={[80, 80]} />
-                <meshBasicMaterial transparent opacity={0} />
+                <SmartMaterial transparent opacity={0} />
               </mesh>
             )}
 
@@ -7037,6 +7424,7 @@ export default function Construction3DPage() {
             <Suspense fallback={null}>
               <ProgressLabel3D progress={progress} />
             </Suspense>
+
 
             {/* High Quality Post-Processing */}
             {sceneConfig.highQualityGraphics && (
@@ -7075,6 +7463,9 @@ export default function Construction3DPage() {
               target={[0, 6, 0]}
             />
           </Canvas>
+
+          {/* Measure Toolbar overlay */}
+          <MeasureToolbar measurePoints={measurePoints} setMeasurePoints={setMeasurePoints} setMeasureMode={setMeasureMode} isDark={isDark} />
           </div>
 
           {/* Build Catalog UI has been moved above Canvas */}
@@ -7305,7 +7696,7 @@ export default function Construction3DPage() {
                         danger
                         onClick={() => {
                            handleObjectDelete(obj.id);
-                           setSelectedObjectId(null);
+                           setSelectedCatalogItemId(null);
                         }}
                       />
                     </div>
@@ -7736,6 +8127,30 @@ export default function Construction3DPage() {
           <Divider style={{ margin: "16px 0" }} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: isDark ? "#fff" : "#111" }}>Visual Style</div>
+              <div style={{ fontSize: 11, color: isDark ? "#94a3b8" : "#666" }}>Realistic vs SketchUp Blueprint</div>
+            </div>
+            <Segmented
+              options={[
+                { label: 'Realistic', value: 'realistic' },
+                { label: 'SketchUp', value: 'sketchup' },
+              ]}
+              value={sceneConfig.visualStyle || 'realistic'}
+              onChange={(v) => updateConfig("visualStyle", v)}
+              size="small"
+            />
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: isDark ? "#fff" : "#111" }}>Editor Mode</div>
+              <div style={{ fontSize: 11, color: isDark ? "#94a3b8" : "#666" }}>Interactive Object Placement</div>
+            </div>
+            <Switch checked={editMode} onChange={(v) => setEditMode(v)} />
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: isDark ? "#fff" : "#111" }}>High Quality Graphics</div>
               <div style={{ fontSize: 11, color: isDark ? "#94a3b8" : "#666" }}>SSAO, Bloom, & Environment Maps</div>
             </div>
@@ -7756,25 +8171,6 @@ export default function Construction3DPage() {
               <div style={{ fontSize: 11, color: isDark ? "#94a3b8" : "#666" }}>Cinematic presentation view</div>
             </div>
             <Switch checked={sceneConfig.autoRotate ?? false} onChange={(v) => updateConfig("autoRotate", v)} />
-          </div>
-
-          {/* Persistence */}
-          <Divider style={{ margin: "16px 0" }} />
-          <div style={{ display: "flex", gap: 8 }}>
-            <Button
-              onClick={saveLayout}
-              icon={<SaveOutlined />}
-              style={{ borderRadius: 8, width: "100%", flex: 1 }}
-            >
-              Save Layout
-            </Button>
-            <Button
-              onClick={loadLayout}
-              icon={<FolderOpenOutlined />}
-              style={{ borderRadius: 8, width: "100%", flex: 1 }}
-            >
-              Load Layout
-            </Button>
           </div>
 
           {/* Reset Button */}
@@ -7947,6 +8343,22 @@ export default function Construction3DPage() {
                   icon={<StepBackwardOutlined />}
                   onClick={() => { setProgress(0); setIsPlaying(false); }}
                   style={{ borderRadius: 8 }}
+                />
+              </Tooltip>
+              <Tooltip title={isTimeLapse ? "Stop Timelapse" : "Play 30s Timelapse"}>
+                <Button
+                  type={isTimeLapse ? "primary" : "default"}
+                  shape="circle"
+                  icon={<FastForwardOutlined />}
+                  onClick={() => {
+                    if (isTimeLapse) {
+                      setIsTimeLapse(false);
+                    } else {
+                      setIsPlaying(false);
+                      setProgress(0);
+                      setIsTimeLapse(true);
+                    }
+                  }}
                 />
               </Tooltip>
               <Tooltip title={isPlaying ? "Pause" : "Play"}>
@@ -8499,6 +8911,18 @@ export default function Construction3DPage() {
         )}
       </AnimatePresence>
 
+      <Modal
+        title="Attachment Preview"
+        open={!!previewAttachment}
+        onCancel={() => setPreviewAttachment(null)}
+        footer={null}
+      >
+        <div style={{ textAlign: "center", padding: "40px 20px" }}>
+          <FileTextOutlined style={{ fontSize: 48, color: "#1890ff", marginBottom: 16 }} />
+          <h3>{previewAttachment}</h3>
+          <p>This is a placeholder preview for the attached document.</p>
+        </div>
+      </Modal>
     </CMSLayout>
   );
 }

@@ -7,6 +7,7 @@ import CMSLayout from "@/components/layout/CMSLayout";
 import { motion } from "framer-motion";
 import RbacGuard from "@/components/common/RbacGuard";
 import { AuroraText } from '@/components/magicui/aurora-text';
+import { BentoGrid } from "@/components/magicui/bento-grid";
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { Button, Card, Col, Descriptions, Drawer, Empty, Form, Input, message, Modal, Popconfirm, Row, Select, Space, Spin, Statistic, Steps, Table, Tag, Tooltip, Typography, Segmented } from "antd";
 import {
@@ -405,45 +406,39 @@ export default function KnowledgeBasePage() {
 
     return (
         <CMSLayout title={cmsTitle} subTitle={cmsSubTitle} extra={headerExtra}>
-            {/* ── Stats Row ── */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={8} lg={6}>
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
-                        <Card style={{ ...glassCard, borderTop: `3px solid ${themeColor}` }} size="small">
-                            <Statistic title={<span style={{ fontSize: 12 }}>Total Lessons</span>} value={lessons.length}
-                                prefix={<BookOutlined style={{ color: themeColor }} />} valueStyle={{ fontSize: 28, fontWeight: 700, color: themeColor }} />
-                        </Card>
-                    </motion.div>
-                </Col>
-                <Col xs={24} sm={8} lg={6}>
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-                        <Card style={{ ...glassCard, borderTop: '3px solid #3b82f6' }} size="small">
-                            <Statistic title={<span style={{ fontSize: 12 }}>Contributing Projects</span>} value={allProjects.length}
-                                prefix={<FolderOpenOutlined style={{ color: '#3b82f6' }} />} valueStyle={{ fontSize: 28, fontWeight: 700, color: '#3b82f6' }} />
-                        </Card>
-                    </motion.div>
-                </Col>
-                <Col xs={24} sm={8} lg={6}>
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                        <Card style={{ ...glassCard, borderTop: '3px solid #10b981' }} size="small">
-                            <Statistic title={<span style={{ fontSize: 12 }}>Categories</span>} value={allCategories.length}
-                                prefix={<TagOutlined style={{ color: '#10b981' }} />} valueStyle={{ fontSize: 28, fontWeight: 700, color: '#10b981' }} />
-                        </Card>
-                    </motion.div>
-                </Col>
-                <Col xs={24} sm={8} lg={6}>
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                        <Card style={{ ...glassCard, borderTop: '3px solid #f59e0b' }} size="small">
-                            <Statistic title={<span style={{ fontSize: 12 }}>Unique Tags</span>} value={allTags.length}
-                                prefix={<BulbOutlined style={{ color: '#f59e0b' }} />} valueStyle={{ fontSize: 28, fontWeight: 700, color: '#f59e0b' }} />
-                        </Card>
-                    </motion.div>
-                </Col>
-            </Row>
+            {/* ── Stats BentoGrid ── */}
+            <BentoGrid className="max-w-none md:auto-rows-auto grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
+                    <Card style={{ ...glassCard, borderTop: `3px solid ${themeColor}`, height: '100%' }} size="small">
+                        <Statistic title={<span style={{ fontSize: 12 }}>Total Lessons</span>} value={lessons.length}
+                            prefix={<BookOutlined style={{ color: themeColor }} />} valueStyle={{ fontSize: 28, fontWeight: 700, color: themeColor }} />
+                    </Card>
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+                    <Card style={{ ...glassCard, borderTop: '3px solid #3b82f6', height: '100%' }} size="small">
+                        <Statistic title={<span style={{ fontSize: 12 }}>Contributing Projects</span>} value={allProjects.length}
+                            prefix={<FolderOpenOutlined style={{ color: '#3b82f6' }} />} valueStyle={{ fontSize: 28, fontWeight: 700, color: '#3b82f6' }} />
+                    </Card>
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                    <Card style={{ ...glassCard, borderTop: '3px solid #10b981', height: '100%' }} size="small">
+                        <Statistic title={<span style={{ fontSize: 12 }}>Categories</span>} value={allCategories.length}
+                            prefix={<TagOutlined style={{ color: '#10b981' }} />} valueStyle={{ fontSize: 28, fontWeight: 700, color: '#10b981' }} />
+                    </Card>
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                    <Card style={{ ...glassCard, borderTop: '3px solid #f59e0b', height: '100%' }} size="small">
+                        <Statistic title={<span style={{ fontSize: 12 }}>Unique Tags</span>} value={allTags.length}
+                            prefix={<BulbOutlined style={{ color: '#f59e0b' }} />} valueStyle={{ fontSize: 28, fontWeight: 700, color: '#f59e0b' }} />
+                    </Card>
+                </motion.div>
+            </BentoGrid>
 
-            {/* ── Category Distribution Donut ── */}
+            <BentoGrid className="max-w-none md:auto-rows-auto grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                <div className="flex flex-col gap-4">
+                {/* ── Category Distribution Donut ── */}
             {categoryDistribution.length > 0 && (
-                <Card size="small" title={<Space><FolderOpenOutlined style={{ color: themeColor }} />Category Distribution</Space>} style={{ ...glassCard, marginBottom: 16 }}>
+                <Card size="small" title={<Space><FolderOpenOutlined style={{ color: themeColor }} />Category Distribution</Space>} style={{ ...glassCard, marginBottom: 0 }}>
                     <Row gutter={16} align="middle">
                         <Col xs={24} md={10}>
                             <div style={{ height: 180 }}>
@@ -492,9 +487,11 @@ export default function KnowledgeBasePage() {
                 </Card>
             )}
 
-            {/* ── Phase Distribution Mini Bars ── */}
+                </div>
+                <div className="flex flex-col gap-4">
+                {/* ── Phase Distribution Mini Bars ── */}
             {allPhases.length > 0 && (
-                <Card size="small" title={<Space><CalendarOutlined style={{ color: themeColor }} />Phase Distribution</Space>} style={{ ...glassCard, marginBottom: 16 }}>
+                <Card size="small" title={<Space><CalendarOutlined style={{ color: themeColor }} />Phase Distribution</Space>} style={{ ...glassCard, marginBottom: 0 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {allPhases.map((phase: string) => {
                             const count = lessons.filter(l => l.phase === phase).length;
@@ -513,6 +510,10 @@ export default function KnowledgeBasePage() {
                     </div>
                 </Card>
             )}
+
+
+                </div>
+            </BentoGrid>
 
             {/* ── Search & Filters ── */}
             <Card style={{ ...glassCard, marginBottom: 16 }} size="small">

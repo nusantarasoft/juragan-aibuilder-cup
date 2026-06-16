@@ -9,7 +9,7 @@ import { Badge, Button, Col, Form, Input, message, Popconfirm, Row, Select, Spac
 import {
     PlusOutlined, DeleteOutlined, EditOutlined, EyeOutlined, SearchOutlined,
     CustomerServiceOutlined, RobotOutlined, AlertOutlined, UserOutlined,
-    TeamOutlined, PhoneOutlined, SettingOutlined, FileExcelOutlined, FilePdfOutlined
+    TeamOutlined, PhoneOutlined, SettingOutlined, FileExcelOutlined, FilePdfOutlined, CheckSquareOutlined
 } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
@@ -300,8 +300,9 @@ export default function ItsmTicketsPage() {
             }
         },
         {
-            title: 'Actions', valueType: 'option', width: 120,
+            title: 'Actions', valueType: 'option', width: 140,
             render: (_, record) => [
+                <Tooltip key="convert" title="Convert to Task"><Button type="text" icon={<CheckSquareOutlined />} onClick={() => router.push(`/admin/pm/my-work?createFromTicket=${record.id}&ticketTitle=${encodeURIComponent(record.title)}`)} /></Tooltip>,
                 <Tooltip key="view" title="View Details"><Button type="text" icon={<EyeOutlined />} onClick={() => router.push(`/admin/itsm/tickets/${record.id}`)} /></Tooltip>,
                 <Button key="edit" type="text" icon={<EditOutlined />} onClick={() => {
                     setEditing(record);

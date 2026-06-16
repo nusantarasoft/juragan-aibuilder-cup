@@ -1,16 +1,17 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Card, Col, Row, Select, Spin, Empty, Statistic, Tag, Space, Typography, Progress } from "antd";
+import { Card, Col, Row, Select, Spin, Empty, Statistic, Tag, Space, Typography, Progress, Button, Modal } from "antd";
 import {
     CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined,
     FireOutlined, ThunderboltOutlined, CalendarOutlined, RiseOutlined,
-    BarChartOutlined, DashboardOutlined, WarningOutlined,
+    BarChartOutlined, DashboardOutlined, WarningOutlined, RobotOutlined,
 } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { motion } from "framer-motion";
+import Markdown from "react-markdown";
 import dayjs from "dayjs";
 import {
     LineChart, Line, BarChart, Bar, AreaChart, Area,
@@ -64,6 +65,27 @@ export default function SprintAnalyticsTab({ projectId }: SprintAnalyticsTabProp
     const [allTasks, setAllTasks] = useState<Task[]>([]);
     const [selectedSprintId, setSelectedSprintId] = useState<string | null>(null);
 
+    const [messages, setMessages] = useState<any[]>([]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
+    const append = async (msg: any) => {
+        setIsChatLoading(true);
+        setMessages(prev => [...prev, msg]);
+        try {
+            const res = await fetch('/api/ai/project-insights', { 
+                method: 'POST', 
+                body: JSON.stringify({ messages: [...messages, msg] }) 
+            });
+            const data = await res.json();
+            setMessages(prev => [...prev, { role: 'assistant', content: data.text || 'No response generated.' }]);
+        } catch (e) {
+            console.error(e);
+        }
+        setIsChatLoading(false);
+    };
+    
+    const [showRetroModal, setShowRetroModal] = useState(false);
+
+
     const glassCard: React.CSSProperties = {
         background: isDark ? "rgba(15, 15, 23, 0.7)" : "rgba(255,255,255,0.85)",
         backdropFilter: "blur(12px)",
@@ -73,6 +95,14 @@ export default function SprintAnalyticsTab({ projectId }: SprintAnalyticsTabProp
 
     const chartText = isDark ? "#94a3b8" : "#64748b";
     const chartGrid = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+
+    const generateRetrospective = () => {
+        setMessages([]);
+        setShowRetroModal(true);
+        const activeSprint = sprints.find(s => s.id === selectedSprintId);
+        const prompt = `Generate a sprint retrospective for Sprint: ${activeSprint?.name || 'Current Sprint'}.\nMetrics:\n- Tasks: ${doneTasks}/${totalTasks} completed\n- Scope Change: ${scopeChange}%\n- Blocked Tasks: ${blockedTasks}\n- Avg Time to Complete: ${avgTimeToComplete} days\nPlease provide: 1. What went well 2. What needs improvement 3. Actionable items for the next sprint.`;
+        append({ role: 'user', content: prompt });
+    };
 
     // ─── Data Loading ──────────────────────────────────────
     const loadData = useCallback(async () => {
@@ -450,7 +480,7 @@ export default function SprintAnalyticsTab({ projectId }: SprintAnalyticsTabProp
                 <Col xs={24} lg={10}>
                     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
                         <Card
-                            title={<Space><WarningOutlined style={{ color: themeColor }} /> Sprint Health</Space>}
+                            title={<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><Space><WarningOutlined style={{ color: themeColor }} /> Sprint Health</Space><Button type="primary" icon={<RobotOutlined />} onClick={() => append({ role: 'user', content: 'Generate a sprint retrospective including what went well, what can be improved, and action items.' })} loading={isChatLoading}>AI Retrospective</Button></div>}
                             size="small"
                             style={glassCard}
                         >
@@ -537,6 +567,15 @@ export default function SprintAnalyticsTab({ projectId }: SprintAnalyticsTabProp
                     </motion.div>
                 </Col>
             </Row>
+            <Modal title="AI Sprint Retrospective" open={showRetroModal} onCancel={() => setShowRetroModal(false)} footer={null} width={700}>
+                {isChatLoading && messages.length === 0 ? <Spin tip="Analyzing sprint data..." style={{ display: 'block', margin: '40px auto' }} /> : (
+                    <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '0 12px' }}>
+                        {messages.filter(m => m.role === 'assistant').map((m, i) => (
+                             <div key={i} className="prose dark:prose-invert max-w-none"><Markdown>{m.content}</Markdown></div>
+                        ))}
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 }

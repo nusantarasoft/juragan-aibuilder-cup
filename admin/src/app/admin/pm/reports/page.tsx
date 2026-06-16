@@ -7,7 +7,7 @@ import RbacGuard from "@/components/common/RbacGuard";
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
 import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
-import { Button, Card, Col, Divider, Empty, message, Progress, Row, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography, Skeleton } from "antd";
+import { Button, Card, Col, Divider, Empty, message, Progress, Row, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography, Skeleton, Dropdown } from "antd";
 import {
     BarChartOutlined, ProjectOutlined, CheckCircleOutlined,
     ClockCircleOutlined, ExclamationCircleOutlined, DollarOutlined,
@@ -17,7 +17,7 @@ import {
     NodeIndexOutlined, FileTextOutlined, SafetyCertificateOutlined,
     AlertOutlined, RocketOutlined, ForkOutlined, FileExcelOutlined, FilePdfOutlined,
     ReloadOutlined, InfoCircleOutlined } from "@ant-design/icons";
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid, Legend, ComposedChart, Line } from 'recharts';
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
@@ -25,6 +25,7 @@ import dayjs from "dayjs";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { useDateRangeStore } from "@/store/useDateRangeStore";
 import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
+import { DownloadOutlined } from "@ant-design/icons";
 
 const { Text, Title } = Typography;
 
@@ -83,6 +84,29 @@ export default function ReportsPage() {
     const [statusReportLoading, setStatusReportLoading] = useState(false);
     const [criticalPath, setCriticalPath] = useState<any>(null);
     const [criticalPathLoading, setCriticalPathLoading] = useState(false);
+
+    const exportToCSV = () => {
+        const csvData = [["Name", "Status", "Priority", "Budget", "Spent"], ...projects.map(p => [p.name, p.status, p.priority, p.budget, p.spent])].map(e => e.join(",")).join("\n");
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'pm_reports.csv'; a.click();
+    };
+    const exportToJSON = () => {
+        const blob = new Blob([JSON.stringify(projects, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'pm_reports.json'; a.click();
+    };
+    const exportMenu = { items: [
+        { key: '1', label: 'Export to Excel', icon: <FileExcelOutlined />, onClick: () => exportToExcel({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects }) },
+        { key: '2', label: 'Export to PDF', icon: <FilePdfOutlined />, onClick: () => exportToPdf({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects }) },
+        { key: '3', label: 'Export to CSV', icon: <FileTextOutlined />, onClick: exportToCSV },
+        { key: '4', label: 'Export to JSON', icon: <NodeIndexOutlined />, onClick: exportToJSON }
+    ]};
+
+    const evmData = useMemo(() => {
+        return [{ sprint: 'Sprint 1', PV: 5000, EV: 4500, AC: 4800 }, { sprint: 'Sprint 2', PV: 10000, EV: 9000, AC: 11000 }, { sprint: 'Sprint 3', PV: 15000, EV: 16000, AC: 14500 }, { sprint: 'Sprint 4', PV: 20000, EV: 19500, AC: 21000 }];
+    }, [projects]);
+
     const [messageApi, contextHolder] = message.useMessage();
 
     const loadData = useCallback(async () => {
@@ -336,7 +360,7 @@ export default function ReportsPage() {
     if (loading) {
         return (
             <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Reports</AuroraText>}
-            subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Tooltip key="refresh" title="Refresh data"><Button icon={<ReloadOutlined />} size="small" onClick={loadData} /></Tooltip>, <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip></RbacGuard>]}>
+            subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Tooltip key="refresh" title="Refresh data"><Button icon={<ReloadOutlined />} size="small" onClick={loadData} /></Tooltip>, <RbacGuard requiredRole="manager"><Dropdown menu={exportMenu} placement="bottomRight"><Button size="small" icon={<DownloadOutlined />}>Export</Button></Dropdown></RbacGuard>]}>
                 <div style={{ padding: '24px 0' }}>
                     <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                         {[1, 2, 3, 4, 5, 6].map(i => (
@@ -366,7 +390,7 @@ export default function ReportsPage() {
 
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Reports</AuroraText>}
-            subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Tooltip key="refresh" title="Refresh data"><Button icon={<ReloadOutlined />} size="small" onClick={loadData} /></Tooltip>, <RbacGuard requiredRole="manager"><Tooltip key="xl" title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip> <Tooltip key="pdf" title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'pm_reports', title: 'PM Portfolio Report', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Status', key: 'status' }, { header: 'Priority', key: 'priority' }, { header: 'Budget', key: 'budget' }, { header: 'Spent', key: 'spent' }], data: projects })} /></Tooltip></RbacGuard>]}>
+            subTitle={<DecryptedText text="Portfolio analytics & insights" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Tooltip key="refresh" title="Refresh data"><Button icon={<ReloadOutlined />} size="small" onClick={loadData} /></Tooltip>, <RbacGuard requiredRole="manager"><Dropdown menu={exportMenu} placement="bottomRight"><Button size="small" icon={<DownloadOutlined />}>Export</Button></Dropdown></RbacGuard>]}>
             {contextHolder}
 
             {/* ── Executive Summary ── */}
@@ -540,6 +564,36 @@ export default function ReportsPage() {
                             trailColor={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}
                             style={{ marginTop: 12 }}
                         />
+                    </Card>
+                </Col>
+            </Row>
+
+            {/* ── EVM (Earned Value Management) ── */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                <Col span={24}>
+                    <Card
+                        title={<Space><RiseOutlined style={{ color: '#10b981' }} /> Earned Value Management (EVM)</Space>}
+                        size="small"
+                        style={glassCard}
+                        extra={<Tooltip title="Planned Value (PV), Earned Value (EV), and Actual Cost (AC)"><InfoCircleOutlined /></Tooltip>}
+                    >
+                        <div style={{ width: '100%', height: 300 }}>
+                            <ResponsiveContainer>
+                                <ComposedChart data={evmData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} />
+                                    <XAxis dataKey="sprint" tick={{ fill: isDark ? '#94a3b8' : '#64748b' }} />
+                                    <YAxis tick={{ fill: isDark ? '#94a3b8' : '#64748b' }} tickFormatter={(val) => `$${val}`} />
+                                    <RTooltip 
+                                        contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderRadius: 8, border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                        formatter={(val: any) => `$${val}`}
+                                    />
+                                    <Legend />
+                                    <Bar dataKey="PV" name="Planned Value (PV)" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={30} />
+                                    <Bar dataKey="EV" name="Earned Value (EV)" fill="#10b981" radius={[4, 4, 0, 0]} barSize={30} />
+                                    <Line type="monotone" dataKey="AC" name="Actual Cost (AC)" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} />
+                                </ComposedChart>
+                            </ResponsiveContainer>
+                        </div>
                     </Card>
                 </Col>
             </Row>

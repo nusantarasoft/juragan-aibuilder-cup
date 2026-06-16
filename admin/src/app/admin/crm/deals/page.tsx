@@ -13,7 +13,7 @@ import {
     PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
     SearchOutlined, EyeOutlined, DollarOutlined,
     AppstoreOutlined, UnorderedListOutlined, RocketOutlined,
-    TrophyOutlined, FunnelPlotOutlined, FileTextOutlined, FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
+    TrophyOutlined, FunnelPlotOutlined, FileTextOutlined, FileExcelOutlined, FilePdfOutlined, ProjectOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { AuroraText } from '@/components/magicui/aurora-text';
@@ -21,6 +21,7 @@ import DecryptedText from '@/components/react-bits/DecryptedText';
 import SteppedFormModal from "@/components/common/SteppedFormModal";
 import type { FieldDef } from "@/components/common/DataImportExport";
 import dayjs from "dayjs";
+import { useRouter } from "next/navigation";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { useDateRangeStore } from "@/store/useDateRangeStore";
 import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
@@ -60,6 +61,7 @@ export default function DealsPage() {
     const [deals, setDeals] = useState<Deal[]>([]);
     const { themeColor } = usePreferencesStore();
     const { startDate, endDate } = useDateRangeStore();
+    const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Deal | null>(null);
@@ -189,7 +191,7 @@ export default function DealsPage() {
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Deal" : "New Deal"} entityName="deal" steps={formSteps} fields={DEAL_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["#f59e0b", "#ef4444"]} editMode={!!editing} />
 
-            <Drawer title={`Deal: ${selected?.name || ''}`} open={detailOpen} onClose={() => setDetailOpen(false)} width={600}>
+            <Drawer title={`Deal: ${selected?.name || ''}`} open={detailOpen} onClose={() => setDetailOpen(false)} width={600} extra={selected?.stage === 'closed_won' && <Button type="primary" icon={<ProjectOutlined />} onClick={() => router.push(`/admin/pm/projects?createFromDeal=${selected.id}&dealName=${encodeURIComponent(selected.name)}`)}>Create Delivery Project</Button>}>
                 {selected && (<Tabs defaultActiveKey="details" items={[
                     { key: "details", label: "Details", children: (<Descriptions column={1} bordered size="small">
                         <Descriptions.Item label="Amount"><Text strong>{formatAmount(selected.amount)}</Text></Descriptions.Item>

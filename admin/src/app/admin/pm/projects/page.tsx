@@ -22,7 +22,7 @@ import {
 import {
     Button, message, Tag, Space, Dropdown, MenuProps, Popconfirm,
     Drawer, Descriptions, Progress, Card, Row, Col, Tooltip, Segmented,
-    Empty, Badge, Avatar, Typography, theme, Input
+    Empty, Badge, Avatar, Typography, theme, Input, Form
 } from "antd";
 import {
     PlusOutlined, MoreOutlined, EditOutlined, DeleteOutlined,
@@ -67,11 +67,15 @@ const GET_PROJECTS = `
       pmbokProcurementEnabled
       pmbokStakeholderEnabled
       createdAt
+      linkedDealIds
+      linkedTicketIds
       owner {
         id
         firstName
         lastName
       }
+      linkedDealIds
+      linkedTicketIds
     }
   }
 `;
@@ -83,6 +87,8 @@ const CREATE_PROJECT = `
       projectNumber
       name
       status
+      linkedDealIds
+      linkedTicketIds
     }
   }
 `;
@@ -93,6 +99,8 @@ const UPDATE_PROJECT = `
       id
       name
       status
+      linkedDealIds
+      linkedTicketIds
     }
   }
 `;
@@ -154,9 +162,25 @@ const METHODOLOGY_LABELS: Record<string, { label: string; color: string }> = {
     hybrid: { label: 'Hybrid', color: 'var(--theme-color, #8b5cf6)' },
 };
 
+// Need state to parse URL params for auto-creation
+const useUrlParams = () => {
+  const [params, setParams] = useState<any>({});
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.has('createFromDeal')) {
+        setParams({ dealId: searchParams.get('createFromDeal'), dealName: searchParams.get('dealName') });
+      }
+    }
+  }, []);
+  return params;
+};
+
 export default function ProjectsPage() {
+    const urlParams = useUrlParams();
     const router = useRouter();
     const { token } = theme.useToken();
+    const [form] = Form.useForm();
     const { resolvedTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
     const { themeColor } = usePreferencesStore();
@@ -194,7 +218,17 @@ export default function ProjectsPage() {
         loadData();
     }, [loadData]);
 
-    // â”€â”€ Glassmorphism styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    useEffect(() => {
+        if (urlParams.dealId && !isModalOpen && !loading) {
+            setIsModalOpen(true);
+            form.setFieldsValue({ 
+                name: `Delivery: ${urlParams.dealName || 'Project'}`, 
+                linkedDealIds: [urlParams.dealId] 
+            });
+        }
+    }, [urlParams, loading]);
+
+    // ——— Glassmorphism styles —————————————————————————————————————————————————————
     const glassCard = useMemo(() => ({
         background: isDark ? 'rgba(15, 15, 23, 0.7)' : 'rgba(255,255,255,0.85)',
         backdropFilter: 'blur(12px)',
@@ -265,6 +299,8 @@ export default function ProjectsPage() {
                 priority: values.priority,
                 budget: values.budget,
                 methodology: values.methodology || 'hybrid',
+                linkedDealIds: values.linkedDealIds || [],
+                linkedTicketIds: values.linkedTicketIds || [],
             };
 
             // Map pmbokModules array to boolean fields
@@ -996,6 +1032,19 @@ export default function ProjectsPage() {
                     label="Description & Objectives"
                     width="xl"
                     placeholder="Describe the goals, scope, and deliverables of this project..."
+                />
+                
+                <ProFormSelect
+                    name="linkedDealIds"
+                    label="Linked CRM Deals"
+                    mode="tags"
+                    placeholder="Enter Deal IDs to link"
+                />
+                <ProFormSelect
+                    name="linkedTicketIds"
+                    label="Linked ITSM Tickets"
+                    mode="tags"
+                    placeholder="Enter Ticket IDs to link"
                 />
             </ModalForm>
 
