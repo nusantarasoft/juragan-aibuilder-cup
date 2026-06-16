@@ -16,6 +16,11 @@ export type StudioContextConfig = {
     dremio_context_paths?: string[][];
     /** Pre-approved SELECT templates; {{filter}} placeholders filled by LLM JSON output */
     dremio_sql_templates?: { id: string; sql: string; description?: string }[];
+    /** Custom instruction prepended to every chat answer (NotebookLM Configure Chat). */
+    chat_instruction?: string;
+    /** Auto-generated notebook brief after sources indexed. */
+    brief_summary?: string;
+    brief_generated_at?: string;
 };
 
 /** Default views for new notebooks — e-commerce sales analytics. */

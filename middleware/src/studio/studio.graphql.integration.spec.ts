@@ -74,4 +74,53 @@ describe.skipIf(!RUN)('Studio GraphQL integration (live middleware)', () => {
         expect(data.studioPlaygroundTest.latencyMs).toBeGreaterThanOrEqual(0);
         expect(data.studioPlaygroundTest.provider).toBeTruthy();
     }, 60_000);
+
+    it('updateStudioNotebook accepts chatInstruction', async () => {
+        const userId = process.env.STUDIO_INTEGRATION_USER_ID?.trim();
+        const notebookId = process.env.STUDIO_INTEGRATION_NOTEBOOK_ID?.trim();
+        if (!userId || !notebookId) return;
+
+        const data = await gqlRequest<{ updateStudioNotebook: { id: string; context_config: { chat_instruction?: string } } }>(`
+            mutation($notebookId: String!, $chatInstruction: String) {
+                updateStudioNotebook(notebookId: $notebookId, chatInstruction: $chatInstruction)
+            }
+        `, { notebookId, chatInstruction: 'Jawab singkat dalam Bahasa Indonesia.' });
+
+        expect(data.updateStudioNotebook.id).toBe(notebookId);
+        expect(data.updateStudioNotebook.context_config?.chat_instruction).toContain('Bahasa Indonesia');
+    });
+
+    it('studioOutputs returns array for notebook', async () => {
+        const notebookId = process.env.STUDIO_INTEGRATION_NOTEBOOK_ID?.trim();
+        if (!notebookId) return;
+
+        const data = await gqlRequest<{ studioOutputs: unknown[] }>(`
+            query($notebookId: String!) {
+                studioOutputs(notebookId: $notebookId)
+            }
+        `, { notebookId });
+        expect(Array.isArray(data.studioOutputs)).toBe(true);
+    });
+
+    it('importStudioUrl rejects invalid URL', async () => {
+        const notebookId = process.env.STUDIO_INTEGRATION_NOTEBOOK_ID?.trim();
+        if (!notebookId) return;
+
+        await expect(
+            gqlRequest(`
+                mutation($notebookId: String!, $url: String!) {
+                    importStudioUrl(notebookId: $notebookId, url: $url)
+                }
+            `, { notebookId, url: 'not-a-url' }),
+        ).rejects.toThrow();
+    });
+
+    it('studioChunk returns null for unknown id', async () => {
+        const data = await gqlRequest<{ studioChunk: unknown }>(`
+            query {
+                studioChunk(chunkId: "00000000-0000-0000-0000-000000000000")
+            }
+        `);
+        expect(data.studioChunk).toBeNull();
+    });
 });

@@ -6,6 +6,7 @@ import { ClaudeAiService } from '../ai/claude-ai.service';
 import { VertexAiService } from '../ai/vertex-ai.service';
 import { StudioIngestionService } from './studio-ingestion.service';
 import { StudioContextService } from './studio-context.service';
+import { StudioOutputService, type StudioOutputType } from './studio-output.service';
 import {
     StudioDbContextService,
     DEFAULT_STUDIO_SALES_CONTEXT,
@@ -36,6 +37,7 @@ export class StudioService {
         private ingestionService: StudioIngestionService,
         private contextService: StudioContextService,
         private dbContextService: StudioDbContextService,
+        private outputService: StudioOutputService,
     ) {
         // MinIO client for file storage
         const endpointUrl = this.configService.get('S3_ENDPOINT') || 'http://minio:9000';
@@ -181,6 +183,28 @@ export class StudioService {
         return data;
     }
 
+    async updateNotebook(
+        notebookId: string,
+        patch: { name?: string; description?: string; chat_instruction?: string },
+    ): Promise<any> {
+        const notebook = await this.getNotebook(notebookId);
+        const config = this.dbContextService.parseConfig(notebook.context_config);
+        const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (patch.name?.trim()) updates.name = patch.name.trim();
+        if (patch.description !== undefined) updates.description = patch.description;
+        if (patch.chat_instruction !== undefined) {
+            updates.context_config = { ...config, chat_instruction: patch.chat_instruction };
+        }
+        const { data, error } = await this.supabaseService.getAdminClient()
+            .from('studio_notebooks')
+            .update(updates)
+            .eq('id', notebookId)
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    }
+
     async deleteNotebook(notebookId: string): Promise<boolean> {
         // Delete from Supabase (cascades to sources, conversations, messages)
         const { error } = await this.supabaseService.getAdminClient()
@@ -312,6 +336,57 @@ export class StudioService {
         return true;
     }
 
+    async importUrl(notebookId: string, url: string): Promise<any> {
+        const trimmed = url?.trim();
+        if (!trimmed) throw new BadRequestException('URL is required');
+        let parsed: URL;
+        try {
+            parsed = new URL(trimmed);
+        } catch {
+            throw new BadRequestException('Invalid URL');
+        }
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+            throw new BadRequestException('Only http/https URLs are supported');
+        }
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 20000);
+        let html: string;
+        try {
+            const res = await fetch(trimmed, {
+                headers: { 'User-Agent': 'NusantaraSoft-AI-Studio/1.0' },
+                signal: controller.signal,
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            html = await res.text();
+        } catch (e: any) {
+            throw new BadRequestException(`Failed to fetch URL: ${e?.message ?? e}`);
+        } finally {
+            clearTimeout(timeout);
+        }
+
+        const text = html
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 500_000);
+
+        if (text.length < 50) {
+            throw new BadRequestException('Could not extract enough text from URL');
+        }
+
+        const filename = `${parsed.hostname.replace(/\W+/g, '_')}_${Date.now()}.txt`;
+        const buffer = Buffer.from(text, 'utf8');
+        return this.uploadSource(notebookId, {
+            buffer,
+            originalname: filename,
+            mimetype: 'text/plain',
+            size: buffer.length,
+        });
+    }
+
     // ── Chat ─────────────────────────────────────────────────────────
 
     /** New conversation for chat-only internal engine. */
@@ -398,8 +473,9 @@ export class StudioService {
         options?: {
             instruction?: string;
             queryUnderstanding?: QueryUnderstandingResult;
+            sourceIds?: string[];
         },
-    ): Promise<{ answer: string; references: { content: string; docName: string; score: number }[]; rawChunks: any[] }> {
+    ): Promise<{ answer: string; references: { content: string; docName: string; score: number; chunkId?: string }[]; rawChunks: any[] }> {
         const notebook = await this.getNotebook(notebookId);
         const { data: conversation, error } = await this.supabaseService.getAdminClient()
             .from('studio_conversations')
@@ -418,6 +494,7 @@ export class StudioService {
             searchQuery,
             qu,
             config,
+            { sourceIds: options?.sourceIds },
         );
 
         const { data: messages } = await this.supabaseService.getAdminClient()
@@ -438,6 +515,7 @@ export class StudioService {
                 ? `${resolvedInstruction}\n\nPertanyaan: ${searchQuery}`
                 : searchQuery,
             instruction: resolvedInstruction,
+            chatInstruction: config.chat_instruction,
             conversationLines,
             retrieval,
         });
@@ -466,7 +544,13 @@ export class StudioService {
         return true;
     }
 
-    async chat(notebookId: string, question: string, conversationId?: string, userId?: string): Promise<any> {
+    async chat(
+        notebookId: string,
+        question: string,
+        conversationId?: string,
+        userId?: string,
+        options?: { sourceIds?: string[] },
+    ): Promise<any> {
         const notebook = await this.getNotebook(notebookId);
 
         // Get or create conversation
@@ -503,7 +587,7 @@ export class StudioService {
             notebookId,
             conversation.id,
             question,
-            { queryUnderstanding: qu },
+            { queryUnderstanding: qu, sourceIds: options?.sourceIds },
         );
         await this.appendStudioMessage(conversation.id, 'assistant', answer, rawChunks);
 
@@ -554,6 +638,121 @@ export class StudioService {
     }
 
     // ── Generate (Report, etc) ───────────────────────────────────────
+
+    async getChunk(chunkId: string): Promise<any> {
+        const chunk = await this.contextService.getChunkById(chunkId);
+        if (!chunk) throw new NotFoundException('Chunk not found');
+        return chunk;
+    }
+
+    async generateBrief(notebookId: string, force = false): Promise<{ summary: string; cached: boolean; outputId?: string }> {
+        const notebook = await this.getNotebook(notebookId);
+        const config = this.dbContextService.parseConfig(notebook.context_config);
+        if (!force && config.brief_summary?.trim()) {
+            return { summary: config.brief_summary, cached: true };
+        }
+
+        const retrieval = await this.contextService.retrieveContext(
+            notebookId,
+            `Ringkasan lengkap dan poin utama dari notebook ${notebook.name}`,
+            undefined,
+            config,
+        );
+
+        const prompt = [
+            `Buat notebook brief dalam Bahasa Indonesia (3–5 paragraf) untuk "${notebook.name}".`,
+            'Sertakan: topik utama, fakta penting, dan insight yang bisa ditindaklanjuti.',
+            'Hanya dari bukti di bawah. Gunakan markdown ringkas.',
+            retrieval.fileContext ? `\n## Sumber\n${retrieval.fileContext}` : '(Belum ada sumber terindeks)',
+        ].join('\n');
+
+        const summary = await this.studioGenerateText(prompt);
+        const newConfig: StudioContextConfig = {
+            ...config,
+            brief_summary: summary,
+            brief_generated_at: new Date().toISOString(),
+        };
+
+        await this.supabaseService.getAdminClient()
+            .from('studio_notebooks')
+            .update({ context_config: newConfig, updated_at: new Date().toISOString() })
+            .eq('id', notebookId);
+
+        let outputId: string | undefined;
+        try {
+            const saved = await this.outputService.saveOutput(
+                notebookId,
+                'brief',
+                `Brief — ${notebook.name}`,
+                summary,
+            );
+            outputId = saved?.id;
+        } catch (e: any) {
+            this.logger.warn(`Could not persist brief output: ${e?.message}`);
+        }
+
+        return { summary, cached: false, outputId };
+    }
+
+    async listOutputs(notebookId: string): Promise<any[]> {
+        return this.outputService.listOutputs(notebookId);
+    }
+
+    async deleteOutput(outputId: string): Promise<boolean> {
+        return this.outputService.deleteOutput(outputId);
+    }
+
+    async generateStudioOutput(
+        notebookId: string,
+        outputType: StudioOutputType,
+        query?: string,
+        sourceIds?: string[],
+    ): Promise<any> {
+        const notebook = await this.getNotebook(notebookId);
+        const gen = (prompt: string) => this.studioGenerateText(prompt);
+
+        let result: { title: string; content: string };
+        switch (outputType) {
+            case 'report': {
+                const content = await this.generateReport(notebookId, query || `Analisis lengkap ${notebook.name}`);
+                result = { title: `Report — ${notebook.name}`, content };
+                break;
+            }
+            case 'mind_map':
+                result = await this.outputService.generateMindMap(notebookId, notebook.name, gen, sourceIds);
+                break;
+            case 'quiz':
+                result = await this.outputService.generateQuiz(notebookId, notebook.name, gen, sourceIds);
+                break;
+            case 'faq':
+                result = await this.outputService.generateFaq(notebookId, notebook.name, gen, sourceIds);
+                break;
+            case 'audio_script':
+                result = await this.outputService.generateAudioScript(notebookId, notebook.name, gen, sourceIds);
+                break;
+            case 'data_table':
+                result = await this.outputService.generateDataTable(
+                    notebookId,
+                    notebook.name,
+                    query || 'Data terstruktur dari sumber',
+                    gen,
+                    sourceIds,
+                );
+                break;
+            case 'brief': {
+                const brief = await this.generateBrief(notebookId, true);
+                result = { title: `Brief — ${notebook.name}`, content: brief.summary };
+                break;
+            }
+            default:
+                throw new BadRequestException(`Unknown output type: ${outputType}`);
+        }
+
+        return this.outputService.saveOutput(notebookId, outputType, result.title, result.content, {
+            query: query ?? null,
+            sourceIds: sourceIds ?? null,
+        });
+    }
 
     async generateReport(notebookId: string, query: string): Promise<string> {
         const notebook = await this.getNotebook(notebookId);

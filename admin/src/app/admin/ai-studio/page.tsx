@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { useAppMessage } from "@/hooks/useAppMessage";
 import { mediaService, MediaFile } from "@/lib/mediaService";
-import { studioService, StudioNotebook, StudioSource, type StudioGuideFlow, type StudioPlaygroundResult } from "@/lib/studioService";
+import { studioService, StudioNotebook, StudioSource, type StudioGuideFlow } from "@/lib/studioService";
 import {
     Card,
     Row,
@@ -27,6 +27,7 @@ import {
     Tooltip,
     Alert,
     Badge,
+    Select,
 } from "antd";
 import type { UploadProps } from "antd";
 import {
@@ -48,9 +49,20 @@ import {
     SyncOutlined,
     ExclamationCircleOutlined,
     AppstoreAddOutlined,
-    ApartmentOutlined
+    ApartmentOutlined,
+    SettingOutlined,
 } from "@ant-design/icons";
-import GuideFlowsPanel from "./GuideFlowsPanel";
+import SourcesPanel from "./SourcesPanel";
+import StudioOutputsPanel from "./StudioOutputsPanel";
+import ConfigureChatModal from "./ConfigureChatModal";
+import ChunkPreviewDrawer from "./ChunkPreviewDrawer";
+import {
+    indexedSourceIds,
+    selectAllSourceIds,
+    shouldAutoGenerateBrief,
+    syncSelectedSourceIds,
+    toggleSourceId,
+} from "./notebookSourceSelection";
 import {
     getSourceProgressPercent,
     getSourceStageLabel,
@@ -104,6 +116,11 @@ export default function AIStudioPage() {
     const [loadingMedia, setLoadingMedia] = useState(false);
     const [addingMedia, setAddingMedia] = useState<Set<string>>(new Set());
     const [publishedGuideFlow, setPublishedGuideFlow] = useState<StudioGuideFlow | null>(null);
+    const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
+    const [configureChatOpen, setConfigureChatOpen] = useState(false);
+    const [savingChatConfig, setSavingChatConfig] = useState(false);
+    const [chunkPreview, setChunkPreview] = useState<{ chunkId: string; docName: string; score: number } | null>(null);
+    const briefGeneratedRef = useRef<Set<string>>(new Set());
 
     const sourceStats = summarizeSources(sources);
 
@@ -130,32 +147,12 @@ export default function AIStudioPage() {
         userId,
         sources,
         activeNotebook?.name ?? "",
+        selectedSourceIds,
     );
 
     // ── Layout State ──
     const [showSources, setShowSources] = useState(true);
-    const [showChat, setShowChat] = useState(true);
-    const [studioMainTab, setStudioMainTab] = useState<"workspace" | "playground" | "flows">("workspace");
-
-    // ── Playground (UC-18) ──
-    const [pgSystemPrompt, setPgSystemPrompt] = useState(
-        "You are a helpful assistant. Answer clearly and concisely.",
-    );
-    const [pgUserPrompt, setPgUserPrompt] = useState("");
-    const [pgOutput, setPgOutput] = useState("");
-    const [pgTemperature, setPgTemperature] = useState(0.7);
-    const [pgMaxTokens, setPgMaxTokens] = useState(2048);
-    const [pgLoading, setPgLoading] = useState(false);
-    const [pgLastResult, setPgLastResult] = useState<StudioPlaygroundResult | null>(null);
-    const [pgMetrics, setPgMetrics] = useState<
-        { label: string; latencyMs: number; totalTokens?: number }[]
-    >([]);
-
-    // ── Report State ──
-    const [reportModalOpen, setReportModalOpen] = useState(false);
-    const [reportQuery, setReportQuery] = useState("");
-    const [generatedReport, setGeneratedReport] = useState("");
-    const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+    const [showStudio, setShowStudio] = useState(true);
 
     // ── Poll timer ──
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -198,7 +195,7 @@ export default function AIStudioPage() {
         setChatMode("free");
         setGuidedFlow(null);
         setPublishedGuideFlow(null);
-        setStudioMainTab("workspace");
+        setSelectedSourceIds([]);
         await loadSourceStatus(notebook.id, true);
         try {
             const published = await studioService.getPublishedGuideFlow(notebook.id);
@@ -243,8 +240,39 @@ export default function AIStudioPage() {
             }
             setSources(list);
 
+            const indexedIds = indexedSourceIds(list);
+            setSelectedSourceIds((prev) => syncSelectedSourceIds(prev, indexedIds));
+
             const notebookId = pollNotebookIdRef.current;
             const stillIndexing = list.some(isSourceInProgress);
+            const stats = summarizeSources(list);
+            const cfg = activeNotebook?.context_config as { brief_summary?: string } | undefined;
+            if (
+                notebookId &&
+                shouldAutoGenerateBrief({
+                    allIndexed: stats.allIndexed,
+                    indexedCount: stats.indexed,
+                    alreadyTriggered: briefGeneratedRef.current.has(notebookId),
+                    hasBrief: Boolean(cfg?.brief_summary?.trim()),
+                })
+            ) {
+                briefGeneratedRef.current.add(notebookId);
+                void studioService.generateBrief(notebookId).then((res) => {
+                    if (!res.cached && activeNotebook?.id === notebookId) {
+                        setActiveNotebook((nb) =>
+                            nb
+                                ? {
+                                      ...nb,
+                                      context_config: {
+                                          ...(nb.context_config as object),
+                                          brief_summary: res.summary,
+                                      },
+                                  }
+                                : nb,
+                        );
+                    }
+                }).catch(() => { /* optional */ });
+            }
             if (notebookId && stillIndexing && !pollRef.current) {
                 pollRef.current = setInterval(async () => {
                     try {
@@ -266,7 +294,7 @@ export default function AIStudioPage() {
                 pollRef.current = null;
             }
         },
-        [notifySourceChange],
+        [notifySourceChange, activeNotebook?.context_config, activeNotebook?.id],
     );
 
     const loadSourceStatus = useCallback(
@@ -407,523 +435,56 @@ export default function AIStudioPage() {
         }
     };
 
-    const handleGenerateReport = async () => {
-        if (!reportQuery.trim() || !activeNotebook) return;
-        setIsGeneratingReport(true);
+    const handleToggleSource = (sourceId: string, checked: boolean) => {
+        setSelectedSourceIds((prev) => toggleSourceId(prev, sourceId, checked));
+    };
+
+    const handleSelectAllSources = (checked: boolean) => {
+        setSelectedSourceIds(selectAllSourceIds(checked, indexedSourceIds(sources)));
+    };
+
+    const handleImportUrl = async (url: string) => {
+        if (!activeNotebook) return;
+        await studioService.importUrl(activeNotebook.id, url);
+        message.success("URL diimport — indeksasi dimulai");
+        await loadSourceStatus(activeNotebook.id);
+    };
+
+    const handleSaveChatInstruction = async (instruction: string) => {
+        if (!activeNotebook) return;
+        setSavingChatConfig(true);
         try {
-            const report = await studioService.generateReport(activeNotebook.id, reportQuery);
-            setGeneratedReport(report);
+            const updated = await studioService.updateNotebook(activeNotebook.id, {
+                chatInstruction: instruction,
+            });
+            setActiveNotebook(updated);
+            message.success("Instruksi chat disimpan");
+            setConfigureChatOpen(false);
         } catch (e: unknown) {
-            message.error(e instanceof Error ? e.message : "Failed to generate report");
+            message.error(e instanceof Error ? e.message : "Gagal menyimpan");
         } finally {
-            setIsGeneratingReport(false);
+            setSavingChatConfig(false);
         }
     };
 
-    // ── Parse Status Helpers ──
-
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'done': return <CheckCircleFilled style={{ color: '#52c41a', fontSize: 14 }} />;
-            case 'parsing': return <SyncOutlined spin style={{ color: themeColor, fontSize: 14 }} />;
-            case 'error': return <ExclamationCircleOutlined style={{ color: '#ff4d4f', fontSize: 14 }} />;
-            default: return <ClockCircleOutlined style={{ color: '#8c8c8c', fontSize: 14 }} />;
-        }
-    };
-
-    const getStatusTag = (source: StudioSource) => {
-        const { color, label } = getSourceStatusTag(source);
-        return <Tag color={color} className="text-[10px] m-0 leading-tight px-1.5">{label}</Tag>;
-    };
-
-    const formatBytes = (bytes: number) => {
-        if (bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-    };
-
-    // ── Renderers ──
-
-    const renderNotebookList = () => (
-        <div className="flex flex-col gap-1 p-2">
-            {loadingNotebooks || authLoading ? (
-                <motion.div className="flex justify-center py-8"><Spin /></motion.div>
-            ) : !userId ? (
-                <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={<span className="text-xs text-gray-400">Sign in to view notebooks</span>}
-                    className="my-8"
-                />
-            ) : notebooks.length === 0 ? (
-                <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={<span className="text-xs text-gray-400">No notebooks yet</span>}
-                    className="my-8"
-                />
-            ) : (
-                notebooks.map(nb => (
-                    <motion.div
-                        key={nb.id}
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className={`group cursor-pointer rounded-lg p-2.5 transition-all duration-200 ${activeNotebook?.id === nb.id
-                            ? 'bg-[rgba(var(--theme-color-rgb,139,92,246),0.1)] border border-[rgba(var(--theme-color-rgb,139,92,246),0.3)]'
-                            : 'hover:bg-[rgba(var(--theme-color-rgb,139,92,246),0.05)] border border-transparent'
-                            }`}
-                        onClick={() => selectNotebook(nb)}
-                    >
-                        <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                                <span className="text-lg mt-0.5">{nb.icon || '📓'}</span>
-                                <div className="min-w-0 flex-1">
-                                    <Text strong className="text-[13px] block truncate">{nb.name}</Text>
-                                    <Text className="text-[10px] text-gray-400 block truncate">{nb.description || 'No description'}</Text>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <Tag className="text-[9px] m-0 leading-tight px-1 py-0 border-0 bg-gray-100 dark:bg-gray-800 text-gray-500">
-                                            {nb.source_count || 0} sources
-                                        </Tag>
-                                    </div>
-                                </div>
-                            </div>
-                            <Popconfirm
-                                title="Delete this notebook?"
-                                description="All sources and conversations will be lost."
-                                onConfirm={(e) => { e?.stopPropagation(); handleDeleteNotebook(nb.id); }}
-                                onCancel={(e) => e?.stopPropagation()}
-                            >
-                                <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<DeleteOutlined />}
-                                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:!text-red-500 flex items-center justify-center w-6 h-6"
-                                    onClick={(e) => e.stopPropagation()}
-                                />
-                            </Popconfirm>
-                        </div>
-                    </motion.div>
-                ))
-            )}
-        </div>
-    );
-
-    const renderSourceSummary = () => {
-        if (sources.length === 0) return null;
-        const { total, indexed, inProgress, errors } = sourceStats;
-        const overallPercent = total > 0
-            ? Math.round(sources.reduce((sum, s) => sum + getSourceProgressPercent(s), 0) / total)
-            : 0;
-
-        return (
-            <div className="px-3 pt-2 pb-1 border-b border-[rgba(var(--theme-color-rgb,139,92,246),0.12)]">
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <Text className="text-[10px] text-gray-500">
-                        {indexed}/{total} tervektor
-                        {inProgress > 0 ? ` · ${inProgress} diproses` : ''}
-                        {sourceStats.embedding > 0 ? ` · ${sourceStats.embedding} vektorisasi` : ''}
-                        {errors > 0 ? ` · ${errors} gagal` : ''}
-                    </Text>
-                    {sourceStats.allIndexed ? (
-                        <Tag color="success" className="text-[9px] m-0 leading-tight px-1.5">Siap RAG</Tag>
-                    ) : sourceStats.embedding > 0 ? (
-                        <Tag color="processing" icon={<SyncOutlined spin />} className="text-[9px] m-0 leading-tight px-1.5">
-                            Vektorisasi
-                        </Tag>
-                    ) : inProgress > 0 ? (
-                        <Tag color="processing" icon={<SyncOutlined spin />} className="text-[9px] m-0 leading-tight px-1.5">
-                            Mengindeks
-                        </Tag>
-                    ) : null}
-                </div>
-                <Progress
-                    percent={overallPercent}
-                    status={errors > 0 && indexed === 0 ? 'exception' : inProgress > 0 ? 'active' : indexed === total ? 'success' : 'normal'}
-                    size="small"
-                    strokeColor={themeColor}
-                />
-            </div>
-        );
-    };
-
-    const renderSourceList = () => (
-        <div className="flex flex-col gap-1 px-2 pb-2">
-            {loadingSources ? (
-                <div className="flex justify-center py-4"><Spin size="small" /></div>
-            ) : sources.length === 0 ? (
-                <div className="flex flex-col items-center gap-3 py-4 px-2">
-                    <Empty
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                        description={<span className="text-[11px] text-gray-400">Belum ada sumber di notebook ini</span>}
-                        className="my-1"
-                    />
-                    <Space size={8} wrap className="justify-center">
-                        <Button
-                            size="small"
-                            icon={<AppstoreAddOutlined />}
-                            onClick={openMediaModal}
-                        >
-                            Media Library
-                        </Button>
-                        <Upload customRequest={handleUploadFile} showUploadList={false} multiple>
-                            <Button size="small" icon={<CloudUploadOutlined />}>
-                                Upload
-                            </Button>
-                        </Upload>
-                    </Space>
-                    <Text className="text-[10px] text-gray-400 text-center block">
-                        PDF, DOCX, PPTX, TXT — otomatis diekstrak &amp; tervektor untuk RAG
-                    </Text>
-                </div>
-            ) : (
-                sources.map((source: StudioSource) => {
-                    const statusDetail = getSourceStatusDetail(source);
-                    const stageLabel = getSourceStageLabel(source);
-                    return (
-                    <Tooltip key={source.id} title={statusDetail ?? stageLabel} placement="right">
-                    <div
-                        className="group flex items-center justify-between gap-2 rounded-md p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
-                    >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                            {getStatusIcon(source.parse_status)}
-                            <div className="min-w-0 flex-1">
-                                <Text className="text-[12px] block truncate">{source.filename}</Text>
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                    <Text className="text-[10px] text-gray-400">{formatBytes(source.file_size)}</Text>
-                                    {isSourceInProgress(source) && (
-                                        <Text className="text-[10px]" style={{ color: themeColor }}>{stageLabel}</Text>
-                                    )}
-                                    {getStatusTag(source)}
-                                </div>
-                                {source.parse_status === 'error' && source.parse_error && (
-                                    <Text className="text-[10px] text-red-500 block truncate mt-0.5" title={source.parse_error}>
-                                        {source.parse_error}
-                                    </Text>
-                                )}
-                                {(source.parse_status === 'parsing' || source.parse_status === 'pending') && (
-                                    <Progress
-                                        percent={getSourceProgressPercent(source)}
-                                        size="small"
-                                        strokeColor={themeColor}
-                                        status={source.parse_status === 'pending' ? 'active' : 'normal'}
-                                        className="mt-1 !mb-0"
-                                    />
-                                )}
-                            </div>
-                        </div>
-                        <Space size={0}>
-                            <Tooltip title="Reindex">
-                                <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<SyncOutlined />}
-                                    className="opacity-0 group-hover:opacity-100 w-5 h-5"
-                                    onClick={() => handleReindexSource(source.id)}
-                                />
-                            </Tooltip>
-                            <Button
-                                type="text"
-                                size="small"
-                                danger
-                                icon={<DeleteOutlined />}
-                                className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center"
-                                onClick={() => handleRemoveSource(source.id)}
-                            />
-                        </Space>
-                    </div>
-                    </Tooltip>
-                ); })
-            )}
-        </div>
-    );
-
-    const renderStudioGuide = () => (
-        <div className="flex-1 overflow-auto custom-scrollbar px-4 pb-4 pt-2">
-            {!activeNotebook ? (
-                /* No notebook selected — show welcome */
-                <div className="flex flex-col items-center justify-center h-full gap-6 opacity-80">
-                    <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ duration: 0.5, type: 'spring' }}
-                    >
-                        <div className="w-24 h-24 rounded-3xl flex items-center justify-center" style={{
-                            background: `linear-gradient(135deg, ${themeColor}22, ${themeColor}08)`,
-                            border: `2px dashed ${themeColor}44`
-                        }}>
-                            <BookOutlined style={{ fontSize: 40, color: themeColor }} />
-                        </div>
-                    </motion.div>
-                    <div className="text-center max-w-md">
-                        <Title level={3} className="!mb-2">
-                            <AuroraText colors={[themeColor, `${themeColor}cc`, `${themeColor}88`]}>Welcome to AI Studio</AuroraText>
-                        </Title>
-                        <Text className="text-gray-400 text-sm block mb-6">
-                            Create a notebook, add your documents, and let AI help you understand, analyze, and generate insights from your knowledge base.
-                        </Text>
-                        <Button
-                            type="primary"
-                            size="large"
-                            icon={<PlusOutlined />}
-                            onClick={() => setShowCreateModal(true)}
-                            style={{ backgroundColor: themeColor, borderColor: themeColor, borderRadius: 12, height: 44, paddingInline: 32 }}
-                        >
-                            Create Your First Notebook
-                        </Button>
-                    </div>
-                </div>
-            ) : (
-                /* Active notebook — show guide + generators */
-                <>
-                    <div className="mb-8">
-                        <div className="flex items-center gap-3 mb-2">
-                            <span className="text-2xl">{activeNotebook.icon || '📓'}</span>
-                            <div>
-                                <Title level={4} className="!mb-0">
-                                    <AuroraText colors={[themeColor, `${themeColor}cc`, `${themeColor}88`]}>{activeNotebook.name}</AuroraText>
-                                </Title>
-                                <Text className="text-gray-400 text-xs">{activeNotebook.description || 'No description'}</Text>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2 flex-wrap">
-                            <Tag style={{ color: themeColor, borderColor: `${themeColor}44`, backgroundColor: `${themeColor}11` }}>
-                                {sourceStats.total} sumber
-                            </Tag>
-                            <Tag color={sourceStats.allIndexed ? 'success' : sourceStats.indexed > 0 ? 'processing' : 'default'}>
-                                {sourceStats.indexed} tervektor
-                            </Tag>
-                            {sourceStats.embedding > 0 && (
-                                <Tag color="processing" icon={<SyncOutlined spin />}>
-                                    Vektorisasi {sourceStats.embedding}
-                                </Tag>
-                            )}
-                            {sourceStats.errors > 0 && (
-                                <Tag color="error">{sourceStats.errors} gagal</Tag>
-                            )}
-                        </div>
-                        {sources.length > 0 && !sourceStats.allIndexed && (
-                            <Alert
-                                type={sourceStats.errors > 0 && sourceStats.indexed === 0 ? 'error' : 'info'}
-                                showIcon
-                                className="mt-3 !text-xs"
-                                message={
-                                    sourcesIndexing
-                                        ? sourceStats.embedding > 0
-                                            ? 'Vektorisasi embedding berjalan'
-                                            : 'Indeksasi berjalan di background'
-                                        : 'Beberapa sumber belum siap'
-                                }
-                                description={
-                                    sourcesIndexing
-                                        ? sourceStats.embedding > 0
-                                            ? 'Tahap vektorisasi: setiap chunk di-embed dan disimpan. Lihat "Vektorisasi X/Y" di panel Sources.'
-                                            : 'Tahap: ekstraksi teks → chunking → vektorisasi. Pantau di panel Sources.'
-                                        : 'Buka panel Sources untuk detail error atau jalankan Reindex.'
-                                }
-                            />
-                        )}
-                        {sources.length === 0 && (
-                            <Alert
-                                type="info"
-                                showIcon
-                                className="mt-3 !text-xs"
-                                message="Belum ada sumber"
-                                description="Tambahkan file lewat panel Sources di sidebar (Media Library atau Upload). Setelah tervektor, chat RAG siap dipakai."
-                            />
-                        )}
-                    </div>
-
-                    {/* Generate Tools */}
-                    <Title level={5} className="!text-gray-400 uppercase tracking-wider !text-xs !mb-3">Generate</Title>
-                    <Row gutter={[12, 12]}>
-                        <Col span={24}>
-                            <Card
-                                hoverable
-                                size="small"
-                                className="!rounded-xl cursor-pointer"
-                                onClick={() => {
-                                    if (sources.length === 0) {
-                                        message.warning("No sources yet.");
-                                        return;
-                                    }
-                                    setReportModalOpen(true);
-                                }}
-                            >
-                                <Space align="center" size={12}>
-                                    <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${themeColor}15` }}>
-                                        <FileTextOutlined style={{ fontSize: 18, color: themeColor }} />
-                                    </div>
-                                    <div>
-                                        <Text strong className="text-[13px] block">Executive Report</Text>
-                                        <Text className="text-[10px] text-gray-400">Generate a comprehensive analysis from your sources</Text>
-                                    </div>
-                                </Space>
-                            </Card>
-                        </Col>
-                    </Row>
-                </>
-            )}
-        </div>
-    );
-
-    const renderPlayground = () => {
-        const chartData = pgMetrics.map((m) => ({
-            name: m.label,
-            latency: m.latencyMs,
-            tokens: m.totalTokens ?? 0,
-        }));
-
-        const runPlaygroundTest = async () => {
-            if (!pgUserPrompt.trim()) {
-                message.warning("Isi user prompt terlebih dahulu.");
-                return;
-            }
-            setPgLoading(true);
-            try {
-                const result = await studioService.playgroundTest({
-                    systemPrompt: pgSystemPrompt,
-                    userPrompt: pgUserPrompt.trim(),
-                    temperature: pgTemperature,
-                    maxTokens: pgMaxTokens,
-                });
-                setPgOutput(result.output);
-                setPgLastResult(result);
-                const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-                setPgMetrics((prev) => [
-                    ...prev.slice(-9),
-                    { label: stamp, latencyMs: result.latencyMs, totalTokens: result.totalTokens },
-                ]);
-            } catch (e: unknown) {
-                const err = e as { message?: string };
-                message.error(err.message || "Playground test failed");
-            } finally {
-                setPgLoading(false);
-            }
-        };
-
-        return (
-            <div className="flex h-full gap-4 px-4 pb-4 pt-2">
-                <div className="flex-1 flex flex-col gap-4 min-w-0">
-                    <Alert
-                        type="info"
-                        showIcon
-                        className="!text-xs"
-                        message="Sandbox prompt — tidak memakai sumber notebook (RAG)"
-                        description="Uji system prompt, user prompt, temperature, dan max tokens sebelum dipakai di chat atau guide flow."
-                    />
-                    <Card size="small" title={<Text strong className="text-sm">System Prompt</Text>} className="flex-1" style={{ ...glass }}>
-                        <TextArea
-                            value={pgSystemPrompt}
-                            onChange={(e) => setPgSystemPrompt(e.target.value)}
-                            placeholder="Instruksi perilaku model (system)..."
-                            style={{ height: "100%", minHeight: 120, resize: "none", background: "transparent", border: "none" }}
-                        />
-                    </Card>
-                    <Card size="small" title={<Text strong className="text-sm">User Prompt</Text>} style={{ ...glass }}>
-                        <TextArea
-                            value={pgUserPrompt}
-                            onChange={(e) => setPgUserPrompt(e.target.value)}
-                            placeholder="Pesan pengguna untuk diuji..."
-                            rows={3}
-                            style={{ resize: "none", background: "transparent", border: "none" }}
-                            onPressEnter={(e) => {
-                                if (e.shiftKey) return;
-                                e.preventDefault();
-                                void runPlaygroundTest();
-                            }}
-                        />
-                    </Card>
-                    <Card size="small" title={<Text strong className="text-sm">Generation Preview</Text>} className="flex-1" style={{ ...glass }}>
-                        <Spin spinning={pgLoading}>
-                            <TextArea
-                                value={pgOutput}
-                                readOnly
-                                placeholder="Output model akan muncul di sini..."
-                                style={{ height: "100%", minHeight: 160, resize: "none", background: "rgba(0,0,0,0.02)", border: "none" }}
-                            />
-                        </Spin>
-                    </Card>
-                </div>
-                <div className="w-[300px] flex flex-col gap-4 shrink-0">
-                    <Card size="small" title={<Text strong className="text-sm">Model Config</Text>} style={{ ...glass }}>
-                        <Text className="text-xs mb-1 block">Temperature ({pgTemperature.toFixed(1)})</Text>
-                        <Input
-                            type="range"
-                            min={0}
-                            max={2}
-                            step={0.1}
-                            value={pgTemperature}
-                            onChange={(e) => setPgTemperature(parseFloat(e.target.value))}
-                            className="w-full mb-3"
-                        />
-                        <Text className="text-xs mb-1 block">Max Tokens</Text>
-                        <Input
-                            type="number"
-                            min={64}
-                            max={8192}
-                            value={pgMaxTokens}
-                            onChange={(e) => setPgMaxTokens(Math.min(8192, Math.max(64, Number(e.target.value) || 2048)))}
-                            className="w-full mb-4"
-                        />
-                        <Button
-                            type="primary"
-                            block
-                            loading={pgLoading}
-                            onClick={() => void runPlaygroundTest()}
-                            style={{ backgroundColor: themeColor, border: "none" }}
-                        >
-                            Test Prompt
-                        </Button>
-                    </Card>
-                    {pgLastResult && (
-                        <Card size="small" title={<Text strong className="text-sm">Last Run</Text>} style={{ ...glass }}>
-                            <div className="space-y-1 text-[11px] text-gray-500">
-                                <div><Text type="secondary">Provider:</Text> {pgLastResult.provider}</div>
-                                <div><Text type="secondary">Model:</Text> {pgLastResult.model}</div>
-                                <div><Text type="secondary">Latency:</Text> {pgLastResult.latencyMs} ms</div>
-                                {pgLastResult.totalTokens != null && (
-                                    <div><Text type="secondary">Tokens:</Text> {pgLastResult.totalTokens}</div>
-                                )}
-                            </div>
-                        </Card>
-                    )}
-                    <Card size="small" title={<Text strong className="text-sm">Performance</Text>} className="flex-1" style={{ ...glass }}>
-                        {chartData.length === 0 ? (
-                            <div className="h-[160px] flex items-center justify-center">
-                                <Text type="secondary" className="text-[11px]">Jalankan Test Prompt untuk melihat latency</Text>
-                            </div>
-                        ) : (
-                            <>
-                                <div style={{ height: 160, width: "100%" }}>
-                                    <ResponsiveContainer>
-                                        <LineChart data={chartData}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(150,150,150,0.2)" />
-                                            <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                                            <YAxis yAxisId="left" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={36} />
-                                            <Line yAxisId="left" type="monotone" dataKey="latency" stroke={themeColor} strokeWidth={2} dot={{ r: 3, fill: themeColor }} />
-                                            <RechartsTooltip contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </div>
-                                <Text type="secondary" className="text-[10px] text-center block mt-2">
-                                    Latency (ms) — {chartData.length} run terakhir
-                                </Text>
-                            </>
-                        )}
-                    </Card>
-                </div>
-            </div>
-        );
-    };
+    const chatInstruction =
+        (activeNotebook?.context_config as { chat_instruction?: string } | undefined)?.chat_instruction ?? "";
+    const briefSummary =
+        (activeNotebook?.context_config as { brief_summary?: string } | undefined)?.brief_summary ?? "";
 
     // ── MAIN RENDER ──
+
+    const notebookOptions = notebooks.map((nb) => ({
+        value: nb.id,
+        label: `${nb.icon || "📓"} ${nb.name}`,
+    }));
 
     return (
         <CMSLayout
             title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>AI Studio</AuroraText>}
             subTitle={
                 <DecryptedText
-                    text="Notebook-powered AI knowledge base — upload sources, parse, and chat with your documents"
+                    text="Sources · Chat · Studio — notebook knowledge base ala NotebookLM"
                     animateOn="view"
                     revealDirection="center"
                     speed={40}
@@ -932,280 +493,148 @@ export default function AIStudioPage() {
                 />
             }
         >
-            <div className="flex flex-col gap-4 h-full">
-                <div className="flex gap-4 flex-1" style={{ minHeight: 600, alignItems: 'stretch' }}>
+            <div className="flex flex-col gap-3 h-full">
+                {/* Header: notebook dropdown + actions */}
+                <Card size="small" style={glass} className="dark:!bg-[rgba(15,15,23,0.6)]">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <AnimatedTooltip content={showSources ? "Sembunyikan Sources" : "Tampilkan Sources"}>
+                            <Button type="text" icon={showSources ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
+                                onClick={() => setShowSources(!showSources)} size="small" />
+                        </AnimatedTooltip>
+                        <Select
+                            className="min-w-[200px] flex-1 max-w-md"
+                            placeholder="Pilih notebook"
+                            loading={loadingNotebooks}
+                            value={activeNotebook?.id}
+                            options={notebookOptions}
+                            onChange={(id) => {
+                                const nb = notebooks.find((n) => n.id === id);
+                                if (nb) void selectNotebook(nb);
+                            }}
+                            disabled={!userId || notebooks.length === 0}
+                        />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowCreateModal(true)}
+                            style={{ backgroundColor: themeColor, borderColor: themeColor }}>
+                            Notebook
+                        </Button>
+                        {activeNotebook && (
+                            <Popconfirm title="Hapus notebook?" onConfirm={() => void handleDeleteNotebook(activeNotebook.id)}>
+                                <Button danger icon={<DeleteOutlined />} size="small" />
+                            </Popconfirm>
+                        )}
+                        <AnimatedTooltip content={showStudio ? "Sembunyikan Studio" : "Tampilkan Studio"}>
+                            <Button type="text" icon={showStudio ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                                onClick={() => setShowStudio(!showStudio)} size="small" className="ml-auto" />
+                        </AnimatedTooltip>
+                    </div>
+                </Card>
 
-                    {/* ── LEFT SIDEBAR: Notebooks + Sources ── */}
+                <div className="flex gap-3 flex-1 min-h-0" style={{ minHeight: 560 }}>
+                    {/* LEFT: Sources */}
                     <AnimatePresence mode="wait">
                         {showSources && (
                             <motion.div
-                                initial={{ width: 0, opacity: 0, x: -20 }}
-                                animate={{ width: 280, opacity: 1, x: 0 }}
-                                exit={{ width: 0, opacity: 0, x: -20 }}
-                                transition={{ duration: 0.3, type: 'spring', stiffness: 100, damping: 20 }}
-                                className="flex flex-col"
+                                initial={{ width: 0, opacity: 0 }}
+                                animate={{ width: 280, opacity: 1 }}
+                                exit={{ width: 0, opacity: 0 }}
+                                className="flex flex-col shrink-0 overflow-hidden"
                                 style={{ width: 280, minWidth: 280 }}
                             >
-                                <Card
-                                    size="small"
-                                    title={
-                                        <span style={{
-                                            background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
-                                            WebkitBackgroundClip: 'text',
-                                            WebkitTextFillColor: 'transparent',
-                                            fontWeight: 600,
-                                            fontSize: '14px'
-                                        }}>
-                                            Notebooks
-                                        </span>
-                                    }
-                                    extra={
-                                        <AnimatedTooltip content="New Notebook">
-                                            <Button
-                                                type="text"
-                                                icon={<PlusOutlined style={{ fontSize: 14 }} />}
-                                                size="small"
-                                                className="text-gray-400 hover:text-[color:var(--theme-color,#7c3aed)] flex items-center justify-center w-7 h-7"
-                                                onClick={() => setShowCreateModal(true)}
-                                            />
-                                        </AnimatedTooltip>
-                                    }
-                                    style={{
-                                        display: 'flex', flexDirection: 'column',
-                                        background: 'transparent', boxShadow: 'none', border: 'none',
-                                        ...(activeNotebook ? { height: '40%', minHeight: 200 } : { height: '100%' })
-                                    }}
-                                    className="dark:!bg-transparent"
-                                    styles={{
-                                        header: {
-                                            background: 'transparent',
-                                            borderBottom: '1px solid rgba(var(--theme-color-rgb,139,92,246),0.2)',
-                                            minHeight: 40, padding: '0 12px'
-                                        },
-                                        body: { padding: 0, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }
-                                    }}
-                                >
-                                    {renderNotebookList()}
+                                <Card size="small" className="h-full flex flex-col dark:!bg-transparent"
+                                    style={{ background: "transparent", boxShadow: "none", border: `1px solid ${themeColor}22` }}
+                                    styles={{ body: { padding: 0, flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" } }}>
+                                    {activeNotebook ? (
+                                        <SourcesPanel
+                                            themeColor={themeColor}
+                                            sources={sources}
+                                            sourceStats={sourceStats}
+                                            loading={loadingSources}
+                                            selectedSourceIds={selectedSourceIds}
+                                            onToggleSource={handleToggleSource}
+                                            onSelectAll={handleSelectAllSources}
+                                            onOpenMedia={() => void openMediaModal()}
+                                            onUpload={handleUploadFile}
+                                            onImportUrl={handleImportUrl}
+                                            onRemove={(id) => void handleRemoveSource(id)}
+                                            onReindex={(id) => void handleReindexSource(id)}
+                                            onConfigureChat={() => setConfigureChatOpen(true)}
+                                        />
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-full p-4 gap-4">
+                                            <BookOutlined style={{ fontSize: 36, color: themeColor }} />
+                                            <Text type="secondary" className="text-xs text-center">Buat atau pilih notebook</Text>
+                                            <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowCreateModal(true)}
+                                                style={{ backgroundColor: themeColor }}>Buat Notebook</Button>
+                                        </div>
+                                    )}
                                 </Card>
-
-                                {/* Sources Panel (only when notebook selected) */}
-                                {activeNotebook && (
-                                    <Card
-                                        size="small"
-                                        title={
-                                            <Space size={6}>
-                                                <span style={{
-                                                    background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
-                                                    WebkitBackgroundClip: 'text',
-                                                    WebkitTextFillColor: 'transparent',
-                                                    fontWeight: 600,
-                                                    fontSize: '14px'
-                                                }}>
-                                                    Sources
-                                                </span>
-                                                {sourceStats.inProgress > 0 && (
-                                                    <Badge count={sourceStats.inProgress} size="small" color={themeColor} title="Sedang diindeks" />
-                                                )}
-                                            </Space>
-                                        }
-                                        extra={
-                                            <Space size={2}>
-                                                <AnimatedTooltip content="From Library">
-                                                    <Button type="text" icon={<AppstoreAddOutlined style={{ fontSize: 13 }} />} size="small"
-                                                        className="text-gray-400 hover:text-[color:var(--theme-color)] w-6 h-6 flex items-center justify-center"
-                                                        onClick={openMediaModal}
-                                                    />
-                                                </AnimatedTooltip>
-                                                <Upload customRequest={handleUploadFile} showUploadList={false} multiple>
-                                                    <AnimatedTooltip content="Upload File">
-                                                        <Button type="text" icon={<CloudUploadOutlined style={{ fontSize: 13 }} />} size="small"
-                                                            className="text-gray-400 hover:text-[color:var(--theme-color)] w-6 h-6 flex items-center justify-center"
-                                                        />
-                                                    </AnimatedTooltip>
-                                                </Upload>
-                                            </Space>
-                                        }
-                                        style={{
-                                            display: 'flex', flexDirection: 'column', flex: 1,
-                                            background: 'transparent', boxShadow: 'none', border: 'none', marginTop: 4
-                                        }}
-                                        className="dark:!bg-transparent"
-                                        styles={{
-                                            header: {
-                                                background: 'transparent',
-                                                borderBottom: '1px solid rgba(var(--theme-color-rgb,139,92,246),0.2)',
-                                                minHeight: 40, padding: '0 12px'
-                                            },
-                                            body: { padding: 0, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }
-                                        }}
-                                    >
-                                        {renderSourceSummary()}
-                                        {renderSourceList()}
-                                    </Card>
-                                )}
                             </motion.div>
                         )}
                     </AnimatePresence>
 
-                    {/* ── MIDDLE: Studio Guide / Generators ── */}
-                    <div className="flex-1 min-w-0 flex flex-col gap-4">
-                        {/* Header */}
-                        <Card
-                            size="small"
-                            style={{
-                                ...glass,
-                                boxShadow: '0 1px 2px rgba(0,0,0,0.04)', border: '1px solid rgba(255,255,255,0.5)'
-                            }}
-                            className="dark:!bg-[rgba(15,15,23,0.6)] dark:!border-[rgba(var(--theme-color-rgb,139,92,246),0.2)]"
-                            styles={{
-                                header: { background: 'rgba(255,255,255,0.1)', borderBottom: '1px solid rgba(var(--theme-color-rgb,139,92,246),0.2)' }
-                            }}
-                            title={
-                                <div className="flex items-center gap-3">
-                                    <AnimatedTooltip content={showSources ? "Hide Sidebar" : "Show Sidebar"}>
-                                        <Button type="text" icon={showSources ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
-                                            onClick={() => setShowSources(!showSources)} size="small"
-                                            className="text-gray-400 hover:text-[color:var(--theme-color)] w-7 h-7 flex items-center justify-center -ml-2"
-                                        />
-                                    </AnimatedTooltip>
-                                    <span style={{
-                                        background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
-                                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                                        fontWeight: 600, fontSize: '14px'
-                                    }}>
-                                        {activeNotebook ? activeNotebook.name : 'Studio Guide'}
-                                    </span>
+                    {/* CENTER: Chat */}
+                    <div className="flex-1 min-w-0 flex flex-col">
+                        <Card size="small" className="h-full flex flex-col dark:!bg-transparent"
+                            style={{ background: "transparent", boxShadow: "none", border: `1px solid ${themeColor}22` }}
+                            styles={{ body: { padding: 0, flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 0 } }}>
+                            {activeNotebook ? (
+                                <AIAssistantPanel
+                                    themeColor={themeColor}
+                                    notebookName={activeNotebook.name}
+                                    briefSummary={briefSummary}
+                                    sources={sources}
+                                    sourceStats={sourceStats}
+                                    publishedGuideFlow={publishedGuideFlow}
+                                    chatHistory={chatHistory}
+                                    conversationId={conversationId}
+                                    isChatting={isChatting}
+                                    chatMode={chatMode}
+                                    guidedFlow={guidedFlow}
+                                    waitingInput={waitingInput}
+                                    suggestedPrompts={suggestedPrompts}
+                                    conversations={conversations}
+                                    loadingConversations={loadingConversations}
+                                    onSend={(text) => void handleChatSend(text)}
+                                    onNewChat={() => void handleNewChat()}
+                                    onSwitchToFree={switchToFreeChat}
+                                    onStartGuided={() => void startPublishedGuidedFlow()}
+                                    onSetChatMode={setChatMode}
+                                    onResumeConversation={(id) => void resumeConversation(id)}
+                                    onCitationClick={(chunkId, docName, score) => setChunkPreview({ chunkId, docName, score })}
+                                />
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-full gap-4 opacity-80 p-6">
+                                    <Title level={4} className="!mb-0">
+                                        <AuroraText colors={[themeColor, `${themeColor}cc`]}>Welcome to AI Studio</AuroraText>
+                                    </Title>
+                                    <Text className="text-gray-400 text-sm text-center max-w-md">
+                                        Tambahkan sumber, chat di tengah, generate artefak di panel Studio — layout seperti NotebookLM.
+                                    </Text>
                                 </div>
-                            }
-                            extra={
-                                <AnimatedTooltip content={showChat ? "Hide Chat" : "Show Chat"}>
-                                    <Button type="text" icon={showChat ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                                        onClick={() => setShowChat(!showChat)} size="small"
-                                        className="text-gray-400 hover:text-[color:var(--theme-color)] w-7 h-7 flex items-center justify-center"
-                                    />
-                                </AnimatedTooltip>
-                            }
-                        >
-                            <Breadcrumb
-                                items={[
-                                    { title: <><RobotOutlined className="mr-1" /> AI Studio</> },
-                                    { title: activeNotebook ? activeNotebook.name : "Guide" }
-                                ]}
-                                className="text-xs"
-                            />
+                            )}
                         </Card>
-                        <Tabs
-                            activeKey={studioMainTab}
-                            onChange={(k) => setStudioMainTab(k as "workspace" | "playground" | "flows")}
-                            className="studio-main-tabs"
-                            items={[
-                                {
-                                    key: "workspace",
-                                    label: (
-                                        <span className="text-xs">
-                                            <FundProjectionScreenOutlined className="mr-1" />
-                                            Workspace
-                                        </span>
-                                    ),
-                                    children: renderStudioGuide(),
-                                },
-                                {
-                                    key: "playground",
-                                    label: (
-                                        <span className="text-xs">
-                                            <RobotOutlined className="mr-1" />
-                                            Playground
-                                        </span>
-                                    ),
-                                    children: renderPlayground(),
-                                },
-                                {
-                                    key: "flows",
-                                    label: (
-                                        <span className="text-xs">
-                                            <ApartmentOutlined className="mr-1" />
-                                            Guide flows
-                                        </span>
-                                    ),
-                                    children: (
-                                        <GuideFlowsPanel
-                                            notebookId={activeNotebook?.id ?? null}
-                                            themeColor={themeColor}
-                                            userId={userId || ""}
-                                            sourcesReady={sourceStats.anyIndexed}
-                                        />
-                                    ),
-                                },
-                            ]}
-                        />
                     </div>
 
-                    {/* ── RIGHT SIDEBAR: Chat ── */}
+                    {/* RIGHT: Studio */}
                     <AnimatePresence mode="wait">
-                        {showChat && (
+                        {showStudio && (
                             <motion.div
-                                initial={{ width: 0, opacity: 0, x: 20 }}
-                                animate={{ width: 380, opacity: 1, x: 0 }}
-                                exit={{ width: 0, opacity: 0, x: 20 }}
-                                transition={{ duration: 0.3, type: 'spring', stiffness: 100, damping: 20 }}
-                                className="flex flex-col"
-                                style={{ width: 380, minWidth: 380 }}
+                                initial={{ width: 0, opacity: 0 }}
+                                animate={{ width: 320, opacity: 1 }}
+                                exit={{ width: 0, opacity: 0 }}
+                                className="shrink-0 overflow-hidden"
+                                style={{ width: 320, minWidth: 320 }}
                             >
-                                <Card
-                                    size="small"
-                                    title={
-                                        <span style={{
-                                            background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
-                                            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                                            fontWeight: 600, fontSize: '14px'
-                                        }}>
-                                            AI Assistant
-                                        </span>
-                                    }
-                                    style={{
-                                        display: 'flex', flexDirection: 'column', height: '100%',
-                                        background: 'transparent', boxShadow: 'none', border: 'none'
-                                    }}
-                                    className="dark:!bg-transparent"
-                                    styles={{
-                                        header: {
-                                            background: 'transparent',
-                                            borderBottom: '1px solid rgba(var(--theme-color-rgb,139,92,246),0.2)',
-                                            minHeight: 40, padding: '0 12px'
-                                        },
-                                        body: { padding: 0, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }
-                                    }}
-                                >
-                                    {activeNotebook ? (
-                                        <AIAssistantPanel
-                                            themeColor={themeColor}
-                                            notebookName={activeNotebook.name}
-                                            sources={sources}
-                                            sourceStats={sourceStats}
-                                            publishedGuideFlow={publishedGuideFlow}
-                                            chatHistory={chatHistory}
-                                            conversationId={conversationId}
-                                            isChatting={isChatting}
-                                            chatMode={chatMode}
-                                            guidedFlow={guidedFlow}
-                                            waitingInput={waitingInput}
-                                            suggestedPrompts={suggestedPrompts}
-                                            conversations={conversations}
-                                            loadingConversations={loadingConversations}
-                                            onSend={(text) => void handleChatSend(text)}
-                                            onNewChat={() => void handleNewChat()}
-                                            onSwitchToFree={switchToFreeChat}
-                                            onStartGuided={() => void startPublishedGuidedFlow()}
-                                            onSetChatMode={setChatMode}
-                                            onResumeConversation={(id) => void resumeConversation(id)}
-                                        />
-                                    ) : (
-                                        <div className="flex items-center justify-center h-48 opacity-60 p-4">
-                                            <Text type="secondary" className="text-xs text-center">
-                                                Pilih notebook untuk memulai chat RAG.
-                                            </Text>
-                                        </div>
-                                    )}
+                                <Card size="small" className="h-full dark:!bg-transparent"
+                                    style={{ background: "transparent", boxShadow: "none", border: `1px solid ${themeColor}22` }}
+                                    styles={{ body: { padding: 0, height: "100%", overflow: "hidden" } }}>
+                                    <StudioOutputsPanel
+                                        themeColor={themeColor}
+                                        notebookId={activeNotebook?.id ?? null}
+                                        notebookName={activeNotebook?.name}
+                                        sourcesReady={sourceStats.anyIndexed}
+                                        selectedSourceIds={selectedSourceIds}
+                                    />
                                 </Card>
                             </motion.div>
                         )}
@@ -1298,46 +727,20 @@ export default function AIStudioPage() {
                 )}
             </Modal>
 
-            {/* Report Modal */}
-            <Modal
-                title={<span><FileTextOutlined style={{ color: themeColor, marginRight: 8 }} />Generate Executive Report</span>}
-                open={reportModalOpen}
-                onCancel={() => setReportModalOpen(false)}
-                footer={null}
-                width={700}
-                centered
-            >
-                {!generatedReport ? (
-                    <div className="pt-4">
-                        <Paragraph type="secondary">Describe what you want the report to focus on based on your notebook sources.</Paragraph>
-                        <TextArea
-                            rows={4}
-                            value={reportQuery}
-                            onChange={e => setReportQuery(e.target.value)}
-                            placeholder="E.g. Analyze the Q3 growth based on the provided logs..."
-                            className="mb-4"
-                        />
-                        <Button type="primary" size="large" onClick={handleGenerateReport} loading={isGeneratingReport}
-                            style={{ width: '100%', backgroundColor: themeColor }}>
-                            Generate Report
-                        </Button>
-                    </div>
-                ) : (
-                    <div>
-                        <div className="mb-4 flex justify-end">
-                            <Space>
-                                <Button onClick={() => setGeneratedReport("")}>Reset</Button>
-                                <Button type="primary" icon={<DownloadOutlined />} style={{ backgroundColor: themeColor }}>Export</Button>
-                            </Space>
-                        </div>
-                        <div className="max-h-[60vh] overflow-y-auto p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                            <div className="prose prose-sm dark:prose-invert max-w-none">
-                                <ReactMarkdown>{generatedReport}</ReactMarkdown>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </Modal>
+            <ConfigureChatModal
+                open={configureChatOpen}
+                loading={savingChatConfig}
+                initialInstruction={chatInstruction}
+                onCancel={() => setConfigureChatOpen(false)}
+                onSave={handleSaveChatInstruction}
+            />
+
+            <ChunkPreviewDrawer
+                chunkId={chunkPreview?.chunkId ?? null}
+                docName={chunkPreview?.docName}
+                score={chunkPreview?.score}
+                onClose={() => setChunkPreview(null)}
+            />
         </CMSLayout>
     );
 }
