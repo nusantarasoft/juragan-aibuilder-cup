@@ -50,7 +50,7 @@ function simulate(nodes: Node[], edges: Edge[], iterations: number) {
         // Repulsion
         for (let i = 0; i < nodes.length; i++) {
             for (let j = i + 1; j < nodes.length; j++) {
-                let dx = nodes[j].x - nodes[i].x, dy = nodes[j].y - nodes[i].y;
+                const dx = nodes[j].x - nodes[i].x, dy = nodes[j].y - nodes[i].y;
                 const dist = Math.sqrt(dx * dx + dy * dy) || 1;
                 const force = (800 * alpha) / (dist * dist);
                 const fx = (dx / dist) * force, fy = (dy / dist) * force;
@@ -62,7 +62,7 @@ function simulate(nodes: Node[], edges: Edge[], iterations: number) {
         edges.forEach(e => {
             const s = nodeMap.get(e.source), t = nodeMap.get(e.target);
             if (!s || !t) return;
-            let dx = t.x - s.x, dy = t.y - s.y;
+            const dx = t.x - s.x, dy = t.y - s.y;
             const dist = Math.sqrt(dx * dx + dy * dy) || 1;
             const force = (dist - 100) * 0.04 * alpha;
             const fx = (dx / dist) * force, fy = (dy / dist) * force;

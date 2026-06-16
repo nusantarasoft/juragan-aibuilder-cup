@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const checkSession = async () => {
-        let token = getStoredToken();
+        const token = getStoredToken();
         if (!token) {
             setLoading(false);
             return;

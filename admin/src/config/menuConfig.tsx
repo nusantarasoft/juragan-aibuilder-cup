@@ -1345,6 +1345,7 @@ const menuConfig = {
             },
             {
                 path: "/admin/scada",
+                key: "/admin/scada-menu",
                 name: "SCADA",
                 icon: <MonitorOutlined />,
                 routes: [
@@ -1359,6 +1360,7 @@ const menuConfig = {
             },
             {
                 path: "/admin/bim",
+                key: "/admin/bim-menu",
                 name: "BIM",
                 icon: <BuildOutlined />,
                 routes: [
