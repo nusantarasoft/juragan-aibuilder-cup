@@ -456,9 +456,9 @@ export default function CMSLayoutImpl({
         message.success(isPinned(pathname) ? "Unpinned from sidebar" : "Pinned to sidebar");
     };
 
-    // Header Actions Component
-    const HeaderActions = () => (
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginLeft: 16 }}>
+    // Sidebar Actions Component (Language, Notification, Theme) - for outer ProLayout actionsRender
+    const SidebarActions = () => (
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <LanguageSwitcher isDark={darkMode} />
             <NotificationBell />
             <AnimatedThemeToggler
@@ -467,7 +467,12 @@ export default function CMSLayoutImpl({
                 size={18}
                 style={{ color: darkMode ? "#fff" : "#000" }}
             />
-            <Divider orientation="vertical" style={{ height: 16, margin: 0, background: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }} />
+        </div>
+    );
+
+    // Pin/Star/Share Actions Component - for PageContainer extra
+    const PinStarShareActions = () => (
+        <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: 16 }}>
             <Tooltip title={isPinned(pathname) ? "Unpin from sidebar" : "Pin to sidebar"}>
                 <Button
                     type="text"
@@ -544,7 +549,7 @@ export default function CMSLayoutImpl({
                         icon={
                             <ShareAltOutlined 
                                 style={{ 
-                                    color: themeColor, // Theme color
+                                    color: themeColor,
                                     fontSize: 18 
                                 }} 
                             />
@@ -1078,7 +1083,7 @@ export default function CMSLayoutImpl({
                         )}
                         actionsRender={(props) => {
                             if (props.isMobile) return [];
-                            return [<HeaderActions key="header-actions" />];
+                            return [<SidebarActions key="sidebar-actions" />];
                         }}
                         menuRender={(props, defaultDom) => (
                             <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -1352,7 +1357,7 @@ export default function CMSLayoutImpl({
                             <PageContainer
                                 title={title}
                                 subTitle={subTitle}
-                                extra={[<GlobalDateRangePicker key="global-date" compact />, ...(extra || [])]}
+                                extra={[<GlobalDateRangePicker key="global-date" compact />, ...(extra || []), <PinStarShareActions key="pin-star-actions" />]}
                                 breadcrumb={{
                                     items: breadcrumbItems.map((item, index) => ({
                                         key: index,

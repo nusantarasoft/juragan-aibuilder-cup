@@ -1,10 +1,11 @@
 import React, { useRef, useMemo, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment, Html, Box, Cylinder, Torus, SoftShadows } from '@react-three/drei';
+import { OrbitControls, Environment, Html, Box, Cylinder, Torus, SoftShadows, GizmoHelper, GizmoViewport } from '@react-three/drei';
 import { EffectComposer, Bloom, SSAO, SMAA, DepthOfField } from '@react-three/postprocessing';
 import * as THREE from 'three';
-
-const WaterPipe = ({ start, end, radius, animateFlow, thermalMode, temperature }: { start: [number,number,number], end: [number,number,number], radius: number, animateFlow: boolean, thermalMode: boolean, temperature: 'hot' | 'cold' | 'neutral' }) => {
+import DraggableModel from '@/components/3d/DraggableModel';
+import { useScada3dStore, Scada3dElement } from '@/store/useScada3dStore';
+const WaterPipe = ({ start, end, radius = 0.1, animateFlow = false, thermalMode = false, temperature = 'cold' }: any) => {
     const ref = useRef<THREE.Mesh>(null);
     const vecStart = new THREE.Vector3(...start);
     const vecEnd = new THREE.Vector3(...end);
@@ -254,8 +255,6 @@ const Pump = ({ position, onClick, id, animateFlow }: { position: [number,number
     );
 };
 
-import DraggableModel from '@/components/3d/DraggableModel';
-
 
 const AlarmBeacon = ({ position, active }: { position: [number,number,number], active: boolean }) => {
     const lightRef = useRef<THREE.PointLight>(null);
@@ -341,15 +340,15 @@ const RoboticArm = ({ position, isRunning, id, onClick }: { position: [number,nu
     );
 };
 
-export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarmActive, editMode = false }: { onSelect: (id: any) => void, animateFlow: boolean, thermalMode: boolean, alarmActive: boolean, editMode?: boolean }) {
+export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarmActive, editMode = false, transformMode = 'translate' }: { onSelect: (id: any) => void, animateFlow: boolean, thermalMode: boolean, alarmActive: boolean, editMode?: boolean, transformMode?: 'translate' | 'rotate' | 'scale' }) {
     
+    // Store
+    const { elements, updateElement } = useScada3dStore();
+
     // Valve states
     const [valve1Open, setValve1Open] = useState(true);
     const [valve2Open, setValve2Open] = useState(true);
 
-    const [chillerPos, setChillerPos] = useState<[number,number,number]>([-8, 0, 0]);
-    const [pumpPos, setPumpPos] = useState<[number,number,number]>([2, 0, 2]);
-    const [ctPos, setCtPos] = useState<[number,number,number]>([10, 0, -6]);
     const [selectedEquipId, setSelectedEquipId] = useState<string | null>(null);
 
     const handleSelect = (id: string) => {
@@ -379,10 +378,25 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
     const mainFlow = animateFlow && valve1Open;
     const secondaryFlow = animateFlow && valve2Open;
 
-    const handlePositionChange = (id: string, pos: [number,number,number]) => {
-        if (id === 'CHILLER-01') setChillerPos(pos);
-        if (id === 'PUMP-CW-01') setPumpPos(pos);
-        if (id === 'CT-01') setCtPos(pos);
+    const handleTransformChange = (id: string, type: 'position' | 'rotation' | 'scale', value: [number,number,number]) => {
+        updateElement(id, { [type]: value });
+    };
+
+    const renderEquipment = (el: Scada3dElement) => {
+        switch (el.type) {
+            case 'chiller':
+                return <Chiller position={[0,0,0]} id={el.id} onClick={handleSelect} thermalMode={thermalMode} alarm={el.properties.alarm || alarmActive} />;
+            case 'pump':
+                return <Pump position={[0,0,0]} id={el.id} onClick={handleSelect} animateFlow={mainFlow} />;
+            case 'cooling_tower':
+                return <CoolingTower position={[0,0,0]} id={el.id} isRunning={secondaryFlow} onClick={handleSelect} alarm={el.properties.alarm || alarmActive} />;
+            case 'valve':
+                return <Valve position={[0,0,0]} id={el.id} isOpen={el.id === 'VALVE-01' ? valve1Open : (el.id === 'VALVE-02' ? valve2Open : true)} onClick={handleSelect} />;
+            case 'robot':
+                return <RoboticArm position={[0,0,0]} id={el.id} isRunning={animateFlow} onClick={handleSelect} />;
+            default:
+                return <Box args={[1,1,1]}><meshStandardMaterial color="gray" /></Box>;
+        }
     };
 
     return (
@@ -392,6 +406,10 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
             gl={{ antialias: false, alpha: true, powerPreference: "high-performance", toneMapping: THREE.ACESFilmicToneMapping }}
             onPointerMissed={() => editMode && setSelectedEquipId(null)}
         >
+            {/* Gizmo Viewport for CAD feeling */}
+            <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
+                <GizmoViewport axisColors={['#ff3653', '#8adb00', '#2c8fdf']} labelColor="white" />
+            </GizmoHelper>
             <SoftShadows size={15} samples={16} focus={0.5} />
             <ambientLight intensity={0.5} />
             <directionalLight position={[10, 15, 10]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} />
@@ -405,25 +423,32 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
 
             <group position={[0, 0, -2]}>
                 
-                {/* Chiller Section */}
-                <DraggableModel id="CHILLER-01" position={chillerPos} editMode={editMode} selectedId={selectedEquipId} onSelect={handleSelect} onPositionChange={handlePositionChange}>
-                    <Chiller position={[0, 0, 0]} id="CHILLER-01" onClick={handleSelect} thermalMode={thermalMode} alarm={false} />
-                </DraggableModel>
-                
+                {/* Render Dynamic Elements */}
+                {elements.map(el => (
+                    <DraggableModel 
+                        key={el.id} 
+                        id={el.id} 
+                        position={el.position} 
+                        rotation={el.rotation} 
+                        scale={el.scale} 
+                        editMode={editMode} 
+                        transformMode={transformMode} 
+                        selectedId={selectedEquipId} 
+                        onSelect={handleSelect} 
+                        onTransformChange={handleTransformChange}
+                    >
+                        {renderEquipment(el)}
+                    </DraggableModel>
+                ))}
+
+                {/* Static Hardcoded Pipes for context (we haven't made pipes dynamic yet) */}
                 {/* Chiller to Pump Pipes */}
                 <WaterPipe start={[-8, 0.5, 2]} end={[-8, 0.5, 4]} radius={0.2} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
                 <WaterPipe start={[-8, 0.5, 4]} end={[-2, 0.5, 4]} radius={0.2} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
                 
-                {/* Main Control Valve */}
-                <Valve position={[-2, 0.5, 4]} id="VALVE-01" isOpen={valve1Open} onClick={handleSelect} />
-
                 {/* Valve to Pump */}
                 <WaterPipe start={[-1.7, 0.5, 4]} end={[2, 0.5, 4]} radius={0.2} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
                 <WaterPipe start={[2, 0.5, 4]} end={[2, 0.6, 2.5]} radius={0.2} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
-
-                <DraggableModel id="PUMP-CW-01" position={pumpPos} editMode={editMode} selectedId={selectedEquipId} onSelect={handleSelect} onPositionChange={handlePositionChange}>
-                    <Pump position={[0, 0, 0]} id="PUMP-CW-01" onClick={handleSelect} animateFlow={mainFlow} />
-                </DraggableModel>
                 
                 {/* Outbound from Pump */}
                 <WaterPipe start={[2.5, 0.6, 2]} end={[6, 0.6, 2]} radius={0.15} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
@@ -433,19 +458,9 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
                 <WaterPipe start={[-8, 1.5, -2]} end={[-8, 1.5, -6]} radius={0.25} animateFlow={secondaryFlow} thermalMode={thermalMode} temperature="hot" />
                 <WaterPipe start={[-8, 1.5, -6]} end={[5, 1.5, -6]} radius={0.25} animateFlow={secondaryFlow} thermalMode={thermalMode} temperature="hot" />
                 
-                <Valve position={[5, 1.5, -6]} rotation={[0,0,Math.PI/2]} id="VALVE-02" isOpen={valve2Open} onClick={handleSelect} />
-                
                 <WaterPipe start={[5.3, 1.5, -6]} end={[10, 1.5, -6]} radius={0.25} animateFlow={secondaryFlow} thermalMode={thermalMode} temperature="hot" />
                 <WaterPipe start={[10, 1.5, -6]} end={[10, 5, -6]} radius={0.25} animateFlow={secondaryFlow} thermalMode={thermalMode} temperature="hot" />
 
-                {/* Cooling Tower */}
-                <DraggableModel id="CT-01" position={ctPos} editMode={editMode} selectedId={selectedEquipId} onSelect={handleSelect} onPositionChange={handlePositionChange}>
-                    <CoolingTower position={[0, 0, 0]} id="CT-01" isRunning={secondaryFlow} onClick={handleSelect} alarm={alarmActive} />
-                </DraggableModel>
-
-            
-                {/* Robotic Arm Assembly */}
-                <RoboticArm position={[0, 0, 8]} id="ROBOT-01" isRunning={animateFlow} onClick={handleSelect} />
                 <AlarmBeacon position={[0, 4.5, 8]} active={alarmActive} />
 
             </group>

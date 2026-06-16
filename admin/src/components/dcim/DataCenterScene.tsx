@@ -1,4 +1,5 @@
 import React from 'react';
+import * as THREE from 'three';
 import { Grid, ContactShadows, Line, RoundedBox } from '@react-three/drei';
 import { RackModel } from './RackModel';
 import { CoolingUnit } from './CoolingUnit';
@@ -9,7 +10,7 @@ import { useDcimStore } from '@/store/useDcimStore';
 import DraggableModel from '../3d/DraggableModel';
 
 export function DataCenterScene() {
-    const { racks, pods, viewMode, editMode, selectedRackId, setSelectedRackId } = useDcimStore();
+    const { racks, pods, cracs, pdus, viewMode, editMode, selectedRackId, setSelectedRackId } = useDcimStore();
 
     return (
         <group>
@@ -21,8 +22,23 @@ export function DataCenterScene() {
             </mesh>
 
             {/* CRAC Units (Cooling) */}
-            <CoolingUnit position={[-8, 0, -2]} />
-            <CoolingUnit position={[8, 0, -2]} />
+            {cracs.map(crac => (
+                <DraggableModel
+                    key={crac.id}
+                    id={crac.id}
+                    position={[crac.x, 0, crac.z]}
+                    rotation={[0, crac.rotationY || 0, 0]}
+                    editMode={editMode}
+                    snapToGrid={useDcimStore.getState().snapToGrid}
+                    selectedId={selectedRackId}
+                    onSelect={setSelectedRackId}
+                    onPositionChange={(id, [x, y, z]) => {
+                        useDcimStore.getState().updateCracPosition(id, x, z);
+                    }}
+                >
+                    <CoolingUnit />
+                </DraggableModel>
+            ))}
 
             {/* Aisle Containment Pods */}
             {pods.map(pod => (
@@ -31,16 +47,34 @@ export function DataCenterScene() {
 
             
             {/* PDU & Cables */}
-            {viewMode === 'Power' && (
-                <group>
-                    <RoundedBox args={[1, 2.5, 1]} position={[10, 1.25, 10]} radius={0.05} smoothness={4}>
+            {pdus.map(pdu => (
+                <DraggableModel
+                    key={pdu.id}
+                    id={pdu.id}
+                    position={[pdu.x, 0, pdu.z]}
+                    rotation={[0, pdu.rotationY || 0, 0]}
+                    editMode={editMode}
+                    snapToGrid={useDcimStore.getState().snapToGrid}
+                    selectedId={selectedRackId}
+                    onSelect={setSelectedRackId}
+                    onPositionChange={(id, [x, y, z]) => {
+                        useDcimStore.getState().updatePduPosition(id, x, z);
+                    }}
+                >
+                    <RoundedBox args={[1, 2.5, 1]} position={[0, 1.25, 0]} radius={0.05} smoothness={4}>
                         <meshStandardMaterial color="#87d068" roughness={0.3} metalness={0.8} />
                     </RoundedBox>
+                </DraggableModel>
+            ))}
+
+            {viewMode === 'Power' && (
+                <group>
                     {racks.map((rack, i) => {
-                        const start = new THREE.Vector3(10, 2.5, 10);
+                        const pdu = pdus[0] || { x: 10, z: 10 };
+                        const start = new THREE.Vector3(pdu.x, 2.5, pdu.z);
                         const end = new THREE.Vector3(rack.x, 2.0, rack.z);
-                        const mid1 = new THREE.Vector3(10, 3.5, 10);
-                        const mid2 = new THREE.Vector3(rack.x, 3.5, 10);
+                        const mid1 = new THREE.Vector3(pdu.x, 3.5, pdu.z);
+                        const mid2 = new THREE.Vector3(rack.x, 3.5, pdu.z);
                         const mid3 = new THREE.Vector3(rack.x, 3.5, rack.z);
                         return (
                             <Line 
@@ -88,6 +122,7 @@ export function DataCenterScene() {
                     position={[rack.x, 0, rack.z]}
                     rotation={[0, rack.rotationY || 0, 0]}
                     editMode={editMode}
+                    snapToGrid={useDcimStore.getState().snapToGrid}
                     selectedId={selectedRackId}
                     onSelect={setSelectedRackId}
                     onPositionChange={(id, [x, y, z]) => {

@@ -17,6 +17,7 @@ import { useDcimStore } from "@/store/useDcimStore";
 import { DataCenterScene } from "@/components/dcim/DataCenterScene";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { AnimatePresence } from "framer-motion";
+import { FloorPlanCanvas } from "@/components/dcim/FloorPlanCanvas";
 
 // --- Main Page Component ---
 
@@ -33,6 +34,7 @@ export default function Dcim3DView() {
     const { viewMode, setViewMode, editMode, setEditMode, racks, selectedRackId, setSelectedRackId, selectedServerId, setSelectedServerId } = useDcimStore();
     const [drawerVisible, setDrawerVisible] = useState(false);
     const [serverModalVisible, setServerModalVisible] = useState(false);
+    const [displayMode, setDisplayMode] = useState<'3D' | '2D'>('3D');
 
     const selectedRack = React.useMemo(() => racks.find(r => r.id === selectedRackId) || null, [racks, selectedRackId]);
     const selectedServer = React.useMemo(() => selectedRack?.servers.find(s => s.id === selectedServerId) || null, [selectedRack, selectedServerId]);
@@ -54,7 +56,8 @@ export default function Dcim3DView() {
             {/* Toolbar overlay */}
             <div style={{ position: 'relative', width: '100%', height: 'calc(100vh - 180px)', minHeight: 600, borderRadius: 16, overflow: 'hidden', background: isDark ? '#050505' : '#e5e5e5' }}>
                 
-                {/* 3D Canvas */}
+                {/* Visualizer Canvas */}
+                {displayMode === '3D' ? (
                 <Suspense fallback={<div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Spin size="large" /></div>}>
                     <Canvas 
                         camera={{ position: [8, 8, 8], fov: 45 }} 
@@ -97,6 +100,11 @@ export default function Dcim3DView() {
                         <Environment preset={isDark ? "night" : "sunset"} blur={0.8} />
                     </Canvas>
                 </Suspense>
+                ) : (
+                    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'auto', background: isDark ? '#111' : '#f0f0f0' }}>
+                        <FloorPlanCanvas onRackClick={setSelectedRackId} />
+                    </div>
+                )}
 
                 {/* Floating UI Controls */}
                 <motion.div 
@@ -105,6 +113,12 @@ export default function Dcim3DView() {
                     style={{ position: 'absolute', top: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}
                 >
                     <GlassPanel isDark={isDark} intensity="high" style={{ padding: '8px 16px', display: 'flex', gap: 16, alignItems: 'center', borderRadius: 14 }}>
+                        <Segmented 
+                            options={['3D View', '2D Floor Plan']} 
+                            value={displayMode === '3D' ? '3D View' : '2D Floor Plan'}
+                            onChange={(val) => setDisplayMode(val === '3D View' ? '3D' : '2D')}
+                        />
+                        <div style={{ width: 1, height: 24, background: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)', margin: '0 8px' }} />
                         <span style={{ color: isDark ? '#fff' : '#000', fontWeight: 600 }}>Visualization Overlay:</span>
                         <Segmented 
                             options={['Normal', 'Thermal', 'Power', 'Utilization']} 
@@ -152,11 +166,32 @@ export default function Dcim3DView() {
                                         <div><AppstoreOutlined style={{ fontSize: 20 }} /></div>
                                         <div style={{ fontSize: 11 }}>Server Rack</div>
                                     </Button>
-                                    <Button type="dashed" style={{ height: 60 }} onClick={() => message.info('Drag and drop coming soon')}>
+                                    <Button type="dashed" style={{ height: 60 }} onClick={() => {
+                                        const store = useDcimStore.getState();
+                                        store.addCrac({
+                                            id: `CRAC-NEW-${Date.now()}`,
+                                            name: `New CRAC`,
+                                            x: 0,
+                                            z: 0,
+                                            status: 'normal'
+                                        });
+                                        message.success('CRAC Unit added to scene!');
+                                    }}>
                                         <div><AppstoreOutlined style={{ fontSize: 20 }} /></div>
                                         <div style={{ fontSize: 11 }}>CRAC Unit</div>
                                     </Button>
-                                    <Button type="dashed" style={{ height: 60 }} onClick={() => message.info('Drag and drop coming soon')}>
+                                    <Button type="dashed" style={{ height: 60 }} onClick={() => {
+                                        const store = useDcimStore.getState();
+                                        store.addPdu({
+                                            id: `PDU-NEW-${Date.now()}`,
+                                            name: `New PDU`,
+                                            x: 0,
+                                            z: 0,
+                                            power: 0,
+                                            status: 'normal'
+                                        });
+                                        message.success('PDU added to scene!');
+                                    }}>
                                         <div><AppstoreOutlined style={{ fontSize: 20 }} /></div>
                                         <div style={{ fontSize: 11 }}>PDU</div>
                                     </Button>
@@ -164,6 +199,45 @@ export default function Dcim3DView() {
                                         <div><AppstoreOutlined style={{ fontSize: 20 }} /></div>
                                         <div style={{ fontSize: 11 }}>Cabling</div>
                                     </Button>
+                                </div>
+                                <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${isDark ? '#333' : '#e5e5e5'}` }}>
+                                    <div style={{ fontWeight: 600, marginBottom: 8 }}>Editor Tools</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                                        <span style={{ fontSize: 13 }}>Snap to Grid</span>
+                                        <Switch 
+                                            size="small" 
+                                            checked={useDcimStore().snapToGrid} 
+                                            onChange={(val) => useDcimStore.getState().setSnapToGrid(val)} 
+                                        />
+                                    </div>
+                                    {selectedRackId && (
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <Button size="small" onClick={() => {
+                                                const store = useDcimStore.getState();
+                                                if (selectedRackId.startsWith('CRAC-')) {
+                                                    const crac = store.cracs.find(c => c.id === selectedRackId);
+                                                    if (crac) store.updateCracPosition(crac.id, crac.x, crac.z, (crac.rotationY || 0) + Math.PI / 2);
+                                                } else if (selectedRackId.startsWith('PDU-')) {
+                                                    const pdu = store.pdus.find(p => p.id === selectedRackId);
+                                                    if (pdu) store.updatePduPosition(pdu.id, pdu.x, pdu.z, (pdu.rotationY || 0) + Math.PI / 2);
+                                                } else {
+                                                    const rack = store.racks.find(r => r.id === selectedRackId);
+                                                    if (rack) store.updateRackPosition(rack.id, rack.x, rack.z, (rack.rotationY || 0) + Math.PI / 2);
+                                                }
+                                            }}>Rotate 90°</Button>
+                                            <Button size="small" danger onClick={() => {
+                                                const store = useDcimStore.getState();
+                                                if (selectedRackId.startsWith('CRAC-')) {
+                                                    store.removeCrac(selectedRackId);
+                                                } else if (selectedRackId.startsWith('PDU-')) {
+                                                    store.removePdu(selectedRackId);
+                                                } else {
+                                                    store.removeRack(selectedRackId);
+                                                }
+                                                message.success('Item removed');
+                                            }}>Delete</Button>
+                                        </div>
+                                    )}
                                 </div>
                             </GlassPanel>
                         </motion.div>

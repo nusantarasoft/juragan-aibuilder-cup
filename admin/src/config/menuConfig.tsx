@@ -1323,8 +1323,7 @@ const menuConfig = {
                 icon: <CloudServerOutlined />,
                 routes: [
                     { path: "/admin/dcim", name: "Dashboard", icon: <DashboardOutlined />, isLeaf: true },
-                    { path: "/admin/dcim/floor-plan", name: "Floor Plan (2D)", icon: <LayoutOutlined />, isLeaf: true },
-                    { path: "/admin/dcim/3d-view", name: "3D View", icon: <GlobalOutlined />, isLeaf: true },
+                    { path: "/admin/dcim/3d-view", name: "Interactive View (2D/3D)", icon: <GlobalOutlined />, isLeaf: true },
                     { path: "/admin/dcim/power", name: "Power Monitoring", icon: <PowerOutlined />, isLeaf: true },
                     { path: "/admin/dcim/thermal", name: "Thermal", icon: <HeatMapOutlined />, isLeaf: true },
                     { path: "/admin/dcim/capacity", name: "Capacity Planning", icon: <BarChartOutlined />, isLeaf: true },

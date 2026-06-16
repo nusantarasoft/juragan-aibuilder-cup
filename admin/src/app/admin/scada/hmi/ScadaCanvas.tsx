@@ -10,6 +10,42 @@ export default function ScadaCanvas() {
 
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+    
+    // Pan & Zoom state
+    const [pan, setPan] = useState({ x: 0, y: 0 });
+    const [scale, setScale] = useState(1);
+    const [isPanning, setIsPanning] = useState(false);
+    
+    // Resize state
+    const [resizingId, setResizingId] = useState<string | null>(null);
+
+    const getMouseCoords = (e: React.MouseEvent | React.DragEvent) => {
+        if (!svgRef.current) return { x: 0, y: 0 };
+        const rect = svgRef.current.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        return {
+            x: (mouseX - pan.x) / scale,
+            y: (mouseY - pan.y) / scale
+        };
+    };
+
+    const handleWheel = (e: React.WheelEvent) => {
+        if (!isEditMode) return;
+        const zoomIntensity = 0.1;
+        const newScale = e.deltaY < 0 ? scale * (1 + zoomIntensity) : scale / (1 + zoomIntensity);
+        
+        const rect = svgRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        const dx = (mouseX - pan.x) * (newScale / scale - 1);
+        const dy = (mouseY - pan.y) * (newScale / scale - 1);
+        
+        setPan({ x: pan.x - dx, y: pan.y - dy });
+        setScale(Math.max(0.1, Math.min(newScale, 5))); // clamp scale
+    };
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault(); // Necessary to allow dropping
@@ -21,11 +57,7 @@ export default function ScadaCanvas() {
         const type = e.dataTransfer.getData('hmi-type') as HmiElementType;
         if (!type || !svgRef.current) return;
 
-        const CTM = svgRef.current.getScreenCTM();
-        if (!CTM) return;
-
-        const x = (e.clientX - CTM.e) / CTM.a;
-        const y = (e.clientY - CTM.f) / CTM.d;
+        const { x, y } = getMouseCoords(e);
 
         // Default dimensions based on type
         let width = 60, height = 60;
@@ -51,37 +83,52 @@ export default function ScadaCanvas() {
         setDraggingId(id);
         
         const el = elements.find(el => el.id === id);
-        if (el && svgRef.current) {
-            const CTM = svgRef.current.getScreenCTM();
-            if (CTM) {
-                const mx = (e.clientX - CTM.e) / CTM.a;
-                const my = (e.clientY - CTM.f) / CTM.d;
-                setDragOffset({ x: mx - el.x, y: my - el.y });
-            }
+        if (el) {
+            const { x, y } = getMouseCoords(e);
+            setDragOffset({ x: x - el.x, y: y - el.y });
+        }
+    };
+
+    const handleCanvasMouseDown = (e: React.MouseEvent) => {
+        if (e.button === 1 || e.button === 2) { // Middle or right click to pan
+            setIsPanning(true);
+        } else if (isEditMode) {
+            clearSelection();
         }
     };
 
     const handleMouseMove = (e: React.MouseEvent) => {
-        if (!isEditMode || !draggingId || !svgRef.current) return;
+        if (isPanning) {
+            setPan({ x: pan.x + e.movementX, y: pan.y + e.movementY });
+            return;
+        }
+
+        if (!isEditMode || !svgRef.current) return;
         
-        const CTM = svgRef.current.getScreenCTM();
-        if (!CTM) return;
+        const { x, y } = getMouseCoords(e);
 
-        const x = (e.clientX - CTM.e) / CTM.a;
-        const y = (e.clientY - CTM.f) / CTM.d;
+        if (resizingId) {
+            const el = elements.find(el => el.id === resizingId);
+            if (el) {
+                const newW = Math.max(10, Math.round((x - el.x) / 10) * 10);
+                const newH = Math.max(10, Math.round((y - el.y) / 10) * 10);
+                updateElement(resizingId, { width: newW, height: newH });
+            }
+            return;
+        }
 
-        updateElement(draggingId, {
-            x: Math.round((x - dragOffset.x) / 10) * 10, // Snap to 10px grid
-            y: Math.round((y - dragOffset.y) / 10) * 10
-        });
+        if (draggingId) {
+            updateElement(draggingId, {
+                x: Math.round((x - dragOffset.x) / 10) * 10, // Snap to 10px grid
+                y: Math.round((y - dragOffset.y) / 10) * 10
+            });
+        }
     };
 
     const handleMouseUp = () => {
         setDraggingId(null);
-    };
-
-    const handleCanvasClick = () => {
-        if (isEditMode) clearSelection();
+        setResizingId(null);
+        setIsPanning(false);
     };
 
     return (
@@ -98,23 +145,33 @@ export default function ScadaCanvas() {
                 width="100%" height="100%" 
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
-                onClick={handleCanvasClick}
+                onMouseDown={handleCanvasMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
-                style={{ cursor: isEditMode ? 'crosshair' : 'default' }}
+                onWheel={handleWheel}
+                style={{ cursor: isPanning ? 'grabbing' : (isEditMode ? 'crosshair' : 'default') }}
+                onContextMenu={(e) => e.preventDefault()}
             >
-                {/* Grid Pattern */}
-                {isEditMode && (
-                    <defs>
-                        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                            <path d="M 20 0 L 0 0 0 20" fill="none" stroke={isDark ? '#333' : '#bae0ff'} strokeWidth="0.5"/>
-                        </pattern>
-                    </defs>
-                )}
-                {isEditMode && <rect width="100%" height="100%" fill="url(#grid)" pointerEvents="none" />}
+                {/* Global Transform Group */}
+                <g transform={`translate(${pan.x}, ${pan.y}) scale(${scale})`}>
+                    
+                    {/* Grid Pattern */}
+                    {isEditMode && (
+                        <defs>
+                            <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+                                <path d="M 10 0 L 0 0 0 10" fill="none" stroke={isDark ? '#333' : '#bae0ff'} strokeWidth="0.5"/>
+                            </pattern>
+                            <pattern id="grid-large" width="50" height="50" patternUnits="userSpaceOnUse">
+                                <rect width="50" height="50" fill="url(#grid)" />
+                                <path d="M 50 0 L 0 0 0 50" fill="none" stroke={isDark ? '#444' : '#91caff'} strokeWidth="1"/>
+                            </pattern>
+                        </defs>
+                    )}
+                    {/* Infinite Grid Background */}
+                    {isEditMode && <rect x="-5000" y="-5000" width="10000" height="10000" fill="url(#grid-large)" pointerEvents="none" />}
 
-                {/* Render Elements */}
+                    {/* Render Elements */}
                 {elements.sort((a,b) => a.zIndex - b.zIndex).map(el => {
                     const isSelected = selectedIds.includes(el.id);
                     
@@ -125,9 +182,16 @@ export default function ScadaCanvas() {
                             onMouseDown={(e) => handleMouseDown(e, el.id)}
                             style={{ cursor: isEditMode ? 'grab' : 'pointer' }}
                         >
-                            {/* Selection Outline */}
+                            {/* Selection Outline & Resize Handle */}
                             {isSelected && (
-                                <rect x="-4" y="-4" width={el.width+8} height={el.height+8} fill="none" stroke="#faad14" strokeWidth="2" strokeDasharray="4 2" />
+                                <g>
+                                    <rect x="-4" y="-4" width={el.width+8} height={el.height+8} fill="none" stroke="#faad14" strokeWidth="2" strokeDasharray="4 2" pointerEvents="none" />
+                                    <rect 
+                                        x={el.width} y={el.height} width={8} height={8} fill="#faad14" 
+                                        style={{ cursor: 'nwse-resize' }}
+                                        onMouseDown={(e) => { e.stopPropagation(); setResizingId(el.id); }}
+                                    />
+                                </g>
                             )}
 
                             {/* Render logic by type */}
@@ -171,6 +235,7 @@ export default function ScadaCanvas() {
                         </g>
                     );
                 })}
+                </g>
             </svg>
         </div>
     );

@@ -6,10 +6,15 @@ interface DraggableModelProps {
   id: string;
   position: [number, number, number];
   rotation?: [number, number, number];
+  scale?: [number, number, number];
   editMode: boolean;
+  transformMode?: 'translate' | 'rotate' | 'scale';
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onPositionChange: (id: string, position: [number, number, number]) => void;
+  onTransformChange?: (id: string, type: 'position' | 'rotation' | 'scale', value: [number, number, number]) => void;
+  onPositionChange?: (id: string, position: [number, number, number]) => void; // Keep for backward compatibility
+  snapToGrid?: boolean;
+  gridSize?: number;
   children: React.ReactNode;
 }
 
@@ -17,17 +22,22 @@ export default function DraggableModel({
   id,
   position,
   rotation = [0, 0, 0],
+  scale = [1, 1, 1],
   editMode,
+  transformMode = 'translate',
   selectedId,
   onSelect,
+  onTransformChange,
   onPositionChange,
+  snapToGrid = false,
+  gridSize = 0.5,
   children
 }: DraggableModelProps) {
   const ref = useRef<THREE.Group>(null);
   const transformRef = useRef<any>(null);
   const isSelected = editMode && selectedId === id;
 
-  // When dragging stops, notify parent of new position
+  // When dragging stops, notify parent of new position/rotation/scale
   useEffect(() => {
     if (transformRef.current) {
       const controls = transformRef.current;
@@ -35,13 +45,22 @@ export default function DraggableModel({
         if (!event.value && ref.current) {
           // Dragging finished (event.value is true during drag, false on end)
           const p = ref.current.position;
-          onPositionChange(id, [p.x, p.y, p.z]);
+          const r = ref.current.rotation;
+          const s = ref.current.scale;
+          
+          if (onTransformChange) {
+             if (transformMode === 'translate') onTransformChange(id, 'position', [p.x, p.y, p.z]);
+             if (transformMode === 'rotate') onTransformChange(id, 'rotation', [r.x, r.y, r.z]);
+             if (transformMode === 'scale') onTransformChange(id, 'scale', [s.x, s.y, s.z]);
+          } else if (onPositionChange && transformMode === 'translate') {
+             onPositionChange(id, [p.x, p.y, p.z]);
+          }
         }
       };
       controls.addEventListener('dragging-changed', callback);
       return () => controls.removeEventListener('dragging-changed', callback);
     }
-  }, [id, onPositionChange, isSelected]);
+  }, [id, onPositionChange, onTransformChange, isSelected, transformMode]);
 
   return (
     <group>
@@ -49,6 +68,7 @@ export default function DraggableModel({
         ref={ref}
         position={position}
         rotation={rotation}
+        scale={scale}
         onClick={(e) => {
           if (editMode) {
             e.stopPropagation();
@@ -83,8 +103,10 @@ export default function DraggableModel({
         <TransformControls 
           ref={transformRef}
           object={ref as any} 
-          mode="translate" 
+          mode={transformMode} 
           size={0.6}
+          translationSnap={snapToGrid ? gridSize : null}
+          rotationSnap={snapToGrid ? Math.PI / 2 : null}
         />
       )}
     </group>

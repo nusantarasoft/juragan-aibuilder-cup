@@ -37,21 +37,57 @@ export interface PodData {
     type: 'hot-aisle' | 'cold-aisle';
 }
 
+export interface CracData {
+    id: string;
+    name: string;
+    x: number;
+    z: number;
+    rotationY?: number;
+    status: 'normal' | 'warning' | 'critical';
+}
+
+export interface PduData {
+    id: string;
+    name: string;
+    x: number;
+    z: number;
+    rotationY?: number;
+    power: number;
+    status: 'normal' | 'warning' | 'critical';
+}
+
 interface DcimState {
     racks: RackData[];
     pods: PodData[];
+    cracs: CracData[];
+    pdus: PduData[];
     selectedRackId: string | null;
     selectedServerId: string | null;
     viewMode: 'Normal' | 'Thermal' | 'Power' | 'Utilization';
     editMode: boolean;
+    snapToGrid: boolean;
     setRacks: (racks: RackData[]) => void;
     setPods: (pods: PodData[]) => void;
     setSelectedRackId: (id: string | null) => void;
     setSelectedServerId: (id: string | null) => void;
     setViewMode: (mode: 'Normal' | 'Thermal' | 'Power' | 'Utilization') => void;
     setEditMode: (mode: boolean) => void;
+    setSnapToGrid: (snap: boolean) => void;
     updateRackPosition: (id: string, x: number, z: number, rotationY?: number) => void;
     addRack: (rack: RackData) => void;
+    removeRack: (id: string) => void;
+
+    // CRAC Actions
+    setCracs: (cracs: CracData[]) => void;
+    addCrac: (crac: CracData) => void;
+    removeCrac: (id: string) => void;
+    updateCracPosition: (id: string, x: number, z: number, rotationY?: number) => void;
+
+    // PDU Actions
+    setPdus: (pdus: PduData[]) => void;
+    addPdu: (pdu: PduData) => void;
+    removePdu: (id: string) => void;
+    updatePduPosition: (id: string, x: number, z: number, rotationY?: number) => void;
 }
 
 // Generate demo racks
@@ -153,21 +189,53 @@ const generatePods = (): PodData[] => {
     ];
 };
 
+const generateCracs = (): CracData[] => {
+    return [
+        { id: 'CRAC-1', name: 'CRAC Unit A', x: -8, z: -2, status: 'normal' },
+        { id: 'CRAC-2', name: 'CRAC Unit B', x: 8, z: -2, status: 'normal' }
+    ];
+};
+
+const generatePdus = (): PduData[] => {
+    return [
+        { id: 'PDU-1', name: 'Main PDU', x: 10, z: 10, power: 120, status: 'normal' }
+    ];
+};
+
 export const useDcimStore = create<DcimState>((set) => ({
     racks: generateRacks(),
     pods: generatePods(),
+    cracs: generateCracs(),
+    pdus: generatePdus(),
     selectedRackId: null,
     selectedServerId: null,
     viewMode: 'Normal',
     editMode: false,
+    snapToGrid: true,
     setRacks: (racks) => set({ racks }),
     setPods: (pods) => set({ pods }),
     setSelectedRackId: (id) => set({ selectedRackId: id, selectedServerId: null }), // clear server selection when changing rack
     setSelectedServerId: (id) => set({ selectedServerId: id }),
     setViewMode: (viewMode) => set({ viewMode }),
     setEditMode: (editMode) => set({ editMode }),
+    setSnapToGrid: (snapToGrid) => set({ snapToGrid }),
     updateRackPosition: (id, x, z, rotationY) => set((state) => ({
         racks: state.racks.map(r => r.id === id ? { ...r, x, z, ...(rotationY !== undefined ? { rotationY } : {}) } : r)
     })),
     addRack: (rack) => set((state) => ({ racks: [...state.racks, rack] })),
+    removeRack: (id) => set((state) => ({ racks: state.racks.filter(r => r.id !== id), selectedRackId: state.selectedRackId === id ? null : state.selectedRackId })),
+
+    setCracs: (cracs) => set({ cracs }),
+    addCrac: (crac) => set((state) => ({ cracs: [...state.cracs, crac] })),
+    removeCrac: (id) => set((state) => ({ cracs: state.cracs.filter(c => c.id !== id), selectedRackId: state.selectedRackId === id ? null : state.selectedRackId })),
+    updateCracPosition: (id, x, z, rotationY) => set((state) => ({
+        cracs: state.cracs.map(c => c.id === id ? { ...c, x, z, ...(rotationY !== undefined ? { rotationY } : {}) } : c)
+    })),
+
+    setPdus: (pdus) => set({ pdus }),
+    addPdu: (pdu) => set((state) => ({ pdus: [...state.pdus, pdu] })),
+    removePdu: (id) => set((state) => ({ pdus: state.pdus.filter(p => p.id !== id), selectedRackId: state.selectedRackId === id ? null : state.selectedRackId })),
+    updatePduPosition: (id, x, z, rotationY) => set((state) => ({
+        pdus: state.pdus.map(p => p.id === id ? { ...p, x, z, ...(rotationY !== undefined ? { rotationY } : {}) } : p)
+    })),
 }));

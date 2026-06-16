@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Html } from '@react-three/drei';
 
-export function CoolingUnit({ position }: { position: [number, number, number] }) {
+export function CoolingUnit({ position = [0, 0, 0] }: { position?: [number, number, number] }) {
     return (
         <group position={position}>
             <Box args={[1.5, 2.2, 1.2]} position={[0, 1.1, 0]}>

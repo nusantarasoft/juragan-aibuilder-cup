@@ -1,7 +1,7 @@
 "use client";
 import React, { useRef, useState, Suspense, useCallback, useMemo, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Html, ContactShadows, PointerLockControls, SoftShadows } from "@react-three/drei";
+import { OrbitControls, Html, ContactShadows, PointerLockControls, SoftShadows, Environment, OrthographicCamera } from "@react-three/drei";
 import { EffectComposer, Bloom, SSAO, Vignette, SMAA, DepthOfField } from "@react-three/postprocessing";
 import * as THREE from "three";
 import type { PlacedObject, PlacedObjectType, BuilderPaletteItem, BinOccupancy, RackInventory, ZoneInventory } from "./builderState";
@@ -1798,6 +1798,9 @@ function SceneContent({ objects, selectedId, selectedIds, ghostObj, buildMode, g
             {/* Extra fill light to simulate environment reflections */}
             <pointLight position={[gridCells / 2, 8, gridCells / 2]} intensity={isDark !== false ? 0.1 : 0.2} color="#c4d4f0" />
 
+            {/* HDRI Environment for realistic metallic reflections */}
+            <Environment preset="city" />
+
             {/* Contact shadows for premium grounding */}
             <ContactShadows
                 position={[gridCells / 2, -0.005, gridCells / 2]}
@@ -1866,9 +1869,14 @@ function SceneContent({ objects, selectedId, selectedIds, ghostObj, buildMode, g
                 <FirstPersonController gridCells={gridCells} />
             ) : (
                 <>
-                    <CameraFlyTo gridCells={gridCells} preset={cameraPreset} flyToTarget={beaconPos || undefined} />
+                    {cameraPreset === 'cad-2d' ? (
+                        <OrthographicCamera makeDefault position={[gridCells / 2, gridCells * 1.5, gridCells / 2]} zoom={18} near={-200} far={200} />
+                    ) : (
+                        <CameraFlyTo gridCells={gridCells} preset={cameraPreset} flyToTarget={beaconPos || undefined} />
+                    )}
                     <OrbitControls makeDefault minDistance={2} maxDistance={gridCells * 2.5} maxPolarAngle={Math.PI / 2.05}
-                        enableDamping dampingFactor={0.06} target={[gridCells / 2, 0, gridCells / 2]} />
+                        enableDamping dampingFactor={0.06} target={[gridCells / 2, 0, gridCells / 2]}
+                        enableRotate={cameraPreset !== 'cad-2d'} />
                 </>
             )}
         </>
@@ -2246,9 +2254,9 @@ export default function WarehouseScene(props: WarehouseSceneProps) {
                         color={new THREE.Color(props.isDark !== false ? '#0a0a1a' : '#8090a0')}
                     />
                     <Bloom
-                        intensity={0.4}
-                        luminanceThreshold={0.6}
-                        luminanceSmoothing={0.3}
+                        intensity={1.2}
+                        luminanceThreshold={0.4}
+                        luminanceSmoothing={0.9}
                         mipmapBlur
                     />
                     <Vignette

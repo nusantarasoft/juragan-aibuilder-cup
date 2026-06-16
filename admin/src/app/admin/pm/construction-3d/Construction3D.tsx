@@ -39,6 +39,11 @@ import {
   type PhaseDefinition, type PhaseTask, type SceneProps, type SceneConfig,
 } from "./templates";
 import { SmartMaterial } from "./components/3d/BuildingStructure";
+import { CollaborationCursors } from "./components/ui/CollaborationCursors";
+import { CostPanel } from "./components/ui/CostPanel";
+import { ResourcePanel } from "./components/ui/ResourcePanel";
+import { CADEditorPanel } from "./components/ui/CADEditorPanel";
+import { CADDrawingTool } from "./components/3d/CADDrawingTool";
 
 const { Text: AntText, Title } = Typography;
 
@@ -4812,6 +4817,35 @@ export default function Construction3DPage() {
 
   // Edit mode (drag-and-drop / build mode) state
   const [editMode, setEditMode] = useState(false);
+  const [drawingMode, setDrawingMode] = useState<'none' | 'wall' | 'fence'>('none');
+  type DrawnLine = { id: string; type: 'wall' | 'fence' | string; points: [number, number, number][], material?: string, color?: string };
+  const [drawnLines, setDrawnLines] = useState<DrawnLine[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("sketchup_drawn_lines");
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {}
+      }
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("sketchup_drawn_lines", JSON.stringify(drawnLines));
+    }
+  }, [drawnLines]);
+  const [currentLine, setCurrentLine] = useState<[number, number, number][]>([]);
+
+  // Layer Management State
+  const [visibleLayers, setVisibleLayers] = useState<Record<string, boolean>>({
+    Walls: true,
+    Fences: true,
+    Equipment: true,
+    Landscaping: true,
+    Amenities: true,
+  });
   const [placedCatalogItems, setPlacedCatalogItems] = useState<CatalogItemInstance[]>([]);
   const [activeCatalogTool, setActiveCatalogTool] = useState<string | null>(null);
   const [selectedCatalogItemId, setSelectedCatalogItemId] = useState<string | null>(null);
@@ -4839,6 +4873,7 @@ export default function Construction3DPage() {
     rotationY: number;
     scale?: [number, number, number];
     pathType?: string;
+    color?: string;
   };
   const [customObjects, setCustomObjects] = useState<PlacedObject[]>(() => {
     if (typeof window !== "undefined") {
@@ -5369,6 +5404,7 @@ export default function Construction3DPage() {
         />
       }
     >
+      <CollaborationCursors />
       {/* -- Stats Header -- */}
       <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={12} lg={6}>
@@ -6701,6 +6737,258 @@ export default function Construction3DPage() {
             </div>
           </div>
 
+          {/* CAD Camera Viewports & Drawing Tools */}
+          {editMode && (
+            <div
+              style={{
+                position: "absolute",
+                top: 100,
+                left: 24,
+                ...glassPanelStyle,
+                padding: "16px",
+                borderRadius: 16,
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+                zIndex: 9999,
+                width: 200,
+                boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.5)" : "0 8px 32px rgba(0,0,0,0.1)",
+              }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 700, color: isDark ? "#fff" : "#000", display: "flex", alignItems: "center", gap: 8 }}>
+                <CameraOutlined style={{ color: "#3b82f6" }} /> View Controls
+              </div>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8 }}>
+                   <Button size="small" type={sceneConfig.cameraMode === "orthographic" && cameraTarget[1] === 100 ? "primary" : "default"} style={{ flex: 1 }} onClick={() => {
+                     setSceneConfig(p => ({...p, cameraMode: "orthographic"}));
+                     setCameraTarget([0, 100, 0]);
+                     setCameraLookAtTarget([0,0,0]);
+                     setCameraKey(k => k+1);
+                   }}>Top</Button>
+                   <Button size="small" type={sceneConfig.cameraMode === "orthographic" && cameraTarget[0] === 100 ? "primary" : "default"} style={{ flex: 1 }} onClick={() => {
+                     setSceneConfig(p => ({...p, cameraMode: "orthographic"}));
+                     setCameraTarget([100, 0, 0]);
+                     setCameraLookAtTarget([0,0,0]);
+                     setCameraKey(k => k+1);
+                   }}>Front</Button>
+                   <Button size="small" type={sceneConfig.cameraMode !== "orthographic" ? "primary" : "default"} style={{ flex: 1 }} onClick={() => {
+                     setSceneConfig(p => ({...p, cameraMode: "perspective"}));
+                     setCameraTarget([50, 35, 50]);
+                     setCameraLookAtTarget([0,6,0]);
+                     setCameraKey(k => k+1);
+                   }}>Iso</Button>
+                </div>
+              </div>
+
+              <div style={{ height: 1, background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" }} />
+
+              <div style={{ fontSize: 14, fontWeight: 700, color: isDark ? "#fff" : "#000", display: "flex", alignItems: "center", gap: 8 }}>
+                <EditOutlined style={{ color: "#10b981" }} /> Draw Tools
+              </div>
+              <Segmented
+                size="small"
+                value={drawingMode}
+                onChange={(val) => setDrawingMode(val as any)}
+                options={[
+                  { label: "None", value: "none" },
+                  { label: "Wall", value: "wall" },
+                  { label: "Fence", value: "fence" },
+                ]}
+              />
+            </div>
+          )}
+
+          {/* Layer Management Panel */}
+          {editMode && (
+             <div
+              style={{
+                position: "absolute",
+                top: 380,
+                left: 24,
+                ...glassPanelStyle,
+                padding: "16px",
+                borderRadius: 16,
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                zIndex: 9999,
+                width: 200,
+                boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.5)" : "0 8px 32px rgba(0,0,0,0.1)",
+              }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 700, color: isDark ? "#fff" : "#000", display: "flex", alignItems: "center", gap: 8 }}>
+                <EyeOutlined style={{ color: "#8b5cf6" }} /> Layers
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {Object.keys(visibleLayers).map(layer => (
+                  <div key={layer} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 12 }}>{layer}</span>
+                    <Switch 
+                      size="small" 
+                      checked={visibleLayers[layer]} 
+                      onChange={(c) => setVisibleLayers(prev => ({...prev, [layer]: c}))} 
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* CAD Properties Panel */}
+          {editMode && selectedObjectId && (
+             <div
+              style={{
+                position: "absolute",
+                top: 100,
+                right: 24,
+                ...glassPanelStyle,
+                padding: "16px",
+                borderRadius: 16,
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+                zIndex: 9999,
+                width: 260,
+                boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.5)" : "0 8px 32px rgba(0,0,0,0.1)",
+              }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 700, color: isDark ? "#fff" : "#000", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span>Properties</span>
+                <Button size="small" type="text" icon={<CloseOutlined />} onClick={() => setSelectedObjectId(null)} />
+              </div>
+              
+              {(() => {
+                const customObj = customObjects.find(o => o.id === selectedObjectId);
+                const drawnLine = drawnLines.find(o => o.id === selectedObjectId);
+                const catItem = customObj ? CATALOG_ITEMS.find(i => i.id === customObj.type) : null;
+                const typeName = customObj ? (catItem?.name ?? "Object") : (drawnLine ? `Drawn ${drawnLine.type}` : "Unknown");
+
+                const px = customObj ? customObj.position[0] : 0;
+                const py = customObj ? customObj.position[1] : 0;
+                const pz = customObj ? customObj.position[2] : 0;
+                const pRot = customObj ? customObj.rotationY : 0;
+
+                const isDrawn = !!drawnLine;
+
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                     <div style={{ background: isDark ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.5)", padding: "8px 12px", borderRadius: 8 }}>
+                       <div style={{ fontSize: 11, opacity: 0.6, textTransform: "uppercase" }}>Type</div>
+                       <div style={{ fontSize: 14, fontWeight: 600 }}>{typeName}</div>
+                     </div>
+                     <div style={{ background: isDark ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.5)", padding: "8px 12px", borderRadius: 8 }}>
+                       <div style={{ fontSize: 11, opacity: 0.6, textTransform: "uppercase" }}>ID</div>
+                       <div style={{ fontSize: 12, fontFamily: "monospace" }}>{selectedObjectId.slice(0, 8)}...</div>
+                     </div>
+
+                     <div style={{ height: 1, background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)", margin: "4px 0" }} />
+                     
+                     <div style={{ fontSize: 12, fontWeight: 600 }}>Transform</div>
+                     
+                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <span style={{ fontSize: 12, width: 24, opacity: 0.7 }}>X:</span>
+                        <InputNumber 
+                           size="small" 
+                           style={{ flex: 1 }} 
+                           value={Number(px.toFixed(2))} 
+                           disabled={isDrawn}
+                           onChange={(v) => handleObjectMove(selectedObjectId, [v || 0, py, pz])}
+                        />
+                     </div>
+                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <span style={{ fontSize: 12, width: 24, opacity: 0.7 }}>Y:</span>
+                        <InputNumber 
+                           size="small" 
+                           style={{ flex: 1 }} 
+                           value={Number(py.toFixed(2))} 
+                           disabled={isDrawn}
+                           onChange={(v) => handleObjectMove(selectedObjectId, [px, v || 0, pz])}
+                        />
+                     </div>
+                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <span style={{ fontSize: 12, width: 24, opacity: 0.7 }}>Z:</span>
+                        <InputNumber 
+                           size="small" 
+                           style={{ flex: 1 }} 
+                           value={Number(pz.toFixed(2))} 
+                           disabled={isDrawn}
+                           onChange={(v) => handleObjectMove(selectedObjectId, [px, py, v || 0])}
+                        />
+                     </div>
+                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <span style={{ fontSize: 12, width: 24, opacity: 0.7 }}>Rot:</span>
+                        <InputNumber 
+                           size="small" 
+                           style={{ flex: 1 }} 
+                           value={Number((pRot * 180 / Math.PI).toFixed(1))} 
+                           disabled={isDrawn}
+                           onChange={(v) => handleObjectRotate(selectedObjectId, (v || 0) * Math.PI / 180)}
+                        />
+                     </div>
+                     
+                     <div style={{ height: 1, background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)", margin: "4px 0" }} />
+
+                     <div style={{ fontSize: 12, fontWeight: 600 }}>Style</div>
+                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <span style={{ fontSize: 12, width: 48, opacity: 0.7 }}>Color:</span>
+                        <input 
+                           type="color" 
+                           value={customObj?.color || drawnLine?.color || "#aaaaaa"} 
+                           onChange={(e) => {
+                             if (customObj) setCustomObjects(prev => prev.map(o => o.id === selectedObjectId ? {...o, color: e.target.value} : o));
+                             if (drawnLine) setDrawnLines(prev => prev.map(o => o.id === selectedObjectId ? {...o, color: e.target.value} : o));
+                           }}
+                           style={{ flex: 1, height: 24, padding: 0, border: "none", borderRadius: 4, cursor: "pointer", background: "transparent" }}
+                        />
+                     </div>
+                     {isDrawn && (
+                     <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
+                        <span style={{ fontSize: 12, width: 48, opacity: 0.7 }}>Material:</span>
+                        <Select 
+                           size="small" 
+                           style={{ flex: 1 }} 
+                           value={drawnLine?.material || "concrete"}
+                           onChange={(v) => setDrawnLines(prev => prev.map(o => o.id === selectedObjectId ? {...o, material: v} : o))}
+                           options={[
+                             { value: "concrete", label: "Concrete" },
+                             { value: "brick", label: "Brick" },
+                             { value: "wood", label: "Wood" },
+                             { value: "glass", label: "Glass" },
+                             { value: "steel", label: "Steel" }
+                           ]}
+                        />
+                     </div>
+                     )}
+
+                     <div style={{ height: 1, background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)", margin: "4px 0" }} />
+
+                     <div style={{ fontSize: 12, fontWeight: 600 }}>4D/5D BIM Data</div>
+                     <div style={{ background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.02)", padding: 8, borderRadius: 8, fontSize: 11, display: "flex", flexDirection: "column", gap: 4 }}>
+                       <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ opacity: 0.7 }}>Est. Cost</span> <strong>${customObj ? (catItem?.cost || 1500).toLocaleString() : "8,500"}</strong></div>
+                       <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ opacity: 0.7 }}>Schedule</span> <strong>Phase {Math.floor(Math.random() * 4) + 1}</strong></div>
+                       <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ opacity: 0.7 }}>Contractor</span> <strong>{customObj ? "Site Ops Inc." : "Structura LLC"}</strong></div>
+                       <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ opacity: 0.7 }}>Weight</span> <strong>{customObj ? "1.2t" : "4.5t"}</strong></div>
+                     </div>
+                     
+                     <Button danger type="primary" style={{ marginTop: 8 }} icon={<DeleteOutlined />} onClick={() => {
+                        if (customObj) {
+                           handleObjectDelete(selectedObjectId);
+                        } else if (drawnLine) {
+                           setDrawnLines(prev => prev.filter(l => l.id !== selectedObjectId));
+                           setSelectedObjectId(null);
+                        }
+                        message.success("Object deleted");
+                     }}>
+                        Delete Object
+                     </Button>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
           {/* Build Catalog UI */}
           {editMode && (
             <div
@@ -7018,6 +7306,20 @@ export default function Construction3DPage() {
             )}
 
             {/* Premium Fading Grid */}
+            {sceneConfig.weatherType !== "clear" && (
+              <WeatherSystem type={sceneConfig.weatherType || "rain"} isDark={isDark} intensity={1} />
+            )}
+
+            <CADDrawingTool 
+              drawingMode={drawingMode} 
+              drawnLines={drawnLines.filter(l => (l.type === 'wall' && visibleLayers.Walls) || (l.type === 'fence' && visibleLayers.Fences))}
+              currentLine={currentLine} 
+              setCurrentLine={setCurrentLine} 
+              setDrawnLines={setDrawnLines} 
+              onSelectLine={setSelectedObjectId}
+            />
+
+            {/* Overlays / UI inside canvas */}
             <Grid
               position={[0, 0.01, 0]}
               args={[120, 120]}
@@ -7051,7 +7353,13 @@ export default function Construction3DPage() {
             )}
 
             {/* Custom Placed Objects (Build Mode) */}
-            {customObjects.map(obj => (
+            {customObjects.filter(obj => {
+               const cat = CATALOG_ITEMS.find(c => c.id === obj.type)?.category;
+               if (cat === "Construction" || cat === "Manufacturing" || cat === "Farming") return visibleLayers.Equipment;
+               if (cat === "Landscaping") return visibleLayers.Landscaping;
+               if (cat === "Amenities" || cat === "Healthcare" || cat === "Education") return visibleLayers.Amenities;
+               return true;
+            }).map(obj => (
               <PlacedObject
                 key={obj.id}
                 id={obj.id}
@@ -7253,14 +7561,7 @@ export default function Construction3DPage() {
               </group>
             )}
 
-            {/* Edit mode selected object indicator */}
-            {editMode && selectedObjectId && (
-              <Html position={[0, 25, 0]} center distanceFactor={20} style={{ pointerEvents: "none" }}>
-                <div style={{ background: "rgba(82,196,26,0.2)", backdropFilter: "blur(8px)", border: "1px solid rgba(82,196,26,0.5)", boxShadow: "0 4px 12px rgba(82,196,26,0.3)", color: "#fff", padding: "6px 14px", borderRadius: 16, fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-                  <EditOutlined /> Editing {CATALOG_ITEMS.find(i => i.id === selectedObjectId)?.name ?? "Object"}
-                </div>
-              </Html>
-            )}
+            {/* Edit mode selected object indicator removed in favor of side panel */}
 
             {/* Section cut plane visualization */}
             {sectionCutEnabled && (
@@ -7581,141 +7882,7 @@ export default function Construction3DPage() {
           )}
         </AnimatePresence>
 
-        {/*  Right Panel: Object Properties  */}
-        <AnimatePresence>
-          {editMode && selectedObjectId && !isFullscreen && (
-            <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 280, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              style={{
-                ...glassPanelStyle,
-                overflow: "hidden",
-                flexShrink: 0,
-                display: "flex",
-                flexDirection: "column",
-                borderLeft: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.06)",
-              }}
-            >
-              {(() => {
-                const obj = customObjects.find(o => o.id === selectedObjectId);
-                if (!obj) return <div style={{ padding: 20 }}>Select an object on the canvas.</div>;
-                const itemDef = CATALOG_ITEMS.find(i => i.id === obj.type);
-                
-                return (
-                  <>
-                    <div
-                      style={{
-                        padding: "14px",
-                        borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.06)",
-                        display: "flex", alignItems: "center", justifyContent: "space-between"
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div
-                          style={{
-                            width: 32, height: 32, borderRadius: 8,
-                            background: `linear-gradient(135deg, ${themeColor}, ${themeColor}cc)`,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 16, color: "#fff",
-                          }}
-                        >
-                          {itemDef?.icon || "ðŸ“¦"}
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 700 }}>{itemDef?.name || "Object"}</div>
-                          <AntText type="secondary" style={{ fontSize: 11, textTransform: "capitalize" }}>
-                            {obj.type}
-                          </AntText>
-                        </div>
-                      </div>
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<DeleteOutlined />}
-                        danger
-                        onClick={() => {
-                           handleObjectDelete(obj.id);
-                           setSelectedCatalogItemId(null);
-                        }}
-                      />
-                    </div>
-                    <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12, color: isDark ? "#94a3b8" : "#666" }}>Transform Properties</div>
-                      
-                      <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>Position X</div>
-                        <InputNumber 
-                          size="small" 
-                          value={obj.position[0]} 
-                          onChange={(v) => handleObjectMove(obj.id, [v || 0, obj.position[1], obj.position[2]])} 
-                          style={{ width: "100%" }} 
-                          step={0.5}
-                        />
-                      </div>
-                      
-                      <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>Position Y (Elevation)</div>
-                        <InputNumber 
-                          size="small" 
-                          value={obj.position[1]} 
-                          onChange={(v) => handleObjectMove(obj.id, [obj.position[0], v || 0, obj.position[2]])} 
-                          style={{ width: "100%" }} 
-                          step={0.5}
-                        />
-                      </div>
-                      
-                      <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>Position Z</div>
-                        <InputNumber 
-                          size="small" 
-                          value={obj.position[2]} 
-                          onChange={(v) => handleObjectMove(obj.id, [obj.position[0], obj.position[1], v || 0])} 
-                          style={{ width: "100%" }} 
-                          step={0.5}
-                        />
-                      </div>
-                      
-                      <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>Rotation Y</div>
-                        <Slider 
-                          min={0} max={Math.PI * 2} step={Math.PI / 8} 
-                          value={obj.rotationY} 
-                          onChange={(v) => handleObjectRotate(obj.id, v)} 
-                        />
-                      </div>
 
-                      <Divider style={{ margin: "16px 0", borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }} />
-
-                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12, color: isDark ? "#94a3b8" : "#666" }}>Animation</div>
-                      
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <div>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: isDark ? "#fff" : "#111" }}>Enable Patrol</div>
-                          <div style={{ fontSize: 10, color: isDark ? "#94a3b8" : "#666" }}>Moves object back and forth</div>
-                        </div>
-                        <Switch 
-                          checked={obj.pathType === "patrol"} 
-                          onChange={(v) => {
-                            setCustomObjects(prev => prev.map(o => o.id === obj.id ? { ...o, pathType: v ? "patrol" : undefined } : o));
-                          }} 
-                        />
-                      </div>
-
-                      <Divider style={{ margin: "16px 0", borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }} />
-
-                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12, color: isDark ? "#94a3b8" : "#666" }}>Info</div>
-                      <div style={{ fontSize: 11, color: isDark ? "#94a3b8" : "#666", lineHeight: 1.5 }}>
-                        Drag objects in the 3D scene to move them around the grid. Use this panel for precise numerical adjustments.
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/*  Scene Config Drawer  */}
         <Drawer
@@ -8125,6 +8292,11 @@ export default function Construction3DPage() {
             Reset to Default
           </Button>
         </Drawer>
+      </div>
+
+      <div style={{ position: 'absolute', top: 120, left: 24, zIndex: 100, display: 'flex', flexDirection: 'column', gap: 16, width: 300 }}>
+        <CostPanel isDark={isDark} progress={progress} />
+        <ResourcePanel isDark={isDark} progress={progress} />
       </div>
 
       {/*  Timeline Scrubber  */}

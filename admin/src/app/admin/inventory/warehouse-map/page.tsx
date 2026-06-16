@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Card, Button, Space, Tag, Typography, Row, Col, Input, Drawer, Badge, Spin, Tooltip, Divider, Segmented, message, Popconfirm, Slider, Select, Modal, Upload, ColorPicker, theme as antTheme } from "antd";
+import { Card, Button, Space, Tag, Typography, Row, Col, Input, Drawer, Badge, Spin, Tooltip, Divider, Segmented, message, Popconfirm, Slider, Select, Modal, Upload, ColorPicker, theme as antTheme, InputNumber } from "antd";
 import {
     EnvironmentOutlined, ReloadOutlined, AppstoreOutlined,
     EditOutlined, EyeOutlined, DeleteOutlined, RotateRightOutlined,
@@ -45,8 +45,8 @@ const { Text, Title } = Typography;
 
 // Theme-aware glass styles (generated per-mode)
 const makeGlass = (dark: boolean) => dark
-    ? { background: 'rgba(12,12,30,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14 }
-    : { background: 'rgba(255,255,255,0.88)', backdropFilter: 'blur(16px)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14 };
+    ? { background: 'linear-gradient(145deg, rgba(20,20,40,0.85) 0%, rgba(12,12,30,0.95) 100%)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, boxShadow: '0 8px 32px 0 rgba(0,0,0,0.4)' }
+    : { background: 'linear-gradient(145deg, rgba(255,255,255,0.85) 0%, rgba(245,247,250,0.95) 100%)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.5)', borderRadius: 16, boxShadow: '0 8px 32px 0 rgba(31,38,135,0.1)' };
 
 const panelSection = (color: string) => ({ borderLeft: `3px solid ${color}`, paddingLeft: 8, marginBottom: 4 });
 
@@ -114,7 +114,28 @@ const ZONE_TYPES: { value: ZoneType; label: string; color: string }[] = [
 
 const COLOR_PRESETS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#6366f1', '#ec4899', '#84cc16', '#f97316'];
 
-type CameraPreset = 'corner' | 'top' | 'front' | 'iso' | 'first-person';
+type CameraPreset = 'corner' | 'top' | 'front' | 'iso' | 'first-person' | 'cad-2d';
+
+const checkCollision = (obj: PlacedObject, allObjects: PlacedObject[]): boolean => {
+    if (obj.type === 'zone') return false; // Zones don't collide
+    const getBounds = (o: PlacedObject) => {
+        const isRotated = o.rotation % 180 !== 0;
+        return {
+            minX: o.x, maxX: o.x + (isRotated ? o.depth : o.width),
+            minZ: o.z, maxZ: o.z + (isRotated ? o.width : o.depth)
+        };
+    };
+    const b1 = getBounds(obj);
+    for (const other of allObjects) {
+        if (other.id === obj.id || other.type === 'zone') continue;
+        const b2 = getBounds(other);
+        // Shrink bounding box by epsilon to allow touching
+        if (!(b1.maxX <= b2.minX + 0.05 || b1.minX >= b2.maxX - 0.05 || b1.maxZ <= b2.minZ + 0.05 || b1.minZ >= b2.maxZ - 0.05)) {
+            return true;
+        }
+    }
+    return false;
+};
 
 export default function WarehouseMapPage() {
     const { themeColor } = usePreferencesStore();
@@ -138,6 +159,8 @@ export default function WarehouseMapPage() {
     const [cameraPreset, setCameraPreset] = useState<CameraPreset>('corner');
     const [history, setHistory] = useState<PlacedObject[][]>([]);
     const [redoHistory, setRedoHistory] = useState<PlacedObject[][]>([]);
+    const [snapIncrement, setSnapIncrement] = useState<number>(1.0);
+    const [arrayConfig, setArrayConfig] = useState({ countX: 3, countZ: 2, spaceX: 1.2, spaceZ: 2.0 });
     const [layoutManagerOpen, setLayoutManagerOpen] = useState(false);
     const [savedLayouts, setSavedLayouts] = useState<SavedLayout[]>([]);
     const [saveAsOpen, setSaveAsOpen] = useState(false);
@@ -1188,11 +1211,21 @@ export default function WarehouseMapPage() {
         if (ids.size === 0) return;
         const hasLocked = objects.some(o => ids.has(o.id) && o.locked);
         if (hasLocked) { messageApi.warning('Some objects are locked'); return; }
+        
+        const proposedObjects = objects.map(o =>
+            ids.has(o.id) ? { ...o, x: Math.max(0, Math.round((o.x + dx * snapIncrement) * 10) / 10), z: Math.max(0, Math.round((o.z + dz * snapIncrement) * 10) / 10) } : o
+        );
+        
+        // Collision check
+        const hasCollision = proposedObjects.some(o => ids.has(o.id) && checkCollision(o, proposedObjects));
+        if (hasCollision) {
+            messageApi.warning('Collision prevented movement');
+            return;
+        }
+
         pushHistory();
-        setObjects(prev => prev.map(o =>
-            ids.has(o.id) ? { ...o, x: Math.max(0, o.x + dx), z: Math.max(0, o.z + dz) } : o
-        ));
-    }, [selectedId, selectedIds, objects, pushHistory, messageApi]);
+        setObjects(proposedObjects);
+    }, [selectedId, selectedIds, objects, pushHistory, messageApi, snapIncrement]);
 
     // Undo
     const handleUndo = useCallback(() => {
@@ -1494,7 +1527,7 @@ export default function WarehouseMapPage() {
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [buildMode, showHelp, objects, clipboard, selectedId, selectedIds, handleDelete, handleRotate, handleDuplicate, handleUndo, handleRedo, handleMove, pushHistory, messageApi]);
+    }, [buildMode, showHelp, objects, clipboard, selectedId, selectedIds, handleDelete, handleRotate, handleDuplicate, handleUndo, handleRedo, handleMove, pushHistory, messageApi, snapIncrement]);
 
     return (
         <CMSLayout
@@ -1982,6 +2015,7 @@ export default function WarehouseMapPage() {
                                 { key: 'front' as CameraPreset, label: '👤', tip: 'Front' },
                                 { key: 'iso' as CameraPreset, label: '◆', tip: 'ISO' },
                                 { key: 'first-person' as CameraPreset, label: '🚶', tip: 'First-Person (WASD)' },
+                                { key: 'cad-2d' as CameraPreset, label: '📐', tip: '2D Blueprint (CAD)' },
                             ].map(cp => (
                                 <Tooltip key={cp.key} title={cp.tip}>
                                     <div onClick={() => setCameraPreset(cp.key)}
@@ -1997,6 +2031,16 @@ export default function WarehouseMapPage() {
                                 </Tooltip>
                             ))}
                             <div style={{ width: 1, background: t.panelBorder, margin: '2px 0' }} />
+                            <Tooltip title={`Grid Snap: ${snapIncrement}`}>
+                                <div onClick={() => setSnapIncrement(prev => prev === 1.0 ? 0.5 : (prev === 0.5 ? 0.1 : 1.0))}
+                                    style={{
+                                        width: 36, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: 10, fontWeight: 'bold', cursor: 'pointer', borderRadius: 6,
+                                        background: buildMode ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: buildMode ? '#3b82f6' : t.toolbarActive,
+                                    }}>
+                                    ∿ {snapIncrement}
+                                </div>
+                            </Tooltip>
                             <Tooltip title={rulerMode ? 'Ruler ON — click 2 points' : 'Measure Distance'}>
                                 <div onClick={() => { setRulerMode(m => !m); if (rulerMode) setRulerPoints([]); }}
                                     style={{
@@ -3006,36 +3050,129 @@ export default function WarehouseMapPage() {
                                                 placeholder="Enter label..."
                                                 style={{ background: t.inputBg, borderColor: t.inputBorder, color: t.text, fontSize: 11, borderRadius: 6 }} />
                                         </div>
-                                        {/* Position */}
+                                        {/* Position & Rotation */}
                                         <div style={{ ...panelSection('#666') }}>
-                                            <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Position</Text>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Position & Rotation</Text>
+                                                <Tooltip title="Rotate 90°">
+                                                    <div onClick={handleRotate} style={{ cursor: 'pointer', fontSize: 10, padding: '2px 6px', background: t.cardBg, borderRadius: 4, border: `1px solid ${t.panelBorder}`, color: t.text }}>↻</div>
+                                                </Tooltip>
+                                            </div>
                                             <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
                                                 {[
-                                                    { label: 'X', value: selectedObj.x },
-                                                    { label: 'Z', value: selectedObj.z },
-                                                    { label: 'R', value: `${selectedObj.rotation}°` },
+                                                    { label: 'X', value: selectedObj.x, field: 'x' as const },
+                                                    { label: 'Z', value: selectedObj.z, field: 'z' as const },
+                                                    { label: 'R', value: selectedObj.rotation, field: 'rotation' as const },
                                                 ].map(p => (
-                                                    <div key={p.label} style={{
-                                                        flex: 1, textAlign: 'center', padding: '4px 0',
-                                                        background: t.cardBg, borderRadius: 6,
-                                                        border: `1px solid ${t.panelBorder}`,
-                                                    }}>
-                                                        <div style={{ color: t.textMuted, fontSize: 7, fontWeight: 600 }}>{p.label}</div>
-                                                        <div style={{ color: t.text, fontSize: 12, fontWeight: 700 }}>{p.value}</div>
+                                                    <div key={p.label} style={{ flex: 1 }}>
+                                                        <div style={{ color: t.textMuted, fontSize: 7, fontWeight: 600, marginBottom: 2, textAlign: 'center' }}>{p.label}</div>
+                                                        <InputNumber
+                                                            size="small"
+                                                            value={p.value}
+                                                            step={p.field === 'rotation' ? 90 : snapIncrement}
+                                                            onChange={val => {
+                                                                if (val === null) return;
+                                                                const proposed = { ...selectedObj, [p.field]: val };
+                                                                if (p.field !== 'rotation' && checkCollision(proposed, objects)) {
+                                                                    messageApi.warning('Collision detected!');
+                                                                    return;
+                                                                }
+                                                                pushHistory();
+                                                                setObjects(prev => prev.map(o => o.id === selectedObj.id ? proposed : o));
+                                                            }}
+                                                            style={{ width: '100%', background: t.cardBg, color: t.text, fontSize: 11, borderColor: t.panelBorder }}
+                                                        />
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
-                                        {/* Zone type selector */}
-                                        {selectedObj.type === 'zone' && (
-                                            <div style={{ ...panelSection('#a855f7') }}>
-                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Zone Type</Text>
-                                                <Select size="small" value={selectedObj.zoneType || 'storage'}
-                                                    onChange={(v: ZoneType) => handleZoneTypeChange(v)}
-                                                    style={{ width: '100%', marginTop: 4 }}
-                                                    options={ZONE_TYPES.map(z => ({ value: z.value, label: z.label }))}
-                                                />
+                                        
+                                        {/* Multi-Object Alignment */}
+                                        {selectedIds.size > 1 && (
+                                            <div style={{ ...panelSection('#ec4899') }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Align {selectedIds.size} Objects</Text>
+                                                <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                                                    <Button size="small" style={{ flex: 1, fontSize: 10 }} onClick={() => {
+                                                        const minX = Math.min(...objects.filter(o => selectedIds.has(o.id)).map(o => o.x));
+                                                        pushHistory(); setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, x: minX } : o));
+                                                    }}>Left (X)</Button>
+                                                    <Button size="small" style={{ flex: 1, fontSize: 10 }} onClick={() => {
+                                                        const minZ = Math.min(...objects.filter(o => selectedIds.has(o.id)).map(o => o.z));
+                                                        pushHistory(); setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, z: minZ } : o));
+                                                    }}>Top (Z)</Button>
+                                                </div>
                                             </div>
+                                        )}
+
+                                        {/* Array Clone Tool */}
+                                        {selectedObj.type !== 'zone' && selectedIds.size <= 1 && (
+                                            <div style={{ ...panelSection('#a855f7') }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Array Clone</Text>
+                                                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Cols (X)</div>
+                                                        <InputNumber size="small" min={1} max={50} value={arrayConfig.countX} onChange={v => v && setArrayConfig(c => ({...c, countX: v}))} style={{ width: '100%', fontSize: 10 }} />
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Rows (Z)</div>
+                                                        <InputNumber size="small" min={1} max={50} value={arrayConfig.countZ} onChange={v => v && setArrayConfig(c => ({...c, countZ: v}))} style={{ width: '100%', fontSize: 10 }} />
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Gap X</div>
+                                                        <InputNumber size="small" min={0.1} step={0.1} value={arrayConfig.spaceX} onChange={v => v && setArrayConfig(c => ({...c, spaceX: v}))} style={{ width: '100%', fontSize: 10 }} />
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Gap Z</div>
+                                                        <InputNumber size="small" min={0.1} step={0.1} value={arrayConfig.spaceZ} onChange={v => v && setArrayConfig(c => ({...c, spaceZ: v}))} style={{ width: '100%', fontSize: 10 }} />
+                                                    </div>
+                                                </div>
+                                                <Button size="small" block onClick={() => {
+                                                    const clones: PlacedObject[] = [];
+                                                    for (let x = 0; x < arrayConfig.countX; x++) {
+                                                        for (let z = 0; z < arrayConfig.countZ; z++) {
+                                                            if (x === 0 && z === 0) continue; // Skip original
+                                                            const newObj = {
+                                                                ...duplicateObject(selectedObj),
+                                                                x: selectedObj.x + x * arrayConfig.spaceX,
+                                                                z: selectedObj.z + z * arrayConfig.spaceZ,
+                                                            };
+                                                            // Basic collision check for arrays
+                                                            if (!checkCollision(newObj, [...objects, ...clones])) {
+                                                                clones.push(newObj);
+                                                            }
+                                                        }
+                                                    }
+                                                    if (clones.length === 0) { messageApi.warning('Array blocked by collisions'); return; }
+                                                    pushHistory();
+                                                    setObjects(prev => [...prev, ...clones]);
+                                                    messageApi.success(`Generated ${clones.length} clones`);
+                                                }} style={{ marginTop: 6, fontSize: 10 }}>Create Array</Button>
+                                            </div>
+                                        )}
+                                        {/* Zone type selector & Auto-Aisle */}
+                                        {selectedObj.type === 'zone' && (
+                                            <>
+                                                <div style={{ ...panelSection('#a855f7') }}>
+                                                    <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Zone Type</Text>
+                                                    <Select size="small" value={selectedObj.zoneType || 'storage'}
+                                                        onChange={(v: ZoneType) => handleZoneTypeChange(v)}
+                                                        style={{ width: '100%', marginTop: 4 }}
+                                                        options={ZONE_TYPES.map(z => ({ value: z.value, label: z.label }))}
+                                                    />
+                                                </div>
+                                                <div style={{ ...panelSection('#3b82f6') }}>
+                                                    <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Auto Layout</Text>
+                                                    <Button size="small" block type="primary" onClick={() => {
+                                                        const newRacks = autoArrangeRacks(selectedObj, 3, 2);
+                                                        if (newRacks.length === 0) { messageApi.warning('Zone too small'); return; }
+                                                        pushHistory();
+                                                        setObjects(prev => [...prev, ...newRacks]);
+                                                        messageApi.success(`Generated ${newRacks.length} racks`);
+                                                    }} style={{ marginTop: 4, fontSize: 10 }}>⚡ Auto-Fill Racks</Button>
+                                                </div>
+                                            </>
                                         )}
                                         {/* Color picker */}
                                         <div style={{ ...panelSection('#e87722') }}>
