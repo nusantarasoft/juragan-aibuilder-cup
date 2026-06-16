@@ -425,4 +425,169 @@ export class VertexAiService {
                 'AI is not configured. Set GOOGLE_CLOUD_PROJECT (Vertex), GOOGLE_API_KEY (Google AI Studio), or STUDIO_AI_PROVIDER=anthropic with ANTHROPIC_API_KEY.',
         });
     }
+
+    /** Playground: system + user prompt with generation config (UC-18). */
+    async playgroundGenerate(params: {
+        systemPrompt?: string;
+        userPrompt: string;
+        temperature?: number;
+        maxOutputTokens?: number;
+    }): Promise<{
+        output: string;
+        latencyMs: number;
+        provider: string;
+        model: string;
+        inputChars: number;
+        outputChars: number;
+        promptTokens?: number;
+        completionTokens?: number;
+        totalTokens?: number;
+    }> {
+        const temperature = Math.min(2, Math.max(0, params.temperature ?? 0.7));
+        const maxOutputTokens = Math.min(8192, Math.max(64, params.maxOutputTokens ?? 2048));
+        const systemPrompt = params.systemPrompt?.trim() || '';
+        const userPrompt = params.userPrompt.trim();
+        const inputChars = systemPrompt.length + userPrompt.length;
+        const started = Date.now();
+
+        const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
+        const apiKey = this.configService.get<string>('GOOGLE_API_KEY')?.trim();
+
+        const buildBody = (model?: string) => {
+            const body: Record<string, unknown> = {
+                contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+                generationConfig: { temperature, maxOutputTokens },
+            };
+            if (systemPrompt) {
+                body.systemInstruction = { parts: [{ text: systemPrompt }] };
+            }
+            return body;
+        };
+
+        const parseUsage = (data: {
+            usageMetadata?: {
+                promptTokenCount?: number;
+                candidatesTokenCount?: number;
+                totalTokenCount?: number;
+            };
+            candidates?: { content?: { parts?: { text?: string }[] } }[];
+        }) => ({
+            text: data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '',
+            promptTokens: data.usageMetadata?.promptTokenCount,
+            completionTokens: data.usageMetadata?.candidatesTokenCount,
+            totalTokens: data.usageMetadata?.totalTokenCount,
+        });
+
+        if (!projectId) {
+            if (!apiKey) {
+                const output = this.getFallbackResponse(userPrompt);
+                return {
+                    output,
+                    latencyMs: Date.now() - started,
+                    provider: 'fallback',
+                    model: 'none',
+                    inputChars,
+                    outputChars: output.length,
+                };
+            }
+            for (const model of this.googleGenerativeModels()) {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(buildBody(model)),
+                    });
+                    if (!response.ok) {
+                        if ([404, 429, 503].includes(response.status)) continue;
+                        break;
+                    }
+                    const data = (await response.json()) as Parameters<typeof parseUsage>[0];
+                    const parsed = parseUsage(data);
+                    if (parsed.text) {
+                        return {
+                            output: parsed.text,
+                            latencyMs: Date.now() - started,
+                            provider: 'google_ai',
+                            model,
+                            inputChars,
+                            outputChars: parsed.text.length,
+                            promptTokens: parsed.promptTokens,
+                            completionTokens: parsed.completionTokens,
+                            totalTokens: parsed.totalTokens,
+                        };
+                    }
+                } catch (e: unknown) {
+                    this.logger.warn(`playgroundGenerate (${model}): ${e instanceof Error ? e.message : e}`);
+                }
+            }
+            const msg = this.googleAiStudioUnavailableMessage();
+            return {
+                output: msg,
+                latencyMs: Date.now() - started,
+                provider: 'google_ai',
+                model: 'unavailable',
+                inputChars,
+                outputChars: msg.length,
+            };
+        }
+
+        try {
+            const { GoogleAuth } = await import('google-auth-library');
+            const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
+            const client = await auth.getClient();
+            const accessToken = await client.getAccessToken();
+            const location = this.configService.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
+            const model = this.MODEL_NAME;
+            const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken?.token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(buildBody()),
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                this.logger.error(`playgroundGenerate Vertex error: ${response.status} ${errText.slice(0, 200)}`);
+                const output = this.getFallbackResponse(userPrompt);
+                return {
+                    output,
+                    latencyMs: Date.now() - started,
+                    provider: 'vertex',
+                    model,
+                    inputChars,
+                    outputChars: output.length,
+                };
+            }
+
+            const data = (await response.json()) as Parameters<typeof parseUsage>[0];
+            const parsed = parseUsage(data);
+            const output = parsed.text || this.getFallbackResponse(userPrompt);
+            return {
+                output,
+                latencyMs: Date.now() - started,
+                provider: 'vertex',
+                model,
+                inputChars,
+                outputChars: output.length,
+                promptTokens: parsed.promptTokens,
+                completionTokens: parsed.completionTokens,
+                totalTokens: parsed.totalTokens,
+            };
+        } catch (e: unknown) {
+            const output = this.getFallbackResponse(userPrompt);
+            return {
+                output,
+                latencyMs: Date.now() - started,
+                provider: 'vertex',
+                model: this.MODEL_NAME,
+                inputChars,
+                outputChars: output.length,
+            };
+        }
+    }
 }

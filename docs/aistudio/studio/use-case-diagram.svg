@@ -81,22 +81,23 @@
   <ellipse cx="430" cy="348" rx="52" ry="26" fill="#f8fafc" stroke="#7c3aed" stroke-width="1.5"/>
   <text x="430" y="352" class="uc-label">UC-04 Hapus</text>
 
-  <!-- Sources -->
-  <rect x="640" y="228" width="420" height="148" rx="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-dasharray="6,4"/>
-  <text x="656" y="248" class="section">Manajemen Sumber</text>
-  <ellipse cx="710" cy="286" rx="58" ry="26" fill="#f8fafc" stroke="#7c3aed" stroke-width="1.5"/>
-  <text x="710" y="282" class="uc-id">UC-05</text>
-  <text x="710" y="294" class="uc-label">Media Library</text>
-  <ellipse cx="840" cy="286" rx="52" ry="26" fill="#f8fafc" stroke="#7c3aed" stroke-width="1.5"/>
-  <text x="840" y="282" class="uc-id">UC-06</text>
-  <text x="840" y="294" class="uc-label">Upload File</text>
-  <ellipse cx="970" cy="286" rx="48" ry="26" fill="#f8fafc" stroke="#7c3aed" stroke-width="1.5"/>
-  <text x="970" y="290" class="uc-label">UC-07 Hapus</text>
-  <ellipse cx="780" cy="348" rx="48" ry="26" fill="#f8fafc" stroke="#7c3aed" stroke-width="1.5"/>
-  <text x="780" y="352" class="uc-label">UC-08 Reindex</text>
-  <ellipse cx="920" cy="348" rx="62" ry="28" fill="#f8fafc" stroke="#7c3aed" stroke-width="1.5"/>
-  <text x="920" y="344" class="uc-id">UC-09</text>
-  <text x="920" y="356" class="uc-label">Monitor Status</text>
+  <!-- Panel Sources (sidebar) -->
+  <rect x="640" y="228" width="420" height="158" rx="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-dasharray="6,4"/>
+  <text x="656" y="248" class="section">Panel Sources (Sidebar)</text>
+  <text x="656" y="262" class="note" font-size="9">UC-05 s/d UC-09: tambah, upload, kelola, reindex, pantau tervektor</text>
+  <ellipse cx="710" cy="298" rx="58" ry="26" fill="#f8fafc" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="710" y="294" class="uc-id">UC-05</text>
+  <text x="710" y="306" class="uc-label">Media Library</text>
+  <ellipse cx="840" cy="298" rx="52" ry="26" fill="#f8fafc" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="840" y="294" class="uc-id">UC-06</text>
+  <text x="840" y="306" class="uc-label">Upload File</text>
+  <ellipse cx="970" cy="298" rx="48" ry="26" fill="#f8fafc" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="970" y="302" class="uc-label">UC-07 Hapus</text>
+  <ellipse cx="780" cy="360" rx="48" ry="26" fill="#f8fafc" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="780" y="364" class="uc-label">UC-08 Reindex</text>
+  <ellipse cx="920" cy="360" rx="62" ry="28" fill="#f8fafc" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="920" y="356" class="uc-id">UC-09</text>
+  <text x="920" y="368" class="uc-label">Monitor Status</text>
 
   <!-- INDEXING PIPELINE - NEW -->
   <rect x="220" y="396" width="840" height="200" rx="8" fill="#fff7ed" stroke="#fdba74" stroke-width="2" stroke-dasharray="8,4"/>
@@ -133,9 +134,9 @@
   </text>
 
   <!-- Trigger lines UC05/06/08 -> UC19 -->
-  <line x1="840" y1="312" x2="310" y2="458" stroke="#7c3aed" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#arrow-dash)"/>
-  <line x1="710" y1="312" x2="290" y2="458" stroke="#7c3aed" stroke-width="1.2" stroke-dasharray="5,3"/>
-  <line x1="780" y1="374" x2="330" y2="458" stroke="#7c3aed" stroke-width="1.2" stroke-dasharray="5,3"/>
+  <line x1="840" y1="324" x2="310" y2="458" stroke="#7c3aed" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#arrow-dash)"/>
+  <line x1="710" y1="324" x2="290" y2="458" stroke="#7c3aed" stroke-width="1.2" stroke-dasharray="5,3"/>
+  <line x1="780" y1="386" x2="330" y2="458" stroke="#7c3aed" stroke-width="1.2" stroke-dasharray="5,3"/>
   <text x="520" y="400" class="rel-label">&lt;&lt;include&gt;&gt; memicu pipeline</text>
 
   <!-- Pipeline include chain -->
@@ -144,7 +145,7 @@
   <line x1="748" y1="490" x2="782" y2="490" stroke="#ea580c" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
 
   <!-- UC09 monitor -->
-  <line x1="920" y1="376" x2="670" y2="454" stroke="#7c3aed" stroke-width="1" stroke-dasharray="4,3"/>
+  <line x1="920" y1="388" x2="670" y2="454" stroke="#7c3aed" stroke-width="1" stroke-dasharray="4,3"/>
   <text x="820" y="430" class="rel-label">UC-09 pantau</text>
 
   <!-- Chat -->
@@ -176,10 +177,15 @@
   <text x="700" y="904" class="uc-label">UC-17 Simulasi</text>
 
   <!-- Playground -->
-  <rect x="220" y="1012" width="400" height="100" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-dasharray="6,4"/>
-  <text x="236" y="1032" class="section">Playground</text>
-  <ellipse cx="420" cy="1072" rx="78" ry="28" fill="#f8fafc" stroke="#7c3aed" stroke-width="1.5"/>
-  <text x="420" y="1076" class="uc-label">UC-18 Uji Prompt</text>
+  <rect x="220" y="1012" width="400" height="130" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-dasharray="6,4"/>
+  <text x="236" y="1032" class="section">Playground (sandbox, tanpa RAG)</text>
+  <ellipse cx="320" cy="1080" rx="78" ry="28" fill="#f8fafc" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="320" y="1076" class="uc-id">UC-18</text>
+  <text x="320" y="1088" class="uc-label">Test Prompt</text>
+  <ellipse cx="500" cy="1080" rx="78" ry="28" fill="#f8fafc" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="500" y="1076" class="uc-id">UC-18b</text>
+  <text x="500" y="1088" class="uc-label">Metrik Latency</text>
+  <text x="236" y="1118" class="note" font-size="9">studioPlaygroundTest — system/user prompt, temperature, maxTokens</text>
 
   <!-- RAG depends on indexing -->
   <line x1="320" y1="724" x2="670" y2="526" stroke="#7c3aed" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#arrow-dash)"/>
@@ -193,22 +199,25 @@
 
   <!-- Admin associations -->
   <line x1="110" y1="300" x2="232" y2="292" stroke="#64748b" stroke-width="1.2" marker-end="url(#arrow)"/>
-  <line x1="110" y1="320" x2="840" y2="286" stroke="#64748b" stroke-width="1.2"/>
-  <line x1="110" y1="340" x2="920" y2="348" stroke="#64748b" stroke-width="1.2"/>
+  <line x1="110" y1="320" x2="840" y2="298" stroke="#64748b" stroke-width="1.2"/>
+  <line x1="110" y1="340" x2="920" y2="360" stroke="#64748b" stroke-width="1.2"/>
   <line x1="110" y1="360" x2="320" y2="696" stroke="#64748b" stroke-width="1.2"/>
+  <line x1="110" y1="380" x2="320" y2="1080" stroke="#64748b" stroke-width="1.2"/>
+  <line x1="938" y1="1080" x2="1174" y2="1180" stroke="#ea580c" stroke-width="1.2" marker-end="url(#arrow-orange)"/>
 
   <!-- Notes -->
   <rect x="220" y="1140" width="840" height="150" rx="8" fill="#fffbeb" stroke="#fde68a"/>
   <text x="236" y="1164" class="section" fill="#92400e">Catatan Indeksasi vs Vektorisasi</text>
   <text x="236" y="1186" class="note">- Indeksasi (UI) = seluruh pipeline UC-19 s/d UC-22, bukan hanya upload file ke MinIO.</text>
   <text x="236" y="1206" class="note">- Vektorisasi (UC-21) = embedText() tiap chunk via Vertex AI / Google AI. Output disimpan di studio_source_chunks.</text>
-  <text x="236" y="1226" class="note">- UC-09: Admin memantau Antrian / Mengindeks / Terindeks (N chunk) di panel Sources + toast saat selesai.</text>
+  <text x="236" y="1226" class="note">- UC-05 s/d UC-09: satu panel Sources (sidebar) — tambah file, upload, hapus, reindex, pantau tervektor.</text>
   <text x="236" y="1246" class="note">- UC-10 Chat RAG melakukan semantic search terhadap vektor chunk; tanpa UC-21 jawaban tidak ter-grounding.</text>
-  <text x="236" y="1266" class="note">- Kode: middleware/src/studio/studio-ingestion.service.ts (ingestSource)</text>
+  <text x="236" y="1266" class="note">- UC-18/18b: Playground sandbox via studioPlaygroundTest (tanpa RAG). Chart latency = run sesi ini.</text>
+  <text x="236" y="1286" class="note">- Kode: middleware studio.service.playgroundTest, vertex-ai/claude playgroundGenerate</text>
 
   <rect x="220" y="1310" width="840" height="72" rx="8" fill="#ffffff" stroke="#e2e8f0"/>
   <text x="236" y="1334" class="section">Status DB (studio_notebook_sources.parse_status)</text>
   <text x="236" y="1356" class="note">pending (antrian) -&gt; parsing (UC-19..21 berjalan) -&gt; done (chunk_count &gt; 0) | error</text>
 
-  <text x="640" y="1748" text-anchor="middle" class="subtitle">Sumber: studio-ingestion.service.ts | rag.service.ts (extractDocumentText, embedText)</text>
+  <text x="640" y="1748" text-anchor="middle" class="subtitle">Sumber: studio-ingestion.service.ts | studio.service.playgroundTest | rag.service.ts</text>
 </svg>

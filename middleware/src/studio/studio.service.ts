@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as Minio from 'minio';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -519,6 +519,33 @@ export class StudioService {
         ].join('\n');
 
         return this.studioGenerateText(reportPrompt);
+    }
+
+    /** UC-18: sandbox prompt test without notebook RAG context. */
+    async playgroundTest(params: {
+        systemPrompt?: string;
+        userPrompt: string;
+        temperature?: number;
+        maxTokens?: number;
+    }) {
+        const userPrompt = params.userPrompt?.trim();
+        if (!userPrompt) {
+            throw new BadRequestException('userPrompt is required');
+        }
+        if (this.useAnthropicStudio()) {
+            return this.claudeAiService.playgroundGenerate({
+                systemPrompt: params.systemPrompt,
+                userPrompt,
+                temperature: params.temperature,
+                maxOutputTokens: params.maxTokens,
+            });
+        }
+        return this.vertexAiService.playgroundGenerate({
+            systemPrompt: params.systemPrompt,
+            userPrompt,
+            temperature: params.temperature,
+            maxOutputTokens: params.maxTokens,
+        });
     }
 
     // ── Helpers ──────────────────────────────────────────────────────

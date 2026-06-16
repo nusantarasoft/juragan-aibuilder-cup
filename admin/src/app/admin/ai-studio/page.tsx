@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { useAppMessage } from "@/hooks/useAppMessage";
 import { mediaService, MediaFile } from "@/lib/mediaService";
-import { studioService, StudioNotebook, StudioSource, type StudioGuideFlow } from "@/lib/studioService";
+import { studioService, StudioNotebook, StudioSource, type StudioGuideFlow, type StudioPlaygroundResult } from "@/lib/studioService";
 import {
     Card,
     Row,
@@ -126,6 +126,20 @@ export default function AIStudioPage() {
     const [showSources, setShowSources] = useState(true);
     const [showChat, setShowChat] = useState(true);
     const [studioMainTab, setStudioMainTab] = useState<"workspace" | "playground" | "flows">("workspace");
+
+    // ── Playground (UC-18) ──
+    const [pgSystemPrompt, setPgSystemPrompt] = useState(
+        "You are a helpful assistant. Answer clearly and concisely.",
+    );
+    const [pgUserPrompt, setPgUserPrompt] = useState("");
+    const [pgOutput, setPgOutput] = useState("");
+    const [pgTemperature, setPgTemperature] = useState(0.7);
+    const [pgMaxTokens, setPgMaxTokens] = useState(2048);
+    const [pgLoading, setPgLoading] = useState(false);
+    const [pgLastResult, setPgLastResult] = useState<StudioPlaygroundResult | null>(null);
+    const [pgMetrics, setPgMetrics] = useState<
+        { label: string; latencyMs: number; totalTokens?: number }[]
+    >([]);
 
     // ── Report State ──
     const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -541,11 +555,30 @@ export default function AIStudioPage() {
             {loadingSources ? (
                 <div className="flex justify-center py-4"><Spin size="small" /></div>
             ) : sources.length === 0 ? (
-                <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={<span className="text-[11px] text-gray-400">Add sources to this notebook</span>}
-                    className="my-4"
-                />
+                <div className="flex flex-col items-center gap-3 py-4 px-2">
+                    <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description={<span className="text-[11px] text-gray-400">Belum ada sumber di notebook ini</span>}
+                        className="my-1"
+                    />
+                    <Space size={8} wrap className="justify-center">
+                        <Button
+                            size="small"
+                            icon={<AppstoreAddOutlined />}
+                            onClick={openMediaModal}
+                        >
+                            Media Library
+                        </Button>
+                        <Upload customRequest={handleUploadFile} showUploadList={false} multiple>
+                            <Button size="small" icon={<CloudUploadOutlined />}>
+                                Upload
+                            </Button>
+                        </Upload>
+                    </Space>
+                    <Text className="text-[10px] text-gray-400 text-center block">
+                        PDF, DOCX, PPTX, TXT — otomatis diekstrak &amp; tervektor untuk RAG
+                    </Text>
+                </div>
             ) : (
                 sources.map((source: StudioSource) => {
                     const statusDetail = getSourceStatusDetail(source);
@@ -863,55 +896,16 @@ export default function AIStudioPage() {
                                 }
                             />
                         )}
+                        {sources.length === 0 && (
+                            <Alert
+                                type="info"
+                                showIcon
+                                className="mt-3 !text-xs"
+                                message="Belum ada sumber"
+                                description="Tambahkan file lewat panel Sources di sidebar (Media Library atau Upload). Setelah tervektor, chat RAG siap dipakai."
+                            />
+                        )}
                     </div>
-
-                    {/* Quick Actions */}
-                    <Title level={5} className="!text-gray-400 uppercase tracking-wider !text-xs !mb-3">Add Knowledge</Title>
-                    <Row gutter={[12, 12]} className="mb-8">
-                        <Col span={12}>
-                            <Card
-                                hoverable
-                                size="small"
-                                className="!rounded-xl cursor-pointer group"
-                                style={{ borderColor: 'rgba(var(--theme-color-rgb,139,92,246),0.15)' }}
-                                onClick={openMediaModal}
-                            >
-                                <Space align="center" size={12}>
-                                    <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${themeColor}15` }}>
-                                        <AppstoreAddOutlined style={{ fontSize: 18, color: themeColor }} />
-                                    </div>
-                                    <div>
-                                        <Text strong className="text-[13px] block">Media Library</Text>
-                                        <Text className="text-[10px] text-gray-400">Add from existing files</Text>
-                                    </div>
-                                </Space>
-                            </Card>
-                        </Col>
-                        <Col span={12}>
-                            <Upload
-                                customRequest={handleUploadFile}
-                                showUploadList={false}
-                                multiple
-                            >
-                                <Card
-                                    hoverable
-                                    size="small"
-                                    className="!rounded-xl cursor-pointer"
-                                    style={{ borderColor: 'rgba(var(--theme-color-rgb,139,92,246),0.15)', width: '100%' }}
-                                >
-                                    <Space align="center" size={12}>
-                                        <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${themeColor}15` }}>
-                                            <CloudUploadOutlined style={{ fontSize: 18, color: themeColor }} />
-                                        </div>
-                                        <div>
-                                            <Text strong className="text-[13px] block">Upload Files</Text>
-                                            <Text className="text-[10px] text-gray-400">PDF, DOCX, TXT, etc.</Text>
-                                        </div>
-                                    </Space>
-                                </Card>
-                            </Upload>
-                        </Col>
-                    </Row>
 
                     {/* Generate Tools */}
                     <Title level={5} className="!text-gray-400 uppercase tracking-wider !text-xs !mb-3">Generate</Title>
@@ -947,45 +941,150 @@ export default function AIStudioPage() {
     );
 
     const renderPlayground = () => {
-        const data = [
-            { name: '10:00', latency: 400, tokens: 120 },
-            { name: '10:05', latency: 300, tokens: 132 },
-            { name: '10:10', latency: 200, tokens: 101 },
-            { name: '10:15', latency: 278, tokens: 134 },
-            { name: '10:20', latency: 189, tokens: 90 },
-        ];
+        const chartData = pgMetrics.map((m) => ({
+            name: m.label,
+            latency: m.latencyMs,
+            tokens: m.totalTokens ?? 0,
+        }));
+
+        const runPlaygroundTest = async () => {
+            if (!pgUserPrompt.trim()) {
+                message.warning("Isi user prompt terlebih dahulu.");
+                return;
+            }
+            setPgLoading(true);
+            try {
+                const result = await studioService.playgroundTest({
+                    systemPrompt: pgSystemPrompt,
+                    userPrompt: pgUserPrompt.trim(),
+                    temperature: pgTemperature,
+                    maxTokens: pgMaxTokens,
+                });
+                setPgOutput(result.output);
+                setPgLastResult(result);
+                const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                setPgMetrics((prev) => [
+                    ...prev.slice(-9),
+                    { label: stamp, latencyMs: result.latencyMs, totalTokens: result.totalTokens },
+                ]);
+            } catch (e: unknown) {
+                const err = e as { message?: string };
+                message.error(err.message || "Playground test failed");
+            } finally {
+                setPgLoading(false);
+            }
+        };
+
         return (
             <div className="flex h-full gap-4 px-4 pb-4 pt-2">
-                <div className="flex-1 flex flex-col gap-4">
-                     <Card size="small" title={<Text strong className="text-sm">Prompt Editor</Text>} className="flex-1" style={{ ...glass }}>
-                         <TextArea placeholder="Enter system prompt here..." style={{ height: '100%', minHeight: 180, resize: 'none', background: 'transparent', border: 'none' }} />
-                     </Card>
-                     <Card size="small" title={<Text strong className="text-sm">Generation Preview</Text>} className="flex-1" style={{ ...glass }}>
-                         <TextArea placeholder="AI Output will appear here..." style={{ height: '100%', minHeight: 180, resize: 'none', background: 'rgba(0,0,0,0.02)', border: 'none' }} disabled />
-                     </Card>
+                <div className="flex-1 flex flex-col gap-4 min-w-0">
+                    <Alert
+                        type="info"
+                        showIcon
+                        className="!text-xs"
+                        message="Sandbox prompt — tidak memakai sumber notebook (RAG)"
+                        description="Uji system prompt, user prompt, temperature, dan max tokens sebelum dipakai di chat atau guide flow."
+                    />
+                    <Card size="small" title={<Text strong className="text-sm">System Prompt</Text>} className="flex-1" style={{ ...glass }}>
+                        <TextArea
+                            value={pgSystemPrompt}
+                            onChange={(e) => setPgSystemPrompt(e.target.value)}
+                            placeholder="Instruksi perilaku model (system)..."
+                            style={{ height: "100%", minHeight: 120, resize: "none", background: "transparent", border: "none" }}
+                        />
+                    </Card>
+                    <Card size="small" title={<Text strong className="text-sm">User Prompt</Text>} style={{ ...glass }}>
+                        <TextArea
+                            value={pgUserPrompt}
+                            onChange={(e) => setPgUserPrompt(e.target.value)}
+                            placeholder="Pesan pengguna untuk diuji..."
+                            rows={3}
+                            style={{ resize: "none", background: "transparent", border: "none" }}
+                            onPressEnter={(e) => {
+                                if (e.shiftKey) return;
+                                e.preventDefault();
+                                void runPlaygroundTest();
+                            }}
+                        />
+                    </Card>
+                    <Card size="small" title={<Text strong className="text-sm">Generation Preview</Text>} className="flex-1" style={{ ...glass }}>
+                        <Spin spinning={pgLoading}>
+                            <TextArea
+                                value={pgOutput}
+                                readOnly
+                                placeholder="Output model akan muncul di sini..."
+                                style={{ height: "100%", minHeight: 160, resize: "none", background: "rgba(0,0,0,0.02)", border: "none" }}
+                            />
+                        </Spin>
+                    </Card>
                 </div>
-                <div className="w-[300px] flex flex-col gap-4">
-                     <Card size="small" title={<Text strong className="text-sm">Model Config</Text>} style={{ ...glass }}>
-                         <Text className="text-xs mb-1 block">Temperature</Text>
-                         <Input type="range" min={0} max={2} step={0.1} defaultValue={0.7} className="w-full mb-3" />
-                         <Text className="text-xs mb-1 block">Max Tokens</Text>
-                         <Input type="number" defaultValue={2048} className="w-full mb-4" />
-                         <Button type="primary" block style={{ backgroundColor: themeColor, border: 'none' }}>Test Prompt</Button>
-                     </Card>
-                     <Card size="small" title={<Text strong className="text-sm">Performance</Text>} className="flex-1" style={{ ...glass }}>
-                          <div style={{ height: 160, width: '100%' }}>
-                             <ResponsiveContainer>
-                                 <LineChart data={data}>
-                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(150,150,150,0.2)" />
-                                     <XAxis dataKey="name" tick={{fontSize: 10}} axisLine={false} tickLine={false} />
-                                     <YAxis yAxisId="left" tick={{fontSize: 10}} axisLine={false} tickLine={false} width={30} />
-                                     <Line yAxisId="left" type="monotone" dataKey="latency" stroke={themeColor} strokeWidth={3} dot={{r: 4, fill: themeColor}} />
-                                     <RechartsTooltip contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                                 </LineChart>
-                             </ResponsiveContainer>
-                          </div>
-                          <Text type="secondary" className="text-[10px] text-center block mt-2">Latency (ms) over time</Text>
-                     </Card>
+                <div className="w-[300px] flex flex-col gap-4 shrink-0">
+                    <Card size="small" title={<Text strong className="text-sm">Model Config</Text>} style={{ ...glass }}>
+                        <Text className="text-xs mb-1 block">Temperature ({pgTemperature.toFixed(1)})</Text>
+                        <Input
+                            type="range"
+                            min={0}
+                            max={2}
+                            step={0.1}
+                            value={pgTemperature}
+                            onChange={(e) => setPgTemperature(parseFloat(e.target.value))}
+                            className="w-full mb-3"
+                        />
+                        <Text className="text-xs mb-1 block">Max Tokens</Text>
+                        <Input
+                            type="number"
+                            min={64}
+                            max={8192}
+                            value={pgMaxTokens}
+                            onChange={(e) => setPgMaxTokens(Math.min(8192, Math.max(64, Number(e.target.value) || 2048)))}
+                            className="w-full mb-4"
+                        />
+                        <Button
+                            type="primary"
+                            block
+                            loading={pgLoading}
+                            onClick={() => void runPlaygroundTest()}
+                            style={{ backgroundColor: themeColor, border: "none" }}
+                        >
+                            Test Prompt
+                        </Button>
+                    </Card>
+                    {pgLastResult && (
+                        <Card size="small" title={<Text strong className="text-sm">Last Run</Text>} style={{ ...glass }}>
+                            <div className="space-y-1 text-[11px] text-gray-500">
+                                <div><Text type="secondary">Provider:</Text> {pgLastResult.provider}</div>
+                                <div><Text type="secondary">Model:</Text> {pgLastResult.model}</div>
+                                <div><Text type="secondary">Latency:</Text> {pgLastResult.latencyMs} ms</div>
+                                {pgLastResult.totalTokens != null && (
+                                    <div><Text type="secondary">Tokens:</Text> {pgLastResult.totalTokens}</div>
+                                )}
+                            </div>
+                        </Card>
+                    )}
+                    <Card size="small" title={<Text strong className="text-sm">Performance</Text>} className="flex-1" style={{ ...glass }}>
+                        {chartData.length === 0 ? (
+                            <div className="h-[160px] flex items-center justify-center">
+                                <Text type="secondary" className="text-[11px]">Jalankan Test Prompt untuk melihat latency</Text>
+                            </div>
+                        ) : (
+                            <>
+                                <div style={{ height: 160, width: "100%" }}>
+                                    <ResponsiveContainer>
+                                        <LineChart data={chartData}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(150,150,150,0.2)" />
+                                            <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                                            <YAxis yAxisId="left" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={36} />
+                                            <Line yAxisId="left" type="monotone" dataKey="latency" stroke={themeColor} strokeWidth={2} dot={{ r: 3, fill: themeColor }} />
+                                            <RechartsTooltip contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <Text type="secondary" className="text-[10px] text-center block mt-2">
+                                    Latency (ms) — {chartData.length} run terakhir
+                                </Text>
+                            </>
+                        )}
+                    </Card>
                 </div>
             </div>
         );

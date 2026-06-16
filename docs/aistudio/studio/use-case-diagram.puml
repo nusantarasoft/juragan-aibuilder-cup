@@ -25,7 +25,7 @@ rectangle "AI Studio — Studio" {
     usecase "UC-04\nHapus Notebook" as UC04
   }
 
-  package "Manajemen Sumber Pengetahuan" {
+  package "Panel Sources (Sidebar)" {
     usecase "UC-05\nTambah Sumber\ndari Media Library" as UC05
     usecase "UC-06\nUpload File\nke Notebook" as UC06
     usecase "UC-07\nHapus Sumber" as UC07
@@ -59,6 +59,7 @@ rectangle "AI Studio — Studio" {
 
   package "Playground" {
     usecase "UC-18\nUji Prompt &\nKonfigurasi Model" as UC18
+    usecase "UC-18b\nLihat Metrik\nLatency & Token" as UC18b
   }
 }
 
@@ -80,6 +81,7 @@ Admin --> UC15
 Admin --> UC16
 Admin --> UC17
 Admin --> UC18
+Admin --> UC18b
 
 UC05 ..> UC19 : <<include>>
 UC06 ..> UC19 : <<include>>
@@ -104,6 +106,16 @@ MW --> UC22
 MW --> UC10
 MW --> UC11
 MW --> UC14
+MW --> UC18
+
+UC18 ..> UC18b : <<include>>\nsetelah test
+
+note bottom of UC18
+  Mutation studioPlaygroundTest:
+  system + user prompt, temperature, maxTokens.
+  Tanpa RAG / tanpa notebook sources.
+  Provider: STUDIO_AI_PROVIDER (Vertex/Google AI/Claude).
+end note
 
 note bottom of PKG_IDX
   Dipicu otomatis (async) setelah UC-05/06/08.
@@ -118,8 +130,8 @@ note right of UC21
 end note
 
 note bottom of UC09
-  Admin melihat progress di panel Sources:
-  Antrian, Mengindeks, Terindeks (N chunk).
+  Semua UC-05 s/d UC-09 di panel Sources (sidebar):
+  tambah file, upload, hapus, reindex, pantau tervektor.
 end note
 
 @enduml

@@ -124,6 +124,21 @@ export class StudioResolver {
         return this.studioService.generateReport(notebookId, query);
     }
 
+    @Mutation(() => GraphQLJSONObject, { name: 'studioPlaygroundTest' })
+    async playgroundTest(
+        @Args('userPrompt', { type: () => String }) userPrompt: string,
+        @Args('systemPrompt', { type: () => String, nullable: true }) systemPrompt: string,
+        @Args('temperature', { type: () => Number, nullable: true }) temperature: number,
+        @Args('maxTokens', { type: () => Number, nullable: true }) maxTokens: number,
+    ) {
+        return this.studioService.playgroundTest({
+            userPrompt,
+            systemPrompt: systemPrompt || undefined,
+            temperature: temperature ?? undefined,
+            maxTokens: maxTokens ?? undefined,
+        });
+    }
+
     // ── Guide flows ──────────────────────────────────────────────────
 
     @Query(() => [GraphQLJSONObject], { name: 'studioGuideFlows' })

@@ -24,11 +24,11 @@ Use case diagram untuk halaman **Studio** (`/admin/ai-studio`) di modul AI Studi
 | UC-02 | Buat notebook | Sidebar / modal |
 | UC-03 | Pilih notebook | Sidebar |
 | UC-04 | Hapus notebook | Sidebar |
-| UC-05 | Tambah sumber dari Media Library | Workspace / Sources |
-| UC-06 | Upload file ke notebook | Workspace / Sources |
-| UC-07 | Hapus sumber | Sources |
-| UC-08 | Reindex sumber | Sources |
-| UC-09 | Monitor status indeksasi | Sources (polling + progress UI) |
+| UC-05 | Tambah sumber dari Media Library | Panel Sources (sidebar) |
+| UC-06 | Upload file ke notebook | Panel Sources (sidebar) |
+| UC-07 | Hapus sumber | Panel Sources (sidebar) |
+| UC-08 | Reindex sumber | Panel Sources (sidebar) |
+| UC-09 | Monitor status indeksasi | Panel Sources (polling + progress UI) |
 | UC-10 | Chat RAG (tanya jawab bebas) | AI Assistant |
 | UC-11 | Chat guided flow | AI Assistant |
 | UC-12 | Mulai chat baru | AI Assistant |
@@ -37,7 +37,8 @@ Use case diagram untuk halaman **Studio** (`/admin/ai-studio`) di modul AI Studi
 | UC-15 | Kelola guide flow (buat / edit / hapus) | Guide flows |
 | UC-16 | Publish guide flow | Guide flows |
 | UC-17 | Simulasi guide flow | Guide flows |
-| UC-18 | Uji prompt & konfigurasi model | Playground |
+| UC-18 | Uji prompt & konfigurasi model (sandbox, tanpa RAG) | Playground → `studioPlaygroundTest` |
+| UC-18b | Lihat metrik latency & token per run | Playground (chart + Last Run) |
 
 ## Proses indeksasi (Sistem / Middleware)
 
@@ -56,11 +57,14 @@ Status di UI: `pending` (antrian) → `parsing` (UC-19..21 berjalan) → `done` 
 
 ## Relasi
 
+- **UC-05 s/d UC-09** berada di **panel Sources (sidebar)** — satu titik kelola dokumen notebook (tambah, upload, hapus, reindex, pantau tervektor).
 - **UC-05, UC-06, UC-08** `<<include>>` **UC-19** — upload/tambah/reindex memicu pipeline indeksasi.
 - **UC-19 → UC-20 → UC-21 → UC-22** — rangkaian `<<include>>` proses sistem.
 - **UC-09** memantau seluruh pipeline (bukan hanya upload).
 - **UC-10, UC-11, UC-14, UC-17** `<<include>>` **UC-09** — butuh chunk + embedding selesai.
 - **UC-16** `<<extend>>` **UC-11** — flow published otomatis memulai sesi guided.
+- **UC-18** memanggil mutation GraphQL `studioPlaygroundTest` — system + user prompt, temperature, max tokens; **tidak** memakai sumber notebook (bukan RAG).
+- **UC-18b** menampilkan latency, provider, model, dan token dari respons API di sesi Playground.
 
 ## Render PlantUML
 

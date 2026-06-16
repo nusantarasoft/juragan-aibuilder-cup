@@ -92,6 +92,18 @@ export interface GuidedTurnResponse {
     currentNodeId: string | null;
 }
 
+export interface StudioPlaygroundResult {
+    output: string;
+    latencyMs: number;
+    provider: string;
+    model: string;
+    inputChars: number;
+    outputChars: number;
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+}
+
 export const studioService = {
     // ── Notebooks ────────────────────────────
 
@@ -218,6 +230,25 @@ export const studioService = {
             }
         `, { notebookId, query });
         return data.studioGenerateReport;
+    },
+
+    async playgroundTest(params: {
+        systemPrompt?: string;
+        userPrompt: string;
+        temperature?: number;
+        maxTokens?: number;
+    }): Promise<StudioPlaygroundResult> {
+        const data = await graphqlRequest(`
+            mutation($userPrompt: String!, $systemPrompt: String, $temperature: Float, $maxTokens: Float) {
+                studioPlaygroundTest(
+                    userPrompt: $userPrompt
+                    systemPrompt: $systemPrompt
+                    temperature: $temperature
+                    maxTokens: $maxTokens
+                )
+            }
+        `, params);
+        return data.studioPlaygroundTest;
     },
 
     // ── Guide flows ───────────────────────────
