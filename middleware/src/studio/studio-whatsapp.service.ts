@@ -256,6 +256,50 @@ export class StudioWhatsAppService {
         return this.wahaClient.syncStuckSession();
     }
 
+    async getWahaAuthQr(session?: string) {
+        const st = await this.wahaClient.getSessionStatus(session);
+        if (!st) {
+            return {
+                available: false,
+                imageBase64: null,
+                mimetype: null,
+                error: 'WAHA tidak reachable — pastikan container waha berjalan',
+            };
+        }
+        if (st.connected) {
+            return {
+                available: false,
+                imageBase64: null,
+                mimetype: null,
+                error: null,
+                connected: true,
+            };
+        }
+        const qr = await this.wahaClient.getAuthQr(session);
+        if (!qr) {
+            return {
+                available: false,
+                imageBase64: null,
+                mimetype: null,
+                error: 'QR belum tersedia — klik Mulai sesi atau tunggu beberapa detik',
+            };
+        }
+        return {
+            available: true,
+            imageBase64: qr.data,
+            mimetype: qr.mimetype,
+            error: null,
+        };
+    }
+
+    async startWahaSession(session?: string) {
+        return this.wahaClient.ensureSessionStarted(session);
+    }
+
+    async logoutWahaSession(session?: string) {
+        return this.wahaClient.logoutSession(session);
+    }
+
     async handleWebhook(body: Record<string, unknown>, session?: string): Promise<void> {
         const event = String(body.event || '').toLowerCase();
         if (event === 'message.any') {

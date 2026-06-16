@@ -51,7 +51,7 @@ const glass = {
 };
 
 const WAHA_DASHBOARD =
-    process.env.NEXT_PUBLIC_WAHA_DASHBOARD_URL || 'http://localhost:3010/dashboard';
+    process.env.NEXT_PUBLIC_WAHA_DASHBOARD_URL || 'http://127.0.0.1:3010/dashboard';
 
 export default function WhatsAppGatewayPage() {
     return (
@@ -215,7 +215,7 @@ function WhatsAppGatewayPageContent() {
         setRestartingWaha(true);
         try {
             await studioService.restartWahaSession();
-            message.info('Sesi WAHA di-restart. Buka WAHA Dashboard dan scan QR sampai WORKING.');
+            message.info('Sesi WAHA di-restart. Buka Setup WAHA dan scan QR sampai WORKING.');
             await load();
         } catch (e: unknown) {
             const err = e as { message?: string };
@@ -243,6 +243,9 @@ function WhatsAppGatewayPageContent() {
                 />
             }
             extra={[
+                <Link key="setup" href="/admin/ai-studio/waha-setup">
+                    <Button type="primary">Setup WAHA</Button>
+                </Link>,
                 <Link key="umkm" href="/admin/ai-studio/umkm">
                     <Button>Kelola UMKM</Button>
                 </Link>,
@@ -322,7 +325,7 @@ function WhatsAppGatewayPageContent() {
                                 </p>
                                 <ol style={{ margin: 0, paddingLeft: 18 }}>
                                     <li>
-                                        Klik <strong>WAHA Dashboard</strong> → session <code>default</code> → scan QR
+                                        Buka <Link href="/admin/ai-studio/waha-setup"><strong>Setup WAHA</strong></Link> → scan QR
                                         WhatsApp <strong>bisnis</strong> (bukan HP pengirim tes)
                                     </li>
                                     <li>Tunggu status <strong>WORKING</strong> (kartu hijau di atas)</li>
@@ -349,14 +352,14 @@ function WhatsAppGatewayPageContent() {
                                         </Tag>
                                     ) : (
                                         <Tag icon={<ExclamationCircleOutlined />} color="warning">
-                                            {sess?.status || 'SCAN QR di Dashboard'}
+                                            {sess?.status || 'Scan QR di Setup WAHA'}
                                         </Tag>
                                     )}
                                 </div>
                             </Space>
                             <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
-                                Scan QR di WAHA Dashboard, lalu pastikan session <Text code>default</Text>{' '}
-                                berstatus <Text strong>WORKING</Text>
+                                Scan QR di <Link href="/admin/ai-studio/waha-setup">Setup WAHA</Link>, lalu pastikan session{' '}
+                                <Text code>default</Text> berstatus <Text strong>WORKING</Text>
                                 {wahaVersion ? <> (WAHA v{wahaVersion})</> : null}.
                             </Paragraph>
                         </Card>
@@ -368,7 +371,10 @@ function WhatsAppGatewayPageContent() {
                             message="Alur singkat"
                             description={
                                 <ol style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12 }}>
-                                    <li>Pair WhatsApp di WAHA Dashboard</li>
+                                    <li>
+                                        Pair WhatsApp di{' '}
+                                        <Link href="/admin/ai-studio/waha-setup">Setup WAHA</Link>
+                                    </li>
                                     <li>Pilih notebook AI Studio di bawah</li>
                                     <li>Aktifkan WhatsApp & simpan</li>
                                     <li>Kirim pesan ke nomor bisnis yang terhubung</li>

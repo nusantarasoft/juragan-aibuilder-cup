@@ -48,7 +48,7 @@ const glass = {
 };
 
 const WAHA_DASHBOARD =
-    process.env.NEXT_PUBLIC_WAHA_DASHBOARD_URL || 'http://localhost:3010/dashboard';
+    process.env.NEXT_PUBLIC_WAHA_DASHBOARD_URL || 'http://127.0.0.1:3010/dashboard';
 
 function slugifyTenant(input: string): string {
     return input
@@ -293,6 +293,9 @@ export default function UmkmStudioPage() {
                 <Button key="add" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                     Tambah UMKM
                 </Button>,
+                <Link key="setup" href="/admin/ai-studio/waha-setup">
+                    <Button>Setup WAHA</Button>
+                </Link>,
                 <Button key="waha" onClick={() => window.open(WAHA_DASHBOARD, '_blank')}>
                     WAHA Dashboard
                 </Button>,
@@ -310,7 +313,11 @@ export default function UmkmStudioPage() {
                     title="Model: satu nomor WA admin (WAHA)"
                     description={
                         <ol style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12 }}>
-                            <li>Pair <strong>satu</strong> nomor admin di WAHA Dashboard (session <code>default</code>)</li>
+                            <li>
+                                Pair <strong>satu</strong> nomor admin di{' '}
+                                <Link href="/admin/ai-studio/waha-setup">Setup WAHA</Link> (session{' '}
+                                <code>default</code>)
+                            </li>
                             <li><strong>Tambah UMKM</strong> — daftarkan <strong>nomor HP pemilik</strong> yang akan chat ke admin</li>
                             <li><strong>Setup UMKM</strong> — aktifkan flow penjualan</li>
                             <li>Pemilik kirim WA ke nomor admin: <em>jual ...</em>, <em>laporan</em>, dll.</li>

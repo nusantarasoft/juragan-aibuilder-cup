@@ -697,8 +697,8 @@ services:
         reservations:
           memory: 768m
     ports:
-      # Host 3010 — landing-page uses :3000
-      - "${WAHA_HOST_PORT:-3010}:3000"
+      # Bind IPv4 only — localhost (::1) often hangs on Windows Docker
+      - "127.0.0.1:${WAHA_HOST_PORT:-3010}:3000"
     environment:
       # Host-run middleware: set WHATSAPP_HOOK_URL in .env to http://<LAN-IP>:4001/... (host.docker.internal often fails on Windows)
       - WHATSAPP_HOOK_URL=${WHATSAPP_HOOK_URL:-http://${LOCAL_HOST_IP:-host.docker.internal}:4001/api/studio/whatsapp/webhook}
@@ -724,7 +724,7 @@ services:
     networks:
       - management-network
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --header=\"X-Api-Key: $$WAHA_API_KEY\" -O - http://127.0.0.1:3000/health || exit 1"]
+      test: ["CMD-SHELL", "wget -q --header=\"X-Api-Key: $$WAHA_API_KEY\" -O - http://127.0.0.1:3000/api/version || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5

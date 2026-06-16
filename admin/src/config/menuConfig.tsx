@@ -84,6 +84,7 @@ import {
     ExperimentOutlined,
     FundProjectionScreenOutlined,
     EditOutlined,
+    QrcodeOutlined,
     SmileOutlined,
     AimOutlined,
     CreditCardOutlined,
@@ -1208,6 +1209,12 @@ const menuConfig = {
                         path: "/admin/ai-studio/umkm",
                         name: "UMKM Penjualan",
                         icon: <ShopOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ai-studio/waha-setup",
+                        name: "Setup WAHA",
+                        icon: <QrcodeOutlined />,
                         isLeaf: true,
                     },
                     {
