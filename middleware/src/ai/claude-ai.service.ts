@@ -134,12 +134,12 @@ export class ClaudeAiService {
         completionTokens?: number;
         totalTokens?: number;
     }> {
-        const apiKey = this.getApiKey();
+        const apiKey = await this.getApiKey();
         const temperature = Math.min(1, Math.max(0, params.temperature ?? 0.7));
         const maxTokens = Math.min(8192, Math.max(64, params.maxOutputTokens ?? 2048));
         const systemPrompt = params.systemPrompt?.trim() || '';
         const userPrompt = params.userPrompt.trim();
-        const model = this.getModel();
+        const model = await this.getModel();
         const inputChars = systemPrompt.length + userPrompt.length;
         const started = Date.now();
 
