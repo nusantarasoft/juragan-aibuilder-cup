@@ -1183,6 +1183,7 @@ export default function CMSLayoutImpl({
                             prefixCls="cms-inner"
                             title=""
                             logo={false}
+                            style={{ minHeight: '100vh', width: '100%' }}
                             location={{
                                 pathname,
                             }}
@@ -1190,19 +1191,20 @@ export default function CMSLayoutImpl({
                                 path: "/",
                                 routes: innerRoutes,
                             }}
-                            fixSiderbar
+                            hasSiderMenu={true}
+
                             collapsed={innerCollapsed}
                             breakpoint={false}
                             onCollapse={handleInnerCollapse}
                             siderWidth={240}
                             navTheme={darkMode ? "realDark" : "light"}
-                            token={{ sider: { colorMenuBackground: darkMode ? 'rgba(0,0,0,0.2)' : '#fff', colorTextMenuSelected: themePalette.primary, colorBgMenuItemSelected: `${themePalette.primary}15`, colorTextMenuItemHover: themePalette.primary, colorBgMenuItemHover: `${themePalette.primary}08` } }}
+                            token={{ sider: { colorMenuBackground: darkMode ? '#141414' : '#fff', colorTextMenuSelected: themePalette.primary, colorBgMenuItemSelected: `${themePalette.primary}15`, colorTextMenuItemHover: themePalette.primary, colorBgMenuItemHover: `${themePalette.primary}08` } }}
                             layout="side"
                             contentStyle={{
                                 padding: 0,
                                 margin: 0,
                             }}
-                            menuDataRender={() => innerRoutes}
+                            menuDataRender={() => innerRoutes.length > 0 ? innerRoutes : [{ path: '/dummy', name: 'No items' }]}
                             menuHeaderRender={false}
                             menuExtraRender={() => (
                                 <div style={{
@@ -1488,21 +1490,8 @@ export default function CMSLayoutImpl({
                     max-width: ${INNER_COLLAPSED_WIDTH}px !important;
                 }
                 
-                /* Remove gap between outer and inner sidebars */
-                .cms-inner-layout {
-                    margin-left: 0 !important;
-                    padding-left: 0 !important;
-                }
                 
-                /* Hide the placeholder div that ProLayout creates */
-                /* This div is the first child inside .ant-layout-has-sider, before the aside */
-                .cms-inner-layout .ant-layout-has-sider > div:first-child:not(.cms-inner-sider):not(.ant-layout-content):not(.cms-inner-layout-container) {
-                    display: none !important;
-                    width: 0 !important;
-                    min-width: 0 !important;
-                    max-width: 0 !important;
-                    flex: 0 0 0 !important;
-                }
+
                 
                 /* Fix inner sidebar - use clip for children only, not the sidebar itself */
                 /* This allows the collapse button to extend beyond the sidebar */
