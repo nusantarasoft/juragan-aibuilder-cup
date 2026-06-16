@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
     Button,
     Card,
+    Dropdown,
     Empty,
     Input,
     List,
@@ -12,6 +13,7 @@ import {
     Tabs,
     Tag,
     Typography,
+    Alert,
 } from "antd";
 import {
     PlusOutlined,
@@ -20,18 +22,23 @@ import {
     DeleteOutlined,
     PlayCircleOutlined,
     SendOutlined,
+    CheckCircleOutlined,
+    DownOutlined,
 } from "@ant-design/icons";
 import ReactMarkdown from "react-markdown";
 import {
     studioService,
     type StudioGuideFlow,
     type GuidedTurnResponse,
+    type GuideFlowTemplateKind,
+    type GuideFlowTemplateInfo,
 } from "@/lib/studioService";
 import { useAppMessage } from "@/hooks/useAppMessage";
 import GuideFlowFormEditor, {
     type GuideFlowDefinition,
     parseGuideFlowDefinition,
 } from "./GuideFlowFormEditor";
+import GuideFlowPreview from "./GuideFlowPreview";
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -70,8 +77,19 @@ export default function GuideFlowsPanel({
     const [simInput, setSimInput] = useState("");
     const [simBusy, setSimBusy] = useState(false);
     const [waitingInput, setWaitingInput] = useState(false);
+    const [templates, setTemplates] = useState<GuideFlowTemplateInfo[]>([]);
+    const [validating, setValidating] = useState(false);
+    const [validationMsg, setValidationMsg] = useState<string | null>(null);
 
     const selected = flows.find((f) => f.id === selectedId) ?? null;
+
+    const flowKindFromDef = (def: Record<string, unknown> | undefined): string | null => {
+        const meta = def?.meta;
+        if (meta && typeof meta === "object" && "flowKind" in meta && typeof (meta as { flowKind: unknown }).flowKind === "string") {
+            return (meta as { flowKind: string }).flowKind;
+        }
+        return null;
+    };
 
     const loadFlows = useCallback(async () => {
         if (!notebookId) return;
@@ -89,6 +107,10 @@ export default function GuideFlowsPanel({
     useEffect(() => {
         loadFlows();
     }, [loadFlows]);
+
+    useEffect(() => {
+        studioService.getGuideFlowTemplates().then(setTemplates).catch(() => setTemplates([]));
+    }, []);
 
     useEffect(() => {
         if (selectedId && !flows.some((f) => f.id === selectedId)) {
@@ -142,15 +164,64 @@ export default function GuideFlowsPanel({
         });
     };
 
-    const handleCreate = async () => {
+    const handleCreate = async (template: GuideFlowTemplateKind = "rag_qa") => {
         if (!notebookId) return;
+        const tpl = templates.find((t) => t.kind === template);
+        const label = tpl?.label ?? template;
         try {
-            const f = await studioService.createGuideFlow(notebookId, "New guide flow");
-            message.success("Flow created");
+            const f = await studioService.createGuideFlow(notebookId, `${label} flow`, { template });
+            message.success(`Flow created (${label})`);
             await loadFlows();
             setSelectedId(f.id);
         } catch (e: unknown) {
             message.error(e instanceof Error ? e.message : "Create failed");
+        }
+    };
+
+    const resolveDefinitionForSave = (): GuideFlowDefinition | null => {
+        if (editorTab === "form") {
+            if (!formDef) return null;
+            const v = parseGuideFlowDefinition(formDef);
+            if (!v.ok) {
+                message.error(v.error);
+                return null;
+            }
+            return v.data;
+        }
+        let raw: unknown;
+        try {
+            raw = JSON.parse(editorJson) as unknown;
+        } catch {
+            message.error("Definition must be valid JSON");
+            return null;
+        }
+        const v = parseGuideFlowDefinition(raw);
+        if (!v.ok) {
+            message.error(v.error);
+            return null;
+        }
+        return v.data;
+    };
+
+    const handleValidate = async () => {
+        const definition = resolveDefinitionForSave();
+        if (!definition) return;
+        setValidating(true);
+        setValidationMsg(null);
+        try {
+            const res = await studioService.validateGuideFlow(definition as unknown as Record<string, unknown>);
+            if (res.valid) {
+                const warn = res.warnings.length ? ` Warnings: ${res.warnings.join("; ")}` : "";
+                setValidationMsg(`Valid — ${res.nodeCount} nodes, XState coverage: ${res.xstateCoverage ? "ok" : "warn"}.${warn}`);
+                message.success("Definition valid");
+            } else {
+                setValidationMsg(res.errors.join("; "));
+                message.error("Validation failed");
+            }
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Validate failed");
+        } finally {
+            setValidating(false);
         }
     };
 
@@ -161,32 +232,12 @@ export default function GuideFlowsPanel({
 
     const handleSave = async () => {
         if (!selected) return;
-        let definition: GuideFlowDefinition;
-        if (editorTab === "form") {
-            if (!formDef) {
+        const definition = resolveDefinitionForSave();
+        if (!definition) {
+            if (editorTab === "form" && !formDef) {
                 message.error("Form editor could not load this definition. Fix JSON or switch to JSON tab.");
-                return;
             }
-            const v = parseGuideFlowDefinition(formDef);
-            if (!v.ok) {
-                message.error(v.error);
-                return;
-            }
-            definition = v.data;
-        } else {
-            let raw: unknown;
-            try {
-                raw = JSON.parse(editorJson) as unknown;
-            } catch {
-                message.error("Definition must be valid JSON");
-                return;
-            }
-            const v = parseGuideFlowDefinition(raw);
-            if (!v.ok) {
-                message.error(v.error);
-                return;
-            }
-            definition = v.data;
+            return;
         }
         setSaving(true);
         try {
@@ -281,15 +332,46 @@ export default function GuideFlowsPanel({
 
     return (
         <div className="flex flex-col gap-4 min-h-[480px]">
+            <Alert
+                type="info"
+                showIcon
+                className="!rounded-xl text-xs"
+                message="Guide Flow best practices"
+                description={
+                    <ul className="list-disc pl-4 m-0 space-y-0.5">
+                        <li>Gunakan template <strong>RAG Q&A</strong> untuk notebook dokumen (listen → rag → loop).</li>
+                        <li>Set <code>meta.flowKind</code> agar runtime memilih routing UMKM vs RAG dengan benar.</li>
+                        <li>Setiap <code>listen</code> wajib punya transisi <code>default</code>; validasi graph sebelum publish.</li>
+                        <li>Node <code>sql</code> hanya SELECT read-only; <code>action</code> untuk operasi UMKM (WA).</li>
+                    </ul>
+                }
+            />
+
             <div className="flex flex-wrap items-center gap-2">
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={handleCreate}
-                    style={{ backgroundColor: themeColor }}
+                <Dropdown
+                    menu={{
+                        items: (templates.length ? templates : [
+                            { kind: "rag_qa" as const, label: "RAG Q&A", description: "" },
+                            { kind: "umkm" as const, label: "UMKM Penjualan", description: "" },
+                            { kind: "blank" as const, label: "Kosong", description: "" },
+                        ]).map((t) => ({
+                            key: t.kind,
+                            label: (
+                                <div>
+                                    <div className="font-medium">{t.label}</div>
+                                    {t.description ? (
+                                        <div className="text-[10px] text-gray-500">{t.description}</div>
+                                    ) : null}
+                                </div>
+                            ),
+                            onClick: () => handleCreate(t.kind as GuideFlowTemplateKind),
+                        })),
+                    }}
                 >
-                    New flow
-                </Button>
+                    <Button type="primary" icon={<PlusOutlined />} style={{ backgroundColor: themeColor }}>
+                        New flow <DownOutlined />
+                    </Button>
+                </Dropdown>
                 <Button onClick={() => loadFlows()} loading={loading}>
                     Refresh
                 </Button>
@@ -316,13 +398,18 @@ export default function GuideFlowsPanel({
                                         resetSimulator();
                                     }}
                                 >
-                                    <div className="flex justify-between w-full gap-2">
+                                    <div className="flex justify-between w-full gap-2 items-center">
                                         <Text strong className="text-[13px] truncate">
                                             {item.name}
                                         </Text>
-                                        <Tag color={item.status === "published" ? "green" : "default"}>
-                                            {item.status}
-                                        </Tag>
+                                        <Space size={4}>
+                                            {flowKindFromDef(item.definition) && (
+                                                <Tag className="!text-[10px]">{flowKindFromDef(item.definition)}</Tag>
+                                            )}
+                                            <Tag color={item.status === "published" ? "green" : "default"}>
+                                                {item.status}
+                                            </Tag>
+                                        </Space>
                                     </div>
                                 </List.Item>
                             )}
@@ -337,6 +424,14 @@ export default function GuideFlowsPanel({
                     extra={
                         selected ? (
                             <Space size={4}>
+                                <Button
+                                    size="small"
+                                    icon={<CheckCircleOutlined />}
+                                    onClick={handleValidate}
+                                    loading={validating}
+                                >
+                                    Validate
+                                </Button>
                                 <Button
                                     size="small"
                                     icon={<SaveOutlined />}
@@ -372,11 +467,20 @@ export default function GuideFlowsPanel({
                             />
                             <Paragraph type="secondary" className="!text-[11px] !mb-0">
                                 Nodes: <code>start</code>, <code>message</code>, <code>listen</code> (keyword /
-                                regex / default), <code>rag</code> (query understanding + placeholders{" "}
-                                <code>{"{{lastUserMessage}}"}</code>, <code>{"{{originalUserMessage}}"}</code>,{" "}
-                                <code>{"{{rewrittenQuery}}"}</code>), <code>end</code>. Use the form for everyday
-                                edits; switch to JSON for bulk copy-paste.
+                                regex / default), <code>rag</code> (query understanding + placeholders),{" "}
+                                <code>sql</code> (Dremio SELECT), <code>action</code> (UMKM), <code>end</code>.
+                                Runtime: Zod schema + graph validation; XState spec untuk coverage test.
                             </Paragraph>
+                            {validationMsg && (
+                                <Alert
+                                    type={validationMsg.startsWith("Valid") ? "success" : "error"}
+                                    message={validationMsg}
+                                    className="!text-xs"
+                                    closable
+                                    onClose={() => setValidationMsg(null)}
+                                />
+                            )}
+                            {formDef && <GuideFlowPreview definition={formDef} />}
                             <Tabs
                                 size="small"
                                 activeKey={editorTab}

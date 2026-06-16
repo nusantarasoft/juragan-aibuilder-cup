@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { useAppMessage } from "@/hooks/useAppMessage";
 import { mediaService, MediaFile } from "@/lib/mediaService";
-import { studioService, StudioNotebook, StudioSource } from "@/lib/studioService";
+import { studioService, StudioNotebook, StudioSource, type StudioGuideFlow, type StudioPlaygroundResult } from "@/lib/studioService";
 import {
     Card,
     Row,
@@ -25,6 +25,8 @@ import {
     Tabs,
     Popconfirm,
     Tooltip,
+    Alert,
+    Badge,
 } from "antd";
 import type { UploadProps } from "antd";
 import {
@@ -49,7 +51,18 @@ import {
     ApartmentOutlined
 } from "@ant-design/icons";
 import GuideFlowsPanel from "./GuideFlowsPanel";
+import {
+    getSourceProgressPercent,
+    getSourceStageLabel,
+    getSourceStatusDetail,
+    getSourceStatusTag,
+    isSourceInProgress,
+    seedSourceStatusMap,
+    summarizeSources,
+    trackSourceStatusChanges,
+} from "./studioSourceStatus";
 import { useStudioChat } from "./useStudioChat";
+import AIAssistantPanel from "./AIAssistantPanel";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useAuth } from "@/context/AuthContext";
 import ReactMarkdown from 'react-markdown';
@@ -90,10 +103,10 @@ export default function AIStudioPage() {
     const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
     const [loadingMedia, setLoadingMedia] = useState(false);
     const [addingMedia, setAddingMedia] = useState<Set<string>>(new Set());
+    const [publishedGuideFlow, setPublishedGuideFlow] = useState<StudioGuideFlow | null>(null);
 
-    const [chatInput, setChatInput] = useState("");
-    const [showReferences, setShowReferences] = useState<number | null>(null);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const sourceStats = summarizeSources(sources);
+
     const {
         chatHistory,
         conversationId,
@@ -107,12 +120,36 @@ export default function AIStudioPage() {
         sendMessage,
         setChatMode,
         setGuidedFlow,
-    } = useStudioChat(activeNotebook?.id ?? null, userId);
+        switchToFreeChat,
+        conversations,
+        loadingConversations,
+        resumeConversation,
+        suggestedPrompts,
+    } = useStudioChat(
+        activeNotebook?.id ?? null,
+        userId,
+        sources,
+        activeNotebook?.name ?? "",
+    );
 
     // ── Layout State ──
     const [showSources, setShowSources] = useState(true);
     const [showChat, setShowChat] = useState(true);
     const [studioMainTab, setStudioMainTab] = useState<"workspace" | "playground" | "flows">("workspace");
+
+    // ── Playground (UC-18) ──
+    const [pgSystemPrompt, setPgSystemPrompt] = useState(
+        "You are a helpful assistant. Answer clearly and concisely.",
+    );
+    const [pgUserPrompt, setPgUserPrompt] = useState("");
+    const [pgOutput, setPgOutput] = useState("");
+    const [pgTemperature, setPgTemperature] = useState(0.7);
+    const [pgMaxTokens, setPgMaxTokens] = useState(2048);
+    const [pgLoading, setPgLoading] = useState(false);
+    const [pgLastResult, setPgLastResult] = useState<StudioPlaygroundResult | null>(null);
+    const [pgMetrics, setPgMetrics] = useState<
+        { label: string; latencyMs: number; totalTokens?: number }[]
+    >([]);
 
     // ── Report State ──
     const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -122,6 +159,8 @@ export default function AIStudioPage() {
 
     // ── Poll timer ──
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const prevSourceStatusRef = useRef<Map<string, string>>(new Map());
+    const pollNotebookIdRef = useRef<string | null>(null);
 
     const loadNotebooks = useCallback(async () => {
         if (!userId) {
@@ -147,24 +186,31 @@ export default function AIStudioPage() {
         return () => { if (pollRef.current) clearInterval(pollRef.current); };
     }, [authLoading, loadNotebooks]);
 
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [chatHistory]);
-
     const selectNotebook = async (notebook: StudioNotebook) => {
+        if (pollRef.current) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+        }
+        prevSourceStatusRef.current = new Map();
+        pollNotebookIdRef.current = notebook.id;
         setActiveNotebook(notebook);
         resetChat();
         setChatMode("free");
         setGuidedFlow(null);
-        setShowReferences(null);
+        setPublishedGuideFlow(null);
         setStudioMainTab("workspace");
-        await loadSourceStatus(notebook.id);
+        await loadSourceStatus(notebook.id, true);
         try {
             const published = await studioService.getPublishedGuideFlow(notebook.id);
             if (published) {
-                await initGuidedFromPublished(published);
+                setPublishedGuideFlow(published);
             }
         } catch { /* no published flow */ }
+    };
+
+    const startPublishedGuidedFlow = async () => {
+        if (!publishedGuideFlow) return;
+        await initGuidedFromPublished(publishedGuideFlow);
     };
 
     const handleNewChat = async () => {
@@ -175,36 +221,69 @@ export default function AIStudioPage() {
         }
     };
 
-    const loadSourceStatus = async (notebookId: string) => {
-        setLoadingSources(true);
-        try {
-            const list = await studioService.getSourceStatus(notebookId);
+    const notifySourceChange = useCallback(
+        (type: 'success' | 'error' | 'warning', text: string) => {
+            if (type === 'success') message.success(text);
+            else if (type === 'error') message.error(text);
+            else message.warning(text);
+        },
+        [message],
+    );
+
+    const applySourcesUpdate = useCallback(
+        (list: StudioSource[], options?: { seedOnly?: boolean }) => {
+            if (options?.seedOnly) {
+                prevSourceStatusRef.current = seedSourceStatusMap(list);
+            } else {
+                prevSourceStatusRef.current = trackSourceStatusChanges(
+                    prevSourceStatusRef.current,
+                    list,
+                    notifySourceChange,
+                );
+            }
             setSources(list);
 
-            if (list.some((s: StudioSource) => s.parse_status === 'parsing' || s.parse_status === 'pending')) {
-                startPolling(notebookId);
-            } else if (pollRef.current) {
+            const notebookId = pollNotebookIdRef.current;
+            const stillIndexing = list.some(isSourceInProgress);
+            if (notebookId && stillIndexing && !pollRef.current) {
+                pollRef.current = setInterval(async () => {
+                    try {
+                        const updated = await studioService.getSourceStatus(notebookId);
+                        prevSourceStatusRef.current = trackSourceStatusChanges(
+                            prevSourceStatusRef.current,
+                            updated,
+                            notifySourceChange,
+                        );
+                        setSources(updated);
+                        if (!updated.some(isSourceInProgress) && pollRef.current) {
+                            clearInterval(pollRef.current);
+                            pollRef.current = null;
+                        }
+                    } catch { /* ignore */ }
+                }, 3000);
+            } else if (!stillIndexing && pollRef.current) {
                 clearInterval(pollRef.current);
+                pollRef.current = null;
             }
-        } catch (e) {
-            console.error("Failed to load sources:", e);
-        } finally {
-            setLoadingSources(false);
-        }
-    };
+        },
+        [notifySourceChange],
+    );
 
-    const startPolling = (notebookId: string) => {
-        if (pollRef.current) clearInterval(pollRef.current);
-        pollRef.current = setInterval(async () => {
+    const loadSourceStatus = useCallback(
+        async (notebookId: string, seedOnly = false) => {
+            pollNotebookIdRef.current = notebookId;
+            setLoadingSources(true);
             try {
                 const list = await studioService.getSourceStatus(notebookId);
-                setSources(list);
-                if (!list.some((s: StudioSource) => s.parse_status === 'parsing' || s.parse_status === 'pending')) {
-                    if (pollRef.current) clearInterval(pollRef.current);
-                }
-            } catch { /* ignore */ }
-        }, 4000);
-    };
+                applySourcesUpdate(list, { seedOnly });
+            } catch (e) {
+                console.error("Failed to load sources:", e);
+            } finally {
+                setLoadingSources(false);
+            }
+        },
+        [applySourcesUpdate],
+    );
 
     // ── Actions ──
 
@@ -250,9 +329,8 @@ export default function AIStudioPage() {
         setAddingMedia(prev => new Set(prev).add(mediaId));
         try {
             await studioService.addMediaToNotebook(activeNotebook.id, mediaId);
-            message.success("Source added to notebook");
-            loadSourceStatus(activeNotebook.id);
-            startPolling(activeNotebook.id);
+            message.success("Sumber ditambahkan — indeksasi dimulai");
+            await loadSourceStatus(activeNotebook.id);
         } catch (e: unknown) {
             message.error(e instanceof Error ? e.message : "Failed to add source");
         } finally {
@@ -278,10 +356,9 @@ export default function AIStudioPage() {
         const { file, onSuccess, onError } = options;
         try {
             await studioService.uploadFileToNotebook(activeNotebook.id, file as File);
-            onSuccess?.({}, file as any);
-            message.success(`"${(file as File).name}" uploaded`);
-            loadSourceStatus(activeNotebook.id);
-            startPolling(activeNotebook.id);
+            onSuccess?.({}, file);
+            message.success(`"${(file as File).name}" diupload — indeksasi dimulai`);
+            await loadSourceStatus(activeNotebook.id);
         } catch (e: unknown) {
             onError?.(e as Error);
             message.error(e instanceof Error ? e.message : "Upload failed");
@@ -299,35 +376,32 @@ export default function AIStudioPage() {
         }
     };
 
-    const sourcesIndexed = sources.some((s) => s.parse_status === 'done' && (s.chunk_count ?? 0) > 0);
-    const sourcesIndexing = sources.some((s) => s.parse_status === 'parsing' || s.parse_status === 'pending');
+    const sourcesIndexed = sourceStats.anyIndexed;
+    const sourcesIndexing = sourceStats.inProgress > 0;
 
-    const handleChatSend = async () => {
-        if (!chatInput.trim() || !activeNotebook) return;
+    const handleChatSend = async (text: string) => {
+        if (!activeNotebook || !text.trim()) return;
         if (sources.length === 0) {
-            message.warning("No sources yet. Add files or media first.");
+            message.warning("Belum ada sumber. Tambahkan file atau media terlebih dahulu.");
             return;
         }
         if (!sourcesIndexed && !sourcesIndexing) {
-            message.warning("Sources are not indexed yet. Wait for indexing or use Reindex.");
+            message.warning("Sumber belum terindeks. Tunggu proses selesai atau gunakan Reindex.");
             return;
         }
-        if (chatMode === 'guided' && !waitingInput && chatHistory.length > 0) {
-            message.warning("Guided flow is not waiting for input.");
+        if (chatMode === "guided" && !waitingInput && chatHistory.length > 0) {
+            message.warning("Guided flow belum menunggu input.");
             return;
         }
-        const q = chatInput;
-        setChatInput("");
-        await sendMessage(q);
+        await sendMessage(text.trim());
     };
 
     const handleReindexSource = async (sourceId: string) => {
         if (!activeNotebook) return;
         try {
             await studioService.reindexSource(activeNotebook.id, sourceId);
-            message.success("Reindex started");
-            startPolling(activeNotebook.id);
-            loadSourceStatus(activeNotebook.id);
+            message.success("Indeksasi ulang dimulai");
+            await loadSourceStatus(activeNotebook.id);
         } catch (e: unknown) {
             message.error(e instanceof Error ? e.message : "Reindex failed");
         }
@@ -358,15 +432,8 @@ export default function AIStudioPage() {
     };
 
     const getStatusTag = (source: StudioSource) => {
-        if (source.parse_status === 'done' && (source.chunk_count ?? 0) > 0) {
-            return <Tag color="success" className="text-[10px] m-0 leading-tight px-1.5">Indexed ({source.chunk_count})</Tag>;
-        }
-        switch (source.parse_status) {
-            case 'done': return <Tag color="warning" className="text-[10px] m-0 leading-tight px-1.5">No chunks</Tag>;
-            case 'parsing': return <Tag color="processing" className="text-[10px] m-0 leading-tight px-1.5">Indexing</Tag>;
-            case 'error': return <Tag color="error" className="text-[10px] m-0 leading-tight px-1.5">Error</Tag>;
-            default: return <Tag className="text-[10px] m-0 leading-tight px-1.5">Pending</Tag>;
-        }
+        const { color, label } = getSourceStatusTag(source);
+        return <Tag color={color} className="text-[10px] m-0 leading-tight px-1.5">{label}</Tag>;
     };
 
     const formatBytes = (bytes: number) => {
@@ -441,38 +508,104 @@ export default function AIStudioPage() {
         </div>
     );
 
+    const renderSourceSummary = () => {
+        if (sources.length === 0) return null;
+        const { total, indexed, inProgress, errors } = sourceStats;
+        const overallPercent = total > 0
+            ? Math.round(sources.reduce((sum, s) => sum + getSourceProgressPercent(s), 0) / total)
+            : 0;
+
+        return (
+            <div className="px-3 pt-2 pb-1 border-b border-[rgba(var(--theme-color-rgb,139,92,246),0.12)]">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <Text className="text-[10px] text-gray-500">
+                        {indexed}/{total} tervektor
+                        {inProgress > 0 ? ` · ${inProgress} diproses` : ''}
+                        {sourceStats.embedding > 0 ? ` · ${sourceStats.embedding} vektorisasi` : ''}
+                        {errors > 0 ? ` · ${errors} gagal` : ''}
+                    </Text>
+                    {sourceStats.allIndexed ? (
+                        <Tag color="success" className="text-[9px] m-0 leading-tight px-1.5">Siap RAG</Tag>
+                    ) : sourceStats.embedding > 0 ? (
+                        <Tag color="processing" icon={<SyncOutlined spin />} className="text-[9px] m-0 leading-tight px-1.5">
+                            Vektorisasi
+                        </Tag>
+                    ) : inProgress > 0 ? (
+                        <Tag color="processing" icon={<SyncOutlined spin />} className="text-[9px] m-0 leading-tight px-1.5">
+                            Mengindeks
+                        </Tag>
+                    ) : null}
+                </div>
+                <Progress
+                    percent={overallPercent}
+                    status={errors > 0 && indexed === 0 ? 'exception' : inProgress > 0 ? 'active' : indexed === total ? 'success' : 'normal'}
+                    size="small"
+                    strokeColor={themeColor}
+                />
+            </div>
+        );
+    };
+
     const renderSourceList = () => (
         <div className="flex flex-col gap-1 px-2 pb-2">
             {loadingSources ? (
                 <div className="flex justify-center py-4"><Spin size="small" /></div>
             ) : sources.length === 0 ? (
-                <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={<span className="text-[11px] text-gray-400">Add sources to this notebook</span>}
-                    className="my-4"
-                />
+                <div className="flex flex-col items-center gap-3 py-4 px-2">
+                    <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description={<span className="text-[11px] text-gray-400">Belum ada sumber di notebook ini</span>}
+                        className="my-1"
+                    />
+                    <Space size={8} wrap className="justify-center">
+                        <Button
+                            size="small"
+                            icon={<AppstoreAddOutlined />}
+                            onClick={openMediaModal}
+                        >
+                            Media Library
+                        </Button>
+                        <Upload customRequest={handleUploadFile} showUploadList={false} multiple>
+                            <Button size="small" icon={<CloudUploadOutlined />}>
+                                Upload
+                            </Button>
+                        </Upload>
+                    </Space>
+                    <Text className="text-[10px] text-gray-400 text-center block">
+                        PDF, DOCX, PPTX, TXT — otomatis diekstrak &amp; tervektor untuk RAG
+                    </Text>
+                </div>
             ) : (
-                sources.map((source: StudioSource) => (
+                sources.map((source: StudioSource) => {
+                    const statusDetail = getSourceStatusDetail(source);
+                    const stageLabel = getSourceStageLabel(source);
+                    return (
+                    <Tooltip key={source.id} title={statusDetail ?? stageLabel} placement="right">
                     <div
-                        key={source.id}
                         className="group flex items-center justify-between gap-2 rounded-md p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
                     >
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                             {getStatusIcon(source.parse_status)}
                             <div className="min-w-0 flex-1">
                                 <Text className="text-[12px] block truncate">{source.filename}</Text>
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
                                     <Text className="text-[10px] text-gray-400">{formatBytes(source.file_size)}</Text>
-                                    {source.chunk_count > 0 && (
-                                        <Text className="text-[10px] text-gray-400">· {source.chunk_count} chunks</Text>
+                                    {isSourceInProgress(source) && (
+                                        <Text className="text-[10px]" style={{ color: themeColor }}>{stageLabel}</Text>
                                     )}
                                     {getStatusTag(source)}
                                 </div>
-                                {source.parse_status === 'parsing' && (
+                                {source.parse_status === 'error' && source.parse_error && (
+                                    <Text className="text-[10px] text-red-500 block truncate mt-0.5" title={source.parse_error}>
+                                        {source.parse_error}
+                                    </Text>
+                                )}
+                                {(source.parse_status === 'parsing' || source.parse_status === 'pending') && (
                                     <Progress
-                                        percent={Math.round(source.parse_progress * 100)}
+                                        percent={getSourceProgressPercent(source)}
                                         size="small"
                                         strokeColor={themeColor}
+                                        status={source.parse_status === 'pending' ? 'active' : 'normal'}
                                         className="mt-1 !mb-0"
                                     />
                                 )}
@@ -498,149 +631,9 @@ export default function AIStudioPage() {
                             />
                         </Space>
                     </div>
-                ))
+                    </Tooltip>
+                ); })
             )}
-        </div>
-    );
-
-    const chatInputPlaceholder = !activeNotebook
-        ? "Select a notebook first"
-        : chatMode === "guided" && guidedFlow
-          ? waitingInput
-              ? "Balas di sini…"
-              : "Tunggu respons asisten…"
-          : "Ask about your sources...";
-
-    const renderChatPanel = () => (
-        <div className="flex flex-col h-full">
-            {chatMode === "guided" && guidedFlow && (
-                <div
-                    className="mx-3 mt-2 px-3 py-2 rounded-lg text-[11px] border"
-                    style={{
-                        borderColor: `${themeColor}33`,
-                        backgroundColor: `${themeColor}0d`,
-                    }}
-                >
-                    <Text strong className="text-[11px] block" style={{ color: themeColor }}>
-                        Guided session: {guidedFlow.name}
-                    </Text>
-                    <Text type="secondary" className="text-[10px] block mt-0.5">
-                        {waitingInput
-                            ? "Menunggu balasan Anda — jawaban memakai sumber terindeks."
-                            : "Alur sedang berjalan…"}
-                    </Text>
-                </div>
-            )}
-            {sources.length > 0 && !sourcesIndexed && (
-                <motion.div className="mx-3 mt-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 text-[11px] text-amber-800 dark:text-amber-200">
-                    {sourcesIndexing
-                        ? "Sources are being indexed. Answers improve once indexing completes."
-                        : "Sources are not indexed yet. Use Reindex on a source or wait for processing."}
-                </motion.div>
-            )}
-            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                {chatHistory.length === 0 && (
-                    <div className="w-full h-full flex flex-col items-center justify-center gap-4 opacity-60">
-                        <RobotOutlined style={{ fontSize: 48, color: themeColor }} />
-                        <div className="text-center">
-                            <Text strong className="block text-sm mb-1">Ask about your sources</Text>
-                            <Text className="text-xs text-gray-400 block max-w-[280px]">
-                                {chatMode === "guided" && guidedFlow
-                                    ? `Guided session: ${guidedFlow.name}. Answers use indexed sources and optional database context.`
-                                    : "Ask questions grounded in indexed notebook sources (RAG) and configured database views."}
-                            </Text>
-                        </div>
-                    </div>
-                )}
-                {chatHistory.map((msg, i) => (
-                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}>
-                        <div className="max-w-[85%]">
-                            <div style={{
-                                padding: '12px 16px',
-                                borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                                background: msg.role === 'user' ? `${themeColor}` : 'rgba(var(--theme-color-rgb, 139, 92, 246), 0.06)',
-                                color: msg.role === 'user' ? '#fff' : 'inherit',
-                                wordBreak: 'break-word',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                            }}>
-                                <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:m-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0">
-                                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                                </div>
-                            </div>
-                            {/* References */}
-                            {msg.references && msg.references.length > 0 && (
-                                <div className="mt-1.5">
-                                    <Button
-                                        type="text"
-                                        size="small"
-                                        className="text-[10px] text-gray-400 hover:!text-[color:var(--theme-color)] p-0 h-auto"
-                                        onClick={() => setShowReferences(showReferences === i ? null : i)}
-                                    >
-                                        📄 {msg.references.length} source{msg.references.length > 1 ? 's' : ''} cited
-                                    </Button>
-                                    <AnimatePresence>
-                                        {showReferences === i && (
-                                            <motion.div
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: 'auto', opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                className="overflow-hidden"
-                                            >
-                                                <div className="mt-1 space-y-1">
-                                                    {msg.references.map((ref, ri) => (
-                                                        <div key={ri} className="bg-gray-50 dark:bg-gray-800/50 rounded-md p-2 text-[11px]">
-                                                            <Text strong className="text-[10px] block mb-0.5" style={{ color: themeColor }}>{ref.docName}</Text>
-                                                            <Text className="text-gray-500 text-[10px] line-clamp-2">{ref.content}</Text>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                ))}
-                {isChatting && (
-                    <div className="flex justify-start mb-4">
-                        <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/50">
-                            <Spin indicator={<LoadingOutlined spin />} size="small" />
-                        </div>
-                    </div>
-                )}
-                <div ref={messagesEndRef} />
-            </div>
-            {/* Chat Input */}
-            <div className="p-3 border-t border-[rgba(var(--theme-color-rgb,139,92,246),0.1)]">
-                <Space.Compact className="w-full" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.05)', borderRadius: 10 }}>
-                    <Input
-                        size="large"
-                        value={chatInput}
-                        onChange={e => setChatInput(e.target.value)}
-                        onPressEnter={handleChatSend}
-                        placeholder={chatInputPlaceholder}
-                        disabled={
-                            isChatting ||
-                            !activeNotebook ||
-                            (chatMode === "guided" && !waitingInput && chatHistory.length > 0)
-                        }
-                        style={{ borderBottomLeftRadius: 10, borderTopLeftRadius: 10 }}
-                    />
-                    <Button
-                        size="large"
-                        type="primary"
-                        icon={<SendOutlined />}
-                        onClick={handleChatSend}
-                        loading={isChatting}
-                        disabled={
-                            !activeNotebook ||
-                            (chatMode === "guided" && !waitingInput && chatHistory.length > 0)
-                        }
-                        style={{ borderBottomRightRadius: 10, borderTopRightRadius: 10, backgroundColor: themeColor }}
-                    />
-                </Space.Compact>
-            </div>
         </div>
     );
 
@@ -692,59 +685,53 @@ export default function AIStudioPage() {
                                 <Text className="text-gray-400 text-xs">{activeNotebook.description || 'No description'}</Text>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 mt-2">
-                            <Tag style={{ color: themeColor, borderColor: `${themeColor}44`, backgroundColor: `${themeColor}11` }}>{sources.length} source{sources.length !== 1 ? 's' : ''}</Tag>
-                            <Tag style={{ color: themeColor, borderColor: `${themeColor}44`, backgroundColor: `${themeColor}11` }}>{sources.filter(s => s.parse_status !== 'error').length} ready</Tag>
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            <Tag style={{ color: themeColor, borderColor: `${themeColor}44`, backgroundColor: `${themeColor}11` }}>
+                                {sourceStats.total} sumber
+                            </Tag>
+                            <Tag color={sourceStats.allIndexed ? 'success' : sourceStats.indexed > 0 ? 'processing' : 'default'}>
+                                {sourceStats.indexed} tervektor
+                            </Tag>
+                            {sourceStats.embedding > 0 && (
+                                <Tag color="processing" icon={<SyncOutlined spin />}>
+                                    Vektorisasi {sourceStats.embedding}
+                                </Tag>
+                            )}
+                            {sourceStats.errors > 0 && (
+                                <Tag color="error">{sourceStats.errors} gagal</Tag>
+                            )}
                         </div>
+                        {sources.length > 0 && !sourceStats.allIndexed && (
+                            <Alert
+                                type={sourceStats.errors > 0 && sourceStats.indexed === 0 ? 'error' : 'info'}
+                                showIcon
+                                className="mt-3 !text-xs"
+                                message={
+                                    sourcesIndexing
+                                        ? sourceStats.embedding > 0
+                                            ? 'Vektorisasi embedding berjalan'
+                                            : 'Indeksasi berjalan di background'
+                                        : 'Beberapa sumber belum siap'
+                                }
+                                description={
+                                    sourcesIndexing
+                                        ? sourceStats.embedding > 0
+                                            ? 'Tahap vektorisasi: setiap chunk di-embed dan disimpan. Lihat "Vektorisasi X/Y" di panel Sources.'
+                                            : 'Tahap: ekstraksi teks → chunking → vektorisasi. Pantau di panel Sources.'
+                                        : 'Buka panel Sources untuk detail error atau jalankan Reindex.'
+                                }
+                            />
+                        )}
+                        {sources.length === 0 && (
+                            <Alert
+                                type="info"
+                                showIcon
+                                className="mt-3 !text-xs"
+                                message="Belum ada sumber"
+                                description="Tambahkan file lewat panel Sources di sidebar (Media Library atau Upload). Setelah tervektor, chat RAG siap dipakai."
+                            />
+                        )}
                     </div>
-
-                    {/* Quick Actions */}
-                    <Title level={5} className="!text-gray-400 uppercase tracking-wider !text-xs !mb-3">Add Knowledge</Title>
-                    <Row gutter={[12, 12]} className="mb-8">
-                        <Col span={12}>
-                            <Card
-                                hoverable
-                                size="small"
-                                className="!rounded-xl cursor-pointer group"
-                                style={{ borderColor: 'rgba(var(--theme-color-rgb,139,92,246),0.15)' }}
-                                onClick={openMediaModal}
-                            >
-                                <Space align="center" size={12}>
-                                    <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${themeColor}15` }}>
-                                        <AppstoreAddOutlined style={{ fontSize: 18, color: themeColor }} />
-                                    </div>
-                                    <div>
-                                        <Text strong className="text-[13px] block">Media Library</Text>
-                                        <Text className="text-[10px] text-gray-400">Add from existing files</Text>
-                                    </div>
-                                </Space>
-                            </Card>
-                        </Col>
-                        <Col span={12}>
-                            <Upload
-                                customRequest={handleUploadFile}
-                                showUploadList={false}
-                                multiple
-                            >
-                                <Card
-                                    hoverable
-                                    size="small"
-                                    className="!rounded-xl cursor-pointer"
-                                    style={{ borderColor: 'rgba(var(--theme-color-rgb,139,92,246),0.15)', width: '100%' }}
-                                >
-                                    <Space align="center" size={12}>
-                                        <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${themeColor}15` }}>
-                                            <CloudUploadOutlined style={{ fontSize: 18, color: themeColor }} />
-                                        </div>
-                                        <div>
-                                            <Text strong className="text-[13px] block">Upload Files</Text>
-                                            <Text className="text-[10px] text-gray-400">PDF, DOCX, TXT, etc.</Text>
-                                        </div>
-                                    </Space>
-                                </Card>
-                            </Upload>
-                        </Col>
-                    </Row>
 
                     {/* Generate Tools */}
                     <Title level={5} className="!text-gray-400 uppercase tracking-wider !text-xs !mb-3">Generate</Title>
@@ -780,45 +767,150 @@ export default function AIStudioPage() {
     );
 
     const renderPlayground = () => {
-        const data = [
-            { name: '10:00', latency: 400, tokens: 120 },
-            { name: '10:05', latency: 300, tokens: 132 },
-            { name: '10:10', latency: 200, tokens: 101 },
-            { name: '10:15', latency: 278, tokens: 134 },
-            { name: '10:20', latency: 189, tokens: 90 },
-        ];
+        const chartData = pgMetrics.map((m) => ({
+            name: m.label,
+            latency: m.latencyMs,
+            tokens: m.totalTokens ?? 0,
+        }));
+
+        const runPlaygroundTest = async () => {
+            if (!pgUserPrompt.trim()) {
+                message.warning("Isi user prompt terlebih dahulu.");
+                return;
+            }
+            setPgLoading(true);
+            try {
+                const result = await studioService.playgroundTest({
+                    systemPrompt: pgSystemPrompt,
+                    userPrompt: pgUserPrompt.trim(),
+                    temperature: pgTemperature,
+                    maxTokens: pgMaxTokens,
+                });
+                setPgOutput(result.output);
+                setPgLastResult(result);
+                const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                setPgMetrics((prev) => [
+                    ...prev.slice(-9),
+                    { label: stamp, latencyMs: result.latencyMs, totalTokens: result.totalTokens },
+                ]);
+            } catch (e: unknown) {
+                const err = e as { message?: string };
+                message.error(err.message || "Playground test failed");
+            } finally {
+                setPgLoading(false);
+            }
+        };
+
         return (
             <div className="flex h-full gap-4 px-4 pb-4 pt-2">
-                <div className="flex-1 flex flex-col gap-4">
-                     <Card size="small" title={<Text strong className="text-sm">Prompt Editor</Text>} className="flex-1" style={{ ...glass }}>
-                         <TextArea placeholder="Enter system prompt here..." style={{ height: '100%', minHeight: 180, resize: 'none', background: 'transparent', border: 'none' }} />
-                     </Card>
-                     <Card size="small" title={<Text strong className="text-sm">Generation Preview</Text>} className="flex-1" style={{ ...glass }}>
-                         <TextArea placeholder="AI Output will appear here..." style={{ height: '100%', minHeight: 180, resize: 'none', background: 'rgba(0,0,0,0.02)', border: 'none' }} disabled />
-                     </Card>
+                <div className="flex-1 flex flex-col gap-4 min-w-0">
+                    <Alert
+                        type="info"
+                        showIcon
+                        className="!text-xs"
+                        message="Sandbox prompt — tidak memakai sumber notebook (RAG)"
+                        description="Uji system prompt, user prompt, temperature, dan max tokens sebelum dipakai di chat atau guide flow."
+                    />
+                    <Card size="small" title={<Text strong className="text-sm">System Prompt</Text>} className="flex-1" style={{ ...glass }}>
+                        <TextArea
+                            value={pgSystemPrompt}
+                            onChange={(e) => setPgSystemPrompt(e.target.value)}
+                            placeholder="Instruksi perilaku model (system)..."
+                            style={{ height: "100%", minHeight: 120, resize: "none", background: "transparent", border: "none" }}
+                        />
+                    </Card>
+                    <Card size="small" title={<Text strong className="text-sm">User Prompt</Text>} style={{ ...glass }}>
+                        <TextArea
+                            value={pgUserPrompt}
+                            onChange={(e) => setPgUserPrompt(e.target.value)}
+                            placeholder="Pesan pengguna untuk diuji..."
+                            rows={3}
+                            style={{ resize: "none", background: "transparent", border: "none" }}
+                            onPressEnter={(e) => {
+                                if (e.shiftKey) return;
+                                e.preventDefault();
+                                void runPlaygroundTest();
+                            }}
+                        />
+                    </Card>
+                    <Card size="small" title={<Text strong className="text-sm">Generation Preview</Text>} className="flex-1" style={{ ...glass }}>
+                        <Spin spinning={pgLoading}>
+                            <TextArea
+                                value={pgOutput}
+                                readOnly
+                                placeholder="Output model akan muncul di sini..."
+                                style={{ height: "100%", minHeight: 160, resize: "none", background: "rgba(0,0,0,0.02)", border: "none" }}
+                            />
+                        </Spin>
+                    </Card>
                 </div>
-                <div className="w-[300px] flex flex-col gap-4">
-                     <Card size="small" title={<Text strong className="text-sm">Model Config</Text>} style={{ ...glass }}>
-                         <Text className="text-xs mb-1 block">Temperature</Text>
-                         <Input type="range" min={0} max={2} step={0.1} defaultValue={0.7} className="w-full mb-3" />
-                         <Text className="text-xs mb-1 block">Max Tokens</Text>
-                         <Input type="number" defaultValue={2048} className="w-full mb-4" />
-                         <Button type="primary" block style={{ backgroundColor: themeColor, border: 'none' }}>Test Prompt</Button>
-                     </Card>
-                     <Card size="small" title={<Text strong className="text-sm">Performance</Text>} className="flex-1" style={{ ...glass }}>
-                          <div style={{ height: 160, width: '100%' }}>
-                             <ResponsiveContainer>
-                                 <LineChart data={data}>
-                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(150,150,150,0.2)" />
-                                     <XAxis dataKey="name" tick={{fontSize: 10}} axisLine={false} tickLine={false} />
-                                     <YAxis yAxisId="left" tick={{fontSize: 10}} axisLine={false} tickLine={false} width={30} />
-                                     <Line yAxisId="left" type="monotone" dataKey="latency" stroke={themeColor} strokeWidth={3} dot={{r: 4, fill: themeColor}} />
-                                     <RechartsTooltip contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                                 </LineChart>
-                             </ResponsiveContainer>
-                          </div>
-                          <Text type="secondary" className="text-[10px] text-center block mt-2">Latency (ms) over time</Text>
-                     </Card>
+                <div className="w-[300px] flex flex-col gap-4 shrink-0">
+                    <Card size="small" title={<Text strong className="text-sm">Model Config</Text>} style={{ ...glass }}>
+                        <Text className="text-xs mb-1 block">Temperature ({pgTemperature.toFixed(1)})</Text>
+                        <Input
+                            type="range"
+                            min={0}
+                            max={2}
+                            step={0.1}
+                            value={pgTemperature}
+                            onChange={(e) => setPgTemperature(parseFloat(e.target.value))}
+                            className="w-full mb-3"
+                        />
+                        <Text className="text-xs mb-1 block">Max Tokens</Text>
+                        <Input
+                            type="number"
+                            min={64}
+                            max={8192}
+                            value={pgMaxTokens}
+                            onChange={(e) => setPgMaxTokens(Math.min(8192, Math.max(64, Number(e.target.value) || 2048)))}
+                            className="w-full mb-4"
+                        />
+                        <Button
+                            type="primary"
+                            block
+                            loading={pgLoading}
+                            onClick={() => void runPlaygroundTest()}
+                            style={{ backgroundColor: themeColor, border: "none" }}
+                        >
+                            Test Prompt
+                        </Button>
+                    </Card>
+                    {pgLastResult && (
+                        <Card size="small" title={<Text strong className="text-sm">Last Run</Text>} style={{ ...glass }}>
+                            <div className="space-y-1 text-[11px] text-gray-500">
+                                <div><Text type="secondary">Provider:</Text> {pgLastResult.provider}</div>
+                                <div><Text type="secondary">Model:</Text> {pgLastResult.model}</div>
+                                <div><Text type="secondary">Latency:</Text> {pgLastResult.latencyMs} ms</div>
+                                {pgLastResult.totalTokens != null && (
+                                    <div><Text type="secondary">Tokens:</Text> {pgLastResult.totalTokens}</div>
+                                )}
+                            </div>
+                        </Card>
+                    )}
+                    <Card size="small" title={<Text strong className="text-sm">Performance</Text>} className="flex-1" style={{ ...glass }}>
+                        {chartData.length === 0 ? (
+                            <div className="h-[160px] flex items-center justify-center">
+                                <Text type="secondary" className="text-[11px]">Jalankan Test Prompt untuk melihat latency</Text>
+                            </div>
+                        ) : (
+                            <>
+                                <div style={{ height: 160, width: "100%" }}>
+                                    <ResponsiveContainer>
+                                        <LineChart data={chartData}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(150,150,150,0.2)" />
+                                            <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                                            <YAxis yAxisId="left" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={36} />
+                                            <Line yAxisId="left" type="monotone" dataKey="latency" stroke={themeColor} strokeWidth={2} dot={{ r: 3, fill: themeColor }} />
+                                            <RechartsTooltip contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <Text type="secondary" className="text-[10px] text-center block mt-2">
+                                    Latency (ms) — {chartData.length} run terakhir
+                                </Text>
+                            </>
+                        )}
+                    </Card>
                 </div>
             </div>
         );
@@ -901,15 +993,20 @@ export default function AIStudioPage() {
                                     <Card
                                         size="small"
                                         title={
-                                            <span style={{
-                                                background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
-                                                WebkitBackgroundClip: 'text',
-                                                WebkitTextFillColor: 'transparent',
-                                                fontWeight: 600,
-                                                fontSize: '14px'
-                                            }}>
-                                                Sources
-                                            </span>
+                                            <Space size={6}>
+                                                <span style={{
+                                                    background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
+                                                    WebkitBackgroundClip: 'text',
+                                                    WebkitTextFillColor: 'transparent',
+                                                    fontWeight: 600,
+                                                    fontSize: '14px'
+                                                }}>
+                                                    Sources
+                                                </span>
+                                                {sourceStats.inProgress > 0 && (
+                                                    <Badge count={sourceStats.inProgress} size="small" color={themeColor} title="Sedang diindeks" />
+                                                )}
+                                            </Space>
                                         }
                                         extra={
                                             <Space size={2}>
@@ -942,6 +1039,7 @@ export default function AIStudioPage() {
                                             body: { padding: 0, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }
                                         }}
                                     >
+                                        {renderSourceSummary()}
                                         {renderSourceList()}
                                     </Card>
                                 )}
@@ -1034,7 +1132,7 @@ export default function AIStudioPage() {
                                             notebookId={activeNotebook?.id ?? null}
                                             themeColor={themeColor}
                                             userId={userId || ""}
-                                            sourcesReady={sourcesIndexed}
+                                            sourcesReady={sourceStats.anyIndexed}
                                         />
                                     ),
                                 },
@@ -1064,20 +1162,6 @@ export default function AIStudioPage() {
                                             AI Assistant
                                         </span>
                                     }
-                                    extra={
-                                        activeNotebook &&
-                                        (conversationId || (chatMode === "guided" && guidedFlow)) ? (
-                                            <Button
-                                                type="text"
-                                                size="small"
-                                                className="text-[10px] text-gray-400 hover:!text-[color:var(--theme-color)]"
-                                                onClick={() => void handleNewChat()}
-                                                loading={isChatting}
-                                            >
-                                                New Chat
-                                            </Button>
-                                        ) : null
-                                    }
                                     style={{
                                         display: 'flex', flexDirection: 'column', height: '100%',
                                         background: 'transparent', boxShadow: 'none', border: 'none'
@@ -1089,10 +1173,39 @@ export default function AIStudioPage() {
                                             borderBottom: '1px solid rgba(var(--theme-color-rgb,139,92,246),0.2)',
                                             minHeight: 40, padding: '0 12px'
                                         },
-                                        body: { padding: 0, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }
+                                        body: { padding: 0, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }
                                     }}
                                 >
-                                    {renderChatPanel()}
+                                    {activeNotebook ? (
+                                        <AIAssistantPanel
+                                            themeColor={themeColor}
+                                            notebookName={activeNotebook.name}
+                                            sources={sources}
+                                            sourceStats={sourceStats}
+                                            publishedGuideFlow={publishedGuideFlow}
+                                            chatHistory={chatHistory}
+                                            conversationId={conversationId}
+                                            isChatting={isChatting}
+                                            chatMode={chatMode}
+                                            guidedFlow={guidedFlow}
+                                            waitingInput={waitingInput}
+                                            suggestedPrompts={suggestedPrompts}
+                                            conversations={conversations}
+                                            loadingConversations={loadingConversations}
+                                            onSend={(text) => void handleChatSend(text)}
+                                            onNewChat={() => void handleNewChat()}
+                                            onSwitchToFree={switchToFreeChat}
+                                            onStartGuided={() => void startPublishedGuidedFlow()}
+                                            onSetChatMode={setChatMode}
+                                            onResumeConversation={(id) => void resumeConversation(id)}
+                                        />
+                                    ) : (
+                                        <div className="flex items-center justify-center h-48 opacity-60 p-4">
+                                            <Text type="secondary" className="text-xs text-center">
+                                                Pilih notebook untuk memulai chat RAG.
+                                            </Text>
+                                        </div>
+                                    )}
                                 </Card>
                             </motion.div>
                         )}

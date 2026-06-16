@@ -194,16 +194,40 @@ Answer:`;
             return `Document: ${filename} (too large to extract inline)`;
         }
 
+        const localText = await this.extractLocalDocumentText(buffer, ext);
+        if (localText?.trim()) {
+            this.logger.log(`extractDocumentText via local parser (${ext || mime})`);
+            return localText.trim();
+        }
+
         let resolvedMime = mimeType || 'application/octet-stream';
         if (resolvedMime === 'application/octet-stream') {
             if (ext === 'pdf') resolvedMime = 'application/pdf';
-            else if (['jpg', 'jpeg'].includes(ext)) resolvedMime = 'image/jpeg';
+            else if (ext === 'pptx') {
+                resolvedMime = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+            } else if (ext === 'docx') {
+                resolvedMime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+            } else if (['jpg', 'jpeg'].includes(ext)) resolvedMime = 'image/jpeg';
             else if (ext === 'png') resolvedMime = 'image/png';
             else if (ext === 'webp') resolvedMime = 'image/webp';
         }
 
         const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
+        const apiKey = this.configService.get<string>('GOOGLE_API_KEY')?.trim();
+        const extractPrompt =
+            'Extract and return the full textual content of this document for search indexing. ' +
+            'Return plain text only, no markdown fences. Preserve important facts, numbers, and headings.';
+
         if (!projectId) {
+            if (apiKey) {
+                const viaGoogle = await this.extractDocumentTextViaGoogleAi(
+                    apiKey,
+                    buffer,
+                    resolvedMime,
+                    extractPrompt,
+                );
+                if (viaGoogle?.trim()) return viaGoogle.trim();
+            }
             return `Document: ${filename}`;
         }
 
@@ -215,10 +239,6 @@ Answer:`;
             const location = this.configService.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
             const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/gemini-2.5-pro:generateContent`;
 
-            const prompt =
-                'Extract and return the full textual content of this document for search indexing. ' +
-                'Return plain text only, no markdown fences. Preserve important facts, numbers, and headings.';
-
             const apiResponse = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -229,7 +249,7 @@ Answer:`;
                     contents: [{
                         role: 'user',
                         parts: [
-                            { text: prompt },
+                            { text: extractPrompt },
                             { inlineData: { mimeType: resolvedMime, data: buffer.toString('base64') } },
                         ],
                     }],
@@ -238,6 +258,15 @@ Answer:`;
 
             if (!apiResponse.ok) {
                 this.logger.warn(`extractDocumentText Vertex error: ${apiResponse.status}`);
+                if (apiKey) {
+                    const viaGoogle = await this.extractDocumentTextViaGoogleAi(
+                        apiKey,
+                        buffer,
+                        resolvedMime,
+                        extractPrompt,
+                    );
+                    if (viaGoogle?.trim()) return viaGoogle.trim();
+                }
                 return `Document: ${filename}`;
             }
 
@@ -246,8 +275,142 @@ Answer:`;
             return (text || `Document: ${filename}`).trim();
         } catch (e: any) {
             this.logger.warn(`extractDocumentText failed: ${e?.message}`);
+            if (apiKey) {
+                const viaGoogle = await this.extractDocumentTextViaGoogleAi(
+                    apiKey,
+                    buffer,
+                    resolvedMime,
+                    extractPrompt,
+                );
+                if (viaGoogle?.trim()) return viaGoogle.trim();
+            }
             return `Document: ${filename}`;
         }
+    }
+
+    /** Google AI Studio multimodal extract (PDF, PPTX, images) without GCP project. */
+    private async extractDocumentTextViaGoogleAi(
+        apiKey: string,
+        buffer: Buffer,
+        mimeType: string,
+        prompt: string,
+    ): Promise<string | null> {
+        const models = [
+            this.configService.get<string>('GOOGLE_GENERATIVE_MODEL')?.trim(),
+            'gemini-2.5-flash',
+            'gemini-flash-latest',
+            'gemini-2.0-flash',
+        ].filter(Boolean) as string[];
+        const uniqueModels = [...new Set(models)];
+
+        for (const model of uniqueModels) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            role: 'user',
+                            parts: [
+                                { text: prompt },
+                                { inlineData: { mimeType, data: buffer.toString('base64') } },
+                            ],
+                        }],
+                    }),
+                });
+                if (!response.ok) {
+                    const errBody = await response.text().catch(() => '');
+                    this.logger.warn(
+                        `extractDocumentTextViaGoogleAi (${model}): HTTP ${response.status} ${errBody.slice(0, 200)}`,
+                    );
+                    if ([404, 429, 503].includes(response.status)) continue;
+                    continue;
+                }
+                const data = (await response.json()) as {
+                    candidates?: { content?: { parts?: { text?: string }[] } }[];
+                };
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text?.trim()) {
+                    this.logger.log(`extractDocumentText via Google AI (${model})`);
+                    return text.trim();
+                }
+            } catch (e: unknown) {
+                this.logger.warn(
+                    `extractDocumentTextViaGoogleAi (${model}): ${e instanceof Error ? e.message : e}`,
+                );
+            }
+        }
+        return null;
+    }
+
+    /** Offline text extraction for PDF / Office Open XML (no API key required). */
+    private async extractLocalDocumentText(buffer: Buffer, ext: string): Promise<string | null> {
+        try {
+            if (ext === 'pdf') {
+                const { PDFParse } = require('pdf-parse') as typeof import('pdf-parse');
+                const parser = new PDFParse({ data: buffer });
+                try {
+                    const result = await parser.getText();
+                    return result.text?.trim() || null;
+                } finally {
+                    await parser.destroy().catch(() => undefined);
+                }
+            }
+
+            if (ext === 'pptx' || ext === 'docx') {
+                const JSZip = require('jszip') as typeof import('jszip');
+                const zip = await JSZip.loadAsync(buffer);
+
+                if (ext === 'pptx') {
+                    const slideNames = Object.keys(zip.files)
+                        .filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+                        .sort((a, b) => {
+                            const na = parseInt(a.match(/slide(\d+)/)?.[1] || '0', 10);
+                            const nb = parseInt(b.match(/slide(\d+)/)?.[1] || '0', 10);
+                            return na - nb;
+                        });
+                    const parts: string[] = [];
+                    for (const name of slideNames) {
+                        const file = zip.file(name);
+                        if (!file) continue;
+                        const xml = await file.async('string');
+                        const text = this.extractXmlPlainText(xml);
+                        if (text) parts.push(text);
+                    }
+                    return parts.join('\n\n') || null;
+                }
+
+                const docFile = zip.file('word/document.xml');
+                if (!docFile) return null;
+                const xml = await docFile.async('string');
+                return this.extractXmlPlainText(xml) || null;
+            }
+        } catch (e: unknown) {
+            this.logger.warn(
+                `extractLocalDocumentText (${ext}): ${e instanceof Error ? e.message : e}`,
+            );
+        }
+        return null;
+    }
+
+    private extractXmlPlainText(xml: string): string {
+        return xml
+            .replace(/<w:tab\/>/g, '\t')
+            .replace(/<w:br[^>]*\/>/g, '\n')
+            .replace(/<a:br[^>]*\/>/g, '\n')
+            .replace(/<a:p[^>]*>/g, '\n')
+            .replace(/<\/a:p>/g, '\n')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+            .replace(/[ \t]+\n/g, '\n')
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/[ \t]{2,}/g, ' ')
+            .trim();
     }
 
     async semanticSearch(query: string, limit: number = 10): Promise<{ id: string; filename: string; score: number }[]> {

@@ -3,14 +3,18 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { StudioService } from './studio.service';
 import {
     defaultGuideFlowDefinition,
+    defaultUmkmGuideFlowDefinition,
+    getGuideFlowTemplate,
+    GUIDE_FLOW_TEMPLATES,
     parseGuideFlowDefinition,
     safeParseGuideFlowDefinition,
     validateGuideFlowGraph,
     type GuideFlowDefinition,
+    type GuideFlowTemplateKind,
 } from './guide-flow.definition';
 import {
     getNode,
-    isUmkmSalesListenNode,
+    isUmkmFlow,
     resolveListenTarget,
     resolveUmkmListenTarget,
     substituteInstruction,
@@ -23,8 +27,8 @@ import {
 import { DremioService } from '../dremio/dremio.service';
 import { StudioDbContextService } from './studio-db-context.service';
 import { StudioUmkmService } from './studio-umkm.service';
-import { defaultUmkmGuideFlowDefinition } from './guide-flow.definition';
 import { formatUnknownUmkmCommand } from './studio-umkm.util';
+import { assertXStateStateCoverage } from './guide-flow.xstate-factory';
 
 @Injectable()
 export class GuideFlowService {
@@ -62,10 +66,20 @@ export class GuideFlowService {
         return data;
     }
 
-    async createFlow(notebookId: string, name: string, definition?: unknown): Promise<any> {
-        const def = definition
-            ? parseGuideFlowDefinition(definition)
-            : defaultGuideFlowDefinition();
+    async createFlow(
+        notebookId: string,
+        name: string,
+        definition?: unknown,
+        template?: GuideFlowTemplateKind,
+    ): Promise<any> {
+        let def: GuideFlowDefinition;
+        if (definition) {
+            def = parseGuideFlowDefinition(definition);
+        } else if (template) {
+            def = getGuideFlowTemplate(template);
+        } else {
+            def = defaultGuideFlowDefinition();
+        }
         validateGuideFlowGraph(def);
         const { data, error } = await this.admin()
             .from('studio_guide_flows')
@@ -79,6 +93,87 @@ export class GuideFlowService {
             .single();
         if (error) throw error;
         return data;
+    }
+
+    listTemplates(): { kind: string; label: string; description: string }[] {
+        return Object.entries(GUIDE_FLOW_TEMPLATES).map(([kind, t]) => ({
+            kind,
+            label: t.label,
+            description: t.description,
+        }));
+    }
+
+    validateDefinition(raw: unknown): {
+        valid: boolean;
+        errors: string[];
+        warnings: string[];
+        nodeCount: number;
+        flowKind?: string;
+        xstateCoverage: boolean;
+    } {
+        const parsed = safeParseGuideFlowDefinition(raw);
+        if (!parsed.success) {
+            return {
+                valid: false,
+                errors: parsed.error.issues.map((i) => {
+                    const path = i.path.length ? `${i.path.join('.')}: ` : '';
+                    return `${path}${i.message}`;
+                }),
+                warnings: [],
+                nodeCount: 0,
+                xstateCoverage: false,
+            };
+        }
+        const def = parsed.data;
+        const errors: string[] = [];
+        try {
+            validateGuideFlowGraph(def);
+        } catch (e) {
+            errors.push(e instanceof Error ? e.message : String(e));
+        }
+        if (errors.length) {
+            return {
+                valid: false,
+                errors,
+                warnings: [],
+                nodeCount: def.nodes.length,
+                flowKind: def.meta?.flowKind,
+                xstateCoverage: false,
+            };
+        }
+
+        const warnings: string[] = [];
+        const xstateCoverage = assertXStateStateCoverage(def);
+        if (!xstateCoverage) {
+            warnings.push('XState coverage check failed — verify all transition targets exist');
+        }
+
+        for (const n of def.nodes) {
+            if (n.type === 'listen' && !n.transitions.some((t) => t.when === 'default')) {
+                warnings.push(`Listen node "${n.id}" should include a default transition`);
+            }
+        }
+
+        if (!def.nodes.some((n) => n.type === 'end')) {
+            warnings.push('No end node — add one so users can exit the flow gracefully');
+        }
+
+        const fk = def.meta?.flowKind;
+        if (fk === 'rag_qa' && !def.nodes.some((n) => n.type === 'rag')) {
+            warnings.push('RAG Q&A template should include at least one rag node');
+        }
+        if (fk === 'umkm' && !def.nodes.some((n) => n.type === 'action')) {
+            warnings.push('UMKM flow should include action nodes (record_sale, sales_report, …)');
+        }
+
+        return {
+            valid: true,
+            errors: [],
+            warnings,
+            nodeCount: def.nodes.length,
+            flowKind: fk,
+            xstateCoverage,
+        };
     }
 
     async updateFlow(
@@ -351,7 +446,7 @@ export class GuideFlowService {
                 case 'listen':
                     if (userJust != null) {
                         lastResolvedListenNodeId = nodeId;
-                        const next = isUmkmSalesListenNode(node)
+                        const next = isUmkmFlow(def)
                             ? resolveUmkmListenTarget(node, userJust)
                             : resolveListenTarget(node, userJust);
                         await this.recordEvent(conversation.id, flowRowId, nodeId, next, 'listen', userJust);

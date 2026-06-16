@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as Minio from 'minio';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -213,7 +213,11 @@ export class StudioService {
                 file_size: file.size,
                 s3_key: s3Key,
                 parse_status: 'pending',
+                parse_stage: 'queued',
                 parse_progress: 0,
+                parse_error: null,
+                embed_total: 0,
+                embed_done: 0,
                 chunk_count: 0,
             })
             .select()
@@ -265,7 +269,11 @@ export class StudioService {
                 file_size: mediaRecord.size || 0,
                 s3_key: fileKey,
                 parse_status: 'pending',
+                parse_stage: 'queued',
                 parse_progress: 0,
+                parse_error: null,
+                embed_total: 0,
+                embed_done: 0,
                 chunk_count: 0,
             })
             .select()
@@ -489,7 +497,14 @@ export class StudioService {
 
         await this.appendStudioMessage(conversation.id, 'user', question);
 
-        const { answer, references, rawChunks } = await this.invokeRagQuery(notebookId, conversation.id, question);
+        const conversationLines = await this.getRecentConversationLines(conversation.id, 12);
+        const qu = await this.understandUserQuery(question, { conversationLines });
+        const { answer, references, rawChunks } = await this.invokeRagQuery(
+            notebookId,
+            conversation.id,
+            question,
+            { queryUnderstanding: qu },
+        );
         await this.appendStudioMessage(conversation.id, 'assistant', answer, rawChunks);
 
         // Update conversation title if first message
@@ -565,6 +580,33 @@ export class StudioService {
         ].join('\n');
 
         return this.studioGenerateText(reportPrompt);
+    }
+
+    /** UC-18: sandbox prompt test without notebook RAG context. */
+    async playgroundTest(params: {
+        systemPrompt?: string;
+        userPrompt: string;
+        temperature?: number;
+        maxTokens?: number;
+    }) {
+        const userPrompt = params.userPrompt?.trim();
+        if (!userPrompt) {
+            throw new BadRequestException('userPrompt is required');
+        }
+        if (this.useAnthropicStudio()) {
+            return this.claudeAiService.playgroundGenerate({
+                systemPrompt: params.systemPrompt,
+                userPrompt,
+                temperature: params.temperature,
+                maxOutputTokens: params.maxTokens,
+            });
+        }
+        return this.vertexAiService.playgroundGenerate({
+            systemPrompt: params.systemPrompt,
+            userPrompt,
+            temperature: params.temperature,
+            maxOutputTokens: params.maxTokens,
+        });
     }
 
     // ── Helpers ──────────────────────────────────────────────────────

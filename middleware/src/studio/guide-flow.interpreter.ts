@@ -54,6 +54,15 @@ export function resolveListenTarget(node: Extract<GuideFlowNode, { type: 'listen
     throw new Error(`listen node "${node.id}" has no default transition`);
 }
 
+/** True when the flow definition is UMKM sales (meta.flowKind or legacy do_list branch). */
+export function isUmkmFlow(def: GuideFlowDefinition): boolean {
+    if (def.meta?.flowKind === 'umkm') return true;
+    if (def.meta?.flowKind === 'rag_qa' || def.meta?.flowKind === 'custom') return false;
+    return def.nodes.some(
+        (n) => n.type === 'listen' && n.transitions.some((t) => t.target === 'do_list'),
+    );
+}
+
 /** True when listen node belongs to the UMKM sales guide flow (has do_list branch). */
 export function isUmkmSalesListenNode(node: Extract<GuideFlowNode, { type: 'listen' }>): boolean {
     return node.transitions.some((t) => t.target === 'do_list');

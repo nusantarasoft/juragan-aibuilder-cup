@@ -10,7 +10,10 @@
     "start:prod": "node dist/main.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:rag-eval": "vitest run src/studio/studio-rag-eval.integration.spec.ts"
+    "test:studio": "vitest run src/studio",
+    "test:studio:integration": "vitest run src/studio/studio.graphql.integration.spec.ts",
+    "test:rag-eval": "vitest run src/studio/studio-rag-eval.integration.spec.ts",
+    "test:studio:all-integration": "vitest run src/studio/studio.graphql.integration.spec.ts src/studio/studio-rag-eval.integration.spec.ts"
   },
   "dependencies": {
     "@google-cloud/vertexai": "^1.9.0",
@@ -32,8 +35,10 @@
     "graphql-scalars": "^1.25.0",
     "graphql-type-json": "^0.3.2",
     "graphql-upload-ts": "^2.1.3",
+    "jszip": "^3.10.1",
     "minio": "^8.0.0",
     "nodemailer": "^6.9.0",
+    "pdf-parse": "^2.4.5",
     "pdf2pic": "^3.1.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
@@ -49,6 +54,7 @@
     "@types/fluent-ffmpeg": "^2.1.24",
     "@types/node": "^22.0.0",
     "@types/nodemailer": "^6.4.0",
+    "@types/pdf-parse": "^1.1.5",
     "@types/sharp": "^0.31.1",
     "typescript": "^5.5.4",
     "vitest": "^4.1.5"

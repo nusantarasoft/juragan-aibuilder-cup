@@ -43,6 +43,10 @@ export interface StudioSource {
     file_type: string;
     file_size: number;
     parse_status: 'pending' | 'parsing' | 'done' | 'error';
+    parse_stage?: 'queued' | 'extracting' | 'chunking' | 'embedding' | 'done' | 'error' | string;
+    parse_error?: string | null;
+    embed_total?: number;
+    embed_done?: number;
     parse_progress: number;
     chunk_count: number;
     created_at: string;
@@ -53,6 +57,7 @@ export interface StudioConversation {
     notebook_id: string;
     title: string;
     created_at: string;
+    updated_at?: string;
     messages?: StudioMessage[];
 }
 
@@ -86,6 +91,35 @@ export interface GuidedTurnResponse {
     replies: { content: string; references?: { content: string; docName: string; score: number }[] }[];
     waitingForInput: boolean;
     currentNodeId: string | null;
+}
+
+export interface StudioPlaygroundResult {
+    output: string;
+    latencyMs: number;
+    provider: string;
+    model: string;
+    inputChars: number;
+    outputChars: number;
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+}
+
+export type GuideFlowTemplateKind = 'rag_qa' | 'umkm' | 'blank';
+
+export interface GuideFlowTemplateInfo {
+    kind: GuideFlowTemplateKind;
+    label: string;
+    description: string;
+}
+
+export interface GuideFlowValidationResult {
+    valid: boolean;
+    errors: string[];
+    warnings: string[];
+    nodeCount: number;
+    flowKind?: string;
+    xstateCoverage: boolean;
 }
 
 export const studioService = {
@@ -216,6 +250,25 @@ export const studioService = {
         return data.studioGenerateReport;
     },
 
+    async playgroundTest(params: {
+        systemPrompt?: string;
+        userPrompt: string;
+        temperature?: number;
+        maxTokens?: number;
+    }): Promise<StudioPlaygroundResult> {
+        const data = await graphqlRequest(`
+            mutation($userPrompt: String!, $systemPrompt: String, $temperature: Float, $maxTokens: Float) {
+                studioPlaygroundTest(
+                    userPrompt: $userPrompt
+                    systemPrompt: $systemPrompt
+                    temperature: $temperature
+                    maxTokens: $maxTokens
+                )
+            }
+        `, params);
+        return data.studioPlaygroundTest;
+    },
+
     // ── Guide flows ───────────────────────────
 
     async getGuideFlows(notebookId: string): Promise<StudioGuideFlow[]> {
@@ -245,12 +298,44 @@ export const studioService = {
         return data.studioPublishedGuideFlow ?? null;
     },
 
-    async createGuideFlow(notebookId: string, name: string, definition?: Record<string, unknown>): Promise<StudioGuideFlow> {
+    async getGuideFlowTemplates(): Promise<GuideFlowTemplateInfo[]> {
         const data = await graphqlRequest(`
-            mutation($notebookId: String!, $name: String!, $definition: JSONObject) {
-                createStudioGuideFlow(notebookId: $notebookId, name: $name, definition: $definition)
+            query {
+                studioGuideFlowTemplates
             }
-        `, { notebookId, name, definition: definition ?? null });
+        `);
+        return data.studioGuideFlowTemplates || [];
+    },
+
+    async validateGuideFlow(definition: Record<string, unknown>): Promise<GuideFlowValidationResult> {
+        const data = await graphqlRequest(`
+            query($definition: JSONObject!) {
+                studioValidateGuideFlow(definition: $definition)
+            }
+        `, { definition });
+        return data.studioValidateGuideFlow;
+    },
+
+    async createGuideFlow(
+        notebookId: string,
+        name: string,
+        options?: { definition?: Record<string, unknown>; template?: GuideFlowTemplateKind },
+    ): Promise<StudioGuideFlow> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!, $name: String!, $definition: JSONObject, $template: String) {
+                createStudioGuideFlow(
+                    notebookId: $notebookId
+                    name: $name
+                    definition: $definition
+                    template: $template
+                )
+            }
+        `, {
+            notebookId,
+            name,
+            definition: options?.definition ?? null,
+            template: options?.template ?? null,
+        });
         return data.createStudioGuideFlow;
     },
 

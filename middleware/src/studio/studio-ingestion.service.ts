@@ -5,6 +5,8 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { RagService } from '../rag/rag.service';
 import { chunkText } from './studio-chunk.util';
 
+type IngestStage = 'queued' | 'extracting' | 'chunking' | 'embedding' | 'done' | 'error';
+
 @Injectable()
 export class StudioIngestionService {
     private readonly logger = new Logger(StudioIngestionService.name);
@@ -41,6 +43,33 @@ export class StudioIngestionService {
         return this.supabaseService.getAdminClient();
     }
 
+    private async patchSource(
+        sourceId: string,
+        patch: {
+            parse_status?: string;
+            parse_stage?: IngestStage;
+            parse_progress?: number;
+            parse_error?: string | null;
+            embed_total?: number;
+            embed_done?: number;
+            chunk_count?: number;
+        },
+    ) {
+        await this.admin()
+            .from('studio_notebook_sources')
+            .update({ ...patch, updated_at: new Date() })
+            .eq('id', sourceId);
+    }
+
+    private isWeakExtractedText(text: string, filename: string): boolean {
+        const t = text.trim();
+        if (!t) return true;
+        if (t.length < 40) return true;
+        const placeholder = new RegExp(`^Document:\\s*${filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i');
+        if (placeholder.test(t)) return true;
+        return false;
+    }
+
     /** Parse, chunk, and embed a notebook source (async-safe; logs errors on source row). */
     async ingestSource(sourceId: string): Promise<void> {
         const { data: source, error } = await this.admin()
@@ -54,10 +83,15 @@ export class StudioIngestionService {
             return;
         }
 
-        await this.admin()
-            .from('studio_notebook_sources')
-            .update({ parse_status: 'parsing', parse_progress: 0.1, updated_at: new Date() })
-            .eq('id', sourceId);
+        await this.patchSource(sourceId, {
+            parse_status: 'parsing',
+            parse_stage: 'extracting',
+            parse_progress: 0.05,
+            parse_error: null,
+            embed_total: 0,
+            embed_done: 0,
+            chunk_count: 0,
+        });
 
         try {
             await this.admin().from('studio_source_chunks').delete().eq('source_id', sourceId);
@@ -87,10 +121,28 @@ export class StudioIngestionService {
                 throw new Error('No extractable text from source');
             }
 
+            if (this.isWeakExtractedText(text, source.filename)) {
+                throw new Error(
+                    'Ekstraksi teks gagal (hanya placeholder). Untuk PPTX/PDF pastikan GOOGLE_API_KEY aktif, lalu Reindex.',
+                );
+            }
+
+            await this.patchSource(sourceId, {
+                parse_stage: 'chunking',
+                parse_progress: 0.15,
+            });
+
             const chunks = chunkText(text);
             if (chunks.length === 0) {
                 throw new Error('Chunking produced no segments');
             }
+
+            await this.patchSource(sourceId, {
+                parse_stage: 'embedding',
+                parse_progress: 0.2,
+                embed_total: chunks.length,
+                embed_done: 0,
+            });
 
             let embedded = 0;
             for (let i = 0; i < chunks.length; i++) {
@@ -112,42 +164,38 @@ export class StudioIngestionService {
                 });
                 if (insErr) throw insErr;
                 embedded++;
-                await this.admin()
-                    .from('studio_notebook_sources')
-                    .update({
-                        parse_progress: Math.min(0.95, 0.2 + (0.75 * (i + 1)) / chunks.length),
-                        updated_at: new Date(),
-                    })
-                    .eq('id', sourceId);
+                await this.patchSource(sourceId, {
+                    parse_stage: 'embedding',
+                    embed_done: embedded,
+                    parse_progress: Math.min(0.95, 0.2 + (0.75 * (i + 1)) / chunks.length),
+                });
             }
 
             if (embedded === 0) {
                 throw new Error(
-                    'Failed to embed any chunks (set GOOGLE_CLOUD_PROJECT for Vertex, or GOOGLE_API_KEY + EMBEDDING_PROVIDER=google_ai and apply studio_embedding_google_ai_768.sql)',
+                    'Vektorisasi gagal: tidak ada chunk ter-embed (set GOOGLE_CLOUD_PROJECT atau GOOGLE_API_KEY + EMBEDDING_PROVIDER=google_ai)',
                 );
             }
 
-            await this.admin()
-                .from('studio_notebook_sources')
-                .update({
-                    parse_status: 'done',
-                    parse_progress: 1,
-                    chunk_count: embedded,
-                    updated_at: new Date(),
-                })
-                .eq('id', sourceId);
+            await this.patchSource(sourceId, {
+                parse_status: 'done',
+                parse_stage: 'done',
+                parse_progress: 1,
+                chunk_count: embedded,
+                embed_done: embedded,
+                parse_error: null,
+            });
 
             this.logger.log(`Ingested source ${sourceId}: ${embedded} chunks`);
-        } catch (e: any) {
-            this.logger.error(`ingestSource failed for ${sourceId}: ${e?.message ?? e}`);
-            await this.admin()
-                .from('studio_notebook_sources')
-                .update({
-                    parse_status: 'error',
-                    parse_progress: 0,
-                    updated_at: new Date(),
-                })
-                .eq('id', sourceId);
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            this.logger.error(`ingestSource failed for ${sourceId}: ${msg}`);
+            await this.patchSource(sourceId, {
+                parse_status: 'error',
+                parse_stage: 'error',
+                parse_progress: 0,
+                parse_error: msg.slice(0, 2000),
+            });
         }
     }
 

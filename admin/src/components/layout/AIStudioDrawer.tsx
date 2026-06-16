@@ -18,6 +18,16 @@ import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useAuth } from "@/context/AuthContext";
 import { AnimatePresence, motion } from "framer-motion";
+import {
+    getSourceProgressPercent,
+    getSourceStageLabel,
+    getSourceStatusDetail,
+    getSourceStatusTag,
+    isSourceInProgress,
+    seedSourceStatusMap,
+    summarizeSources,
+    trackSourceStatusChanges,
+} from "@/app/admin/ai-studio/studioSourceStatus";
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -78,6 +88,9 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
 
     // Poll
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const prevSourceStatusRef = useRef<Map<string, string>>(new Map());
+    const pollNotebookIdRef = useRef<string | null>(null);
+    const sourceStats = summarizeSources(sources);
 
     const loadNotebooks = useCallback(async () => {
         if (!userId) {
@@ -97,29 +110,80 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
     useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
 
     const selectNotebook = async (nb: StudioNotebook) => {
-        setActiveNotebook(nb); setChatHistory([]); setConversationId(undefined); setShowReferences(null);
-        loadSourceStatus(nb.id);
+        if (pollRef.current) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+        }
+        prevSourceStatusRef.current = new Map();
+        pollNotebookIdRef.current = nb.id;
+        setActiveNotebook(nb);
+        setChatHistory([]);
+        setConversationId(undefined);
+        setShowReferences(null);
+        await loadSourceStatus(nb.id, true);
     };
 
-    const loadSourceStatus = async (notebookId: string) => {
-        setLoadingSources(true);
-        try {
-            const list = await studioService.getSourceStatus(notebookId);
+    const notifySourceChange = useCallback(
+        (type: 'success' | 'error' | 'warning', text: string) => {
+            if (type === 'success') message.success(text);
+            else if (type === 'error') message.error(text);
+            else message.warning(text);
+        },
+        [],
+    );
+
+    const applySourcesUpdate = useCallback(
+        (list: StudioSource[], options?: { seedOnly?: boolean }) => {
+            if (options?.seedOnly) {
+                prevSourceStatusRef.current = seedSourceStatusMap(list);
+            } else {
+                prevSourceStatusRef.current = trackSourceStatusChanges(
+                    prevSourceStatusRef.current,
+                    list,
+                    notifySourceChange,
+                );
+            }
             setSources(list);
-            if (list.some((s: StudioSource) => s.parse_status === 'parsing' || s.parse_status === 'pending')) startPolling(notebookId);
-        } catch { } finally { setLoadingSources(false); }
-    };
 
-    const startPolling = (notebookId: string) => {
-        if (pollRef.current) clearInterval(pollRef.current);
-        pollRef.current = setInterval(async () => {
+            const notebookId = pollNotebookIdRef.current;
+            const stillIndexing = list.some(isSourceInProgress);
+            if (notebookId && stillIndexing && !pollRef.current) {
+                pollRef.current = setInterval(async () => {
+                    try {
+                        const updated = await studioService.getSourceStatus(notebookId);
+                        prevSourceStatusRef.current = trackSourceStatusChanges(
+                            prevSourceStatusRef.current,
+                            updated,
+                            notifySourceChange,
+                        );
+                        setSources(updated);
+                        if (!updated.some(isSourceInProgress) && pollRef.current) {
+                            clearInterval(pollRef.current);
+                            pollRef.current = null;
+                        }
+                    } catch { /* ignore */ }
+                }, 3000);
+            } else if (!stillIndexing && pollRef.current) {
+                clearInterval(pollRef.current);
+                pollRef.current = null;
+            }
+        },
+        [notifySourceChange],
+    );
+
+    const loadSourceStatus = useCallback(
+        async (notebookId: string, seedOnly = false) => {
+            pollNotebookIdRef.current = notebookId;
+            setLoadingSources(true);
             try {
                 const list = await studioService.getSourceStatus(notebookId);
-                setSources(list);
-                if (!list.some((s: StudioSource) => s.parse_status === 'parsing') && pollRef.current) clearInterval(pollRef.current);
-            } catch { }
-        }, 5000);
-    };
+                applySourcesUpdate(list, { seedOnly });
+            } catch { /* ignore */ } finally {
+                setLoadingSources(false);
+            }
+        },
+        [applySourcesUpdate],
+    );
 
     const handleCreateNotebook = async () => {
         if (!newNotebookName.trim()) return;
@@ -151,7 +215,7 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
     const handleAddMedia = async (mediaId: string) => {
         if (!activeNotebook) return;
         setAddingMedia(prev => new Set(prev).add(mediaId));
-        try { await studioService.addMediaToNotebook(activeNotebook.id, mediaId); message.success("Source added"); loadSourceStatus(activeNotebook.id); startPolling(activeNotebook.id); }
+        try { await studioService.addMediaToNotebook(activeNotebook.id, mediaId); message.success("Sumber ditambahkan — indeksasi dimulai"); await loadSourceStatus(activeNotebook.id); }
         catch (e: any) { message.error(e.message || "Failed"); }
         finally { setAddingMedia(prev => { const s = new Set(prev); s.delete(mediaId); return s; }); }
     };
@@ -159,7 +223,7 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
     const handleUploadFile: UploadProps['customRequest'] = async (options) => {
         if (!activeNotebook) return;
         const { file, onSuccess, onError } = options as any;
-        try { await studioService.uploadFileToNotebook(activeNotebook.id, file); onSuccess?.({}, file); message.success(`"${(file as File).name}" uploaded`); loadSourceStatus(activeNotebook.id); startPolling(activeNotebook.id); }
+        try { await studioService.uploadFileToNotebook(activeNotebook.id, file); onSuccess?.({}, file); message.success(`"${(file as File).name}" diupload — indeksasi dimulai`); await loadSourceStatus(activeNotebook.id); }
         catch (e: any) { onError?.(e); message.error(e.message || "Upload failed"); }
     };
 
@@ -171,8 +235,8 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
 
     const handleChatSend = async () => {
         if (!chatInput.trim() || !activeNotebook) return;
-        const indexed = sources.some(s => s.parse_status === 'done' && (s.chunk_count ?? 0) > 0);
-        if (!indexed) { message.warning("Sources not indexed yet."); return; }
+        const indexed = sourceStats.anyIndexed;
+        if (!indexed) { message.warning("Sumber belum terindeks."); return; }
         const userMsg = { role: 'user' as const, content: chatInput, timestamp: Date.now() };
         setChatHistory(prev => [...prev, userMsg]); setChatInput(""); setIsChatting(true);
         try {
@@ -254,7 +318,9 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
                             {activeNotebook && (
                                 <>
                                     <div style={{ padding: '8px 10px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${border}`, flexShrink: 0 }}>
-                                        <Text style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: textMuted }}>Sources ({sources.length})</Text>
+                                        <Text style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: textMuted }}>
+                                            Sources ({sourceStats.indexed}/{sourceStats.total} tervektor)
+                                        </Text>
                                         <Space size={2}>
                                             <Button type="text" size="small" icon={<AppstoreAddOutlined style={{ fontSize: 11 }} />} onClick={openMediaModal}
                                                 style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', color: textFaint }} />
@@ -267,21 +333,33 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
                                     <div style={{ flex: 1, overflowY: 'auto', padding: '0 6px 6px' }} className="custom-scrollbar">
                                         {loadingSources ? <div style={{ textAlign: 'center', padding: 12 }}><Spin size="small" /></div> :
                                             sources.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span style={{ fontSize: 10, opacity: 0.4 }}>Add sources</span>} style={{ margin: '12px 0' }} /> :
-                                                sources.map(s => (
-                                                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 6, marginBottom: 1 }} className="group">
+                                                sources.map(s => {
+                                                    const statusTag = getSourceStatusTag(s);
+                                                    const stageLabel = getSourceStageLabel(s);
+                                                    const detail = getSourceStatusDetail(s);
+                                                    return (
+                                                    <div key={s.id} title={detail ?? stageLabel} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 6, marginBottom: 1 }} className="group">
                                                         {getStatusIcon(s.parse_status)}
                                                         <div style={{ flex: 1, minWidth: 0 }}>
                                                             <Text ellipsis style={{ fontSize: 10, display: 'block', color: textSecondary }}>{s.filename}</Text>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                                                                 <Text style={{ fontSize: 9, color: textMuted }}>{formatBytes(s.file_size)}</Text>
-                                                                {s.chunk_count > 0 && <Text style={{ fontSize: 9, color: textMuted }}>· {s.chunk_count} chunks</Text>}
+                                                                {isSourceInProgress(s) && (
+                                                                    <Text style={{ fontSize: 9, color: themeColor }}>{stageLabel}</Text>
+                                                                )}
+                                                                <Tag color={statusTag.color} style={{ fontSize: 8, margin: 0, lineHeight: '14px', padding: '0 3px' }}>{statusTag.label}</Tag>
                                                             </div>
-                                                            {s.parse_status === 'parsing' && <Progress percent={Math.round(s.parse_progress * 100)} size="small" strokeColor={themeColor} style={{ marginTop: 2 }} />}
+                                                            {s.parse_status === 'error' && s.parse_error && (
+                                                                <Text style={{ fontSize: 8, color: '#ff4d4f', display: 'block' }} ellipsis>{s.parse_error}</Text>
+                                                            )}
+                                                            {(s.parse_status === 'parsing' || s.parse_status === 'pending') && (
+                                                                <Progress percent={getSourceProgressPercent(s)} size="small" strokeColor={themeColor} style={{ marginTop: 2 }} status={s.parse_status === 'pending' ? 'active' : 'normal'} />
+                                                            )}
                                                         </div>
                                                         <Button type="text" size="small" danger icon={<DeleteOutlined style={{ fontSize: 9 }} />}
                                                             onClick={() => handleRemoveSource(s.id)} style={{ width: 18, height: 18, opacity: 0 }} className="group-hover:!opacity-100" />
                                                     </div>
-                                                ))
+                                                ); })
                                         }
                                     </div>
                                 </>
@@ -298,7 +376,19 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
                             <Button type="text" size="small" icon={showSources ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
                                 onClick={() => setShowSources(!showSources)} style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
                             <Text strong style={{ fontSize: 12, color: textColor }}>{activeNotebook ? activeNotebook.name : 'Select a notebook'}</Text>
-                            {activeNotebook && sources.some(s => s.parse_status === 'parsing') && <Tag color="processing" icon={<SyncOutlined spin />} style={{ fontSize: 9, margin: 0, lineHeight: '16px', padding: '0 4px' }}>Parsing</Tag>}
+                            {activeNotebook && sourceStats.embedding > 0 && (
+                                <Tag color="processing" icon={<SyncOutlined spin />} style={{ fontSize: 9, margin: 0, lineHeight: '16px', padding: '0 4px' }}>
+                                    Vektor {sourceStats.embedding}
+                                </Tag>
+                            )}
+                            {activeNotebook && sourceStats.inProgress > 0 && sourceStats.embedding === 0 && (
+                                <Tag color="processing" icon={<SyncOutlined spin />} style={{ fontSize: 9, margin: 0, lineHeight: '16px', padding: '0 4px' }}>
+                                    Indeks
+                                </Tag>
+                            )}
+                            {activeNotebook && sourceStats.allIndexed && sourceStats.total > 0 && (
+                                <Tag color="success" style={{ fontSize: 9, margin: 0, lineHeight: '16px', padding: '0 4px' }}>Siap RAG</Tag>
+                            )}
                         </div>
                         {conversationId && (
                             <Button type="text" size="small" style={{ fontSize: 10, color: textMuted }}

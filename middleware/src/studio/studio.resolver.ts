@@ -141,6 +141,21 @@ export class StudioResolver {
         return this.studioService.generateReport(notebookId, query);
     }
 
+    @Mutation(() => GraphQLJSONObject, { name: 'studioPlaygroundTest' })
+    async playgroundTest(
+        @Args('userPrompt', { type: () => String }) userPrompt: string,
+        @Args('systemPrompt', { type: () => String, nullable: true }) systemPrompt: string,
+        @Args('temperature', { type: () => Number, nullable: true }) temperature: number,
+        @Args('maxTokens', { type: () => Number, nullable: true }) maxTokens: number,
+    ) {
+        return this.studioService.playgroundTest({
+            userPrompt,
+            systemPrompt: systemPrompt || undefined,
+            temperature: temperature ?? undefined,
+            maxTokens: maxTokens ?? undefined,
+        });
+    }
+
     // ── Guide flows ──────────────────────────────────────────────────
 
     @Query(() => [GraphQLJSONObject], { name: 'studioGuideFlows' })
@@ -164,13 +179,28 @@ export class StudioResolver {
         return this.guideFlowService.getPublishedFlowForNotebook(notebookId);
     }
 
+    @Query(() => [GraphQLJSONObject], { name: 'studioGuideFlowTemplates' })
+    async listGuideFlowTemplates() {
+        return this.guideFlowService.listTemplates();
+    }
+
+    @Query(() => GraphQLJSONObject, { name: 'studioValidateGuideFlow' })
+    async validateGuideFlow(
+        @Args('definition', { type: () => GraphQLJSONObject }) definition: any,
+    ) {
+        return this.guideFlowService.validateDefinition(definition);
+    }
+
     @Mutation(() => GraphQLJSONObject, { name: 'createStudioGuideFlow' })
     async createGuideFlow(
         @Args('notebookId', { type: () => String }) notebookId: string,
         @Args('name', { type: () => String }) name: string,
         @Args('definition', { type: () => GraphQLJSONObject, nullable: true }) definition: any,
+        @Args('template', { type: () => String, nullable: true }) template: string,
     ) {
-        return this.guideFlowService.createFlow(notebookId, name, definition ?? undefined);
+        const kind =
+            template === 'rag_qa' || template === 'umkm' || template === 'blank' ? template : undefined;
+        return this.guideFlowService.createFlow(notebookId, name, definition ?? undefined, kind);
     }
 
     @Mutation(() => GraphQLJSONObject, { name: 'updateStudioGuideFlow' })

@@ -62,29 +62,51 @@ export class StudioContextService {
         const embedding = await this.ragService.embedText(query);
         if (!embedding) return [];
 
-        const { data, error } = await this.admin().rpc('match_studio_chunks', {
-            query_embedding: embedding,
-            p_notebook_id: notebookId,
-            match_threshold: 0.42,
-            match_count: limit,
-        });
+        const mapRows = (data: unknown[]) =>
+            (data || []).map((row: any) => ({
+                chunkId: row.chunk_id,
+                sourceId: row.source_id,
+                filename: row.filename,
+                content: row.content,
+                score: row.similarity,
+            }));
 
-        if (error) {
-            if (error.code === '42883' || error.message?.includes('match_studio_chunks')) {
-                this.logger.warn('match_studio_chunks RPC missing — apply middleware/sql/studio_source_chunks.sql');
-            } else {
-                this.logger.error('match_studio_chunks failed', error);
+        const search = async (threshold: number) => {
+            const { data, error } = await this.admin().rpc('match_studio_chunks', {
+                query_embedding: embedding,
+                p_notebook_id: notebookId,
+                match_threshold: threshold,
+                match_count: limit,
+            });
+            if (error) {
+                if (error.code === '42883' || error.message?.includes('match_studio_chunks')) {
+                    this.logger.warn('match_studio_chunks RPC missing — apply middleware/sql/studio_source_chunks.sql');
+                } else {
+                    this.logger.error('match_studio_chunks failed', error);
+                }
+                return [] as StudioChunkHit[];
             }
-            return [];
+            return mapRows(data || []);
+        };
+
+        let chunks = await search(0.42);
+        if (chunks.length === 0) {
+            const { count } = await this.admin()
+                .from('studio_source_chunks')
+                .select('id', { count: 'exact', head: true })
+                .eq('notebook_id', notebookId);
+            const total = count ?? 0;
+            if (total > 0 && total <= Math.max(limit, 12)) {
+                chunks = await search(0);
+                if (chunks.length > 0) {
+                    this.logger.debug(
+                        `Semantic search fallback (threshold 0) for notebook ${notebookId}: ${chunks.length} chunk(s)`,
+                    );
+                }
+            }
         }
 
-        return (data || []).map((row: any) => ({
-            chunkId: row.chunk_id,
-            sourceId: row.source_id,
-            filename: row.filename,
-            content: row.content,
-            score: row.similarity,
-        }));
+        return chunks;
     }
 
     async retrieveContext(

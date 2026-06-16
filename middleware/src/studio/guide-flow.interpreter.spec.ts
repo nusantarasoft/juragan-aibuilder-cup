@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { defaultGuideFlowDefinition, validateGuideFlowGraph } from './guide-flow.definition';
-import { getNode, resolveListenTarget, substituteInstruction } from './guide-flow.interpreter';
+import { defaultGuideFlowDefinition, defaultUmkmGuideFlowDefinition } from './guide-flow.definition';
+import { getNode, isUmkmFlow, resolveListenTarget, resolveUmkmListenTarget, substituteInstruction } from './guide-flow.interpreter';
 import { assertXStateStateCoverage, createGuideFlowMachineLogic } from './guide-flow.xstate-factory';
 
 describe('guide-flow.interpreter', () => {
     it('resolves keyword before default', () => {
         const def = defaultGuideFlowDefinition();
-        validateGuideFlowGraph(def);
         const listen = getNode(def, 'listen_main');
         expect(listen?.type).toBe('listen');
         if (listen?.type !== 'listen') return;
@@ -30,12 +29,25 @@ describe('guide-flow.interpreter', () => {
             substituteInstruction('O={{originalUserMessage}} R={{rewrittenQuery}} L={{lastUserMessage}}', ctx),
         ).toBe('O=raw R=formal L=formal');
     });
+
+    it('detects UMKM flow via meta.flowKind', () => {
+        expect(isUmkmFlow(defaultUmkmGuideFlowDefinition())).toBe(true);
+        expect(isUmkmFlow(defaultGuideFlowDefinition())).toBe(false);
+    });
+
+    it('routes UMKM listen via intent keywords', () => {
+        const def = defaultUmkmGuideFlowDefinition();
+        const listen = getNode(def, 'listen_intent');
+        expect(listen?.type).toBe('listen');
+        if (listen?.type !== 'listen') return;
+        expect(resolveUmkmListenTarget(listen, 'daftar barang')).toBe('do_list');
+        expect(resolveUmkmListenTarget(listen, 'laporan hari ini')).toBe('do_report');
+    });
 });
 
 describe('guide-flow.xstate-factory', () => {
     it('covers all node ids as machine states', () => {
         const def = defaultGuideFlowDefinition();
-        validateGuideFlowGraph(def);
         expect(assertXStateStateCoverage(def)).toBe(true);
         const machine = createGuideFlowMachineLogic(def);
         expect(machine.config.initial).toBe(def.startNodeId);

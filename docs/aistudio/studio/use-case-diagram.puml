@@ -1,0 +1,201 @@
+@startuml ai-studio-studio-use-case
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #f8fafc
+  BorderColor #7c3aed
+  FontSize 12
+}
+skinparam rectangle {
+  BorderColor #94a3b8
+  BackgroundColor #ffffff
+}
+
+title AI Studio — Menu Studio\nUse Case Diagram (/admin/ai-studio)
+
+actor "Pengguna Admin" as Admin
+actor "Middleware\n(StudioIngestionService)" as MW <<system>>
+
+rectangle "AI Studio — Studio" {
+  package "Manajemen Notebook" {
+    usecase "UC-01\nLihat Daftar Notebook" as UC01
+    usecase "UC-02\nBuat Notebook" as UC02
+    usecase "UC-03\nPilih Notebook" as UC03
+    usecase "UC-04\nHapus Notebook" as UC04
+  }
+
+  package "Panel Sources (Sidebar)" {
+    usecase "UC-05\nTambah Sumber\ndari Media Library" as UC05
+    usecase "UC-06\nUpload File\nke Notebook" as UC06
+    usecase "UC-07\nHapus Sumber" as UC07
+    usecase "UC-08\nReindex Sumber" as UC08
+    usecase "UC-09\nMonitor Status\nIndeksasi" as UC09
+  }
+
+  package "Proses Indeksasi (Sistem)" as PKG_IDX {
+    usecase "UC-19\nEkstraksi Teks\n(extractDocumentText)" as UC19
+    usecase "UC-20\nChunking Teks\n(chunkText)" as UC20
+    usecase "UC-21\nVektorisasi\n(embedText)" as UC21
+    usecase "UC-22\nSimpan Chunk +\nEmbedding ke DB" as UC22
+  }
+
+  package "Workspace — Chat & RAG" {
+    usecase "UC-10\nChat RAG\n(Tanya Jawab Bebas)" as UC10
+    usecase "UC-11\nChat Guided Flow" as UC11
+    usecase "UC-12\nMulai Chat Baru" as UC12
+    usecase "UC-13\nLihat Referensi\nSumber Jawaban" as UC13
+    usecase "UC-26\nLanjutkan Riwayat\nPercakapan" as UC26
+    usecase "UC-27\nPilih Mode Chat\n(Bebas / Guided)" as UC27
+  }
+
+  package "Workspace — Generator" {
+    usecase "UC-14\nGenerate\nExecutive Report" as UC14
+  }
+
+  package "Guide Flows" {
+    usecase "UC-15\nKelola Guide Flow\n(buat / edit / hapus)" as UC15
+    usecase "UC-16\nPublish Guide Flow" as UC16
+    usecase "UC-17\nSimulasi Guide Flow" as UC17
+    usecase "UC-23\nValidasi Graph\nFlow (Zod + XState)" as UC23
+    usecase "UC-24\nBuat dari Template\n(RAG / UMKM / Kosong)" as UC24
+    usecase "UC-25\nRuntime Node Pipeline\n(listen->rag->sql->action)" as UC25
+  }
+
+  package "Playground" {
+    usecase "UC-18\nUji Prompt &\nKonfigurasi Model" as UC18
+    usecase "UC-18b\nLihat Metrik\nLatency & Token" as UC18b
+  }
+}
+
+Admin --> UC01
+Admin --> UC02
+Admin --> UC03
+Admin --> UC04
+Admin --> UC05
+Admin --> UC06
+Admin --> UC07
+Admin --> UC08
+Admin --> UC09
+Admin --> UC10
+Admin --> UC11
+Admin --> UC12
+Admin --> UC13
+Admin --> UC26
+Admin --> UC27
+Admin --> UC14
+Admin --> UC15
+Admin --> UC16
+Admin --> UC17
+Admin --> UC23
+Admin --> UC24
+Admin --> UC18
+Admin --> UC18b
+
+UC05 ..> UC19 : <<include>>
+UC06 ..> UC19 : <<include>>
+UC08 ..> UC19 : <<include>>
+
+UC19 ..> UC20 : <<include>>
+UC20 ..> UC21 : <<include>>
+UC21 ..> UC22 : <<include>>
+
+UC09 ..> UC19 : <<include>>\n(monitor pipeline)
+
+UC10 ..> UC09 : <<include>>
+UC11 ..> UC09 : <<include>>
+UC11 ..> UC25 : <<include>>
+UC10 ..> UC26 : <<extend>>\nopsional resume
+UC10 ..> UC27 : <<include>>
+UC11 ..> UC27 : <<include>>
+UC12 ..> UC10 : <<extend>>
+UC12 ..> UC11 : <<extend>>
+UC10 ..> UC13 : <<include>>\njika ada kutipan
+UC11 ..> UC13 : <<include>>
+UC14 ..> UC09 : <<include>>
+UC17 ..> UC09 : <<include>>
+UC16 ..> UC11 : <<extend>>
+UC15 ..> UC23 : <<include>>\nsebelum save/publish
+UC15 ..> UC24 : <<include>>\nnew flow
+UC17 ..> UC25 : <<include>>
+
+MW --> UC19
+MW --> UC20
+MW --> UC21
+MW --> UC22
+MW --> UC10
+MW --> UC11
+MW --> UC14
+MW --> UC18
+MW --> UC25
+
+UC18 ..> UC18b : <<include>>\nsetelah test
+
+note bottom of UC10
+  Mutation studioChat:
+  query understanding multi-turn +
+  invokeRagQuery (semantic search + grounded answer).
+  Default mode di AI Assistant panel.
+end note
+
+note bottom of UC26
+  studioConversations / studioConversation:
+  muat ulang pesan + source_refs dari DB.
+end note
+
+note bottom of UC27
+  Segmented control: Chat bebas vs Guided.
+  Guided butuh published guide flow (UC-16).
+end note
+
+note bottom of UC13
+  Expandable citations per jawaban:
+  nama dokumen, cuplikan, skor relevansi %.
+end note
+
+note bottom of UC18
+  Mutation studioPlaygroundTest:
+  system + user prompt, temperature, maxTokens.
+  Tanpa RAG / tanpa notebook sources.
+  Provider: STUDIO_AI_PROVIDER (Vertex/Google AI/Claude).
+end note
+
+note bottom of UC25
+  Node types (Zod schema):
+  start, message, listen, rag, sql, action, end.
+  meta.flowKind: rag_qa | umkm | custom.
+  RAG: query understanding + clarification loop.
+  SQL: read-only SELECT via Dremio.
+  Action: record_sale, sales_report, list_products, umkm_help.
+  XState machine spec untuk coverage test (bukan runtime invoke).
+end note
+
+note bottom of UC23
+  Query studioValidateGuideFlow:
+  Zod parse + validateGuideFlowGraph +
+  assertXStateStateCoverage + best-practice warnings.
+end note
+
+note bottom of UC24
+  Template: rag_qa (default), umkm, blank.
+  Mutation createStudioGuideFlow(template: ...).
+end note
+
+note bottom of PKG_IDX
+  Dipicu otomatis (async) setelah UC-05/06/08.
+  Implementasi: StudioIngestionService.ingestSource()
+  Status UI: pending -> parsing -> done/error
+end note
+
+note right of UC21
+  Vektorisasi = embedding tiap chunk
+  (Vertex AI / Google AI).
+  Tanpa UC-21, RAG tidak berfungsi.
+end note
+
+note bottom of UC09
+  Semua UC-05 s/d UC-09 di panel Sources (sidebar):
+  tambah file, upload, hapus, reindex, pantau tervektor.
+end note
+
+@enduml

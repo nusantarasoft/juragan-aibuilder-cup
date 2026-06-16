@@ -36,10 +36,16 @@ export const guideFlowNodeSchema = z.discriminatedUnion('type', [
     z.object({ id: z.string().min(1), type: z.literal('end') }),
 ]);
 
+export const guideFlowMetaSchema = z.object({
+    flowKind: z.enum(['rag_qa', 'umkm', 'custom']).optional(),
+    description: z.string().optional(),
+});
+
 export const guideFlowDefinitionSchema = z.object({
     version: z.literal(1),
     startNodeId: z.string().min(1),
     nodes: z.array(guideFlowNodeSchema).min(1),
+    meta: guideFlowMetaSchema.optional(),
 });
 
 export type GuideFlowDefinition = z.infer<typeof guideFlowDefinitionSchema>;
@@ -58,6 +64,7 @@ export function defaultGuideFlowDefinition(): GuideFlowDefinition {
     return {
         version: 1,
         startNodeId: 'start',
+        meta: { flowKind: 'rag_qa', description: 'RAG Q&A loop dengan listen → rag → follow-up' },
         nodes: [
             { id: 'start', type: 'start', next: 'welcome' },
             {
@@ -105,6 +112,7 @@ export function defaultUmkmGuideFlowDefinition(): GuideFlowDefinition {
     return {
         version: 1,
         startNodeId: 'start',
+        meta: { flowKind: 'umkm', description: 'Asisten penjualan UMKM via WhatsApp (action nodes)' },
         nodes: [
             { id: 'start', type: 'start', next: 'welcome' },
             {
@@ -196,4 +204,45 @@ export function validateGuideFlowGraph(def: GuideFlowDefinition): void {
             throw new Error(`Transition target "${t}" does not match any node id`);
         }
     }
+}
+
+export type GuideFlowTemplateKind = 'rag_qa' | 'umkm' | 'blank';
+
+export const GUIDE_FLOW_TEMPLATES: Record<
+    GuideFlowTemplateKind,
+    { label: string; description: string; definition: () => GuideFlowDefinition }
+> = {
+    rag_qa: {
+        label: 'RAG Q&A',
+        description: 'State machine: welcome → listen → RAG → loop (best practice untuk notebook dokumen)',
+        definition: defaultGuideFlowDefinition,
+    },
+    umkm: {
+        label: 'UMKM Penjualan',
+        description: 'Intent routing + action nodes (catat jual, laporan, katalog)',
+        definition: defaultUmkmGuideFlowDefinition,
+    },
+    blank: {
+        label: 'Kosong',
+        description: 'Minimal start → message → listen → end — susun sendiri',
+        definition: () => ({
+            version: 1 as const,
+            startNodeId: 'start',
+            meta: { flowKind: 'custom' as const, description: 'Custom flow' },
+            nodes: [
+                { id: 'start', type: 'start' as const, next: 'welcome' },
+                { id: 'welcome', type: 'message' as const, content: 'Halo!', next: 'listen_main' },
+                {
+                    id: 'listen_main',
+                    type: 'listen' as const,
+                    transitions: [{ when: 'default' as const, target: 'end' }],
+                },
+                { id: 'end', type: 'end' as const },
+            ],
+        }),
+    },
+};
+
+export function getGuideFlowTemplate(kind: GuideFlowTemplateKind): GuideFlowDefinition {
+    return GUIDE_FLOW_TEMPLATES[kind].definition();
 }
