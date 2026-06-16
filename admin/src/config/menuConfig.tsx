@@ -1311,6 +1311,7 @@ const menuConfig = {
             },
             {
                 path: "/admin/dcim",
+                key: "/admin/dcim-menu",
                 name: "DCIM",
                 icon: <CloudServerOutlined />,
                 routes: [
@@ -1326,6 +1327,7 @@ const menuConfig = {
             },
             {
                 path: "/admin/bms",
+                key: "/admin/bms-menu",
                 name: "BMS",
                 icon: <HomeOutlined />,
                 routes: [

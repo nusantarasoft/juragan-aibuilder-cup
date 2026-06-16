@@ -281,7 +281,7 @@ function WhatsAppGatewayPageContent() {
                     <Alert
                         type="warning"
                         showIcon
-                        message="Sudah login di WAHA, tapi status API masih SCAN QR (bug versi lama)"
+                        title="Sudah login di WAHA, tapi status API masih SCAN QR (bug versi lama)"
                         description={
                             <div style={{ fontSize: 12 }}>
                                 <p style={{ margin: '0 0 8px' }}>
@@ -311,7 +311,7 @@ function WhatsAppGatewayPageContent() {
                     <Alert
                         type="error"
                         showIcon
-                        message="WhatsApp belum terhubung — pesan tidak akan dibalas"
+                        title="WhatsApp belum terhubung — pesan tidak akan dibalas"
                         description={
                             <div style={{ fontSize: 12 }}>
                                 <p style={{ margin: '0 0 8px' }}>
@@ -368,7 +368,7 @@ function WhatsAppGatewayPageContent() {
                         <Alert
                             type="info"
                             showIcon
-                            message="Alur singkat"
+                            title="Alur singkat"
                             description={
                                 <ol style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12 }}>
                                     <li>
@@ -409,7 +409,7 @@ function WhatsAppGatewayPageContent() {
                                 type="info"
                                 showIcon
                                 style={{ marginBottom: 16 }}
-                                message="Satu nomor WA admin untuk semua UMKM"
+                                title="Satu nomor WA admin untuk semua UMKM"
                                 description="Routing ke UMKM berdasarkan nomor pengirim (pemilik). Kelola daftar UMKM di halaman UMKM Penjualan."
                             />
                             <Form.Item name="label" label="Nama toko (UMKM)">
@@ -464,7 +464,7 @@ function WhatsAppGatewayPageContent() {
                                     type="warning"
                                     showIcon
                                     style={{ marginBottom: 16 }}
-                                    message="Allowlist wajib"
+                                    title="Allowlist wajib"
                                     description="Mode production / STUDIO_WHATSAPP_REQUIRE_ALLOWLIST aktif — isi minimal satu nomor sebelum mengaktifkan balasan WhatsApp."
                                 />
                             ) : (
@@ -472,7 +472,7 @@ function WhatsAppGatewayPageContent() {
                                     type="info"
                                     showIcon
                                     style={{ marginBottom: 16 }}
-                                    message="Mode development"
+                                    title="Mode development"
                                     description="Allowlist kosong mengizinkan semua nomor. Di production, allowlist otomatis wajib."
                                 />
                             )}

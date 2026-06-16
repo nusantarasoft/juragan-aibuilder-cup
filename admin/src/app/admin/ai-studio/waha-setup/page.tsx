@@ -233,7 +233,7 @@ export default function WahaSetupPage() {
                     <Alert
                         type="error"
                         showIcon
-                        message="WAHA tidak dapat dihubungi"
+                        title="WAHA tidak dapat dihubungi"
                         description={
                             <div style={{ fontSize: 12 }}>
                                 <p style={{ margin: '0 0 8px' }}>
@@ -249,7 +249,7 @@ export default function WahaSetupPage() {
                     <Alert
                         type="warning"
                         showIcon
-                        message="Sudah login, tapi status API masih SCAN QR (bug versi lama)"
+                        title="Sudah login, tapi status API masih SCAN QR (bug versi lama)"
                         description={
                             <div style={{ fontSize: 12 }}>
                                 Nomor terdeteksi: <strong>{businessPhone || '—'}</strong>
@@ -299,7 +299,7 @@ export default function WahaSetupPage() {
                         <Alert
                             type="info"
                             showIcon
-                            message="Langkah pairing"
+                            title="Langkah pairing"
                             description={
                                 <ol style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12 }}>
                                     <li>Klik <strong>Mulai sesi</strong> jika belum ada QR</li>
