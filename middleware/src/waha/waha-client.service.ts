@@ -264,4 +264,106 @@ export class WahaClientService {
             return [];
         }
     }
+
+    /** Create session if missing and start it (idempotent). */
+    async ensureSessionStarted(session?: string): Promise<{ status: string; connected: boolean }> {
+        const sess = session || this.defaultSession;
+        const h = this.headers();
+        let st = await this.getSessionStatus(sess);
+
+        if (st?.connected) {
+            return { status: st.status, connected: true };
+        }
+
+        if (st?.status === 'STARTING' || st?.status === 'SCAN_QR_CODE') {
+            return { status: st.status, connected: false };
+        }
+
+        if (st?.status === 'STOPPED') {
+            const startRes = await fetch(`${this.baseUrl}/api/sessions/${sess}/start`, {
+                method: 'POST',
+                headers: h,
+            });
+            if (startRes.ok) {
+                await new Promise((r) => setTimeout(r, 2000));
+                st = await this.getSessionStatus(sess);
+                return { status: st?.status || 'STARTING', connected: st?.connected ?? false };
+            }
+        }
+
+        if (!st) {
+            const createRes = await fetch(`${this.baseUrl}/api/sessions`, {
+                method: 'POST',
+                headers: h,
+                body: JSON.stringify({ name: sess, start: true }),
+            });
+            if (createRes.ok) {
+                await new Promise((r) => setTimeout(r, 2000));
+                st = await this.getSessionStatus(sess);
+                return { status: st?.status || 'STARTING', connected: st?.connected ?? false };
+            }
+            await fetch(`${this.baseUrl}/api/sessions/${sess}/start`, { method: 'POST', headers: h });
+            await new Promise((r) => setTimeout(r, 2000));
+            st = await this.getSessionStatus(sess);
+            return { status: st?.status || 'STARTING', connected: st?.connected ?? false };
+        }
+
+        const startRes = await fetch(`${this.baseUrl}/api/sessions/${sess}/start`, {
+            method: 'POST',
+            headers: h,
+        });
+        if (startRes.ok) {
+            await new Promise((r) => setTimeout(r, 2000));
+            st = await this.getSessionStatus(sess);
+        }
+        return { status: st?.status || 'ERROR', connected: st?.connected ?? false };
+    }
+
+    /** QR code for pairing (base64 PNG via JSON accept header). */
+    async getAuthQr(session?: string): Promise<{ data: string; mimetype: string } | null> {
+        const sess = session || this.defaultSession;
+        try {
+            const h = this.headers(false);
+            h['Accept'] = 'application/json';
+            const response = await fetch(`${this.baseUrl}/api/${sess}/auth/qr`, { headers: h });
+            if (!response.ok) return null;
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const json = (await response.json()) as {
+                    data?: string;
+                    mimetype?: string;
+                    value?: string;
+                };
+                const data = json.data || json.value;
+                if (!data) return null;
+                return { data, mimetype: json.mimetype || 'image/png' };
+            }
+            const buffer = Buffer.from(await response.arrayBuffer());
+            return {
+                data: buffer.toString('base64'),
+                mimetype: contentType.split(';')[0] || 'image/png',
+            };
+        } catch (e: any) {
+            this.logger.warn(`getAuthQr: ${e?.message}`);
+            return null;
+        }
+    }
+
+    /** Logout session and restart pairing from scratch. */
+    async logoutSession(session?: string): Promise<{ status: string }> {
+        const sess = session || this.defaultSession;
+        const h = this.headers();
+        const res = await fetch(`${this.baseUrl}/api/sessions/${sess}/logout`, {
+            method: 'POST',
+            headers: h,
+        });
+        if (!res.ok) {
+            const err = await res.text();
+            this.logger.warn(`logoutSession: ${res.status} ${err}`);
+            return { status: 'ERROR' };
+        }
+        await new Promise((r) => setTimeout(r, 3000));
+        const st = await this.getSessionStatus(sess);
+        return { status: st?.status || 'SCAN_QR_CODE' };
+    }
 }

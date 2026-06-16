@@ -79,8 +79,8 @@ export default function GuideFlowsPanel({
         try {
             const list = await studioService.getGuideFlows(notebookId);
             setFlows(list);
-        } catch (e: any) {
-            message.error(e.message || "Failed to load guide flows");
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Failed to load guide flows");
         } finally {
             setLoading(false);
         }
@@ -149,8 +149,8 @@ export default function GuideFlowsPanel({
             message.success("Flow created");
             await loadFlows();
             setSelectedId(f.id);
-        } catch (e: any) {
-            message.error(e.message || "Create failed");
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Create failed");
         }
     };
 
@@ -196,8 +196,8 @@ export default function GuideFlowsPanel({
             });
             message.success("Saved");
             await loadFlows();
-        } catch (e: any) {
-            message.error(e.message || "Save failed");
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Save failed");
         } finally {
             setSaving(false);
         }
@@ -209,8 +209,8 @@ export default function GuideFlowsPanel({
             await studioService.publishGuideFlow(selected.id);
             message.success("Published (only one published flow per notebook)");
             await loadFlows();
-        } catch (e: any) {
-            message.error(e.message || "Publish failed");
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Publish failed");
         }
     };
 
@@ -222,8 +222,8 @@ export default function GuideFlowsPanel({
             setSelectedId(null);
             resetSimulator();
             await loadFlows();
-        } catch (e: any) {
-            message.error(e.message || "Delete failed");
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Delete failed");
         }
     };
 
@@ -238,8 +238,8 @@ export default function GuideFlowsPanel({
         try {
             const res = await studioService.startGuidedSession(notebookId, selected.id, userId);
             applyGuidedReplies(res);
-        } catch (e: any) {
-            message.error(e.message || "Could not start guided session");
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Could not start guided session");
         } finally {
             setSimBusy(false);
         }
@@ -264,8 +264,8 @@ export default function GuideFlowsPanel({
                 userId,
             );
             applyGuidedReplies(res);
-        } catch (e: any) {
-            message.error(e.message || "Guided chat failed");
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Guided chat failed");
         } finally {
             setSimBusy(false);
         }

@@ -9,9 +9,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     const { setIsConnected, setLastPing, updateTelemetry } = useWebSocketStore();
 
     useEffect(() => {
-        // Connect to NestJS backend WebSocket gateway
-        // In production, this URL should come from env vars
-        const socket = io('http://localhost:3000/facility', {
+        const graphqlUrl = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
+        const wsBase = graphqlUrl.replace(/\/graphql\/?$/, '');
+        const socket = io(`${wsBase}/facility`, {
             transports: ['websocket'],
             autoConnect: true,
         });

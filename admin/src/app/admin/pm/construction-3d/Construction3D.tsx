@@ -4595,7 +4595,7 @@ export default function Construction3DPage() {
 
     const updatedTasks = connectedTasks.map(task => {
       const title = (task.title || task.name || '').toLowerCase();
-      let newTags = [...(task.tags || [])];
+      const newTags = [...(task.tags || [])];
       let hasBimTag = newTags.some(tag => tag.startsWith('bim:'));
       
       if (!hasBimTag) {
@@ -6025,7 +6025,7 @@ export default function Construction3DPage() {
                         const isFocused = focusedClashId === clash.id;
                         let suggestion = "";
                         let actionLabel = "";
-                        let fixAction = () => { 
+                        const fixAction = () => { 
                           setClashToFix(clash);
                           setClashFixModalVisible(true);
                           setFocusedClashId(null); 

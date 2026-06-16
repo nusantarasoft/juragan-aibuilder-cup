@@ -47,7 +47,7 @@ function OrgNode({ dept, employees, allDepts, level = 0, colorIndex = 0 }: { dep
                 {/* Members preview */}
                 {deptEmps.length > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'center', gap: -4, marginBottom: 6 }}>
-                        <Avatar.Group maxCount={4} size="small" maxStyle={{ backgroundColor: color, fontSize: 10 }}>
+                        <Avatar.Group max={{ count: 4, style: { backgroundColor: color, fontSize: 10 } }} size="small">
                             {deptEmps.slice(0, 5).map(e => (
                                 <Tooltip key={e.id} title={`${e.firstName} ${e.lastName} — ${e.positionTitle || 'Employee'}`}>
                                     <Avatar size="small" style={{ backgroundColor: color, fontSize: 9 }}>{e.firstName[0]}{e.lastName[0]}</Avatar>

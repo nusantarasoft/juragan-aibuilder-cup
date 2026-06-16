@@ -84,6 +84,7 @@ import {
     ExperimentOutlined,
     FundProjectionScreenOutlined,
     EditOutlined,
+    QrcodeOutlined,
     SmileOutlined,
     AimOutlined,
     CreditCardOutlined,
@@ -1211,6 +1212,12 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
+                        path: "/admin/ai-studio/waha-setup",
+                        name: "Setup WAHA",
+                        icon: <QrcodeOutlined />,
+                        isLeaf: true,
+                    },
+                    {
                         path: "/admin/ai-studio/ai-gateway",
                         name: "WhatsApp",
                         icon: <NodeIndexOutlined />,
@@ -1304,6 +1311,7 @@ const menuConfig = {
             },
             {
                 path: "/admin/dcim",
+                key: "/admin/dcim-menu",
                 name: "DCIM",
                 icon: <CloudServerOutlined />,
                 routes: [
@@ -1319,6 +1327,7 @@ const menuConfig = {
             },
             {
                 path: "/admin/bms",
+                key: "/admin/bms-menu",
                 name: "BMS",
                 icon: <HomeOutlined />,
                 routes: [
@@ -1336,6 +1345,7 @@ const menuConfig = {
             },
             {
                 path: "/admin/scada",
+                key: "/admin/scada-menu",
                 name: "SCADA",
                 icon: <MonitorOutlined />,
                 routes: [
@@ -1351,6 +1361,7 @@ const menuConfig = {
             },
             {
                 path: "/admin/bim",
+                key: "/admin/bim-menu",
                 name: "BIM",
                 icon: <BuildOutlined />,
                 routes: [

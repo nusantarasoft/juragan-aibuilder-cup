@@ -35,10 +35,6 @@ export type GuideFlowDefinition = {
     nodes: GuideFlowNode[];
 };
 
-function cloneDef(d: GuideFlowDefinition): GuideFlowDefinition {
-    return JSON.parse(JSON.stringify(d)) as GuideFlowDefinition;
-}
-
 function newId(prefix: string, existing: Set<string>): string {
     let id = `${prefix}_${Date.now()}`;
     let n = 0;
@@ -191,7 +187,6 @@ export default function GuideFlowFormEditor({ value, onChange }: Props) {
 
     const changeNodeType = (index: number, newType: GuideFlowNode["type"]) => {
         const old = value.nodes[index];
-        const existing = new Set(value.nodes.map((n) => n.id));
         const firstOther = value.nodes.find((n) => n.id !== old.id)?.id ?? "";
         let node: GuideFlowNode;
         switch (newType) {

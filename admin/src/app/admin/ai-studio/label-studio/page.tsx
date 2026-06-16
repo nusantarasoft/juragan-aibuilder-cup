@@ -3,7 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
 import { Card, Row, Col, Typography, Statistic, Space, Tag, Button, Table, Badge, Progress } from 'antd';
-import { EditOutlined, FileSearchOutlined, CheckCircleOutlined, ClockCircleOutlined, ReloadOutlined, LinkOutlined, UserOutlined, DatabaseOutlined } from '@ant-design/icons';
+import { EditOutlined, FileSearchOutlined, CheckCircleOutlined, ClockCircleOutlined, ReloadOutlined, LinkOutlined, DatabaseOutlined } from '@ant-design/icons';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';

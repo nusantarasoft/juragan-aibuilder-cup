@@ -238,6 +238,27 @@ export class StudioResolver {
         return this.studioWhatsAppService.syncWahaSession();
     }
 
+    @Query(() => GraphQLJSONObject, { name: 'studioWahaAuthQr' })
+    async studioWahaAuthQr(
+        @Args('session', { type: () => String, nullable: true }) session?: string,
+    ) {
+        return this.studioWhatsAppService.getWahaAuthQr(session || undefined);
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'startStudioWahaSession' })
+    async startStudioWahaSession(
+        @Args('session', { type: () => String, nullable: true }) session?: string,
+    ) {
+        return this.studioWhatsAppService.startWahaSession(session || undefined);
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'logoutStudioWahaSession' })
+    async logoutStudioWahaSession(
+        @Args('session', { type: () => String, nullable: true }) session?: string,
+    ) {
+        return this.studioWhatsAppService.logoutWahaSession(session || undefined);
+    }
+
     @Mutation(() => GraphQLJSONObject, { name: 'studioSetupUmkmNotebook' })
     async setupUmkmNotebook(
         @Args('notebookId', { type: () => String }) notebookId: string,

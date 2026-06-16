@@ -385,6 +385,33 @@ export const studioService = {
         return data.syncStudioWahaSession;
     },
 
+    async getWahaAuthQr(session?: string): Promise<StudioWahaAuthQr> {
+        const data = await graphqlRequest(`
+            query($session: String) {
+                studioWahaAuthQr(session: $session)
+            }
+        `, { session: session ?? null });
+        return data.studioWahaAuthQr;
+    },
+
+    async startWahaSession(session?: string): Promise<{ status: string; connected: boolean }> {
+        const data = await graphqlRequest(`
+            mutation($session: String) {
+                startStudioWahaSession(session: $session)
+            }
+        `, { session: session ?? null });
+        return data.startStudioWahaSession;
+    },
+
+    async logoutWahaSession(session?: string): Promise<{ status: string }> {
+        const data = await graphqlRequest(`
+            mutation($session: String) {
+                logoutStudioWahaSession(session: $session)
+            }
+        `, { session: session ?? null });
+        return data.logoutStudioWahaSession;
+    },
+
     async updateWhatsAppConfig(params: {
         tenantId?: string;
         notebookId?: string | null;
@@ -466,4 +493,12 @@ export interface StudioWhatsAppSessionStatus {
     } | null;
     sessions: { name: string; status: string }[];
     version?: { version: string; engine: string } | null;
+}
+
+export interface StudioWahaAuthQr {
+    available: boolean;
+    imageBase64: string | null;
+    mimetype: string | null;
+    error?: string | null;
+    connected?: boolean;
 }

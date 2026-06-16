@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { useAppMessage } from "@/hooks/useAppMessage";
 import { mediaService, MediaFile } from "@/lib/mediaService";
-import { studioService, StudioNotebook, StudioSource, ChatResponse } from "@/lib/studioService";
+import { studioService, StudioNotebook, StudioSource } from "@/lib/studioService";
 import {
     Card,
     Row,
@@ -18,16 +18,13 @@ import {
     Spin,
     Modal,
     Empty,
-    Divider,
     Breadcrumb,
     Tag,
     Progress,
     Upload,
     Tabs,
-    Badge,
     Popconfirm,
     Tooltip,
-    Dropdown
 } from "antd";
 import type { UploadProps } from "antd";
 import {
@@ -37,11 +34,7 @@ import {
     LoadingOutlined,
     FileTextOutlined,
     FundProjectionScreenOutlined,
-    PictureOutlined,
     DownloadOutlined,
-    AudioOutlined,
-    PlayCircleOutlined,
-    PauseCircleOutlined,
     MenuFoldOutlined,
     MenuUnfoldOutlined,
     PlusOutlined,
@@ -52,14 +45,7 @@ import {
     ClockCircleOutlined,
     SyncOutlined,
     ExclamationCircleOutlined,
-    FileAddOutlined,
     AppstoreAddOutlined,
-    InboxOutlined,
-    MessageOutlined,
-    HistoryOutlined,
-    ArrowLeftOutlined,
-    EditOutlined,
-    MoreOutlined,
     ApartmentOutlined
 } from "@ant-design/icons";
 import GuideFlowsPanel from "./GuideFlowsPanel";
@@ -78,16 +64,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 const { Title, Text, Paragraph } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const { TextArea } = Input;
-const { Dragger } = Upload;
-
-// ── Types ────────────────────────────────────────────────────────────
-
-interface ChatMessage {
-    role: 'user' | 'assistant';
-    content: string;
-    references?: { content: string; docName: string; score: number }[];
-    timestamp: number;
-}
 
 // ── Main Component ───────────────────────────────────────────────────
 
@@ -162,7 +138,7 @@ export default function AIStudioPage() {
         } finally {
             setLoadingNotebooks(false);
         }
-    }, [userId]);
+    }, [userId, message]);
 
     // ── Load Notebooks ──
     useEffect(() => {
@@ -247,8 +223,8 @@ export default function AIStudioPage() {
             setShowCreateModal(false);
             await loadNotebooks();
             selectNotebook(notebook);
-        } catch (e: any) {
-            message.error(e.message || "Failed to create notebook");
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Failed to create notebook");
         } finally {
             setCreatingNotebook(false);
         }
@@ -264,8 +240,8 @@ export default function AIStudioPage() {
                 resetChat();
             }
             loadNotebooks();
-        } catch (e: any) {
-            message.error(e.message || "Failed to delete");
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Failed to delete");
         }
     };
 
@@ -277,8 +253,8 @@ export default function AIStudioPage() {
             message.success("Source added to notebook");
             loadSourceStatus(activeNotebook.id);
             startPolling(activeNotebook.id);
-        } catch (e: any) {
-            message.error(e.message || "Failed to add source");
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Failed to add source");
         } finally {
             setAddingMedia(prev => { const s = new Set(prev); s.delete(mediaId); return s; });
         }
@@ -299,16 +275,16 @@ export default function AIStudioPage() {
 
     const handleUploadFile: UploadProps['customRequest'] = async (options) => {
         if (!activeNotebook) return;
-        const { file, onSuccess, onError } = options as any;
+        const { file, onSuccess, onError } = options;
         try {
             await studioService.uploadFileToNotebook(activeNotebook.id, file);
             onSuccess?.({}, file);
             message.success(`"${(file as File).name}" uploaded`);
             loadSourceStatus(activeNotebook.id);
             startPolling(activeNotebook.id);
-        } catch (e: any) {
+        } catch (e: unknown) {
             onError?.(e);
-            message.error(e.message || "Upload failed");
+            message.error(e instanceof Error ? e.message : "Upload failed");
         }
     };
 
@@ -318,8 +294,8 @@ export default function AIStudioPage() {
             await studioService.removeSource(activeNotebook.id, sourceId);
             message.success("Source removed");
             loadSourceStatus(activeNotebook.id);
-        } catch (e: any) {
-            message.error(e.message || "Failed to remove source");
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Failed to remove source");
         }
     };
 
@@ -352,8 +328,8 @@ export default function AIStudioPage() {
             message.success("Reindex started");
             startPolling(activeNotebook.id);
             loadSourceStatus(activeNotebook.id);
-        } catch (e: any) {
-            message.error(e.message || "Reindex failed");
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Reindex failed");
         }
     };
 
@@ -363,8 +339,8 @@ export default function AIStudioPage() {
         try {
             const report = await studioService.generateReport(activeNotebook.id, reportQuery);
             setGeneratedReport(report);
-        } catch (e: any) {
-            message.error(e.message || "Failed to generate report");
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Failed to generate report");
         } finally {
             setIsGeneratingReport(false);
         }
