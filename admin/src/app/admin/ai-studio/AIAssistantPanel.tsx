@@ -30,6 +30,7 @@ const { Text } = Typography;
 type Props = {
     themeColor: string;
     notebookName?: string;
+    briefSummary?: string;
     sources: StudioSource[];
     sourceStats: SourceStats;
     publishedGuideFlow: StudioGuideFlow | null;
@@ -48,11 +49,13 @@ type Props = {
     onStartGuided: () => void;
     onSetChatMode: (mode: StudioChatMode) => void;
     onResumeConversation: (id: string) => void;
+    onCitationClick?: (chunkId: string, docName: string, score: number) => void;
 };
 
 export default function AIAssistantPanel({
     themeColor,
     notebookName,
+    briefSummary,
     sources,
     sourceStats,
     publishedGuideFlow,
@@ -71,6 +74,7 @@ export default function AIAssistantPanel({
     onStartGuided,
     onSetChatMode,
     onResumeConversation,
+    onCitationClick,
 }: Props) {
     const [chatInput, setChatInput] = useState("");
     const [showReferences, setShowReferences] = useState<number | null>(null);
@@ -211,11 +215,20 @@ export default function AIAssistantPanel({
                             <Text strong className="block text-sm mb-1">
                                 {notebookName ? `Asisten — ${notebookName}` : "AI Assistant"}
                             </Text>
-                            <Text className="text-xs text-gray-400 block max-w-[280px]">
-                                {chatMode === "guided"
-                                    ? "Ikuti alur guided flow. Jawaban berdasarkan sumber terindeks."
-                                    : "Tanya jawab bebas dengan RAG — jawaban dikaitkan ke dokumen notebook."}
-                            </Text>
+                            {briefSummary ? (
+                                <div className="text-left max-w-[420px] mx-auto mt-2 p-3 rounded-lg bg-[rgba(var(--theme-color-rgb,139,92,246),0.06)] border border-[rgba(var(--theme-color-rgb,139,92,246),0.15)]">
+                                    <Text className="text-[10px] text-gray-400 uppercase block mb-1">Notebook Brief</Text>
+                                    <div className="prose prose-sm dark:prose-invert max-w-none text-xs">
+                                        <ReactMarkdown>{briefSummary}</ReactMarkdown>
+                                    </div>
+                                </div>
+                            ) : (
+                                <Text className="text-xs text-gray-400 block max-w-[280px]">
+                                    {chatMode === "guided"
+                                        ? "Ikuti alur guided flow. Jawaban berdasarkan sumber terindeks."
+                                        : "Tanya jawab bebas dengan RAG — jawaban dikaitkan ke dokumen notebook."}
+                                </Text>
+                            )}
                         </div>
                         {chatMode === "free" && suggestedPrompts.length > 0 && canSendFree && (
                             <div className="flex flex-col gap-1.5 w-full max-w-[300px]">
@@ -280,7 +293,27 @@ export default function AIAssistantPanel({
                                                     {msg.references.map((ref, ri) => (
                                                         <div
                                                             key={ri}
-                                                            className="bg-gray-50 dark:bg-gray-800/50 rounded-md p-2 text-[11px]"
+                                                            role={ref.chunkId && onCitationClick ? "button" : undefined}
+                                                            tabIndex={ref.chunkId && onCitationClick ? 0 : undefined}
+                                                            className={`bg-gray-50 dark:bg-gray-800/50 rounded-md p-2 text-[11px] ${
+                                                                ref.chunkId && onCitationClick
+                                                                    ? "cursor-pointer hover:ring-1 hover:ring-[color:var(--theme-color)]"
+                                                                    : ""
+                                                            }`}
+                                                            onClick={() => {
+                                                                if (ref.chunkId && onCitationClick) {
+                                                                    onCitationClick(ref.chunkId, ref.docName, ref.score);
+                                                                }
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                                if (
+                                                                    ref.chunkId &&
+                                                                    onCitationClick &&
+                                                                    (e.key === "Enter" || e.key === " ")
+                                                                ) {
+                                                                    onCitationClick(ref.chunkId, ref.docName, ref.score);
+                                                                }
+                                                            }}
                                                         >
                                                             <Space size={4} wrap>
                                                                 <Text

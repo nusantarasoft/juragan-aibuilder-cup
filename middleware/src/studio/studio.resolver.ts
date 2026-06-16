@@ -80,6 +80,20 @@ export class StudioResolver {
         return this.studioService.deleteNotebook(notebookId);
     }
 
+    @Mutation(() => GraphQLJSONObject, { name: 'updateStudioNotebook' })
+    async updateNotebook(
+        @Args('notebookId', { type: () => String }) notebookId: string,
+        @Args('name', { type: () => String, nullable: true }) name: string,
+        @Args('description', { type: () => String, nullable: true }) description: string,
+        @Args('chatInstruction', { type: () => String, nullable: true }) chatInstruction: string,
+    ) {
+        return this.studioService.updateNotebook(notebookId, {
+            name: name ?? undefined,
+            description: description ?? undefined,
+            chat_instruction: chatInstruction ?? undefined,
+        });
+    }
+
     // ── Sources ──────────────────────────────────────────────────────
 
     @Mutation(() => GraphQLJSONObject, { name: 'addMediaToNotebook' })
@@ -105,6 +119,14 @@ export class StudioResolver {
         return this.studioService.removeSource(notebookId, sourceId);
     }
 
+    @Mutation(() => GraphQLJSONObject, { name: 'importStudioUrl' })
+    async importUrl(
+        @Args('notebookId', { type: () => String }) notebookId: string,
+        @Args('url', { type: () => String }) url: string,
+    ) {
+        return this.studioService.importUrl(notebookId, url);
+    }
+
     // ── Chat ─────────────────────────────────────────────────────────
 
     @Mutation(() => GraphQLJSONObject, { name: 'studioChat' })
@@ -113,8 +135,11 @@ export class StudioResolver {
         @Args('question', { type: () => String }) question: string,
         @Args('conversationId', { type: () => String, nullable: true }) conversationId: string,
         @Args('userId', { type: () => String, nullable: true }) userId: string,
+        @Args('sourceIds', { type: () => [String], nullable: true }) sourceIds: string[],
     ) {
-        return this.studioService.chat(notebookId, question, conversationId, userId);
+        return this.studioService.chat(notebookId, question, conversationId, userId, {
+            sourceIds: sourceIds?.length ? sourceIds : undefined,
+        });
     }
 
     @Query(() => GraphQLJSONObject, { name: 'studioConversation' })
@@ -139,6 +164,44 @@ export class StudioResolver {
         @Args('query', { type: () => String }) query: string,
     ) {
         return this.studioService.generateReport(notebookId, query);
+    }
+
+    @Query(() => GraphQLJSONObject, { name: 'studioChunk', nullable: true })
+    async getChunk(@Args('chunkId', { type: () => String }) chunkId: string) {
+        return this.studioService.getChunk(chunkId);
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'studioGenerateBrief' })
+    async generateBrief(
+        @Args('notebookId', { type: () => String }) notebookId: string,
+        @Args('force', { type: () => Boolean, nullable: true }) force: boolean,
+    ) {
+        return this.studioService.generateBrief(notebookId, force ?? false);
+    }
+
+    @Query(() => [GraphQLJSONObject], { name: 'studioOutputs' })
+    async listOutputs(@Args('notebookId', { type: () => String }) notebookId: string) {
+        return this.studioService.listOutputs(notebookId);
+    }
+
+    @Mutation(() => Boolean, { name: 'deleteStudioOutput' })
+    async deleteOutput(@Args('outputId', { type: () => String }) outputId: string) {
+        return this.studioService.deleteOutput(outputId);
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'studioGenerateOutput' })
+    async generateOutput(
+        @Args('notebookId', { type: () => String }) notebookId: string,
+        @Args('outputType', { type: () => String }) outputType: string,
+        @Args('query', { type: () => String, nullable: true }) query: string,
+        @Args('sourceIds', { type: () => [String], nullable: true }) sourceIds: string[],
+    ) {
+        return this.studioService.generateStudioOutput(
+            notebookId,
+            outputType as any,
+            query ?? undefined,
+            sourceIds?.length ? sourceIds : undefined,
+        );
     }
 
     @Mutation(() => GraphQLJSONObject, { name: 'studioPlaygroundTest' })

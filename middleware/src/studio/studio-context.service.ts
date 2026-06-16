@@ -58,9 +58,16 @@ export class StudioContextService {
         notebookId: string,
         query: string,
         limit = 8,
+        sourceIds?: string[],
     ): Promise<StudioChunkHit[]> {
         const embedding = await this.ragService.embedText(query);
         if (!embedding) return [];
+
+        const filterBySources = (hits: StudioChunkHit[]) => {
+            if (!sourceIds?.length) return hits;
+            const allowed = new Set(sourceIds);
+            return hits.filter((c) => allowed.has(c.sourceId));
+        };
 
         const mapRows = (data: unknown[]) =>
             (data || []).map((row: any) => ({
@@ -76,7 +83,7 @@ export class StudioContextService {
                 query_embedding: embedding,
                 p_notebook_id: notebookId,
                 match_threshold: threshold,
-                match_count: limit,
+                match_count: sourceIds?.length ? Math.max(limit, 16) : limit,
             });
             if (error) {
                 if (error.code === '42883' || error.message?.includes('match_studio_chunks')) {
@@ -86,11 +93,11 @@ export class StudioContextService {
                 }
                 return [] as StudioChunkHit[];
             }
-            return mapRows(data || []);
+            return filterBySources(mapRows(data || [])).slice(0, limit);
         };
 
         let chunks = await search(0.42);
-        if (chunks.length === 0) {
+        if (chunks.length === 0 && !sourceIds?.length) {
             const { count } = await this.admin()
                 .from('studio_source_chunks')
                 .select('id', { count: 'exact', head: true })
@@ -114,8 +121,14 @@ export class StudioContextService {
         query: string,
         qu?: QueryUnderstandingResult,
         config?: StudioContextConfig,
+        options?: { sourceIds?: string[] },
     ): Promise<RetrievalResult> {
-        const chunks = await this.semanticSearchNotebook(notebookId, query);
+        const chunks = await this.semanticSearchNotebook(
+            notebookId,
+            query,
+            8,
+            options?.sourceIds,
+        );
 
         let documentRetrievalStatus: DocumentRetrievalStatus = 'matched';
         if (chunks.length === 0) {
@@ -151,6 +164,7 @@ export class StudioContextService {
             content: c.content.slice(0, 500),
             docName: c.filename,
             score: c.score,
+            chunkId: c.chunkId,
         }));
 
         const rawChunks = chunks.map((c) => ({
@@ -186,10 +200,12 @@ export class StudioContextService {
         audience: 'admin' | 'customer';
         question: string;
         instruction?: string;
+        chatInstruction?: string;
         conversationLines: string[];
         retrieval: RetrievalResult;
     }): Promise<string> {
-        const { notebookName, audience, question, instruction, conversationLines, retrieval } = params;
+        const { notebookName, audience, question, instruction, chatInstruction, conversationLines, retrieval } =
+            params;
         const hasFile = retrieval.fileContext.length > 0;
         const hasDb = retrieval.dbContext.length > 0;
         const docStatus =
@@ -203,6 +219,7 @@ export class StudioContextService {
         const rules = [
             roleLine,
             `Basis pengetahuan notebook: "${notebookName}".`,
+            chatInstruction?.trim() ? `Instruksi notebook: ${chatInstruction.trim()}` : '',
             this.fileContextRule(docStatus, hasDb),
             hasDb
                 ? 'Gunakan juga data database operasional di bawah untuk pertanyaan status/order/analitik.'
@@ -227,5 +244,36 @@ export class StudioContextService {
 
         const answer = await this.generateText(prompt);
         return answer || 'Maaf, saya tidak dapat menghasilkan jawaban saat ini.';
+    }
+
+    async getChunkById(chunkId: string): Promise<{
+        id: string;
+        content: string;
+        chunk_index: number;
+        source_id: string;
+        filename: string;
+        notebook_id: string;
+    } | null> {
+        const { data: chunk, error } = await this.admin()
+            .from('studio_source_chunks')
+            .select('id, content, chunk_index, source_id, notebook_id')
+            .eq('id', chunkId)
+            .single();
+        if (error || !chunk) return null;
+
+        const { data: source } = await this.admin()
+            .from('studio_notebook_sources')
+            .select('filename')
+            .eq('id', chunk.source_id)
+            .single();
+
+        return {
+            id: chunk.id,
+            content: chunk.content,
+            chunk_index: chunk.chunk_index,
+            source_id: chunk.source_id,
+            filename: source?.filename ?? 'Dokumen',
+            notebook_id: chunk.notebook_id,
+        };
     }
 }

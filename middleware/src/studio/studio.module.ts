@@ -15,6 +15,7 @@ import { WahaModule } from '../waha/waha.module';
 import { StudioWhatsAppController } from './studio-whatsapp.controller';
 import { StudioWhatsAppService } from './studio-whatsapp.service';
 import { StudioUmkmService } from './studio-umkm.service';
+import { StudioOutputService } from './studio-output.service';
 
 @Module({
     imports: [ConfigModule, SupabaseModule, AiModule, RagModule, DremioModule, WahaModule],
@@ -26,6 +27,7 @@ import { StudioUmkmService } from './studio-umkm.service';
         StudioIngestionService,
         StudioContextService,
         StudioDbContextService,
+        StudioOutputService,
         StudioWhatsAppService,
         StudioUmkmService,
     ],

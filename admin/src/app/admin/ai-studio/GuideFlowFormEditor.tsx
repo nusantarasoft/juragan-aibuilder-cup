@@ -385,7 +385,7 @@ export default function GuideFlowFormEditor({ value, onChange }: Props) {
                                 onChange={(action) =>
                                     updateNode(index, {
                                         ...node,
-                                        action: action as GuideFlowNode & { type: "action" }["action"],
+                                        action: action as Extract<GuideFlowNode, { type: "action" }>["action"],
                                     })
                                 }
                             />

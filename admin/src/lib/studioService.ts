@@ -72,7 +72,36 @@ export interface StudioMessage {
 export interface ChatResponse {
     conversationId: string;
     answer: string;
-    references: { content: string; docName: string; score: number }[];
+    references: { content: string; docName: string; score: number; chunkId?: string }[];
+}
+
+export type StudioOutputType =
+    | 'report'
+    | 'mind_map'
+    | 'quiz'
+    | 'faq'
+    | 'audio_script'
+    | 'brief'
+    | 'data_table';
+
+export interface StudioOutput {
+    id: string;
+    notebook_id: string;
+    output_type: StudioOutputType;
+    title: string;
+    content: string;
+    metadata?: Record<string, unknown>;
+    created_at: string;
+    updated_at?: string;
+}
+
+export interface StudioChunk {
+    id: string;
+    content: string;
+    chunk_index: number;
+    source_id: string;
+    filename: string;
+    notebook_id: string;
 }
 
 export interface StudioGuideFlow {
@@ -166,6 +195,28 @@ export const studioService = {
         return data.deleteStudioNotebook;
     },
 
+    async updateNotebook(
+        notebookId: string,
+        patch: { name?: string; description?: string; chatInstruction?: string },
+    ): Promise<StudioNotebook> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!, $name: String, $description: String, $chatInstruction: String) {
+                updateStudioNotebook(
+                    notebookId: $notebookId
+                    name: $name
+                    description: $description
+                    chatInstruction: $chatInstruction
+                )
+            }
+        `, {
+            notebookId,
+            name: patch.name ?? null,
+            description: patch.description ?? null,
+            chatInstruction: patch.chatInstruction ?? null,
+        });
+        return data.updateStudioNotebook;
+    },
+
     // ── Sources ──────────────────────────────
 
     async addMediaToNotebook(notebookId: string, mediaId: string): Promise<StudioSource> {
@@ -210,14 +261,41 @@ export const studioService = {
         return data.removeStudioSource;
     },
 
+    async importUrl(notebookId: string, url: string): Promise<StudioSource> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!, $url: String!) {
+                importStudioUrl(notebookId: $notebookId, url: $url)
+            }
+        `, { notebookId, url });
+        return data.importStudioUrl;
+    },
+
     // ── Chat ─────────────────────────────────
 
-    async chat(notebookId: string, question: string, conversationId?: string, userId?: string): Promise<ChatResponse> {
+    async chat(
+        notebookId: string,
+        question: string,
+        conversationId?: string,
+        userId?: string,
+        options?: { sourceIds?: string[] },
+    ): Promise<ChatResponse> {
         const data = await graphqlRequest(`
-            mutation($notebookId: String!, $question: String!, $conversationId: String, $userId: String) {
-                studioChat(notebookId: $notebookId, question: $question, conversationId: $conversationId, userId: $userId)
+            mutation($notebookId: String!, $question: String!, $conversationId: String, $userId: String, $sourceIds: [String!]) {
+                studioChat(
+                    notebookId: $notebookId
+                    question: $question
+                    conversationId: $conversationId
+                    userId: $userId
+                    sourceIds: $sourceIds
+                )
             }
-        `, { notebookId, question, conversationId, userId });
+        `, {
+            notebookId,
+            question,
+            conversationId,
+            userId,
+            sourceIds: options?.sourceIds?.length ? options.sourceIds : null,
+        });
         return data.studioChat;
     },
 
@@ -248,6 +326,65 @@ export const studioService = {
             }
         `, { notebookId, query });
         return data.studioGenerateReport;
+    },
+
+    async getChunk(chunkId: string): Promise<StudioChunk> {
+        const data = await graphqlRequest(`
+            query($chunkId: String!) {
+                studioChunk(chunkId: $chunkId)
+            }
+        `, { chunkId });
+        return data.studioChunk;
+    },
+
+    async generateBrief(notebookId: string, force = false): Promise<{ summary: string; cached: boolean; outputId?: string }> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!, $force: Boolean) {
+                studioGenerateBrief(notebookId: $notebookId, force: $force)
+            }
+        `, { notebookId, force });
+        return data.studioGenerateBrief;
+    },
+
+    async listOutputs(notebookId: string): Promise<StudioOutput[]> {
+        const data = await graphqlRequest(`
+            query($notebookId: String!) {
+                studioOutputs(notebookId: $notebookId)
+            }
+        `, { notebookId });
+        return data.studioOutputs || [];
+    },
+
+    async deleteOutput(outputId: string): Promise<boolean> {
+        const data = await graphqlRequest(`
+            mutation($outputId: String!) {
+                deleteStudioOutput(outputId: $outputId)
+            }
+        `, { outputId });
+        return data.deleteStudioOutput;
+    },
+
+    async generateOutput(
+        notebookId: string,
+        outputType: StudioOutputType,
+        options?: { query?: string; sourceIds?: string[] },
+    ): Promise<StudioOutput> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!, $outputType: String!, $query: String, $sourceIds: [String!]) {
+                studioGenerateOutput(
+                    notebookId: $notebookId
+                    outputType: $outputType
+                    query: $query
+                    sourceIds: $sourceIds
+                )
+            }
+        `, {
+            notebookId,
+            outputType,
+            query: options?.query ?? null,
+            sourceIds: options?.sourceIds?.length ? options.sourceIds : null,
+        });
+        return data.studioGenerateOutput;
     },
 
     async playgroundTest(params: {

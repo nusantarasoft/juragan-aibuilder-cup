@@ -1229,6 +1229,18 @@ const menuConfig = {
                         icon: <SettingOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/ai-studio/advanced/playground",
+                        name: "Playground",
+                        icon: <RobotOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ai-studio/advanced/guide-flows",
+                        name: "Guide Flows",
+                        icon: <ApartmentOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {

@@ -15,7 +15,7 @@ import { useAppMessage } from "@/hooks/useAppMessage";
 export interface StudioChatMessage {
     role: "user" | "assistant";
     content: string;
-    references?: { content: string; docName: string; score: number }[];
+    references?: { content: string; docName: string; score: number; chunkId?: string }[];
     timestamp: number;
 }
 
@@ -30,6 +30,7 @@ function mapSourceRefs(refs: unknown): StudioChatMessage["references"] | undefin
                 : `(cuplikan dari ${String(r.filename ?? r.docName ?? "dokumen")})`,
         docName: String(r.filename ?? r.docName ?? "Dokumen"),
         score: typeof r.score === "number" ? r.score : 0,
+        chunkId: typeof r.chunkId === "string" ? r.chunkId : undefined,
     }));
 }
 
@@ -63,6 +64,7 @@ export function useStudioChat(
     userId: string | undefined,
     sources: StudioSource[] = [],
     notebookName = "",
+    selectedSourceIds: string[] = [],
 ) {
     const message = useAppMessage();
     const [chatHistory, setChatHistory] = useState<StudioChatMessage[]>([]);
@@ -211,6 +213,10 @@ export function useStudioChat(
                         text.trim(),
                         conversationId,
                         userId,
+                        {
+                            sourceIds:
+                                selectedSourceIds.length > 0 ? selectedSourceIds : undefined,
+                        },
                     );
                     setConversationId(result.conversationId);
                     setChatHistory((prev) => [
@@ -242,6 +248,7 @@ export function useStudioChat(
             initGuidedFromPublished,
             loadConversations,
             message,
+            selectedSourceIds,
         ],
     );
 
