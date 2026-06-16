@@ -62,6 +62,7 @@ import {
     trackSourceStatusChanges,
 } from "./studioSourceStatus";
 import { useStudioChat } from "./useStudioChat";
+import AIAssistantPanel from "./AIAssistantPanel";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useAuth } from "@/context/AuthContext";
 import ReactMarkdown from 'react-markdown';
@@ -104,9 +105,8 @@ export default function AIStudioPage() {
     const [addingMedia, setAddingMedia] = useState<Set<string>>(new Set());
     const [publishedGuideFlow, setPublishedGuideFlow] = useState<StudioGuideFlow | null>(null);
 
-    const [chatInput, setChatInput] = useState("");
-    const [showReferences, setShowReferences] = useState<number | null>(null);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const sourceStats = summarizeSources(sources);
+
     const {
         chatHistory,
         conversationId,
@@ -120,7 +120,17 @@ export default function AIStudioPage() {
         sendMessage,
         setChatMode,
         setGuidedFlow,
-    } = useStudioChat(activeNotebook?.id ?? null, userId);
+        switchToFreeChat,
+        conversations,
+        loadingConversations,
+        resumeConversation,
+        suggestedPrompts,
+    } = useStudioChat(
+        activeNotebook?.id ?? null,
+        userId,
+        sources,
+        activeNotebook?.name ?? "",
+    );
 
     // ── Layout State ──
     const [showSources, setShowSources] = useState(true);
@@ -176,10 +186,6 @@ export default function AIStudioPage() {
         return () => { if (pollRef.current) clearInterval(pollRef.current); };
     }, [authLoading, loadNotebooks]);
 
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [chatHistory]);
-
     const selectNotebook = async (notebook: StudioNotebook) => {
         if (pollRef.current) {
             clearInterval(pollRef.current);
@@ -192,7 +198,6 @@ export default function AIStudioPage() {
         setChatMode("free");
         setGuidedFlow(null);
         setPublishedGuideFlow(null);
-        setShowReferences(null);
         setStudioMainTab("workspace");
         await loadSourceStatus(notebook.id, true);
         try {
@@ -206,12 +211,6 @@ export default function AIStudioPage() {
     const startPublishedGuidedFlow = async () => {
         if (!publishedGuideFlow) return;
         await initGuidedFromPublished(publishedGuideFlow);
-    };
-
-    const switchToFreeChat = () => {
-        setChatMode("free");
-        setGuidedFlow(null);
-        resetChat();
     };
 
     const handleNewChat = async () => {
@@ -377,12 +376,11 @@ export default function AIStudioPage() {
         }
     };
 
-    const sourceStats = summarizeSources(sources);
     const sourcesIndexed = sourceStats.anyIndexed;
     const sourcesIndexing = sourceStats.inProgress > 0;
 
-    const handleChatSend = async () => {
-        if (!chatInput.trim() || !activeNotebook) return;
+    const handleChatSend = async (text: string) => {
+        if (!activeNotebook || !text.trim()) return;
         if (sources.length === 0) {
             message.warning("Belum ada sumber. Tambahkan file atau media terlebih dahulu.");
             return;
@@ -391,13 +389,11 @@ export default function AIStudioPage() {
             message.warning("Sumber belum terindeks. Tunggu proses selesai atau gunakan Reindex.");
             return;
         }
-        if (chatMode === 'guided' && !waitingInput && chatHistory.length > 0) {
-            message.warning("Guided flow is not waiting for input.");
+        if (chatMode === "guided" && !waitingInput && chatHistory.length > 0) {
+            message.warning("Guided flow belum menunggu input.");
             return;
         }
-        const q = chatInput;
-        setChatInput("");
-        await sendMessage(q);
+        await sendMessage(text.trim());
     };
 
     const handleReindexSource = async (sourceId: string) => {
@@ -638,176 +634,6 @@ export default function AIStudioPage() {
                     </Tooltip>
                 ); })
             )}
-        </div>
-    );
-
-    const chatInputPlaceholder = !activeNotebook
-        ? "Select a notebook first"
-        : chatMode === "guided" && guidedFlow
-          ? waitingInput
-              ? "Balas di sini…"
-              : "Tunggu respons asisten…"
-          : "Ask about your sources...";
-
-    const renderChatPanel = () => (
-        <div className="flex flex-col h-full">
-            {chatMode === "guided" && guidedFlow && (
-                <div
-                    className="mx-3 mt-2 px-3 py-2 rounded-lg text-[11px] border flex items-start justify-between gap-2"
-                    style={{
-                        borderColor: `${themeColor}33`,
-                        backgroundColor: `${themeColor}0d`,
-                    }}
-                >
-                    <div>
-                        <Text strong className="text-[11px] block" style={{ color: themeColor }}>
-                            Guided session: {guidedFlow.name}
-                        </Text>
-                        <Text type="secondary" className="text-[10px] block mt-0.5">
-                            {waitingInput
-                                ? "Menunggu balasan Anda — jawaban memakai sumber terindeks."
-                                : "Alur sedang berjalan…"}
-                        </Text>
-                    </div>
-                    <Button type="link" size="small" className="text-[10px] p-0 h-auto shrink-0" onClick={switchToFreeChat}>
-                        Chat bebas
-                    </Button>
-                </div>
-            )}
-            {publishedGuideFlow && chatMode === "free" && (
-                <Alert
-                    className="mx-3 mt-2 text-[11px]"
-                    type="info"
-                    showIcon
-                    message={`Guide flow "${publishedGuideFlow.name}" tersedia`}
-                    description="Chat bebas (RAG) aktif. Mulai guided hanya jika ingin mengikuti alur WA UMKM."
-                    action={
-                        <Button size="small" type="primary" onClick={startPublishedGuidedFlow}>
-                            Mulai guided
-                        </Button>
-                    }
-                />
-            )}
-            {sources.length > 0 && !sourceStats.allIndexed && (
-                <motion.div className="mx-3 mt-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 text-[11px] text-amber-800 dark:text-amber-200">
-                    {sourcesIndexing
-                        ? sourceStats.embedding > 0
-                            ? `${sourceStats.embedding} file sedang vektorisasi (embed chunk). Progress per file di panel Sources.`
-                            : `${sourceStats.inProgress} sumber diproses (ekstrak teks → chunk → vektor).`
-                        : sourceStats.errors > 0
-                          ? `${sourceStats.errors} sumber gagal (lihat pesan error di Sources). Gunakan Reindex.`
-                          : "Sumber belum tervektor. Tunggu proses atau gunakan Reindex."}
-                </motion.div>
-            )}
-            {sourceStats.allIndexed && sources.length > 0 && (
-                <div className="mx-3 mt-2 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200/60 text-[11px] text-green-800 dark:text-green-200 flex items-center gap-1.5">
-                    <CheckCircleFilled style={{ color: '#52c41a', fontSize: 12 }} />
-                    Semua sumber tervektor ({sourceStats.indexed} file, {sources.reduce((n, s) => n + (s.chunk_count ?? 0), 0)} chunk) — siap untuk chat RAG.
-                </div>
-            )}
-            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                {chatHistory.length === 0 && (
-                    <div className="w-full h-full flex flex-col items-center justify-center gap-4 opacity-60">
-                        <RobotOutlined style={{ fontSize: 48, color: themeColor }} />
-                        <div className="text-center">
-                            <Text strong className="block text-sm mb-1">Ask about your sources</Text>
-                            <Text className="text-xs text-gray-400 block max-w-[280px]">
-                                {chatMode === "guided" && guidedFlow
-                                    ? `Guided session: ${guidedFlow.name}. Answers use indexed sources and optional database context.`
-                                    : "Ask questions grounded in indexed notebook sources (RAG) and configured database views."}
-                            </Text>
-                        </div>
-                    </div>
-                )}
-                {chatHistory.map((msg, i) => (
-                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}>
-                        <div className="max-w-[85%]">
-                            <div style={{
-                                padding: '12px 16px',
-                                borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                                background: msg.role === 'user' ? `${themeColor}` : 'rgba(var(--theme-color-rgb, 139, 92, 246), 0.06)',
-                                color: msg.role === 'user' ? '#fff' : 'inherit',
-                                wordBreak: 'break-word',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                            }}>
-                                <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:m-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0">
-                                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                                </div>
-                            </div>
-                            {/* References */}
-                            {msg.references && msg.references.length > 0 && (
-                                <div className="mt-1.5">
-                                    <Button
-                                        type="text"
-                                        size="small"
-                                        className="text-[10px] text-gray-400 hover:!text-[color:var(--theme-color)] p-0 h-auto"
-                                        onClick={() => setShowReferences(showReferences === i ? null : i)}
-                                    >
-                                        📄 {msg.references.length} source{msg.references.length > 1 ? 's' : ''} cited
-                                    </Button>
-                                    <AnimatePresence>
-                                        {showReferences === i && (
-                                            <motion.div
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: 'auto', opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                className="overflow-hidden"
-                                            >
-                                                <div className="mt-1 space-y-1">
-                                                    {msg.references.map((ref, ri) => (
-                                                        <div key={ri} className="bg-gray-50 dark:bg-gray-800/50 rounded-md p-2 text-[11px]">
-                                                            <Text strong className="text-[10px] block mb-0.5" style={{ color: themeColor }}>{ref.docName}</Text>
-                                                            <Text className="text-gray-500 text-[10px] line-clamp-2">{ref.content}</Text>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                ))}
-                {isChatting && (
-                    <div className="flex justify-start mb-4">
-                        <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/50">
-                            <Spin indicator={<LoadingOutlined spin />} size="small" />
-                        </div>
-                    </div>
-                )}
-                <div ref={messagesEndRef} />
-            </div>
-            {/* Chat Input */}
-            <div className="p-3 border-t border-[rgba(var(--theme-color-rgb,139,92,246),0.1)]">
-                <Space.Compact className="w-full" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.05)', borderRadius: 10 }}>
-                    <Input
-                        size="large"
-                        value={chatInput}
-                        onChange={e => setChatInput(e.target.value)}
-                        onPressEnter={handleChatSend}
-                        placeholder={chatInputPlaceholder}
-                        disabled={
-                            isChatting ||
-                            !activeNotebook ||
-                            (chatMode === "guided" && !waitingInput && chatHistory.length > 0)
-                        }
-                        style={{ borderBottomLeftRadius: 10, borderTopLeftRadius: 10 }}
-                    />
-                    <Button
-                        size="large"
-                        type="primary"
-                        icon={<SendOutlined />}
-                        onClick={handleChatSend}
-                        loading={isChatting}
-                        disabled={
-                            !activeNotebook ||
-                            (chatMode === "guided" && !waitingInput && chatHistory.length > 0)
-                        }
-                        style={{ borderBottomRightRadius: 10, borderTopRightRadius: 10, backgroundColor: themeColor }}
-                    />
-                </Space.Compact>
-            </div>
         </div>
     );
 
@@ -1336,20 +1162,6 @@ export default function AIStudioPage() {
                                             AI Assistant
                                         </span>
                                     }
-                                    extra={
-                                        activeNotebook &&
-                                        (conversationId || (chatMode === "guided" && guidedFlow)) ? (
-                                            <Button
-                                                type="text"
-                                                size="small"
-                                                className="text-[10px] text-gray-400 hover:!text-[color:var(--theme-color)]"
-                                                onClick={() => void handleNewChat()}
-                                                loading={isChatting}
-                                            >
-                                                New Chat
-                                            </Button>
-                                        ) : null
-                                    }
                                     style={{
                                         display: 'flex', flexDirection: 'column', height: '100%',
                                         background: 'transparent', boxShadow: 'none', border: 'none'
@@ -1361,10 +1173,39 @@ export default function AIStudioPage() {
                                             borderBottom: '1px solid rgba(var(--theme-color-rgb,139,92,246),0.2)',
                                             minHeight: 40, padding: '0 12px'
                                         },
-                                        body: { padding: 0, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }
+                                        body: { padding: 0, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }
                                     }}
                                 >
-                                    {renderChatPanel()}
+                                    {activeNotebook ? (
+                                        <AIAssistantPanel
+                                            themeColor={themeColor}
+                                            notebookName={activeNotebook.name}
+                                            sources={sources}
+                                            sourceStats={sourceStats}
+                                            publishedGuideFlow={publishedGuideFlow}
+                                            chatHistory={chatHistory}
+                                            conversationId={conversationId}
+                                            isChatting={isChatting}
+                                            chatMode={chatMode}
+                                            guidedFlow={guidedFlow}
+                                            waitingInput={waitingInput}
+                                            suggestedPrompts={suggestedPrompts}
+                                            conversations={conversations}
+                                            loadingConversations={loadingConversations}
+                                            onSend={(text) => void handleChatSend(text)}
+                                            onNewChat={() => void handleNewChat()}
+                                            onSwitchToFree={switchToFreeChat}
+                                            onStartGuided={() => void startPublishedGuidedFlow()}
+                                            onSetChatMode={setChatMode}
+                                            onResumeConversation={(id) => void resumeConversation(id)}
+                                        />
+                                    ) : (
+                                        <div className="flex items-center justify-center h-48 opacity-60 p-4">
+                                            <Text type="secondary" className="text-xs text-center">
+                                                Pilih notebook untuk memulai chat RAG.
+                                            </Text>
+                                        </div>
+                                    )}
                                 </Card>
                             </motion.div>
                         )}

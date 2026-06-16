@@ -49,6 +49,8 @@ export function summarizeSources(sources: StudioSource[]) {
     };
 }
 
+export type SourceStats = ReturnType<typeof summarizeSources>;
+
 export function getSourceProgressPercent(source: StudioSource): number {
     if (source.parse_status === 'pending') return 5;
     if (source.parse_status === 'parsing') {

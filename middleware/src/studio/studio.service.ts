@@ -443,7 +443,14 @@ export class StudioService {
 
         await this.appendStudioMessage(conversation.id, 'user', question);
 
-        const { answer, references, rawChunks } = await this.invokeRagQuery(notebookId, conversation.id, question);
+        const conversationLines = await this.getRecentConversationLines(conversation.id, 12);
+        const qu = await this.understandUserQuery(question, { conversationLines });
+        const { answer, references, rawChunks } = await this.invokeRagQuery(
+            notebookId,
+            conversation.id,
+            question,
+            { queryUnderstanding: qu },
+        );
         await this.appendStudioMessage(conversation.id, 'assistant', answer, rawChunks);
 
         // Update conversation title if first message

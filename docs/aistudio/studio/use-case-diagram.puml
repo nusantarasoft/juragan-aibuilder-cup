@@ -45,6 +45,8 @@ rectangle "AI Studio — Studio" {
     usecase "UC-11\nChat Guided Flow" as UC11
     usecase "UC-12\nMulai Chat Baru" as UC12
     usecase "UC-13\nLihat Referensi\nSumber Jawaban" as UC13
+    usecase "UC-26\nLanjutkan Riwayat\nPercakapan" as UC26
+    usecase "UC-27\nPilih Mode Chat\n(Bebas / Guided)" as UC27
   }
 
   package "Workspace — Generator" {
@@ -79,6 +81,8 @@ Admin --> UC10
 Admin --> UC11
 Admin --> UC12
 Admin --> UC13
+Admin --> UC26
+Admin --> UC27
 Admin --> UC14
 Admin --> UC15
 Admin --> UC16
@@ -100,12 +104,19 @@ UC09 ..> UC19 : <<include>>\n(monitor pipeline)
 
 UC10 ..> UC09 : <<include>>
 UC11 ..> UC09 : <<include>>
+UC11 ..> UC25 : <<include>>
+UC10 ..> UC26 : <<extend>>\nopsional resume
+UC10 ..> UC27 : <<include>>
+UC11 ..> UC27 : <<include>>
+UC12 ..> UC10 : <<extend>>
+UC12 ..> UC11 : <<extend>>
+UC10 ..> UC13 : <<include>>\njika ada kutipan
+UC11 ..> UC13 : <<include>>
 UC14 ..> UC09 : <<include>>
 UC17 ..> UC09 : <<include>>
 UC16 ..> UC11 : <<extend>>
 UC15 ..> UC23 : <<include>>\nsebelum save/publish
 UC15 ..> UC24 : <<include>>\nnew flow
-UC11 ..> UC25 : <<include>>
 UC17 ..> UC25 : <<include>>
 
 MW --> UC19
@@ -119,6 +130,28 @@ MW --> UC18
 MW --> UC25
 
 UC18 ..> UC18b : <<include>>\nsetelah test
+
+note bottom of UC10
+  Mutation studioChat:
+  query understanding multi-turn +
+  invokeRagQuery (semantic search + grounded answer).
+  Default mode di AI Assistant panel.
+end note
+
+note bottom of UC26
+  studioConversations / studioConversation:
+  muat ulang pesan + source_refs dari DB.
+end note
+
+note bottom of UC27
+  Segmented control: Chat bebas vs Guided.
+  Guided butuh published guide flow (UC-16).
+end note
+
+note bottom of UC13
+  Expandable citations per jawaban:
+  nama dokumen, cuplikan, skor relevansi %.
+end note
 
 note bottom of UC18
   Mutation studioPlaygroundTest:

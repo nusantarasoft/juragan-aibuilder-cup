@@ -29,10 +29,12 @@ Use case diagram untuk halaman **Studio** (`/admin/ai-studio`) di modul AI Studi
 | UC-07 | Hapus sumber | Panel Sources (sidebar) |
 | UC-08 | Reindex sumber | Panel Sources (sidebar) |
 | UC-09 | Monitor status indeksasi | Panel Sources (polling + progress UI) |
-| UC-10 | Chat RAG (tanya jawab bebas) | AI Assistant |
-| UC-11 | Chat guided flow | AI Assistant |
+| UC-10 | Chat RAG (tanya jawab bebas) | AI Assistant → `studioChat` |
+| UC-11 | Chat guided flow | AI Assistant → `studioGuidedChat` |
 | UC-12 | Mulai chat baru | AI Assistant |
-| UC-13 | Lihat referensi sumber jawaban | AI Assistant |
+| UC-13 | Lihat referensi sumber jawaban (skor relevansi) | AI Assistant |
+| UC-26 | Lanjutkan riwayat percakapan | AI Assistant → `studioConversation` |
+| UC-27 | Pilih mode chat (bebas / guided) | AI Assistant (Segmented) |
 | UC-14 | Generate executive report | Workspace |
 | UC-15 | Kelola guide flow (buat / edit / hapus) | Guide flows |
 | UC-16 | Publish guide flow | Guide flows |
@@ -65,6 +67,10 @@ Status di UI: `pending` (antrian) → `parsing` (UC-19..21 berjalan) → `done` 
 - **UC-19 → UC-20 → UC-21 → UC-22** — rangkaian `<<include>>` proses sistem.
 - **UC-09** memantau seluruh pipeline (bukan hanya upload).
 - **UC-10, UC-11, UC-14, UC-17** `<<include>>` **UC-09** — butuh chunk + embedding selesai.
+- **UC-10** memakai query understanding multi-turn sebelum RAG; **UC-13** menampilkan kutipan dengan skor relevansi.
+- **UC-26** `<<extend>>` **UC-10** — lanjutkan percakapan lama dari riwayat.
+- **UC-27** mengatur mode **Chat bebas** vs **Guided** di panel AI Assistant.
+- **UC-12** `<<extend>>` **UC-10** atau **UC-11** — reset sesi chat.
 - **UC-16** `<<extend>>` **UC-11** — flow published otomatis memulai sesi guided.
 - **UC-15** `<<include>>` **UC-23** — validasi sebelum save/publish; **UC-24** saat buat flow baru dari template.
 - **UC-11, UC-17** `<<include>>` **UC-25** — eksekusi node pipeline di middleware.
