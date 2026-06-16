@@ -1,0 +1,18 @@
+# Optional module schemas — apply after manifest.core.txt when enabling modules.
+#   .\scripts\apply-migrations.ps1 -Manifest modules
+
+supabase/archive/permissions_schema.sql
+volumes/db/permissions.sql
+supabase/archive/crm_schema.sql
+supabase/archive/itsm_full_schema.sql
+supabase/archive/pm_schema_v2.sql
+supabase/archive/ecommerce_schema.sql
+middleware/sql/inventory_schema.sql
+middleware/sql/procurement_schema.sql
+volumes/db/accounting_v2.sql
+volumes/db/documents.sql
+volumes/db/files.sql
+volumes/db/chat.sql
+volumes/db/blog.sql
+volumes/db/emails.sql
+supabase/migrations/20260506999999_reload_postgrest.sql

@@ -93,11 +93,11 @@ services:
       - ./volumes/db/chat.sql:/docker-entrypoint-initdb.d/migrations/99-chat.sql:Z
       - ./volumes/db/emails.sql:/docker-entrypoint-initdb.d/migrations/99-emails.sql:Z
       - ./volumes/db/news_intelligence.sql:/docker-entrypoint-initdb.d/migrations/99-news-intelligence.sql:Z
-      - ./volumes/db/migrations/20260506_ops_module.sql:/docker-entrypoint-initdb.d/migrations/99-ops-module.sql:Z
-      - ./volumes/db/migrations/20260506_notifications_module.sql:/docker-entrypoint-initdb.d/migrations/99-notifications-module.sql:Z
-      - ./volumes/db/migrations/20260506_data_export_logs.sql:/docker-entrypoint-initdb.d/migrations/99-data-export-logs.sql:Z
-      - ./volumes/db/migrations/20260506_realtime_notifications.sql:/docker-entrypoint-initdb.d/migrations/100-realtime-notifications.sql:Z
-      - ./volumes/db/migrations/20260506_seed_ops_notifications.sql:/docker-entrypoint-initdb.d/init-scripts/101-seed-ops-notifications.sql:Z
+      - ./supabase/migrations/20260506000001_ops_module.sql:/docker-entrypoint-initdb.d/migrations/99-ops-module.sql:Z
+      - ./supabase/migrations/20260506000002_notifications_module.sql:/docker-entrypoint-initdb.d/migrations/99-notifications-module.sql:Z
+      - ./supabase/migrations/20260506000003_data_export_logs.sql:/docker-entrypoint-initdb.d/migrations/99-data-export-logs.sql:Z
+      - ./supabase/migrations/20260506000004_realtime_notifications.sql:/docker-entrypoint-initdb.d/migrations/100-realtime-notifications.sql:Z
+      - ./supabase/migrations/00000001000001_seed_ops_notifications.sql:/docker-entrypoint-initdb.d/init-scripts/101-seed-ops-notifications.sql:Z
       # ── Data volumes ────────────────────────────────────────────────────
       - ./volumes/db/data:/var/lib/postgresql/data:Z
       - db-config:/etc/postgresql-custom

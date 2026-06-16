@@ -1,0 +1,12 @@
+# Core migrations — applied in order by scripts/apply-migrations.ps1
+# Fresh DB: docker also runs supabase/migrations via init (see docker-compose).
+
+supabase/migrations/00000000000001_schema_migrations.sql
+supabase/migrations/00000000000000_consolidated_init.sql
+supabase/migrations/20260506000001_ops_module.sql
+supabase/migrations/20260506000002_notifications_module.sql
+supabase/migrations/20260506000003_data_export_logs.sql
+supabase/migrations/20260506000004_realtime_notifications.sql
+supabase/migrations/20260506999999_reload_postgrest.sql
+supabase/migrations/00000001000000_seed_data.sql
+supabase/migrations/00000001000001_seed_ops_notifications.sql
