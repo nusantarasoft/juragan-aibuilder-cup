@@ -43,9 +43,14 @@ docker compose up -d postgres
 Volume data: `volumes/db/data/`. Init scripts hanya jalan sekali saat volume kosong.
 
 ## Embedding dimension
+Golden path memakai **768 dim** untuk Studio RAG.
 
-Default `match_studio_chunks` memakai **1408 dim** (`00000000000061_studio_tables.sql`).  
-`middleware/sql/studio_embedding_google_ai_768.sql` adalah alternatif 768-dim — **jangan** apply bersamaan; pilih satu strategi embedding.
+- `00000000000061_studio_tables.sql` mendefinisikan `studio_source_chunks.embedding` sebagai `vector(1408)`.
+- `00000000000062_studio_embedding_google_ai_768.sql` akan menstandarkan DB ke `vector(768)` dan membuat `match_studio_chunks(query_embedding vector(768), ...)`.
+
+Jika Anda ingin memakai strategi Vertex **1408 dim**, Anda perlu reset DB tanpa migration `00000000000062_studio_embedding_google_ai_768.sql` (karena kolom embedding tidak bisa menampung dua dimensi sekaligus).
+
+Untuk golden path 768, pastikan Studio memakai Google embeddings (misalnya `EMBEDDING_PROVIDER=google_ai`, atau pada mode `auto` pastikan `GOOGLE_CLOUD_PROJECT` tidak ada sehingga `useGoogle=true`).
 
 ## Manual psql
 

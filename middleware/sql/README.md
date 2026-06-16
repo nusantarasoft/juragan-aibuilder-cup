@@ -33,4 +33,4 @@ Lihat `supabase/manifest.modules.txt` untuk apply opsional.
 
 ## Alternatif embedding
 
-`studio_embedding_google_ai_768.sql` — 768-dim Google AI. Konflik dengan default 1408-dim di `studio_tables`. Dokumentasi: `supabase/README.md`.
+`studio_embedding_google_ai_768.sql` — 768-dim Google AI. Ini sekarang sudah dikonsolidasi ke kanonik `supabase/migrations/00000000000062_studio_embedding_google_ai_768.sql` (standar golden path). Dokumentasi: `supabase/README.md`.
