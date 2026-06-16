@@ -5,6 +5,7 @@ import {
     OnGatewayConnection,
     OnGatewayDisconnect,
     MessageBody,
+    ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
@@ -33,7 +34,7 @@ export class FacilityGateway implements OnGatewayConnection, OnGatewayDisconnect
     // Mock an active stream of data for testing
     // In production, this would be driven by MQTT/Kafka listeners hitting the service
     @SubscribeMessage('subscribe_telemetry')
-    handleSubscribeTelemetry(client: Socket, @MessageBody() data: any) {
+    handleSubscribeTelemetry(@ConnectedSocket() client: Socket, @MessageBody() _data: unknown) {
         this.logger.log(`Client ${client.id} subscribed to telemetry`);
         
         // Push fake telemetry every 5 seconds
@@ -52,7 +53,7 @@ export class FacilityGateway implements OnGatewayConnection, OnGatewayDisconnect
     }
 
     @SubscribeMessage('unsubscribe_telemetry')
-    handleUnsubscribeTelemetry(client: Socket) {
+    handleUnsubscribeTelemetry(@ConnectedSocket() client: Socket) {
         if ((client as any).telemetryInterval) {
             clearInterval((client as any).telemetryInterval);
         }
