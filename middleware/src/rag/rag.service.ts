@@ -19,6 +19,19 @@ export class RagService implements OnModuleInit {
         private supabaseService: SupabaseService
     ) { }
 
+    private async getDbSettings(): Promise<any> {
+        try {
+            const { data } = await this.supabaseService.getAdminClient()
+                .from('studio_settings')
+                .select('*')
+                .limit(1)
+                .single();
+            return data || {};
+        } catch (e) {
+            return {};
+        }
+    }
+
     async onModuleInit() {
         // Dynamic import for ESM-only package (Bypass TS transpilation to require)
         const { VertexAI } = await (new Function('return import("@google-cloud/vertexai")')());
@@ -93,12 +106,13 @@ User Question: ${query}
 Answer:`;
 
         // 3. Generate Answer (Try API Key first, then Vertex)
-        const apiKey = this.configService.get('GOOGLE_API_KEY');
+        const settings = await this.getDbSettings();
+        const apiKey = settings?.google_api_key || this.configService.get('GOOGLE_API_KEY');
 
         try {
             if (apiKey) {
                 // Use Gemini API directly
-                const genModel = this.configService.get('GOOGLE_GENERATIVE_MODEL') || 'gemini-2.5-flash';
+                const genModel = settings?.google_model || this.configService.get('GOOGLE_GENERATIVE_MODEL') || 'gemini-2.5-flash';
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${genModel}:generateContent?key=${apiKey}`;
                 const response = await fetch(url, {
                     method: 'POST',
@@ -131,9 +145,11 @@ Answer:`;
     async embedText(text: string): Promise<number[] | null> {
         if (!text?.trim()) return null;
         const trimmed = text.trim();
-        const provider = (this.configService.get('EMBEDDING_PROVIDER') || 'auto').toLowerCase();
-        const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
-        const apiKey = this.configService.get('GOOGLE_API_KEY');
+        const settings = await this.getDbSettings();
+        
+        const provider = (settings?.default_embedding_provider || this.configService.get('EMBEDDING_PROVIDER') || 'auto').toLowerCase();
+        const projectId = settings?.google_project_id || this.configService.get('GOOGLE_CLOUD_PROJECT');
+        const apiKey = settings?.google_api_key || this.configService.get('GOOGLE_API_KEY');
 
         const useGoogle =
             provider === 'google_ai' ||

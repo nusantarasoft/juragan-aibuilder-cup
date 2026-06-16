@@ -277,13 +277,13 @@ export default function AIStudioPage() {
         if (!activeNotebook) return;
         const { file, onSuccess, onError } = options;
         try {
-            await studioService.uploadFileToNotebook(activeNotebook.id, file);
-            onSuccess?.({}, file);
+            await studioService.uploadFileToNotebook(activeNotebook.id, file as File);
+            onSuccess?.({}, file as any);
             message.success(`"${(file as File).name}" uploaded`);
             loadSourceStatus(activeNotebook.id);
             startPolling(activeNotebook.id);
         } catch (e: unknown) {
-            onError?.(e);
+            onError?.(e as Error);
             message.error(e instanceof Error ? e.message : "Upload failed");
         }
     };

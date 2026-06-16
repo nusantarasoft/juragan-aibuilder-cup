@@ -16,7 +16,7 @@ finally {
 }
 
 Write-Host "2. Building Docker Images (Admin & Middleware)..." -ForegroundColor Cyan
-docker-compose build --no-cache admin middleware
+docker-compose build admin middleware
 
 Write-Host "3. Restarting Containers..." -ForegroundColor Cyan
 docker-compose up -d --force-recreate admin middleware

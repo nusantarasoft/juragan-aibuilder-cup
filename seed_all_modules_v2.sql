@@ -34,10 +34,10 @@ INSERT INTO pm_tasks (id, tenant_id, project_id, sprint_id, title, description, 
 ON CONFLICT (id) DO NOTHING;
 
 -- Risk Registers (uses risk_name, mitigation_strategy, contingency_plan)
-INSERT INTO pm_risk_registers (id, project_id, tenant_id, risk_name, description, category, probability, impact, risk_score, mitigation_strategy, contingency_plan, status) VALUES
-  ('24000000-0000-0000-0000-000000000001', '21000000-0000-0000-0000-000000000002', 'default', 'Data loss during migration', 'Risk of data corruption or loss during database migration from on-prem PostgreSQL to AWS RDS', 'technical', 'low', 'critical', 4, 'Full backup before migration. Parallel-run both environments for 2 weeks.', 'Restore from latest backup and retry migration during next window.', 'open'),
-  ('24000000-0000-0000-0000-000000000002', '21000000-0000-0000-0000-000000000002', 'default', 'Downtime exceeds maintenance window', 'Migration may take longer than planned 4-hour maintenance window', 'schedule', 'medium', 'high', 6, 'Pre-stage all resources. Use blue-green deployment.', 'Rollback to on-prem within 30 minutes.', 'open'),
-  ('24000000-0000-0000-0000-000000000003', '21000000-0000-0000-0000-000000000001', 'default', 'Vertex AI API cost overrun', 'AI feature usage may exceed budgeted API costs if adoption is higher than expected', 'cost', 'medium', 'medium', 4, 'Monitor usage weekly. Set billing alerts at 80% budget.', 'Implement request caching and rate limiting.', 'open')
+INSERT INTO pm_risk_registers (id, project_id, tenant_id, risk_name, description, category, probability, impact, mitigation_strategy, contingency_plan, status) VALUES
+  ('24000000-0000-0000-0000-000000000001', '21000000-0000-0000-0000-000000000002', 'default', 'Data loss during migration', 'Risk of data corruption or loss during database migration from on-prem PostgreSQL to AWS RDS', 'technical', 1, 5, 'Full backup before migration. Parallel-run both environments for 2 weeks.', 'Restore from latest backup and retry migration during next window.', 'open'),
+  ('24000000-0000-0000-0000-000000000002', '21000000-0000-0000-0000-000000000002', 'default', 'Downtime exceeds maintenance window', 'Migration may take longer than planned 4-hour maintenance window', 'schedule', 3, 4, 'Pre-stage all resources. Use blue-green deployment.', 'Rollback to on-prem within 30 minutes.', 'open'),
+  ('24000000-0000-0000-0000-000000000003', '21000000-0000-0000-0000-000000000001', 'default', 'Vertex AI API cost overrun', 'AI feature usage may exceed budgeted API costs if adoption is higher than expected', 'cost', 3, 3, 'Monitor usage weekly. Set billing alerts at 80% budget.', 'Implement request caching and rate limiting.', 'open')
 ON CONFLICT (id) DO NOTHING;
 
 -- Milestones

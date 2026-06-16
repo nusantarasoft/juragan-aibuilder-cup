@@ -25,13 +25,13 @@ export default function DcimAssets() {
 
     // Demo Data
     const assetData = [
-        { id: '1', assetTag: 'SRV-1001', type: 'Server', model: 'Dell R740', rack: 'A12', uPos: 'U10-11', status: 'Active', lifecycle: 'Production' },
-        { id: '2', assetTag: 'SRV-1002', type: 'Server', model: 'Dell R740', rack: 'A12', uPos: 'U12-13', status: 'Warning', lifecycle: 'Production' },
-        { id: '3', assetTag: 'SW-CORE-01', type: 'Switch', model: 'Cisco Nexus 9k', rack: 'N01', uPos: 'U38', status: 'Active', lifecycle: 'Production' },
-        { id: '4', assetTag: 'PDU-A12-L', type: 'PDU', model: 'APC 8000', rack: 'A12', uPos: 'Zero-U', status: 'Active', lifecycle: 'Production' },
-        { id: '5', assetTag: 'SRV-0988', type: 'Server', model: 'HP ProLiant', rack: 'C05', uPos: 'U22', status: 'Offline', lifecycle: 'Maintenance' },
-        { id: '6', assetTag: 'SAN-01', type: 'Storage', model: 'NetApp AFF', rack: 'S01', uPos: 'U10-16', status: 'Active', lifecycle: 'Production' },
-        { id: '7', assetTag: 'SRV-0552', type: 'Server', model: 'Dell R640', rack: 'StorageRm', uPos: '-', status: 'Inventory', lifecycle: 'Stock' },
+        { id: '1', assetTag: 'SRV-1001', type: 'Server', model: 'Dell R740', rack: 'A12', uPos: 'U10-11', status: 'Active', lifecycle: 'Production', mgtIp: '10.0.1.101', protocol: 'iDRAC' },
+        { id: '2', assetTag: 'SRV-1002', type: 'Server', model: 'Dell R740', rack: 'A12', uPos: 'U12-13', status: 'Warning', lifecycle: 'Production', mgtIp: '10.0.1.102', protocol: 'iDRAC' },
+        { id: '3', assetTag: 'SW-CORE-01', type: 'Switch', model: 'Cisco Nexus 9k', rack: 'N01', uPos: 'U38', status: 'Active', lifecycle: 'Production', mgtIp: '10.0.0.5', protocol: 'SSH' },
+        { id: '4', assetTag: 'PDU-A12-L', type: 'PDU', model: 'APC 8000', rack: 'A12', uPos: 'Zero-U', status: 'Active', lifecycle: 'Production', mgtIp: '10.0.2.10', protocol: 'HTTP' },
+        { id: '5', assetTag: 'SRV-0988', type: 'Server', model: 'HP ProLiant', rack: 'C05', uPos: 'U22', status: 'Offline', lifecycle: 'Maintenance', mgtIp: '10.0.1.150', protocol: 'iLO' },
+        { id: '6', assetTag: 'SAN-01', type: 'Storage', model: 'NetApp AFF', rack: 'S01', uPos: 'U10-16', status: 'Active', lifecycle: 'Production', mgtIp: '10.0.3.20', protocol: 'HTTPS' },
+        { id: '7', assetTag: 'SRV-0552', type: 'Server', model: 'Dell R640', rack: 'StorageRm', uPos: '-', status: 'Inventory', lifecycle: 'Stock', mgtIp: null, protocol: null },
     ];
 
     const columns = [
@@ -71,10 +71,24 @@ export default function DcimAssets() {
         },
         { title: 'Lifecycle', dataIndex: 'lifecycle', key: 'lifecycle' },
         {
+            title: 'Mgt IP',
+            dataIndex: 'mgtIp',
+            key: 'mgtIp',
+            render: (ip: string, record: any) => ip ? (
+                <Space size="small">
+                    <span style={{ fontFamily: 'monospace' }}>{ip}</span>
+                    <Tag>{record.protocol}</Tag>
+                </Space>
+            ) : '-'
+        },
+        {
             title: 'Actions',
             key: 'actions',
-            render: () => (
+            render: (_: any, record: any) => (
                 <Space size="small">
+                    {record.mgtIp && (
+                        <Button type="primary" size="small" style={{ background: themeColor }}>Connect</Button>
+                    )}
                     <Button type="text" size="small">Edit</Button>
                     <Button type="text" size="small" icon={<QrcodeOutlined />} />
                 </Space>

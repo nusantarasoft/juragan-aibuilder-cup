@@ -1223,6 +1223,12 @@ const menuConfig = {
                         icon: <NodeIndexOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/ai-studio/settings",
+                        name: "Settings & Models",
+                        icon: <SettingOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
             {
@@ -1305,9 +1311,17 @@ const menuConfig = {
             },
             {
                 path: "/admin/digital-twin",
+                key: "/admin/digital-twin-menu",
                 name: "Digital Twin",
                 icon: <GlobalOutlined />,
-                isLeaf: true,
+                routes: [
+                    { path: "/admin/digital-twin", name: "Campus Map", icon: <GlobalOutlined />, isLeaf: true },
+                    { path: "/admin/bim", name: "BIM Library", icon: <ToolOutlined />, isLeaf: true },
+                    { path: "/admin/dcim/3d-view", name: "Data Center (DCIM)", icon: <CloudServerOutlined />, isLeaf: true },
+                    { path: "/admin/scada/3d", name: "Industrial (SCADA)", icon: <VideoCameraOutlined />, isLeaf: true },
+                    { path: "/admin/bms", name: "Headquarters (BMS)", icon: <HomeOutlined />, isLeaf: true },
+                    { path: "/admin/pm/construction-3d", name: "Construction (PM)", icon: <BuildOutlined />, isLeaf: true },
+                ]
             },
             {
                 path: "/admin/dcim",
@@ -1321,6 +1335,8 @@ const menuConfig = {
                     { path: "/admin/dcim/power", name: "Power Monitoring", icon: <PowerOutlined />, isLeaf: true },
                     { path: "/admin/dcim/thermal", name: "Thermal", icon: <HeatMapOutlined />, isLeaf: true },
                     { path: "/admin/dcim/capacity", name: "Capacity Planning", icon: <BarChartOutlined />, isLeaf: true },
+                    { path: "/admin/dcim/pods", name: "Pods", icon: <BlockOutlined />, isLeaf: true },
+                    { path: "/admin/dcim/racks", name: "Racks", icon: <UnorderedListOutlined />, isLeaf: true },
                     { path: "/admin/dcim/assets", name: "Assets", icon: <DatabaseOutlined />, isLeaf: true },
                     { path: "/admin/dcim/cables", name: "Cables", icon: <NodeIndexOutlined />, isLeaf: true },
                 ],

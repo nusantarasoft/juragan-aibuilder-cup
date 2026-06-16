@@ -44,35 +44,36 @@ const { Text: AntText, Title } = Typography;
 
 export const CATALOG_ITEMS = [
   // Construction
-  { id: "crane", name: "Construction Crane", icon: "🏗️", category: "Construction", image: "https://loremflickr.com/150/150/crane" },
-  { id: "bulldozer", name: "Bulldozer", icon: "🚜", category: "Construction", image: "https://loremflickr.com/150/150/bulldozer" },
-  { id: "dumpster", name: "Dumpster", icon: "🗑️", category: "Construction", image: "https://loremflickr.com/150/150/dumpster" },
-  { id: "cone", name: "Traffic Cone", icon: "🚧", category: "Construction", image: "https://loremflickr.com/150/150/traffic_cone" },
-  { id: "concrete_mixer", name: "Concrete Mixer", icon: "🛢️", category: "Construction", image: "https://loremflickr.com/150/150/concrete_mixer" },
-  { id: "excavator", name: "Excavator", icon: "🚜", category: "Construction", image: "https://loremflickr.com/150/150/excavator" },
+  { id: "crane", name: "Construction Crane", icon: "ðŸ—ï¸", category: "Construction", image: "https://loremflickr.com/150/150/crane" },
+  { id: "bulldozer", name: "Bulldozer", icon: "ðŸšœ", category: "Construction", image: "https://loremflickr.com/150/150/bulldozer" },
+  { id: "dumpster", name: "Dumpster", icon: "ðŸ—‘ï¸", category: "Construction", image: "https://loremflickr.com/150/150/dumpster" },
+  { id: "cone", name: "Traffic Cone", icon: "ðŸš§", category: "Construction", image: "https://loremflickr.com/150/150/traffic_cone" },
+  { id: "concrete_mixer", name: "Concrete Mixer", icon: "ðŸ›¢ï¸", category: "Construction", image: "https://loremflickr.com/150/150/concrete_mixer" },
+  { id: "dump_truck", name: "Dump Truck", icon: "ðŸšš", category: "Construction", image: "https://loremflickr.com/150/150/dump_truck" },
+  { id: "excavator", name: "Excavator", icon: "ðŸšœ", category: "Construction", image: "https://loremflickr.com/150/150/excavator" },
   // Farming
-  { id: "tractor", name: "Tractor", icon: "🚜", category: "Farming", image: "https://loremflickr.com/150/150/tractor" },
-  { id: "silo", name: "Silo", icon: "🏭", category: "Farming", image: "https://loremflickr.com/150/150/silo" },
-  { id: "windmill", name: "Windmill", icon: "🌬️", category: "Farming", image: "https://loremflickr.com/150/150/windmill" },
-  { id: "barn", name: "Barn", icon: "🛖", category: "Farming", image: "https://loremflickr.com/150/150/barn" },
+  { id: "tractor", name: "Tractor", icon: "ðŸšœ", category: "Farming", image: "https://loremflickr.com/150/150/tractor" },
+  { id: "silo", name: "Silo", icon: "ðŸ­", category: "Farming", image: "https://loremflickr.com/150/150/silo" },
+  { id: "windmill", name: "Windmill", icon: "ðŸŒ¬ï¸", category: "Farming", image: "https://loremflickr.com/150/150/windmill" },
+  { id: "barn", name: "Barn", icon: "ðŸ›–", category: "Farming", image: "https://loremflickr.com/150/150/barn" },
   // Manufacturing
-  { id: "robotic_arm", name: "Robotic Arm", icon: "🦾", category: "Manufacturing", image: "https://loremflickr.com/150/150/robotic_arm" },
-  { id: "conveyor_belt", name: "Conveyor Belt", icon: "🛤️", category: "Manufacturing", image: "https://loremflickr.com/150/150/conveyor_belt" },
-  { id: "forklift", name: "Forklift", icon: "🛻", category: "Manufacturing", image: "https://loremflickr.com/150/150/forklift" },
-  { id: "pallet", name: "Pallet Stack", icon: "📦", category: "Manufacturing", image: "https://loremflickr.com/150/150/pallet" },
+  { id: "robotic_arm", name: "Robotic Arm", icon: "ðŸ¦¾", category: "Manufacturing", image: "https://loremflickr.com/150/150/robotic_arm" },
+  { id: "conveyor_belt", name: "Conveyor Belt", icon: "ðŸ›¤ï¸", category: "Manufacturing", image: "https://loremflickr.com/150/150/conveyor_belt" },
+  { id: "forklift", name: "Forklift", icon: "ðŸ›»", category: "Manufacturing", image: "https://loremflickr.com/150/150/forklift" },
+  { id: "pallet", name: "Pallet Stack", icon: "ðŸ“¦", category: "Manufacturing", image: "https://loremflickr.com/150/150/pallet" },
   // General Amenities
-  { id: "bench", name: "Park Bench", icon: "🪑", category: "Amenities", image: "https://loremflickr.com/150/150/park_bench" },
-  { id: "streetlight", name: "Street Light", icon: "💡", category: "Amenities", image: "https://loremflickr.com/150/150/streetlight" },
-  { id: "tree", name: "Tree", icon: "🌳", category: "Landscaping", image: "https://loremflickr.com/150/150/tree" },
-  { id: "bush", name: "Bush", icon: "🌿", category: "Landscaping", image: "https://loremflickr.com/150/150/bush" },
+  { id: "bench", name: "Park Bench", icon: "ðŸª‘", category: "Amenities", image: "https://loremflickr.com/150/150/park_bench" },
+  { id: "streetlight", name: "Street Light", icon: "ðŸ’¡", category: "Amenities", image: "https://loremflickr.com/150/150/streetlight" },
+  { id: "tree", name: "Tree", icon: "ðŸŒ³", category: "Landscaping", image: "https://loremflickr.com/150/150/tree" },
+  { id: "bush", name: "Bush", icon: "ðŸŒ¿", category: "Landscaping", image: "https://loremflickr.com/150/150/bush" },
   // Healthcare
-  { id: "ambulance", name: "Ambulance", icon: "🚑", category: "Healthcare", image: "https://loremflickr.com/150/150/ambulance" },
-  { id: "medical_bed", name: "Medical Bed", icon: "🛏️", category: "Healthcare", image: "https://loremflickr.com/150/150/medical_bed" },
-  { id: "mri_machine", name: "MRI Machine", icon: "🧲", category: "Healthcare", image: "https://loremflickr.com/150/150/mri_machine" },
+  { id: "ambulance", name: "Ambulance", icon: "ðŸš‘", category: "Healthcare", image: "https://loremflickr.com/150/150/ambulance" },
+  { id: "medical_bed", name: "Medical Bed", icon: "ðŸ›ï¸", category: "Healthcare", image: "https://loremflickr.com/150/150/medical_bed" },
+  { id: "mri_machine", name: "MRI Machine", icon: "ðŸ§²", category: "Healthcare", image: "https://loremflickr.com/150/150/mri_machine" },
   // Education
-  { id: "school_bus", name: "School Bus", icon: "🚌", category: "Education", image: "https://loremflickr.com/150/150/school_bus" },
-  { id: "desk", name: "School Desk", icon: "🪑", category: "Education", image: "https://loremflickr.com/150/150/school_desk" },
-  { id: "whiteboard", name: "Whiteboard", icon: "📋", category: "Education", image: "https://loremflickr.com/150/150/whiteboard" },
+  { id: "school_bus", name: "School Bus", icon: "ðŸšŒ", category: "Education", image: "https://loremflickr.com/150/150/school_bus" },
+  { id: "desk", name: "School Desk", icon: "ðŸª‘", category: "Education", image: "https://loremflickr.com/150/150/school_desk" },
+  { id: "whiteboard", name: "Whiteboard", icon: "ðŸ“‹", category: "Education", image: "https://loremflickr.com/150/150/whiteboard" },
 ];
 
 // ---------------------------------------------------------------
@@ -1782,6 +1783,50 @@ function Excavator({
   );
 }
 
+function DumpTruck({
+  progress, position, rotation, opacity: overrideOpacity, isAnimated = true
+}: any) {
+  const opacity = overrideOpacity !== undefined ? overrideOpacity : (progress !== undefined ? getPhaseOpacity(progress, 5, 80) : 1);
+  if (opacity <= 0) return null;
+  const groupRef = useRef<THREE.Group>(null);
+  
+  useFrame((state) => {
+    if (groupRef.current && isAnimated) {
+      const t = state.clock.getElapsedTime();
+      const cycle = 15;
+      const phase = (t % cycle) / cycle;
+      // Simple drive back and forth
+      if (phase < 0.4) {
+        groupRef.current.position.z = -10 + phase * 2.5 * 20;
+      } else if (phase > 0.6) {
+        groupRef.current.position.z = 10 - (phase - 0.6) * 2.5 * 20;
+      }
+    }
+  });
+
+  return (
+    <group position={position || [0, 0, 0]} rotation={rotation || [0, 0, 0]} ref={groupRef}>
+      {/* Cab */}
+      <mesh position={[0, 1.2, 2]} castShadow>
+        <boxGeometry args={[2.5, 1.5, 1.5]} />
+        <SmartMaterial color="#FFDD00" transparent opacity={opacity} roughness={0.4} />
+      </mesh>
+      {/* Bed */}
+      <mesh position={[0, 1.5, -0.5]} castShadow>
+        <boxGeometry args={[2.8, 1.2, 4]} />
+        <SmartMaterial color="#555555" transparent opacity={opacity} roughness={0.6} />
+      </mesh>
+      {/* Wheels */}
+      <mesh position={[-1.3, 0.5, 2]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.5, 0.5, 0.4, 16]} /><SmartMaterial color="#222" transparent opacity={opacity} /></mesh>
+      <mesh position={[1.3, 0.5, 2]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.5, 0.5, 0.4, 16]} /><SmartMaterial color="#222" transparent opacity={opacity} /></mesh>
+      <mesh position={[-1.3, 0.5, -1]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.5, 0.5, 0.4, 16]} /><SmartMaterial color="#222" transparent opacity={opacity} /></mesh>
+      <mesh position={[1.3, 0.5, -1]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.5, 0.5, 0.4, 16]} /><SmartMaterial color="#222" transparent opacity={opacity} /></mesh>
+      <mesh position={[-1.3, 0.5, -2.2]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.5, 0.5, 0.4, 16]} /><SmartMaterial color="#222" transparent opacity={opacity} /></mesh>
+      <mesh position={[1.3, 0.5, -2.2]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.5, 0.5, 0.4, 16]} /><SmartMaterial color="#222" transparent opacity={opacity} /></mesh>
+    </group>
+  );
+}
+
 function ConcreteMixer({
   progress,
   position,
@@ -1811,7 +1856,7 @@ function ConcreteMixer({
     if (drumRef.current && isAnimated) {
       drumRef.current.rotation.x += 0.02;
     }
-    // Driving animation: approach → pause → reverse → pause (12s cycle)
+    // Driving animation: approach â†’ pause â†’ reverse â†’ pause (12s cycle)
     if (groupRef.current && isAnimated) {
       const cycle = 12; // seconds per full cycle
       const phase = (t % cycle) / cycle; // 0-1 normalized
@@ -1883,113 +1928,6 @@ function ConcreteMixer({
           <cylinderGeometry args={[0.22, 0.22, 0.15, 10]} />
           <SmartMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
         </mesh>
-      ))}
-    </group>
-  );
-}
-
-function DumpTruck({
-  progress,
-  position,
-  rotation,
-  opacity: overrideOpacity,
-  isAnimated = true,
-}: {
-  progress?: number;
-  position?: [number, number, number];
-  rotation?: [number, number, number];
-  opacity?: number;
-  isAnimated?: boolean;
-}) {
-  const opacity = overrideOpacity !== undefined ? overrideOpacity : (progress !== undefined ? getPhaseOpacity(progress, 0, 30) : 1);
-  const groupRef = useRef<THREE.Group>(null);
-  const bedRef = useRef<THREE.Group>(null);
-  const wheelRefs = useRef<THREE.Mesh[]>([]);
-
-  // Drive in from off-site, stop near excavator area, dump, drive away
-  const offSiteZ = -BUILDING.depth / 2 - 20; // far off-site
-  const dumpZ = -BUILDING.depth / 2 - 3;      // near excavator
-  const driveX = -BUILDING.width / 2 - 8;
-
-  useFrame((state) => {
-    const t = state.clock.getElapsedTime();
-    if (groupRef.current && isAnimated) {
-      const cycle = 16; // seconds per full cycle
-      const phase = (t % cycle) / cycle; // 0-1 normalized
-      let pz: number;
-      let facingAngle: number;
-      let dumpAngle = 0;
-      if (phase < 0.25) {
-        // Drive in toward dump site (0% - 25%)
-        const frac = phase / 0.25;
-        const ease = frac * frac * (3 - 2 * frac);
-        pz = offSiteZ + ease * (dumpZ - offSiteZ);
-        facingAngle = 0; // face +Z
-      } else if (phase < 0.55) {
-        // Stopped, dump bed lifts and lowers (25% - 55%)
-        pz = dumpZ;
-        facingAngle = 0;
-        const dumpPhase = (phase - 0.25) / 0.3;
-        dumpAngle = Math.sin(dumpPhase * Math.PI) * 0.5;
-      } else if (phase < 0.85) {
-        // Drive away (55% - 85%)
-        const frac = (phase - 0.55) / 0.3;
-        const ease = frac * frac * (3 - 2 * frac);
-        pz = dumpZ - ease * (dumpZ - offSiteZ);
-        facingAngle = Math.PI; // face -Z (driving away)
-      } else {
-        // Paused off-site (85% - 100%)
-        pz = offSiteZ;
-        facingAngle = Math.PI;
-      }
-      groupRef.current.position.set(driveX, 0, pz);
-      groupRef.current.rotation.y = facingAngle;
-      // Dump bed animation
-      if (bedRef.current) {
-        bedRef.current.rotation.z = dumpAngle;
-      }
-      // Wheel rotation proportional to movement
-      const wheelSpin = t * 1.5;
-      wheelRefs.current.forEach(w => {
-        if (w) w.rotation.y = wheelSpin;
-      });
-    }
-  });
-  if (opacity <= 0) return null;
-  return (
-    <group ref={groupRef} position={position || [driveX, 0, offSiteZ]} rotation={rotation || [0, 0, 0]}>
-      {/* Cab */}
-      <mesh position={[0, 1.2, 1.5]} castShadow>
-        <boxGeometry args={[1.6, 1.2, 1.2]} />
-        <SmartMaterial color="#CC2222" transparent opacity={opacity} roughness={0.3} metalness={0.4} clearcoat={0.8} />
-      </mesh>
-      {/* Dump Bed Pivot Group */}
-      <group position={[0, 0.9, 0.9]}>
-        <group ref={bedRef} position={[0, 0, -1.4]}>
-          {/* Dump Bed */}
-          <mesh position={[0, 0.6, 0]} castShadow>
-            <boxGeometry args={[1.8, 1, 2.8]} />
-            <SmartMaterial color="#888888" transparent opacity={opacity} roughness={0.6} metalness={0.5} />
-          </mesh>
-          {/* Dirt Load */}
-          <mesh position={[0, 1.1, 0]}>
-            <boxGeometry args={[1.5, 0.2, 2.5]} />
-            <SmartMaterial color="#654321" transparent opacity={opacity} roughness={1.0} />
-          </mesh>
-        </group>
-      </group>
-      {/* Wheels */}
-      {[-0.8, -0.1, 1.5].map((wz, i) => (
-        <group key={`dt-w-${i}`}>
-          <mesh ref={(el) => { if (el) wheelRefs.current[i * 2] = el; }} position={[0.9, 0.4, wz]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.4, 0.4, 0.3, 12]} />
-            <SmartMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
-          </mesh>
-          <mesh ref={(el) => { if (el) wheelRefs.current[i * 2 + 1] = el; }} position={[-0.9, 0.4, wz]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.4, 0.4, 0.3, 12]} />
-            <SmartMaterial color="#222" transparent opacity={opacity} roughness={0.9} />
-          </mesh>
-        </group>
       ))}
     </group>
   );
@@ -2238,7 +2176,7 @@ function SingleWorker({ worker, progress }: { worker: typeof WORKER_PATHS[0]; pr
       groupRef.current.position.set(pos[0], pos[1], pos[2]);
       groupRef.current.rotation.y = angle;
     }
-    // Walking animation — swing limbs
+    // Walking animation â€” swing limbs
     const swing = Math.sin(t * worker.speed * 8) * 0.4;
     if (leftLegRef.current) leftLegRef.current.rotation.x = swing;
     if (rightLegRef.current) rightLegRef.current.rotation.x = -swing;
@@ -2319,7 +2257,7 @@ function SingleWorker({ worker, progress }: { worker: typeof WORKER_PATHS[0]; pr
           transition: "opacity 0.3s",
           border: `1px solid ${worker.color}44`,
         }}>
-          👷 {worker.role}
+          ðŸ‘· {worker.role}
         </div>
       </Html>
     </group>
@@ -3258,15 +3196,15 @@ function RfiMarker3D({ rfi, position }: { rfi: any; position: [number, number, n
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
-    // Pulsing sphere scale 0.9 → 1.1
+    // Pulsing sphere scale 0.9 â†’ 1.1
     const pulse = 1.0 + Math.sin(t * 3) * 0.1;
     if (sphereRef.current) {
       sphereRef.current.scale.setScalar(pulse);
       (sphereRef.current.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.6 + Math.sin(t * 4) * 0.4;
     }
-    // Ring ripple: expand outward 0.4→1.6, then reset; fade opacity as it expands
+    // Ring ripple: expand outward 0.4â†’1.6, then reset; fade opacity as it expands
     if (ringRef.current) {
-      const ripple = (t * 0.8) % 1; // 0→1 cycle
+      const ripple = (t * 0.8) % 1; // 0â†’1 cycle
       const ringScale = 0.4 + ripple * 1.2;
       ringRef.current.scale.setScalar(ringScale);
       (ringRef.current.material as THREE.MeshBasicMaterial).opacity = 1.0 - ripple;
@@ -3355,11 +3293,11 @@ function RfiMarker3D({ rfi, position }: { rfi: any; position: [number, number, n
           </div>
           {rfi.description && (
             <div style={{ fontSize: 10, opacity: 0.75, lineHeight: 1.3, marginBottom: 3 }}>
-              {rfi.description.slice(0, 60)}{rfi.description.length > 60 ? "…" : ""}
+              {rfi.description.slice(0, 60)}{rfi.description.length > 60 ? "â€¦" : ""}
             </div>
           )}
           <div style={{ fontSize: 9, opacity: 0.5 }}>
-            {rfi.createdAt ? dayjs(rfi.createdAt).format("MMM DD, YYYY") : "—"}
+            {rfi.createdAt ? dayjs(rfi.createdAt).format("MMM DD, YYYY") : "â€”"}
           </div>
         </div>
       </Html>
@@ -3443,7 +3381,7 @@ function PulsingClashMarker({ clash }: { clash: { id: string; severity: "critica
           alignItems: "center",
           gap: 6,
         }}>
-          <span style={{ fontSize: 14 }}>{isCritical ? "🔴" : "🟠"}</span>
+          <span style={{ fontSize: 14 }}>{isCritical ? "ðŸ”´" : "ðŸŸ "}</span>
           <span>{clash.message}</span>
         </div>
       </Html>
@@ -3975,6 +3913,8 @@ function CatalogItemRenderer({ type }: { type: string }) {
       return <Bulldozer progress={100} isAnimated={false} />;
     case "excavator":
       return <Excavator progress={100} isAnimated={false} />;
+    case "dump_truck":
+      return <DumpTruck progress={100} />;
     case "concrete_mixer":
       return <ConcreteMixer progress={100} />;
     case "forklift":
@@ -4407,6 +4347,7 @@ export default function Construction3DPage() {
   const [connectedProject, setConnectedProject] = useState<any | null>(null);
   const [connectedProjectLoading, setConnectedProjectLoading] = useState(false);
   const [heatmapMode, setHeatmapMode] = useState<"off" | "cost" | "schedule">("off");
+  const [walkMode, setWalkMode] = useState(false);
   const [showTaskCreationModal, setShowTaskCreationModal] = useState(false);
   const [taskCreationForm] = Form.useForm();
   const [taskCreating, setTaskCreating] = useState(false);
@@ -4484,7 +4425,7 @@ export default function Construction3DPage() {
         input: {
           projectId,
           title: values.title,
-          description: `[BIM Object: ${selectedBimObject?.id}] ${selectedBimObject?.type} – Floor ${selectedBimObject?.floor}${isRfi ? `\n[RFI Category: ${values.rfiCategory || "general"}] [Severity: ${values.rfiSeverity || "minor"}]` : ""}\n\n${values.description || ""}`,
+          description: `[BIM Object: ${selectedBimObject?.id}] ${selectedBimObject?.type} â€“ Floor ${selectedBimObject?.floor}${isRfi ? `\n[RFI Category: ${values.rfiCategory || "general"}] [Severity: ${values.rfiSeverity || "minor"}]` : ""}\n\n${values.description || ""}`,
           status: "todo",
           priority: values.priority || "medium",
           type: "task",
@@ -4660,10 +4601,10 @@ export default function Construction3DPage() {
   const currentPhases = dynamicPhases;
 
 
-  // ─── Clash / Delay Detection Engine ───────────────────────────────────
+  // â”€â”€â”€ Clash / Delay Detection Engine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Multi-rule validation: sequential deps, resource conflicts, cost overruns
   const PHASE_ORDER = ["site_prep", "foundation", "structure", "floor_slabs", "ext_walls", "windows", "roofing", "mep", "interior", "exterior"];
-  // Resource crew types shared between phases — simultaneous scheduling creates conflicts
+  // Resource crew types shared between phases â€” simultaneous scheduling creates conflicts
   const PHASE_CREWS: Record<string, string[]> = {
     site_prep: ["earthwork", "heavy-equipment"],
     foundation: ["concrete", "earthwork", "rebar"],
@@ -4691,7 +4632,7 @@ export default function Construction3DPage() {
     const bd = BUILDING.depth;
     const fh = BUILDING.floorHeight;
 
-    // ── Rule 1: Sequential dependency violations ──
+    // â”€â”€ Rule 1: Sequential dependency violations â”€â”€
     for (let i = 0; i < PHASE_ORDER.length - 1; i++) {
       const predId = PHASE_ORDER[i];
       const succId = PHASE_ORDER[i + 1];
@@ -4723,7 +4664,7 @@ export default function Construction3DPage() {
       }
     }
 
-    // ── Rule 2: Resource / crew conflicts (non-adjacent overlapping phases sharing crew) ──
+    // â”€â”€ Rule 2: Resource / crew conflicts (non-adjacent overlapping phases sharing crew) â”€â”€
     for (let i = 0; i < PHASE_ORDER.length; i++) {
       for (let j = i + 2; j < PHASE_ORDER.length; j++) {
         const phaseAId = PHASE_ORDER[i];
@@ -4762,7 +4703,7 @@ export default function Construction3DPage() {
       }
     }
 
-    // ── Rule 3: Cost overrun risk (budget vs timeline-derived progress) ──
+    // â”€â”€ Rule 3: Cost overrun risk (budget vs timeline-derived progress) â”€â”€
     if (connectedProject?.budget && connectedProject?.spent) {
       const budgetRatio = connectedProject.spent / connectedProject.budget;
       // Derive progress from project timeline instead of using progress state
@@ -5374,7 +5315,7 @@ export default function Construction3DPage() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2, letterSpacing: "-0.2px" }}>{phase.name}</div>
               <div style={{ fontSize: 10, color: isDark ? "#94a3b8" : "#888", marginTop: 2, fontWeight: 500 }}>
-                {phase.tasks.length} tasks • {dayjs(phase.startDate).format("MMM D")} - {dayjs(phase.endDate).format("MMM D, 'YY")}
+                {phase.tasks.length} tasks â€¢ {dayjs(phase.startDate).format("MMM D")} - {dayjs(phase.endDate).format("MMM D, 'YY")}
               </div>
             </div>
             <Tag
@@ -5887,7 +5828,7 @@ export default function Construction3DPage() {
                     {heatmapMode !== "off" && (
                       <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 4 }}>
                         <div style={{ flex: 1, height: 6, borderRadius: 3, background: "linear-gradient(90deg, #22c55e, #eab308, #ef4444)" }} />
-                        <AntText style={{ fontSize: 9, opacity: 0.6 }}>Low → High</AntText>
+                        <AntText style={{ fontSize: 9, opacity: 0.6 }}>Low â†’ High</AntText>
                       </div>
                     )}
                   </div>
@@ -5959,7 +5900,7 @@ export default function Construction3DPage() {
             </Tooltip>
           </div>
 
-          {/* ─── Clash Detection Alert Banner ─── */}
+          {/* â”€â”€â”€ Clash Detection Alert Banner â”€â”€â”€ */}
           <AnimatePresence>
             {showClashes && clashResults.length > 0 && !clashBannerDismissed && (
               <motion.div
@@ -6070,12 +6011,12 @@ export default function Construction3DPage() {
                             whileHover={{ scale: 1.01, background: "rgba(255,255,255,0.08)" }}
                           >
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <span style={{ fontSize: 16 }}>{clash.severity === "critical" ? "🔴" : clash.severity === "info" ? "🔵" : "🟠"}</span>
+                              <span style={{ fontSize: 16 }}>{clash.severity === "critical" ? "ðŸ”´" : clash.severity === "info" ? "ðŸ”µ" : "ðŸŸ "}</span>
                               <Tag color={clash.clashType === "sequence" ? "red-inverse" : clash.clashType === "resource" ? "orange-inverse" : "blue-inverse"} style={{ border: 0, margin: 0 }}>
                                 {clash.clashType === "sequence" ? "SEQ" : clash.clashType === "resource" ? "CREW" : "COST"}
                               </Tag>
                               <span style={{ opacity: 0.9, flex: 1, fontSize: 13, fontWeight: 500 }}>{clash.message}</span>
-                              <span style={{ fontSize: 12, opacity: 0.5 }}>📍</span>
+                              <span style={{ fontSize: 12, opacity: 0.5 }}>ðŸ“</span>
                             </div>
                             
                             <AnimatePresence>
@@ -6100,7 +6041,7 @@ export default function Construction3DPage() {
                                         style={{ background: "linear-gradient(135deg, #8b5cf6, #d946ef)", border: 0, flex: 1, fontWeight: 600 }}
                                         onClick={(e) => { e.stopPropagation(); fixAction(); }}
                                       >
-                                        ✨ {actionLabel}
+                                        âœ¨ {actionLabel}
                                       </Button>
                                     </div>
                                   </div>
@@ -6580,7 +6521,7 @@ export default function Construction3DPage() {
                       format={(pct) => <span style={{ fontSize: 10, fontWeight: 700 }}>{pct}%</span>}
                     />
                     <AntText style={{ fontSize: 9, display: "block", marginTop: 2, color: isDark ? "#94a3b8" : "#64748b" }}>
-                      {dayjs(connectedProject.startDate).format("MMM 'YY")} → {dayjs(connectedProject.endDate).format("MMM 'YY")}
+                      {dayjs(connectedProject.startDate).format("MMM 'YY")} â†’ {dayjs(connectedProject.endDate).format("MMM 'YY")}
                     </AntText>
                   </div>
                   <div style={{ textAlign: "center" }}>
@@ -6621,26 +6562,26 @@ export default function Construction3DPage() {
                       background: "rgba(34,197,94,0.12)", color: "#22c55e",
                       border: "1px solid rgba(34,197,94,0.2)",
                     }}>
-                      ✓ {connectedTaskStats.done}
+                      âœ“ {connectedTaskStats.done}
                     </Tag>
                     <Tag style={{ margin: 0, borderRadius: 8, fontSize: 10, fontWeight: 700,
                       background: "rgba(59,130,246,0.12)", color: "#3b82f6",
                       border: "1px solid rgba(59,130,246,0.2)",
                     }}>
-                      ⟳ {connectedTaskStats.inProgress}
+                      âŸ³ {connectedTaskStats.inProgress}
                     </Tag>
                     <Tag style={{ margin: 0, borderRadius: 8, fontSize: 10, fontWeight: 700,
                       background: "rgba(148,163,184,0.12)", color: "#94a3b8",
                       border: "1px solid rgba(148,163,184,0.2)",
                     }}>
-                      ○ {connectedTaskStats.todo}
+                      â—‹ {connectedTaskStats.todo}
                     </Tag>
                     {connectedTaskStats.overdue > 0 && (
                       <Tag style={{ margin: 0, borderRadius: 8, fontSize: 10, fontWeight: 700,
                         background: "rgba(239,68,68,0.12)", color: "#ef4444",
                         border: "1px solid rgba(239,68,68,0.3)",
                       }}>
-                        ⚠ {connectedTaskStats.overdue} overdue
+                        âš  {connectedTaskStats.overdue} overdue
                       </Tag>
                     )}
                     {connectedTaskStats.bimTagged > 0 && (
@@ -6648,7 +6589,7 @@ export default function Construction3DPage() {
                         background: "rgba(99,102,241,0.1)", color: "#6366f1",
                         border: "1px solid rgba(99,102,241,0.2)",
                       }}>
-                        🏗 {connectedTaskStats.bimTagged} BIM
+                        ðŸ— {connectedTaskStats.bimTagged} BIM
                       </Tag>
                     )}
                   </div>
@@ -6692,7 +6633,7 @@ export default function Construction3DPage() {
                           background: "rgba(168,85,247,0.1)", color: "#a855f7",
                           border: "1px solid rgba(168,85,247,0.2)",
                         }}>
-                          🎯 {connectedMilestones.filter((m: any) => m.completedDate).length}/{connectedMilestones.length}
+                          ðŸŽ¯ {connectedMilestones.filter((m: any) => m.completedDate).length}/{connectedMilestones.length}
                         </Tag>
                       </Tooltip>
                     )}
@@ -7244,7 +7185,7 @@ export default function Construction3DPage() {
                             textOverflow: "ellipsis",
                           }}>
                             <div style={{ fontSize: 8, fontWeight: 700, color: statusColor, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                              {isOverdue ? "⚠ OVERDUE" : task.status === "in_progress" ? "⟳ IN PROGRESS" : "○ TODO"}
+                              {isOverdue ? "âš  OVERDUE" : task.status === "in_progress" ? "âŸ³ IN PROGRESS" : "â—‹ TODO"}
                             </div>
                             <div style={{ fontSize: 10, fontWeight: 600, color: isDark ? "#e2e8f0" : "#1e293b", overflow: "hidden", textOverflow: "ellipsis" }}>
                               {task.title?.substring(0, 25)}
@@ -7393,7 +7334,7 @@ export default function Construction3DPage() {
                       <span
                         onClick={(e) => { e.stopPropagation(); removeAnnotation(pin.id); }}
                         style={{ marginLeft: 8, cursor: "pointer", opacity: 0.5, fontSize: 16 }}
-                      >×</span>
+                      >Ã—</span>
                     </div>
                     <div style={{ fontSize: 10, opacity: 0.7, fontWeight: 400 }}>
                       Type: <span style={{ textTransform: "capitalize" }}>{pin.type}</span>
@@ -7680,7 +7621,7 @@ export default function Construction3DPage() {
                             fontSize: 16, color: "#fff",
                           }}
                         >
-                          {itemDef?.icon || "📦"}
+                          {itemDef?.icon || "ðŸ“¦"}
                         </div>
                         <div>
                           <div style={{ fontSize: 14, fontWeight: 700 }}>{itemDef?.name || "Object"}</div>
@@ -8221,7 +8162,7 @@ export default function Construction3DPage() {
                 </Tag>
               </div>
               <AntText type="secondary" style={{ fontSize: 10 }}>
-                {connectedProject.name} • {connectedProject.methodology || "Agile"}
+                {connectedProject.name} â€¢ {connectedProject.methodology || "Agile"}
               </AntText>
             </div>
           )}
@@ -8276,7 +8217,7 @@ export default function Construction3DPage() {
                 const isDone = !!ms.completedDate;
                 const msColor = isDone ? "#22c55e" : ms.isCritical ? "#ef4444" : themeColor;
                 return (
-                  <Tooltip key={ms.id || idx} title={`${ms.name}${ms.dueDate ? " - " + dayjs(ms.dueDate).format("MMM D, YYYY") : ""}${isDone ? " ✓" : ""}`}>
+                  <Tooltip key={ms.id || idx} title={`${ms.name}${ms.dueDate ? " - " + dayjs(ms.dueDate).format("MMM D, YYYY") : ""}${isDone ? " âœ“" : ""}`}>
                     <div
                       style={{
                         position: "absolute",
@@ -8473,7 +8414,7 @@ export default function Construction3DPage() {
             <div>
               <div style={{ fontWeight: 700, fontSize: 15 }}>Create PM Task from BIM</div>
               <div style={{ fontSize: 11, opacity: 0.6, fontWeight: 400 }}>
-                {selectedBimObject ? `${selectedBimObject.type} – Floor ${selectedBimObject.floor}` : "No object selected"}
+                {selectedBimObject ? `${selectedBimObject.type} â€“ Floor ${selectedBimObject.floor}` : "No object selected"}
               </div>
             </div>
           </div>
@@ -8549,26 +8490,26 @@ export default function Construction3DPage() {
                   marginBottom: 16,
                 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 10, opacity: 0.7, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                    🔍 RFI / Defect Details
+                    ðŸ” RFI / Defect Details
                   </div>
                   <Form.Item name="rfiCategory" label="Category" style={{ marginBottom: 10 }}>
                     <Select placeholder="Select category">
-                      <Select.Option value="structural">🏗️ Structural</Select.Option>
-                      <Select.Option value="architectural">🏛️ Architectural</Select.Option>
-                      <Select.Option value="mep">⚡ MEP (Mechanical/Electrical/Plumbing)</Select.Option>
-                      <Select.Option value="safety">🦺 Safety / Code Violation</Select.Option>
-                      <Select.Option value="material">📦 Material Defect</Select.Option>
-                      <Select.Option value="dimensional">📐 Dimensional Discrepancy</Select.Option>
-                      <Select.Option value="general">📋 General</Select.Option>
+                      <Select.Option value="structural">ðŸ—ï¸ Structural</Select.Option>
+                      <Select.Option value="architectural">ðŸ›ï¸ Architectural</Select.Option>
+                      <Select.Option value="mep">âš¡ MEP (Mechanical/Electrical/Plumbing)</Select.Option>
+                      <Select.Option value="safety">ðŸ¦º Safety / Code Violation</Select.Option>
+                      <Select.Option value="material">ðŸ“¦ Material Defect</Select.Option>
+                      <Select.Option value="dimensional">ðŸ“ Dimensional Discrepancy</Select.Option>
+                      <Select.Option value="general">ðŸ“‹ General</Select.Option>
                     </Select>
                   </Form.Item>
                   <Form.Item name="rfiSeverity" label="Defect Severity" style={{ marginBottom: 10 }}>
                     <Segmented
                       block
                       options={[
-                        { label: "🟢 Minor", value: "minor" },
-                        { label: "🟡 Moderate", value: "moderate" },
-                        { label: "🔴 Critical", value: "critical" },
+                        { label: "ðŸŸ¢ Minor", value: "minor" },
+                        { label: "ðŸŸ¡ Moderate", value: "moderate" },
+                        { label: "ðŸ”´ Critical", value: "critical" },
                       ]}
                     />
                   </Form.Item>
@@ -8598,8 +8539,8 @@ export default function Construction3DPage() {
         </Form>
       </Modal>
 
-      {/* ─── RFI Management Panel Drawer ─── */}
-      {/* ─── RFI Management Panel Drawer ─── */}
+      {/* â”€â”€â”€ RFI Management Panel Drawer â”€â”€â”€ */}
+      {/* â”€â”€â”€ RFI Management Panel Drawer â”€â”€â”€ */}
       <AnimatePresence>
         {showRfiPanel && (
           <GlassPanel
@@ -8675,7 +8616,7 @@ export default function Construction3DPage() {
                         <div style={{ flex: 1, marginRight: 8 }}>
                           <div style={{ fontWeight: 700, fontSize: 13, color: isDark ? "#e2e8f0" : "#1e293b", lineHeight: 1.3 }}>{rfi.title}</div>
                           <div style={{ fontSize: 11, color: isDark ? "#94a3b8" : "#64748b", marginTop: 2 }}>
-                            {rfi.bimId} {rfi.floor ? `• Floor ${rfi.floor}` : ""} {rfi.type ? `• ${rfi.type}` : ""}
+                            {rfi.bimId} {rfi.floor ? `â€¢ Floor ${rfi.floor}` : ""} {rfi.type ? `â€¢ ${rfi.type}` : ""}
                           </div>
                         </div>
                         <Tag

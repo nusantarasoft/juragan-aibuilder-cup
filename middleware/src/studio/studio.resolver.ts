@@ -14,6 +14,23 @@ export class StudioResolver {
         private readonly studioUmkmService: StudioUmkmService,
     ) { }
 
+    // ── Settings ─────────────────────────────────────────────────────
+
+    @Query(() => GraphQLJSONObject, { name: 'studioSettings' })
+    async getStudioSettings(
+        @Args('tenantId', { type: () => String, nullable: true }) tenantId?: string,
+    ) {
+        return this.studioService.getSettings(tenantId);
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'updateStudioSettings' })
+    async updateStudioSettings(
+        @Args('tenantId', { type: () => String, nullable: true }) tenantId: string | undefined,
+        @Args('payload', { type: () => GraphQLJSONObject }) payload: any,
+    ) {
+        return this.studioService.updateSettings(tenantId, payload);
+    }
+
     // ── Notebooks ────────────────────────────────────────────────────
 
     @Query(() => [GraphQLJSONObject], { name: 'studioNotebooks' })

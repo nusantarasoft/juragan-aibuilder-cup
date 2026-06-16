@@ -7,7 +7,9 @@ import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { theme, Card, Badge, Typography, Space, Switch, Row, Col } from "antd";
 import { motion } from "framer-motion";
-import Scada3DScene from "./Scada3DScene";
+import dynamic from 'next/dynamic';
+
+const Scada3DScene = dynamic(() => import('./Scada3DScene'), { ssr: false });
 
 const { Text, Title } = Typography;
 
