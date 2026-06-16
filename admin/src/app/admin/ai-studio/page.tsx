@@ -25,6 +25,8 @@ import {
     Tabs,
     Popconfirm,
     Tooltip,
+    Alert,
+    Badge,
 } from "antd";
 import type { UploadProps } from "antd";
 import {
@@ -49,6 +51,14 @@ import {
     ApartmentOutlined
 } from "@ant-design/icons";
 import GuideFlowsPanel from "./GuideFlowsPanel";
+import {
+    getSourceProgressPercent,
+    getSourceStatusTag,
+    isSourceInProgress,
+    seedSourceStatusMap,
+    summarizeSources,
+    trackSourceStatusChanges,
+} from "./studioSourceStatus";
 import { useStudioChat } from "./useStudioChat";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useAuth } from "@/context/AuthContext";
@@ -122,6 +132,8 @@ export default function AIStudioPage() {
 
     // ── Poll timer ──
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const prevSourceStatusRef = useRef<Map<string, string>>(new Map());
+    const pollNotebookIdRef = useRef<string | null>(null);
 
     const loadNotebooks = useCallback(async () => {
         if (!userId) {
@@ -152,13 +164,19 @@ export default function AIStudioPage() {
     }, [chatHistory]);
 
     const selectNotebook = async (notebook: StudioNotebook) => {
+        if (pollRef.current) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+        }
+        prevSourceStatusRef.current = new Map();
+        pollNotebookIdRef.current = notebook.id;
         setActiveNotebook(notebook);
         resetChat();
         setChatMode("free");
         setGuidedFlow(null);
         setShowReferences(null);
         setStudioMainTab("workspace");
-        await loadSourceStatus(notebook.id);
+        await loadSourceStatus(notebook.id, true);
         try {
             const published = await studioService.getPublishedGuideFlow(notebook.id);
             if (published) {
@@ -175,36 +193,69 @@ export default function AIStudioPage() {
         }
     };
 
-    const loadSourceStatus = async (notebookId: string) => {
-        setLoadingSources(true);
-        try {
-            const list = await studioService.getSourceStatus(notebookId);
+    const notifySourceChange = useCallback(
+        (type: 'success' | 'error' | 'warning', text: string) => {
+            if (type === 'success') message.success(text);
+            else if (type === 'error') message.error(text);
+            else message.warning(text);
+        },
+        [message],
+    );
+
+    const applySourcesUpdate = useCallback(
+        (list: StudioSource[], options?: { seedOnly?: boolean }) => {
+            if (options?.seedOnly) {
+                prevSourceStatusRef.current = seedSourceStatusMap(list);
+            } else {
+                prevSourceStatusRef.current = trackSourceStatusChanges(
+                    prevSourceStatusRef.current,
+                    list,
+                    notifySourceChange,
+                );
+            }
             setSources(list);
 
-            if (list.some((s: StudioSource) => s.parse_status === 'parsing' || s.parse_status === 'pending')) {
-                startPolling(notebookId);
-            } else if (pollRef.current) {
+            const notebookId = pollNotebookIdRef.current;
+            const stillIndexing = list.some(isSourceInProgress);
+            if (notebookId && stillIndexing && !pollRef.current) {
+                pollRef.current = setInterval(async () => {
+                    try {
+                        const updated = await studioService.getSourceStatus(notebookId);
+                        prevSourceStatusRef.current = trackSourceStatusChanges(
+                            prevSourceStatusRef.current,
+                            updated,
+                            notifySourceChange,
+                        );
+                        setSources(updated);
+                        if (!updated.some(isSourceInProgress) && pollRef.current) {
+                            clearInterval(pollRef.current);
+                            pollRef.current = null;
+                        }
+                    } catch { /* ignore */ }
+                }, 3000);
+            } else if (!stillIndexing && pollRef.current) {
                 clearInterval(pollRef.current);
+                pollRef.current = null;
             }
-        } catch (e) {
-            console.error("Failed to load sources:", e);
-        } finally {
-            setLoadingSources(false);
-        }
-    };
+        },
+        [notifySourceChange],
+    );
 
-    const startPolling = (notebookId: string) => {
-        if (pollRef.current) clearInterval(pollRef.current);
-        pollRef.current = setInterval(async () => {
+    const loadSourceStatus = useCallback(
+        async (notebookId: string, seedOnly = false) => {
+            pollNotebookIdRef.current = notebookId;
+            setLoadingSources(true);
             try {
                 const list = await studioService.getSourceStatus(notebookId);
-                setSources(list);
-                if (!list.some((s: StudioSource) => s.parse_status === 'parsing' || s.parse_status === 'pending')) {
-                    if (pollRef.current) clearInterval(pollRef.current);
-                }
-            } catch { /* ignore */ }
-        }, 4000);
-    };
+                applySourcesUpdate(list, { seedOnly });
+            } catch (e) {
+                console.error("Failed to load sources:", e);
+            } finally {
+                setLoadingSources(false);
+            }
+        },
+        [applySourcesUpdate],
+    );
 
     // ── Actions ──
 
@@ -250,9 +301,8 @@ export default function AIStudioPage() {
         setAddingMedia(prev => new Set(prev).add(mediaId));
         try {
             await studioService.addMediaToNotebook(activeNotebook.id, mediaId);
-            message.success("Source added to notebook");
-            loadSourceStatus(activeNotebook.id);
-            startPolling(activeNotebook.id);
+            message.success("Sumber ditambahkan — indeksasi dimulai");
+            await loadSourceStatus(activeNotebook.id);
         } catch (e: unknown) {
             message.error(e instanceof Error ? e.message : "Failed to add source");
         } finally {
@@ -279,9 +329,8 @@ export default function AIStudioPage() {
         try {
             await studioService.uploadFileToNotebook(activeNotebook.id, file);
             onSuccess?.({}, file);
-            message.success(`"${(file as File).name}" uploaded`);
-            loadSourceStatus(activeNotebook.id);
-            startPolling(activeNotebook.id);
+            message.success(`"${(file as File).name}" diupload — indeksasi dimulai`);
+            await loadSourceStatus(activeNotebook.id);
         } catch (e: unknown) {
             onError?.(e);
             message.error(e instanceof Error ? e.message : "Upload failed");
@@ -299,17 +348,18 @@ export default function AIStudioPage() {
         }
     };
 
-    const sourcesIndexed = sources.some((s) => s.parse_status === 'done' && (s.chunk_count ?? 0) > 0);
-    const sourcesIndexing = sources.some((s) => s.parse_status === 'parsing' || s.parse_status === 'pending');
+    const sourceStats = summarizeSources(sources);
+    const sourcesIndexed = sourceStats.anyIndexed;
+    const sourcesIndexing = sourceStats.inProgress > 0;
 
     const handleChatSend = async () => {
         if (!chatInput.trim() || !activeNotebook) return;
         if (sources.length === 0) {
-            message.warning("No sources yet. Add files or media first.");
+            message.warning("Belum ada sumber. Tambahkan file atau media terlebih dahulu.");
             return;
         }
         if (!sourcesIndexed && !sourcesIndexing) {
-            message.warning("Sources are not indexed yet. Wait for indexing or use Reindex.");
+            message.warning("Sumber belum terindeks. Tunggu proses selesai atau gunakan Reindex.");
             return;
         }
         if (chatMode === 'guided' && !waitingInput && chatHistory.length > 0) {
@@ -325,9 +375,8 @@ export default function AIStudioPage() {
         if (!activeNotebook) return;
         try {
             await studioService.reindexSource(activeNotebook.id, sourceId);
-            message.success("Reindex started");
-            startPolling(activeNotebook.id);
-            loadSourceStatus(activeNotebook.id);
+            message.success("Indeksasi ulang dimulai");
+            await loadSourceStatus(activeNotebook.id);
         } catch (e: unknown) {
             message.error(e instanceof Error ? e.message : "Reindex failed");
         }
@@ -358,15 +407,8 @@ export default function AIStudioPage() {
     };
 
     const getStatusTag = (source: StudioSource) => {
-        if (source.parse_status === 'done' && (source.chunk_count ?? 0) > 0) {
-            return <Tag color="success" className="text-[10px] m-0 leading-tight px-1.5">Indexed ({source.chunk_count})</Tag>;
-        }
-        switch (source.parse_status) {
-            case 'done': return <Tag color="warning" className="text-[10px] m-0 leading-tight px-1.5">No chunks</Tag>;
-            case 'parsing': return <Tag color="processing" className="text-[10px] m-0 leading-tight px-1.5">Indexing</Tag>;
-            case 'error': return <Tag color="error" className="text-[10px] m-0 leading-tight px-1.5">Error</Tag>;
-            default: return <Tag className="text-[10px] m-0 leading-tight px-1.5">Pending</Tag>;
-        }
+        const { color, label } = getSourceStatusTag(source);
+        return <Tag color={color} className="text-[10px] m-0 leading-tight px-1.5">{label}</Tag>;
     };
 
     const formatBytes = (bytes: number) => {
@@ -441,6 +483,39 @@ export default function AIStudioPage() {
         </div>
     );
 
+    const renderSourceSummary = () => {
+        if (sources.length === 0) return null;
+        const { total, indexed, inProgress, errors } = sourceStats;
+        const overallPercent = total > 0
+            ? Math.round(sources.reduce((sum, s) => sum + getSourceProgressPercent(s), 0) / total)
+            : 0;
+
+        return (
+            <div className="px-3 pt-2 pb-1 border-b border-[rgba(var(--theme-color-rgb,139,92,246),0.12)]">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <Text className="text-[10px] text-gray-500">
+                        {indexed}/{total} terindeks
+                        {inProgress > 0 ? ` · ${inProgress} diproses` : ''}
+                        {errors > 0 ? ` · ${errors} gagal` : ''}
+                    </Text>
+                    {sourceStats.allIndexed ? (
+                        <Tag color="success" className="text-[9px] m-0 leading-tight px-1.5">Siap RAG</Tag>
+                    ) : inProgress > 0 ? (
+                        <Tag color="processing" icon={<SyncOutlined spin />} className="text-[9px] m-0 leading-tight px-1.5">
+                            Mengindeks
+                        </Tag>
+                    ) : null}
+                </div>
+                <Progress
+                    percent={overallPercent}
+                    status={errors > 0 && indexed === 0 ? 'exception' : inProgress > 0 ? 'active' : indexed === total ? 'success' : 'normal'}
+                    size="small"
+                    strokeColor={themeColor}
+                />
+            </div>
+        );
+    };
+
     const renderSourceList = () => (
         <div className="flex flex-col gap-1 px-2 pb-2">
             {loadingSources ? (
@@ -468,14 +543,15 @@ export default function AIStudioPage() {
                                     )}
                                     {getStatusTag(source)}
                                 </div>
-                                {source.parse_status === 'parsing' && (
+                                {source.parse_status === 'parsing' || source.parse_status === 'pending' ? (
                                     <Progress
-                                        percent={Math.round(source.parse_progress * 100)}
+                                        percent={getSourceProgressPercent(source)}
                                         size="small"
                                         strokeColor={themeColor}
+                                        status={source.parse_status === 'pending' ? 'active' : 'normal'}
                                         className="mt-1 !mb-0"
                                     />
-                                )}
+                                ) : null}
                             </div>
                         </div>
                         <Space size={0}>
@@ -531,12 +607,20 @@ export default function AIStudioPage() {
                     </Text>
                 </div>
             )}
-            {sources.length > 0 && !sourcesIndexed && (
+            {sources.length > 0 && !sourceStats.allIndexed && (
                 <motion.div className="mx-3 mt-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 text-[11px] text-amber-800 dark:text-amber-200">
                     {sourcesIndexing
-                        ? "Sources are being indexed. Answers improve once indexing completes."
-                        : "Sources are not indexed yet. Use Reindex on a source or wait for processing."}
+                        ? `${sourceStats.inProgress} sumber sedang diindeks (ekstrak teks + vektor). Jawaban RAG akan lebih baik setelah selesai.`
+                        : sourceStats.errors > 0
+                          ? `${sourceStats.errors} sumber gagal diindeks. Gunakan tombol Reindex di panel Sources.`
+                          : "Sumber belum terindeks. Tunggu proses atau gunakan Reindex."}
                 </motion.div>
+            )}
+            {sourceStats.allIndexed && sources.length > 0 && (
+                <div className="mx-3 mt-2 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200/60 text-[11px] text-green-800 dark:text-green-200 flex items-center gap-1.5">
+                    <CheckCircleFilled style={{ color: '#52c41a', fontSize: 12 }} />
+                    Semua sumber terindeks ({sourceStats.indexed} file) — siap untuk chat RAG.
+                </div>
             )}
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                 {chatHistory.length === 0 && (
@@ -692,10 +776,39 @@ export default function AIStudioPage() {
                                 <Text className="text-gray-400 text-xs">{activeNotebook.description || 'No description'}</Text>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 mt-2">
-                            <Tag style={{ color: themeColor, borderColor: `${themeColor}44`, backgroundColor: `${themeColor}11` }}>{sources.length} source{sources.length !== 1 ? 's' : ''}</Tag>
-                            <Tag style={{ color: themeColor, borderColor: `${themeColor}44`, backgroundColor: `${themeColor}11` }}>{sources.filter(s => s.parse_status !== 'error').length} ready</Tag>
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            <Tag style={{ color: themeColor, borderColor: `${themeColor}44`, backgroundColor: `${themeColor}11` }}>
+                                {sourceStats.total} sumber
+                            </Tag>
+                            <Tag color={sourceStats.allIndexed ? 'success' : sourceStats.indexed > 0 ? 'processing' : 'default'}>
+                                {sourceStats.indexed} terindeks
+                            </Tag>
+                            {sourceStats.inProgress > 0 && (
+                                <Tag color="processing" icon={<SyncOutlined spin />}>
+                                    {sourceStats.inProgress} mengindeks
+                                </Tag>
+                            )}
+                            {sourceStats.errors > 0 && (
+                                <Tag color="error">{sourceStats.errors} gagal</Tag>
+                            )}
                         </div>
+                        {sources.length > 0 && !sourceStats.allIndexed && (
+                            <Alert
+                                type={sourceStats.errors > 0 && sourceStats.indexed === 0 ? 'error' : 'info'}
+                                showIcon
+                                className="mt-3 !text-xs"
+                                message={
+                                    sourcesIndexing
+                                        ? 'Indeksasi berjalan di background'
+                                        : 'Beberapa sumber belum siap'
+                                }
+                                description={
+                                    sourcesIndexing
+                                        ? 'File sedang diekstrak, dipecah menjadi chunk, dan divektorisasi. Lihat progress di panel Sources (kiri).'
+                                        : 'Buka panel Sources untuk melihat status per file atau jalankan Reindex.'
+                                }
+                            />
+                        )}
                     </div>
 
                     {/* Quick Actions */}
@@ -901,15 +1014,20 @@ export default function AIStudioPage() {
                                     <Card
                                         size="small"
                                         title={
-                                            <span style={{
-                                                background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
-                                                WebkitBackgroundClip: 'text',
-                                                WebkitTextFillColor: 'transparent',
-                                                fontWeight: 600,
-                                                fontSize: '14px'
-                                            }}>
-                                                Sources
-                                            </span>
+                                            <Space size={6}>
+                                                <span style={{
+                                                    background: `linear-gradient(to right, ${themeColor}, ${themeColor}dd)`,
+                                                    WebkitBackgroundClip: 'text',
+                                                    WebkitTextFillColor: 'transparent',
+                                                    fontWeight: 600,
+                                                    fontSize: '14px'
+                                                }}>
+                                                    Sources
+                                                </span>
+                                                {sourceStats.inProgress > 0 && (
+                                                    <Badge count={sourceStats.inProgress} size="small" color={themeColor} title="Sedang diindeks" />
+                                                )}
+                                            </Space>
                                         }
                                         extra={
                                             <Space size={2}>
@@ -942,6 +1060,7 @@ export default function AIStudioPage() {
                                             body: { padding: 0, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }
                                         }}
                                     >
+                                        {renderSourceSummary()}
                                         {renderSourceList()}
                                     </Card>
                                 )}
@@ -1034,7 +1153,7 @@ export default function AIStudioPage() {
                                             notebookId={activeNotebook?.id ?? null}
                                             themeColor={themeColor}
                                             userId={userId || ""}
-                                            sourcesReady={sourcesIndexed}
+                                            sourcesReady={sourceStats.anyIndexed}
                                         />
                                     ),
                                 },
