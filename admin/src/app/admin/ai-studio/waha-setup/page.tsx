@@ -318,7 +318,7 @@ export default function WahaSetupPage() {
 
                 {connected ? (
                     <Card size="small" style={{ ...glass, borderTop: '3px solid #25d366' }}>
-                        <Space direction="vertical" size="middle" style={{ width: '100%', textAlign: 'center' }}>
+                        <Space orientation="vertical" size="middle" style={{ width: '100%', textAlign: 'center' }}>
                             <CheckCircleOutlined style={{ fontSize: 48, color: '#25d366' }} />
                             <Text strong style={{ fontSize: 16 }}>
                                 WhatsApp terhubung
@@ -355,7 +355,7 @@ export default function WahaSetupPage() {
                                 <Spin size="large" />
                             </div>
                         ) : (
-                            <Space direction="vertical" size="large" style={{ width: '100%', alignItems: 'center' }}>
+                            <Space orientation="vertical" size="large" style={{ width: '100%', alignItems: 'center' }}>
                                 {qrDataUrl ? (
                                     <div
                                         style={{

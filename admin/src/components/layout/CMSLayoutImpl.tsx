@@ -1072,7 +1072,7 @@ export default function CMSLayoutImpl({
                                         </div>
                                         {/* Right: Presence + Language + Notification + Dark/Light */}
                                         <div style={{ marginLeft: 16, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <Avatar.Group maxCount={3} size="small" style={{ display: 'flex', alignItems: 'center' }}>
+                                            <Avatar.Group max={{ count: 3 }} size="small" style={{ display: 'flex', alignItems: 'center' }}>
                                                 {Object.values(cursors).map((c: { id: string; color: string; name: string }) => (
                                                     <Avatar key={c.id} style={{ backgroundColor: c.color }}>
                                                         {c.name.charAt(0)}
