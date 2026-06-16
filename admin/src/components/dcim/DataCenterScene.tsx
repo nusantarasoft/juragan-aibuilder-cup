@@ -1,12 +1,13 @@
 import React from 'react';
-import { Grid, ContactShadows } from '@react-three/drei';
+import { Grid, ContactShadows, Line, RoundedBox } from '@react-three/drei';
 import { RackModel } from './RackModel';
 import { CoolingUnit } from './CoolingUnit';
 import { ThermalOverlay } from './ThermalOverlay';
+import { ContainmentPod } from './ContainmentPod';
 import { useDcimStore } from '@/store/useDcimStore';
 
 export function DataCenterScene() {
-    const { racks, viewMode, selectedRackId, setSelectedRackId } = useDcimStore();
+    const { racks, pods, viewMode, selectedRackId, setSelectedRackId } = useDcimStore();
 
     return (
         <group>
@@ -20,6 +21,39 @@ export function DataCenterScene() {
             {/* CRAC Units (Cooling) */}
             <CoolingUnit position={[-8, 0, -2]} />
             <CoolingUnit position={[8, 0, -2]} />
+
+            {/* Aisle Containment Pods */}
+            {pods.map(pod => (
+                <ContainmentPod key={pod.id} data={pod} viewMode={viewMode} />
+            ))}
+
+            {/* PDU & Cables */}
+            {viewMode === 'Power' && (
+                <group>
+                    <RoundedBox args={[1, 2.5, 1]} position={[10, 1.25, 10]} radius={0.05} smoothness={4}>
+                        <meshStandardMaterial color="#87d068" roughness={0.3} metalness={0.8} />
+                    </RoundedBox>
+                    {racks.map((rack, i) => {
+                        const start = new THREE.Vector3(10, 2.5, 10);
+                        const end = new THREE.Vector3(rack.x, 2.0, rack.z);
+                        // Make an L-shape cable route overhead
+                        const mid1 = new THREE.Vector3(10, 3.5, 10);
+                        const mid2 = new THREE.Vector3(rack.x, 3.5, 10);
+                        const mid3 = new THREE.Vector3(rack.x, 3.5, rack.z);
+                        return (
+                            <Line 
+                                key={`cable-${i}`}
+                                points={[start, mid1, mid2, mid3, end]} 
+                                color={rack.power > 6 ? "#ff4d4f" : "#108ee9"} 
+                                lineWidth={3} 
+                                dashed 
+                                dashScale={10}
+                                dashSize={0.5}
+                            />
+                        );
+                    })}
+                </group>
+            )}
 
             {/* Racks */}
             {racks.map(rack => (

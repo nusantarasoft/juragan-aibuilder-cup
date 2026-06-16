@@ -1,10 +1,22 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { ConfigService } from '@nestjs/config';
 import { ClaudeAiService } from './claude-ai.service';
+import { SupabaseService } from '../supabase/supabase.service';
 
 function svc(getImpl: (key: string) => string | undefined) {
     const config = { get: (k: string) => getImpl(k) } as unknown as ConfigService;
-    return new ClaudeAiService(config);
+    const supabaseMock = {
+        getAdminClient: () => ({
+            from: () => ({
+                select: () => ({
+                    limit: () => ({
+                        single: () => Promise.resolve({ data: {} })
+                    })
+                })
+            })
+        })
+    } as unknown as SupabaseService;
+    return new ClaudeAiService(config, supabaseMock);
 }
 
 describe('ClaudeAiService', () => {

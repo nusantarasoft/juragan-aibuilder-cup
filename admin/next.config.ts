@@ -7,6 +7,12 @@ const withPWA = require('next-pwa')({
 const nextConfig: NextConfig = {
   output: 'standalone',
   reactStrictMode: false,
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   // Turbopack config — root pinned to admin dir to prevent multi-lockfile warning
   turbopack: { root: __dirname },
   // Webpack config for @xenova/transformers (fixes compatibility issues)

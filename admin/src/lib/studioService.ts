@@ -541,6 +541,26 @@ export const studioService = {
         });
         return data.updateStudioWhatsAppConfig;
     },
+
+    // ── Settings ──────────────────────────────────────────────
+
+    async getSettings(tenantId?: string): Promise<any> {
+        const data = await graphqlRequest(`
+            query($tenantId: String) {
+                studioSettings(tenantId: $tenantId)
+            }
+        `, { tenantId: tenantId ?? null });
+        return data.studioSettings;
+    },
+
+    async updateSettings(payload: any, tenantId?: string): Promise<any> {
+        const data = await graphqlRequest(`
+            mutation($tenantId: String, $payload: JSONObject!) {
+                updateStudioSettings(tenantId: $tenantId, payload: $payload)
+            }
+        `, { tenantId: tenantId ?? null, payload });
+        return data.updateStudioSettings;
+    },
 };
 
 export interface StudioUmkmSetupResult {

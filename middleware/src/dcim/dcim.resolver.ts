@@ -57,10 +57,40 @@ class DcimRoom {
 }
 
 @ObjectType()
+class DcimPod {
+    @Field(() => ID) id: string;
+    @Field() tenantId: string;
+    @Field({ nullable: true }) roomId?: string;
+    @Field() name: string;
+    @Field({ nullable: true }) code?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field(() => GraphQLJSON, { nullable: true }) metadata?: any;
+    @Field() createdAt: string;
+    @Field() updatedAt: string;
+}
+
+@ObjectType()
+class DcimRow {
+    @Field(() => ID) id: string;
+    @Field() tenantId: string;
+    @Field({ nullable: true }) roomId?: string;
+    @Field({ nullable: true }) podId?: string;
+    @Field() name: string;
+    @Field(() => Float, { nullable: true }) positionX?: number;
+    @Field(() => Float, { nullable: true }) positionY?: number;
+    @Field({ nullable: true }) orientation?: string;
+    @Field({ nullable: true }) rowType?: string;
+    @Field(() => GraphQLJSON, { nullable: true }) metadata?: any;
+    @Field() createdAt: string;
+    @Field() updatedAt: string;
+}
+
+@ObjectType()
 class DcimRack {
     @Field(() => ID) id: string;
     @Field() tenantId: string;
     @Field({ nullable: true }) roomId?: string;
+    @Field({ nullable: true }) podId?: string;
     @Field({ nullable: true }) rowId?: string;
     @Field() name: string;
     @Field({ nullable: true }) code?: string;
@@ -105,6 +135,10 @@ class DcimDevice {
     @Field(() => Float, { nullable: true }) purchasePrice?: number;
     @Field({ nullable: true }) assignedTo?: string;
     @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) managementIp?: string;
+    @Field({ nullable: true }) managementUrl?: string;
+    @Field({ nullable: true }) managementProtocol?: string;
+    @Field({ nullable: true }) remoteCredentialsId?: string;
     @Field(() => GraphQLJSON, { nullable: true }) metadata?: any;
     @Field() createdAt: string;
     @Field() updatedAt: string;
@@ -162,10 +196,38 @@ const mapRoom = (dbRow: any) => ({
     updatedAt: dbRow.updated_at,
 });
 
+const mapPod = (dbRow: any) => ({
+    id: dbRow.id,
+    tenantId: dbRow.tenant_id,
+    roomId: dbRow.room_id,
+    name: dbRow.name,
+    code: dbRow.code,
+    status: dbRow.status,
+    metadata: dbRow.metadata,
+    createdAt: dbRow.created_at,
+    updatedAt: dbRow.updated_at,
+});
+
+const mapRow = (dbRow: any) => ({
+    id: dbRow.id,
+    tenantId: dbRow.tenant_id,
+    roomId: dbRow.room_id,
+    podId: dbRow.pod_id,
+    name: dbRow.name,
+    positionX: dbRow.position_x,
+    positionY: dbRow.position_y,
+    orientation: dbRow.orientation,
+    rowType: dbRow.row_type,
+    metadata: dbRow.metadata,
+    createdAt: dbRow.created_at,
+    updatedAt: dbRow.updated_at,
+});
+
 const mapRack = (dbRow: any) => ({
     id: dbRow.id,
     tenantId: dbRow.tenant_id,
     roomId: dbRow.room_id,
+    podId: dbRow.pod_id,
     rowId: dbRow.row_id,
     name: dbRow.name,
     code: dbRow.code,
@@ -209,6 +271,10 @@ const mapDevice = (dbRow: any) => ({
     purchasePrice: dbRow.purchase_price,
     assignedTo: dbRow.assigned_to,
     notes: dbRow.notes,
+    managementIp: dbRow.management_ip,
+    managementUrl: dbRow.management_url,
+    managementProtocol: dbRow.management_protocol,
+    remoteCredentialsId: dbRow.remote_credentials_id,
     metadata: dbRow.metadata,
     createdAt: dbRow.created_at,
     updatedAt: dbRow.updated_at,
@@ -259,12 +325,32 @@ export class DcimResolver {
         return data.map(mapRoom);
     }
 
-    @Query(() => [DcimRack])
-    async dcimRacks(
+    @Query(() => [DcimPod])
+    async dcimPods(
         @Args('tenantId') tenantId: string,
         @Args('roomId', { nullable: true }) roomId?: string
     ) {
-        const data = await this.dcimService.getRacks(tenantId, { roomId });
+        const data = await this.dcimService.getPods(tenantId, roomId);
+        return data.map(mapPod);
+    }
+
+    @Query(() => [DcimRow])
+    async dcimRows(
+        @Args('tenantId') tenantId: string,
+        @Args('podId', { nullable: true }) podId?: string
+    ) {
+        const data = await this.dcimService.getRows(tenantId, podId);
+        return data.map(mapRow);
+    }
+
+    @Query(() => [DcimRack])
+    async dcimRacks(
+        @Args('tenantId') tenantId: string,
+        @Args('roomId', { nullable: true }) roomId?: string,
+        @Args('podId', { nullable: true }) podId?: string,
+        @Args('rowId', { nullable: true }) rowId?: string
+    ) {
+        const data = await this.dcimService.getRacks(tenantId, { roomId, podId, rowId });
         return data.map(mapRack);
     }
 

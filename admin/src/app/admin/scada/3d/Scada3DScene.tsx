@@ -67,6 +67,82 @@ const WaterPipe = ({ start, end, radius, animateFlow, thermalMode, temperature }
     );
 };
 
+
+const FluidTank = ({ position, level, id, onClick }: { position: [number,number,number], level: number, id: string, onClick: (id: string) => void }) => {
+    // level is 0.0 to 1.0
+    const tankHeight = 6;
+    const waterHeight = tankHeight * level;
+    
+    return (
+        <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+            {/* Outer Glass Shell */}
+            <Cylinder args={[3, 3, tankHeight, 32]} position={[0, tankHeight/2, 0]} castShadow>
+                <meshPhysicalMaterial 
+                    color="#ffffff" 
+                    transparent 
+                    opacity={0.3} 
+                    roughness={0.1} 
+                    metalness={0.1}
+                    transmission={0.9} 
+                    thickness={0.5} 
+                />
+            </Cylinder>
+            
+            {/* Water Fill */}
+            {waterHeight > 0.1 && (
+                <Cylinder args={[2.9, 2.9, waterHeight, 32]} position={[0, waterHeight/2, 0]}>
+                    <meshStandardMaterial color="#1890ff" transparent opacity={0.8} />
+                </Cylinder>
+            )}
+
+            {/* Base */}
+            <Cylinder args={[3.2, 3.2, 0.5, 32]} position={[0, 0.25, 0]}>
+                <meshStandardMaterial color="#555" />
+            </Cylinder>
+            
+            {/* Cap */}
+            <Cylinder args={[3.2, 3.2, 0.5, 32]} position={[0, tankHeight, 0]}>
+                <meshStandardMaterial color="#555" />
+            </Cylinder>
+
+            <Html position={[0, tankHeight + 1, 0]} center>
+                <div style={{ background: 'rgba(0,0,0,0.8)', color: '#fff', padding: '4px 8px', borderRadius: 4, whiteSpace: 'nowrap', fontSize: 12 }}>
+                    {id} ({Math.round(level * 100)}%)
+                </div>
+            </Html>
+        </group>
+    );
+};
+
+const WaterPump = ({ position, rotation, isRunning, id, onClick }: { position: [number,number,number], rotation?: [number,number,number], isRunning: boolean, id: string, onClick: (id: string) => void }) => {
+    const impellerRef = useRef<THREE.Mesh>(null);
+    useFrame(() => {
+        if (isRunning && impellerRef.current) {
+            impellerRef.current.rotation.z += 0.2;
+        }
+    });
+
+    return (
+        <group position={position} rotation={rotation || [0,0,0]} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+            <Box args={[1.5, 1, 1]} position={[0, 0.5, 0]} castShadow>
+                <meshStandardMaterial color={isRunning ? "#52c41a" : "#faad14"} />
+            </Box>
+            <Cylinder args={[0.8, 0.8, 0.5, 16]} position={[1, 0.5, 0]} rotation={[0, 0, Math.PI/2]} castShadow>
+                <meshStandardMaterial color="#444" />
+            </Cylinder>
+            <mesh position={[1.3, 0.5, 0]} rotation={[0, 0, Math.PI/2]} ref={impellerRef}>
+                <cylinderGeometry args={[0.5, 0.5, 0.1, 8]} />
+                <meshStandardMaterial color="#222" />
+            </mesh>
+            <Html position={[0, 1.5, 0]} center>
+                <div style={{ background: 'rgba(0,0,0,0.8)', color: '#fff', padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap', fontSize: 10 }}>
+                    {id} ({isRunning ? 'ON' : 'OFF'})
+                </div>
+            </Html>
+        </group>
+    );
+};
+
 const Valve = ({ position, rotation, onClick, id, isOpen }: { position: [number,number,number], rotation?: [number,number,number], onClick: (id: string) => void, id: string, isOpen: boolean }) => {
     return (
         <group position={position} rotation={rotation || [0,0,0]} onClick={(e) => { e.stopPropagation(); onClick(id); }}>

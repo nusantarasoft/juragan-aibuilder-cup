@@ -65,10 +65,42 @@ export class DcimService {
         return data;
     }
 
+    // ─── PODS ───────────────────────────────────────────────
+    async getPods(tenantId: string, roomId?: string) {
+        let query = this.db.from('dcim_pods').select('*').eq('tenant_id', tenantId);
+        if (roomId) query = query.eq('room_id', roomId);
+        const { data, error } = await query.order('name');
+        if (error) throw error;
+        return data;
+    }
+
+    async createPod(tenantId: string, input: any) {
+        const { data, error } = await this.db.from('dcim_pods').insert({ tenant_id: tenantId, ...input }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
+    // ─── ROWS ───────────────────────────────────────────────
+    async getRows(tenantId: string, podId?: string) {
+        let query = this.db.from('dcim_rows').select('*').eq('tenant_id', tenantId);
+        if (podId) query = query.eq('pod_id', podId);
+        const { data, error } = await query.order('name');
+        if (error) throw error;
+        return data;
+    }
+
+    async createRow(tenantId: string, input: any) {
+        const { data, error } = await this.db.from('dcim_rows').insert({ tenant_id: tenantId, ...input }).select().single();
+        if (error) throw error;
+        return data;
+    }
+
     // ─── RACKS ──────────────────────────────────────────────
-    async getRacks(tenantId: string, filters?: { roomId?: string, status?: string }) {
+    async getRacks(tenantId: string, filters?: { roomId?: string, podId?: string, rowId?: string, status?: string }) {
         let query = this.db.from('dcim_racks').select('*').eq('tenant_id', tenantId);
         if (filters?.roomId) query = query.eq('room_id', filters.roomId);
+        if (filters?.podId) query = query.eq('pod_id', filters.podId);
+        if (filters?.rowId) query = query.eq('row_id', filters.rowId);
         if (filters?.status) query = query.eq('status', filters.status);
         const { data, error } = await query.order('name');
         if (error) throw error;

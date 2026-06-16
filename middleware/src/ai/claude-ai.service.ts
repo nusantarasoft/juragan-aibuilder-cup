@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SupabaseService } from '../supabase/supabase.service';
 
 const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -11,14 +12,38 @@ const DEFAULT_ANTHROPIC_MODEL = 'claude-3-5-haiku-20241022';
 export class ClaudeAiService {
     private readonly logger = new Logger(ClaudeAiService.name);
 
-    constructor(private readonly configService: ConfigService) { }
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly supabaseService: SupabaseService,
+    ) { }
 
-    private getApiKey(): string | undefined {
+    private async getDbSettings(): Promise<any> {
+        try {
+            const { data } = await this.supabaseService.getAdminClient()
+                .from('studio_settings')
+                .select('*')
+                .limit(1)
+                .single();
+            return data || {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    private async getApiKey(): Promise<string | undefined> {
+        const settings = await this.getDbSettings();
+        const dbKey = settings?.anthropic_api_key;
+        if (typeof dbKey === 'string' && dbKey.trim().length > 0) return dbKey.trim();
+        
         const v = this.configService.get<string>('ANTHROPIC_API_KEY');
         return typeof v === 'string' && v.trim().length > 0 ? v.trim() : undefined;
     }
 
-    private getModel(): string {
+    private async getModel(): Promise<string> {
+        const settings = await this.getDbSettings();
+        const dbModel = settings?.anthropic_model;
+        if (typeof dbModel === 'string' && dbModel.trim().length > 0) return dbModel.trim();
+        
         const v = this.configService.get<string>('ANTHROPIC_MODEL');
         if (typeof v === 'string' && v.trim().length > 0) {
             return v.trim();
@@ -50,7 +75,7 @@ export class ClaudeAiService {
      * Anthropic Messages API — text-only (AI Studio).
      */
     async generateText(prompt: string): Promise<string> {
-        const apiKey = this.getApiKey();
+        const apiKey = await this.getApiKey();
         if (!apiKey) {
             this.logger.warn('ANTHROPIC_API_KEY is not set.');
             return 'Claude is not configured. Please set ANTHROPIC_API_KEY environment variable.';
@@ -65,7 +90,7 @@ export class ClaudeAiService {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    model: this.getModel(),
+                    model: await this.getModel(),
                     max_tokens: this.getMaxTokens(),
                     messages: [{ role: 'user', content: prompt }],
                 }),

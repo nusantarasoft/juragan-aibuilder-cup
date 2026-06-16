@@ -355,12 +355,12 @@ export default function AIStudioPage() {
         if (!activeNotebook) return;
         const { file, onSuccess, onError } = options;
         try {
-            await studioService.uploadFileToNotebook(activeNotebook.id, file);
+            await studioService.uploadFileToNotebook(activeNotebook.id, file as File);
             onSuccess?.({}, file);
             message.success(`"${(file as File).name}" diupload — indeksasi dimulai`);
             await loadSourceStatus(activeNotebook.id);
         } catch (e: unknown) {
-            onError?.(e);
+            onError?.(e as Error);
             message.error(e instanceof Error ? e.message : "Upload failed");
         }
     };

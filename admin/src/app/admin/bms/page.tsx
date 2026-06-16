@@ -13,6 +13,9 @@ import {
 import { motion } from "framer-motion";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Legend, Cell } from 'recharts';
 import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
+import dynamic from 'next/dynamic';
+
+const Bms3dView = dynamic(() => import('./Bms3dView'), { ssr: false });
 import { AnimatedCircularProgressBar } from "@/components/magicui/animated-circular-progress-bar";
 import { bmsService, BmsSystem, BmsAlarm } from "@/lib/bmsService";
 
@@ -31,6 +34,7 @@ export default function BmsDashboard() {
 
     const [realSystems, setRealSystems] = useState<BmsSystem[]>([]);
     const [realAlarms, setRealAlarms] = useState<BmsAlarm[]>([]);
+    const [viewMode, setViewMode] = useState<'dashboard' | '3d'>('dashboard');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -91,6 +95,20 @@ export default function BmsDashboard() {
             subTitle={<DecryptedText text="Facility Building Operations" speed={60} />}
         >
             <style>{dashAnimStyle}</style>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+                <Button 
+                    type={viewMode === '3d' ? 'primary' : 'default'} 
+                    icon={<HomeOutlined />} 
+                    onClick={() => setViewMode(viewMode === '3d' ? 'dashboard' : '3d')}
+                >
+                    {viewMode === '3d' ? 'Back to Dashboard' : 'Open 3D Digital Twin'}
+                </Button>
+            </div>
+            
+            {viewMode === '3d' ? (
+                <Bms3dView isDark={isDark} />
+            ) : (
+                <React.Fragment>
 
             {/* KPI ROW (BENTO GRID) */}
             <BentoGrid className="mb-6">
@@ -242,6 +260,8 @@ export default function BmsDashboard() {
                     </motion.div>
                 </Col>
             </Row>
+                </React.Fragment>
+            )}
         </CMSLayout>
     );
 }

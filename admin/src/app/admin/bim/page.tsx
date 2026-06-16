@@ -11,6 +11,11 @@ import {
     SearchOutlined, UploadOutlined, CloudDownloadOutlined
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
+import { Upload, message } from 'antd';
+import type { UploadProps } from 'antd';
+import dynamic from 'next/dynamic';
+
+const BimViewerModal = dynamic(() => import('./BimViewerModal'), { ssr: false });
 
 const { Title, Text } = Typography;
 
@@ -25,19 +30,23 @@ export default function BimLibrary() {
     const { token: antToken } = theme.useToken();
     const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
 
-    const glassStyle = {
+        const [viewerVisible, setViewerVisible] = useState(false);
+    const [currentModelUrl, setCurrentModelUrl] = useState<string | null>(null);
+    const [currentModelName, setCurrentModelName] = useState<string>("");
+
+const glassStyle = {
         background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.65)',
         backdropFilter: 'blur(16px)',
         border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.4)'}`,
         borderRadius: 16,
     };
 
-    const models = [
+    const [models, setModels] = useState([
         { id: 'MOD-001', name: 'HQ_Architecture_v3.ifc', version: 'v3', format: 'IFC4', size: '142 MB', status: 'Active', updated: '2026-06-12' },
         { id: 'MOD-002', name: 'HQ_MEP_v2.rvt', version: 'v2', format: 'RVT', size: '310 MB', status: 'Active', updated: '2026-06-10' },
         { id: 'MOD-003', name: 'HQ_Structural_v1.ifc', version: 'v1', format: 'IFC4', size: '85 MB', status: 'Archived', updated: '2026-05-15' },
         { id: 'MOD-004', name: 'DC_Extension_Concept.gltf', version: 'v1', format: 'glTF', size: '24 MB', status: 'Draft', updated: '2026-06-13' },
-    ];
+    ]);
 
     return (
         <CMSLayout 
@@ -48,9 +57,9 @@ export default function BimLibrary() {
 
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 {[
-                    { title: "Total Models", value: "24", icon: <FolderOutlined />, color: themeColor },
-                    { title: "Active Projects", value: "3", icon: <GlobalOutlined />, color: "#52c41a" },
-                    { title: "Open Clashes", value: "14", icon: <BugOutlined />, color: "#faad14" },
+                    { title: "Total Models", value: "24", icon: <FolderOutlined />, color: themeColor } as any,
+                    { title: "Active Projects", value: "3", icon: <GlobalOutlined />, color: "#52c41a" } as any,
+                    { title: "Open Clashes", value: "14", icon: <BugOutlined />, color: "#faad14" } as any,
                     { title: "Storage Used", value: "4.2", icon: <CloudDownloadOutlined />, suffix: " GB", color: "#1890ff" }
                 ].map((kpi, idx) => (
                     <Col xs={24} sm={12} md={6} key={idx}>
@@ -77,7 +86,28 @@ export default function BimLibrary() {
                         <Input placeholder="Search models by name, format..." prefix={<SearchOutlined />} style={{ width: 300, borderRadius: 8 }} />
                         <Space>
                             <Button icon={<CloudDownloadOutlined />}>Sync Autodesk BIM 360</Button>
-                            <Button type="primary" icon={<UploadOutlined />} style={{ background: themeColor }}>Upload Model</Button>
+                            <Upload
+                                accept=".glb,.gltf,.bin"
+                                showUploadList={false}
+                                beforeUpload={(file) => {
+                                    const url = URL.createObjectURL(file);
+                                    const newModel = {
+                                        id: `MOD-${Math.floor(Math.random()*1000)}`,
+                                        name: file.name,
+                                        version: 'v1',
+                                        format: file.name.split('.').pop()?.toUpperCase() || 'GLB',
+                                        size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+                                        status: 'Active',
+                                        updated: new Date().toISOString().split('T')[0],
+                                        url: url
+                                    };
+                                    setModels([newModel, ...models]);
+                                    message.success(`${file.name} uploaded successfully!`);
+                                    return false; // Prevent auto upload
+                                }}
+                            >
+                                <Button type="primary" icon={<UploadOutlined />} style={{ background: themeColor }}>Upload Model</Button>
+                            </Upload>
                         </Space>
                     </div>
                     <Table 
@@ -86,18 +116,31 @@ export default function BimLibrary() {
                         rowKey="id"
                         style={{ background: 'transparent' }}
                         columns={[
-                            { title: 'Model ID', dataIndex: 'id', render: (t) => <Text type="secondary">{t}</Text> },
-                            { title: 'File Name', dataIndex: 'name', render: (t) => <a style={{ color: themeColor, fontWeight: 500 }}>{t}</a> },
-                            { title: 'Format', dataIndex: 'format', render: (t) => (
+                            { title: 'Model ID', dataIndex: 'id', render: (t: any) => <Text type="secondary">{t}</Text> } as any,
+                            { title: 'File Name', dataIndex: 'name', render: (t: any) => <a style={{ color: themeColor, fontWeight: 500 }}>{t}</a> } as any,
+                            { title: 'Format', dataIndex: 'format', render: (t: any) => (
                                 <Tag color={t === 'IFC4' ? 'blue' : t === 'RVT' ? 'cyan' : 'default'}>{t}</Tag>
-                            )},
-                            { title: 'Version', dataIndex: 'version' },
-                            { title: 'Size', dataIndex: 'size' },
-                            { title: 'Last Updated', dataIndex: 'updated' },
-                            { title: 'Status', dataIndex: 'status', render: (t) => <Badge status={t === 'Active' ? 'success' : t === 'Draft' ? 'processing' : 'default'} text={t} /> },
-                            { title: 'Actions', render: () => (
+                            )} as any,
+                            { title: 'Version', dataIndex: 'version', render: (t: any) => <Tag>{t}</Tag> } as any,
+                            { title: 'Size', dataIndex: 'size' } as any,
+                            { title: 'Last Updated', dataIndex: 'updated' } as any,
+                            { title: 'Status', dataIndex: 'status', render: (t: any) => <Badge status={t === 'Active' ? 'success' : t === 'Draft' ? 'processing' : 'default'} text={t} /> } as any,
+                            { title: 'Actions', render: (_: any, record: any) => (
                                 <Space>
-                                    <Button size="small" type="primary" ghost>Open 3D Viewer</Button>
+                                    <Button 
+                                        size="small" 
+                                        type="primary" 
+                                        ghost
+                                        onClick={() => {
+                                            if (record.url) {
+                                                setCurrentModelUrl(record.url);
+                                                setCurrentModelName(record.name);
+                                                setViewerVisible(true);
+                                            } else {
+                                                message.warning("Only newly uploaded .glb/.bin files can be viewed in this demo.");
+                                            }
+                                        }}
+                                    >Open 3D Viewer</Button>
                                     <Button size="small">Details</Button>
                                 </Space>
                             )}
@@ -105,6 +148,12 @@ export default function BimLibrary() {
                     />
                 </Card>
             </motion.div>
+            <BimViewerModal 
+                visible={viewerVisible} 
+                onClose={() => setViewerVisible(false)} 
+                modelUrl={currentModelUrl} 
+                modelName={currentModelName} 
+            />
         </CMSLayout>
     );
 }

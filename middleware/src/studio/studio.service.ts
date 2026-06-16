@@ -61,6 +61,60 @@ export class StudioService {
         this.logger.log('StudioService initialized');
     }
 
+    // ── Settings ─────────────────────────────────────────────────────
+
+    async getSettings(tenantId?: string): Promise<any> {
+        // If no tenantId, assume default system tenant or first row
+        const tid = tenantId || '00000000-0000-0000-0000-000000000000';
+        const { data, error } = await this.supabaseService.getAdminClient()
+            .from('studio_settings')
+            .select('*')
+            .eq('tenant_id', tid)
+            .single();
+
+        if (error && error.code !== 'PGRST116') {
+            this.logger.error(`Error fetching settings: ${error.message}`);
+        }
+        
+        return data || {
+            default_llm_provider: 'anthropic',
+            default_embedding_provider: 'auto',
+            waha_dashboard_url: 'http://127.0.0.1:3010/dashboard'
+        };
+    }
+
+    async updateSettings(tenantId: string | undefined, payload: any): Promise<any> {
+        const tid = tenantId || '00000000-0000-0000-0000-000000000000';
+        
+        const { data: existing } = await this.supabaseService.getAdminClient()
+            .from('studio_settings')
+            .select('tenant_id')
+            .eq('tenant_id', tid)
+            .single();
+
+        let res;
+        if (existing) {
+            res = await this.supabaseService.getAdminClient()
+                .from('studio_settings')
+                .update({ ...payload, updated_at: new Date().toISOString() })
+                .eq('tenant_id', tid)
+                .select()
+                .single();
+        } else {
+            res = await this.supabaseService.getAdminClient()
+                .from('studio_settings')
+                .insert({ tenant_id: tid, ...payload })
+                .select()
+                .single();
+        }
+
+        if (res.error) {
+            this.logger.error(`Error updating settings: ${res.error.message}`);
+            throw new Error(`Failed to update settings: ${res.error.message}`);
+        }
+        return res.data;
+    }
+
     /** AI Studio LLM: Vertex (default) or Anthropic Claude via STUDIO_AI_PROVIDER. */
     private useAnthropicStudio(): boolean {
         const v = (this.configService.get<string>('STUDIO_AI_PROVIDER') || 'vertex').toLowerCase();

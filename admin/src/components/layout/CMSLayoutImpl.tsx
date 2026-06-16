@@ -25,6 +25,9 @@ import {
     DeleteOutlined,
     ShareAltOutlined,
     CopyOutlined,
+    SwapOutlined,
+    UserOutlined,
+    DownOutlined,
 } from "@ant-design/icons";
 import {
     PageContainer,
@@ -329,7 +332,7 @@ export default function CMSLayoutImpl({
             setPathname(currentPath);
         }
     }, [currentPath]);
-    const [innerCollapsed, setInnerCollapsed] = useState(true); // Default collapsed
+    const [innerCollapsed, setInnerCollapsed] = useState(false); // Default expanded
     const [outerCollapsed, setOuterCollapsed] = useState(false);
     
     const { 
@@ -691,40 +694,9 @@ export default function CMSLayoutImpl({
         root.style.setProperty('--theme-accent-rgb', `${aRgb.r}, ${aRgb.g}, ${aRgb.b}`);
     }, [themePalette]);
 
-    // Force sticky sidebar for inner layout
+    // Force sticky sidebar for inner layout (Removed custom hack, using fixSiderbar)
     React.useEffect(() => {
-        const applySticky = () => {
-            const sider = document.querySelector(".cms-inner-sider");
-            if (sider instanceof HTMLElement) {
-                sider.style.setProperty("position", "sticky", "important");
-                sider.style.setProperty("top", "0", "important");
-                sider.style.setProperty("height", "100vh", "important");
-                sider.style.setProperty("overflow", "visible", "important");
-                sider.style.setProperty("z-index", "10", "important");
-            }
-        };
-
-        applySticky();
-
-        // Re-apply periodically (less aggressively)
-        const intervalId = setInterval(applySticky, 2000);
-
-        // Debounced observer to reduce DOM thrashing  
-        let debounceTimer: ReturnType<typeof setTimeout>;
-        const observer = new MutationObserver(() => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(applySticky, 100);
-        });
-        const container = document.querySelector(".cms-inner-layout");
-        if (container) {
-            observer.observe(container, { childList: true, subtree: true });
-        }
-
-        return () => {
-            clearInterval(intervalId);
-            clearTimeout(debounceTimer);
-            observer.disconnect();
-        };
+        // We let ProLayout handle its own fixed layout
     }, [pathname, innerCollapsed]);
     // Force menu icons visible in collapsed mode for OUTER sidebar.
     // Ant's CSS-in-JS hides .ant-menu-title-content (opacity:0, max-width:0px, overflow:hidden)
@@ -911,6 +883,7 @@ export default function CMSLayoutImpl({
                         }}
                         fixSiderbar
                         collapsed={outerCollapsed}
+                        breakpoint={false}
                         onCollapse={handleOuterCollapse}
                         headerRender={false}
                         siderWidth={260}
@@ -1070,7 +1043,7 @@ export default function CMSLayoutImpl({
                                                 </GlitchText>
                                             </div>
                                         </div>
-                                        {/* Right: Presence + Language + Notification + Dark/Light */}
+                                        {/* Right: Presence + Dark/Light */}
                                         <div style={{ marginLeft: 16, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
                                             <Avatar.Group max={{ count: 3 }} size="small" style={{ display: 'flex', alignItems: 'center' }}>
                                                 {Object.values(cursors).map((c: { id: string; color: string; name: string }) => (
@@ -1080,8 +1053,6 @@ export default function CMSLayoutImpl({
                                                 ))}
                                             </Avatar.Group>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <LanguageSwitcher isDark={darkMode} />
-                                            <NotificationBell />
                                             <AnimatedThemeToggler
                                                 isDark={darkMode}
                                                 onThemeChange={handleDarkModeChange}
@@ -1094,6 +1065,25 @@ export default function CMSLayoutImpl({
                                         </div>
                                     </>
                                 )}
+                            </div>
+                        )}
+                        menuRender={(props, defaultDom) => (
+                            <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                                <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+                                    {defaultDom}
+                                </div>
+                                <div style={{
+                                    display: "flex",
+                                    flexDirection: outerCollapsed ? "column" : "row",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    padding: "12px 0",
+                                    gap: outerCollapsed ? 16 : 12,
+                                    borderTop: darkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid #f0f0f0",
+                                }}>
+                                    <LanguageSwitcher isDark={darkMode} />
+                                    <NotificationBell />
+                                </div>
                             </div>
                         )}
                         menuItemRender={(item, dom) => {
@@ -1193,23 +1183,28 @@ export default function CMSLayoutImpl({
                             prefixCls="cms-inner"
                             title=""
                             logo={false}
+                            style={{ minHeight: '100vh', width: '100%' }}
                             location={{
                                 pathname,
                             }}
                             route={{
-                                path: "/admin/inner",
+                                path: "/",
                                 routes: innerRoutes,
                             }}
+                            hasSiderMenu={true}
+
                             collapsed={innerCollapsed}
+                            breakpoint={false}
                             onCollapse={handleInnerCollapse}
                             siderWidth={240}
                             navTheme={darkMode ? "realDark" : "light"}
-                            token={{ sider: { colorMenuBackground: darkMode ? 'rgba(0,0,0,0.2)' : '#fff', colorTextMenuSelected: themePalette.primary, colorBgMenuItemSelected: `${themePalette.primary}15`, colorTextMenuItemHover: themePalette.primary, colorBgMenuItemHover: `${themePalette.primary}08` } }}
+                            token={{ sider: { colorMenuBackground: darkMode ? '#141414' : '#fff', colorTextMenuSelected: themePalette.primary, colorBgMenuItemSelected: `${themePalette.primary}15`, colorTextMenuItemHover: themePalette.primary, colorBgMenuItemHover: `${themePalette.primary}08` } }}
                             layout="side"
                             contentStyle={{
                                 padding: 0,
                                 margin: 0,
                             }}
+                            menuDataRender={() => innerRoutes.length > 0 ? innerRoutes : [{ path: '/dummy', name: 'No items' }]}
                             menuHeaderRender={false}
                             menuExtraRender={() => (
                                 <div style={{
@@ -1235,7 +1230,85 @@ export default function CMSLayoutImpl({
                                     />
                                 </div>
                             )}
-
+                            menuRender={(props, defaultDom) => (
+                                <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                                    <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+                                        {defaultDom}
+                                    </div>
+                                    <div style={{
+                                        padding: innerCollapsed ? "16px 0" : "16px",
+                                        borderTop: darkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid #f0f0f0",
+                                        display: "flex",
+                                        justifyContent: "center",
+                                    }}>
+                                        <Dropdown
+                                            menu={{
+                                                items: [
+                                                    {
+                                                        key: 'settings',
+                                                        icon: <SettingOutlined />,
+                                                        label: 'Account Settings',
+                                                    },
+                                                    {
+                                                        key: 'switch',
+                                                        icon: <SwapOutlined />,
+                                                        label: 'Sign in another account',
+                                                    },
+                                                    {
+                                                        type: 'divider',
+                                                    },
+                                                    {
+                                                        key: 'logout',
+                                                        icon: <LogoutOutlined />,
+                                                        label: 'Sign Out',
+                                                        danger: true,
+                                                    },
+                                                ],
+                                                onClick: ({ key }) => {
+                                                    if (key === 'logout') {
+                                                        message.success('Signed out successfully');
+                                                    } else if (key === 'settings') {
+                                                        message.info('Navigating to settings...');
+                                                    } else if (key === 'switch') {
+                                                        message.info('Switching account...');
+                                                    }
+                                                }
+                                            }}
+                                            trigger={['click']}
+                                            placement={innerCollapsed ? "topRight" : "top"}
+                                        >
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: innerCollapsed ? 'center' : 'space-between',
+                                                cursor: 'pointer',
+                                                padding: innerCollapsed ? '8px' : '8px 12px',
+                                                borderRadius: '8px',
+                                                background: darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+                                                width: innerCollapsed ? 'auto' : '100%',
+                                                transition: 'background 0.2s',
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'}
+                                            >
+                                                {innerCollapsed ? (
+                                                    <Avatar icon={<UserOutlined />} size="small" style={{ backgroundColor: themePalette.primary }} />
+                                                ) : (
+                                                    <>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, overflow: 'hidden' }}>
+                                                            <Avatar icon={<UserOutlined />} style={{ backgroundColor: themePalette.primary, flexShrink: 0 }} />
+                                                            <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                                                <span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.2, color: darkMode ? '#fff' : '#000', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>Admin User</span>
+                                                                <span style={{ fontSize: 12, color: darkMode ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>admin@nusantarasoft.com</span>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </Dropdown>
+                                    </div>
+                                </div>
+                            )}
 
                             menuItemRender={(item, dom) => {
                                 const isPinnedOrStarred = selectedSegment === "pinned" || selectedSegment === "starred";
@@ -1417,21 +1490,8 @@ export default function CMSLayoutImpl({
                     max-width: ${INNER_COLLAPSED_WIDTH}px !important;
                 }
                 
-                /* Remove gap between outer and inner sidebars */
-                .cms-inner-layout {
-                    margin-left: 0 !important;
-                    padding-left: 0 !important;
-                }
                 
-                /* Hide the placeholder div that ProLayout creates */
-                /* This div is the first child inside .ant-layout-has-sider, before the aside */
-                .cms-inner-layout .ant-layout-has-sider > div:first-child:not(.cms-inner-sider):not(.ant-layout-content):not(.cms-inner-layout-container) {
-                    display: none !important;
-                    width: 0 !important;
-                    min-width: 0 !important;
-                    max-width: 0 !important;
-                    flex: 0 0 0 !important;
-                }
+
                 
                 /* Fix inner sidebar - use clip for children only, not the sidebar itself */
                 /* This allows the collapse button to extend beyond the sidebar */
