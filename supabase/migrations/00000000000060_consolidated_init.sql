@@ -374,10 +374,18 @@ BEGIN
             'teams', 'team_members', 'permission_audit_log'
         ])
     LOOP
-        EXECUTE format(
-            'CREATE POLICY IF NOT EXISTS "service_full_access" ON public.%I FOR ALL USING (true)',
-            tbl
-        );
+        IF NOT EXISTS (
+            SELECT 1
+            FROM pg_policies
+            WHERE schemaname = 'public'
+              AND tablename = tbl
+              AND policyname = 'service_full_access'
+        ) THEN
+            EXECUTE format(
+                'CREATE POLICY "service_full_access" ON public.%I FOR ALL USING (true)',
+                tbl
+            );
+        END IF;
     END LOOP;
 END $$;
 
@@ -396,9 +404,15 @@ INSERT INTO public.roles (id, tenant_id, name, level, description) VALUES
     ('00000000-0000-0000-0000-000000000030', '00000000-0000-0000-0000-000000000010', 'CEO', 0, 'Chief Executive Officer - Top of hierarchy')
 ON CONFLICT (tenant_id, name) DO NOTHING;
 
-INSERT INTO public.role_hierarchy_paths (ancestor_id, descendant_id, depth) VALUES
-    ('00000000-0000-0000-0000-000000000030', '00000000-0000-0000-0000-000000000030', 0)
-ON CONFLICT DO NOTHING;
+-- Seed role hierarchy for default CEO.
+-- If roles rows already exist (e.g. from an earlier partial init),
+-- reference them by (tenant_id, name) instead of hard-coded UUIDs.
+INSERT INTO public.role_hierarchy_paths (ancestor_id, descendant_id, depth)
+SELECT r.id, r.id, 0
+FROM public.roles r
+WHERE r.tenant_id = '00000000-0000-0000-0000-000000000010'
+  AND r.name = 'CEO'
+ON CONFLICT (ancestor_id, descendant_id) DO NOTHING;
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- SECTION 4: CMS CORE

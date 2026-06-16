@@ -1,8 +1,12 @@
 -- ============================================================================
--- pg_cron Extension (must be installed in 'postgres' database)
+-- pg_cron Extension
+--
+-- The Supabase Postgres image runs migration files via psql against POSTGRES_DB
+-- (in our case: nusantarasoft). pg_cron can only be installed in the database
+-- named "postgres", so we switch connection explicitly.
 -- ============================================================================
--- pg_cron can only run in the database specified in cron.database_name
--- By default this is 'postgres', so we install it there
+
+\connect postgres
 
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 

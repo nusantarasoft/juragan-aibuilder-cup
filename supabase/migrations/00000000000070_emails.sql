@@ -135,19 +135,23 @@ ALTER TABLE public.emails ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.email_attachments ENABLE ROW LEVEL SECURITY;
 
 -- Email Accounts: Users can only see their own accounts
+DROP POLICY IF EXISTS "Users can view own email accounts" ON public.email_accounts;
 CREATE POLICY "Users can view own email accounts"
     ON public.email_accounts FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own email accounts" ON public.email_accounts;
 CREATE POLICY "Users can insert own email accounts"
     ON public.email_accounts FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own email accounts" ON public.email_accounts;
 CREATE POLICY "Users can update own email accounts"
     ON public.email_accounts FOR UPDATE
     USING (auth.uid() = user_id);
 
 -- Emails: Users can only see emails for their accounts
+DROP POLICY IF EXISTS "Users can view own emails" ON public.emails;
 CREATE POLICY "Users can view own emails"
     ON public.emails FOR SELECT
     USING (
@@ -156,6 +160,7 @@ CREATE POLICY "Users can view own emails"
         )
     );
 
+DROP POLICY IF EXISTS "Users can insert own emails" ON public.emails;
 CREATE POLICY "Users can insert own emails"
     ON public.emails FOR INSERT
     WITH CHECK (
@@ -164,6 +169,7 @@ CREATE POLICY "Users can insert own emails"
         )
     );
 
+DROP POLICY IF EXISTS "Users can update own emails" ON public.emails;
 CREATE POLICY "Users can update own emails"
     ON public.emails FOR UPDATE
     USING (
@@ -172,6 +178,7 @@ CREATE POLICY "Users can update own emails"
         )
     );
 
+DROP POLICY IF EXISTS "Users can delete own emails" ON public.emails;
 CREATE POLICY "Users can delete own emails"
     ON public.emails FOR DELETE
     USING (
@@ -181,6 +188,7 @@ CREATE POLICY "Users can delete own emails"
     );
 
 -- Attachments: Follow email permissions
+DROP POLICY IF EXISTS "Users can view attachments of own emails" ON public.email_attachments;
 CREATE POLICY "Users can view attachments of own emails"
     ON public.email_attachments FOR SELECT
     USING (
@@ -192,17 +200,20 @@ CREATE POLICY "Users can view attachments of own emails"
     );
 
 -- Service role bypass (for edge functions)
+DROP POLICY IF EXISTS "Service role full access to emails" ON public.emails;
 CREATE POLICY "Service role full access to emails"
     ON public.emails FOR ALL
-    USING (auth.jwt() ->> 'role' = 'service_role');
+    USING (auth.role() = 'service_role');
 
+DROP POLICY IF EXISTS "Service role full access to email_accounts" ON public.email_accounts;
 CREATE POLICY "Service role full access to email_accounts"
     ON public.email_accounts FOR ALL
-    USING (auth.jwt() ->> 'role' = 'service_role');
+    USING (auth.role() = 'service_role');
 
+DROP POLICY IF EXISTS "Service role full access to attachments" ON public.email_attachments;
 CREATE POLICY "Service role full access to attachments"
     ON public.email_attachments FOR ALL
-    USING (auth.jwt() ->> 'role' = 'service_role');
+    USING (auth.role() = 'service_role');
 
 -- ============================================================================
 -- VIEWS FOR ANALYTICS

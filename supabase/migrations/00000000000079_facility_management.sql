@@ -19,6 +19,11 @@ CREATE TABLE IF NOT EXISTS public.dcim_sites (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- If this table already exists from earlier consolidated schema,
+-- ensure the columns required by our dummy seed exist.
+ALTER TABLE public.dcim_sites
+  ADD COLUMN IF NOT EXISTS location TEXT;
+
 CREATE TABLE IF NOT EXISTS public.dcim_buildings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     site_id UUID REFERENCES public.dcim_sites(id) ON DELETE CASCADE,
@@ -158,15 +163,27 @@ DECLARE
     rack1_uuid UUID := '44444444-4444-4444-4444-444444444441';
     rack2_uuid UUID := '44444444-4444-4444-4444-444444444442';
 BEGIN
+    -- Skip dummy inserts if the existing schema does not match our expected
+    -- columns (consolidated_init already defines these tables).
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'dcim_racks'
+          AND column_name = 'used_u'
+    ) THEN
+        RETURN;
+    END IF;
+
     INSERT INTO public.dcim_sites (id, name, location) 
     VALUES (site_uuid, 'Jakarta HQ Data Center', 'Jakarta, Indonesia') 
     ON CONFLICT (id) DO NOTHING;
 
-    INSERT INTO public.dcim_buildings (id, site_id, name, total_floors) 
+    INSERT INTO public.dcim_buildings (id, site_id, name, floors) 
     VALUES (bldg_uuid, site_uuid, 'Tower A', 5) 
     ON CONFLICT (id) DO NOTHING;
 
-    INSERT INTO public.dcim_rooms (id, building_id, name, type, capacity_kw) 
+    INSERT INTO public.dcim_rooms (id, building_id, name, room_type, max_power_kw) 
     VALUES (room_uuid, bldg_uuid, 'Server Hall 1', 'server_room', 500) 
     ON CONFLICT (id) DO NOTHING;
 
@@ -192,6 +209,16 @@ DECLARE
     zone1_uuid UUID := '66666666-6666-6666-6666-666666666661';
     zone2_uuid UUID := '66666666-6666-6666-6666-666666666662';
 BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'bms_systems'
+          AND column_name = 'type'
+    ) THEN
+        RETURN;
+    END IF;
+
     INSERT INTO public.bms_systems (id, name, type, status)
     VALUES 
         (sys_hvac_uuid, 'Main HVAC System', 'hvac', 'operational'),
@@ -219,6 +246,16 @@ DECLARE
     tag1_uuid UUID := '88888888-8888-8888-8888-888888888881';
     tag2_uuid UUID := '88888888-8888-8888-8888-888888888882';
 BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'scada_data_sources'
+          AND column_name = 'connection_string'
+    ) THEN
+        RETURN;
+    END IF;
+
     INSERT INTO public.scada_data_sources (id, name, protocol, connection_string, status)
     VALUES (src1_uuid, 'Chiller Plant PLC', 'modbus', 'tcp://192.168.1.100:502', 'connected')
     ON CONFLICT (id) DO NOTHING;

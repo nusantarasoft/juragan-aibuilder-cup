@@ -7,13 +7,24 @@
 -- ============================================================================
 -- FILE TYPES ENUM
 -- ============================================================================
-CREATE TYPE file_type AS ENUM ('document', 'image', 'audio', 'video', 'other');
-CREATE TYPE file_status AS ENUM ('uploading', 'processing', 'ready', 'error');
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'file_type') THEN
+    CREATE TYPE file_type AS ENUM ('document', 'image', 'audio', 'video', 'other');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'file_status') THEN
+    CREATE TYPE file_status AS ENUM ('uploading', 'processing', 'ready', 'error');
+  END IF;
+END $$;
 
 -- ============================================================================
 -- STORAGE BUCKETS
 -- ============================================================================
-CREATE TABLE storage_buckets (
+CREATE TABLE IF NOT EXISTS storage_buckets (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     public BOOLEAN DEFAULT false,
@@ -135,20 +146,20 @@ CREATE TABLE IF NOT EXISTS file_processing_queue (
 -- ============================================================================
 
 -- pgVector similarity search (IVFFlat for large datasets)
-CREATE INDEX files_embedding_idx ON files 
+CREATE INDEX IF NOT EXISTS files_embedding_idx ON files 
     USING ivfflat (embedding vector_cosine_ops) 
     WITH (lists = 100);
 
 -- Full-text search on extracted content
-CREATE INDEX files_text_search_idx ON files 
+CREATE INDEX IF NOT EXISTS files_text_search_idx ON files 
     USING gin(to_tsvector('english', COALESCE(extracted_text, '') || ' ' || COALESCE(description, '')));
 
 -- Common queries
-CREATE INDEX files_owner_idx ON files(owner_id);
-CREATE INDEX files_type_idx ON files(type);
-CREATE INDEX files_status_idx ON files(status);
-CREATE INDEX files_created_idx ON files(created_at DESC);
-CREATE INDEX files_folder_idx ON files(folder_id);
+CREATE INDEX IF NOT EXISTS files_owner_idx ON files(owner_id);
+CREATE INDEX IF NOT EXISTS files_type_idx ON files(type);
+CREATE INDEX IF NOT EXISTS files_status_idx ON files(status);
+CREATE INDEX IF NOT EXISTS files_created_idx ON files(created_at DESC);
+CREATE INDEX IF NOT EXISTS files_folder_idx ON files(folder_id);
 
 -- ============================================================================
 -- FUNCTIONS
@@ -225,17 +236,54 @@ ALTER TABLE file_shares ENABLE ROW LEVEL SECURITY;
 -- Note: RLS policies use auth.uid() which is only available when auth schema exists
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM pg_catalog.pg_namespace WHERE nspname = 'auth') THEN
-    EXECUTE 'CREATE POLICY "Users can manage own files" ON files FOR ALL USING (auth.uid() = owner_id)';
-    EXECUTE 'CREATE POLICY "Users can view shared files" ON files FOR SELECT USING (EXISTS (SELECT 1 FROM file_shares WHERE file_id = files.id AND (shared_with_user_id = auth.uid() OR shared_with_email = auth.email())))';
-    EXECUTE 'CREATE POLICY "Users can manage own folders" ON folders FOR ALL USING (auth.uid() = owner_id)';
+    IF NOT EXISTS (
+      SELECT 1
+      FROM pg_policies
+      WHERE schemaname = 'public'
+        AND tablename = 'files'
+        AND policyname = 'Users can manage own files'
+    ) THEN
+      EXECUTE 'CREATE POLICY "Users can manage own files" ON files FOR ALL USING (auth.uid() = owner_id)';
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1
+      FROM pg_policies
+      WHERE schemaname = 'public'
+        AND tablename = 'files'
+        AND policyname = 'Users can view shared files'
+    ) THEN
+      EXECUTE 'CREATE POLICY "Users can view shared files" ON files FOR SELECT USING (EXISTS (SELECT 1 FROM file_shares WHERE file_id = files.id AND (shared_with_user_id = auth.uid() OR shared_with_email = auth.email())))';
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1
+      FROM pg_policies
+      WHERE schemaname = 'public'
+        AND tablename = 'folders'
+        AND policyname = 'Users can manage own folders'
+    ) THEN
+      EXECUTE 'CREATE POLICY "Users can manage own folders" ON folders FOR ALL USING (auth.uid() = owner_id)';
+    END IF;
   END IF;
 END $$;
 
 -- Public files in public buckets
-CREATE POLICY "Anyone can view public files" ON files
-    FOR SELECT USING (
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'files'
+      AND policyname = 'Anyone can view public files'
+  ) THEN
+    CREATE POLICY "Anyone can view public files" ON files
+      FOR SELECT USING (
         EXISTS (SELECT 1 FROM storage_buckets WHERE id = bucket_id AND public = true)
-    );
+      );
+  END IF;
+END $$;
 
 -- ============================================================================
 -- TRIGGERS
@@ -249,6 +297,8 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS files_updated_at ON files;
 
 CREATE TRIGGER files_updated_at
     BEFORE UPDATE ON files

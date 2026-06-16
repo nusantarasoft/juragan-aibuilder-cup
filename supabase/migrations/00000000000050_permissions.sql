@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS tenant_users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-    individual_id UUID REFERENCES individuals(id) ON DELETE SET NULL,
+    individual_id UUID,
     profile_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
     role_id UUID REFERENCES roles(id) ON DELETE SET NULL,
     employee_id TEXT,
@@ -67,6 +67,30 @@ CREATE TABLE IF NOT EXISTS tenant_users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE(tenant_id, user_id)
 );
+
+-- The referenced table "individuals" is part of the app schema (consolidated_init),
+-- so the FK must be added conditionally to keep migrations order-independent.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name = 'individuals'
+  ) THEN
+    IF NOT EXISTS (
+      SELECT 1
+      FROM pg_constraint
+      WHERE conname = 'tenant_users_individual_id_fkey'
+    ) THEN
+      ALTER TABLE public.tenant_users
+        ADD CONSTRAINT tenant_users_individual_id_fkey
+        FOREIGN KEY (individual_id)
+        REFERENCES public.individuals(id)
+        ON DELETE SET NULL;
+    END IF;
+  END IF;
+END $$;
 
 -- 6. PROFILE OBJECT PERMISSIONS — CRUD + ViewAll/ModifyAll per object
 CREATE TABLE IF NOT EXISTS profile_object_permissions (
