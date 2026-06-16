@@ -1,0 +1,1 @@
+-- Deprecated alias: apply studio_sales_views.sql instead.

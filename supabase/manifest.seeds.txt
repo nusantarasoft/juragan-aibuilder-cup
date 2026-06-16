@@ -1,0 +1,7 @@
+﻿# Seed data — run after schema (optional on existing DBs)
+#   .\scripts\apply-migrations.ps1 -Manifest seeds
+
+supabase/migrations/99900001000000_seed_data.sql
+supabase/migrations/99900001000001_seed_ops_notifications.sql
+supabase/migrations/99900001000002_nusantarasoft_seed.sql
+supabase/migrations/99900001000003_consolidated_seed.sql

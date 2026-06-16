@@ -1,12 +1,53 @@
-# Core migrations — applied in order by scripts/apply-migrations.ps1
-# Fresh DB: docker also runs supabase/migrations via init (see docker-compose).
+﻿# Core schema migrations — applied in order by scripts/apply-migrations.ps1
+# Fresh DB: docker mounts supabase/migrations/ (see docker-compose*.yml)
 
 supabase/migrations/00000000000001_schema_migrations.sql
-supabase/migrations/00000000000000_consolidated_init.sql
+supabase/migrations/00000000000010_extensions.sql
+supabase/migrations/00000000000011_fix_realtime_schema.sql
+supabase/migrations/00000000000012_pg_cron.sql
+supabase/migrations/00000000000020_webhooks.sql
+supabase/migrations/00000000000030_roles.sql
+supabase/migrations/00000000000031_jwt.sql
+supabase/migrations/00000000000040_supabase_internal.sql
+supabase/migrations/00000000000050_permissions.sql
+supabase/migrations/00000000000051_files.sql
+supabase/migrations/00000000000052_realtime.sql
+supabase/migrations/00000000000053_logs.sql
+supabase/migrations/00000000000054_pooler.sql
+supabase/migrations/00000000000060_consolidated_init.sql
+supabase/migrations/00000000000061_studio_tables.sql
+supabase/migrations/00000000000062_studio_outputs.sql
+supabase/migrations/000000000000625_media_embeddings.sql
+supabase/migrations/00000000000063_media_annotations.sql
+supabase/migrations/00000000000064_match_media_embeddings.sql
+supabase/migrations/00000000000065_add_metadata.sql
+supabase/migrations/00000000000066_accounting_v2.sql
+supabase/migrations/00000000000067_documents.sql
+supabase/migrations/00000000000068_blog.sql
+supabase/migrations/00000000000069_chat.sql
+supabase/migrations/00000000000070_emails.sql
+supabase/migrations/00000000000071_news_intelligence.sql
+supabase/migrations/00000000000072_ecommerce_legacy.sql
+supabase/migrations/00000000000073_audit_security_analytics.sql
+supabase/migrations/00000000000074_automation_devops.sql
+supabase/migrations/00000000000075_datasets_reports.sql
+supabase/migrations/00000000000076_forms.sql
+supabase/migrations/00000000000077_forms_fix.sql
+supabase/migrations/00000000000078_upgrade_embeddings.sql
+supabase/migrations/00000000000079_facility_management.sql
+supabase/migrations/00000000000080_studio_sales_views.sql
+supabase/migrations/00000000000081_studio_cs_views.sql
+supabase/migrations/00000000000082_studio_whatsapp.sql
+supabase/migrations/00000000000083_studio_whatsapp_multitenant.sql
+supabase/migrations/00000000000084_studio_whatsapp_shared_inbox.sql
+supabase/migrations/00000000000085_studio_notebooks_audience.sql
+supabase/migrations/00000000000086_studio_notebooks_sales_context.sql
+supabase/migrations/00000000000087_studio_source_ingest_stage.sql
+supabase/migrations/00000000000088_studio_umkm_setup.sql
+supabase/migrations/00000000000089_fix_match_studio_chunks_filename.sql
+supabase/migrations/00000000000090_studio_remove_ragflow_columns.sql
 supabase/migrations/20260506000001_ops_module.sql
 supabase/migrations/20260506000002_notifications_module.sql
 supabase/migrations/20260506000003_data_export_logs.sql
 supabase/migrations/20260506000004_realtime_notifications.sql
 supabase/migrations/20260506999999_reload_postgrest.sql
-supabase/migrations/00000001000000_seed_data.sql
-supabase/migrations/00000001000001_seed_ops_notifications.sql

@@ -5,7 +5,7 @@
 #   .\scripts\apply-migrations.ps1 -DryRun
 
 param(
-    [ValidateSet('core', 'modules')]
+    [ValidateSet('core', 'modules', 'seeds')]
     [string] $Manifest = 'core',
     [switch] $DryRun,
     [string] $Container = 'postgres',
