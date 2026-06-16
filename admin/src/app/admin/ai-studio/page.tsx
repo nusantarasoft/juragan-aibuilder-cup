@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { useAppMessage } from "@/hooks/useAppMessage";
 import { mediaService, MediaFile } from "@/lib/mediaService";
-import { studioService, StudioNotebook, StudioSource } from "@/lib/studioService";
+import { studioService, StudioNotebook, StudioSource, type StudioGuideFlow } from "@/lib/studioService";
 import {
     Card,
     Row,
@@ -53,6 +53,8 @@ import {
 import GuideFlowsPanel from "./GuideFlowsPanel";
 import {
     getSourceProgressPercent,
+    getSourceStageLabel,
+    getSourceStatusDetail,
     getSourceStatusTag,
     isSourceInProgress,
     seedSourceStatusMap,
@@ -100,6 +102,7 @@ export default function AIStudioPage() {
     const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
     const [loadingMedia, setLoadingMedia] = useState(false);
     const [addingMedia, setAddingMedia] = useState<Set<string>>(new Set());
+    const [publishedGuideFlow, setPublishedGuideFlow] = useState<StudioGuideFlow | null>(null);
 
     const [chatInput, setChatInput] = useState("");
     const [showReferences, setShowReferences] = useState<number | null>(null);
@@ -174,15 +177,27 @@ export default function AIStudioPage() {
         resetChat();
         setChatMode("free");
         setGuidedFlow(null);
+        setPublishedGuideFlow(null);
         setShowReferences(null);
         setStudioMainTab("workspace");
         await loadSourceStatus(notebook.id, true);
         try {
             const published = await studioService.getPublishedGuideFlow(notebook.id);
             if (published) {
-                await initGuidedFromPublished(published);
+                setPublishedGuideFlow(published);
             }
         } catch { /* no published flow */ }
+    };
+
+    const startPublishedGuidedFlow = async () => {
+        if (!publishedGuideFlow) return;
+        await initGuidedFromPublished(publishedGuideFlow);
+    };
+
+    const switchToFreeChat = () => {
+        setChatMode("free");
+        setGuidedFlow(null);
+        resetChat();
     };
 
     const handleNewChat = async () => {
@@ -494,12 +509,17 @@ export default function AIStudioPage() {
             <div className="px-3 pt-2 pb-1 border-b border-[rgba(var(--theme-color-rgb,139,92,246),0.12)]">
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                     <Text className="text-[10px] text-gray-500">
-                        {indexed}/{total} terindeks
+                        {indexed}/{total} tervektor
                         {inProgress > 0 ? ` · ${inProgress} diproses` : ''}
+                        {sourceStats.embedding > 0 ? ` · ${sourceStats.embedding} vektorisasi` : ''}
                         {errors > 0 ? ` · ${errors} gagal` : ''}
                     </Text>
                     {sourceStats.allIndexed ? (
                         <Tag color="success" className="text-[9px] m-0 leading-tight px-1.5">Siap RAG</Tag>
+                    ) : sourceStats.embedding > 0 ? (
+                        <Tag color="processing" icon={<SyncOutlined spin />} className="text-[9px] m-0 leading-tight px-1.5">
+                            Vektorisasi
+                        </Tag>
                     ) : inProgress > 0 ? (
                         <Tag color="processing" icon={<SyncOutlined spin />} className="text-[9px] m-0 leading-tight px-1.5">
                             Mengindeks
@@ -527,23 +547,31 @@ export default function AIStudioPage() {
                     className="my-4"
                 />
             ) : (
-                sources.map((source: StudioSource) => (
+                sources.map((source: StudioSource) => {
+                    const statusDetail = getSourceStatusDetail(source);
+                    const stageLabel = getSourceStageLabel(source);
+                    return (
+                    <Tooltip key={source.id} title={statusDetail ?? stageLabel} placement="right">
                     <div
-                        key={source.id}
                         className="group flex items-center justify-between gap-2 rounded-md p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
                     >
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                             {getStatusIcon(source.parse_status)}
                             <div className="min-w-0 flex-1">
                                 <Text className="text-[12px] block truncate">{source.filename}</Text>
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
                                     <Text className="text-[10px] text-gray-400">{formatBytes(source.file_size)}</Text>
-                                    {source.chunk_count > 0 && (
-                                        <Text className="text-[10px] text-gray-400">· {source.chunk_count} chunks</Text>
+                                    {isSourceInProgress(source) && (
+                                        <Text className="text-[10px]" style={{ color: themeColor }}>{stageLabel}</Text>
                                     )}
                                     {getStatusTag(source)}
                                 </div>
-                                {source.parse_status === 'parsing' || source.parse_status === 'pending' ? (
+                                {source.parse_status === 'error' && source.parse_error && (
+                                    <Text className="text-[10px] text-red-500 block truncate mt-0.5" title={source.parse_error}>
+                                        {source.parse_error}
+                                    </Text>
+                                )}
+                                {(source.parse_status === 'parsing' || source.parse_status === 'pending') && (
                                     <Progress
                                         percent={getSourceProgressPercent(source)}
                                         size="small"
@@ -551,7 +579,7 @@ export default function AIStudioPage() {
                                         status={source.parse_status === 'pending' ? 'active' : 'normal'}
                                         className="mt-1 !mb-0"
                                     />
-                                ) : null}
+                                )}
                             </div>
                         </div>
                         <Space size={0}>
@@ -574,7 +602,8 @@ export default function AIStudioPage() {
                             />
                         </Space>
                     </div>
-                ))
+                    </Tooltip>
+                ); })
             )}
         </div>
     );
@@ -591,35 +620,56 @@ export default function AIStudioPage() {
         <div className="flex flex-col h-full">
             {chatMode === "guided" && guidedFlow && (
                 <div
-                    className="mx-3 mt-2 px-3 py-2 rounded-lg text-[11px] border"
+                    className="mx-3 mt-2 px-3 py-2 rounded-lg text-[11px] border flex items-start justify-between gap-2"
                     style={{
                         borderColor: `${themeColor}33`,
                         backgroundColor: `${themeColor}0d`,
                     }}
                 >
-                    <Text strong className="text-[11px] block" style={{ color: themeColor }}>
-                        Guided session: {guidedFlow.name}
-                    </Text>
-                    <Text type="secondary" className="text-[10px] block mt-0.5">
-                        {waitingInput
-                            ? "Menunggu balasan Anda — jawaban memakai sumber terindeks."
-                            : "Alur sedang berjalan…"}
-                    </Text>
+                    <div>
+                        <Text strong className="text-[11px] block" style={{ color: themeColor }}>
+                            Guided session: {guidedFlow.name}
+                        </Text>
+                        <Text type="secondary" className="text-[10px] block mt-0.5">
+                            {waitingInput
+                                ? "Menunggu balasan Anda — jawaban memakai sumber terindeks."
+                                : "Alur sedang berjalan…"}
+                        </Text>
+                    </div>
+                    <Button type="link" size="small" className="text-[10px] p-0 h-auto shrink-0" onClick={switchToFreeChat}>
+                        Chat bebas
+                    </Button>
                 </div>
+            )}
+            {publishedGuideFlow && chatMode === "free" && (
+                <Alert
+                    className="mx-3 mt-2 text-[11px]"
+                    type="info"
+                    showIcon
+                    message={`Guide flow "${publishedGuideFlow.name}" tersedia`}
+                    description="Chat bebas (RAG) aktif. Mulai guided hanya jika ingin mengikuti alur WA UMKM."
+                    action={
+                        <Button size="small" type="primary" onClick={startPublishedGuidedFlow}>
+                            Mulai guided
+                        </Button>
+                    }
+                />
             )}
             {sources.length > 0 && !sourceStats.allIndexed && (
                 <motion.div className="mx-3 mt-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 text-[11px] text-amber-800 dark:text-amber-200">
                     {sourcesIndexing
-                        ? `${sourceStats.inProgress} sumber sedang diindeks (ekstrak teks + vektor). Jawaban RAG akan lebih baik setelah selesai.`
+                        ? sourceStats.embedding > 0
+                            ? `${sourceStats.embedding} file sedang vektorisasi (embed chunk). Progress per file di panel Sources.`
+                            : `${sourceStats.inProgress} sumber diproses (ekstrak teks → chunk → vektor).`
                         : sourceStats.errors > 0
-                          ? `${sourceStats.errors} sumber gagal diindeks. Gunakan tombol Reindex di panel Sources.`
-                          : "Sumber belum terindeks. Tunggu proses atau gunakan Reindex."}
+                          ? `${sourceStats.errors} sumber gagal (lihat pesan error di Sources). Gunakan Reindex.`
+                          : "Sumber belum tervektor. Tunggu proses atau gunakan Reindex."}
                 </motion.div>
             )}
             {sourceStats.allIndexed && sources.length > 0 && (
                 <div className="mx-3 mt-2 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200/60 text-[11px] text-green-800 dark:text-green-200 flex items-center gap-1.5">
                     <CheckCircleFilled style={{ color: '#52c41a', fontSize: 12 }} />
-                    Semua sumber terindeks ({sourceStats.indexed} file) — siap untuk chat RAG.
+                    Semua sumber tervektor ({sourceStats.indexed} file, {sources.reduce((n, s) => n + (s.chunk_count ?? 0), 0)} chunk) — siap untuk chat RAG.
                 </div>
             )}
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
@@ -781,11 +831,11 @@ export default function AIStudioPage() {
                                 {sourceStats.total} sumber
                             </Tag>
                             <Tag color={sourceStats.allIndexed ? 'success' : sourceStats.indexed > 0 ? 'processing' : 'default'}>
-                                {sourceStats.indexed} terindeks
+                                {sourceStats.indexed} tervektor
                             </Tag>
-                            {sourceStats.inProgress > 0 && (
+                            {sourceStats.embedding > 0 && (
                                 <Tag color="processing" icon={<SyncOutlined spin />}>
-                                    {sourceStats.inProgress} mengindeks
+                                    Vektorisasi {sourceStats.embedding}
                                 </Tag>
                             )}
                             {sourceStats.errors > 0 && (
@@ -799,13 +849,17 @@ export default function AIStudioPage() {
                                 className="mt-3 !text-xs"
                                 message={
                                     sourcesIndexing
-                                        ? 'Indeksasi berjalan di background'
+                                        ? sourceStats.embedding > 0
+                                            ? 'Vektorisasi embedding berjalan'
+                                            : 'Indeksasi berjalan di background'
                                         : 'Beberapa sumber belum siap'
                                 }
                                 description={
                                     sourcesIndexing
-                                        ? 'File sedang diekstrak, dipecah menjadi chunk, dan divektorisasi. Lihat progress di panel Sources (kiri).'
-                                        : 'Buka panel Sources untuk melihat status per file atau jalankan Reindex.'
+                                        ? sourceStats.embedding > 0
+                                            ? 'Tahap vektorisasi: setiap chunk di-embed dan disimpan. Lihat "Vektorisasi X/Y" di panel Sources.'
+                                            : 'Tahap: ekstraksi teks → chunking → vektorisasi. Pantau di panel Sources.'
+                                        : 'Buka panel Sources untuk detail error atau jalankan Reindex.'
                                 }
                             />
                         )}

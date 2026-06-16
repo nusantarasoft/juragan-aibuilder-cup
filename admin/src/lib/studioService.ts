@@ -43,6 +43,10 @@ export interface StudioSource {
     file_type: string;
     file_size: number;
     parse_status: 'pending' | 'parsing' | 'done' | 'error';
+    parse_stage?: 'queued' | 'extracting' | 'chunking' | 'embedding' | 'done' | 'error' | string;
+    parse_error?: string | null;
+    embed_total?: number;
+    embed_done?: number;
     parse_progress: number;
     chunk_count: number;
     created_at: string;

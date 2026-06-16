@@ -35,6 +35,10 @@ CREATE TABLE IF NOT EXISTS public.studio_notebook_sources (
     s3_key text,
     parse_status character varying(20) DEFAULT 'pending',
     parse_progress double precision DEFAULT 0,
+    parse_stage character varying(20) DEFAULT 'queued',
+    parse_error text,
+    embed_total integer DEFAULT 0,
+    embed_done integer DEFAULT 0,
     chunk_count integer DEFAULT 0,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
@@ -42,6 +46,12 @@ CREATE TABLE IF NOT EXISTS public.studio_notebook_sources (
     CONSTRAINT studio_notebook_sources_notebook_id_fkey FOREIGN KEY (notebook_id) REFERENCES public.studio_notebooks(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_studio_sources_notebook ON public.studio_notebook_sources (notebook_id);
+
+ALTER TABLE public.studio_notebook_sources
+    ADD COLUMN IF NOT EXISTS parse_stage character varying(20) DEFAULT 'queued',
+    ADD COLUMN IF NOT EXISTS parse_error text,
+    ADD COLUMN IF NOT EXISTS embed_total integer DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS embed_done integer DEFAULT 0;
 
 -- Studio Conversations
 CREATE TABLE IF NOT EXISTS public.studio_conversations (

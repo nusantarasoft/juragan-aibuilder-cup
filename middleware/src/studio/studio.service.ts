@@ -159,7 +159,11 @@ export class StudioService {
                 file_size: file.size,
                 s3_key: s3Key,
                 parse_status: 'pending',
+                parse_stage: 'queued',
                 parse_progress: 0,
+                parse_error: null,
+                embed_total: 0,
+                embed_done: 0,
                 chunk_count: 0,
             })
             .select()
@@ -211,7 +215,11 @@ export class StudioService {
                 file_size: mediaRecord.size || 0,
                 s3_key: fileKey,
                 parse_status: 'pending',
+                parse_stage: 'queued',
                 parse_progress: 0,
+                parse_error: null,
+                embed_total: 0,
+                embed_done: 0,
                 chunk_count: 0,
             })
             .select()

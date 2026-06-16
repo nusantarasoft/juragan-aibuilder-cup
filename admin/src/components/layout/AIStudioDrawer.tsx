@@ -20,6 +20,8 @@ import { useAuth } from "@/context/AuthContext";
 import { AnimatePresence, motion } from "framer-motion";
 import {
     getSourceProgressPercent,
+    getSourceStageLabel,
+    getSourceStatusDetail,
     getSourceStatusTag,
     isSourceInProgress,
     seedSourceStatusMap,
@@ -317,7 +319,7 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
                                 <>
                                     <div style={{ padding: '8px 10px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${border}`, flexShrink: 0 }}>
                                         <Text style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: textMuted }}>
-                                            Sources ({sourceStats.indexed}/{sourceStats.total} terindeks)
+                                            Sources ({sourceStats.indexed}/{sourceStats.total} tervektor)
                                         </Text>
                                         <Space size={2}>
                                             <Button type="text" size="small" icon={<AppstoreAddOutlined style={{ fontSize: 11 }} />} onClick={openMediaModal}
@@ -333,16 +335,23 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
                                             sources.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span style={{ fontSize: 10, opacity: 0.4 }}>Add sources</span>} style={{ margin: '12px 0' }} /> :
                                                 sources.map(s => {
                                                     const statusTag = getSourceStatusTag(s);
+                                                    const stageLabel = getSourceStageLabel(s);
+                                                    const detail = getSourceStatusDetail(s);
                                                     return (
-                                                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 6, marginBottom: 1 }} className="group">
+                                                    <div key={s.id} title={detail ?? stageLabel} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 6, marginBottom: 1 }} className="group">
                                                         {getStatusIcon(s.parse_status)}
                                                         <div style={{ flex: 1, minWidth: 0 }}>
                                                             <Text ellipsis style={{ fontSize: 10, display: 'block', color: textSecondary }}>{s.filename}</Text>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                                                                 <Text style={{ fontSize: 9, color: textMuted }}>{formatBytes(s.file_size)}</Text>
-                                                                {s.chunk_count > 0 && <Text style={{ fontSize: 9, color: textMuted }}>· {s.chunk_count} chunks</Text>}
+                                                                {isSourceInProgress(s) && (
+                                                                    <Text style={{ fontSize: 9, color: themeColor }}>{stageLabel}</Text>
+                                                                )}
                                                                 <Tag color={statusTag.color} style={{ fontSize: 8, margin: 0, lineHeight: '14px', padding: '0 3px' }}>{statusTag.label}</Tag>
                                                             </div>
+                                                            {s.parse_status === 'error' && s.parse_error && (
+                                                                <Text style={{ fontSize: 8, color: '#ff4d4f', display: 'block' }} ellipsis>{s.parse_error}</Text>
+                                                            )}
                                                             {(s.parse_status === 'parsing' || s.parse_status === 'pending') && (
                                                                 <Progress percent={getSourceProgressPercent(s)} size="small" strokeColor={themeColor} style={{ marginTop: 2 }} status={s.parse_status === 'pending' ? 'active' : 'normal'} />
                                                             )}
@@ -367,9 +376,14 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
                             <Button type="text" size="small" icon={showSources ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
                                 onClick={() => setShowSources(!showSources)} style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
                             <Text strong style={{ fontSize: 12, color: textColor }}>{activeNotebook ? activeNotebook.name : 'Select a notebook'}</Text>
-                            {activeNotebook && sourceStats.inProgress > 0 && (
+                            {activeNotebook && sourceStats.embedding > 0 && (
                                 <Tag color="processing" icon={<SyncOutlined spin />} style={{ fontSize: 9, margin: 0, lineHeight: '16px', padding: '0 4px' }}>
-                                    {sourceStats.inProgress} mengindeks
+                                    Vektor {sourceStats.embedding}
+                                </Tag>
+                            )}
+                            {activeNotebook && sourceStats.inProgress > 0 && sourceStats.embedding === 0 && (
+                                <Tag color="processing" icon={<SyncOutlined spin />} style={{ fontSize: 9, margin: 0, lineHeight: '16px', padding: '0 4px' }}>
+                                    Indeks
                                 </Tag>
                             )}
                             {activeNotebook && sourceStats.allIndexed && sourceStats.total > 0 && (
