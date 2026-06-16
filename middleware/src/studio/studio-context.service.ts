@@ -6,6 +6,7 @@ import { ClaudeAiService } from '../ai/claude-ai.service';
 import { VertexAiService } from '../ai/vertex-ai.service';
 import { StudioDbContextService, type StudioContextConfig } from './studio-db-context.service';
 import type { QueryUnderstandingResult } from './query-understanding';
+import { filterChunksBySourceIds } from './studio-source-filter.util';
 
 export type StudioChunkHit = {
     chunkId: string;
@@ -63,11 +64,8 @@ export class StudioContextService {
         const embedding = await this.ragService.embedText(query);
         if (!embedding) return [];
 
-        const filterBySources = (hits: StudioChunkHit[]) => {
-            if (!sourceIds?.length) return hits;
-            const allowed = new Set(sourceIds);
-            return hits.filter((c) => allowed.has(c.sourceId));
-        };
+        const filterBySources = (hits: StudioChunkHit[]) =>
+            filterChunksBySourceIds(hits, sourceIds);
 
         const mapRows = (data: unknown[]) =>
             (data || []).map((row: any) => ({

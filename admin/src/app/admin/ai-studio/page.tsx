@@ -57,6 +57,13 @@ import StudioOutputsPanel from "./StudioOutputsPanel";
 import ConfigureChatModal from "./ConfigureChatModal";
 import ChunkPreviewDrawer from "./ChunkPreviewDrawer";
 import {
+    indexedSourceIds,
+    selectAllSourceIds,
+    shouldAutoGenerateBrief,
+    syncSelectedSourceIds,
+    toggleSourceId,
+} from "./notebookSourceSelection";
+import {
     getSourceProgressPercent,
     getSourceStageLabel,
     getSourceStatusDetail,
@@ -233,42 +240,38 @@ export default function AIStudioPage() {
             }
             setSources(list);
 
-            const indexedIds = list
-                .filter((s) => s.parse_status === "done" && (s.chunk_count ?? 0) > 0)
-                .map((s) => s.id);
-            setSelectedSourceIds((prev) => {
-                const kept = prev.filter((id) => indexedIds.includes(id));
-                return kept.length > 0 ? kept : indexedIds;
-            });
+            const indexedIds = indexedSourceIds(list);
+            setSelectedSourceIds((prev) => syncSelectedSourceIds(prev, indexedIds));
 
             const notebookId = pollNotebookIdRef.current;
             const stillIndexing = list.some(isSourceInProgress);
             const stats = summarizeSources(list);
+            const cfg = activeNotebook?.context_config as { brief_summary?: string } | undefined;
             if (
                 notebookId &&
-                stats.allIndexed &&
-                stats.indexed > 0 &&
-                !briefGeneratedRef.current.has(notebookId)
+                shouldAutoGenerateBrief({
+                    allIndexed: stats.allIndexed,
+                    indexedCount: stats.indexed,
+                    alreadyTriggered: briefGeneratedRef.current.has(notebookId),
+                    hasBrief: Boolean(cfg?.brief_summary?.trim()),
+                })
             ) {
                 briefGeneratedRef.current.add(notebookId);
-                const cfg = activeNotebook?.context_config as { brief_summary?: string } | undefined;
-                if (!cfg?.brief_summary) {
-                    void studioService.generateBrief(notebookId).then((res) => {
-                        if (!res.cached && activeNotebook?.id === notebookId) {
-                            setActiveNotebook((nb) =>
-                                nb
-                                    ? {
-                                          ...nb,
-                                          context_config: {
-                                              ...(nb.context_config as object),
-                                              brief_summary: res.summary,
-                                          },
-                                      }
-                                    : nb,
-                            );
-                        }
-                    }).catch(() => { /* optional */ });
-                }
+                void studioService.generateBrief(notebookId).then((res) => {
+                    if (!res.cached && activeNotebook?.id === notebookId) {
+                        setActiveNotebook((nb) =>
+                            nb
+                                ? {
+                                      ...nb,
+                                      context_config: {
+                                          ...(nb.context_config as object),
+                                          brief_summary: res.summary,
+                                      },
+                                  }
+                                : nb,
+                        );
+                    }
+                }).catch(() => { /* optional */ });
             }
             if (notebookId && stillIndexing && !pollRef.current) {
                 pollRef.current = setInterval(async () => {
@@ -433,16 +436,11 @@ export default function AIStudioPage() {
     };
 
     const handleToggleSource = (sourceId: string, checked: boolean) => {
-        setSelectedSourceIds((prev) =>
-            checked ? [...new Set([...prev, sourceId])] : prev.filter((id) => id !== sourceId),
-        );
+        setSelectedSourceIds((prev) => toggleSourceId(prev, sourceId, checked));
     };
 
     const handleSelectAllSources = (checked: boolean) => {
-        const indexedIds = sources
-            .filter((s) => s.parse_status === "done" && (s.chunk_count ?? 0) > 0)
-            .map((s) => s.id);
-        setSelectedSourceIds(checked ? indexedIds : []);
+        setSelectedSourceIds(selectAllSourceIds(checked, indexedSourceIds(sources)));
     };
 
     const handleImportUrl = async (url: string) => {

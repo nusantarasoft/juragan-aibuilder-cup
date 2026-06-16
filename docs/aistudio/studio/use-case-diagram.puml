@@ -12,25 +12,29 @@ skinparam rectangle {
   BackgroundColor #ffffff
 }
 
-title AI Studio — Menu Studio\nUse Case Diagram (/admin/ai-studio)
+title AI Studio — Menu Studio (NotebookLM Layout)\nUse Case Diagram (/admin/ai-studio)
 
 actor "Pengguna Admin" as Admin
 actor "Middleware\n(StudioIngestionService)" as MW <<system>>
 
-rectangle "AI Studio — Studio" {
-  package "Manajemen Notebook" {
+rectangle "AI Studio — Studio (NotebookLM)" {
+  package "Header & Notebook" {
     usecase "UC-01\nLihat Daftar Notebook" as UC01
     usecase "UC-02\nBuat Notebook" as UC02
-    usecase "UC-03\nPilih Notebook" as UC03
+    usecase "UC-03\nPilih Notebook\n(dropdown header)" as UC03
     usecase "UC-04\nHapus Notebook" as UC04
+    usecase "UC-37\nUpdate Notebook\n(nama / instruksi chat)" as UC37
   }
 
-  package "Panel Sources (Sidebar)" {
+  package "Panel Sources (Kiri)" {
     usecase "UC-05\nTambah Sumber\ndari Media Library" as UC05
     usecase "UC-06\nUpload File\nke Notebook" as UC06
     usecase "UC-07\nHapus Sumber" as UC07
     usecase "UC-08\nReindex Sumber" as UC08
     usecase "UC-09\nMonitor Status\nIndeksasi" as UC09
+    usecase "UC-29\nFilter Sumber\nuntuk Chat (checkbox)" as UC29
+    usecase "UC-30\nConfigure Chat\n(chat_instruction)" as UC30
+    usecase "UC-33\nImport URL\nsebagai Sumber" as UC33
   }
 
   package "Proses Indeksasi (Sistem)" as PKG_IDX {
@@ -40,20 +44,25 @@ rectangle "AI Studio — Studio" {
     usecase "UC-22\nSimpan Chunk +\nEmbedding ke DB" as UC22
   }
 
-  package "Workspace — Chat & RAG" {
+  package "Panel Chat (Tengah)" {
     usecase "UC-10\nChat RAG\n(Tanya Jawab Bebas)" as UC10
     usecase "UC-11\nChat Guided Flow" as UC11
     usecase "UC-12\nMulai Chat Baru" as UC12
     usecase "UC-13\nLihat Referensi\nSumber Jawaban" as UC13
     usecase "UC-26\nLanjutkan Riwayat\nPercakapan" as UC26
     usecase "UC-27\nPilih Mode Chat\n(Bebas / Guided)" as UC27
+    usecase "UC-31\nAuto Notebook Brief\n(setelah indeksasi)" as UC31
+    usecase "UC-32\nPreview Chunk\nKutipan (drawer)" as UC32
+    usecase "UC-36\nLayout 3-Kolom\nSources|Chat|Studio" as UC36
   }
 
-  package "Workspace — Generator" {
+  package "Panel Studio (Kanan)" {
     usecase "UC-14\nGenerate\nExecutive Report" as UC14
+    usecase "UC-34\nGenerate Artefak\n(mind map, quiz, FAQ, …)" as UC34
+    usecase "UC-35\nKelola Library\nOutput (list/hapus)" as UC35
   }
 
-  package "Guide Flows" {
+  package "Advanced — Guide Flows\n(/advanced/guide-flows)" {
     usecase "UC-15\nKelola Guide Flow\n(buat / edit / hapus)" as UC15
     usecase "UC-16\nPublish Guide Flow" as UC16
     usecase "UC-17\nSimulasi Guide Flow" as UC17
@@ -62,7 +71,7 @@ rectangle "AI Studio — Studio" {
     usecase "UC-25\nRuntime Node Pipeline\n(listen->rag->sql->action)" as UC25
   }
 
-  package "Playground" {
+  package "Advanced — Playground\n(/advanced/playground)" {
     usecase "UC-18\nUji Prompt &\nKonfigurasi Model" as UC18
     usecase "UC-18b\nLihat Metrik\nLatency & Token" as UC18b
   }
@@ -72,18 +81,27 @@ Admin --> UC01
 Admin --> UC02
 Admin --> UC03
 Admin --> UC04
+Admin --> UC37
 Admin --> UC05
 Admin --> UC06
 Admin --> UC07
 Admin --> UC08
 Admin --> UC09
+Admin --> UC29
+Admin --> UC30
+Admin --> UC33
 Admin --> UC10
 Admin --> UC11
 Admin --> UC12
 Admin --> UC13
 Admin --> UC26
 Admin --> UC27
+Admin --> UC31
+Admin --> UC32
+Admin --> UC36
 Admin --> UC14
+Admin --> UC34
+Admin --> UC35
 Admin --> UC15
 Admin --> UC16
 Admin --> UC17
@@ -95,14 +113,18 @@ Admin --> UC18b
 UC05 ..> UC19 : <<include>>
 UC06 ..> UC19 : <<include>>
 UC08 ..> UC19 : <<include>>
+UC33 ..> UC19 : <<include>>
 
 UC19 ..> UC20 : <<include>>
 UC20 ..> UC21 : <<include>>
 UC21 ..> UC22 : <<include>>
 
 UC09 ..> UC19 : <<include>>\n(monitor pipeline)
+UC09 ..> UC31 : <<extend>>\nsemua terindeks
 
 UC10 ..> UC09 : <<include>>
+UC10 ..> UC29 : <<include>>
+UC10 ..> UC30 : <<include>>
 UC11 ..> UC09 : <<include>>
 UC11 ..> UC25 : <<include>>
 UC10 ..> UC26 : <<extend>>\nopsional resume
@@ -111,13 +133,19 @@ UC11 ..> UC27 : <<include>>
 UC12 ..> UC10 : <<extend>>
 UC12 ..> UC11 : <<extend>>
 UC10 ..> UC13 : <<include>>\njika ada kutipan
+UC10 ..> UC32 : <<extend>>\nklik kutipan
 UC11 ..> UC13 : <<include>>
 UC14 ..> UC09 : <<include>>
+UC14 ..> UC29 : <<include>>\nopsional filter
+UC34 ..> UC09 : <<include>>
+UC34 ..> UC29 : <<include>>\nopsional filter
+UC35 ..> UC34 : <<include>>
 UC17 ..> UC09 : <<include>>
 UC16 ..> UC11 : <<extend>>
 UC15 ..> UC23 : <<include>>\nsebelum save/publish
 UC15 ..> UC24 : <<include>>\nnew flow
 UC17 ..> UC25 : <<include>>
+UC37 ..> UC30 : <<include>>\nchat_instruction
 
 MW --> UC19
 MW --> UC20
@@ -128,14 +156,63 @@ MW --> UC11
 MW --> UC14
 MW --> UC18
 MW --> UC25
+MW --> UC31
+MW --> UC34
 
 UC18 ..> UC18b : <<include>>\nsetelah test
+
+note bottom of UC36
+  Layout NotebookLM:
+  Sources (kiri) | Chat (tengah) | Studio (kanan).
+  Toggle panel via header. Playground & Guide flows
+  dipindah ke submenu Advanced.
+end note
 
 note bottom of UC10
   Mutation studioChat:
   query understanding multi-turn +
   invokeRagQuery (semantic search + grounded answer).
-  Default mode di AI Assistant panel.
+  Opsional sourceIds dari checkbox UC-29.
+  chat_instruction dari UC-30/UC-37.
+end note
+
+note bottom of UC29
+  Checkbox per sumber terindeks.
+  studioChat(sourceIds: [...]) memfilter
+  semantic search ke sumber terpilih.
+end note
+
+note bottom of UC30
+  Modal Configure Chat menyimpan
+  chat_instruction di context_config notebook.
+  Mutation updateStudioNotebook.
+end note
+
+note bottom of UC31
+  Mutation studioGenerateBrief:
+  ringkasan otomatis setelah UC-09 allIndexed.
+  Disimpan di context_config + studio_outputs.
+end note
+
+note bottom of UC32
+  Query studioChunk(chunkId):
+  drawer preview cuplikan penuh + skor relevansi.
+end note
+
+note bottom of UC33
+  Mutation importStudioUrl:
+  fetch HTML → ekstrak teks → upload + indeksasi.
+end note
+
+note bottom of UC34
+  Mutation studioGenerateOutput:
+  report | mind_map | quiz | faq |
+  audio_script | brief | data_table.
+end note
+
+note bottom of UC35
+  Query studioOutputs + deleteStudioOutput.
+  Tabel studio_outputs per notebook.
 end note
 
 note bottom of UC26
@@ -143,59 +220,25 @@ note bottom of UC26
   muat ulang pesan + source_refs dari DB.
 end note
 
-note bottom of UC27
-  Segmented control: Chat bebas vs Guided.
-  Guided butuh published guide flow (UC-16).
-end note
-
 note bottom of UC13
   Expandable citations per jawaban:
   nama dokumen, cuplikan, skor relevansi %.
+  Klik → UC-32 chunk preview.
 end note
 
 note bottom of UC18
-  Mutation studioPlaygroundTest:
-  system + user prompt, temperature, maxTokens.
-  Tanpa RAG / tanpa notebook sources.
-  Provider: STUDIO_AI_PROVIDER (Vertex/Google AI/Claude).
+  Halaman /admin/ai-studio/advanced/playground.
+  Mutation studioPlaygroundTest — tanpa RAG.
 end note
 
-note bottom of UC25
-  Node types (Zod schema):
-  start, message, listen, rag, sql, action, end.
-  meta.flowKind: rag_qa | umkm | custom.
-  RAG: query understanding + clarification loop.
-  SQL: read-only SELECT via Dremio.
-  Action: record_sale, sales_report, list_products, umkm_help.
-  XState machine spec untuk coverage test (bukan runtime invoke).
-end note
-
-note bottom of UC23
-  Query studioValidateGuideFlow:
-  Zod parse + validateGuideFlowGraph +
-  assertXStateStateCoverage + best-practice warnings.
-end note
-
-note bottom of UC24
-  Template: rag_qa (default), umkm, blank.
-  Mutation createStudioGuideFlow(template: ...).
+note bottom of UC15
+  Halaman /admin/ai-studio/advanced/guide-flows.
+  Kelola flow per notebook (dropdown).
 end note
 
 note bottom of PKG_IDX
-  Dipicu otomatis (async) setelah UC-05/06/08.
-  Implementasi: StudioIngestionService.ingestSource()
-  Status UI: pending -> parsing -> done/error
-end note
-
-note right of UC21
-  Vektorisasi = embedding tiap chunk
-  (Vertex AI / Google AI).
-  Tanpa UC-21, RAG tidak berfungsi.
-end note
-
-note bottom of UC09
-  Semua UC-05 s/d UC-09 di panel Sources (sidebar):
-  tambah file, upload, hapus, reindex, pantau tervektor.
+  Dipicu otomatis (async) setelah UC-05/06/08/33.
+  StudioIngestionService.ingestSource()
 end note
 
 @enduml

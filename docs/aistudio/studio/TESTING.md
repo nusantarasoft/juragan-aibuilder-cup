@@ -45,6 +45,8 @@ npm run test:rag-eval
 |----------|---------|------------|
 | `RUN_STUDIO_INTEGRATION` | — | Set `1` untuk GraphQL integration |
 | `STUDIO_GRAPHQL_URL` | `http://127.0.0.1:4001/graphql` | URL GraphQL |
+| `STUDIO_INTEGRATION_NOTEBOOK_ID` | — | UUID notebook untuk UC-30/33/35 (opsional) |
+| `STUDIO_INTEGRATION_USER_ID` | — | User ID pemilik notebook (opsional) |
 | `RUN_RAG_EVAL` | — | Set `1` untuk RAG eval live |
 | `STUDIO_RAG_EVAL_NOTEBOOK_ID` | — | UUID notebook uji |
 | `STUDIO_RAG_EVAL_MIN_HIT_RATE` | `0` | Ambang hit@k (0–1) |
@@ -76,10 +78,15 @@ npm run test:e2e:studio
 | UC | Area test |
 |----|-----------|
 | UC-05–09 | `studioSourceStatus.spec.ts` |
-| UC-10–13, UC-26–27 | `ai-studio.unit.spec.ts`, E2E `ai-studio.spec.ts` |
+| UC-10–13, UC-26–27 | `ai-studio.unit.spec.ts`, `useStudioChat` |
+| UC-29, UC-31 | `notebookSourceSelection.spec.ts` |
+| UC-29 (backend filter) | `studio-source-filter.util.spec.ts` |
 | UC-15–17, UC-23–25 | `guide-flow.*.spec.ts`, GraphQL integration |
-| UC-18–18b | GraphQL `studioPlaygroundTest`, E2E Playground tab |
+| UC-18–18b | GraphQL `studioPlaygroundTest`, E2E Advanced Playground |
 | UC-19–22 | `studio-chunk.util.spec.ts`, RAG eval integration |
+| UC-30, UC-33, UC-32, UC-34–35, UC-37 | `studio.graphql.integration.spec.ts` (live middleware) |
+| UC-36 | E2E `ai-studio.spec.ts` (layout 3-kolom) |
+| UC-14, UC-34 | `StudioOutputsPanel` via GraphQL integration |
 
 ## Menambah test baru
 
