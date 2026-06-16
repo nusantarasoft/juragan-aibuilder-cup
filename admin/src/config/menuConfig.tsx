@@ -1212,14 +1212,8 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/ai-studio/waha-setup",
-                        name: "Setup WAHA",
-                        icon: <QrcodeOutlined />,
-                        isLeaf: true,
-                    },
-                    {
                         path: "/admin/ai-studio/ai-gateway",
-                        name: "WhatsApp",
+                        name: "WhatsApp & WAHA",
                         icon: <NodeIndexOutlined />,
                         isLeaf: true,
                     },
@@ -1321,20 +1315,7 @@ const menuConfig = {
                 icon: <FileTextOutlined />,
                 isLeaf: true,
             },
-            {
-                path: "/admin/digital-twin",
-                key: "/admin/digital-twin-menu",
-                name: "Digital Twin",
-                icon: <GlobalOutlined />,
-                routes: [
-                    { path: "/admin/digital-twin", name: "Campus Map", icon: <GlobalOutlined />, isLeaf: true },
-                    { path: "/admin/bim", name: "BIM Library", icon: <ToolOutlined />, isLeaf: true },
-                    { path: "/admin/dcim/3d-view", name: "Data Center (DCIM)", icon: <CloudServerOutlined />, isLeaf: true },
-                    { path: "/admin/scada/3d", name: "Industrial (SCADA)", icon: <VideoCameraOutlined />, isLeaf: true },
-                    { path: "/admin/bms", name: "Headquarters (BMS)", icon: <HomeOutlined />, isLeaf: true },
-                    { path: "/admin/pm/construction-3d", name: "Construction (PM)", icon: <BuildOutlined />, isLeaf: true },
-                ]
-            },
+
             {
                 path: "/admin/dcim",
                 key: "/admin/dcim-menu",

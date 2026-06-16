@@ -491,15 +491,7 @@
   }
 }
 
-/* Sticky Inner Sidebar */
-/* Sticky Inner Sidebar - Increased Specificity */
-.cms-inner-layout .cms-inner-sider.ant-layout-sider {
-  position: sticky !important;
-  top: 0 !important;
-  height: 100vh !important;
-  overflow-y: auto !important;
-  z-index: 10 !important;
-}
+
 /* View Transition API - Theme Toggle Animation */
 /* Animation is controlled by AnimatedThemeToggler component via JS */
 /* Do NOT set animation-duration here - it will override the JS animation */

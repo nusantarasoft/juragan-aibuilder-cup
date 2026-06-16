@@ -22,6 +22,7 @@ export default function Scada3D() {
     const [animateFlow, setAnimateFlow] = useState(true);
     const [thermalMode, setThermalMode] = useState(false);
     const [alarmActive, setAlarmActive] = useState(false);
+    const [editMode, setEditMode] = useState(false);
 
     const glassStyle = {
         background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.65)',
@@ -48,11 +49,16 @@ export default function Scada3D() {
                         animateFlow={animateFlow} 
                         thermalMode={thermalMode}
                         alarmActive={alarmActive}
+                        editMode={editMode}
                     />
                     
                     {/* Floating Controls inside the 3D viewport */}
                     <div style={{ position: 'absolute', top: 16, right: 16, background: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.8)', padding: '8px 16px', borderRadius: 8, backdropFilter: 'blur(8px)' }}>
                         <Space direction="vertical">
+                            <Space>
+                                <Text strong>Edit Mode</Text>
+                                <Switch checked={editMode} onChange={setEditMode} />
+                            </Space>
                             <Space>
                                 <Text strong>Simulate Flow</Text>
                                 <Switch checked={animateFlow} onChange={setAnimateFlow} />

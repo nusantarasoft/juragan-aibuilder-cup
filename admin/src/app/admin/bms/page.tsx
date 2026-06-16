@@ -35,6 +35,7 @@ export default function BmsDashboard() {
     const [realSystems, setRealSystems] = useState<BmsSystem[]>([]);
     const [realAlarms, setRealAlarms] = useState<BmsAlarm[]>([]);
     const [viewMode, setViewMode] = useState<'dashboard' | '3d'>('dashboard');
+    const [editMode, setEditMode] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -106,7 +107,17 @@ export default function BmsDashboard() {
             </div>
             
             {viewMode === '3d' ? (
-                <Bms3dView isDark={isDark} />
+                <div style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                        <Title level={4} style={{ margin: 0, color: themeColor }}>BMS 3D View</Title>
+                        <Space>
+                            <span style={{ color: themeColor, fontWeight: 600 }}>Edit Mode</span>
+                            <Switch checked={editMode} onChange={setEditMode} />
+                            <Button onClick={() => setViewMode('dashboard')}>Back to Dashboard</Button>
+                        </Space>
+                    </div>
+                    <Bms3dView isDark={isDark} editMode={editMode} />
+                </div>
             ) : (
                 <React.Fragment>
 

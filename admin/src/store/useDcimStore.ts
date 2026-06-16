@@ -51,6 +51,7 @@ interface DcimState {
     setViewMode: (mode: 'Normal' | 'Thermal' | 'Power' | 'Utilization') => void;
     setEditMode: (mode: boolean) => void;
     updateRackPosition: (id: string, x: number, z: number, rotationY?: number) => void;
+    addRack: (rack: RackData) => void;
 }
 
 // Generate demo racks
@@ -168,4 +169,5 @@ export const useDcimStore = create<DcimState>((set) => ({
     updateRackPosition: (id, x, z, rotationY) => set((state) => ({
         racks: state.racks.map(r => r.id === id ? { ...r, x, z, ...(rotationY !== undefined ? { rotationY } : {}) } : r)
     })),
+    addRack: (rack) => set((state) => ({ racks: [...state.racks, rack] })),
 }));

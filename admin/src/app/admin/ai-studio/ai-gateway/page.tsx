@@ -28,6 +28,9 @@ import {
     SaveOutlined,
     CheckCircleOutlined,
     ExclamationCircleOutlined,
+    QrcodeOutlined,
+    PlayCircleOutlined,
+    LogoutOutlined,
 } from '@ant-design/icons';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
@@ -38,6 +41,7 @@ import {
     StudioWhatsAppConfig,
     StudioWhatsAppSessionStatus,
     StudioWhatsAppSecurityMeta,
+    StudioWahaAuthQr,
 } from '@/lib/studioService';
 import { useAuth } from '@/context/AuthContext';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -50,8 +54,7 @@ const glass = {
     borderRadius: 14,
 };
 
-const WAHA_DASHBOARD =
-    process.env.NEXT_PUBLIC_WAHA_DASHBOARD_URL || 'http://127.0.0.1:3010/dashboard';
+const WAHA_DASHBOARD = process.env.NEXT_PUBLIC_WAHA_DASHBOARD_URL || 'http://127.0.0.1:3010/dashboard';
 
 export default function WhatsAppGatewayPage() {
     return (
@@ -70,15 +73,37 @@ function WhatsAppGatewayPageContent() {
     const authUser = useAuthStore((s) => s.user);
     const userId = authUser?.id ?? contextUser?.id;
     const [form] = Form.useForm();
+    
+    // States
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [starting, setStarting] = useState(false);
+    const [restarting, setRestarting] = useState(false);
+    const [syncing, setSyncing] = useState(false);
+    const [loggingOut, setLoggingOut] = useState(false);
+    
     const [activeTenant, setActiveTenant] = useState(tenantFromUrl);
     const [waConfigs, setWaConfigs] = useState<StudioWhatsAppConfig[]>([]);
     const [notebooks, setNotebooks] = useState<StudioNotebook[]>([]);
     const [sessionStatus, setSessionStatus] = useState<StudioWhatsAppSessionStatus | null>(null);
     const [securityMeta, setSecurityMeta] = useState<StudioWhatsAppSecurityMeta | null>(null);
-    const [restartingWaha, setRestartingWaha] = useState(false);
-    const [syncingWaha, setSyncingWaha] = useState(false);
+    const [authQr, setAuthQr] = useState<StudioWahaAuthQr | null>(null);
+
+    const loadStatus = useCallback(async () => {
+        try {
+            setSessionStatus(await studioService.getWhatsAppSessionStatus());
+        } catch {
+            setSessionStatus(null);
+        }
+    }, []);
+
+    const loadQr = useCallback(async () => {
+        try {
+            setAuthQr(await studioService.getWahaAuthQr());
+        } catch {
+            setAuthQr(null);
+        }
+    }, []);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -86,16 +111,10 @@ function WhatsAppGatewayPageContent() {
             if (userId) {
                 try {
                     setNotebooks(await studioService.getNotebooks(userId));
-                } catch (e: unknown) {
-                    const err = e as { message?: string };
-                    message.error(err.message || 'Gagal memuat notebooks');
+                } catch {
                     setNotebooks([]);
                 }
-            } else {
-                setNotebooks([]);
-                message.warning('Login dulu agar daftar notebook bisa dimuat.');
             }
-
             try {
                 const list = await studioService.listWhatsAppConfigs();
                 setWaConfigs(list);
@@ -111,26 +130,20 @@ function WhatsAppGatewayPageContent() {
                     allowlistPhones: cfg?.allowlist_phones ?? [],
                     useGuidedFlow: cfg?.use_guided_flow ?? false,
                 });
-            } catch (e: unknown) {
-                const err = e as { message?: string };
-                message.error(err.message || 'Gagal memuat konfigurasi WhatsApp');
-            }
-
-            try {
-                setSessionStatus(await studioService.getWhatsAppSessionStatus());
-            } catch {
-                setSessionStatus(null);
-            }
+            } catch {}
 
             try {
                 setSecurityMeta(await studioService.getWhatsAppSecurityMeta());
             } catch {
                 setSecurityMeta(null);
             }
+
+            await loadStatus();
+            await loadQr();
         } finally {
             setLoading(false);
         }
-    }, [form, userId, activeTenant]);
+    }, [form, userId, activeTenant, loadStatus, loadQr]);
 
     useEffect(() => {
         setActiveTenant(tenantFromUrl);
@@ -141,25 +154,88 @@ function WhatsAppGatewayPageContent() {
         load();
     }, [load, authLoading]);
 
-    const wahaConnected = sessionStatus?.session?.connected === true;
+    // WAHA Derived states
+    const sess = sessionStatus?.session;
+    const connected = sess?.connected === true;
+    const pairedButStuck = sess?.pairedButStuck === true;
+    const status = (sess?.status || 'UNKNOWN').toUpperCase();
+    const needsQr = !connected && (status === 'SCAN_QR_CODE' || status === 'STARTING' || status === 'FAILED');
+    const wahaUnreachable = !loading && sessionStatus?.session === null;
+    const businessPhone = sess?.meId?.split('@')[0]?.replace(/\D/g, '');
+    const wahaVersion = sessionStatus?.version?.version;
+    const allowlistRequired = securityMeta?.allowlistRequired ?? false;
+
+    // Polling effects
+    useEffect(() => {
+        if (loading || connected) return;
+        const statusTimer = setInterval(loadStatus, 6000);
+        return () => clearInterval(statusTimer);
+    }, [loading, connected, loadStatus]);
 
     useEffect(() => {
-        if (authLoading || wahaConnected) return;
-        const t = setInterval(() => {
-            studioService.getWhatsAppSessionStatus().then(setSessionStatus).catch(() => {});
-        }, 8000);
-        return () => clearInterval(t);
-    }, [authLoading, wahaConnected]);
+        if (loading || connected || !needsQr) return;
+        const qrTimer = setInterval(loadQr, 5000);
+        return () => clearInterval(qrTimer);
+    }, [loading, connected, needsQr, loadQr]);
 
-    const allowlistRequired = securityMeta?.allowlistRequired ?? false;
+    // Handlers
+    const handleStart = async () => {
+        setStarting(true);
+        try {
+            const r = await studioService.startWahaSession();
+            if (r.connected) message.success('WhatsApp sudah terhubung');
+            else message.info(`Sesi dimulai — status: ${r.status}. Scan QR di bawah.`);
+            await load();
+        } catch {
+            message.error('Gagal memulai sesi WAHA');
+        } finally {
+            setStarting(false);
+        }
+    };
+
+    const handleRestart = async () => {
+        setRestarting(true);
+        try {
+            await studioService.restartWahaSession();
+            message.info('Sesi di-restart. Tunggu QR muncul lalu scan ulang jika perlu.');
+            await load();
+        } catch {
+            message.error('Gagal restart sesi');
+        } finally {
+            setRestarting(false);
+        }
+    };
+
+    const handleSync = async () => {
+        setSyncing(true);
+        try {
+            const r = await studioService.syncWahaSession();
+            if (r.connected) message.success(`Status WAHA: ${r.status}`);
+            else message.warning(`Masih ${r.status}. Coba upgrade image WAHA jika stuck SCAN QR.`);
+            await load();
+        } catch {
+            message.error('Gagal sync status');
+        } finally {
+            setSyncing(false);
+        }
+    };
+
+    const handleLogout = async () => {
+        setLoggingOut(true);
+        try {
+            await studioService.logoutWahaSession();
+            message.info('Logout berhasil. Scan QR baru untuk pairing ulang.');
+            await load();
+        } catch {
+            message.error('Gagal logout sesi');
+        } finally {
+            setLoggingOut(false);
+        }
+    };
 
     const handleSave = async () => {
         const values = await form.validateFields();
-        if (
-            allowlistRequired &&
-            values.enabled &&
-            (!values.allowlistPhones || values.allowlistPhones.length === 0)
-        ) {
+        if (allowlistRequired && values.enabled && (!values.allowlistPhones || values.allowlistPhones.length === 0)) {
             message.error('Allowlist nomor wajib diisi saat WhatsApp diaktifkan.');
             return;
         }
@@ -177,64 +253,25 @@ function WhatsAppGatewayPageContent() {
             });
             message.success('Konfigurasi WhatsApp disimpan');
             await load();
-        } catch (e: unknown) {
-            const err = e as { message?: string };
-            message.error(err.message || 'Gagal menyimpan');
+        } catch {
+            message.error('Gagal menyimpan konfigurasi');
         } finally {
             setSaving(false);
         }
     };
 
-    const sess = sessionStatus?.session;
-    const connected = sess?.connected === true;
-    const pairedButStuck = sess?.pairedButStuck === true;
-    const wahaVersion = sessionStatus?.version?.version;
-    const businessPhone = sess?.meId?.split('@')[0]?.replace(/\D/g, '');
-
-    const handleSyncWaha = async () => {
-        setSyncingWaha(true);
-        try {
-            const r = await studioService.syncWahaSession();
-            if (r.connected) {
-                message.success(`Status WAHA: ${r.status}`);
-            } else {
-                message.warning(
-                    `Masih ${r.status}. Upgrade WAHA ke 2025.12.1+ (docker pull devlikeapro/waha:latest-2025.12.3) lalu recreate container.`,
-                );
-            }
-            await load();
-        } catch (e: unknown) {
-            const err = e as { message?: string };
-            message.error(err.message || 'Gagal sync status WAHA');
-        } finally {
-            setSyncingWaha(false);
-        }
-    };
-
-    const handleRestartWaha = async () => {
-        setRestartingWaha(true);
-        try {
-            await studioService.restartWahaSession();
-            message.info('Sesi WAHA di-restart. Buka Setup WAHA dan scan QR sampai WORKING.');
-            await load();
-        } catch (e: unknown) {
-            const err = e as { message?: string };
-            message.error(err.message || 'Gagal restart sesi WAHA');
-        } finally {
-            setRestartingWaha(false);
-        }
-    };
+    const qrDataUrl = authQr?.available && authQr.imageBase64 ? `data:${authQr.mimetype || 'image/png'};base64,${authQr.imageBase64}` : null;
 
     return (
         <CMSLayout
             title={
                 <AuroraText colors={[themeColor, '#25d366', '#8b5cf6']}>
-                    WhatsApp (WAHA)
+                    WhatsApp & WAHA
                 </AuroraText>
             }
             subTitle={
                 <DecryptedText
-                    text="Hubungkan AI Studio ke WhatsApp — chat RAG & data penjualan lewat WA"
+                    text="Hubungkan AI Studio ke WhatsApp — Pair WAHA dan Konfigurasi AI Bot"
                     animateOn="view"
                     revealDirection="center"
                     speed={40}
@@ -243,286 +280,174 @@ function WhatsAppGatewayPageContent() {
                 />
             }
             extra={[
-                <Link key="setup" href="/admin/ai-studio/waha-setup">
-                    <Button type="primary">Setup WAHA</Button>
-                </Link>,
-                <Link key="umkm" href="/admin/ai-studio/umkm">
-                    <Button>Kelola UMKM</Button>
-                </Link>,
-                pairedButStuck ? (
-                    <Button key="sync" loading={syncingWaha} onClick={handleSyncWaha} type="primary">
+                pairedButStuck && (
+                    <Button key="sync" loading={syncing} onClick={handleSync} type="primary">
                         Sync status → WORKING
                     </Button>
-                ) : null,
-                <Button
-                    key="restart"
-                    loading={restartingWaha}
-                    onClick={handleRestartWaha}
-                    disabled={connected}
-                >
-                    Restart sesi
+                ),
+                <Button key="restart" loading={restarting} onClick={handleRestart} disabled={connected}>
+                    Restart WAHA
                 </Button>,
-                <Button
-                    key="dash"
-                    icon={<LinkOutlined />}
-                    onClick={() => window.open(WAHA_DASHBOARD, '_blank')}
-                >
+                connected && (
+                    <Button key="logout" loading={loggingOut} onClick={handleLogout} danger icon={<LogoutOutlined />}>
+                        Logout WAHA
+                    </Button>
+                ),
+                <Button key="dash" icon={<LinkOutlined />} onClick={() => window.open(WAHA_DASHBOARD, '_blank')}>
                     WAHA Dashboard
                 </Button>,
                 <Button key="r" icon={<ReloadOutlined />} onClick={load} loading={loading} />,
-            ]}
+            ].filter(Boolean)}
         >
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                
+                {/* Connection Alerts */}
+                {wahaUnreachable && (
+                    <Alert type="error" showIcon title="WAHA tidak dapat dihubungi" description="Middleware tidak bisa reach container WAHA. Pastikan WAHA berjalan." />
+                )}
                 {!loading && pairedButStuck && (
-                    <Alert
-                        type="warning"
-                        showIcon
-                        title="Sudah login di WAHA, tapi status API masih SCAN QR (bug versi lama)"
-                        description={
-                            <div style={{ fontSize: 12 }}>
-                                <p style={{ margin: '0 0 8px' }}>
-                                    Nomor terdeteksi: <strong>{businessPhone || '—'}</strong>
-                                    {wahaVersion ? (
-                                        <>
-                                            {' '}
-                                            · WAHA v<strong>{wahaVersion}</strong> (butuh ≥ 2025.12.1)
-                                        </>
-                                    ) : null}
-                                </p>
-                                <ol style={{ margin: 0, paddingLeft: 18 }}>
-                                    <li>
-                                        Klik <strong>Sync status → WORKING</strong> di kanan atas
-                                    </li>
-                                    <li>
-                                        Jika masih SCAN QR: upgrade image lalu recreate —{' '}
-                                        <code>docker compose pull waha &amp;&amp; docker compose up -d waha --force-recreate</code>
-                                    </li>
-                                </ol>
-                            </div>
-                        }
-                    />
+                    <Alert type="warning" showIcon title="Bug sinkronisasi WAHA terdeteksi" description="Sudah login tapi status stuck di SCAN QR. Klik Sync status → WORKING di kanan atas." />
                 )}
 
-                {!loading && !connected && !pairedButStuck && (
-                    <Alert
-                        type="error"
-                        showIcon
-                        title="WhatsApp belum terhubung — pesan tidak akan dibalas"
-                        description={
-                            <div style={{ fontSize: 12 }}>
-                                <p style={{ margin: '0 0 8px' }}>
-                                    Status sesi: <strong>{sess?.status || 'UNKNOWN'}</strong>
-                                    {businessPhone ? (
-                                        <>
-                                            {' '}
-                                            — chat ke nomor bisnis: <strong>{businessPhone}</strong>
-                                        </>
-                                    ) : null}
-                                </p>
-                                <ol style={{ margin: 0, paddingLeft: 18 }}>
-                                    <li>
-                                        Buka <Link href="/admin/ai-studio/waha-setup"><strong>Setup WAHA</strong></Link> → scan QR
-                                        WhatsApp <strong>bisnis</strong> (bukan HP pengirim tes)
-                                    </li>
-                                    <li>Tunggu status <strong>WORKING</strong> (kartu hijau di atas)</li>
-                                    <li>Baru kirim pesan dari nomor lain ke nomor bisnis tersebut</li>
-                                </ol>
-                            </div>
-                        }
-                    />
-                )}
-
-                <Row gutter={[12, 12]}>
-                    <Col xs={24} md={12}>
-                        <Card size="small" style={{ ...glass, borderTop: '3px solid #25d366' }}>
-                            <Space>
-                                <WhatsAppOutlined style={{ color: '#25d366', fontSize: 22 }} />
-                                <div>
-                                    <Text strong>Status sesi WAHA</Text>
-                                    <br />
-                                    {loading ? (
-                                        <Spin size="small" />
-                                    ) : connected ? (
-                                        <Tag icon={<CheckCircleOutlined />} color="success">
-                                            {sess?.status || 'WORKING'}
-                                        </Tag>
+                <Row gutter={[24, 24]}>
+                    {/* LEFT COL: QR CODE PAIRING */}
+                    <Col xs={24} md={10} lg={8}>
+                        <Card size="small" style={glass} title={<Space><QrcodeOutlined /><Text strong>1. Koneksi Perangkat (WAHA)</Text></Space>}>
+                            {connected ? (
+                                <Space orientation="vertical" size="middle" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
+                                    <CheckCircleOutlined style={{ fontSize: 48, color: '#25d366' }} />
+                                    <Text strong style={{ fontSize: 16 }}>WhatsApp terhubung</Text>
+                                    <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                                        Nomor <strong>{businessPhone}</strong> siap menerima dan membalas pesan.
+                                    </Paragraph>
+                                </Space>
+                            ) : loading ? (
+                                <div style={{ textAlign: 'center', padding: 40 }}><Spin size="large" /></div>
+                            ) : (
+                                <Space orientation="vertical" size="large" style={{ width: '100%', alignItems: 'center' }}>
+                                    {qrDataUrl ? (
+                                        <div style={{ padding: 16, background: '#fff', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
+                                            <img src={qrDataUrl} alt="WhatsApp QR Code" width={240} height={240} style={{ display: 'block' }} />
+                                        </div>
                                     ) : (
-                                        <Tag icon={<ExclamationCircleOutlined />} color="warning">
-                                            {sess?.status || 'Scan QR di Setup WAHA'}
-                                        </Tag>
+                                        <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                                            {needsQr ? (
+                                                <><Spin style={{ marginBottom: 16 }} /><Paragraph type="secondary">{authQr?.error || 'Menunggu QR code...'}</Paragraph></>
+                                            ) : (
+                                                <>
+                                                    <Paragraph type="secondary">Sesi belum dimulai atau status: <strong>{status}</strong></Paragraph>
+                                                    <Button type="primary" icon={<PlayCircleOutlined />} loading={starting} onClick={handleStart} style={{ background: `linear-gradient(135deg, ${themeColor}, #25d366)`, border: 'none' }}>
+                                                        Mulai sesi
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </div>
                                     )}
-                                </div>
-                            </Space>
-                            <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
-                                Scan QR di <Link href="/admin/ai-studio/waha-setup">Setup WAHA</Link>, lalu pastikan session{' '}
-                                <Text code>default</Text> berstatus <Text strong>WORKING</Text>
-                                {wahaVersion ? <> (WAHA v{wahaVersion})</> : null}.
-                            </Paragraph>
+                                    {needsQr && !qrDataUrl && (
+                                        <Button type="primary" icon={<PlayCircleOutlined />} loading={starting} onClick={handleStart}>
+                                            Mulai sesi
+                                        </Button>
+                                    )}
+                                    {qrDataUrl && <Paragraph type="secondary" style={{ fontSize: 11, textAlign: 'center' }}>QR diperbarui otomatis setiap 5 detik.</Paragraph>}
+                                </Space>
+                            )}
                         </Card>
                     </Col>
-                    <Col xs={24} md={12}>
-                        <Alert
-                            type="info"
-                            showIcon
-                            title="Alur singkat"
-                            description={
-                                <ol style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12 }}>
-                                    <li>
-                                        Pair WhatsApp di{' '}
-                                        <Link href="/admin/ai-studio/waha-setup">Setup WAHA</Link>
-                                    </li>
-                                    <li>Pilih notebook AI Studio di bawah</li>
-                                    <li>Aktifkan WhatsApp & simpan</li>
-                                    <li>Kirim pesan ke nomor bisnis yang terhubung</li>
-                                </ol>
-                            }
-                        />
-                    </Col>
-                </Row>
 
-                <Card size="small" style={glass} title={<Text strong>Konfigurasi AI Studio ↔ WhatsApp</Text>}>
-                    {loading ? (
-                        <div style={{ textAlign: 'center', padding: 40 }}>
-                            <Spin />
-                        </div>
-                    ) : (
-                        <Form form={form} layout="vertical" onFinish={handleSave}>
-                            <Form.Item label="UMKM / tenant">
-                                <Select
-                                    value={activeTenant}
-                                    onChange={(t) => setActiveTenant(t)}
-                                    options={waConfigs.map((c) => ({
-                                        value: c.tenant_id,
-                                        label: c.label || c.tenant_id,
-                                    }))}
-                                    placeholder="Pilih UMKM"
-                                />
-                            </Form.Item>
-                            <Form.Item name="tenantId" hidden>
-                                <Input />
-                            </Form.Item>
-                            <Alert
-                                type="info"
-                                showIcon
-                                style={{ marginBottom: 16 }}
-                                title="Satu nomor WA admin untuk semua UMKM"
-                                description="Routing ke UMKM berdasarkan nomor pengirim (pemilik). Kelola daftar UMKM di halaman UMKM Penjualan."
-                            />
-                            <Form.Item name="label" label="Nama toko (UMKM)">
-                                <Input placeholder="Warung Bu Ani" />
-                            </Form.Item>
-                            <Form.Item name="wahaSession" hidden initialValue="default">
-                                <Input />
-                            </Form.Item>
-                            <Form.Item
-                                name="businessPhone"
-                                label="Nomor HP pemilik UMKM"
-                                extra="Nomor yang mengirim chat ke nomor admin WA"
-                            >
-                                <Input placeholder="6288123456789" />
-                            </Form.Item>
-                            <Form.Item
-                                name="enabled"
-                                label="Aktifkan balasan WhatsApp"
-                                valuePropName="checked"
-                            >
-                                <Switch />
-                            </Form.Item>
-                            <Form.Item
-                                name="notebookId"
-                                label="Notebook AI Studio"
-                                rules={[
-                                    {
-                                        required: true,
-                                        message: 'Pilih notebook untuk konteks RAG & database',
-                                    },
-                                ]}
-                            >
-                                <Select
-                                    placeholder="Pilih notebook"
-                                    allowClear
-                                    options={notebooks.map((n) => ({
-                                        value: n.id,
-                                        label: n.name,
-                                    }))}
-                                />
-                            </Form.Item>
-                            <Form.Item
-                                name="useGuidedFlow"
-                                label="Gunakan guided flow (published) jika ada"
-                                valuePropName="checked"
-                                extra="Jika notebook punya guide flow published, chat WA mengikuti alur tersebut."
-                            >
-                                <Switch />
-                            </Form.Item>
-                            {allowlistRequired ? (
-                                <Alert
-                                    type="warning"
-                                    showIcon
-                                    style={{ marginBottom: 16 }}
-                                    title="Allowlist wajib"
-                                    description="Mode production / STUDIO_WHATSAPP_REQUIRE_ALLOWLIST aktif — isi minimal satu nomor sebelum mengaktifkan balasan WhatsApp."
-                                />
-                            ) : (
+                    {/* RIGHT COL: AI STUDIO CONFIGURATION */}
+                    <Col xs={24} md={14} lg={16}>
+                        <Card size="small" style={glass} title={<Text strong>2. Konfigurasi AI Bot</Text>}>
+                            {allowlistRequired && (
                                 <Alert
                                     type="info"
                                     showIcon
                                     style={{ marginBottom: 16 }}
-                                    title="Mode development"
-                                    description="Allowlist kosong mengizinkan semua nomor. Di production, allowlist otomatis wajib."
+                                    message="STUDIO_WHATSAPP_REQUIRE_ALLOWLIST Aktif"
+                                    description="Mode production aktif — isi minimal satu nomor HP pelanggan sebelum mengaktifkan balasan WhatsApp."
                                 />
                             )}
-                            <Form.Item
-                                name="allowlistPhones"
-                                label="Allowlist nomor"
-                                rules={
-                                    allowlistRequired
-                                        ? [
-                                              ({ getFieldValue }) => ({
-                                                  validator(_, value: string[] | undefined) {
-                                                      if (
-                                                          !getFieldValue('enabled') ||
-                                                          (value && value.length > 0)
-                                                      ) {
-                                                          return Promise.resolve();
-                                                      }
-                                                      return Promise.reject(
-                                                          new Error(
-                                                              'Isi minimal satu nomor saat WhatsApp aktif',
-                                                          ),
-                                                      );
-                                                  },
-                                              }),
-                                          ]
-                                        : undefined
-                                }
-                                extra={
-                                    securityMeta
-                                        ? `Format: 628123456789 tanpa +. Batas: ${securityMeta.rateLimitPerMinute} pesan/menit per nomor.`
-                                        : 'Format: 628123456789 tanpa +.'
-                                }
-                            >
-                                <Select mode="tags" placeholder="628..." tokenSeparators={[',', ' ']} />
-                            </Form.Item>
-                            <Button
-                                type="primary"
-                                htmlType="submit"
-                                icon={<SaveOutlined />}
-                                loading={saving}
-                                style={{
-                                    background: `linear-gradient(135deg, ${themeColor}, #25d366)`,
-                                    border: 'none',
-                                }}
-                            >
-                                Simpan
-                            </Button>
-                        </Form>
-                    )}
-                </Card>
+                            
+                            <Form form={form} layout="vertical" onFinish={handleSave}>
+                                <Row gutter={16}>
+                                    <Col xs={24} sm={12}>
+                                        <Form.Item name="label" label="Label UMKM / Nama Bisnis">
+                                            <Input placeholder="Toko Kue Enak" />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} sm={12}>
+                                        <Form.Item name="tenantId" label="Tenant ID (Otomatis)" required>
+                                            <Input disabled />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+
+                                <Row gutter={16}>
+                                    <Col xs={24} sm={12}>
+                                        <Form.Item name="businessPhone" label="Nomor WhatsApp Bisnis">
+                                            <Input placeholder="08123456789 (Milik Anda)" disabled />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} sm={12}>
+                                        <Form.Item name="wahaSession" label="Nama Sesi WAHA">
+                                            <Input placeholder="default" disabled />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+
+                                <Form.Item
+                                    name="notebookId"
+                                    label="Pilih Notebook Pengetahuan (RAG)"
+                                    rules={[{ required: true, message: 'Harap pilih Notebook untuk database AI.' }]}
+                                >
+                                    <Select placeholder="-- Pilih Notebook --" loading={loading}>
+                                        {notebooks.map((n) => (
+                                            <Select.Option key={n.id} value={n.id}>
+                                                {n.title}
+                                            </Select.Option>
+                                        ))}
+                                    </Select>
+                                </Form.Item>
+
+                                <Form.Item
+                                    name="allowlistPhones"
+                                    label="Daftar Nomor Pelanggan (Allowlist)"
+                                    tooltip="AI hanya akan membalas pesan dari nomor-nomor ini. Jika kosong, akan membalas SEMUA orang (tidak disarankan jika token AI terbatas)."
+                                >
+                                    <Select
+                                        mode="tags"
+                                        placeholder="Ketik nomor lalu Enter (misal: 62812...)"
+                                        tokenSeparators={[',', ' ']}
+                                        style={{ width: '100%' }}
+                                    />
+                                </Form.Item>
+
+                                <Row gutter={16} align="middle">
+                                    <Col xs={24} sm={8}>
+                                        <Form.Item name="enabled" label="Aktifkan AI Bot" valuePropName="checked" style={{ marginBottom: 0 }}>
+                                            <Switch checkedChildren="Aktif" unCheckedChildren="Mati" />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} sm={8}>
+                                        <Form.Item name="useGuidedFlow" label="Gunakan Guide Flow" valuePropName="checked" style={{ marginBottom: 0 }}>
+                                            <Switch checkedChildren="Ya" unCheckedChildren="Tidak" />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} sm={8} style={{ textAlign: 'right' }}>
+                                        <Button
+                                            type="primary"
+                                            htmlType="submit"
+                                            icon={<SaveOutlined />}
+                                            loading={saving}
+                                            style={{ background: themeColor, width: '100%' }}
+                                        >
+                                            Simpan Konfigurasi
+                                        </Button>
+                                    </Col>
+                                </Row>
+                            </Form>
+                        </Card>
+                    </Col>
+                </Row>
             </motion.div>
         </CMSLayout>
     );

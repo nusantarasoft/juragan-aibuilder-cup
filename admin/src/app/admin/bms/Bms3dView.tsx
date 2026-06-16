@@ -56,11 +56,33 @@ const SmartZone = ({ position, size, label, temp, color }: { position: [number,n
     );
 };
 
-export default function Bms3dView({ isDark }: { isDark: boolean }) {
+import DraggableModel from '@/components/3d/DraggableModel';
+import { useState } from 'react';
+
+export default function Bms3dView({ isDark, editMode = false }: { isDark: boolean, editMode?: boolean }) {
+    const [zone1Pos, setZone1Pos] = useState<[number,number,number]>([-5, 0, -5]);
+    const [zone2Pos, setZone2Pos] = useState<[number,number,number]>([5, 0, -5]);
+    const [zone3Pos, setZone3Pos] = useState<[number,number,number]>([-5, 0, 5]);
+    const [hvac1Pos, setHvac1Pos] = useState<[number,number,number]>([-5, 4, -5]);
+    const [hvac2Pos, setHvac2Pos] = useState<[number,number,number]>([5, 4, -5]);
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+
+    const handleSelect = (id: string) => {
+        if (editMode) setSelectedId(id);
+    };
+
+    const handlePositionChange = (id: string, pos: [number,number,number]) => {
+        if (id === 'ZONE-1') setZone1Pos(pos);
+        if (id === 'ZONE-2') setZone2Pos(pos);
+        if (id === 'ZONE-3') setZone3Pos(pos);
+        if (id === 'HVAC-1') setHvac1Pos(pos);
+        if (id === 'HVAC-2') setHvac2Pos(pos);
+    };
+
     return (
         <div style={{ width: '100%', height: 'calc(100vh - 180px)', minHeight: 600, borderRadius: 16, overflow: 'hidden', background: isDark ? '#050505' : '#e5e5e5' }}>
             <Suspense fallback={<div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Spin size="large" /></div>}>
-                <Canvas shadows camera={{ position: [15, 15, 15], fov: 45 }}>
+                <Canvas shadows camera={{ position: [15, 15, 15], fov: 45 }} onPointerMissed={() => editMode && setSelectedId(null)}>
                     <color attach="background" args={[isDark ? '#050505' : '#e5e5e5']} />
                     <ambientLight intensity={isDark ? 0.4 : 0.8} />
                     <directionalLight position={[10, 20, 10]} intensity={1} castShadow shadow-mapSize={[2048, 2048]} />
@@ -71,18 +93,26 @@ export default function Bms3dView({ isDark }: { isDark: boolean }) {
                     
                     <group>
                         {/* Zones */}
-                        <SmartZone position={[-5, 0, -5]} size={[10, 10]} label="North Wing (HQ)" temp={22.5} color="#52c41a" />
-                        <SmartZone position={[5, 0, -5]} size={[10, 10]} label="Data Center" temp={19.0} color="#1890ff" />
-                        <SmartZone position={[-5, 0, 5]} size={[10, 10]} label="Cafeteria" temp={24.2} color="#faad14" />
+                        <DraggableModel id="ZONE-1" position={zone1Pos} editMode={editMode} selectedId={selectedId} onSelect={handleSelect} onPositionChange={handlePositionChange}>
+                            <SmartZone position={[0, 0, 0]} size={[10, 10]} label="North Wing (HQ)" temp={22.5} color="#52c41a" />
+                        </DraggableModel>
+                        <DraggableModel id="ZONE-2" position={zone2Pos} editMode={editMode} selectedId={selectedId} onSelect={handleSelect} onPositionChange={handlePositionChange}>
+                            <SmartZone position={[0, 0, 0]} size={[10, 10]} label="Data Center" temp={19.0} color="#1890ff" />
+                        </DraggableModel>
+                        <DraggableModel id="ZONE-3" position={zone3Pos} editMode={editMode} selectedId={selectedId} onSelect={handleSelect} onPositionChange={handlePositionChange}>
+                            <SmartZone position={[0, 0, 0]} size={[10, 10]} label="Cafeteria" temp={24.2} color="#faad14" />
+                        </DraggableModel>
                         
                         {/* HVAC Units on Roof */}
-                        <group position={[0, 4, 0]}>
-                            <mesh position={[-5, 0, -5]} castShadow><boxGeometry args={[3, 2, 3]} /><meshStandardMaterial color="#ccc" /></mesh>
-                            <HVACFan position={[-5, 1, -5]} rotation={[-Math.PI/2, 0, 0]} isRunning={true} />
-                            
-                            <mesh position={[5, 0, -5]} castShadow><boxGeometry args={[3, 2, 3]} /><meshStandardMaterial color="#ccc" /></mesh>
-                            <HVACFan position={[5, 1, -5]} rotation={[-Math.PI/2, 0, 0]} isRunning={true} />
-                        </group>
+                        <DraggableModel id="HVAC-1" position={hvac1Pos} editMode={editMode} selectedId={selectedId} onSelect={handleSelect} onPositionChange={handlePositionChange}>
+                            <mesh position={[0, -4, 0]} castShadow><boxGeometry args={[3, 2, 3]} /><meshStandardMaterial color="#ccc" /></mesh>
+                            <HVACFan position={[0, -3, 0]} rotation={[-Math.PI/2, 0, 0]} isRunning={true} />
+                        </DraggableModel>
+                        
+                        <DraggableModel id="HVAC-2" position={hvac2Pos} editMode={editMode} selectedId={selectedId} onSelect={handleSelect} onPositionChange={handlePositionChange}>
+                            <mesh position={[0, -4, 0]} castShadow><boxGeometry args={[3, 2, 3]} /><meshStandardMaterial color="#ccc" /></mesh>
+                            <HVACFan position={[0, -3, 0]} rotation={[-Math.PI/2, 0, 0]} isRunning={true} />
+                        </DraggableModel>
                     </group>
 
                     <OrbitControls makeDefault maxPolarAngle={Math.PI/2 - 0.1} />
