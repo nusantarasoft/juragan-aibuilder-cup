@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { AuroraText } from "@/components/magicui/aurora-text";
+import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
+import { AnimatedCircularProgressBar } from "@/components/magicui/animated-circular-progress-bar";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import {
     Badge, Button, Card, Col, Collapse, Empty, Input, InputNumber, message,
@@ -365,7 +367,7 @@ export default function MyWorkPage() {
 
             {/* ── Welcome Header ── */}
             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                <Card style={{ ...glassCard, marginBottom: 20, borderLeft: `4px solid ${themeColor}` }} size="small" role="region" aria-label="Welcome summary">
+                <Card style={{ ...glassCard,  borderLeft: `4px solid ${themeColor}` }} size="small" role="region" aria-label="Welcome summary">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
                         <div>
                             <Title level={4} style={{ margin: 0 }}>
@@ -384,20 +386,20 @@ export default function MyWorkPage() {
 
             {/* ── Time Tracker ── */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-                <Card size="small" style={{ ...glassCard, marginBottom: 20 }} role="region" aria-label="Time tracker">
+                <Card size="small" style={{ ...glassCard,  }} role="region" aria-label="Time tracker">
                     <TimeTracker compact onTimeLogged={loadData} />
                 </Card>
             </motion.div>
 
-            <Row gutter={[20, 20]}>
+            <BentoGrid className="max-w-none md:auto-rows-auto grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 {/* ── Main Content Column ── */}
-                <Col xs={24} lg={18}>
+                <div className="lg:col-span-2 flex flex-col gap-6">
                     {/* ── Focus: Due Today / Overdue ── */}
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
                         <Card
                             title={<Space><ExclamationCircleOutlined style={{ color: "#ef4444" }} /><span style={{ fontWeight: 600 }}>Focus — Needs Attention</span><Badge count={overdueTasks.length + dueTodayTasks.length} style={{ backgroundColor: "#ef4444" }} /></Space>}
                             size="small"
-                            style={{ ...glassCard, marginBottom: 20 }}
+                            style={{ ...glassCard,  }}
                             role="region"
                             aria-label="Tasks needing attention"
                         >
@@ -448,7 +450,7 @@ export default function MyWorkPage() {
                                 </div>
                             }
                             size="small"
-                            style={{ ...glassCard, marginBottom: 20 }}
+                            style={{ ...glassCard,  }}
                             role="region"
                             aria-label="My tasks grouped by status"
                         >
@@ -486,7 +488,7 @@ export default function MyWorkPage() {
                             <Card
                                 title={<Space><CheckCircleOutlined style={{ color: "#10b981" }} /><span style={{ fontWeight: 600 }}>Recently Completed</span><Tag color="green">{recentlyCompleted.length}</Tag></Space>}
                                 size="small"
-                                style={{ ...glassCard, marginBottom: 20, borderLeft: '4px solid #10b981' }}
+                                style={{ ...glassCard,  borderLeft: '4px solid #10b981' }}
                             >
                                 {recentlyCompleted.map((t, i) => {
                                     const proj = projectMap.get(t.projectId);
@@ -565,15 +567,15 @@ export default function MyWorkPage() {
                             </Row>
                         </Card>
                     </motion.div>
-                </Col>
+                </div>
 
                 {/* ── Sidebar: Active Projects ── */}
-                <Col xs={24} lg={6}>
+                <div className="lg:col-span-1 flex flex-col gap-6">
                     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}>
                         <Card
                             title={<Space><ProjectOutlined style={{ color: themeColor }} /><span style={{ fontWeight: 600, fontSize: 13 }}>My Projects</span></Space>}
                             size="small"
-                            style={{ ...glassCard, marginBottom: 20 }}
+                            style={{ ...glassCard,  }}
                             role="region"
                             aria-label="My projects"
                         >
@@ -658,12 +660,20 @@ export default function MyWorkPage() {
                         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
                             <Card
                                 size="small"
-                                style={{ ...glassCard, marginTop: 20, borderTop: `3px solid ${streak >= 5 ? '#f59e0b' : '#10b981'}`, textAlign: 'center' }}
+                                style={{ ...glassCard,  borderTop: `3px solid ${streak >= 5 ? '#f59e0b' : '#10b981'}`, textAlign: 'center' }}
                             >
-                                <div style={{ fontSize: 36, fontWeight: 800, lineHeight: 1.2, background: `linear-gradient(135deg, ${streak >= 5 ? '#f59e0b' : '#10b981'}, ${streak >= 5 ? '#ef4444' : '#3b82f6'})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                                    {streak}
+                                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+                                    <AnimatedCircularProgressBar
+                                        max={30} min={0} value={streak}
+                                        gaugePrimaryColor={streak >= 5 ? '#f59e0b' : '#10b981'}
+                                        gaugeSecondaryColor={isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}
+                                        className="scale-75 origin-center"
+                                    />
                                 </div>
-                                <Text strong style={{ fontSize: 12 }}>Day Streak</Text>
+                                <div style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.2, background: `linear-gradient(135deg, ${streak >= 5 ? '#f59e0b' : '#10b981'}, ${streak >= 5 ? '#ef4444' : '#3b82f6'})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                    {streak} Days
+                                </div>
+                                <Text strong style={{ fontSize: 12 }}>Productivity Streak</Text>
                                 <div><Text type="secondary" style={{ fontSize: 10 }}>{streak >= 5 ? 'On fire! Keep it up!' : 'Great progress!'}</Text></div>
                                 <div style={{ display: 'flex', justifyContent: 'center', gap: 3, marginTop: 8 }}>
                                     {Array.from({ length: Math.min(streak, 7) }).map((_, i) => (
@@ -673,8 +683,8 @@ export default function MyWorkPage() {
                             </Card>
                         </motion.div>
                     )}
-                </Col>
-            </Row>
+                </div>
+            </BentoGrid>
 
             {/* ── Quick Log Time Modal ── */}
             <Modal

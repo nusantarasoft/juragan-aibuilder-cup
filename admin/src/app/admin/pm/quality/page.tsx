@@ -11,6 +11,8 @@ import {
 import { motion } from "framer-motion";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { AuroraText } from "@/components/magicui/aurora-text";
+import { BentoGrid } from "@/components/magicui/bento-grid";
+import { AnimatedCircularProgressBar } from "@/components/magicui/animated-circular-progress-bar";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
@@ -417,24 +419,22 @@ export default function PmQualityPage() {
                     </Card>
 
                     {/* KPI Stats */}
-                    <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                    <BentoGrid className="max-w-none md:auto-rows-auto grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-4">
                         {statCards.map((s, i) => (
-                            <Col xs={12} sm={8} md={4} key={i}>
-                                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                                    <Card style={{ ...glassCard, borderTop: `3px solid ${s.color}` }} styles={{ body: { padding: '12px 14px' } }}>
-                                        <Statistic title={<Text style={{ fontSize: 10 }}>{s.label}</Text>} value={s.value}
-                                            prefix={s.icon} valueStyle={{ color: s.color, fontSize: 18 }} />
-                                        {s.trend && (
-                                            <div style={{ marginTop: 4, fontSize: 10, color: s.trend === 'up' ? '#10b981' : s.trend === 'down' ? '#ef4444' : '#64748b' }}>
-                                                {s.trend === 'up' ? <RiseOutlined /> : s.trend === 'down' ? <FallOutlined /> : null}
-                                                {' '}{s.trend === 'up' ? 'Improving' : s.trend === 'down' ? 'Declining' : 'Stable'}
-                                            </div>
-                                        )}
-                                    </Card>
-                                </motion.div>
-                            </Col>
+                            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} key={i}>
+                                <Card style={{ ...glassCard, borderTop: `3px solid ${s.color}`, height: '100%' }} styles={{ body: { padding: '12px 14px' } }}>
+                                    <Statistic title={<Text style={{ fontSize: 10 }}>{s.label}</Text>} value={s.value}
+                                        prefix={s.icon} valueStyle={{ color: s.color, fontSize: 18 }} />
+                                    {s.trend && (
+                                        <div style={{ marginTop: 4, fontSize: 10, color: s.trend === 'up' ? '#10b981' : s.trend === 'down' ? '#ef4444' : '#64748b' }}>
+                                            {s.trend === 'up' ? <RiseOutlined /> : s.trend === 'down' ? <FallOutlined /> : null}
+                                            {' '}{s.trend === 'up' ? 'Improving' : s.trend === 'down' ? 'Declining' : 'Stable'}
+                                        </div>
+                                    )}
+                                </Card>
+                            </motion.div>
                         ))}
-                    </Row>
+                    </BentoGrid>
 
                     {/* Tabs */}
                     {qualityLoading ? (

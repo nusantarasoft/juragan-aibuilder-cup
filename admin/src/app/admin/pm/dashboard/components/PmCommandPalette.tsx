@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Modal, Input, List, Typography, Space, Tag } from "antd";
-import { SearchOutlined, ProjectOutlined, CheckSquareOutlined, RocketOutlined, AimOutlined, FireOutlined } from "@ant-design/icons";
+import { SearchOutlined, ProjectOutlined, CheckSquareOutlined, RocketOutlined, AimOutlined, FireOutlined, RobotOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
@@ -67,7 +67,30 @@ export default function PmCommandPalette({ onClose, onSelectProject, onSelectTas
         return () => clearTimeout(timer);
     }, [query, fetchResults]);
 
-    const handleSelect = (result: { type: string; item: any }) => {
+    const handleSelect = async (result: { type: string; item: any }) => {
+        if (result.type === "ai_intent") {
+            setLoading(true);
+            try {
+                // Call an AI endpoint that returns a structured intent JSON
+                const response = await fetch("/api/ai/parse-command", {
+                    method: "POST",
+                    body: JSON.stringify({ prompt: query })
+                });
+                const intent = await response.json();
+                
+                if (intent.action === "create_task" && onCreateTask) {
+                    // Pass pre-filled AI data to the task creation form
+                    onCreateTask(); 
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setLoading(false);
+                onClose();
+            }
+            return;
+        }
+
         if (result.type === "project") {
             onSelectProject(result.item.id);
         } else if (result.type === "task") {
@@ -84,7 +107,16 @@ export default function PmCommandPalette({ onClose, onSelectProject, onSelectTas
         { type: "command", item: { id: "create-sprint", title: "Create Sprint", icon: <RocketOutlined /> } },
     ].filter(cmd => cmd.item.title.toLowerCase().includes(query.toLowerCase()));
 
-    const displayResults = query.trim() ? [...commands, ...results] : commands;
+    const aiCommand = query.length > 5 ? [{
+    type: "ai_intent",
+    item: { 
+        id: "ai-parse", 
+        title: `Ask AI to: "${query}"`, 
+        icon: <RobotOutlined /> 
+    }
+}] : [];
+
+const displayResults = query.trim() ? [...commands, ...aiCommand, ...results] : commands;
 
     return (
         <Modal

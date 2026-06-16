@@ -25,6 +25,7 @@ export interface ConstructionPhase {
 }
 
 export interface SceneConfig {
+  visualStyle?: "realistic" | "sketchup";
   xray?: boolean;
   wireframe?: boolean;
   materials?: boolean;
@@ -79,3 +80,7 @@ export const getPhaseOpacity = (progress: number, start: number, end: number) =>
   if (progress > end) return 1;
   return (progress - start) / (end - start);
 };
+
+import { createContext, useContext } from 'react';
+export const SceneConfigContext = createContext<SceneConfig>({});
+export const useSceneConfig = () => useContext(SceneConfigContext);

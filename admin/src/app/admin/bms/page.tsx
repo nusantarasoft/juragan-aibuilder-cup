@@ -14,6 +14,7 @@ import { motion } from "framer-motion";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Legend, Cell } from 'recharts';
 import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import { AnimatedCircularProgressBar } from "@/components/magicui/animated-circular-progress-bar";
+import { bmsService, BmsSystem, BmsAlarm } from "@/lib/bmsService";
 
 const { Title, Text } = Typography;
 
@@ -27,6 +28,25 @@ export default function BmsDashboard() {
     const { themeColor } = usePreferencesStore();
     const { token: antToken } = theme.useToken();
     const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
+
+    const [realSystems, setRealSystems] = useState<BmsSystem[]>([]);
+    const [realAlarms, setRealAlarms] = useState<BmsAlarm[]>([]);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // Fetch real data from NestJS backend (falls back to demo data if empty/fails)
+                const systems = await bmsService.getSystems();
+                if (systems && systems.length > 0) setRealSystems(systems);
+                
+                const alarmsData = await bmsService.getAlarms();
+                if (alarmsData && alarmsData.length > 0) setRealAlarms(alarmsData);
+            } catch (err) {
+                console.warn("Backend not available, using demo data for BMS Dashboard.");
+            }
+        };
+        fetchData();
+    }, []);
 
     const glassStyle = {
         background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.65)',

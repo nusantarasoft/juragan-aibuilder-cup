@@ -8,6 +8,7 @@ import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { theme, Card, Table, Button, Space, Typography, Tag, Row, Col, Statistic, Slider, Switch, Select } from "antd";
 import { CloudOutlined, SettingOutlined, WarningOutlined, SyncOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
 const { Text } = Typography;
 
@@ -30,6 +31,12 @@ export default function BmsHvac() {
         { id: 'Z-04', name: 'Cafeteria', temp: 25.1, setpoint: 23.5, humidity: 55, co2: 800, mode: 'Auto', status: 'Cooling' },
         { id: 'Z-05', name: 'Lobby', temp: 24.5, setpoint: 24.0, humidity: 48, co2: 410, mode: 'Off', status: 'Off' },
     ];
+
+    const trendData = Array.from({ length: 12 }).map((_, i) => ({
+        time: `${i * 2}:00`,
+        avgTemp: 22 + Math.sin(i / 2) * 2,
+        setpoint: 23,
+    }));
 
     return (
         <CMSLayout 
@@ -60,7 +67,44 @@ export default function BmsHvac() {
                 </Col>
             </Row>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                <Col xs={24} lg={16}>
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                        <Card title="Building Temperature Trend (Last 24h)" style={glassStyle} bordered={false}>
+                            <div style={{ height: 300, width: '100%' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor={themeColor} stopOpacity={0.8}/>
+                                                <stop offset="95%" stopColor={themeColor} stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#333' : '#e0e0e0'} vertical={false} />
+                                        <XAxis dataKey="time" stroke={isDark ? '#666' : '#999'} fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis stroke={isDark ? '#666' : '#999'} fontSize={12} tickLine={false} axisLine={false} domain={['dataMin - 2', 'dataMax + 2']} />
+                                        <RechartsTooltip contentStyle={{ backgroundColor: isDark ? '#1f1f1f' : '#fff', borderColor: isDark ? '#333' : '#f0f0f0', borderRadius: 8 }} />
+                                        <Area type="monotone" dataKey="avgTemp" stroke={themeColor} fillOpacity={1} fill="url(#colorTemp)" name="Avg Temp °C" strokeWidth={3} />
+                                        <Area type="step" dataKey="setpoint" stroke="#faad14" fill="transparent" strokeDasharray="5 5" name="Setpoint °C" strokeWidth={2} />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </Card>
+                    </motion.div>
+                </Col>
+                <Col xs={24} lg={8}>
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                        <Card title="Air Quality Index" style={{...glassStyle, height: '100%'}} bordered={false}>
+                            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                                <Statistic value={42} suffix="AQI" valueStyle={{ fontSize: 64, color: '#52c41a', fontWeight: 'bold' }} />
+                                <Text type="secondary" style={{ fontSize: 16 }}>Good (Healthy)</Text>
+                            </div>
+                        </Card>
+                    </motion.div>
+                </Col>
+            </Row>
+
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
                 <Card style={glassStyle} bordered={false} bodyStyle={{ padding: 0 }}>
                     <div style={{ padding: '16px 24px', borderBottom: `1px solid ${isDark ? '#333' : '#f0f0f0'}`, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
                         <Space>

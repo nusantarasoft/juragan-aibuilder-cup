@@ -14,6 +14,7 @@ import { motion } from "framer-motion";
 import { PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import { AnimatedCircularProgressBar } from "@/components/magicui/animated-circular-progress-bar";
+import { dcimService } from "@/lib/dcimService";
 
 const { Title, Text } = Typography;
 
@@ -27,6 +28,23 @@ export default function DcimDashboard() {
     const { themeColor } = usePreferencesStore();
     const { token: antToken } = theme.useToken();
     const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
+
+    const [realRacks, setRealRacks] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // Fetch real data from NestJS backend (falls back to demo data if empty/fails)
+                const res: any = await dcimService.getRacks('00000000-0000-0000-0000-000000000010');
+                if (res && res.getRacks && res.getRacks.length > 0) {
+                    setRealRacks(res.getRacks);
+                }
+            } catch (err) {
+                console.warn("Backend not available, using demo data for DCIM Dashboard.");
+            }
+        };
+        fetchData();
+    }, []);
 
     const glassStyle = {
         background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.65)',

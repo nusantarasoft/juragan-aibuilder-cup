@@ -8,6 +8,7 @@ import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { theme, Card, Table, Button, Space, Typography, Tag, Row, Col, Statistic, Slider, Switch, Select } from "antd";
 import { BulbOutlined, FireOutlined, ThunderboltOutlined, SettingOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
 
 const { Text } = Typography;
 
@@ -30,6 +31,11 @@ export default function BmsLighting() {
         { id: 'LZ-04', name: 'Executive Boardroom', level: 50, mode: 'Manual', occupancy: true, power: '0.4 kW' },
         { id: 'LZ-05', name: 'Corridor Level 1', level: 30, mode: 'Schedule', occupancy: false, power: '0.3 kW' },
         { id: 'LZ-06', name: 'Parking Garage', level: 100, mode: 'Auto', occupancy: true, power: '4.8 kW' },
+    ];
+
+    const energyData = [
+        { name: 'Mon', energy: 120 }, { name: 'Tue', energy: 110 }, { name: 'Wed', energy: 105 },
+        { name: 'Thu', energy: 115 }, { name: 'Fri', energy: 95 }, { name: 'Sat', energy: 30 }, { name: 'Sun', energy: 25 }
     ];
 
     return (
@@ -61,7 +67,31 @@ export default function BmsLighting() {
                 </Col>
             </Row>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                <Col xs={24}>
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                        <Card title="Weekly Lighting Energy Consumption (kWh)" style={glassStyle} bordered={false}>
+                            <div style={{ height: 250, width: '100%' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={energyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barSize={32}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#333' : '#e0e0e0'} vertical={false} />
+                                        <XAxis dataKey="name" stroke={isDark ? '#666' : '#999'} fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis stroke={isDark ? '#666' : '#999'} fontSize={12} tickLine={false} axisLine={false} />
+                                        <RechartsTooltip cursor={{fill: isDark ? '#222' : '#f5f5f5'}} contentStyle={{ backgroundColor: isDark ? '#1f1f1f' : '#fff', borderColor: isDark ? '#333' : '#f0f0f0', borderRadius: 8 }} />
+                                        <Bar dataKey="energy" radius={[4, 4, 0, 0]}>
+                                            {energyData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.energy > 100 ? '#faad14' : themeColor} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </Card>
+                    </motion.div>
+                </Col>
+            </Row>
+
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
                 <Card style={glassStyle} bordered={false} bodyStyle={{ padding: 0 }}>
                     <div style={{ padding: '16px 24px', borderBottom: `1px solid ${isDark ? '#333' : '#f0f0f0'}`, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
                         <Space>

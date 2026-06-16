@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
@@ -12,6 +12,7 @@ import {
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Legend, Cell } from 'recharts';
+import { scadaService, ScadaDataSource, ScadaTag, ScadaAlarmEvent } from "@/lib/scadaService";
 
 const { Title, Text } = Typography;
 
@@ -25,6 +26,29 @@ export default function ScadaDashboard() {
     const { themeColor } = usePreferencesStore();
     const { token: antToken } = theme.useToken();
     const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
+
+    const [realSources, setRealSources] = useState<ScadaDataSource[]>([]);
+    const [realTags, setRealTags] = useState<ScadaTag[]>([]);
+    const [realAlarms, setRealAlarms] = useState<ScadaAlarmEvent[]>([]);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // Fetch real data from NestJS backend (falls back to demo data if empty/fails)
+                const sources = await scadaService.getDataSources();
+                if (sources && sources.length > 0) setRealSources(sources);
+                
+                const tags = await scadaService.getTags();
+                if (tags && tags.length > 0) setRealTags(tags);
+                
+                const alarmsData = await scadaService.getActiveAlarms();
+                if (alarmsData && alarmsData.length > 0) setRealAlarms(alarmsData);
+            } catch (err) {
+                console.warn("Backend not available, using demo data for SCADA Dashboard.");
+            }
+        };
+        fetchData();
+    }, []);
 
     const glassStyle = {
         background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.65)',
