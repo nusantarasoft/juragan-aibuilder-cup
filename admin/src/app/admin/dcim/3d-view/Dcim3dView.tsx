@@ -133,7 +133,22 @@ export default function Dcim3DView() {
                             <GlassPanel isDark={isDark} intensity="high" style={{ padding: '16px', color: isDark ? '#fff' : '#000', borderRadius: 14 }}>
                                 <div style={{ fontWeight: 600, marginBottom: 12 }}>Build Catalog</div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                                    <Button type="dashed" style={{ height: 60 }} onClick={() => message.info('Drag and drop coming soon')}>
+                                    <Button type="dashed" style={{ height: 60 }} onClick={() => {
+                                        const store = useDcimStore.getState();
+                                        store.addRack({
+                                            id: `RACK-NEW-${Date.now()}`,
+                                            name: `New Rack`,
+                                            x: 0,
+                                            z: 0,
+                                            totalU: 42,
+                                            usedU: 0,
+                                            temp: 24,
+                                            power: 0,
+                                            status: 'normal',
+                                            servers: []
+                                        });
+                                        message.success('Rack added to scene!');
+                                    }}>
                                         <div><AppstoreOutlined style={{ fontSize: 20 }} /></div>
                                         <div style={{ fontSize: 11 }}>Server Rack</div>
                                     </Button>

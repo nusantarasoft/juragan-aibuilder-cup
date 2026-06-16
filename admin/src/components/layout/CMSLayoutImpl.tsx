@@ -458,7 +458,16 @@ export default function CMSLayoutImpl({
 
     // Header Actions Component
     const HeaderActions = () => (
-        <div style={{ display: "flex", alignItems: "center", gap: 0, marginLeft: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginLeft: 16 }}>
+            <LanguageSwitcher isDark={darkMode} />
+            <NotificationBell />
+            <AnimatedThemeToggler
+                isDark={darkMode}
+                onThemeChange={handleDarkModeChange}
+                size={18}
+                style={{ color: darkMode ? "#fff" : "#000" }}
+            />
+            <Divider orientation="vertical" style={{ height: 16, margin: 0, background: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }} />
             <Tooltip title={isPinned(pathname) ? "Unpin from sidebar" : "Pin to sidebar"}>
                 <Button
                     type="text"
@@ -1072,18 +1081,7 @@ export default function CMSLayoutImpl({
                                 <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
                                     {defaultDom}
                                 </div>
-                                <div style={{
-                                    display: "flex",
-                                    flexDirection: outerCollapsed ? "column" : "row",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    padding: "12px 0",
-                                    gap: outerCollapsed ? 16 : 12,
-                                    borderTop: darkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid #f0f0f0",
-                                }}>
-                                    <LanguageSwitcher isDark={darkMode} />
-                                    <NotificationBell />
-                                </div>
+
                             </div>
                         )}
                         menuItemRender={(item, dom) => {
@@ -1192,7 +1190,13 @@ export default function CMSLayoutImpl({
                                 routes: innerRoutes,
                             }}
                             hasSiderMenu={true}
-
+                            fixSiderbar={false}
+                            siderStyle={{
+                                position: 'sticky',
+                                top: 0,
+                                height: '100vh',
+                                overflowY: 'auto',
+                            }}
                             collapsed={innerCollapsed}
                             breakpoint={false}
                             onCollapse={handleInnerCollapse}

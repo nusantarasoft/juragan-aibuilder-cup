@@ -5,9 +5,10 @@ import { CoolingUnit } from './CoolingUnit';
 import { ThermalOverlay } from './ThermalOverlay';
 import { ContainmentPod } from './ContainmentPod';
 import { useDcimStore } from '@/store/useDcimStore';
+import DraggableModel from '../3d/DraggableModel';
 
 export function DataCenterScene() {
-    const { racks, pods, viewMode, selectedRackId, setSelectedRackId } = useDcimStore();
+    const { racks, pods, viewMode, editMode, selectedRackId, setSelectedRackId } = useDcimStore();
 
     return (
         <group>
@@ -57,13 +58,26 @@ export function DataCenterScene() {
 
             {/* Racks */}
             {racks.map(rack => (
-                <RackModel 
-                    key={rack.id} 
-                    data={rack} 
-                    viewMode={viewMode} 
-                    onClick={() => setSelectedRackId(rack.id)} 
-                    isSelected={selectedRackId === rack.id} 
-                />
+                <DraggableModel
+                    key={rack.id}
+                    id={rack.id}
+                    position={[rack.x, 0, rack.z]}
+                    rotation={[0, rack.rotationY || 0, 0]}
+                    editMode={editMode}
+                    selectedId={selectedRackId}
+                    onSelect={setSelectedRackId}
+                    onPositionChange={(id, [x, y, z]) => {
+                        const state = useDcimStore.getState();
+                        state.updateRackPosition(id, x, z);
+                    }}
+                >
+                    <RackModel 
+                        data={rack} 
+                        viewMode={viewMode} 
+                        onClick={() => !editMode && setSelectedRackId(rack.id)} 
+                        isSelected={selectedRackId === rack.id} 
+                    />
+                </DraggableModel>
             ))}
 
             {/* Thermal Map Overlay */}

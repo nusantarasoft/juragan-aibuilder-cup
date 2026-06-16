@@ -254,13 +254,25 @@ const Pump = ({ position, onClick, id, animateFlow }: { position: [number,number
     );
 };
 
-export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarmActive }: { onSelect: (equip: any) => void, animateFlow: boolean, thermalMode: boolean, alarmActive: boolean }) {
+import DraggableModel from '@/components/3d/DraggableModel';
+
+export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarmActive, editMode = false }: { onSelect: (id: any) => void, animateFlow: boolean, thermalMode: boolean, alarmActive: boolean, editMode?: boolean }) {
     
     // Valve states
     const [valve1Open, setValve1Open] = useState(true);
     const [valve2Open, setValve2Open] = useState(true);
 
+    const [chillerPos, setChillerPos] = useState<[number,number,number]>([-8, 0, 0]);
+    const [pumpPos, setPumpPos] = useState<[number,number,number]>([2, 0, 2]);
+    const [ctPos, setCtPos] = useState<[number,number,number]>([10, 0, -6]);
+    const [selectedEquipId, setSelectedEquipId] = useState<string | null>(null);
+
     const handleSelect = (id: string) => {
+        if (editMode) {
+            setSelectedEquipId(id);
+            return;
+        }
+
         if (id === 'VALVE-01') {
             setValve1Open(!valve1Open);
             return;
@@ -281,11 +293,18 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
     const mainFlow = animateFlow && valve1Open;
     const secondaryFlow = animateFlow && valve2Open;
 
+    const handlePositionChange = (id: string, pos: [number,number,number]) => {
+        if (id === 'CHILLER-01') setChillerPos(pos);
+        if (id === 'PUMP-CW-01') setPumpPos(pos);
+        if (id === 'CT-01') setCtPos(pos);
+    };
+
     return (
         <Canvas 
             camera={{ position: [15, 12, 20], fov: 45 }} 
             shadows
             gl={{ antialias: false, alpha: true, powerPreference: "high-performance", toneMapping: THREE.ACESFilmicToneMapping }}
+            onPointerMissed={() => editMode && setSelectedEquipId(null)}
         >
             <SoftShadows size={15} samples={16} focus={0.5} />
             <ambientLight intensity={0.5} />
@@ -301,7 +320,9 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
             <group position={[0, 0, -2]}>
                 
                 {/* Chiller Section */}
-                <Chiller position={[-8, 0, 0]} id="CHILLER-01" onClick={handleSelect} thermalMode={thermalMode} alarm={false} />
+                <DraggableModel id="CHILLER-01" position={chillerPos} editMode={editMode} selectedId={selectedEquipId} onSelect={handleSelect} onPositionChange={handlePositionChange}>
+                    <Chiller position={[0, 0, 0]} id="CHILLER-01" onClick={handleSelect} thermalMode={thermalMode} alarm={false} />
+                </DraggableModel>
                 
                 {/* Chiller to Pump Pipes */}
                 <WaterPipe start={[-8, 0.5, 2]} end={[-8, 0.5, 4]} radius={0.2} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
@@ -314,7 +335,9 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
                 <WaterPipe start={[-1.7, 0.5, 4]} end={[2, 0.5, 4]} radius={0.2} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
                 <WaterPipe start={[2, 0.5, 4]} end={[2, 0.6, 2.5]} radius={0.2} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
 
-                <Pump position={[2, 0, 2]} id="PUMP-CW-01" onClick={handleSelect} animateFlow={mainFlow} />
+                <DraggableModel id="PUMP-CW-01" position={pumpPos} editMode={editMode} selectedId={selectedEquipId} onSelect={handleSelect} onPositionChange={handlePositionChange}>
+                    <Pump position={[0, 0, 0]} id="PUMP-CW-01" onClick={handleSelect} animateFlow={mainFlow} />
+                </DraggableModel>
                 
                 {/* Outbound from Pump */}
                 <WaterPipe start={[2.5, 0.6, 2]} end={[6, 0.6, 2]} radius={0.15} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
@@ -330,7 +353,9 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
                 <WaterPipe start={[10, 1.5, -6]} end={[10, 5, -6]} radius={0.25} animateFlow={secondaryFlow} thermalMode={thermalMode} temperature="hot" />
 
                 {/* Cooling Tower */}
-                <CoolingTower position={[10, 0, -6]} id="CT-01" isRunning={secondaryFlow} onClick={handleSelect} alarm={alarmActive} />
+                <DraggableModel id="CT-01" position={ctPos} editMode={editMode} selectedId={selectedEquipId} onSelect={handleSelect} onPositionChange={handlePositionChange}>
+                    <CoolingTower position={[0, 0, 0]} id="CT-01" isRunning={secondaryFlow} onClick={handleSelect} alarm={alarmActive} />
+                </DraggableModel>
 
             </group>
 
