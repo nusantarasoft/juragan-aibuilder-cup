@@ -37,6 +37,9 @@ Use case diagram untuk halaman **Studio** (`/admin/ai-studio`) di modul AI Studi
 | UC-15 | Kelola guide flow (buat / edit / hapus) | Guide flows |
 | UC-16 | Publish guide flow | Guide flows |
 | UC-17 | Simulasi guide flow | Guide flows |
+| UC-23 | Validasi graph flow (Zod + XState coverage) | Guide flows → `studioValidateGuideFlow` |
+| UC-24 | Buat flow dari template (RAG Q&A / UMKM / Kosong) | Guide flows → `createStudioGuideFlow(template)` |
+| UC-25 | Runtime node pipeline (listen→rag→sql→action) | Middleware `GuideFlowService` |
 | UC-18 | Uji prompt & konfigurasi model (sandbox, tanpa RAG) | Playground → `studioPlaygroundTest` |
 | UC-18b | Lihat metrik latency & token per run | Playground (chart + Last Run) |
 
@@ -63,6 +66,8 @@ Status di UI: `pending` (antrian) → `parsing` (UC-19..21 berjalan) → `done` 
 - **UC-09** memantau seluruh pipeline (bukan hanya upload).
 - **UC-10, UC-11, UC-14, UC-17** `<<include>>` **UC-09** — butuh chunk + embedding selesai.
 - **UC-16** `<<extend>>` **UC-11** — flow published otomatis memulai sesi guided.
+- **UC-15** `<<include>>` **UC-23** — validasi sebelum save/publish; **UC-24** saat buat flow baru dari template.
+- **UC-11, UC-17** `<<include>>` **UC-25** — eksekusi node pipeline di middleware.
 - **UC-18** memanggil mutation GraphQL `studioPlaygroundTest` — system + user prompt, temperature, max tokens; **tidak** memakai sumber notebook (bukan RAG).
 - **UC-18b** menampilkan latency, provider, model, dan token dari respons API di sesi Playground.
 

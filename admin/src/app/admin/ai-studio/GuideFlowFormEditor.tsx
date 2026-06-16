@@ -27,12 +27,25 @@ export type GuideFlowNode =
     | { id: string; type: "message"; content: string; next: string }
     | { id: string; type: "listen"; transitions: ListenTransition[] }
     | { id: string; type: "rag"; instruction: string; next: string }
+    | { id: string; type: "sql"; sql: string; context?: string[]; next: string }
+    | {
+          id: string;
+          type: "action";
+          action: "record_sale" | "sales_report" | "list_products" | "umkm_help";
+          next: string;
+      }
     | { id: string; type: "end" };
+
+export type GuideFlowMeta = {
+    flowKind?: "rag_qa" | "umkm" | "custom";
+    description?: string;
+};
 
 export type GuideFlowDefinition = {
     version: 1;
     startNodeId: string;
     nodes: GuideFlowNode[];
+    meta?: GuideFlowMeta;
 };
 
 function newId(prefix: string, existing: Set<string>): string {
@@ -91,6 +104,25 @@ export function parseGuideFlowDefinition(raw: unknown): { ok: true; data: GuideF
             if (typeof node.instruction !== "string") return { ok: false, error: `Node ${node.id}: rag needs instruction` };
             if (typeof node.next !== "string") return { ok: false, error: `Node ${node.id}: rag needs next` };
             nodes.push({ id: node.id, type: "rag", instruction: node.instruction, next: node.next });
+        } else if (t === "sql") {
+            if (typeof node.sql !== "string") return { ok: false, error: `Node ${node.id}: sql needs sql` };
+            if (typeof node.next !== "string") return { ok: false, error: `Node ${node.id}: sql needs next` };
+            const ctx = Array.isArray(node.context)
+                ? node.context.map((c) => String(c))
+                : undefined;
+            nodes.push({ id: node.id, type: "sql", sql: node.sql, context: ctx, next: node.next });
+        } else if (t === "action") {
+            const action = node.action;
+            if (
+                action !== "record_sale" &&
+                action !== "sales_report" &&
+                action !== "list_products" &&
+                action !== "umkm_help"
+            ) {
+                return { ok: false, error: `Node ${node.id}: invalid action` };
+            }
+            if (typeof node.next !== "string") return { ok: false, error: `Node ${node.id}: action needs next` };
+            nodes.push({ id: node.id, type: "action", action, next: node.next });
         } else if (t === "end") {
             nodes.push({ id: node.id, type: "end" });
         } else return { ok: false, error: `Node ${node.id}: unknown type` };
@@ -101,7 +133,13 @@ export function parseGuideFlowDefinition(raw: unknown): { ok: true; data: GuideF
     const startNodes = nodes.filter((x) => x.type === "start");
     if (startNodes.length === 0) return { ok: false, error: "Graph needs at least one start node" };
     for (const node of nodes) {
-        if (node.type === "start" || node.type === "message" || node.type === "rag") {
+        if (
+            node.type === "start" ||
+            node.type === "message" ||
+            node.type === "rag" ||
+            node.type === "sql" ||
+            node.type === "action"
+        ) {
             if (!ids.has(node.next)) return { ok: false, error: `Node ${node.id}: next "${node.next}" is not a node id` };
         }
         if (node.type === "listen") {
@@ -111,7 +149,17 @@ export function parseGuideFlowDefinition(raw: unknown): { ok: true; data: GuideF
             }
         }
     }
-    return { ok: true, data: { version: 1, startNodeId: o.startNodeId, nodes } };
+    let meta: GuideFlowMeta | undefined;
+    if (o.meta && typeof o.meta === "object") {
+        const m = o.meta as Record<string, unknown>;
+        meta = {};
+        if (m.flowKind === "rag_qa" || m.flowKind === "umkm" || m.flowKind === "custom") {
+            meta.flowKind = m.flowKind;
+        }
+        if (typeof m.description === "string") meta.description = m.description;
+        if (!meta.flowKind && !meta.description) meta = undefined;
+    }
+    return { ok: true, data: { version: 1, startNodeId: o.startNodeId, nodes, meta } };
 }
 
 type Props = {
@@ -119,7 +167,22 @@ type Props = {
     onChange: (next: GuideFlowDefinition) => void;
 };
 
-const NODE_TYPES: GuideFlowNode["type"][] = ["start", "message", "listen", "rag", "end"];
+const NODE_TYPES: GuideFlowNode["type"][] = [
+    "start",
+    "message",
+    "listen",
+    "rag",
+    "sql",
+    "action",
+    "end",
+];
+
+const ACTION_OPTIONS = [
+    { value: "record_sale", label: "record_sale — catat penjualan" },
+    { value: "sales_report", label: "sales_report — laporan harian" },
+    { value: "list_products", label: "list_products — daftar produk" },
+    { value: "umkm_help", label: "umkm_help — bantuan UMKM" },
+] as const;
 
 export default function GuideFlowFormEditor({ value, onChange }: Props) {
     const idOptions = useMemo(
@@ -178,6 +241,22 @@ export default function GuideFlowFormEditor({ value, onChange }: Props) {
                     next: firstOther,
                 };
                 break;
+            case "sql":
+                node = {
+                    id: newId("sql", existing),
+                    type: "sql",
+                    sql: "SELECT 1",
+                    next: firstOther,
+                };
+                break;
+            case "action":
+                node = {
+                    id: newId("act", existing),
+                    type: "action",
+                    action: "record_sale",
+                    next: firstOther,
+                };
+                break;
             case "end":
                 node = { id: newId("end", existing), type: "end" };
                 break;
@@ -211,6 +290,23 @@ export default function GuideFlowFormEditor({ value, onChange }: Props) {
                     next: "next" in old ? old.next : firstOther,
                 };
                 break;
+            case "sql":
+                node = {
+                    id: old.id,
+                    type: "sql",
+                    sql: "sql" in old ? old.sql : "SELECT 1",
+                    context: "context" in old ? old.context : undefined,
+                    next: "next" in old ? old.next : firstOther,
+                };
+                break;
+            case "action":
+                node = {
+                    id: old.id,
+                    type: "action",
+                    action: "action" in old ? old.action : "record_sale",
+                    next: "next" in old ? old.next : firstOther,
+                };
+                break;
             case "end":
                 node = { id: old.id, type: "end" };
                 break;
@@ -219,7 +315,13 @@ export default function GuideFlowFormEditor({ value, onChange }: Props) {
     };
 
     const renderNodeFields = (node: GuideFlowNode, index: number) => {
-        if (node.type === "start" || node.type === "message" || node.type === "rag") {
+        if (
+            node.type === "start" ||
+            node.type === "message" ||
+            node.type === "rag" ||
+            node.type === "sql" ||
+            node.type === "action"
+        ) {
             return (
                 <Space direction="vertical" className="w-full" size={8}>
                     {node.type === "message" && (
@@ -240,6 +342,52 @@ export default function GuideFlowFormEditor({ value, onChange }: Props) {
                                 className="font-mono text-[11px]"
                                 value={node.instruction}
                                 onChange={(e) => updateNode(index, { ...node, instruction: e.target.value })}
+                            />
+                        </div>
+                    )}
+                    {node.type === "sql" && (
+                        <>
+                            <div>
+                                <Text className="text-xs text-gray-500">SQL (read-only SELECT, placeholders supported)</Text>
+                                <TextArea
+                                    rows={4}
+                                    className="font-mono text-[11px]"
+                                    value={node.sql}
+                                    onChange={(e) => updateNode(index, { ...node, sql: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <Text className="text-xs text-gray-500">Dremio context paths (comma-separated, optional)</Text>
+                                <Input
+                                    value={(node.context ?? []).join(", ")}
+                                    onChange={(e) => {
+                                        const parts = e.target.value
+                                            .split(",")
+                                            .map((s) => s.trim())
+                                            .filter(Boolean);
+                                        updateNode(index, {
+                                            ...node,
+                                            context: parts.length ? parts : undefined,
+                                        });
+                                    }}
+                                    placeholder="e.g. tenant.schema"
+                                />
+                            </div>
+                        </>
+                    )}
+                    {node.type === "action" && (
+                        <div>
+                            <Text className="text-xs text-gray-500">UMKM action</Text>
+                            <Select
+                                className="w-full"
+                                value={node.action}
+                                options={ACTION_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                                onChange={(action) =>
+                                    updateNode(index, {
+                                        ...node,
+                                        action: action as GuideFlowNode & { type: "action" }["action"],
+                                    })
+                                }
                             />
                         </div>
                     )}
@@ -370,6 +518,41 @@ export default function GuideFlowFormEditor({ value, onChange }: Props) {
     return (
         <div className="flex flex-col gap-3 min-h-0">
             <Space wrap align="center">
+                <Text className="text-xs text-gray-500">Flow kind</Text>
+                <Select
+                    style={{ width: 130 }}
+                    allowClear
+                    placeholder="custom"
+                    value={value.meta?.flowKind}
+                    options={[
+                        { value: "rag_qa", label: "rag_qa" },
+                        { value: "umkm", label: "umkm" },
+                        { value: "custom", label: "custom" },
+                    ]}
+                    onChange={(flowKind) =>
+                        onChange({
+                            ...value,
+                            meta: {
+                                ...value.meta,
+                                flowKind: flowKind as GuideFlowMeta["flowKind"],
+                            },
+                        })
+                    }
+                />
+                <Input
+                    style={{ minWidth: 200, flex: 1 }}
+                    size="small"
+                    placeholder="Description (optional)"
+                    value={value.meta?.description ?? ""}
+                    onChange={(e) =>
+                        onChange({
+                            ...value,
+                            meta: { ...value.meta, description: e.target.value || undefined },
+                        })
+                    }
+                />
+            </Space>
+            <Space wrap align="center">
                 <Text className="text-xs text-gray-500">Start node</Text>
                 <Select
                     style={{ minWidth: 200 }}
@@ -425,7 +608,13 @@ export default function GuideFlowFormEditor({ value, onChange }: Props) {
                                             return tid;
                                         };
                                         const fixed = nodes.map((n) => {
-                                            if (n.type === "start" || n.type === "message" || n.type === "rag") {
+                                            if (
+                                                n.type === "start" ||
+                                                n.type === "message" ||
+                                                n.type === "rag" ||
+                                                n.type === "sql" ||
+                                                n.type === "action"
+                                            ) {
                                                 return { ...n, next: relink(n.next) };
                                             }
                                             if (n.type === "listen") {

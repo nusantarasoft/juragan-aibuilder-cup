@@ -104,6 +104,23 @@ export interface StudioPlaygroundResult {
     totalTokens?: number;
 }
 
+export type GuideFlowTemplateKind = 'rag_qa' | 'umkm' | 'blank';
+
+export interface GuideFlowTemplateInfo {
+    kind: GuideFlowTemplateKind;
+    label: string;
+    description: string;
+}
+
+export interface GuideFlowValidationResult {
+    valid: boolean;
+    errors: string[];
+    warnings: string[];
+    nodeCount: number;
+    flowKind?: string;
+    xstateCoverage: boolean;
+}
+
 export const studioService = {
     // ── Notebooks ────────────────────────────
 
@@ -280,12 +297,44 @@ export const studioService = {
         return data.studioPublishedGuideFlow ?? null;
     },
 
-    async createGuideFlow(notebookId: string, name: string, definition?: Record<string, unknown>): Promise<StudioGuideFlow> {
+    async getGuideFlowTemplates(): Promise<GuideFlowTemplateInfo[]> {
         const data = await graphqlRequest(`
-            mutation($notebookId: String!, $name: String!, $definition: JSONObject) {
-                createStudioGuideFlow(notebookId: $notebookId, name: $name, definition: $definition)
+            query {
+                studioGuideFlowTemplates
             }
-        `, { notebookId, name, definition: definition ?? null });
+        `);
+        return data.studioGuideFlowTemplates || [];
+    },
+
+    async validateGuideFlow(definition: Record<string, unknown>): Promise<GuideFlowValidationResult> {
+        const data = await graphqlRequest(`
+            query($definition: JSONObject!) {
+                studioValidateGuideFlow(definition: $definition)
+            }
+        `, { definition });
+        return data.studioValidateGuideFlow;
+    },
+
+    async createGuideFlow(
+        notebookId: string,
+        name: string,
+        options?: { definition?: Record<string, unknown>; template?: GuideFlowTemplateKind },
+    ): Promise<StudioGuideFlow> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!, $name: String!, $definition: JSONObject, $template: String) {
+                createStudioGuideFlow(
+                    notebookId: $notebookId
+                    name: $name
+                    definition: $definition
+                    template: $template
+                )
+            }
+        `, {
+            notebookId,
+            name,
+            definition: options?.definition ?? null,
+            template: options?.template ?? null,
+        });
         return data.createStudioGuideFlow;
     },
 

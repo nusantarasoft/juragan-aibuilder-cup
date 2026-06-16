@@ -55,6 +55,9 @@ rectangle "AI Studio — Studio" {
     usecase "UC-15\nKelola Guide Flow\n(buat / edit / hapus)" as UC15
     usecase "UC-16\nPublish Guide Flow" as UC16
     usecase "UC-17\nSimulasi Guide Flow" as UC17
+    usecase "UC-23\nValidasi Graph\nFlow (Zod + XState)" as UC23
+    usecase "UC-24\nBuat dari Template\n(RAG / UMKM / Kosong)" as UC24
+    usecase "UC-25\nRuntime Node Pipeline\n(listen->rag->sql->action)" as UC25
   }
 
   package "Playground" {
@@ -80,6 +83,8 @@ Admin --> UC14
 Admin --> UC15
 Admin --> UC16
 Admin --> UC17
+Admin --> UC23
+Admin --> UC24
 Admin --> UC18
 Admin --> UC18b
 
@@ -98,6 +103,10 @@ UC11 ..> UC09 : <<include>>
 UC14 ..> UC09 : <<include>>
 UC17 ..> UC09 : <<include>>
 UC16 ..> UC11 : <<extend>>
+UC15 ..> UC23 : <<include>>\nsebelum save/publish
+UC15 ..> UC24 : <<include>>\nnew flow
+UC11 ..> UC25 : <<include>>
+UC17 ..> UC25 : <<include>>
 
 MW --> UC19
 MW --> UC20
@@ -107,6 +116,7 @@ MW --> UC10
 MW --> UC11
 MW --> UC14
 MW --> UC18
+MW --> UC25
 
 UC18 ..> UC18b : <<include>>\nsetelah test
 
@@ -115,6 +125,27 @@ note bottom of UC18
   system + user prompt, temperature, maxTokens.
   Tanpa RAG / tanpa notebook sources.
   Provider: STUDIO_AI_PROVIDER (Vertex/Google AI/Claude).
+end note
+
+note bottom of UC25
+  Node types (Zod schema):
+  start, message, listen, rag, sql, action, end.
+  meta.flowKind: rag_qa | umkm | custom.
+  RAG: query understanding + clarification loop.
+  SQL: read-only SELECT via Dremio.
+  Action: record_sale, sales_report, list_products, umkm_help.
+  XState machine spec untuk coverage test (bukan runtime invoke).
+end note
+
+note bottom of UC23
+  Query studioValidateGuideFlow:
+  Zod parse + validateGuideFlowGraph +
+  assertXStateStateCoverage + best-practice warnings.
+end note
+
+note bottom of UC24
+  Template: rag_qa (default), umkm, blank.
+  Mutation createStudioGuideFlow(template: ...).
 end note
 
 note bottom of PKG_IDX
