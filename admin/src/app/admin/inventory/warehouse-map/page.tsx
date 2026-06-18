@@ -150,11 +150,14 @@ export default function WarehouseMapPage() {
     const t = useMemo(() => makeThemeTokens(isDark), [isDark]);
     const glass = useMemo(() => makeGlass(isDark), [isDark]);
 
-    // Builder state
+    // Live Integration States
+    const [viewingObjectId, setViewingObjectId] = useState<string | null>(null);
+    const [visualizingBin, setVisualizingBin] = useState<any>(null);
     const [objects, setObjects] = useState<PlacedObject[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [buildMode, setBuildMode] = useState(false);
+    const [currentFloor, setCurrentFloor] = useState<number>(0);
     const [activePalette, setActivePalette] = useState<BuilderPaletteItem | null>(null);
     const [cameraPreset, setCameraPreset] = useState<CameraPreset>('corner');
     const [history, setHistory] = useState<PlacedObject[][]>([]);
@@ -175,6 +178,7 @@ export default function WarehouseMapPage() {
     const [routes, setRoutes] = useState<Route[]>([]);
     const [showRoutes, setShowRoutes] = useState(true);
     const [animateRoutes, setAnimateRoutes] = useState(true);
+    const [showTraffic, setShowTraffic] = useState(false);
     const [routePlannerOpen, setRoutePlannerOpen] = useState(false);
     const [routeTab, setRouteTab] = useState<'quick' | 'custom'>('quick');
     const [customStops, setCustomStops] = useState<RouteStop[]>([]);
@@ -1156,6 +1160,7 @@ export default function WarehouseMapPage() {
             zoneType: ZONE_TYPE_MAP[activePalette.label] as any,
             rackLevels: activePalette.type === 'rack' ? 3 : undefined,
             label: activePalette.label, color: activePalette.color,
+            floorLevel: currentFloor,
         };
         setObjects(prev => [...prev, newObj]);
         messageApi.success(`Placed ${activePalette.label}`);
@@ -1177,9 +1182,15 @@ export default function WarehouseMapPage() {
         } else {
             // Single select: clear multi-selection
             setSelectedIds(new Set());
-            setSelectedId(prev => prev === id ? null : id);
+            setSelectedId(prev => {
+                const nextId = prev === id ? null : id;
+                if (!buildMode) {
+                    setViewingObjectId(nextId);
+                }
+                return nextId;
+            });
         }
-    }, [activePalette, selectedId]);
+    }, [activePalette, selectedId, buildMode]);
 
     // Delete selected (supports multi-select)
     const handleDelete = useCallback(() => {
@@ -1596,6 +1607,25 @@ export default function WarehouseMapPage() {
                                         </div>
                                     }
                                 >
+                                    {/* Floor Level Switcher */}
+                                    <div style={{ marginBottom: 16, background: t.appBg, padding: 8, borderRadius: 8, border: `1px solid ${t.panelBorder}` }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, marginBottom: 6, textTransform: 'uppercase' }}>Floor Level</div>
+                                        <div style={{ display: 'flex', gap: 4 }}>
+                                            {[0, 1, 2].map(lvl => (
+                                                <div key={lvl} onClick={() => setCurrentFloor(lvl)}
+                                                    style={{
+                                                        flex: 1, textAlign: 'center', padding: '4px 0', borderRadius: 4, cursor: 'pointer',
+                                                        fontSize: 11, fontWeight: 700, transition: 'all 0.2s',
+                                                        background: currentFloor === lvl ? themeColor : 'transparent',
+                                                        color: currentFloor === lvl ? '#fff' : t.textMuted,
+                                                        border: `1px solid ${currentFloor === lvl ? themeColor : t.panelBorder}`
+                                                    }}>
+                                                    {lvl === 0 ? 'GND' : `L${lvl}`}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
                                     {/* Category tabs */}
                                     <div style={{ display: 'flex', gap: 3, marginBottom: 10, flexWrap: 'wrap' }}>
                                         {['zone', 'storage', 'structure', 'equipment'].map(cat => (
@@ -1688,6 +1718,7 @@ export default function WarehouseMapPage() {
                             objects={objects}
                             selectedId={selectedId}
                             selectedIds={selectedIds}
+                            currentFloor={currentFloor}
                             ghostObj={ghostObj}
                             buildMode={buildMode}
                             gridCells={GRID_CELLS}
@@ -1697,6 +1728,7 @@ export default function WarehouseMapPage() {
                             routes={routes}
                             showRoutes={showRoutes}
                             animateRoutes={animateRoutes}
+                            showTraffic={showTraffic}
                             showGridOverlay={showGridOverlay}
                             isDark={isDark}
                             rackInventoryMap={rackInventoryMap}
@@ -2863,7 +2895,17 @@ export default function WarehouseMapPage() {
                                                             }}>
                                                             {animateRoutes ? '📦 Animate' : '⏸ Paused'}
                                                         </div>
+                                                        <div onClick={() => setShowTraffic(!showTraffic)}
+                                                            style={{
+                                                                flex: 1, padding: '5px 8px', borderRadius: 6, cursor: 'pointer', textAlign: 'center',
+                                                                background: showTraffic ? 'rgba(239,68,68,0.15)' : t.cardBg,
+                                                                border: `1px solid ${showTraffic ? 'rgba(239,68,68,0.3)' : t.panelBorder}`,
+                                                                color: showTraffic ? '#fca5a5' : t.textMuted, fontWeight: 600, fontSize: 9,
+                                                            }}>
+                                                            {showTraffic ? '🔥 Traffic On' : 'Traffic Off'}
+                                                        </div>
                                                     </div>
+
                                                     <div style={{ display: 'flex', gap: 3 }}>
                                                         <div onClick={() => {
                                                             const data = routes.map(r => ({
@@ -3570,6 +3612,225 @@ export default function WarehouseMapPage() {
                             </Card>
                         ))}
                     </Space>
+                )}
+            </Modal>
+            
+            {/* Live Bin Detail Drawer */}
+            <Drawer
+                title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 18 }}>📦</span>
+                        <div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>Live Location Details</div>
+                            <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 400 }}>
+                                {(() => {
+                                    const obj = objects.find(o => o.id === viewingObjectId);
+                                    if (!obj) return 'Unknown Object';
+                                    return `${obj.type === 'zone' ? 'Zone' : 'Rack'} • ${obj.label || obj.id.split('-')[0]}`;
+                                })()}
+                            </div>
+                        </div>
+                    </div>
+                }
+                placement="right"
+                onClose={() => setViewingObjectId(null)}
+                open={!!viewingObjectId}
+                width={360}
+                styles={{
+                    header: { background: t.cardBg, borderBottom: `1px solid ${t.panelBorder}`, padding: '16px 20px' },
+                    body: { background: t.appBg, padding: 20 },
+                }}
+            >
+                {(() => {
+                    const obj = objects.find(o => o.id === viewingObjectId);
+                    if (!obj) return null;
+                    if (obj.type === 'rack') {
+                        const inv = rackInventoryMap.get(obj.id);
+                        if (!inv) return <div style={{ color: t.textMuted, textAlign: 'center', padding: 40 }}>No stock data available for this rack.</div>;
+                        return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: 12, background: t.cardBg, borderRadius: 8, border: `1px solid ${t.panelBorder}` }}>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: 10, color: t.textMuted, textTransform: 'uppercase' }}>Utilization</div>
+                                        <div style={{ fontSize: 18, fontWeight: 700, color: inv.utilization > 80 ? '#ef4444' : inv.utilization > 50 ? '#f59e0b' : '#22c55e' }}>{inv.utilization.toFixed(1)}%</div>
+                                    </div>
+                                    <div style={{ width: 1, background: t.panelBorder }} />
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: 10, color: t.textMuted, textTransform: 'uppercase' }}>Total Qty</div>
+                                        <div style={{ fontSize: 18, fontWeight: 700, color: t.text }}>{inv.totalQty}</div>
+                                    </div>
+                                    <div style={{ width: 1, background: t.panelBorder }} />
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: 10, color: t.textMuted, textTransform: 'uppercase' }}>Bins</div>
+                                        <div style={{ fontSize: 18, fontWeight: 700, color: t.text }}>{inv.bins.length}</div>
+                                    </div>
+                                </div>
+                                <Divider style={{ margin: 0, borderColor: t.panelBorder }} />
+                                <div style={{ fontWeight: 600, fontSize: 12, color: t.text }}>Bin Breakdown</div>
+                                {inv.bins.map(b => (
+                                    <Card key={b.binId} size="small" style={{ background: t.cardBg, borderColor: t.panelBorder, borderRadius: 8 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, alignItems: 'center' }}>
+                                            <div style={{ fontWeight: 700, fontSize: 13, color: t.text }}>{b.binCode}</div>
+                                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                                <div 
+                                                    onClick={() => setVisualizingBin(b)}
+                                                    style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)', cursor: 'pointer', transition: 'all 0.2s' }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.2)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(59,130,246,0.1)'}
+                                                >
+                                                    📦 3D View
+                                                </div>
+                                                <Tag color={b.utilization > 80 ? 'error' : b.utilization > 0 ? 'processing' : 'default'} style={{ margin: 0 }}>
+                                                    {b.utilization.toFixed(0)}% Full
+                                                </Tag>
+                                            </div>
+                                        </div>
+                                        {b.items.length === 0 ? (
+                                            <div style={{ color: t.textMuted, fontSize: 11, fontStyle: 'italic' }}>Empty Bin</div>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                {b.items.map((it, i) => (
+                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: t.appBg, padding: '4px 8px', borderRadius: 4 }}>
+                                                        <div>
+                                                            <div style={{ fontSize: 11, fontWeight: 600, color: t.text }}>{it.itemCode}</div>
+                                                            <div style={{ fontSize: 9, color: t.textMuted }}>{it.itemName}</div>
+                                                        </div>
+                                                        <div style={{ fontWeight: 700, color: t.text, fontSize: 12 }}>{it.qty} {it.uom}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </Card>
+                                ))}
+                            </div>
+                        );
+                    } else if (obj.type === 'zone') {
+                        const inv = zoneInventoryMap.get(obj.id);
+                        if (!inv) return <div style={{ color: t.textMuted, textAlign: 'center', padding: 40 }}>No stock data available for this zone.</div>;
+                        return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: 12, background: t.cardBg, borderRadius: 8, border: `1px solid ${t.panelBorder}` }}>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: 10, color: t.textMuted, textTransform: 'uppercase' }}>Utilization</div>
+                                        <div style={{ fontSize: 18, fontWeight: 700, color: inv.utilization > 80 ? '#ef4444' : inv.utilization > 50 ? '#f59e0b' : '#22c55e' }}>{inv.utilization.toFixed(1)}%</div>
+                                    </div>
+                                    <div style={{ width: 1, background: t.panelBorder }} />
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: 10, color: t.textMuted, textTransform: 'uppercase' }}>Total Qty</div>
+                                        <div style={{ fontSize: 18, fontWeight: 700, color: t.text }}>{inv.totalQty}</div>
+                                    </div>
+                                </div>
+                                <Divider style={{ margin: 0, borderColor: t.panelBorder }} />
+                                <div style={{ fontWeight: 600, fontSize: 12, color: t.text }}>Top Items in Zone</div>
+                                {inv.items.map((it, i) => (
+                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: t.cardBg, padding: '8px 12px', borderRadius: 8, border: `1px solid ${t.panelBorder}` }}>
+                                        <div>
+                                            <div style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{it.itemCode}</div>
+                                            <div style={{ fontSize: 10, color: t.textMuted }}>{it.itemName}</div>
+                                        </div>
+                                        <div style={{ fontWeight: 700, color: t.text, fontSize: 13 }}>{it.qty} {it.uom}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    }
+                    return <div style={{ color: t.textMuted, textAlign: 'center', padding: 40 }}>Select a rack or zone.</div>;
+                })()}
+            </Drawer>
+
+            {/* 3D Bin Visualizer Modal */}
+            <Modal
+                title={visualizingBin ? `📦 3D Bin Visualizer - ${visualizingBin.binCode}` : ''}
+                open={!!visualizingBin}
+                onCancel={() => setVisualizingBin(null)}
+                footer={null}
+                width={800}
+                centered
+                styles={{
+                    header: { background: '#111', color: '#fff', borderBottom: '1px solid #333', padding: '16px 24px', margin: 0 },
+                    body: { padding: 0, height: 500, background: '#0a0a0a', overflow: 'hidden', position: 'relative' }
+                }}
+            >
+                {visualizingBin && (
+                    <>
+                        <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 10, background: 'rgba(0,0,0,0.6)', padding: '6px 12px', borderRadius: 6, backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: 11 }}>
+                            <div style={{ fontWeight: 700, marginBottom: 4 }}>Contained Items:</div>
+                            {visualizingBin.items.map((it: any, i: number) => (
+                                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: i % 2 === 0 ? '#3b82f6' : '#f59e0b' }} />
+                                    <span>{it.qty}x {it.itemCode}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <Canvas camera={{ position: [1.5, 1, 1.5], fov: 45 }}>
+                            <ambientLight intensity={0.6} />
+                            <directionalLight position={[5, 10, 5]} intensity={1.5} castShadow />
+                            <pointLight position={[-5, 5, -5]} intensity={0.5} />
+                            <OrbitControls makeDefault minDistance={1} maxDistance={4} maxPolarAngle={Math.PI/2 - 0.05} />
+                            
+                            {/* Bin Shelf Bounds (wireframe) */}
+                            <mesh position={[0, 0.2, 0]}>
+                                <boxGeometry args={[1.2, 0.4, 0.8]} />
+                                <meshBasicMaterial color="#444" wireframe transparent opacity={0.3} />
+                            </mesh>
+                            
+                            {/* Floor of the bin */}
+                            <mesh position={[0, 0, 0]} rotation={[-Math.PI/2, 0, 0]} receiveShadow>
+                                <planeGeometry args={[1.2, 0.8]} />
+                                <meshStandardMaterial color="#222" roughness={0.8} />
+                            </mesh>
+                            
+                            <group position={[-0.58, 0.01, -0.38]}>
+                                {/* Render stacked boxes based on bin.items */}
+                                {(() => {
+                                    let elements: any[] = [];
+                                    let xOff = 0, zOff = 0, yOff = 0;
+                                    let maxHInRow = 0;
+                                    
+                                    visualizingBin.items.forEach((it: any, i: number) => {
+                                        // Mocking physical dimensions for demonstration since we don't have real dimensions populated
+                                        const w = 0.15 + ((i % 3) * 0.05);
+                                        const h = 0.1 + ((i % 2) * 0.05);
+                                        const d = 0.15 + ((i % 2) * 0.05);
+                                        const boxColor = i % 2 === 0 ? '#3b82f6' : '#f59e0b';
+                                        
+                                        // Let's cap the boxes rendered to avoid lag if qty is massive
+                                        const count = Math.min(it.qty, 80); 
+                                        
+                                        for (let j = 0; j < count; j++) {
+                                            if (xOff + w > 1.16) {
+                                                xOff = 0;
+                                                zOff += d + 0.02;
+                                            }
+                                            if (zOff + d > 0.76) {
+                                                zOff = 0;
+                                                yOff += maxHInRow + 0.01;
+                                                maxHInRow = 0;
+                                            }
+                                            if (yOff + h > 0.38) break; // Bin full vertically
+                                            
+                                            maxHInRow = Math.max(maxHInRow, h);
+                                            
+                                            elements.push(
+                                                <mesh key={`${i}-${j}`} position={[xOff + w/2, yOff + h/2, zOff + d/2]} castShadow receiveShadow>
+                                                    <boxGeometry args={[w - 0.01, h - 0.01, d - 0.01]} />
+                                                    <meshStandardMaterial color={boxColor} roughness={0.7} metalness={0.1} />
+                                                    {/* Little tape marker */}
+                                                    <mesh position={[0, h/2, 0]}>
+                                                        <boxGeometry args={[w*0.8, 0.005, d*0.2]} />
+                                                        <meshStandardMaterial color="#ddd" />
+                                                    </mesh>
+                                                </mesh>
+                                            );
+                                            xOff += w + 0.01;
+                                        }
+                                    });
+                                    return elements;
+                                })()}
+                            </group>
+                            <gridHelper args={[2, 10, '#333', '#222']} position={[0, -0.01, 0]} />
+                        </Canvas>
+                    </>
                 )}
             </Modal>
         </CMSLayout>

@@ -8,18 +8,19 @@ import { AirflowParticles } from './AirflowParticles';
 import { ContainmentPod } from './ContainmentPod';
 import { useDcimStore } from '@/store/useDcimStore';
 import DraggableModel from '../3d/DraggableModel';
+import { DataCenterArchitecture } from './DataCenterArchitecture';
+import { Environment } from '@react-three/drei';
 
 export function DataCenterScene() {
-    const { racks, pods, cracs, pdus, viewMode, editMode, selectedRackId, setSelectedRackId } = useDcimStore();
+    const { racks, pods, cracs, pdus, viewMode, editMode, transformMode, selectedRackId, setSelectedRackId } = useDcimStore();
 
     return (
         <group>
-            {/* Raised Floor */}
-            <Grid args={[40, 40]} position={[0, 0, 0]} sectionSize={0.6} sectionColor="#444" cellColor="#333" fadeDistance={30} />
-            <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-                <planeGeometry args={[40, 40]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.8} />
-            </mesh>
+            {/* Environment lighting & reflections */}
+            <Environment preset="warehouse" />
+
+            {/* Real Data Hall Architecture */}
+            <DataCenterArchitecture />
 
             {/* CRAC Units (Cooling) */}
             {cracs.map(crac => (
@@ -29,11 +30,14 @@ export function DataCenterScene() {
                     position={[crac.x, 0, crac.z]}
                     rotation={[0, crac.rotationY || 0, 0]}
                     editMode={editMode}
+                    transformMode={transformMode}
                     snapToGrid={useDcimStore.getState().snapToGrid}
                     selectedId={selectedRackId}
                     onSelect={setSelectedRackId}
-                    onPositionChange={(id, [x, y, z]) => {
-                        useDcimStore.getState().updateCracPosition(id, x, z);
+                    onTransformChange={(id, type, value) => {
+                        const state = useDcimStore.getState();
+                        if (type === 'position') state.updateCracPosition(id, value[0], value[2], crac.rotationY);
+                        if (type === 'rotation') state.updateCracPosition(id, crac.x, crac.z, value[1]);
                     }}
                 >
                     <CoolingUnit />
@@ -54,11 +58,14 @@ export function DataCenterScene() {
                     position={[pdu.x, 0, pdu.z]}
                     rotation={[0, pdu.rotationY || 0, 0]}
                     editMode={editMode}
+                    transformMode={transformMode}
                     snapToGrid={useDcimStore.getState().snapToGrid}
                     selectedId={selectedRackId}
                     onSelect={setSelectedRackId}
-                    onPositionChange={(id, [x, y, z]) => {
-                        useDcimStore.getState().updatePduPosition(id, x, z);
+                    onTransformChange={(id, type, value) => {
+                        const state = useDcimStore.getState();
+                        if (type === 'position') state.updatePduPosition(id, value[0], value[2], pdu.rotationY);
+                        if (type === 'rotation') state.updatePduPosition(id, pdu.x, pdu.z, value[1]);
                     }}
                 >
                     <RoundedBox args={[1, 2.5, 1]} position={[0, 1.25, 0]} radius={0.05} smoothness={4}>
@@ -122,12 +129,14 @@ export function DataCenterScene() {
                     position={[rack.x, 0, rack.z]}
                     rotation={[0, rack.rotationY || 0, 0]}
                     editMode={editMode}
+                    transformMode={transformMode}
                     snapToGrid={useDcimStore.getState().snapToGrid}
                     selectedId={selectedRackId}
                     onSelect={setSelectedRackId}
-                    onPositionChange={(id, [x, y, z]) => {
+                    onTransformChange={(id, type, value) => {
                         const state = useDcimStore.getState();
-                        state.updateRackPosition(id, x, z);
+                        if (type === 'position') state.updateRackPosition(id, value[0], value[2], rack.rotationY);
+                        if (type === 'rotation') state.updateRackPosition(id, rack.x, rack.z, value[1]);
                     }}
                 >
                     <RackModel 

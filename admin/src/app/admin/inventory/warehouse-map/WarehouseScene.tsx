@@ -613,8 +613,64 @@ function PlacedObjectRenderer({ obj, selected, ghost, rackInventoryMap, zoneInve
         case 'workstation': return <WorkstationObject obj={obj} selected={selected} ghost={ghost} />;
         case 'conveyor': return <ConveyorObject obj={obj} selected={selected} ghost={ghost} />;
         case 'forklift': return <ForkliftObject obj={obj} selected={selected} ghost={ghost} />;
+        case 'platform': return <PlatformObject obj={obj} selected={selected} ghost={ghost} />;
+        case 'stairs': return <StairsObject obj={obj} selected={selected} ghost={ghost} />;
         default: return null;
     }
+}
+
+function PlatformObject({ obj, selected, ghost }: { obj: PlacedObject; selected: boolean; ghost?: boolean }) {
+    const w = obj.width || 4;
+    const d = obj.depth || 4;
+    return (
+        <group position={[obj.x, 0, obj.z]} rotation={[0, (obj.rotation * Math.PI) / 180, 0]}>
+            {/* Platform Floor */}
+            <mesh position={[w / 2, -0.05, d / 2]} receiveShadow castShadow>
+                <boxGeometry args={[w, 0.1, d]} />
+                <meshStandardMaterial color={obj.color || '#64748b'} transparent opacity={ghost ? 0.3 : 0.75} roughness={0.3} metalness={0.2} />
+            </mesh>
+            {/* Support Pillars */}
+            <mesh position={[0.1, -1.75, 0.1]}><boxGeometry args={[0.2, 3.5, 0.2]} /><meshStandardMaterial color="#475569" /></mesh>
+            <mesh position={[w - 0.1, -1.75, 0.1]}><boxGeometry args={[0.2, 3.5, 0.2]} /><meshStandardMaterial color="#475569" /></mesh>
+            <mesh position={[0.1, -1.75, d - 0.1]}><boxGeometry args={[0.2, 3.5, 0.2]} /><meshStandardMaterial color="#475569" /></mesh>
+            <mesh position={[w - 0.1, -1.75, d - 0.1]}><boxGeometry args={[0.2, 3.5, 0.2]} /><meshStandardMaterial color="#475569" /></mesh>
+            {/* Guard Rails */}
+            <mesh position={[w / 2, 0.5, 0.05]}><boxGeometry args={[w, 0.05, 0.1]} /><meshStandardMaterial color="#eab308" /></mesh>
+            <mesh position={[w / 2, 0.5, d - 0.05]}><boxGeometry args={[w, 0.05, 0.1]} /><meshStandardMaterial color="#eab308" /></mesh>
+            <mesh position={[0.05, 0.5, d / 2]}><boxGeometry args={[0.1, 0.05, d]} /><meshStandardMaterial color="#eab308" /></mesh>
+            <mesh position={[w - 0.05, 0.5, d / 2]}><boxGeometry args={[0.1, 0.05, d]} /><meshStandardMaterial color="#eab308" /></mesh>
+            {/* Selection highlight */}
+            {selected && <mesh position={[w / 2, 0, d / 2]}><boxGeometry args={[w + 0.1, 0.12, d + 0.1]} /><meshBasicMaterial color="#3b82f6" wireframe /></mesh>}
+        </group>
+    );
+}
+
+function StairsObject({ obj, selected, ghost }: { obj: PlacedObject; selected: boolean; ghost?: boolean }) {
+    const w = obj.width || 1;
+    const d = obj.depth || 2;
+    const steps = 10;
+    const stepDepth = d / steps;
+    const stepHeight = 3.5 / steps;
+    return (
+        <group position={[obj.x, 0, obj.z]} rotation={[0, (obj.rotation * Math.PI) / 180, 0]}>
+            {Array.from({ length: steps }).map((_, i) => (
+                <mesh key={i} position={[w / 2, -3.5 + (i * stepHeight) + stepHeight / 2, (i * stepDepth) + stepDepth / 2]} castShadow receiveShadow>
+                    <boxGeometry args={[w, stepHeight, stepDepth]} />
+                    <meshStandardMaterial color="#475569" transparent={ghost} opacity={ghost ? 0.3 : 1} />
+                </mesh>
+            ))}
+            {/* Railing */}
+            <mesh position={[0.05, -1.75 + 0.5, d / 2]} rotation={[-Math.atan2(3.5, d), 0, 0]}>
+                <boxGeometry args={[0.1, 0.05, Math.hypot(d, 3.5)]} />
+                <meshStandardMaterial color="#eab308" />
+            </mesh>
+            <mesh position={[w - 0.05, -1.75 + 0.5, d / 2]} rotation={[-Math.atan2(3.5, d), 0, 0]}>
+                <boxGeometry args={[0.1, 0.05, Math.hypot(d, 3.5)]} />
+                <meshStandardMaterial color="#eab308" />
+            </mesh>
+            {selected && <mesh position={[w / 2, -1.75, d / 2]}><boxGeometry args={[w + 0.1, 3.6, d + 0.1]} /><meshBasicMaterial color="#3b82f6" wireframe /></mesh>}
+        </group>
+    );
 }
 
 // ═══════════════════════════════════════════════════
@@ -845,15 +901,18 @@ function BuildingShell({ gridCells, isDark }: { gridCells: number; isDark?: bool
 // BUILD GRID (visible in build mode)
 // ═══════════════════════════════════════════════════
 
-function BuildGrid({ gridCells, onGridClick, ghostObj, buildMode }: {
-    gridCells: number; onGridClick: (x: number, z: number) => void; ghostObj: PlacedObject | null; buildMode: boolean;
+function BuildGrid({ gridCells, onGridClick, ghostObj, buildMode, currentFloor }: {
+    gridCells: number; onGridClick: (x: number, z: number) => void; ghostObj: PlacedObject | null; buildMode: boolean; currentFloor?: number;
 }) {
     const [hover, setHover] = useState<[number, number] | null>(null);
 
     if (!buildMode) return null;
 
+    const floorHeight = 3.5;
+    const yPos = (currentFloor || 0) * floorHeight;
+
     return (
-        <group>
+        <group position={[0, yPos, 0]}>
             {/* Grid lines */}
             <gridHelper args={[gridCells, gridCells, '#3b82f640', '#3b82f618']} position={[gridCells / 2, 0.003, gridCells / 2]} />
             {/* Origin axes */}
@@ -870,6 +929,11 @@ function BuildGrid({ gridCells, onGridClick, ghostObj, buildMode }: {
                 rotation={[-Math.PI / 2, 0, 0]}
                 position={[gridCells / 2, 0.002, gridCells / 2]}
                 onClick={(e) => {
+                    // e.point is in world space. But since plane is parented to group with yPos, 
+                    // and camera is perspective, x and z can be slightly off if we use e.point directly without accounting for local space.
+                    // Wait, group position shifts the plane. So we should use e.point or the intersection point in local space? 
+                    // Let's just use e.point but subtract y-offset is not needed because X and Z are fine for vertical planes? No, X/Z of point are world.
+                    // Since it's a plane, e.point will be exactly on the plane, so its X and Z will be correct!
                     const pt = e.point;
                     const gx = Math.floor(pt.x / GRID_SIZE) * GRID_SIZE;
                     const gz = Math.floor(pt.z / GRID_SIZE) * GRID_SIZE;
@@ -896,7 +960,7 @@ function BuildGrid({ gridCells, onGridClick, ghostObj, buildMode }: {
             {/* Ghost preview */}
             {ghostObj && hover && (
                 <PlacedObjectRenderer
-                    obj={{ ...ghostObj, x: hover[0], z: hover[1] }}
+                    obj={{ ...ghostObj, x: hover[0], z: hover[1], floorLevel: 0 }}
                     selected={false}
                     ghost={true}
                 />
@@ -909,17 +973,25 @@ function BuildGrid({ gridCells, onGridClick, ghostObj, buildMode }: {
 // CLICKABLE OBJECT WRAPPER
 // ═══════════════════════════════════════════════════
 
-function SelectableObject({ obj, selected, buildMode, onClick, rackInventoryMap, zoneInventoryMap, highlightBin, onShelfClick, stockAlerts, onZoneClick }: {
+function SelectableObject({ obj, selected, buildMode, onClick, rackInventoryMap, zoneInventoryMap, highlightBin, onShelfClick, stockAlerts, onZoneClick, currentFloor }: {
     obj: PlacedObject; selected: boolean; buildMode: boolean; onClick: (id: string, shiftKey: boolean) => void;
     rackInventoryMap?: Map<string, RackInventory>; zoneInventoryMap?: Map<string, ZoneInventory>;
     highlightBin?: string;
     onShelfClick?: (obj: PlacedObject, level: number, bin?: BinOccupancy) => void;
     stockAlerts?: Map<string, 'low' | 'overstock' | 'empty'>;
     onZoneClick?: (zoneObj: any) => void;
+    currentFloor?: number;
 }) {
     const [hovered, setHovered] = useState(false);
+    const floorHeight = 3.5;
+    const yPos = (obj.floorLevel || 0) * floorHeight;
+    const isHidden = currentFloor !== undefined && (obj.floorLevel || 0) > currentFloor;
+    
+    if (isHidden && buildMode) return null; // Hide upper floors completely in build mode for clarity
+    
     return (
         <group
+            position={[0, yPos, 0]}
             onClick={(e) => {
                 if (buildMode) { e.stopPropagation(); onClick(obj.id, (e as any).nativeEvent?.shiftKey || false); }
                 else if (obj.type === 'zone' && onZoneClick) { e.stopPropagation(); onZoneClick(obj); }
@@ -1273,6 +1345,94 @@ function FloorGridOverlay({ objects, gridCells }: { objects: PlacedObject[]; gri
 }
 
 // ═══════════════════════════════════════════════════
+// VOLUMETRIC THERMAL CLOUDS
+// ═══════════════════════════════════════════════════
+
+function VolumetricThermalClouds({ gridCells, zoneTypeMap, mode }: { gridCells: number; zoneTypeMap: Map<string, string>; mode: string }) {
+    if (mode !== 'temperature') return null;
+
+    const meshRef = useRef<THREE.InstancedMesh>(null);
+    const dummy = useMemo(() => new THREE.Object3D(), []);
+    const { colors, scales, count, offsets, pts } = useMemo(() => {
+        const c1 = new THREE.Color();
+        const c2 = new THREE.Color();
+        const tmpColor = new THREE.Color();
+        const points: any[] = [];
+        
+        for (let gz = 0; gz < gridCells; gz++) {
+            for (let gx = 0; gx < gridCells; gx++) {
+                const zt = zoneTypeMap.get(`${gx},${gz}`);
+                let value = -1;
+                if (zt === 'cold' || zt === 'climate_controlled') value = 0.1;
+                else if (zt === 'hazardous' || zt === 'quarantine') value = 0.9;
+                else if (zt) value = 0.5;
+
+                if (value >= 0) {
+                    // interpolate color
+                    if (value < 0.3) { c1.set('#3b82f6'); c2.set('#22c55e'); tmpColor.lerpColors(c1, c2, value / 0.3); }
+                    else if (value < 0.7) { c1.set('#22c55e'); c2.set('#f59e0b'); tmpColor.lerpColors(c1, c2, (value - 0.3) / 0.4); }
+                    else { c1.set('#f59e0b'); c2.set('#ef4444'); tmpColor.lerpColors(c1, c2, (value - 0.7) / 0.3); }
+
+                    // Generate a few particles per cell
+                    for(let i=0; i<3; i++) {
+                        points.push({
+                            x: gx + 0.5 + (Math.random() - 0.5) * 1.2,
+                            y: 0.5 + Math.random() * 2.5,
+                            z: gz + 0.5 + (Math.random() - 0.5) * 1.2,
+                            scale: 0.4 + Math.random() * 0.8,
+                            color: tmpColor.clone(),
+                            offset: Math.random() * 100
+                        });
+                    }
+                }
+            }
+        }
+        
+        const cols = new Float32Array(points.length * 3);
+        const scls = new Float32Array(points.length);
+        const offs = new Float32Array(points.length);
+        
+        points.forEach((pt, i) => {
+            cols[i * 3] = pt.color.r; cols[i * 3 + 1] = pt.color.g; cols[i * 3 + 2] = pt.color.b;
+            scls[i] = pt.scale;
+            offs[i] = pt.offset;
+        });
+        
+        return { colors: cols, scales: scls, count: points.length, offsets: offs, pts: points };
+    }, [gridCells, zoneTypeMap, mode]);
+
+    useFrame(({ clock }) => {
+        if (!meshRef.current || count === 0) return;
+        const time = clock.getElapsedTime();
+        for (let i = 0; i < count; i++) {
+            const pt = pts[i];
+            const driftY = Math.sin(time * 0.5 + offsets[i]) * 0.3;
+            const driftX = Math.cos(time * 0.2 + offsets[i]) * 0.2;
+            dummy.position.set(pt.x + driftX, pt.y + driftY, pt.z);
+            dummy.scale.setScalar(scales[i] * (1 + Math.sin(time * 1.5 + offsets[i]) * 0.15));
+            dummy.updateMatrix();
+            meshRef.current.setMatrixAt(i, dummy.matrix);
+        }
+        meshRef.current.instanceMatrix.needsUpdate = true;
+    });
+
+    useEffect(() => {
+        if (!meshRef.current) return;
+        const colorAttr = new THREE.InstancedBufferAttribute(colors, 3);
+        meshRef.current.instanceColor = colorAttr;
+    }, [colors]);
+
+    if (count === 0) return null;
+
+    return (
+        <instancedMesh ref={meshRef} args={[undefined, undefined, count]} frustumCulled={false}>
+            <sphereGeometry args={[1, 12, 12]} />
+            <meshStandardMaterial transparent opacity={0.15} depthWrite={false} blending={THREE.AdditiveBlending} roughness={1} />
+        </instancedMesh>
+    );
+}
+
+// ═══════════════════════════════════════════════════
 // HEATMAP OVERLAY
 // ═══════════════════════════════════════════════════
 
@@ -1284,7 +1444,7 @@ function HeatmapOverlay({ objects, gridCells, mode, rackInventoryMap, zoneInvent
     const meshRef = useRef<THREE.InstancedMesh>(null);
     const dummy = useMemo(() => new THREE.Object3D(), []);
 
-    const { colors, alphas, count } = useMemo(() => {
+    const { colors, alphas, count, zoneTypeMap } = useMemo(() => {
         const total = gridCells * gridCells;
         const cols = new Float32Array(total * 3);
         const alph = new Float32Array(total); // per-cell alpha tracking
@@ -1371,7 +1531,7 @@ function HeatmapOverlay({ objects, gridCells, mode, rackInventoryMap, zoneInvent
                 cols[idx * 3 + 2] = tmpColor.b;
             }
         }
-        return { colors: cols, alphas: alph, count: total };
+        return { colors: cols, alphas: alph, count: total, zoneTypeMap };
     }, [objects, gridCells, mode, rackInventoryMap, zoneInventoryMap, heatmapData]);
 
     useEffect(() => {
@@ -1393,15 +1553,20 @@ function HeatmapOverlay({ objects, gridCells, mode, rackInventoryMap, zoneInvent
     }, [gridCells, colors, alphas, dummy]);
 
     return (
-        <instancedMesh ref={meshRef} args={[undefined, undefined, count]} frustumCulled={false}>
-            <planeGeometry args={[1, 1]} />
-            <meshStandardMaterial
-                transparent opacity={0.5}
-                side={THREE.DoubleSide}
-                depthWrite={false}
-                emissive="#ffffff" emissiveIntensity={0.08}
-            />
-        </instancedMesh>
+        <group>
+            <instancedMesh ref={meshRef} args={[undefined, undefined, count]} frustumCulled={false}>
+                <planeGeometry args={[1, 1]} />
+                <meshStandardMaterial
+                    transparent opacity={0.5}
+                    side={THREE.DoubleSide}
+                    depthWrite={false}
+                    emissive="#ffffff" emissiveIntensity={0.08}
+                />
+            </instancedMesh>
+            {mode === 'temperature' && zoneTypeMap && (
+                <VolumetricThermalClouds gridCells={gridCells} zoneTypeMap={zoneTypeMap} mode={mode} />
+            )}
+        </group>
     );
 }
 
@@ -1618,10 +1783,10 @@ function FirstPersonController({ gridCells }: { gridCells: number }) {
 // SCENE CONTENT
 // ═══════════════════════════════════════════════════
 
-function SceneContent({ objects, selectedId, selectedIds, ghostObj, buildMode, gridCells, cameraPreset, onGridClick, onSelectObject, routes, showRoutes, animateRoutes, showGridOverlay, isDark, rackInventoryMap, zoneInventoryMap, binPositionRegistry, highlightBin, onShelfClick, rulerMode, rulerPoints, onRulerClick, heatmapMode, heatmapData, showActivityMarkers, activityMarkers, stockAlerts, onZoneClick, selectedZoneId, zoneStatsData }: {
+function SceneContent({ objects, selectedId, selectedIds, ghostObj, buildMode, gridCells, cameraPreset, onGridClick, onSelectObject, routes, showRoutes, animateRoutes, showTraffic, showGridOverlay, isDark, rackInventoryMap, zoneInventoryMap, binPositionRegistry, highlightBin, onShelfClick, rulerMode, rulerPoints, onRulerClick, heatmapMode, heatmapData, showActivityMarkers, activityMarkers, stockAlerts, onZoneClick, selectedZoneId, zoneStatsData, currentFloor }: {
     objects: PlacedObject[]; selectedId: string | null; selectedIds?: Set<string>; ghostObj: PlacedObject | null;
     buildMode: boolean; gridCells: number; cameraPreset: string; onGridClick: (x: number, z: number) => void; onSelectObject: (id: string, shiftKey: boolean) => void;
-    routes?: Route[]; showRoutes?: boolean; animateRoutes?: boolean; showGridOverlay?: boolean; isDark?: boolean;
+    routes?: Route[]; showRoutes?: boolean; animateRoutes?: boolean; showTraffic?: boolean; showGridOverlay?: boolean; isDark?: boolean;
     rackInventoryMap?: Map<string, RackInventory>; zoneInventoryMap?: Map<string, ZoneInventory>;
     binPositionRegistry?: Map<string, [number, number, number]>;
     highlightBin?: string;
@@ -1635,6 +1800,7 @@ function SceneContent({ objects, selectedId, selectedIds, ghostObj, buildMode, g
     onZoneClick?: (zoneObj: any) => void;
     selectedZoneId?: string | null;
     zoneStatsData?: Map<string, { totalBins: number; usedBins: number; totalItems: number; topItems: Array<{ name: string; qty: number }> }>;
+    currentFloor?: number;
 }) {
     const bgColor = isDark !== false ? '#080814' : '#d5dbe3';
 
@@ -1811,7 +1977,7 @@ function SceneContent({ objects, selectedId, selectedIds, ghostObj, buildMode, g
             />
 
             <BuildingShell gridCells={gridCells} isDark={isDark} />
-            <BuildGrid gridCells={gridCells} onGridClick={onGridClick} ghostObj={ghostObj} buildMode={buildMode} />
+            <BuildGrid gridCells={gridCells} onGridClick={onGridClick} ghostObj={ghostObj} buildMode={buildMode} currentFloor={currentFloor} />
             <AisleMarkings objects={objects} gridCells={gridCells} />
 
             {/* Atmospheric dust particles */}
@@ -1820,7 +1986,7 @@ function SceneContent({ objects, selectedId, selectedIds, ghostObj, buildMode, g
             {objects.map(obj => (
                 <SelectableObject key={obj.id} obj={obj} selected={selectedId === obj.id || (selectedIds?.has(obj.id) ?? false)} buildMode={buildMode} onClick={onSelectObject}
                     rackInventoryMap={rackInventoryMap} zoneInventoryMap={zoneInventoryMap} highlightBin={highlightBin} onShelfClick={onShelfClick}
-                    stockAlerts={stockAlerts} onZoneClick={onZoneClick} />
+                    stockAlerts={stockAlerts} onZoneClick={onZoneClick} currentFloor={currentFloor} />
             ))}
 
             {/* Route rendering */}
@@ -1831,6 +1997,9 @@ function SceneContent({ objects, selectedId, selectedIds, ghostObj, buildMode, g
                     {animateRoutes && <AnimatedParcel route={route} />}
                 </group>
             ))}
+
+            {/* Traffic Analyzer */}
+            {showTraffic && routes && routes.length > 0 && <TrafficAnalyzerOverlay routes={routes} />}
 
             {/* Grid overlay */}
             {showGridOverlay && <FloorGridOverlay objects={objects} gridCells={gridCells} />}
@@ -2138,6 +2307,7 @@ interface WarehouseSceneProps {
     routes?: Route[];
     showRoutes?: boolean;
     animateRoutes?: boolean;
+    showTraffic?: boolean;
     showGridOverlay?: boolean;
     isDark?: boolean;
     rackInventoryMap?: Map<string, RackInventory>;
@@ -2157,6 +2327,7 @@ interface WarehouseSceneProps {
     onZoneClick?: (zoneObj: any) => void;
     selectedZoneId?: string | null;
     zoneStatsData?: Map<string, { totalBins: number; usedBins: number; totalItems: number; topItems: Array<{ name: string; qty: number }> }>;
+    currentFloor?: number;
 }
 
 // Camera controller with fly-to-beacon support

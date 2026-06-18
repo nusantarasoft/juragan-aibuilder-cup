@@ -1,10 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { useHmiStore, HmiElementType } from '@/store/useHmiStore';
+import { useScadaStore } from '@/store/useScadaStore';
 import { theme } from 'antd';
 
 export default function ScadaCanvas() {
     const svgRef = useRef<SVGSVGElement>(null);
     const { elements, selectedIds, selectElement, updateElement, addElement, clearSelection, isEditMode } = useHmiStore();
+    const { tags } = useScadaStore();
     const { token } = theme.useToken();
     const isDark = token.colorBgContainer === '#141414' || token.colorBgBase?.includes('14');
 
@@ -174,6 +176,10 @@ export default function ScadaCanvas() {
                     {/* Render Elements */}
                 {elements.sort((a,b) => a.zIndex - b.zIndex).map(el => {
                     const isSelected = selectedIds.includes(el.id);
+                    const tag = el.tagId ? tags[el.tagId] : null;
+                    const isAlarm = tag?.alarm;
+                    const animatedColor = isAlarm ? (Date.now() % 1000 < 500 ? '#f5222d' : (el.properties.color || '#1890ff')) : (el.properties.color || '#1890ff');
+                    const fillLevel = el.properties.fillLevel !== undefined ? el.properties.fillLevel : (tag ? (typeof tag.value === 'number' ? Math.max(0, Math.min(100, tag.value)) : 50) : 50);
                     
                     return (
                         <g 
@@ -196,31 +202,29 @@ export default function ScadaCanvas() {
 
                             {/* Render logic by type */}
                             {el.type === 'pipe' && (
-                                <rect width={el.width} height={el.height} fill={el.properties.color || '#ccc'} />
+                                <rect width={el.width} height={el.height} fill={animatedColor} />
                             )}
                             
                             {el.type === 'tank' && (
                                 <g>
-                                    <rect width={el.width} height={el.height} fill={isDark ? '#333' : '#fff'} stroke={el.properties.color || '#1890ff'} strokeWidth="3" rx="8" />
-                                    {el.properties.fillLevel && (
-                                        <rect x="3" y={el.height - (el.height * el.properties.fillLevel / 100) + 3} width={el.width-6} height={(el.height * el.properties.fillLevel / 100) - 6} fill={el.properties.color || '#1890ff'} opacity="0.5" rx="5" />
-                                    )}
+                                    <rect width={el.width} height={el.height} fill={isDark ? '#333' : '#fff'} stroke={animatedColor} strokeWidth="3" rx="8" />
+                                    <rect x="3" y={el.height - (el.height * fillLevel / 100) + 3} width={el.width-6} height={Math.max(0, (el.height * fillLevel / 100) - 6)} fill={animatedColor} opacity="0.5" rx="5" />
                                     <text x={el.width/2} y={el.height/2} fill={isDark ? '#fff' : '#000'} textAnchor="middle" fontWeight="bold">{el.properties.label}</text>
                                 </g>
                             )}
 
                             {el.type === 'pump' && (
                                 <g>
-                                    <circle cx={el.width/2} cy={el.height/2} r={Math.min(el.width, el.height)/2} fill={isDark ? '#333' : '#fff'} stroke={el.properties.color || '#52c41a'} strokeWidth="3" />
+                                    <circle cx={el.width/2} cy={el.height/2} r={Math.min(el.width, el.height)/2} fill={isDark ? '#333' : '#fff'} stroke={tag ? (tag.value ? '#52c41a' : '#faad14') : animatedColor} strokeWidth="3" />
                                     <text x={el.width/2} y={el.height/2} fill={isDark ? '#fff' : '#000'} textAnchor="middle" fontWeight="bold">{el.properties.label}</text>
                                 </g>
                             )}
 
                             {el.type === 'indicator' && (
                                 <g>
-                                    <rect width={el.width} height={el.height} fill="rgba(0,0,0,0.8)" rx="4" />
+                                    <rect width={el.width} height={el.height} fill={isAlarm ? 'rgba(245, 34, 45, 0.8)' : 'rgba(0,0,0,0.8)'} rx="4" />
                                     <text x={el.width/2} y={el.height/2 + 5} fill={el.properties.color || '#fff'} textAnchor="middle" fontSize="14" fontWeight="bold">
-                                        {el.properties.defaultVal} {el.properties.unit}
+                                        {tag ? tag.value : el.properties.defaultVal} {el.properties.unit}
                                     </text>
                                 </g>
                             )}

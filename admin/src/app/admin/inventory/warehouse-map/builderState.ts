@@ -3,7 +3,8 @@
 
 export type PlacedObjectType =
     | 'zone' | 'rack' | 'wall' | 'door' | 'pallet'
-    | 'bollard' | 'workstation' | 'conveyor' | 'forklift';
+    | 'bollard' | 'workstation' | 'conveyor' | 'forklift'
+    | 'platform' | 'stairs';
 
 export type ZoneType = 'receiving' | 'storage' | 'picking' | 'packing' | 'shipping' | 'cold' | 'quarantine' | 'hazardous' | 'staging' | 'climate_controlled';
 
@@ -22,6 +23,7 @@ export interface PlacedObject {
     label?: string;
     color?: string;
     locked?: boolean;
+    floorLevel?: number; // 0 = ground, 1 = mezzanine 1, etc.
     // WMS location hierarchy: Row → Rack (Bay) → Bin (Level)
     row?: string;              // Row identifier (A, B, C...)
     bay?: number;              // Bay position within the row (1, 2, 3...)
@@ -55,6 +57,8 @@ export const PALETTE_ITEMS: BuilderPaletteItem[] = [
     // Structure
     { type: 'wall', label: 'Wall', icon: '🧱', description: 'Interior wall segment', defaultWidth: 3, defaultDepth: 1, category: 'structure', color: '#94a3b8' },
     { type: 'door', label: 'Door', icon: '🚪', description: 'Roll-up dock door', defaultWidth: 2, defaultDepth: 1, category: 'structure', color: '#6b7280' },
+    { type: 'platform', label: 'Mezzanine Platform', icon: '🏢', description: 'Elevated flooring', defaultWidth: 4, defaultDepth: 4, category: 'structure', color: '#64748b' },
+    { type: 'stairs', label: 'Stairs', icon: '📶', description: 'Access to mezzanine', defaultWidth: 1, defaultDepth: 2, category: 'structure', color: '#475569' },
     // Equipment
     { type: 'workstation', label: 'Workstation', icon: '🖥️', description: 'Packing / QC desk', defaultWidth: 2, defaultDepth: 1, category: 'equipment', color: '#8b5cf6' },
     { type: 'conveyor', label: 'Conveyor', icon: '⚙️', description: 'Roller conveyor belt', defaultWidth: 4, defaultDepth: 1, category: 'equipment', color: '#64748b' },

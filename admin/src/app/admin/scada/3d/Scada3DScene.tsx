@@ -5,6 +5,7 @@ import { EffectComposer, Bloom, SSAO, SMAA, DepthOfField } from '@react-three/po
 import * as THREE from 'three';
 import DraggableModel from '@/components/3d/DraggableModel';
 import { useScada3dStore, Scada3dElement } from '@/store/useScada3dStore';
+import { useScadaStore } from '@/store/useScadaStore';
 const WaterPipe = ({ start, end, radius = 0.1, animateFlow = false, thermalMode = false, temperature = 'cold' }: any) => {
     const ref = useRef<THREE.Mesh>(null);
     const vecStart = new THREE.Vector3(...start);
@@ -340,39 +341,365 @@ const RoboticArm = ({ position, isRunning, id, onClick }: { position: [number,nu
     );
 };
 
-export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarmActive, editMode = false, transformMode = 'translate' }: { onSelect: (id: any) => void, animateFlow: boolean, thermalMode: boolean, alarmActive: boolean, editMode?: boolean, transformMode?: 'translate' | 'rotate' | 'scale' }) {
+// ==================== NEW CAD COMPONENTS ====================
+
+const ServerRack = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => {
+    return (
+        <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+            {/* Rack Frame */}
+            <Box args={[1.2, 4, 1.8]} position={[0, 2, 0]} castShadow receiveShadow>
+                <meshStandardMaterial color="#111" roughness={0.3} metalness={0.9} />
+            </Box>
+            {/* Server Units (6U stacked) */}
+            {[0.4, 0.9, 1.4, 1.9, 2.4, 2.9].map((y, i) => (
+                <Box key={i} args={[1.1, 0.35, 1.7]} position={[0.05, y, 0]} castShadow>
+                    <meshStandardMaterial color={i < 4 ? "#1a1a2e" : "#222"} roughness={0.5} metalness={0.6} />
+                </Box>
+            ))}
+            {/* LED indicators */}
+            {[0.4, 0.9, 1.4, 1.9].map((y, i) => (
+                <Box key={`led-${i}`} args={[0.05, 0.05, 0.05]} position={[0.55, y, 0.86]}>
+                    <meshBasicMaterial color="#52c41a" />
+                </Box>
+            ))}
+            <Html position={[0, 4.5, 0]} center>
+                <div style={{ background: 'rgba(0,0,0,0.85)', color: '#fff', padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', fontSize: 10, border: '1px solid #722ed1' }}>
+                    <strong>{id}</strong>
+                </div>
+            </Html>
+        </group>
+    );
+};
+
+const Transformer = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Box args={[3, 2.5, 2]} position={[0, 1.25, 0]} castShadow receiveShadow>
+            <meshStandardMaterial color="#556b2f" roughness={0.6} metalness={0.5} />
+        </Box>
+        {/* Bushings */}
+        {[-0.8, 0, 0.8].map((x, i) => (
+            <Cylinder key={i} args={[0.15, 0.1, 1.2, 8]} position={[x, 3.1, 0]} castShadow>
+                <meshStandardMaterial color="#8b4513" roughness={0.4} metalness={0.3} />
+            </Cylinder>
+        ))}
+        {/* Fins */}
+        {[-1, -0.5, 0, 0.5, 1].map((x, i) => (
+            <Box key={`fin-${i}`} args={[0.05, 2, 2.2]} position={[x, 1.25, 0]} castShadow>
+                <meshStandardMaterial color="#4a5e2f" roughness={0.6} metalness={0.5} />
+            </Box>
+        ))}
+        <Html position={[0, 4, 0]} center>
+            <div style={{ background: 'rgba(0,0,0,0.85)', color: '#fff', padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', fontSize: 10, border: '1px solid #faad14' }}>
+                <strong>{id}</strong><br/><span style={{color:'#52c41a'}}>XFMR</span>
+            </div>
+        </Html>
+    </group>
+);
+
+const Generator = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => {
+    const shaftRef = useRef<THREE.Mesh>(null);
+    useFrame(() => { if (shaftRef.current) shaftRef.current.rotation.x += 0.05; });
+    return (
+        <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+            <Box args={[4, 2, 2]} position={[0, 1, 0]} castShadow receiveShadow>
+                <meshStandardMaterial color="#2c3e50" roughness={0.4} metalness={0.7} />
+            </Box>
+            <Cylinder args={[0.8, 0.8, 2.5, 16]} position={[-2.5, 1, 0]} rotation={[0, 0, Math.PI/2]} castShadow>
+                <meshStandardMaterial color="#555" roughness={0.3} metalness={0.8} />
+            </Cylinder>
+            <mesh ref={shaftRef} position={[-3.8, 1, 0]} rotation={[0, 0, Math.PI/2]}>
+                <cylinderGeometry args={[0.3, 0.3, 0.3, 6]} />
+                <meshStandardMaterial color="#faad14" />
+            </mesh>
+            <Html position={[0, 2.8, 0]} center>
+                <div style={{ background: 'rgba(0,0,0,0.85)', color: '#fff', padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', fontSize: 10, border: '1px solid #eb2f96' }}>
+                    <strong>{id}</strong><br/><span style={{color:'#52c41a'}}>GENSET</span>
+                </div>
+            </Html>
+        </group>
+    );
+};
+
+const UPS = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Box args={[1.5, 4, 1.5]} position={[0, 2, 0]} castShadow receiveShadow>
+            <meshStandardMaterial color="#1a1a2e" roughness={0.3} metalness={0.8} />
+        </Box>
+        <Box args={[1.3, 0.8, 0.05]} position={[0, 3.2, 0.76]}>
+            <meshBasicMaterial color="#003a8c" />
+        </Box>
+        <Box args={[0.1, 0.1, 0.05]} position={[0.3, 3.6, 0.77]}>
+            <meshBasicMaterial color="#52c41a" />
+        </Box>
+        <Html position={[0, 4.5, 0]} center>
+            <div style={{ background: 'rgba(0,0,0,0.85)', color: '#fff', padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', fontSize: 10, border: '1px solid #13c2c2' }}>
+                <strong>{id}</strong><br/><span style={{color:'#52c41a'}}>UPS ONLINE</span>
+            </div>
+        </Html>
+    </group>
+);
+
+const AHU = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => {
+    const fanRef = useRef<THREE.Mesh>(null);
+    useFrame(() => { if (fanRef.current) fanRef.current.rotation.z += 0.15; });
+    return (
+        <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+            <Box args={[4, 2, 2.5]} position={[0, 1, 0]} castShadow receiveShadow>
+                <meshStandardMaterial color="#607d8b" roughness={0.5} metalness={0.4} />
+            </Box>
+            {/* Intake grille */}
+            <Box args={[0.1, 1.5, 2]} position={[-2, 1, 0]}>
+                <meshStandardMaterial color="#333" roughness={0.8} />
+            </Box>
+            <mesh ref={fanRef} position={[2.05, 1, 0]}>
+                <circleGeometry args={[0.6, 6]} />
+                <meshStandardMaterial color="#aaa" side={THREE.DoubleSide} />
+            </mesh>
+            <Html position={[0, 2.8, 0]} center>
+                <div style={{ background: 'rgba(0,0,0,0.85)', color: '#fff', padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', fontSize: 10, border: '1px solid #1890ff' }}>
+                    <strong>{id}</strong><br/><span style={{color:'#52c41a'}}>AHU</span>
+                </div>
+            </Html>
+        </group>
+    );
+};
+
+const Switchgear = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Box args={[3, 4, 1.2]} position={[0, 2, 0]} castShadow receiveShadow>
+            <meshStandardMaterial color="#2c2c2c" roughness={0.3} metalness={0.8} />
+        </Box>
+        {/* Panel doors */}
+        {[-0.8, 0, 0.8].map((x, i) => (
+            <Box key={i} args={[0.85, 3.5, 0.05]} position={[x, 2, 0.63]} castShadow>
+                <meshStandardMaterial color="#3a3a3a" roughness={0.4} metalness={0.7} />
+            </Box>
+        ))}
+        {/* Warning stripe */}
+        <Box args={[3, 0.15, 0.06]} position={[0, 0.1, 0.64]}>
+            <meshBasicMaterial color="#faad14" />
+        </Box>
+        <Html position={[0, 4.5, 0]} center>
+            <div style={{ background: 'rgba(0,0,0,0.85)', color: '#fff', padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', fontSize: 10, border: '1px solid #faad14' }}>
+                <strong>{id}</strong><br/><span style={{color:'#faad14'}}>SWGR</span>
+            </div>
+        </Html>
+    </group>
+);
+
+const CableTrayComponent = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Box args={[6, 0.1, 0.6]} position={[0, 0, 0]} castShadow>
+            <meshStandardMaterial color="#888" roughness={0.5} metalness={0.6} />
+        </Box>
+        <Box args={[6, 0.3, 0.05]} position={[0, 0.15, 0.28]} castShadow>
+            <meshStandardMaterial color="#777" roughness={0.5} metalness={0.6} />
+        </Box>
+        <Box args={[6, 0.3, 0.05]} position={[0, 0.15, -0.28]} castShadow>
+            <meshStandardMaterial color="#777" roughness={0.5} metalness={0.6} />
+        </Box>
+    </group>
+);
+
+const CRAC = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Box args={[2, 4, 1.5]} position={[0, 2, 0]} castShadow receiveShadow>
+            <meshStandardMaterial color="#37474f" roughness={0.4} metalness={0.5} />
+        </Box>
+        {/* Grille */}
+        <Box args={[1.6, 1.5, 0.05]} position={[0, 1, 0.78]}>
+            <meshStandardMaterial color="#263238" roughness={0.8} />
+        </Box>
+        {/* Display */}
+        <Box args={[0.8, 0.4, 0.05]} position={[0, 3.2, 0.78]}>
+            <meshBasicMaterial color="#003a8c" />
+        </Box>
+        <Html position={[0, 4.5, 0]} center>
+            <div style={{ background: 'rgba(0,0,0,0.85)', color: '#fff', padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', fontSize: 10, border: '1px solid #13c2c2' }}>
+                <strong>{id}</strong><br/><span style={{color:'#13c2c2'}}>CRAC</span>
+            </div>
+        </Html>
+    </group>
+);
+
+const WallComponent = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Box args={[6, 3, 0.3]} position={[0, 1.5, 0]} castShadow receiveShadow>
+            <meshStandardMaterial color="#bfbfbf" roughness={0.8} metalness={0.1} />
+        </Box>
+    </group>
+);
+
+const FloorComponent = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Box args={[10, 0.15, 10]} position={[0, 0.075, 0]} receiveShadow>
+            <meshStandardMaterial color="#d9d9d9" roughness={0.9} metalness={0.05} />
+        </Box>
+    </group>
+);
+
+const ColumnComponent = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Box args={[0.5, 4, 0.5]} position={[0, 2, 0]} castShadow receiveShadow>
+            <meshStandardMaterial color="#8c8c8c" roughness={0.6} metalness={0.3} />
+        </Box>
+    </group>
+);
+
+const DoorComponent = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Box args={[1.2, 2.4, 0.1]} position={[0, 1.2, 0]} castShadow>
+            <meshStandardMaterial color="#8b4513" roughness={0.7} metalness={0.2} />
+        </Box>
+        {/* Handle */}
+        <Cylinder args={[0.04, 0.04, 0.3, 8]} position={[0.45, 1.1, 0.08]} rotation={[Math.PI/2, 0, 0]}>
+            <meshStandardMaterial color="#c0c0c0" metalness={0.9} roughness={0.2} />
+        </Cylinder>
+    </group>
+);
+
+const StairsComponent = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        {[0, 1, 2, 3, 4].map((i) => (
+            <Box key={i} args={[2, 0.2, 0.5]} position={[0, i * 0.3 + 0.1, i * 0.5]} castShadow receiveShadow>
+                <meshStandardMaterial color="#888" roughness={0.7} metalness={0.3} />
+            </Box>
+        ))}
+    </group>
+);
+
+const AccessFloorComponent = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        {/* Raised floor tiles */}
+        {[-2, 0, 2].map((x) => [-2, 0, 2].map((z) => (
+            <Box key={`${x}-${z}`} args={[1.9, 0.08, 1.9]} position={[x, 0.6, z]} receiveShadow>
+                <meshStandardMaterial color="#ccc" roughness={0.8} metalness={0.2} />
+            </Box>
+        )))}
+        {/* Pedestals */}
+        {[-3, -1, 1, 3].map((x) => [-3, -1, 1, 3].map((z) => (
+            <Cylinder key={`p-${x}-${z}`} args={[0.08, 0.08, 0.56, 8]} position={[x, 0.28, z]}>
+                <meshStandardMaterial color="#777" metalness={0.8} roughness={0.3} />
+            </Cylinder>
+        )))}
+    </group>
+);
+
+const FireSuppressionComponent = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Cylinder args={[0.4, 0.4, 3, 16]} position={[0, 1.5, 0]} castShadow>
+            <meshStandardMaterial color="#cc0000" roughness={0.4} metalness={0.5} />
+        </Cylinder>
+        <Cylinder args={[0.45, 0.45, 0.2, 16]} position={[0, 3.1, 0]}>
+            <meshStandardMaterial color="#222" metalness={0.8} roughness={0.3} />
+        </Cylinder>
+        <Html position={[0, 3.8, 0]} center>
+            <div style={{ background: 'rgba(0,0,0,0.85)', color: '#fff', padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', fontSize: 10, border: '1px solid #f5222d' }}>
+                <strong>{id}</strong><br/><span style={{color:'#f5222d'}}>FM-200</span>
+            </div>
+        </Html>
+    </group>
+);
+
+const GenericEquipment = ({ position, id, onClick, color, label }: { position: [number,number,number], id: string, onClick: (id: string) => void, color: string, label: string }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Box args={[1.5, 3, 1.2]} position={[0, 1.5, 0]} castShadow receiveShadow>
+            <meshStandardMaterial color={color} roughness={0.4} metalness={0.6} />
+        </Box>
+        <Box args={[1.3, 0.5, 0.05]} position={[0, 2.5, 0.63]}>
+            <meshBasicMaterial color="#003a8c" />
+        </Box>
+        <Html position={[0, 3.5, 0]} center>
+            <div style={{ background: 'rgba(0,0,0,0.85)', color: '#fff', padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', fontSize: 10, border: `1px solid ${color}` }}>
+                <strong>{id}</strong><br/><span style={{color}}>{label}</span>
+            </div>
+        </Html>
+    </group>
+);
+
+const DuctComponent = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Box args={[6, 0.8, 1.2]} position={[0, 0, 0]} castShadow>
+            <meshStandardMaterial color="#9e9e9e" roughness={0.6} metalness={0.4} />
+        </Box>
+    </group>
+);
+
+const RoofComponent = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Box args={[10, 0.2, 10]} position={[0, 0, 0]} castShadow receiveShadow>
+            <meshStandardMaterial color="#616161" roughness={0.7} metalness={0.3} />
+        </Box>
+    </group>
+);
+
+const WindowComponent = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Box args={[1.5, 1.2, 0.1]} position={[0, 0, 0]} castShadow>
+            <meshPhysicalMaterial color="#87ceeb" transparent opacity={0.4} roughness={0.05} metalness={0.1} transmission={0.8} thickness={0.3} />
+        </Box>
+        {/* Frame */}
+        <Box args={[1.6, 0.06, 0.12]} position={[0, 0.6, 0]}><meshStandardMaterial color="#555" metalness={0.8} roughness={0.3} /></Box>
+        <Box args={[1.6, 0.06, 0.12]} position={[0, -0.6, 0]}><meshStandardMaterial color="#555" metalness={0.8} roughness={0.3} /></Box>
+        <Box args={[0.06, 1.2, 0.12]} position={[0.75, 0, 0]}><meshStandardMaterial color="#555" metalness={0.8} roughness={0.3} /></Box>
+        <Box args={[0.06, 1.2, 0.12]} position={[-0.75, 0, 0]}><meshStandardMaterial color="#555" metalness={0.8} roughness={0.3} /></Box>
+    </group>
+);
+
+const PipeElbow = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Torus args={[0.5, 0.15, 16, 16, Math.PI / 2]} rotation={[0, 0, 0]}>
+            <meshStandardMaterial color="#1890ff" roughness={0.3} metalness={0.6} />
+        </Torus>
+    </group>
+);
+
+const PipeTee = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Cylinder args={[0.15, 0.15, 2, 16]} rotation={[0, 0, Math.PI/2]}>
+            <meshStandardMaterial color="#1890ff" roughness={0.3} metalness={0.6} />
+        </Cylinder>
+        <Cylinder args={[0.15, 0.15, 1, 16]} position={[0, 0.5, 0]}>
+            <meshStandardMaterial color="#1890ff" roughness={0.3} metalness={0.6} />
+        </Cylinder>
+    </group>
+);
+
+const PipeReducer = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Cylinder args={[0.25, 0.15, 0.6, 16]} castShadow>
+            <meshStandardMaterial color="#1890ff" roughness={0.3} metalness={0.6} />
+        </Cylinder>
+    </group>
+);
+
+const PipeFlange = ({ position, id, onClick }: { position: [number,number,number], id: string, onClick: (id: string) => void }) => (
+    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Cylinder args={[0.35, 0.35, 0.1, 16]} castShadow>
+            <meshStandardMaterial color="#888" roughness={0.4} metalness={0.7} />
+        </Cylinder>
+        <Cylinder args={[0.15, 0.15, 0.2, 16]} position={[0, 0, 0]}>
+            <meshStandardMaterial color="#666" roughness={0.3} metalness={0.8} />
+        </Cylinder>
+    </group>
+);
+
+// ==================== MAIN SCENE ====================
+
+export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarmActive, editMode = false, transformMode = 'translate', selectedId, showWireframe = false }: { onSelect: (id: any) => void, animateFlow: boolean, thermalMode: boolean, alarmActive: boolean, editMode?: boolean, transformMode?: 'translate' | 'rotate' | 'scale', selectedId?: string | null, showWireframe?: boolean }) {
     
     // Store
     const { elements, updateElement } = useScada3dStore();
+    const { tags } = useScadaStore();
 
     // Valve states
     const [valve1Open, setValve1Open] = useState(true);
     const [valve2Open, setValve2Open] = useState(true);
 
-    const [selectedEquipId, setSelectedEquipId] = useState<string | null>(null);
-
     const handleSelect = (id: string) => {
-        if (editMode) {
-            setSelectedEquipId(id);
-            return;
-        }
-
-        if (id === 'VALVE-01') {
-            setValve1Open(!valve1Open);
-            return;
-        }
-        if (id === 'VALVE-02') {
-            setValve2Open(!valve2Open);
-            return;
-        }
-
-        const equipData: any = {
-            'CHILLER-01': { id: 'CHILLER-01', name: 'Primary Centrifugal Chiller', status: alarmActive ? 'Fault' : 'Running', telemetry: { 'Leaving Water Temp': '6.5 °C', 'Entering Water Temp': '12.1 °C', 'Compressor Load': '78%' } },
-            'PUMP-CW-01': { id: 'PUMP-CW-01', name: 'Condenser Water Pump', status: (animateFlow && valve1Open) ? 'Running' : 'Stopped', telemetry: { 'Frequency': (animateFlow && valve1Open) ? '60.0 Hz' : '0.0 Hz', 'Flow Rate': (animateFlow && valve1Open) ? '1250 GPM' : '0 GPM', 'Vibration': '0.04 in/s' } },
-                        'CT-01': { id: 'CT-01', name: 'Cooling Tower 1', status: alarmActive ? 'High Vib Alarm' : 'Running', telemetry: { 'Fan Speed': '100%', 'Basin Temp': '22.0 °C' } },
-            'ROBOT-01': { id: 'ROBOT-01', name: 'Assembly Arm Unit A', status: animateFlow ? 'Running' : 'Standby', telemetry: { 'Cycles/Min': animateFlow ? '42' : '0', 'Joint Temp': '45.2 °C' } }
-        };
-        if (equipData[id]) onSelect(equipData[id]);
+        if (id === 'VALVE-01') setValve1Open(!valve1Open);
+        if (id === 'VALVE-02') setValve2Open(!valve2Open);
+        onSelect(id);
     };
 
     const mainFlow = animateFlow && valve1Open;
@@ -383,17 +710,108 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
     };
 
     const renderEquipment = (el: Scada3dElement) => {
+        const tag = el.tagId ? tags[el.tagId] : null;
+        const isAlarm = tag ? tag.alarm : alarmActive;
+        const isRunning = tag ? !!tag.value : animateFlow;
+        const color = el.properties.color || '#888';
+
         switch (el.type) {
+            // Original HVAC
             case 'chiller':
-                return <Chiller position={[0,0,0]} id={el.id} onClick={handleSelect} thermalMode={thermalMode} alarm={el.properties.alarm || alarmActive} />;
+                return <Chiller position={[0,0,0]} id={el.id} onClick={handleSelect} thermalMode={thermalMode} alarm={isAlarm} />;
             case 'pump':
-                return <Pump position={[0,0,0]} id={el.id} onClick={handleSelect} animateFlow={mainFlow} />;
+                return <Pump position={[0,0,0]} id={el.id} onClick={handleSelect} animateFlow={isRunning && mainFlow} />;
             case 'cooling_tower':
-                return <CoolingTower position={[0,0,0]} id={el.id} isRunning={secondaryFlow} onClick={handleSelect} alarm={el.properties.alarm || alarmActive} />;
+                return <CoolingTower position={[0,0,0]} id={el.id} isRunning={secondaryFlow} onClick={handleSelect} alarm={isAlarm} />;
             case 'valve':
                 return <Valve position={[0,0,0]} id={el.id} isOpen={el.id === 'VALVE-01' ? valve1Open : (el.id === 'VALVE-02' ? valve2Open : true)} onClick={handleSelect} />;
             case 'robot':
-                return <RoboticArm position={[0,0,0]} id={el.id} isRunning={animateFlow} onClick={handleSelect} />;
+                return <RoboticArm position={[0,0,0]} id={el.id} isRunning={isRunning} onClick={handleSelect} />;
+
+            // Primitives
+            case 'box':
+                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><Box args={[2,2,2]} castShadow receiveShadow><meshStandardMaterial color={color} wireframe={showWireframe} /></Box></group>;
+            case 'sphere':
+                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><mesh castShadow receiveShadow><sphereGeometry args={[1, 32, 32]} /><meshStandardMaterial color={color} wireframe={showWireframe} /></mesh></group>;
+            case 'cylinder':
+                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><Cylinder args={[1, 1, 2, 32]} castShadow receiveShadow><meshStandardMaterial color={color} wireframe={showWireframe} /></Cylinder></group>;
+            case 'cone':
+                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><mesh castShadow receiveShadow><coneGeometry args={[1, 2, 32]} /><meshStandardMaterial color={color} wireframe={showWireframe} /></mesh></group>;
+            case 'torus':
+                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><Torus args={[1, 0.4, 16, 32]} castShadow receiveShadow><meshStandardMaterial color={color} wireframe={showWireframe} /></Torus></group>;
+            case 'plane':
+                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><mesh rotation={[-Math.PI/2, 0, 0]} receiveShadow><planeGeometry args={[4, 4]} /><meshStandardMaterial color={color} side={THREE.DoubleSide} wireframe={showWireframe} /></mesh></group>;
+
+            // Electrical
+            case 'transformer':
+                return <Transformer position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'generator':
+                return <Generator position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'ups':
+                return <UPS position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'switchgear':
+                return <Switchgear position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'ats':
+                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color="#2c3e50" label="ATS" />;
+            case 'pdu':
+                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color="#1a1a2e" label="PDU" />;
+            case 'mcc':
+                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color="#333" label="MCC" />;
+            case 'panel':
+                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color="#444" label="PANEL" />;
+
+            // Data Center
+            case 'server_rack':
+                return <ServerRack position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'cable_tray':
+                return <CableTrayComponent position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'crac':
+                return <CRAC position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'fire_suppression':
+                return <FireSuppressionComponent position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'access_floor':
+                return <AccessFloorComponent position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+
+            // HVAC Extended
+            case 'ahu':
+                return <AHU position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'fcu':
+                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color="#607d8b" label="FCU" />;
+            case 'damper':
+                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color="#78909c" label="DAMPER" />;
+            case 'exhaust_fan':
+                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color="#546e7a" label="EXH FAN" />;
+            case 'duct':
+                return <DuctComponent position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+
+            // Building
+            case 'wall':
+                return <WallComponent position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'floor':
+                return <FloorComponent position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'column':
+                return <ColumnComponent position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'door':
+                return <DoorComponent position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'stairs':
+                return <StairsComponent position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'window':
+                return <WindowComponent position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'roof':
+                return <RoofComponent position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+
+            // Piping
+            case 'pipe':
+                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><Cylinder args={[0.15, 0.15, 4, 16]} rotation={[0, 0, Math.PI/2]} castShadow><meshStandardMaterial color="#1890ff" roughness={0.3} metalness={0.6} /></Cylinder></group>;
+            case 'elbow':
+                return <PipeElbow position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'tee':
+                return <PipeTee position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'reducer':
+                return <PipeReducer position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+            case 'flange':
+                return <PipeFlange position={[0,0,0]} id={el.id} onClick={handleSelect} />;
+
             default:
                 return <Box args={[1,1,1]}><meshStandardMaterial color="gray" /></Box>;
         }
@@ -404,7 +822,7 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
             camera={{ position: [15, 12, 20], fov: 45 }} 
             shadows
             gl={{ antialias: false, alpha: true, powerPreference: "high-performance", toneMapping: THREE.ACESFilmicToneMapping }}
-            onPointerMissed={() => editMode && setSelectedEquipId(null)}
+            onPointerMissed={() => editMode && onSelect(null)}
         >
             {/* Gizmo Viewport for CAD feeling */}
             <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
@@ -433,7 +851,7 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
                         scale={el.scale} 
                         editMode={editMode} 
                         transformMode={transformMode} 
-                        selectedId={selectedEquipId} 
+                        selectedId={selectedId} 
                         onSelect={handleSelect} 
                         onTransformChange={handleTransformChange}
                     >
@@ -441,23 +859,15 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
                     </DraggableModel>
                 ))}
 
-                {/* Static Hardcoded Pipes for context (we haven't made pipes dynamic yet) */}
-                {/* Chiller to Pump Pipes */}
+                {/* Static Hardcoded Pipes for context */}
                 <WaterPipe start={[-8, 0.5, 2]} end={[-8, 0.5, 4]} radius={0.2} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
                 <WaterPipe start={[-8, 0.5, 4]} end={[-2, 0.5, 4]} radius={0.2} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
-                
-                {/* Valve to Pump */}
                 <WaterPipe start={[-1.7, 0.5, 4]} end={[2, 0.5, 4]} radius={0.2} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
                 <WaterPipe start={[2, 0.5, 4]} end={[2, 0.6, 2.5]} radius={0.2} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
-                
-                {/* Outbound from Pump */}
                 <WaterPipe start={[2.5, 0.6, 2]} end={[6, 0.6, 2]} radius={0.15} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
                 <WaterPipe start={[6, 0.6, 2]} end={[6, 5, 2]} radius={0.15} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
-
-                {/* Cooling Tower Loop (Hot Water Return) */}
                 <WaterPipe start={[-8, 1.5, -2]} end={[-8, 1.5, -6]} radius={0.25} animateFlow={secondaryFlow} thermalMode={thermalMode} temperature="hot" />
                 <WaterPipe start={[-8, 1.5, -6]} end={[5, 1.5, -6]} radius={0.25} animateFlow={secondaryFlow} thermalMode={thermalMode} temperature="hot" />
-                
                 <WaterPipe start={[5.3, 1.5, -6]} end={[10, 1.5, -6]} radius={0.25} animateFlow={secondaryFlow} thermalMode={thermalMode} temperature="hot" />
                 <WaterPipe start={[10, 1.5, -6]} end={[10, 5, -6]} radius={0.25} animateFlow={secondaryFlow} thermalMode={thermalMode} temperature="hot" />
 
@@ -477,3 +887,4 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
         </Canvas>
     );
 }
+

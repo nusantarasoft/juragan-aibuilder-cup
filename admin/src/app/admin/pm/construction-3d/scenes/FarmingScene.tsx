@@ -1267,6 +1267,506 @@ function DirtPath() {
   );
 }
 
+// ── River ────────────────────────────────────────────────────────
+function River() {
+  const waterRef = useRef<THREE.Mesh>(null!);
+  const riverPoints = useMemo(() => [
+    new THREE.Vector3(-30, 0.08, 20),
+    new THREE.Vector3(-18, 0.08, 22),
+    new THREE.Vector3(-6, 0.08, 19),
+    new THREE.Vector3(6, 0.08, 21),
+    new THREE.Vector3(18, 0.08, 18),
+    new THREE.Vector3(30, 0.08, 20),
+  ], []);
+
+  const riverShape = useMemo(() => {
+    const curve = new THREE.CatmullRomCurve3(riverPoints);
+    const pts = curve.getPoints(60);
+    const positions: number[] = [];
+    const uvs: number[] = [];
+    const indices: number[] = [];
+    const width = 3.5;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
+      const t = i / (pts.length - 1);
+      // Get tangent for perpendicular offset
+      const tangent = curve.getTangentAt(t);
+      const perp = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+      positions.push(p.x + perp.x * width, p.y, p.z + perp.z * width);
+      positions.push(p.x - perp.x * width, p.y, p.z - perp.z * width);
+      uvs.push(0, t * 6);
+      uvs.push(1, t * 6);
+      if (i < pts.length - 1) {
+        const a = i * 2, b = i * 2 + 1, c = (i + 1) * 2, d = (i + 1) * 2 + 1;
+        indices.push(a, b, c, b, d, c);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }, [riverPoints]);
+
+  useFrame((_, delta) => {
+    if (waterRef.current) {
+      const uvAttr = waterRef.current.geometry.getAttribute('uv');
+      for (let i = 0; i < uvAttr.count; i++) {
+        uvAttr.setY(i, uvAttr.getY(i) + delta * 0.4);
+      }
+      uvAttr.needsUpdate = true;
+    }
+  });
+
+  return (
+    <group>
+      {/* River water surface */}
+      <mesh ref={waterRef} geometry={riverShape}>
+        <meshStandardMaterial
+          color="#2288DD"
+          transparent
+          opacity={0.65}
+          roughness={0.15}
+          metalness={0.3}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      {/* River bed (darker underneath) */}
+      <mesh geometry={riverShape} position={[0, -0.05, 0]}>
+        <meshStandardMaterial color="#3B6B4A" roughness={0.9} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Bank stones scattered along the river */}
+      {riverPoints.map((p, i) => (
+        <group key={i}>
+          <mesh position={[p.x, 0.12, p.z + 3.8]} scale={[0.8, 0.3, 0.6]}>
+            <dodecahedronGeometry args={[0.5, 0]} />
+            <meshStandardMaterial color="#7A7A6E" roughness={0.95} />
+          </mesh>
+          <mesh position={[p.x + 1, 0.1, p.z - 3.9]} scale={[0.6, 0.25, 0.5]}>
+            <dodecahedronGeometry args={[0.4, 0]} />
+            <meshStandardMaterial color="#8A8A7E" roughness={0.9} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+// ── Rolling Hills ───────────────────────────────────────────────
+function RollingHills() {
+  const hills = useMemo(() => [
+    { pos: [-28, -1.2, -20] as [number, number, number], scale: [12, 3, 10] as [number, number, number], color: "#3A7D28" },
+    { pos: [28, -1.5, -18] as [number, number, number], scale: [10, 2.5, 9] as [number, number, number], color: "#4A8D38" },
+    { pos: [-25, -1.0, 10] as [number, number, number], scale: [8, 2, 7] as [number, number, number], color: "#3D8030" },
+    { pos: [30, -1.3, 8] as [number, number, number], scale: [11, 2.8, 8] as [number, number, number], color: "#358025" },
+    { pos: [0, -1.8, -28] as [number, number, number], scale: [15, 3.5, 8] as [number, number, number], color: "#3C7D2E" },
+    { pos: [-15, -1.5, -25] as [number, number, number], scale: [9, 2.2, 7] as [number, number, number], color: "#468D3A" },
+    { pos: [15, -1.2, 28] as [number, number, number], scale: [10, 2, 9] as [number, number, number], color: "#3B8028" },
+    { pos: [-8, -1.6, 28] as [number, number, number], scale: [12, 2.6, 7] as [number, number, number], color: "#428530" },
+  ], []);
+
+  return (
+    <group>
+      {hills.map((h, i) => (
+        <mesh key={i} position={h.pos} scale={h.scale}>
+          <sphereGeometry args={[1, 16, 12]} />
+          <meshStandardMaterial color={h.color} roughness={0.9} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// ── Orchard ─────────────────────────────────────────────────────
+function Orchard() {
+  const trees = useMemo(() => {
+    const arr: { x: number; z: number; fruitColor: string; canopyScale: number }[] = [];
+    const fruitColors = ["#CC3333", "#FF8C00", "#CCCC00", "#CC3366"];
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 4; col++) {
+        arr.push({
+          x: col * 3.2,
+          z: row * 3.5,
+          fruitColor: fruitColors[(row * 4 + col) % fruitColors.length],
+          canopyScale: 0.9 + Math.random() * 0.3,
+        });
+      }
+    }
+    return arr;
+  }, []);
+
+  return (
+    <group position={[18, 0, -8]}>
+      {trees.map((t, i) => (
+        <group key={i} position={[t.x, 0, t.z]}>
+          {/* Trunk */}
+          <mesh position={[0, 1.2, 0]}>
+            <cylinderGeometry args={[0.15, 0.2, 2.4, 8]} />
+            <meshStandardMaterial color="#5C3A1E" roughness={0.9} />
+          </mesh>
+          {/* Main canopy */}
+          <mesh position={[0, 2.8, 0]} scale={t.canopyScale}>
+            <dodecahedronGeometry args={[1.1, 1]} />
+            <meshStandardMaterial color="#2E7D32" roughness={0.85} />
+          </mesh>
+          {/* Fruit-coloured highlight canopy */}
+          <mesh position={[0.3, 3.0, 0.2]} scale={t.canopyScale * 0.65}>
+            <dodecahedronGeometry args={[0.85, 1]} />
+            <meshStandardMaterial color={t.fruitColor} roughness={0.7} />
+          </mesh>
+          {/* Shadow blob on ground */}
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+            <ringGeometry args={[0, 1.2, 12]} />
+            <meshStandardMaterial color="#1A3D0C" transparent opacity={0.25} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+// ── Fish Pond ───────────────────────────────────────────────────
+function FishPond() {
+  const waterRef = useRef<THREE.Mesh>(null!);
+
+  useFrame(({ clock }) => {
+    if (waterRef.current) {
+      const mat = waterRef.current.material as THREE.MeshStandardMaterial;
+      mat.opacity = 0.55 + Math.sin(clock.getElapsedTime() * 1.5) * 0.12;
+    }
+  });
+
+  const stones = useMemo(() => {
+    const arr: { angle: number; scaleX: number; scaleZ: number }[] = [];
+    for (let i = 0; i < 18; i++) {
+      arr.push({
+        angle: (i / 18) * Math.PI * 2,
+        scaleX: 0.3 + Math.random() * 0.25,
+        scaleZ: 0.25 + Math.random() * 0.2,
+      });
+    }
+    return arr;
+  }, []);
+
+  return (
+    <group position={[-16, 0, 12]}>
+      {/* Water surface */}
+      <mesh ref={waterRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]}>
+        <cylinderGeometry args={[3, 3, 0.08, 32]} />
+        <meshStandardMaterial
+          color="#2288DD"
+          transparent
+          opacity={0.6}
+          roughness={0.1}
+          metalness={0.35}
+        />
+      </mesh>
+      {/* Pond bed */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+        <cylinderGeometry args={[3.1, 3.1, 0.1, 32]} />
+        <meshStandardMaterial color="#2A5040" roughness={0.95} />
+      </mesh>
+      {/* Stone rim (torus) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.15, 0]}>
+        <torusGeometry args={[3.15, 0.3, 8, 28]} />
+        <meshStandardMaterial color="#7A7A6E" roughness={0.9} />
+      </mesh>
+      {/* Decorative stones on rim */}
+      {stones.map((s, i) => (
+        <mesh
+          key={i}
+          position={[
+            Math.cos(s.angle) * 3.15,
+            0.25,
+            Math.sin(s.angle) * 3.15,
+          ]}
+          scale={[s.scaleX, 0.2, s.scaleZ]}
+        >
+          <dodecahedronGeometry args={[0.5, 0]} />
+          <meshStandardMaterial color={i % 2 === 0 ? "#8A8A7E" : "#6E6E64"} roughness={0.95} />
+        </mesh>
+      ))}
+      {/* Lily pads */}
+      {[[-0.8, 0.09, -0.5], [0.6, 0.09, 0.9], [-0.3, 0.09, 1.2], [1.1, 0.09, -0.7]].map((p, i) => (
+        <mesh key={`lily-${i}`} rotation={[-Math.PI / 2, 0, i * 1.2]} position={p as [number, number, number]}>
+          <ringGeometry args={[0, 0.25, 8]} />
+          <meshStandardMaterial color="#3A8A3A" roughness={0.8} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// ── Flower Meadow ───────────────────────────────────────────────
+function FlowerMeadow() {
+  const flowers = useMemo(() => {
+    const colors = ["#FF69B4", "#FFD700", "#FF4444", "#9B59B6", "#FF8C69", "#E74C9A"];
+    const arr: { x: number; z: number; color: string; height: number; size: number }[] = [];
+    // Pseudo-random with a seed-like approach for consistency
+    for (let i = 0; i < 40; i++) {
+      const angle = (i / 40) * Math.PI * 2 + (i * 137.5 * Math.PI) / 180;
+      const radius = 2 + (i % 7) * 1.2 + Math.sin(i * 3.7) * 1.5;
+      arr.push({
+        x: Math.cos(angle) * radius,
+        z: Math.sin(angle) * radius,
+        color: colors[i % colors.length],
+        height: 0.25 + Math.abs(Math.sin(i * 2.3)) * 0.2,
+        size: 0.06 + Math.abs(Math.cos(i * 1.7)) * 0.05,
+      });
+    }
+    return arr;
+  }, []);
+
+  return (
+    <group position={[-10, 0, -18]}>
+      {flowers.map((f, i) => (
+        <group key={i} position={[f.x, 0, f.z]}>
+          {/* Stem */}
+          <mesh position={[0, f.height / 2, 0]}>
+            <cylinderGeometry args={[0.015, 0.02, f.height, 4]} />
+            <meshStandardMaterial color="#228B22" roughness={0.8} />
+          </mesh>
+          {/* Flower head */}
+          <mesh position={[0, f.height + f.size, 0]}>
+            <sphereGeometry args={[f.size, 8, 6]} />
+            <meshStandardMaterial color={f.color} roughness={0.5} />
+          </mesh>
+          {/* Center dot */}
+          <mesh position={[0, f.height + f.size + 0.01, 0]}>
+            <sphereGeometry args={[f.size * 0.4, 6, 4]} />
+            <meshStandardMaterial color="#FFE066" roughness={0.6} />
+          </mesh>
+        </group>
+      ))}
+      {/* Grass patch under meadow */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, 0]}>
+        <planeGeometry args={[14, 14]} />
+        <meshStandardMaterial color="#3B8530" roughness={0.95} />
+      </mesh>
+    </group>
+  );
+}
+
+// ── Beehive Area ────────────────────────────────────────────────
+function BeehiveArea() {
+  return (
+    <group position={[22, 0, -5]}>
+      {/* Wooden platform */}
+      <mesh position={[0, 0.1, 0]}>
+        <boxGeometry args={[3.5, 0.12, 1.8]} />
+        <meshStandardMaterial color="#8B6914" roughness={0.85} />
+      </mesh>
+      {/* Platform legs */}
+      {[[-1.5, 0, -0.7], [1.5, 0, -0.7], [-1.5, 0, 0.7], [1.5, 0, 0.7]].map((p, i) => (
+        <mesh key={i} position={[p[0], 0.05, p[2]]}>
+          <cylinderGeometry args={[0.06, 0.06, 0.16, 6]} />
+          <meshStandardMaterial color="#5C3317" roughness={0.9} />
+        </mesh>
+      ))}
+      {/* Three beehive boxes */}
+      {[-1, 0, 1].map((offset, i) => (
+        <group key={i} position={[offset * 1.05, 0.16, 0]}>
+          {/* Bottom box */}
+          <mesh position={[0, 0.25, 0]}>
+            <boxGeometry args={[0.7, 0.5, 0.7]} />
+            <meshStandardMaterial color="#D4A94C" roughness={0.75} />
+          </mesh>
+          {/* Top box (super) */}
+          <mesh position={[0, 0.6, 0]}>
+            <boxGeometry args={[0.72, 0.2, 0.72]} />
+            <meshStandardMaterial color="#C99A3C" roughness={0.7} />
+          </mesh>
+          {/* Roof cap */}
+          <mesh position={[0, 0.78, 0]}>
+            <boxGeometry args={[0.8, 0.06, 0.8]} />
+            <meshStandardMaterial color="#7A5B2E" roughness={0.8} />
+          </mesh>
+          {/* Entrance hole */}
+          <mesh position={[0, 0.12, 0.36]}>
+            <boxGeometry args={[0.15, 0.08, 0.03]} />
+            <meshStandardMaterial color="#2A1A0A" roughness={0.95} />
+          </mesh>
+          {/* Landing board */}
+          <mesh position={[0, 0.08, 0.45]} rotation={[0.2, 0, 0]}>
+            <boxGeometry args={[0.18, 0.02, 0.12]} />
+            <meshStandardMaterial color="#B8922E" roughness={0.8} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+// ── Chicken Coop Yard ───────────────────────────────────────────
+function ChickenCoopYard() {
+  return (
+    <group position={[-14, 0, -10]}>
+      {/* Coop body */}
+      <mesh position={[0, 0.8, 0]}>
+        <boxGeometry args={[2.5, 1.6, 2]} />
+        <meshStandardMaterial color="#8B5E3C" roughness={0.85} />
+      </mesh>
+      {/* Pitched roof - left slope */}
+      <mesh position={[-0.55, 1.85, 0]} rotation={[0, 0, 0.45]}>
+        <boxGeometry args={[1.5, 0.08, 2.3]} />
+        <meshStandardMaterial color="#A52A2A" roughness={0.8} />
+      </mesh>
+      {/* Pitched roof - right slope */}
+      <mesh position={[0.55, 1.85, 0]} rotation={[0, 0, -0.45]}>
+        <boxGeometry args={[1.5, 0.08, 2.3]} />
+        <meshStandardMaterial color="#A52A2A" roughness={0.8} />
+      </mesh>
+      {/* Door */}
+      <mesh position={[0, 0.5, 1.01]}>
+        <boxGeometry args={[0.5, 0.7, 0.04]} />
+        <meshStandardMaterial color="#5C3317" roughness={0.9} />
+      </mesh>
+      {/* Door handle */}
+      <mesh position={[0.15, 0.5, 1.04]}>
+        <sphereGeometry args={[0.04, 6, 4]} />
+        <meshStandardMaterial color="#888" metalness={0.7} roughness={0.3} />
+      </mesh>
+      {/* Window */}
+      <mesh position={[-0.7, 1.0, 1.01]}>
+        <boxGeometry args={[0.35, 0.3, 0.04]} />
+        <meshStandardMaterial color="#88BBDD" roughness={0.3} metalness={0.1} />
+      </mesh>
+      {/* Nesting box on side */}
+      <mesh position={[1.4, 0.6, 0]}>
+        <boxGeometry args={[0.4, 0.5, 0.8]} />
+        <meshStandardMaterial color="#7A4E2C" roughness={0.85} />
+      </mesh>
+      {/* Nesting box entrance */}
+      <mesh position={[1.61, 0.5, 0]}>
+        <cylinderGeometry args={[0.1, 0.1, 0.04, 8]} />
+        <meshStandardMaterial color="#2A1A0A" roughness={0.95} />
+      </mesh>
+      {/* Fenced yard area */}
+      {/* Front fence */}
+      <mesh position={[0, 0.3, 3]}>
+        <boxGeometry args={[5, 0.6, 0.06]} />
+        <meshStandardMaterial color="#A0824A" roughness={0.85} />
+      </mesh>
+      {/* Left fence */}
+      <mesh position={[-2.5, 0.3, 1.5]}>
+        <boxGeometry args={[0.06, 0.6, 3]} />
+        <meshStandardMaterial color="#A0824A" roughness={0.85} />
+      </mesh>
+      {/* Right fence */}
+      <mesh position={[2.5, 0.3, 1.5]}>
+        <boxGeometry args={[0.06, 0.6, 3]} />
+        <meshStandardMaterial color="#A0824A" roughness={0.85} />
+      </mesh>
+      {/* Fence posts */}
+      {[[-2.5, 3], [2.5, 3], [-2.5, 1.5], [2.5, 1.5], [0, 3]].map((p, i) => (
+        <mesh key={i} position={[p[0], 0.35, p[1]]}>
+          <cylinderGeometry args={[0.05, 0.05, 0.8, 6]} />
+          <meshStandardMaterial color="#8B6914" roughness={0.9} />
+        </mesh>
+      ))}
+      {/* Chicken yard ground (sand / straw) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, 1.8]}>
+        <planeGeometry args={[5, 3.6]} />
+        <meshStandardMaterial color="#C4A86A" roughness={0.95} />
+      </mesh>
+      {/* Water trough */}
+      <mesh position={[1.8, 0.15, 2.2]}>
+        <boxGeometry args={[0.6, 0.2, 0.3]} />
+        <meshStandardMaterial color="#888" metalness={0.4} roughness={0.6} />
+      </mesh>
+      {/* Feed trough */}
+      <mesh position={[-1.5, 0.12, 2.0]}>
+        <cylinderGeometry args={[0.2, 0.15, 0.18, 8]} />
+        <meshStandardMaterial color="#9B7B5A" roughness={0.9} />
+      </mesh>
+    </group>
+  );
+}
+
+// ── Water Well ──────────────────────────────────────────────────
+function WaterWell() {
+  const bucketRef = useRef<THREE.Group>(null!);
+
+  useFrame(({ clock }) => {
+    if (bucketRef.current) {
+      bucketRef.current.position.y = 1.0 + Math.sin(clock.getElapsedTime() * 0.5) * 0.3;
+    }
+  });
+
+  return (
+    <group position={[12, 0, 8]}>
+      {/* Well cylinder (stone) */}
+      <mesh position={[0, 0.5, 0]}>
+        <cylinderGeometry args={[0.8, 0.9, 1.0, 16]} />
+        <meshStandardMaterial color="#7A7A6E" roughness={0.95} />
+      </mesh>
+      {/* Well inner (dark hole) */}
+      <mesh position={[0, 1.01, 0]}>
+        <cylinderGeometry args={[0.65, 0.65, 0.1, 16]} />
+        <meshStandardMaterial color="#111118" roughness={0.9} />
+      </mesh>
+      {/* Well rim */}
+      <mesh position={[0, 1.05, 0]}>
+        <torusGeometry args={[0.82, 0.1, 8, 20]} />
+        <meshStandardMaterial color="#6A6A60" roughness={0.9} />
+      </mesh>
+      {/* Left support post */}
+      <mesh position={[-0.7, 1.7, 0]}>
+        <boxGeometry args={[0.1, 2.0, 0.1]} />
+        <meshStandardMaterial color="#5C3317" roughness={0.85} />
+      </mesh>
+      {/* Right support post */}
+      <mesh position={[0.7, 1.7, 0]}>
+        <boxGeometry args={[0.1, 2.0, 0.1]} />
+        <meshStandardMaterial color="#5C3317" roughness={0.85} />
+      </mesh>
+      {/* Roof crossbeam */}
+      <mesh position={[0, 2.7, 0]}>
+        <boxGeometry args={[1.7, 0.08, 0.08]} />
+        <meshStandardMaterial color="#5C3317" roughness={0.85} />
+      </mesh>
+      {/* Small pitched roof - left */}
+      <mesh position={[-0.35, 2.95, 0]} rotation={[0, 0, 0.5]}>
+        <boxGeometry args={[1.0, 0.06, 1.1]} />
+        <meshStandardMaterial color="#8B4513" roughness={0.8} />
+      </mesh>
+      {/* Small pitched roof - right */}
+      <mesh position={[0.35, 2.95, 0]} rotation={[0, 0, -0.5]}>
+        <boxGeometry args={[1.0, 0.06, 1.1]} />
+        <meshStandardMaterial color="#8B4513" roughness={0.8} />
+      </mesh>
+      {/* Crank axle */}
+      <mesh position={[0, 2.5, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.04, 0.04, 1.5, 8]} />
+        <meshStandardMaterial color="#444" metalness={0.6} roughness={0.4} />
+      </mesh>
+      {/* Crank handle */}
+      <mesh position={[0.85, 2.5, 0]}>
+        <boxGeometry args={[0.06, 0.3, 0.06]} />
+        <meshStandardMaterial color="#444" metalness={0.6} roughness={0.4} />
+      </mesh>
+      {/* Rope */}
+      <mesh position={[0, 1.8, 0]}>
+        <cylinderGeometry args={[0.015, 0.015, 1.5, 4]} />
+        <meshStandardMaterial color="#8B7D5A" roughness={0.9} />
+      </mesh>
+      {/* Bucket (animated) */}
+      <group ref={bucketRef} position={[0, 1.0, 0]}>
+        <mesh>
+          <cylinderGeometry args={[0.12, 0.1, 0.2, 8]} />
+          <meshStandardMaterial color="#6A5A48" roughness={0.85} />
+        </mesh>
+        {/* Bucket handle */}
+        <mesh position={[0, 0.12, 0]} rotation={[0, 0, 0]}>
+          <torusGeometry args={[0.1, 0.012, 6, 12, Math.PI]} />
+          <meshStandardMaterial color="#555" metalness={0.5} roughness={0.5} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
 // ═════════════════════════════════════════════════════════════════
 //  MAIN SCENE
 // ═════════════════════════════════════════════════════════════════
@@ -1327,6 +1827,16 @@ export default function FarmingScene({ progress, selectedPhase, xray, config }: 
       <CompostArea />
       <DirtPath />
       {hasGreenhouse && <Greenhouse />}
+
+      {/* ── Landscape features ── */}
+      <Orchard />
+      <FishPond />
+      <FlowerMeadow />
+      <BeehiveArea />
+      <ChickenCoopYard />
+      <WaterWell />
+      <River />
+      <RollingHills />
 
       {/* ── Phase layers ── */}
       <LandPrep

@@ -46,6 +46,9 @@ export interface SceneConfig {
   hasSilo?: boolean;
   cropType?: "grain" | "vegetable" | "fruit" | "rice";
   hasGreenhouse?: boolean;
+  hasOrchard?: boolean;
+  hasPond?: boolean;
+  season?: "spring" | "summer" | "fall" | "winter";
   // Manufacturing
   machineCount?: number;
   conveyorLength?: number;

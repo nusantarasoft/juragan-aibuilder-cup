@@ -66,6 +66,8 @@ interface DcimState {
     viewMode: 'Normal' | 'Thermal' | 'Power' | 'Utilization';
     editMode: boolean;
     snapToGrid: boolean;
+    transformMode: 'translate' | 'rotate';
+    setTransformMode: (mode: 'translate' | 'rotate') => void;
     setRacks: (racks: RackData[]) => void;
     setPods: (pods: PodData[]) => void;
     setSelectedRackId: (id: string | null) => void;
@@ -212,6 +214,8 @@ export const useDcimStore = create<DcimState>((set) => ({
     viewMode: 'Normal',
     editMode: false,
     snapToGrid: true,
+    transformMode: 'translate',
+    setTransformMode: (transformMode) => set({ transformMode }),
     setRacks: (racks) => set({ racks }),
     setPods: (pods) => set({ pods }),
     setSelectedRackId: (id) => set({ selectedRackId: id, selectedServerId: null }), // clear server selection when changing rack

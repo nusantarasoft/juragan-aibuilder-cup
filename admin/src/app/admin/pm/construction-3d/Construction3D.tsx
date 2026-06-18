@@ -1,4 +1,5 @@
 "use client";
+import Link from 'next/link';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
@@ -22,7 +23,8 @@ import {
   FormatPainterOutlined, ExpandOutlined, CloudOutlined, ExpandAltOutlined,
   DatabaseOutlined, SyncOutlined, UploadOutlined,
   DragOutlined, EditOutlined, SaveOutlined, FolderOpenOutlined, DeleteOutlined, InfoCircleOutlined,
-  CloseOutlined, PlusOutlined, DollarOutlined, HeatMapOutlined, LinkOutlined, ArrowLeftOutlined, FileTextOutlined, FastForwardOutlined
+  CloseOutlined, PlusOutlined, DollarOutlined, HeatMapOutlined, LinkOutlined, ArrowLeftOutlined, FileTextOutlined, FastForwardOutlined,
+  DownloadOutlined, CloudDownloadOutlined, CalculatorOutlined, BorderOutlined, RadarChartOutlined, UndoOutlined
 } from "@ant-design/icons";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Html, TransformControls, Sky, Stars, Environment, ContactShadows, Grid, Line, Instances, Instance, Text, SoftShadows, Outlines } from "@react-three/drei";
@@ -47,39 +49,88 @@ import { CADDrawingTool } from "./components/3d/CADDrawingTool";
 
 const { Text: AntText, Title } = Typography;
 
-export const CATALOG_ITEMS = [
-  // Construction
-  { id: "crane", name: "Construction Crane", icon: "ðŸ—ï¸", category: "Construction", image: "https://loremflickr.com/150/150/crane" },
-  { id: "bulldozer", name: "Bulldozer", icon: "ðŸšœ", category: "Construction", image: "https://loremflickr.com/150/150/bulldozer" },
-  { id: "dumpster", name: "Dumpster", icon: "ðŸ—‘ï¸", category: "Construction", image: "https://loremflickr.com/150/150/dumpster" },
-  { id: "cone", name: "Traffic Cone", icon: "ðŸš§", category: "Construction", image: "https://loremflickr.com/150/150/traffic_cone" },
-  { id: "concrete_mixer", name: "Concrete Mixer", icon: "ðŸ›¢ï¸", category: "Construction", image: "https://loremflickr.com/150/150/concrete_mixer" },
-  { id: "dump_truck", name: "Dump Truck", icon: "ðŸšš", category: "Construction", image: "https://loremflickr.com/150/150/dump_truck" },
-  { id: "excavator", name: "Excavator", icon: "ðŸšœ", category: "Construction", image: "https://loremflickr.com/150/150/excavator" },
-  // Farming
-  { id: "tractor", name: "Tractor", icon: "ðŸšœ", category: "Farming", image: "https://loremflickr.com/150/150/tractor" },
-  { id: "silo", name: "Silo", icon: "ðŸ­", category: "Farming", image: "https://loremflickr.com/150/150/silo" },
-  { id: "windmill", name: "Windmill", icon: "ðŸŒ¬ï¸", category: "Farming", image: "https://loremflickr.com/150/150/windmill" },
-  { id: "barn", name: "Barn", icon: "ðŸ›–", category: "Farming", image: "https://loremflickr.com/150/150/barn" },
-  // Manufacturing
-  { id: "robotic_arm", name: "Robotic Arm", icon: "ðŸ¦¾", category: "Manufacturing", image: "https://loremflickr.com/150/150/robotic_arm" },
-  { id: "conveyor_belt", name: "Conveyor Belt", icon: "ðŸ›¤ï¸", category: "Manufacturing", image: "https://loremflickr.com/150/150/conveyor_belt" },
-  { id: "forklift", name: "Forklift", icon: "ðŸ›»", category: "Manufacturing", image: "https://loremflickr.com/150/150/forklift" },
-  { id: "pallet", name: "Pallet Stack", icon: "ðŸ“¦", category: "Manufacturing", image: "https://loremflickr.com/150/150/pallet" },
-  // General Amenities
-  { id: "bench", name: "Park Bench", icon: "ðŸª‘", category: "Amenities", image: "https://loremflickr.com/150/150/park_bench" },
-  { id: "streetlight", name: "Street Light", icon: "ðŸ’¡", category: "Amenities", image: "https://loremflickr.com/150/150/streetlight" },
-  { id: "tree", name: "Tree", icon: "ðŸŒ³", category: "Landscaping", image: "https://loremflickr.com/150/150/tree" },
-  { id: "bush", name: "Bush", icon: "ðŸŒ¿", category: "Landscaping", image: "https://loremflickr.com/150/150/bush" },
-  // Healthcare
-  { id: "ambulance", name: "Ambulance", icon: "ðŸš‘", category: "Healthcare", image: "https://loremflickr.com/150/150/ambulance" },
-  { id: "medical_bed", name: "Medical Bed", icon: "ðŸ›ï¸", category: "Healthcare", image: "https://loremflickr.com/150/150/medical_bed" },
-  { id: "mri_machine", name: "MRI Machine", icon: "ðŸ§²", category: "Healthcare", image: "https://loremflickr.com/150/150/mri_machine" },
-  // Education
-  { id: "school_bus", name: "School Bus", icon: "ðŸšŒ", category: "Education", image: "https://loremflickr.com/150/150/school_bus" },
-  { id: "desk", name: "School Desk", icon: "ðŸª‘", category: "Education", image: "https://loremflickr.com/150/150/school_desk" },
-  { id: "whiteboard", name: "Whiteboard", icon: "ðŸ“‹", category: "Education", image: "https://loremflickr.com/150/150/whiteboard" },
+const CATEGORY_GRADIENTS: Record<string, string> = {
+  Construction: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+  Farming: "linear-gradient(135deg, #22c55e 0%, #15803d 100%)",
+  Manufacturing: "linear-gradient(135deg, #6366f1 0%, #4338ca 100%)",
+  Amenities: "linear-gradient(135deg, #ec4899 0%, #be185d 100%)",
+  Landscaping: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
+  Healthcare: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
+  Education: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+  Equipment: "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
+  Sensors: "linear-gradient(135deg, #06b6d4 0%, #0e7490 100%)",
+  Collaboration: "linear-gradient(135deg, #f97316 0%, #c2410c 100%)",
+};
+export const CATALOG_ITEMS: { id: string; name: string; icon: string; category: string; cost: number }[] = [
+  { id: "crane", name: "Construction Crane", icon: "\u{1F3D7}\uFE0F", category: "Construction", cost: 45000 },
+  { id: "bulldozer", name: "Bulldozer", icon: "\u{1F69C}", category: "Construction", cost: 32000 },
+  { id: "dumpster", name: "Dumpster", icon: "\u{1F5D1}\uFE0F", category: "Construction", cost: 800 },
+  { id: "cone", name: "Traffic Cone", icon: "\u{1F6A7}", category: "Construction", cost: 25 },
+  { id: "concrete_mixer", name: "Concrete Mixer", icon: "\u{1F6E2}\uFE0F", category: "Construction", cost: 18000 },
+  { id: "dump_truck", name: "Dump Truck", icon: "\u{1F69A}", category: "Construction", cost: 55000 },
+  { id: "excavator", name: "Excavator", icon: "\u26CF\uFE0F", category: "Construction", cost: 60000 },
+  { id: "tractor", name: "Tractor", icon: "\u{1F69C}", category: "Farming", cost: 28000 },
+  { id: "silo", name: "Silo", icon: "\u{1F3ED}", category: "Farming", cost: 15000 },
+  { id: "windmill", name: "Windmill", icon: "\u{1F32C}\uFE0F", category: "Farming", cost: 12000 },
+  { id: "barn", name: "Barn", icon: "\u{1F6D6}", category: "Farming", cost: 22000 },
+  { id: "chicken_coop", name: "Chicken Coop", icon: "\u{1F414}", category: "Farming", cost: 3500 },
+  { id: "water_well", name: "Water Well", icon: "\u{1FAA3}", category: "Farming", cost: 4200 },
+  { id: "hay_bale", name: "Hay Bale", icon: "\u{1F33E}", category: "Farming", cost: 120 },
+  { id: "scarecrow", name: "Scarecrow", icon: "\u{1F383}", category: "Farming", cost: 80 },
+  { id: "cow", name: "Cow", icon: "\u{1F404}", category: "Farming", cost: 2500 },
+  { id: "pig", name: "Pig", icon: "\u{1F437}", category: "Farming", cost: 800 },
+  { id: "sheep", name: "Sheep", icon: "\u{1F411}", category: "Farming", cost: 600 },
+  { id: "horse", name: "Horse", icon: "\u{1F434}", category: "Farming", cost: 5000 },
+  { id: "water_tank", name: "Water Tank", icon: "\u{1F4A7}", category: "Farming", cost: 6000 },
+  { id: "grain_bin", name: "Grain Bin", icon: "\u{1F33D}", category: "Farming", cost: 9000 },
+  { id: "robotic_arm", name: "Robotic Arm", icon: "\u{1F9BE}", category: "Manufacturing", cost: 75000 },
+  { id: "conveyor_belt", name: "Conveyor Belt", icon: "\u{1F6E4}\uFE0F", category: "Manufacturing", cost: 12000 },
+  { id: "forklift", name: "Forklift", icon: "\u{1F6FB}", category: "Manufacturing", cost: 25000 },
+  { id: "pallet", name: "Pallet Stack", icon: "\u{1F4E6}", category: "Manufacturing", cost: 150 },
+  { id: "tree", name: "Tree", icon: "\u{1F333}", category: "Landscaping", cost: 350 },
+  { id: "bush", name: "Bush", icon: "\u{1F33F}", category: "Landscaping", cost: 120 },
+  { id: "flower_bed", name: "Flower Bed", icon: "\u{1F338}", category: "Landscaping", cost: 450 },
+  { id: "pond", name: "Pond", icon: "\u{1F3CA}", category: "Landscaping", cost: 8000 },
+  { id: "stone_path", name: "Stone Path", icon: "\u{1FAA8}", category: "Landscaping", cost: 600 },
+  { id: "garden_fence", name: "Garden Fence", icon: "\u{1F3E1}", category: "Landscaping", cost: 200 },
+  { id: "flower_tree", name: "Cherry Blossom", icon: "\u{1F338}", category: "Landscaping", cost: 900 },
+  { id: "hedge", name: "Hedge", icon: "\u{1F332}", category: "Landscaping", cost: 180 },
+  { id: "rock_formation", name: "Rock Formation", icon: "\u{1FAA8}", category: "Landscaping", cost: 500 },
+  { id: "bridge", name: "Footbridge", icon: "\u{1F309}", category: "Landscaping", cost: 3500 },
+  { id: "bench", name: "Park Bench", icon: "\u{1FA91}", category: "Amenities", cost: 400 },
+  { id: "streetlight", name: "Street Light", icon: "\u{1F4A1}", category: "Amenities", cost: 1200 },
+  { id: "fountain", name: "Fountain", icon: "\u26F2", category: "Amenities", cost: 7500 },
+  { id: "gazebo", name: "Gazebo", icon: "\u{1F3DB}\uFE0F", category: "Amenities", cost: 5500 },
+  { id: "ambulance", name: "Ambulance", icon: "\u{1F691}", category: "Healthcare", cost: 65000 },
+  { id: "medical_bed", name: "Medical Bed", icon: "\u{1F6CF}\uFE0F", category: "Healthcare", cost: 8000 },
+  { id: "mri_machine", name: "MRI Machine", icon: "\u{1F9F2}", category: "Healthcare", cost: 250000 },
+  { id: "school_bus", name: "School Bus", icon: "\u{1F68C}", category: "Education", cost: 42000 },
+  { id: "desk", name: "School Desk", icon: "\u{1FA91}", category: "Education", cost: 250 },
+  { id: "whiteboard", name: "Whiteboard", icon: "\u{1F4CB}", category: "Education", cost: 600 },
+  { id: "hvac_unit", name: "HVAC Unit", icon: "\u2744\uFE0F", category: "Equipment", cost: 12000 },
+  { id: "generator", name: "Generator", icon: "\u26A1", category: "Equipment", cost: 45000 },
+  { id: "server_rack", name: "Server Rack", icon: "\u{1F5A5}\uFE0F", category: "Equipment", cost: 8500 },
+  { id: "iot_sensor", name: "IoT Sensor", icon: "\u{1F4E1}", category: "Sensors", cost: 150 },
+  { id: "rfi_pin", name: "RFI Marker", icon: "\u{1F4CD}", category: "Collaboration", cost: 0 },
 ];
+
+
+// ---------------------------------------------------------------
+// --  SUBMODULE INTEGRATION  --
+// ---------------------------------------------------------------
+
+const SubmoduleIntegration = () => (
+  <Collapse defaultActiveKey={['1']} ghost>
+    <Collapse.Panel header="Project Submodules" key="1">
+      <Space direction="vertical" style={{ width: '100%' }}>
+        <Link href="/dashboard/bim">BIM Coordination</Link>
+        <Link href="/dashboard/cost">5D Cost Estimation</Link>
+        <Link href="/dashboard/schedule">4D Scheduling</Link>
+        <Link href="/dashboard/safety">HSE Safety Portal</Link>
+      </Space>
+    </Collapse.Panel>
+  </Collapse>
+);
 
 // ---------------------------------------------------------------
 // --  GRAPHQL QUERIES  --
@@ -3035,6 +3086,53 @@ function GlobalClippingPlane({ y, enabled }: { y: number; enabled: boolean }) {
   return null;
 }
 
+// --- Smart Telemetry Overlay (SCADA/BMS Integration) ---
+function SmartTelemetryOverlay({ customObjects, visible }: { customObjects: PlacedObject[], visible: boolean }) {
+  if (!visible) return null;
+
+  return (
+    <>
+      {customObjects.map(obj => {
+        const catItem = CATALOG_ITEMS.find(c => c.id === obj.type);
+        if (catItem?.category !== "Equipment" && catItem?.category !== "Sensors") return null;
+
+        const isHVAC = obj.type === "hvac_unit";
+        const isGen = obj.type === "generator";
+        const isSensor = obj.type === "iot_sensor";
+
+        return (
+          <Html key={`telemetry-${obj.id}`} position={[obj.position[0], obj.position[1] + 4, obj.position[2]]} center style={{ pointerEvents: "none" }}>
+             <div style={{ background: "rgba(15,23,42,0.85)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: 8, color: "#fff", display: "flex", flexDirection: "column", gap: 4, width: 140, boxShadow: "0 8px 16px rgba(0,0,0,0.5)" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.8, textTransform: "uppercase", borderBottom: "1px solid rgba(255,255,255,0.2)", paddingBottom: 4, marginBottom: 2 }}>{catItem.name}</div>
+                {isHVAC && (
+                   <>
+                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}><span>Temp</span> <strong style={{ color: "#38bdf8" }}>{(68 + Math.random() * 4).toFixed(1)}°F</strong></div>
+                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}><span>Fan</span> <strong>{Math.floor(800 + Math.random() * 400)} RPM</strong></div>
+                   </>
+                )}
+                {isGen && (
+                   <>
+                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}><span>Load</span> <strong style={{ color: "#fbbf24" }}>{Math.floor(40 + Math.random() * 20)} kW</strong></div>
+                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}><span>Fuel</span> <strong>{Math.floor(70 + Math.random() * 10)}%</strong></div>
+                   </>
+                )}
+                {isSensor && (
+                   <>
+                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}><span>Air Qty</span> <strong style={{ color: "#4ade80" }}>Good</strong></div>
+                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}><span>Battery</span> <strong>98%</strong></div>
+                   </>
+                )}
+                {(!isHVAC && !isGen && !isSensor) && (
+                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}><span>Status</span> <strong style={{ color: "#4ade80" }}>Online</strong></div>
+                )}
+             </div>
+          </Html>
+        );
+      })}
+    </>
+  );
+}
+
 // --- Cost / Schedule Risk Heatmap Overlay ---
 function CostScheduleHeatmap({
   mode,
@@ -4174,6 +4272,200 @@ function CatalogItemRenderer({ type }: { type: string }) {
           <mesh position={[0, 1.4, 0]}><boxGeometry args={[1, 0.8, 1]} /><SmartMaterial color="#aab7b8" /></mesh>
         </group>
       );
+    // ─── Farming Animals ───────────────────────────
+    case "chicken_coop":
+      return (
+        <group>
+          <mesh position={[0, 0.6, 0]}><boxGeometry args={[2, 1.2, 1.5]} /><SmartMaterial color="#8B4513" roughness={0.9} /></mesh>
+          <mesh position={[-0.6, 1.5, 0]} rotation={[0, 0, 0.4]}><boxGeometry args={[1.4, 0.15, 1.6]} /><SmartMaterial color="#A0522D" /></mesh>
+          <mesh position={[0.6, 1.5, 0]} rotation={[0, 0, -0.4]}><boxGeometry args={[1.4, 0.15, 1.6]} /><SmartMaterial color="#A0522D" /></mesh>
+          <mesh position={[0, 0.3, 0.76]}><boxGeometry args={[0.4, 0.5, 0.02]} /><SmartMaterial color="#333" /></mesh>
+          <mesh position={[0, 0, 2]} rotation={[-Math.PI/2, 0, 0]}><planeGeometry args={[3, 2.5]} /><SmartMaterial color="#C2B280" transparent opacity={0.6} /></mesh>
+        </group>
+      );
+    case "water_well":
+      return (
+        <group>
+          <mesh position={[0, 0.5, 0]}><cylinderGeometry args={[0.8, 0.9, 1, 12]} /><SmartMaterial color="#808080" roughness={0.9} /></mesh>
+          <mesh position={[0, 0.3, 0]}><cylinderGeometry args={[0.6, 0.6, 0.6, 12]} /><SmartMaterial color="#333" /></mesh>
+          <mesh position={[-0.7, 1.5, 0]}><boxGeometry args={[0.1, 2, 0.1]} /><SmartMaterial color="#5c4033" /></mesh>
+          <mesh position={[0.7, 1.5, 0]}><boxGeometry args={[0.1, 2, 0.1]} /><SmartMaterial color="#5c4033" /></mesh>
+          <mesh position={[0, 2.6, 0]}><boxGeometry args={[1.6, 0.1, 0.8]} /><SmartMaterial color="#8B4513" /></mesh>
+          <mesh position={[0, 2.7, 0]} rotation={[0, 0, Math.PI/6]}><boxGeometry args={[1.2, 0.08, 0.9]} /><SmartMaterial color="#A0522D" /></mesh>
+        </group>
+      );
+    case "hay_bale":
+      return (
+        <group>
+          <mesh position={[0, 0.6, 0]} rotation={[Math.PI/2, 0, 0]}><cylinderGeometry args={[0.6, 0.6, 0.8, 12]} /><SmartMaterial color="#DAA520" roughness={1} /></mesh>
+        </group>
+      );
+    case "scarecrow":
+      return (
+        <group>
+          <mesh position={[0, 1.5, 0]}><cylinderGeometry args={[0.05, 0.08, 3, 6]} /><SmartMaterial color="#5c4033" /></mesh>
+          <mesh position={[0, 2.8, 0]}><sphereGeometry args={[0.3, 8, 8]} /><SmartMaterial color="#DEB887" /></mesh>
+          <mesh position={[0, 2.1, 0]}><boxGeometry args={[0.5, 0.8, 0.3]} /><SmartMaterial color="#8B0000" /></mesh>
+          <mesh position={[0, 2.1, 0]} rotation={[0, 0, Math.PI/2]}><boxGeometry args={[0.15, 1.4, 0.15]} /><SmartMaterial color="#5c4033" /></mesh>
+          <mesh position={[0, 3.2, 0]}><cylinderGeometry args={[0.4, 0.35, 0.2, 8]} /><SmartMaterial color="#654321" /></mesh>
+        </group>
+      );
+    case "cow":
+      return (
+        <group>
+          <mesh position={[0, 0.7, 0]}><boxGeometry args={[0.8, 0.7, 1.6]} /><SmartMaterial color="#f5f5f5" roughness={0.8} /></mesh>
+          <mesh position={[0, 0.7, 0.3]}><boxGeometry args={[0.6, 0.5, 0.4]} /><SmartMaterial color="#222" /></mesh>
+          <mesh position={[0, 0.9, 0.9]}><boxGeometry args={[0.45, 0.45, 0.4]} /><SmartMaterial color="#f5f5f5" /></mesh>
+          <mesh position={[-0.3, 0.2, 0.5]}><boxGeometry args={[0.15, 0.4, 0.15]} /><SmartMaterial color="#f5f5f5" /></mesh>
+          <mesh position={[0.3, 0.2, 0.5]}><boxGeometry args={[0.15, 0.4, 0.15]} /><SmartMaterial color="#f5f5f5" /></mesh>
+          <mesh position={[-0.3, 0.2, -0.5]}><boxGeometry args={[0.15, 0.4, 0.15]} /><SmartMaterial color="#f5f5f5" /></mesh>
+          <mesh position={[0.3, 0.2, -0.5]}><boxGeometry args={[0.15, 0.4, 0.15]} /><SmartMaterial color="#f5f5f5" /></mesh>
+        </group>
+      );
+    case "pig":
+      return (
+        <group>
+          <mesh position={[0, 0.45, 0]}><boxGeometry args={[0.6, 0.5, 1]} /><SmartMaterial color="#FFB6C1" roughness={0.7} /></mesh>
+          <mesh position={[0, 0.55, 0.55]}><boxGeometry args={[0.35, 0.35, 0.25]} /><SmartMaterial color="#FFB6C1" /></mesh>
+          <mesh position={[0, 0.55, 0.7]}><cylinderGeometry args={[0.1, 0.1, 0.05, 8]} /><SmartMaterial color="#FF69B4" /></mesh>
+          <mesh position={[-0.2, 0.15, 0.3]}><boxGeometry args={[0.1, 0.3, 0.1]} /><SmartMaterial color="#FFB6C1" /></mesh>
+          <mesh position={[0.2, 0.15, 0.3]}><boxGeometry args={[0.1, 0.3, 0.1]} /><SmartMaterial color="#FFB6C1" /></mesh>
+          <mesh position={[-0.2, 0.15, -0.3]}><boxGeometry args={[0.1, 0.3, 0.1]} /><SmartMaterial color="#FFB6C1" /></mesh>
+          <mesh position={[0.2, 0.15, -0.3]}><boxGeometry args={[0.1, 0.3, 0.1]} /><SmartMaterial color="#FFB6C1" /></mesh>
+        </group>
+      );
+    case "sheep":
+      return (
+        <group>
+          <mesh position={[0, 0.55, 0]}><dodecahedronGeometry args={[0.5]} /><SmartMaterial color="#f0f0f0" roughness={1} /></mesh>
+          <mesh position={[0, 0.55, 0.5]}><boxGeometry args={[0.25, 0.3, 0.25]} /><SmartMaterial color="#333" /></mesh>
+          <mesh position={[-0.2, 0.15, 0.2]}><boxGeometry args={[0.08, 0.3, 0.08]} /><SmartMaterial color="#333" /></mesh>
+          <mesh position={[0.2, 0.15, 0.2]}><boxGeometry args={[0.08, 0.3, 0.08]} /><SmartMaterial color="#333" /></mesh>
+          <mesh position={[-0.2, 0.15, -0.2]}><boxGeometry args={[0.08, 0.3, 0.08]} /><SmartMaterial color="#333" /></mesh>
+          <mesh position={[0.2, 0.15, -0.2]}><boxGeometry args={[0.08, 0.3, 0.08]} /><SmartMaterial color="#333" /></mesh>
+        </group>
+      );
+    case "horse":
+      return (
+        <group>
+          <mesh position={[0, 0.8, 0]}><boxGeometry args={[0.6, 0.7, 1.8]} /><SmartMaterial color="#8B4513" roughness={0.7} /></mesh>
+          <mesh position={[0, 1.3, 0.9]}><boxGeometry args={[0.35, 0.6, 0.5]} /><SmartMaterial color="#8B4513" /></mesh>
+          <mesh position={[0, 1.6, 1.1]}><boxGeometry args={[0.2, 0.25, 0.15]} /><SmartMaterial color="#8B4513" /></mesh>
+          <mesh position={[-0.25, 0.3, 0.6]}><boxGeometry args={[0.1, 0.6, 0.1]} /><SmartMaterial color="#5c4033" /></mesh>
+          <mesh position={[0.25, 0.3, 0.6]}><boxGeometry args={[0.1, 0.6, 0.1]} /><SmartMaterial color="#5c4033" /></mesh>
+          <mesh position={[-0.25, 0.3, -0.6]}><boxGeometry args={[0.1, 0.6, 0.1]} /><SmartMaterial color="#5c4033" /></mesh>
+          <mesh position={[0.25, 0.3, -0.6]}><boxGeometry args={[0.1, 0.6, 0.1]} /><SmartMaterial color="#5c4033" /></mesh>
+          <mesh position={[0, 0.8, -1.1]}><boxGeometry args={[0.05, 0.05, 0.5]} /><SmartMaterial color="#222" /></mesh>
+        </group>
+      );
+    case "water_tank":
+      return (
+        <group>
+          <mesh position={[0, 1.5, 0]}><cylinderGeometry args={[1.2, 1.2, 3, 16]} /><SmartMaterial color="#4682B4" metalness={0.4} roughness={0.4} /></mesh>
+          <mesh position={[0, 3.1, 0]}><cylinderGeometry args={[1.25, 1.1, 0.2, 16]} /><SmartMaterial color="#5a5a5a" metalness={0.6} /></mesh>
+        </group>
+      );
+    case "grain_bin":
+      return (
+        <group>
+          <mesh position={[0, 2, 0]}><cylinderGeometry args={[1.5, 1.5, 4, 12]} /><SmartMaterial color="#C0C0C0" metalness={0.5} roughness={0.3} /></mesh>
+          <mesh position={[0, 4.5, 0]}><coneGeometry args={[1.6, 1, 12]} /><SmartMaterial color="#A9A9A9" metalness={0.5} /></mesh>
+        </group>
+      );
+    // ─── Landscaping ───────────────────────────────
+    case "flower_bed":
+      return (
+        <group>
+          <mesh position={[0, 0.15, 0]}><boxGeometry args={[2, 0.3, 1]} /><SmartMaterial color="#5c4033" roughness={0.9} /></mesh>
+          {[...Array(8)].map((_, i) => (
+            <group key={`fb-${i}`} position={[-0.7 + i * 0.2, 0.45, Math.sin(i) * 0.2]}>
+              <mesh><cylinderGeometry args={[0.02, 0.02, 0.3, 4]} /><SmartMaterial color="#228B22" /></mesh>
+              <mesh position={[0, 0.2, 0]}><sphereGeometry args={[0.08, 6, 6]} /><SmartMaterial color={["#FF69B4","#FFD700","#FF4500","#9370DB"][i%4]} /></mesh>
+            </group>
+          ))}
+        </group>
+      );
+    case "pond":
+      return (
+        <group>
+          <mesh position={[0, 0.02, 0]} rotation={[-Math.PI/2, 0, 0]}><circleGeometry args={[2, 24]} /><SmartMaterial color="#1E90FF" transparent opacity={0.7} /></mesh>
+          <mesh position={[0, 0.05, 0]}><torusGeometry args={[2, 0.2, 8, 24]} /><SmartMaterial color="#808080" roughness={0.9} /></mesh>
+        </group>
+      );
+    case "stone_path":
+      return (
+        <group>
+          {[...Array(5)].map((_, i) => (
+            <mesh key={`sp-${i}`} position={[-1.5 + i * 0.8, 0.03, Math.sin(i*1.5)*0.2]} rotation={[-Math.PI/2, 0, i*0.3]}>
+              <circleGeometry args={[0.3, 6]} /><SmartMaterial color="#999" roughness={0.9} />
+            </mesh>
+          ))}
+        </group>
+      );
+    case "garden_fence":
+      return (
+        <group>
+          {[...Array(5)].map((_, i) => (
+            <mesh key={`gf-${i}`} position={[-1 + i * 0.5, 0.4, 0]}><boxGeometry args={[0.08, 0.8, 0.05]} /><SmartMaterial color="#fff" roughness={0.6} /></mesh>
+          ))}
+          <mesh position={[0, 0.6, 0]}><boxGeometry args={[2.2, 0.06, 0.05]} /><SmartMaterial color="#fff" /></mesh>
+          <mesh position={[0, 0.3, 0]}><boxGeometry args={[2.2, 0.06, 0.05]} /><SmartMaterial color="#fff" /></mesh>
+        </group>
+      );
+    case "flower_tree":
+      return (
+        <group>
+          <mesh position={[0, 1.2, 0]}><cylinderGeometry args={[0.15, 0.25, 2.4]} /><SmartMaterial color="#5c4033" roughness={0.9} /></mesh>
+          <mesh position={[0, 3, 0]}><dodecahedronGeometry args={[1.3]} /><SmartMaterial color="#FFB7C5" roughness={0.7} /></mesh>
+          <mesh position={[0.5, 2.6, 0.3]}><dodecahedronGeometry args={[0.7]} /><SmartMaterial color="#FF69B4" roughness={0.7} /></mesh>
+        </group>
+      );
+    case "hedge":
+      return (
+        <group>
+          <mesh position={[0, 0.6, 0]}><boxGeometry args={[2.5, 1.2, 0.8]} /><SmartMaterial color="#2E8B57" roughness={0.9} /></mesh>
+        </group>
+      );
+    case "rock_formation":
+      return (
+        <group>
+          <mesh position={[0, 0.4, 0]}><dodecahedronGeometry args={[0.6]} /><SmartMaterial color="#808080" roughness={0.9} /></mesh>
+          <mesh position={[0.5, 0.25, 0.3]}><dodecahedronGeometry args={[0.4]} /><SmartMaterial color="#696969" roughness={0.9} /></mesh>
+          <mesh position={[-0.4, 0.2, -0.2]}><dodecahedronGeometry args={[0.35]} /><SmartMaterial color="#778899" roughness={0.9} /></mesh>
+        </group>
+      );
+    case "bridge":
+      return (
+        <group>
+          <mesh position={[0, 0.3, 0]} rotation={[0.1, 0, 0]}><boxGeometry args={[1.5, 0.1, 3]} /><SmartMaterial color="#8B4513" roughness={0.8} /></mesh>
+          <mesh position={[-0.7, 0.6, 0]}><boxGeometry args={[0.1, 0.5, 3]} /><SmartMaterial color="#5c4033" /></mesh>
+          <mesh position={[0.7, 0.6, 0]}><boxGeometry args={[0.1, 0.5, 3]} /><SmartMaterial color="#5c4033" /></mesh>
+          <mesh position={[-0.7, 0.85, 0]}><boxGeometry args={[0.08, 0.08, 3]} /><SmartMaterial color="#654321" /></mesh>
+          <mesh position={[0.7, 0.85, 0]}><boxGeometry args={[0.08, 0.08, 3]} /><SmartMaterial color="#654321" /></mesh>
+        </group>
+      );
+    // ─── Amenities ─────────────────────────────────
+    case "fountain":
+      return (
+        <group>
+          <mesh position={[0, 0.3, 0]}><cylinderGeometry args={[1.5, 1.6, 0.6, 16]} /><SmartMaterial color="#808080" roughness={0.7} /></mesh>
+          <mesh position={[0, 0.15, 0]}><cylinderGeometry args={[1.3, 1.3, 0.3, 16]} /><SmartMaterial color="#4169E1" transparent opacity={0.6} /></mesh>
+          <mesh position={[0, 0.6, 0]}><cylinderGeometry args={[0.15, 0.3, 0.8, 8]} /><SmartMaterial color="#A9A9A9" /></mesh>
+          <mesh position={[0, 1.2, 0]}><cylinderGeometry args={[0.6, 0.6, 0.15, 12]} /><SmartMaterial color="#808080" /></mesh>
+          <mesh position={[0, 1.3, 0]}><cylinderGeometry args={[0.4, 0.4, 0.1, 12]} /><SmartMaterial color="#4169E1" transparent opacity={0.5} /></mesh>
+        </group>
+      );
+    case "gazebo":
+      return (
+        <group>
+          <mesh position={[0, 0.05, 0]} rotation={[-Math.PI/2, 0, 0]}><circleGeometry args={[2, 6]} /><SmartMaterial color="#DEB887" roughness={0.8} /></mesh>
+          {[...Array(6)].map((_, i) => {
+            const a = (i / 6) * Math.PI * 2;
+            return <mesh key={`gz-${i}`} position={[Math.cos(a)*1.8, 1.5, Math.sin(a)*1.8]}><cylinderGeometry args={[0.08, 0.08, 3, 6]} /><SmartMaterial color="#8B4513" /></mesh>;
+          })}
+          <mesh position={[0, 3.3, 0]}><coneGeometry args={[2.3, 1.2, 6]} /><SmartMaterial color="#A0522D" /></mesh>
+        </group>
+      );
     default:
       return (
         <mesh position={[0, 0.5, 0]}>
@@ -4817,8 +5109,10 @@ export default function Construction3DPage() {
 
   // Edit mode (drag-and-drop / build mode) state
   const [editMode, setEditMode] = useState(false);
-  const [drawingMode, setDrawingMode] = useState<'none' | 'wall' | 'fence'>('none');
-  type DrawnLine = { id: string; type: 'wall' | 'fence' | string; points: [number, number, number][], material?: string, color?: string };
+  const [drawingMode, setDrawingMode] = useState<'none' | 'wall' | 'fence' | 'floor' | 'column' | 'roof' | 'pipe' | 'road' | 'path'>('none');
+  type DrawnLine = { id: string; type: 'wall' | 'fence' | 'floor' | 'column' | 'roof' | 'pipe' | 'road' | 'path' | string; points: [number, number, number][], material?: string, color?: string, height?: number, phase?: number };
+  const [snapToGrid, setSnapToGrid] = useState(true);
+  const [snapSize, setSnapSize] = useState(1);
   const [drawnLines, setDrawnLines] = useState<DrawnLine[]>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("sketchup_drawn_lines");
@@ -4845,7 +5139,21 @@ export default function Construction3DPage() {
     Equipment: true,
     Landscaping: true,
     Amenities: true,
+    Telemetry: false,
   });
+
+  // 4D Schedule Simulation
+  const [currentPhase, setCurrentPhase] = useState(6); // 1-6, 6 = show all
+  const phaseNames = ['Foundation', 'Structure', 'Walls & Envelope', 'MEP Systems', 'Finishes', 'Landscaping'];
+
+  // Sun Path & Daylight
+  const [timeOfDay, setTimeOfDay] = useState(10); // 0-24 hours
+
+  // BoQ Dashboard
+  const [showBoqDrawer, setShowBoqDrawer] = useState(false);
+
+  // Import/Export
+  const [importedMeshes, setImportedMeshes] = useState<Array<{ id: string; name: string; vertices: number[]; faces: number[]; position: [number, number, number] }>>([]); 
   const [placedCatalogItems, setPlacedCatalogItems] = useState<CatalogItemInstance[]>([]);
   const [activeCatalogTool, setActiveCatalogTool] = useState<string | null>(null);
   const [selectedCatalogItemId, setSelectedCatalogItemId] = useState<string | null>(null);
@@ -4874,6 +5182,8 @@ export default function Construction3DPage() {
     scale?: [number, number, number];
     pathType?: string;
     color?: string;
+    phase?: number;
+    dimensions?: { width?: number; height?: number; depth?: number; radius?: number };
   };
   const [customObjects, setCustomObjects] = useState<PlacedObject[]>(() => {
     if (typeof window !== "undefined") {
@@ -4955,6 +5265,204 @@ export default function Construction3DPage() {
     setSelectedCatalogItemId(null);
   }, []);
 
+  // --- Import/Export Handlers ---
+  const handleExportJSON = useCallback(() => {
+    const projectData = {
+      version: "1.0",
+      exportedAt: new Date().toISOString(),
+      sceneConfig,
+      customObjects,
+      drawnLines,
+      visibleLayers,
+      importedMeshes,
+    };
+    const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bim_project_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    message.success("Project exported as JSON!");
+  }, [sceneConfig, customObjects, drawnLines, visibleLayers, importedMeshes]);
+
+  const handleExportOBJ = useCallback(() => {
+    let objContent = "# BIM Project OBJ Export\n# Generated by Nusantarasoft 3D CAD\n\n";
+    let vertexOffset = 0;
+    drawnLines.filter(l => l.type === "wall").forEach((line, li) => {
+      objContent += `o Wall_${li}\n`;
+      const wallH = line.height ?? 3;
+      line.points.forEach((pt, i) => {
+        if (i === 0) return;
+        const prev = line.points[i - 1];
+        objContent += `v ${prev[0]} 0 ${prev[2]}\n`;
+        objContent += `v ${pt[0]} 0 ${pt[2]}\n`;
+        objContent += `v ${pt[0]} ${wallH} ${pt[2]}\n`;
+        objContent += `v ${prev[0]} ${wallH} ${prev[2]}\n`;
+        const base = vertexOffset + 1;
+        objContent += `f ${base} ${base + 1} ${base + 2} ${base + 3}\n`;
+        vertexOffset += 4;
+      });
+    });
+    customObjects.forEach((obj, oi) => {
+      objContent += `o Object_${obj.type}_${oi}\n`;
+      const s = 0.5;
+      const [x, y, z] = obj.position;
+      objContent += `v ${x - s} ${y} ${z - s}\nv ${x + s} ${y} ${z - s}\nv ${x + s} ${y + s * 2} ${z - s}\nv ${x - s} ${y + s * 2} ${z - s}\n`;
+      objContent += `v ${x - s} ${y} ${z + s}\nv ${x + s} ${y} ${z + s}\nv ${x + s} ${y + s * 2} ${z + s}\nv ${x - s} ${y + s * 2} ${z + s}\n`;
+      const b = vertexOffset + 1;
+      objContent += `f ${b} ${b + 1} ${b + 2} ${b + 3}\nf ${b + 4} ${b + 5} ${b + 6} ${b + 7}\nf ${b} ${b + 4} ${b + 7} ${b + 3}\nf ${b + 1} ${b + 5} ${b + 6} ${b + 2}\n`;
+      vertexOffset += 8;
+    });
+    const blob = new Blob([objContent], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bim_project_${Date.now()}.obj`;
+    a.click();
+    URL.revokeObjectURL(url);
+    message.success("Scene exported as OBJ!");
+  }, [drawnLines, customObjects]);
+
+  const handleImportJSON = useCallback(() => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = (e: any) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target?.result as string);
+          if (data.customObjects) setCustomObjects(data.customObjects);
+          if (data.drawnLines) setDrawnLines(data.drawnLines);
+          if (data.sceneConfig) setSceneConfig(data.sceneConfig);
+          if (data.importedMeshes) setImportedMeshes(data.importedMeshes);
+          message.success(`Project loaded! (${(data.customObjects?.length ?? 0)} objects, ${(data.drawnLines?.length ?? 0)} lines)`);
+        } catch (err) {
+          message.error("Failed to parse project file");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }, []);
+
+  const handleImportOBJ = useCallback(() => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".obj";
+    input.onchange = (e: any) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string;
+        const vertices: number[] = [];
+        const faces: number[] = [];
+        text.split("\n").forEach(line => {
+          const parts = line.trim().split(/\s+/);
+          if (parts[0] === "v") {
+            vertices.push(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]));
+          } else if (parts[0] === "f") {
+            parts.slice(1).forEach(p => faces.push(parseInt(p.split("/")[0]) - 1));
+          }
+        });
+        setImportedMeshes(prev => [...prev, {
+          id: `imported_${Date.now()}`,
+          name: file.name.replace(".obj", ""),
+          vertices,
+          faces,
+          position: [0, 0, 0],
+        }]);
+        message.success(`Imported "${file.name}" (${vertices.length / 3} vertices)`);
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }, []);
+
+  // --- BoQ Calculation ---
+  const boqData = useMemo(() => {
+    const wallLines = drawnLines.filter(l => l.type === "wall");
+    const fenceLines = drawnLines.filter(l => l.type === "fence");
+    const floorLines = drawnLines.filter(l => l.type === "floor");
+
+    const calcLength = (points: [number, number, number][]) => {
+      let total = 0;
+      for (let i = 1; i < points.length; i++) {
+        const dx = points[i][0] - points[i - 1][0];
+        const dz = points[i][2] - points[i - 1][2];
+        total += Math.sqrt(dx * dx + dz * dz);
+      }
+      return total;
+    };
+
+    const totalWallLength = wallLines.reduce((sum, l) => sum + calcLength(l.points), 0);
+    const totalFenceLength = fenceLines.reduce((sum, l) => sum + calcLength(l.points), 0);
+
+    const objectCounts: Record<string, { count: number; unitCost: number; name: string }> = {};
+    customObjects.forEach(obj => {
+      const cat = CATALOG_ITEMS.find(c => c.id === obj.type);
+      const key = obj.type;
+      if (!objectCounts[key]) {
+        objectCounts[key] = { count: 0, unitCost: (cat as any)?.cost || 1500, name: cat?.name || obj.type };
+      }
+      objectCounts[key].count++;
+    });
+
+    const wallCostPerMeter = 850;
+    const fenceCostPerMeter = 120;
+
+    const items = [
+      ...(totalWallLength > 0 ? [{ key: "walls", name: "Walls (Concrete)", qty: `${totalWallLength.toFixed(1)} m`, cost: totalWallLength * wallCostPerMeter }] : []),
+      ...(totalFenceLength > 0 ? [{ key: "fences", name: "Fences", qty: `${totalFenceLength.toFixed(1)} m`, cost: totalFenceLength * fenceCostPerMeter }] : []),
+      ...Object.entries(objectCounts).map(([key, v]) => ({ key, name: v.name, qty: `${v.count} unit(s)`, cost: v.count * v.unitCost })),
+    ];
+
+    const totalCost = items.reduce((sum, i) => sum + i.cost, 0);
+    return { items, totalCost, totalWallLength, totalFenceLength };
+  }, [drawnLines, customObjects]);
+
+  // --- Phase Assignment Helper ---
+  const getObjectPhase = useCallback((obj: PlacedObject) => {
+    if (obj.phase) return obj.phase;
+    const cat = CATALOG_ITEMS.find(c => c.id === obj.type);
+    if (!cat) return 3;
+    if (cat.category === "Construction") return 1;
+    if (cat.category === "Manufacturing" || cat.category === "Farming") return 2;
+    if (cat.category === "Equipment" || cat.category === "Sensors") return 4;
+    if (cat.category === "Amenities" || cat.category === "Healthcare" || cat.category === "Education") return 5;
+    if (cat.category === "Landscaping") return 6;
+    return 3;
+  }, []);
+
+  const getLinePhase = useCallback((line: DrawnLine) => {
+    if (line.phase) return line.phase;
+    if (line.type === "floor") return 1;
+    if (line.type === "wall" || line.type === "column") return 2;
+    if (line.type === "pipe") return 4;
+    if (line.type === "roof") return 3;
+    if (line.type === "fence") return 6;
+    return 3;
+  }, []);
+
+  // --- Sun Position Calculation ---
+  const sunPosition = useMemo(() => {
+    const angle = ((timeOfDay - 6) / 12) * Math.PI; // 6am = horizon, 12pm = zenith, 6pm = horizon
+    const x = Math.cos(angle) * 80;
+    const y = Math.max(Math.sin(angle) * 80, 2);
+    const z = -30;
+    return [x, y, z] as [number, number, number];
+  }, [timeOfDay]);
+
+  const sunIntensity = useMemo(() => {
+    if (timeOfDay < 5 || timeOfDay > 20) return 0.1;
+    if (timeOfDay < 7) return 0.4;
+    if (timeOfDay > 18) return 0.4;
+    return 1.2;
+  }, [timeOfDay]);
 
 
   // Day/Night mode
@@ -5934,6 +6442,37 @@ export default function Construction3DPage() {
                 />
               </Badge>
             </Tooltip>
+            <Popover
+              trigger="click"
+              placement="bottom"
+              content={
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 4, minWidth: 160 }}>
+                  <Button size="small" icon={<DownloadOutlined />} onClick={handleExportJSON}>Export Project (JSON)</Button>
+                  <Button size="small" icon={<DownloadOutlined />} onClick={handleExportOBJ}>Export Scene (OBJ)</Button>
+                  <div style={{ height: 1, background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" }} />
+                  <Button size="small" icon={<UploadOutlined />} onClick={handleImportJSON}>Import Project (JSON)</Button>
+                  <Button size="small" icon={<UploadOutlined />} onClick={handleImportOBJ}>Import Model (OBJ)</Button>
+                </div>
+              }
+            >
+              <Tooltip title="Import / Export">
+                <Button
+                  type="text"
+                  shape="circle"
+                  icon={<CloudDownloadOutlined />}
+                  style={{ color: isDark ? "#ccc" : "#555" }}
+                />
+              </Tooltip>
+            </Popover>
+            <Tooltip title="Bill of Quantities">
+              <Button
+                type={showBoqDrawer ? "primary" : "text"}
+                shape="circle"
+                icon={<CalculatorOutlined />}
+                onClick={() => setShowBoqDrawer(true)}
+                style={{ color: showBoqDrawer ? "#fff" : (isDark ? "#ccc" : "#555"), ...(showBoqDrawer ? { background: "#059669", borderColor: "#059669" } : {}) }}
+              />
+            </Tooltip>
           </div>
 
           {/* â”€â”€â”€ Clash Detection Alert Banner â”€â”€â”€ */}
@@ -6679,6 +7218,119 @@ export default function Construction3DPage() {
             </GlassPanel>
           )}
 
+          {/* 4D Schedule Timeline Slider */}
+          {editMode && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: 60,
+                left: "50%",
+                transform: "translateX(-50%)",
+                ...glassPanelStyle,
+                padding: "12px 24px",
+                borderRadius: 16,
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                zIndex: 9999,
+                width: "min(600px, 80%)",
+                boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.5)" : "0 8px 32px rgba(0,0,0,0.1)",
+              }}
+            >
+              <div style={{ fontSize: 12, fontWeight: 700, color: isDark ? "#fff" : "#000", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
+                <CalendarOutlined style={{ color: "#8b5cf6" }} /> 4D Timeline
+              </div>
+              <Slider
+                min={1} max={6} step={1}
+                value={currentPhase}
+                onChange={setCurrentPhase}
+                style={{ flex: 1 }}
+                marks={{
+                  1: { label: <span style={{ fontSize: 9 }}>Found.</span> },
+                  2: { label: <span style={{ fontSize: 9 }}>Struct.</span> },
+                  3: { label: <span style={{ fontSize: 9 }}>Walls</span> },
+                  4: { label: <span style={{ fontSize: 9 }}>MEP</span> },
+                  5: { label: <span style={{ fontSize: 9 }}>Finish</span> },
+                  6: { label: <span style={{ fontSize: 9 }}>All</span> },
+                }}
+              />
+              <Tag color={currentPhase === 6 ? "green" : "blue"} style={{ margin: 0, fontSize: 11, fontWeight: 600 }}>
+                {currentPhase === 6 ? "Complete" : phaseNames[currentPhase - 1]}
+              </Tag>
+            </div>
+          )}
+
+          {/* BoQ Drawer */}
+          <Drawer
+            title={<span><CalculatorOutlined style={{ marginRight: 8 }} />Bill of Quantities & Cost Estimate</span>}
+            open={showBoqDrawer}
+            onClose={() => setShowBoqDrawer(false)}
+            width={480}
+            placement="right"
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ background: "linear-gradient(135deg, #059669, #10b981)", borderRadius: 12, padding: 16, color: "#fff" }}>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>Total Estimated Cost</div>
+                <div style={{ fontSize: 28, fontWeight: 800 }}>${boqData.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>{boqData.items.length} line items • {customObjects.length} objects • {drawnLines.length} drawn elements</div>
+              </div>
+
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.02)", padding: 12, borderRadius: 8, textAlign: "center" }}>
+                  <div style={{ fontSize: 20, fontWeight: 700 }}>{boqData.totalWallLength.toFixed(1)}m</div>
+                  <div style={{ fontSize: 11, opacity: 0.6 }}>Total Walls</div>
+                </div>
+                <div style={{ flex: 1, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.02)", padding: 12, borderRadius: 8, textAlign: "center" }}>
+                  <div style={{ fontSize: 20, fontWeight: 700 }}>{boqData.totalFenceLength.toFixed(1)}m</div>
+                  <div style={{ fontSize: 11, opacity: 0.6 }}>Total Fences</div>
+                </div>
+                <div style={{ flex: 1, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.02)", padding: 12, borderRadius: 8, textAlign: "center" }}>
+                  <div style={{ fontSize: 20, fontWeight: 700 }}>{customObjects.length}</div>
+                  <div style={{ fontSize: 11, opacity: 0.6 }}>Objects</div>
+                </div>
+              </div>
+
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: `2px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)"}` }}>
+                    <th style={{ textAlign: "left", padding: "8px 4px", fontWeight: 700 }}>Item</th>
+                    <th style={{ textAlign: "right", padding: "8px 4px", fontWeight: 700 }}>Quantity</th>
+                    <th style={{ textAlign: "right", padding: "8px 4px", fontWeight: 700 }}>Est. Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {boqData.items.map((item) => (
+                    <tr key={item.key} style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
+                      <td style={{ padding: "8px 4px" }}>{item.name}</td>
+                      <td style={{ padding: "8px 4px", textAlign: "right", opacity: 0.7 }}>{item.qty}</td>
+                      <td style={{ padding: "8px 4px", textAlign: "right", fontWeight: 600 }}>${item.cost.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ borderTop: `2px solid ${isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)"}` }}>
+                    <td style={{ padding: "10px 4px", fontWeight: 800, fontSize: 14 }} colSpan={2}>TOTAL</td>
+                    <td style={{ padding: "10px 4px", textAlign: "right", fontWeight: 800, fontSize: 14, color: "#059669" }}>${boqData.totalCost.toLocaleString()}</td>
+                  </tr>
+                </tfoot>
+              </table>
+
+              <Button type="primary" icon={<DownloadOutlined />} onClick={() => {
+                const csv = "Item,Quantity,Cost\n" + boqData.items.map(i => `"${i.name}","${i.qty}","$${i.cost.toLocaleString()}"`).join("\n") + `\n"TOTAL","","$${boqData.totalCost.toLocaleString()}"`;
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `boq_${Date.now()}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+                message.success("BoQ exported as CSV!");
+              }}>
+                Export BoQ as CSV
+              </Button>
+            </div>
+          </Drawer>
+
           {/* Stats HUD overlay */}
           <div
             style={{
@@ -6795,8 +7447,105 @@ export default function Construction3DPage() {
                   { label: "None", value: "none" },
                   { label: "Wall", value: "wall" },
                   { label: "Fence", value: "fence" },
+                  { label: "Floor", value: "floor" },
+                  { label: "Pipe", value: "pipe" },
                 ]}
+                style={{ flexWrap: "wrap" }}
               />
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <Button size="small" onClick={() => setDrawingMode("column" as any)} type={drawingMode === "column" ? "primary" : "default"} style={{ flex: 1 }}>Column</Button>
+                <Button size="small" onClick={() => setDrawingMode("roof" as any)} type={drawingMode === "roof" ? "primary" : "default"} style={{ flex: 1 }}>Roof</Button>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <Button size="small" onClick={() => setDrawingMode("road" as any)} type={drawingMode === "road" ? "primary" : "default"} style={{ flex: 1 }}>Road</Button>
+                <Button size="small" onClick={() => setDrawingMode("path" as any)} type={drawingMode === "path" ? "primary" : "default"} style={{ flex: 1 }}>Path</Button>
+              </div>
+
+              <div style={{ height: 1, background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" }} />
+
+              {/* Snap-to-Grid */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>Snap Grid</span>
+                <Switch size="small" checked={snapToGrid} onChange={setSnapToGrid} />
+              </div>
+              {snapToGrid && (
+                <Segmented
+                  size="small"
+                  value={snapSize}
+                  onChange={(v) => setSnapSize(v as number)}
+                  options={[
+                    { label: "0.5m", value: 0.5 },
+                    { label: "1m", value: 1 },
+                    { label: "2m", value: 2 },
+                  ]}
+                />
+              )}
+
+              {/* Undo Last Drawn */}
+              <Button size="small" icon={<UndoOutlined />} disabled={drawnLines.length === 0} onClick={() => {
+                setDrawnLines(prev => prev.slice(0, -1));
+                message.info("Undo: last drawn element removed");
+              }}>Undo Last</Button>
+
+              <div style={{ height: 1, background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" }} />
+
+              <div style={{ fontSize: 14, fontWeight: 700, color: isDark ? "#fff" : "#000", display: "flex", alignItems: "center", gap: 8 }}>
+                <BorderOutlined style={{ color: "#f59e0b" }} /> Shapes
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <Button size="small" onClick={() => {
+                  const id = `shape_box_${Date.now()}`;
+                  setCustomObjects(prev => [...prev, { id, type: "__box", position: [0, 0, 0], rotationY: 0, dimensions: { width: 2, height: 2, depth: 2 } }]);
+                  message.success("Box placed at origin");
+                }} style={{ flex: 1 }}>Box</Button>
+                <Button size="small" onClick={() => {
+                  const id = `shape_cyl_${Date.now()}`;
+                  setCustomObjects(prev => [...prev, { id, type: "__cylinder", position: [0, 0, 0], rotationY: 0, dimensions: { radius: 1, height: 3 } }]);
+                  message.success("Cylinder placed at origin");
+                }} style={{ flex: 1 }}>Cylinder</Button>
+                <Button size="small" onClick={() => {
+                  const id = `shape_sph_${Date.now()}`;
+                  setCustomObjects(prev => [...prev, { id, type: "__sphere", position: [0, 1.5, 0], rotationY: 0, dimensions: { radius: 1.5 } }]);
+                  message.success("Sphere placed at origin");
+                }} style={{ flex: 1 }}>Sphere</Button>
+              </div>
+
+              <div style={{ height: 1, background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" }} />
+
+              <div style={{ fontSize: 14, fontWeight: 700, color: isDark ? "#fff" : "#000", display: "flex", alignItems: "center", gap: 8 }}>
+                <HomeOutlined style={{ color: "#06b6d4" }} /> Building
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span style={{ fontSize: 11, width: 48, opacity: 0.7 }}>Floors:</span>
+                <InputNumber size="small" min={1} max={30} style={{ flex: 1 }} value={sceneConfig.floors ?? 5} onChange={(v) => setSceneConfig(p => ({...p, floors: v || 5}))} />
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span style={{ fontSize: 11, width: 48, opacity: 0.7 }}>Height:</span>
+                <InputNumber size="small" min={2} max={6} step={0.1} style={{ flex: 1 }} value={sceneConfig.floorHeight ?? 3.2} onChange={(v) => setSceneConfig(p => ({...p, floorHeight: v || 3.2}))} />
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span style={{ fontSize: 11, width: 48, opacity: 0.7 }}>Shape:</span>
+                <Select size="small" style={{ flex: 1 }} value={sceneConfig.buildingShape ?? "rectangular"} onChange={(v) => setSceneConfig(p => ({...p, buildingShape: v}))}>
+                  <Select.Option value="rectangular">Rectangular</Select.Option>
+                  <Select.Option value="l_shape">L-Shape</Select.Option>
+                  <Select.Option value="u_shape">U-Shape</Select.Option>
+                  <Select.Option value="circular">Circular</Select.Option>
+                </Select>
+              </div>
+
+              <div style={{ height: 1, background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" }} />
+
+              <div style={{ fontSize: 14, fontWeight: 700, color: isDark ? "#fff" : "#000", display: "flex", alignItems: "center", gap: 8 }}>
+                <RadarChartOutlined style={{ color: "#f97316" }} /> Sun Path
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span style={{ fontSize: 11, opacity: 0.6 }}>🌅</span>
+                <Slider min={0} max={24} step={0.5} value={timeOfDay} onChange={setTimeOfDay} style={{ flex: 1 }} tooltip={{ formatter: (v) => `${Math.floor(v!)}:${(v! % 1 === 0.5) ? "30" : "00"}` }} />
+                <span style={{ fontSize: 11, opacity: 0.6 }}>🌙</span>
+              </div>
+              <div style={{ fontSize: 10, textAlign: "center", opacity: 0.5 }}>
+                {Math.floor(timeOfDay)}:{timeOfDay % 1 === 0.5 ? "30" : "00"} — Intensity: {(sunIntensity * 100).toFixed(0)}%
+              </div>
             </div>
           )}
 
@@ -6964,13 +7713,47 @@ export default function Construction3DPage() {
 
                      <div style={{ height: 1, background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)", margin: "4px 0" }} />
 
-                     <div style={{ fontSize: 12, fontWeight: 600 }}>4D/5D BIM Data</div>
-                     <div style={{ background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.02)", padding: 8, borderRadius: 8, fontSize: 11, display: "flex", flexDirection: "column", gap: 4 }}>
-                       <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ opacity: 0.7 }}>Est. Cost</span> <strong>${customObj ? (catItem?.cost || 1500).toLocaleString() : "8,500"}</strong></div>
-                       <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ opacity: 0.7 }}>Schedule</span> <strong>Phase {Math.floor(Math.random() * 4) + 1}</strong></div>
-                       <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ opacity: 0.7 }}>Contractor</span> <strong>{customObj ? "Site Ops Inc." : "Structura LLC"}</strong></div>
-                       <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ opacity: 0.7 }}>Weight</span> <strong>{customObj ? "1.2t" : "4.5t"}</strong></div>
-                     </div>
+                     <Collapse size="small" bordered={false} ghost defaultActiveKey={["bim", "integration"]}>
+                        <Collapse.Panel key="bim" header={<div style={{ fontSize: 12, fontWeight: 600 }}>4D/5D BIM Data</div>}>
+                          <div style={{ background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.02)", padding: 8, borderRadius: 8, fontSize: 11, display: "flex", flexDirection: "column", gap: 4 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ opacity: 0.7 }}>Est. Cost</span> <strong>${customObj ? (catItem?.cost || 1500).toLocaleString() : "8,500"}</strong></div>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ opacity: 0.7 }}>Schedule</span> <strong>Phase {Math.floor(Math.random() * 4) + 1}</strong></div>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ opacity: 0.7 }}>Contractor</span> <strong>{customObj ? "Site Ops Inc." : "Structura LLC"}</strong></div>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ opacity: 0.7 }}>Weight</span> <strong>{customObj ? "1.2t" : "4.5t"}</strong></div>
+                          </div>
+                        </Collapse.Panel>
+                        <Collapse.Panel key="integration" header={<div style={{ fontSize: 12, fontWeight: 600 }}>Submodule Integrations</div>}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                             {catItem?.category === "Equipment" || catItem?.category === "Sensors" ? (
+                                <Link href={catItem?.category === "Equipment" ? "/admin/bms" : "/admin/scada"} passHref>
+                                   <Button size="small" type="primary" ghost style={{ width: "100%", textAlign: "left", display: "flex", justifyContent: "space-between" }}>
+                                      Live Telemetry <span>→</span>
+                                   </Button>
+                                </Link>
+                             ) : null}
+                             
+                             <Link href="/admin/inventory" passHref>
+                                <Button size="small" style={{ width: "100%", textAlign: "left", display: "flex", justifyContent: "space-between" }}>
+                                   Inventory: {Math.floor(Math.random() * 50) + 5} in stock <span>→</span>
+                                </Button>
+                             </Link>
+
+                             <Link href="/admin/accounting" passHref>
+                                <Button size="small" style={{ width: "100%", textAlign: "left", display: "flex", justifyContent: "space-between" }}>
+                                   Raise Purchase Order <span>→</span>
+                                </Button>
+                             </Link>
+
+                             {catItem?.category === "Collaboration" && (
+                                <Link href="/admin/pm" passHref>
+                                   <Button size="small" danger style={{ width: "100%", textAlign: "left", display: "flex", justifyContent: "space-between" }}>
+                                      View RFI Ticket <span>→</span>
+                                   </Button>
+                                </Link>
+                             )}
+                          </div>
+                        </Collapse.Panel>
+                     </Collapse>
                      
                      <Button danger type="primary" style={{ marginTop: 8 }} icon={<DeleteOutlined />} onClick={() => {
                         if (customObj) {
@@ -7015,7 +7798,7 @@ export default function Construction3DPage() {
                 options={["All", ...Array.from(new Set(CATALOG_ITEMS.map(item => item.category)))]}
                 style={{ marginBottom: 2, background: isDark ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.05)" }}
               />
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", maxWidth: 600 }}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", maxWidth: 700, maxHeight: 240, overflowY: "auto", padding: "4px 0" }}>
                 {CATALOG_ITEMS.filter(item => catalogCategory === "All" || item.category === catalogCategory).map(item => (
                   <div
                     key={item.id}
@@ -7028,31 +7811,51 @@ export default function Construction3DPage() {
                       handleAddCatalogItem(item.id);
                     }}
                     style={{
-                      width: 90, height: 110,
-                      borderRadius: 12,
-                      background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.6)",
-                      border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.06)",
+                      width: 88, height: 100,
+                      borderRadius: 14,
+                      background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.85)",
+                      border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.08)",
                       overflow: "hidden",
                       display: "flex", flexDirection: "column",
                       cursor: "grab",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-                      transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                      boxShadow: isDark ? "0 4px 16px rgba(0,0,0,0.3)" : "0 4px 16px rgba(0,0,0,0.06)",
+                      transition: "all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                      position: "relative",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-4px)";
-                      e.currentTarget.style.boxShadow = isDark ? "0 8px 24px rgba(0,0,0,0.4)" : "0 8px 24px rgba(0,0,0,0.12)";
+                      e.currentTarget.style.transform = "translateY(-6px) scale(1.05)";
+                      e.currentTarget.style.boxShadow = isDark ? "0 12px 28px rgba(0,0,0,0.5)" : "0 12px 28px rgba(0,0,0,0.14)";
+                      e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.2)" : "rgba(59,130,246,0.4)";
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.05)";
+                      e.currentTarget.style.transform = "translateY(0) scale(1)";
+                      e.currentTarget.style.boxShadow = isDark ? "0 4px 16px rgba(0,0,0,0.3)" : "0 4px 16px rgba(0,0,0,0.06)";
+                      e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
                     }}
                   >
-                    <div style={{ height: 65, width: "100%", background: "#f0f0f0", position: "relative" }}>
-                      {/* Using loremflickr for realistic pictures as requested */}
-                      <img src={item.image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }} />
+                    {/* Emoji icon on gradient background */}
+                    <div style={{
+                      height: 56, width: "100%",
+                      background: CATEGORY_GRADIENTS[item.category] || "linear-gradient(135deg, #888 0%, #555 100%)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 28,
+                      position: "relative",
+                    }}>
+                      <span style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))" }}>{item.icon}</span>
+                      {/* Cost badge */}
+                      {item.cost > 0 && (
+                        <span style={{
+                          position: "absolute", bottom: 3, right: 4,
+                          fontSize: 8, fontWeight: 700, color: "#fff",
+                          background: "rgba(0,0,0,0.5)", padding: "1px 5px",
+                          borderRadius: 6, letterSpacing: 0.3,
+                        }}>
+                          {"$"}{item.cost >= 1000 ? `${(item.cost / 1000).toFixed(0)}k` : item.cost}
+                        </span>
+                      )}
                     </div>
-                    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", textAlign: "center" }}>
-                      <AntText style={{ fontSize: 10, fontWeight: 500, lineHeight: 1.1 }}>{item.name}</AntText>
+                    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2px 6px", textAlign: "center" }}>
+                      <AntText style={{ fontSize: 9.5, fontWeight: 600, lineHeight: 1.15, color: isDark ? "#ddd" : "#333" }}>{item.name}</AntText>
                     </div>
                   </div>
                 ))}
@@ -7306,18 +8109,22 @@ export default function Construction3DPage() {
             )}
 
             {/* Premium Fading Grid */}
-            {sceneConfig.weatherType !== "clear" && (
-              <WeatherSystem type={sceneConfig.weatherType || "rain"} isDark={isDark} intensity={1} />
-            )}
 
             <CADDrawingTool 
               drawingMode={drawingMode} 
-              drawnLines={drawnLines.filter(l => (l.type === 'wall' && visibleLayers.Walls) || (l.type === 'fence' && visibleLayers.Fences))}
+              drawnLines={drawnLines.filter(l => {
+                if (l.type === 'wall' && !visibleLayers.Walls) return false;
+                if (l.type === 'fence' && !visibleLayers.Fences) return false;
+                if (currentPhase < 6 && getLinePhase(l) > currentPhase) return false;
+                return true;
+              })}
               currentLine={currentLine} 
               setCurrentLine={setCurrentLine} 
               setDrawnLines={setDrawnLines} 
               onSelectLine={setSelectedObjectId}
             />
+
+            <SmartTelemetryOverlay customObjects={customObjects} visible={visibleLayers.Telemetry} />
 
             {/* Overlays / UI inside canvas */}
             <Grid
@@ -7354,29 +8161,81 @@ export default function Construction3DPage() {
 
             {/* Custom Placed Objects (Build Mode) */}
             {customObjects.filter(obj => {
+               // Layer visibility
                const cat = CATALOG_ITEMS.find(c => c.id === obj.type)?.category;
-               if (cat === "Construction" || cat === "Manufacturing" || cat === "Farming") return visibleLayers.Equipment;
-               if (cat === "Landscaping") return visibleLayers.Landscaping;
-               if (cat === "Amenities" || cat === "Healthcare" || cat === "Education") return visibleLayers.Amenities;
+               if (cat === "Construction" || cat === "Manufacturing" || cat === "Farming") { if (!visibleLayers.Equipment) return false; }
+               if (cat === "Landscaping") { if (!visibleLayers.Landscaping) return false; }
+               if (cat === "Amenities" || cat === "Healthcare" || cat === "Education") { if (!visibleLayers.Amenities) return false; }
+               // 4D phase filtering
+               if (currentPhase < 6 && getObjectPhase(obj) > currentPhase) return false;
                return true;
-            }).map(obj => (
-              <PlacedObject
-                key={obj.id}
-                id={obj.id}
-                defaultPosition={obj.position}
-                rotationY={obj.rotationY}
-                scale={obj.scale}
-                pathType={obj.pathType}
-                editMode={editMode}
-                selectedObjectId={selectedObjectId}
-                onSelect={setSelectedObjectId}
-                onMove={handleObjectMove}
-                onRotate={handleObjectRotate}
-                onScaleChange={handleObjectScale}
-                onDelete={handleObjectDelete}
-              >
-                <CatalogItemRenderer type={obj.type} />
-              </PlacedObject>
+            }).map(obj => {
+              // Parametric shapes
+              if (obj.type === "__box") {
+                const d = obj.dimensions || { width: 2, height: 2, depth: 2 };
+                return (
+                  <PlacedObject key={obj.id} id={obj.id} defaultPosition={obj.position} rotationY={obj.rotationY} scale={obj.scale} editMode={editMode} selectedObjectId={selectedObjectId} onSelect={setSelectedObjectId} onMove={handleObjectMove} onRotate={handleObjectRotate} onScaleChange={handleObjectScale} onDelete={handleObjectDelete}>
+                    <mesh position={[0, (d.height || 2) / 2, 0]}>
+                      <boxGeometry args={[d.width || 2, d.height || 2, d.depth || 2]} />
+                      <meshStandardMaterial color={obj.color || "#94a3b8"} roughness={0.6} />
+                    </mesh>
+                  </PlacedObject>
+                );
+              }
+              if (obj.type === "__cylinder") {
+                const d = obj.dimensions || { radius: 1, height: 3 };
+                return (
+                  <PlacedObject key={obj.id} id={obj.id} defaultPosition={obj.position} rotationY={obj.rotationY} scale={obj.scale} editMode={editMode} selectedObjectId={selectedObjectId} onSelect={setSelectedObjectId} onMove={handleObjectMove} onRotate={handleObjectRotate} onScaleChange={handleObjectScale} onDelete={handleObjectDelete}>
+                    <mesh position={[0, (d.height || 3) / 2, 0]}>
+                      <cylinderGeometry args={[d.radius || 1, d.radius || 1, d.height || 3, 32]} />
+                      <meshStandardMaterial color={obj.color || "#64748b"} roughness={0.5} metalness={0.3} />
+                    </mesh>
+                  </PlacedObject>
+                );
+              }
+              if (obj.type === "__sphere") {
+                const d = obj.dimensions || { radius: 1.5 };
+                return (
+                  <PlacedObject key={obj.id} id={obj.id} defaultPosition={obj.position} rotationY={obj.rotationY} scale={obj.scale} editMode={editMode} selectedObjectId={selectedObjectId} onSelect={setSelectedObjectId} onMove={handleObjectMove} onRotate={handleObjectRotate} onScaleChange={handleObjectScale} onDelete={handleObjectDelete}>
+                    <mesh position={[0, d.radius || 1.5, 0]}>
+                      <sphereGeometry args={[d.radius || 1.5, 32, 32]} />
+                      <meshStandardMaterial color={obj.color || "#a78bfa"} roughness={0.3} metalness={0.2} />
+                    </mesh>
+                  </PlacedObject>
+                );
+              }
+              return (
+                <PlacedObject
+                  key={obj.id}
+                  id={obj.id}
+                  defaultPosition={obj.position}
+                  rotationY={obj.rotationY}
+                  scale={obj.scale}
+                  pathType={obj.pathType}
+                  editMode={editMode}
+                  selectedObjectId={selectedObjectId}
+                  onSelect={setSelectedObjectId}
+                  onMove={handleObjectMove}
+                  onRotate={handleObjectRotate}
+                  onScaleChange={handleObjectScale}
+                  onDelete={handleObjectDelete}
+                >
+                  <CatalogItemRenderer type={obj.type} />
+                </PlacedObject>
+              );
+            })}
+
+            {/* Imported OBJ Meshes */}
+            {importedMeshes.map(mesh => (
+              <group key={mesh.id} position={mesh.position}>
+                <mesh>
+                  <bufferGeometry>
+                    <bufferAttribute attach="attributes-position" args={[new Float32Array(mesh.vertices), 3]} />
+                    {mesh.faces.length > 0 && <bufferAttribute attach="index" args={[new Uint16Array(mesh.faces), 1]} />}
+                  </bufferGeometry>
+                  <meshStandardMaterial color="#78716c" roughness={0.7} side={THREE.DoubleSide} />
+                </mesh>
+              </group>
             ))}
 
             {/* Scene Router  renders the right 3D scene for the active template */}
@@ -8150,6 +9009,28 @@ export default function Construction3DPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: isDark ? "#94a3b8" : "#666" }}>Has Greenhouse</span>
                 <Switch checked={sceneConfig.hasGreenhouse ?? false} onChange={(v) => updateConfig("hasGreenhouse", v)} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: isDark ? "#94a3b8" : "#666" }}>Has Orchard</span>
+                <Switch checked={sceneConfig.hasOrchard ?? true} onChange={(v) => updateConfig("hasOrchard", v)} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: isDark ? "#94a3b8" : "#666" }}>Has Pond</span>
+                <Switch checked={sceneConfig.hasPond ?? true} onChange={(v) => updateConfig("hasPond", v)} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: isDark ? "#94a3b8" : "#666" }}>Season</div>
+                <Segmented
+                  block
+                  value={sceneConfig.season ?? "summer"}
+                  onChange={(v) => updateConfig("season", v)}
+                  options={[
+                    { label: "Spring", value: "spring" },
+                    { label: "Summer", value: "summer" },
+                    { label: "Fall", value: "fall" },
+                    { label: "Winter", value: "winter" },
+                  ]}
+                />
               </div>
             </div>
           )}
