@@ -38,12 +38,12 @@ See [`STUDIO_WHATSAPP.md`](STUDIO_WHATSAPP.md): inbound webhook → same `invoke
 
 ## Applying SQL
 
-- **Fresh Docker / init**: `studio` tables (including guide flows) load from [`volumes/db/studio_tables.sql`](volumes/db/studio_tables.sql) when Postgres is first created.
+- **Fresh Docker / init**: `studio` tables (including guide flows) load from [`supabase/migrations/00000000000061_studio_tables.sql`](supabase/migrations/00000000000061_studio_tables.sql) when Postgres is first created.
 - **Existing volume** (DB already running): apply SQL manually. On the Supabase Postgres image, use **`supabase_admin`** so `CREATE TABLE` on `public` succeeds:
 
 ```bash
 # From repo root (adjust database name if not nusantarasoft)
-Get-Content .\volumes\db\studio_tables.sql -Raw | docker exec -i postgres psql -U supabase_admin -d nusantarasoft -v ON_ERROR_STOP=1
+Get-Content .\supabase\migrations\00000000000061_studio_tables.sql -Raw | docker exec -i postgres psql -U supabase_admin -d nusantarasoft -v ON_ERROR_STOP=1
 ```
 
-If `studio_*` tables already exist and you only need guide-flow objects, run `middleware/sql/studio_guide_flows.sql` the same way (still as `supabase_admin`).
+Guide-flow objects are included in `00000000000061_studio_tables.sql`. If you only need to repair missing guide-flow objects, apply that same file (still as `supabase_admin`).

@@ -5,7 +5,7 @@
 #   .\scripts\apply-migrations.ps1 -DryRun
 
 param(
-    [ValidateSet('core', 'modules')]
+    [ValidateSet('core', 'modules', 'seeds')]
     [string] $Manifest = 'core',
     [switch] $DryRun,
     [string] $Container = 'postgres',
@@ -16,7 +16,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $EnvFile = Join-Path $RepoRoot '.env'
-$ManifestFile = Join-Path $RepoRoot "database/manifest.$Manifest.txt"
+$ManifestFile = Join-Path $RepoRoot "supabase/manifest.$Manifest.txt"
 
 if (-not (Test-Path $ManifestFile)) {
     Write-Error "Manifest not found: $ManifestFile"

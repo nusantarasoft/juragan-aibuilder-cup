@@ -4,6 +4,8 @@
 -- pg_cron can only run in the database specified in cron.database_name
 -- By default this is 'postgres', so we install it there
 
+\connect postgres
+
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 
 -- Grant usage to supabase_admin for scheduling jobs
