@@ -1200,6 +1200,24 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
+                        path: "/admin/ai-studio/web-crawler",
+                        name: "Web Crawler",
+                        icon: <GlobalOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ai-studio/agent-builder",
+                        name: "Agent Builder",
+                        icon: <NodeIndexOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ai-studio/knowledge-graph",
+                        name: "Knowledge Graph",
+                        icon: <ShareAltOutlined />,
+                        isLeaf: true,
+                    },
+                    {
                         path: "/admin/ai-studio/label-studio",
                         name: "Label Studio",
                         icon: <EditOutlined />,

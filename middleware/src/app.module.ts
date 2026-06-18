@@ -52,6 +52,7 @@ import { ReportsModule } from './reports/reports.module';
 import { FormsModule } from './forms/forms.module';
 import { WahaModule } from './waha/waha.module';
 import { FacilityModule } from './facility/facility.module';
+import { PentestModule } from './pentest/pentest.module';
 @Module({
     imports: [
         // Environment configuration
@@ -123,6 +124,7 @@ import { FacilityModule } from './facility/facility.module';
         // v3.0 — Form Builder
         FormsModule,
         FacilityModule,
+        PentestModule,
     ],
 })
 export class AppModule { }
