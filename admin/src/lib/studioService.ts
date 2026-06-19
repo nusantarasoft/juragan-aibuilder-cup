@@ -42,6 +42,7 @@ export interface StudioSource {
     filename: string;
     file_type: string;
     file_size: number;
+    bucket_name?: string | null;
     parse_status: 'pending' | 'parsing' | 'done' | 'error';
     parse_stage?: 'queued' | 'extracting' | 'chunking' | 'embedding' | 'done' | 'error' | string;
     parse_error?: string | null;

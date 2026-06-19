@@ -6,8 +6,8 @@ import { useAppMessage } from "@/hooks/useAppMessage";
 import { studioService, type StudioNotebook } from "@/lib/studioService";
 import { Empty, Select, Spin } from "antd";
 import GuideFlowsPanel from "../../GuideFlowsPanel";
-import { useAuthStore } from "@/store/useAuthStore";
 import { useAuth } from "@/context/AuthContext";
+import { useStudioUserId } from "../../useStudioUserId";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { summarizeSources } from "../../studioSourceStatus";
@@ -15,9 +15,8 @@ import { summarizeSources } from "../../studioSourceStatus";
 export default function StudioGuideFlowsPage() {
     const message = useAppMessage();
     const { themeColor } = usePreferencesStore();
-    const { user: contextUser, loading: authLoading } = useAuth();
-    const authUser = useAuthStore((s) => s.user);
-    const userId = authUser?.id ?? contextUser?.id;
+    const { loading: authLoading } = useAuth();
+    const userId = useStudioUserId();
 
     const [notebooks, setNotebooks] = useState<StudioNotebook[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);

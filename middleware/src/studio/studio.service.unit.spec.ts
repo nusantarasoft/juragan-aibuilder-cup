@@ -248,6 +248,7 @@ describe('StudioService.addMediaAsSource', () => {
             file_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             file_size: 1234,
             s3_key: 'report.docx',
+            bucket_name: 'percontohan',
             parse_status: 'pending',
             parse_stage: 'queued',
             parse_progress: 0,

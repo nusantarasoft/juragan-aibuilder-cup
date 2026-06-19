@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { DremioService } from '../dremio/dremio.service';
 import type { QueryUnderstandingResult } from './query-understanding';
+import { assertNoSupabaseError } from './studio-supabase.util';
 
 /** Notebook-level DB context configuration (stored in studio_notebooks.context_config). */
 export type StudioContextConfig = {
@@ -253,7 +254,7 @@ export class StudioDbContextService {
         const { data, error } = await q;
         if (error) {
             if (error.code === '42P01') return [];
-            throw error;
+            assertNoSupabaseError(error, 'Failed to query studio DB context view');
         }
         return (data as Record<string, unknown>[]) || [];
     }

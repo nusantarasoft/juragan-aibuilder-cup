@@ -13,6 +13,15 @@ describe('resolveSourceStorage', () => {
         expect(ref).toEqual({ fileKey: 'docs/file.docx', bucket: 'percontohan' });
     });
 
+    it('prefers persisted source.bucket_name over media row', () => {
+        const ref = resolveSourceStorage(
+            { s3_key: 'docs/file.docx', bucket_name: 'archived-bucket' },
+            { s3_key: 'docs/file.docx', bucket_name: 'percontohan' },
+            defaultBucket,
+        );
+        expect(ref).toEqual({ fileKey: 'docs/file.docx', bucket: 'archived-bucket' });
+    });
+
     it('falls back to default bucket for direct uploads', () => {
         const ref = resolveSourceStorage(
             { s3_key: 'studio/nb1/report.pdf' },

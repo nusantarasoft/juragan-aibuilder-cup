@@ -5,6 +5,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { RagService } from '../rag/rag.service';
 import { chunkText } from './studio-chunk.util';
 import { resolveSourceStorage } from './studio-source-storage.util';
+import { assertNoSupabaseError } from './studio-supabase.util';
 
 type IngestStage = 'queued' | 'extracting' | 'chunking' | 'embedding' | 'done' | 'error';
 
@@ -180,7 +181,7 @@ export class StudioIngestionService {
                     content: chunkContent,
                     embedding,
                 });
-                if (insErr) throw insErr;
+                if (insErr) assertNoSupabaseError(insErr, 'Failed to insert source chunk');
                 embedded++;
                 await this.patchSource(sourceId, {
                     parse_stage: 'embedding',

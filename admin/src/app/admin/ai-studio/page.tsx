@@ -75,8 +75,8 @@ import {
 } from "./studioSourceStatus";
 import { useStudioChat } from "./useStudioChat";
 import AIAssistantPanel from "./AIAssistantPanel";
-import { useAuthStore } from "@/store/useAuthStore";
 import { useAuth } from "@/context/AuthContext";
+import { useStudioUserId } from "./useStudioUserId";
 import ReactMarkdown from 'react-markdown';
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
@@ -95,9 +95,8 @@ const { TextArea } = Input;
 export default function AIStudioPage() {
     const message = useAppMessage();
     const { themeColor } = usePreferencesStore();
-    const { user: contextUser, loading: authLoading } = useAuth();
-    const authUser = useAuthStore((s) => s.user);
-    const userId = authUser?.id ?? contextUser?.id;
+    const { loading: authLoading } = useAuth();
+    const userId = useStudioUserId();
 
     // ── Notebook State ──
     const [notebooks, setNotebooks] = useState<StudioNotebook[]>([]);

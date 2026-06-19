@@ -18,7 +18,7 @@ import {
     type ConversationLine,
     type QueryUnderstandingResult,
 } from './query-understanding';
-import { assertNoSupabaseError, normalizeOptionalUuid } from './studio-supabase.util';
+import { assertNoSupabaseError, normalizeOptionalUuid, resolveUserIdForDb } from './studio-supabase.util';
 import { resolveSourceStorage } from './studio-source-storage.util';
 
 /**
@@ -243,6 +243,7 @@ export class StudioService {
                 file_type: file.mimetype,
                 file_size: file.size,
                 s3_key: s3Key,
+                bucket_name: this.bucket,
                 parse_status: 'pending',
                 parse_stage: 'queued',
                 parse_progress: 0,
@@ -254,7 +255,7 @@ export class StudioService {
             .select()
             .single();
 
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to upload source');
 
         void this.ingestionService.ingestSource(data.id);
 
@@ -300,6 +301,7 @@ export class StudioService {
                 file_type: mediaRecord.mime_type,
                 file_size: mediaRecord.size_bytes || 0,
                 s3_key: storage.fileKey,
+                bucket_name: storage.bucket,
                 parse_status: 'pending',
                 parse_stage: 'queued',
                 parse_progress: 0,
@@ -340,7 +342,7 @@ export class StudioService {
             .eq('id', sourceId)
             .eq('notebook_id', notebookId);
 
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to remove source');
         return true;
     }
 
@@ -403,12 +405,12 @@ export class StudioService {
             .from('studio_conversations')
             .insert({
                 notebook_id: notebookId,
-                user_id: userId,
+                user_id: resolveUserIdForDb(userId, this.logger, 'createConversationSession'),
                 title,
             })
             .select()
             .single();
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to create conversation session');
         return data;
     }
 
@@ -419,7 +421,7 @@ export class StudioService {
         content: string,
         sourceRefs?: any[] | null,
     ): Promise<void> {
-        await this.supabaseService.getAdminClient()
+        const { error: msgErr } = await this.supabaseService.getAdminClient()
             .from('studio_messages')
             .insert({
                 conversation_id: conversationId,
@@ -427,10 +429,13 @@ export class StudioService {
                 content,
                 source_refs: sourceRefs ?? null,
             });
-        await this.supabaseService.getAdminClient()
+        assertNoSupabaseError(msgErr, 'Failed to append studio message');
+
+        const { error: convErr } = await this.supabaseService.getAdminClient()
             .from('studio_conversations')
             .update({ updated_at: new Date() })
             .eq('id', conversationId);
+        assertNoSupabaseError(convErr, 'Failed to update conversation timestamp');
     }
 
     /**
@@ -577,7 +582,7 @@ export class StudioService {
                 .from('studio_conversations')
                 .insert({
                     notebook_id: notebookId,
-                    user_id: normalizeOptionalUuid(userId),
+                    user_id: resolveUserIdForDb(userId, this.logger, 'studio chat'),
                     title: question.substring(0, 100),
                 })
                 .select()

@@ -21,6 +21,21 @@ export function normalizeOptionalUuid(value?: string | null): string | null {
     return UUID_RE.test(v) ? v : null;
 }
 
+/** Normalize user id for DB; logs when client sent a non-UUID value. */
+export function resolveUserIdForDb(
+    userId: string | undefined | null,
+    log?: { warn: (message: string) => void },
+    context = 'studio operation',
+): string | null {
+    const trimmed = userId?.trim();
+    if (!trimmed) return null;
+    const normalized = normalizeOptionalUuid(trimmed);
+    if (!normalized) {
+        log?.warn(`Ignoring invalid user id for ${context}: "${trimmed.slice(0, 48)}"`);
+    }
+    return normalized;
+}
+
 /**
  * Throws a standard Error when Supabase returns an error object.
  * GraphQL cannot serialize plain PostgrestError objects (NonErrorThrown).
