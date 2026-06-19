@@ -2,8 +2,9 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { ConfigService } from '@nestjs/config';
 import * as Minio from 'minio';
 import { SupabaseService } from '../supabase/supabase.service';
-import { ClaudeAiService } from '../ai/claude-ai.service';
-import { VertexAiService } from '../ai/vertex-ai.service';
+import { AiRouterService } from '../ai/ai-router.service';
+import { AiSettingsService } from '../ai/ai-settings.service';
+import type { AiConnectionTestResult, LlmProvider } from '../ai/ai-settings.types';
 import { StudioIngestionService } from './studio-ingestion.service';
 import { StudioContextService } from './studio-context.service';
 import { StudioOutputService, type StudioOutputType } from './studio-output.service';
@@ -34,8 +35,8 @@ export class StudioService {
     constructor(
         private configService: ConfigService,
         private supabaseService: SupabaseService,
-        private vertexAiService: VertexAiService,
-        private claudeAiService: ClaudeAiService,
+        private aiRouter: AiRouterService,
+        private aiSettings: AiSettingsService,
         private ingestionService: StudioIngestionService,
         private contextService: StudioContextService,
         private dbContextService: StudioDbContextService,
@@ -68,73 +69,31 @@ export class StudioService {
     // ── Settings ─────────────────────────────────────────────────────
 
     async getSettings(tenantId?: string): Promise<any> {
-        // If no tenantId, assume default system tenant or first row
-        const tid = tenantId || '00000000-0000-0000-0000-000000000000';
-        const { data, error } = await this.supabaseService.getAdminClient()
-            .from('studio_settings')
-            .select('*')
-            .eq('tenant_id', tid)
-            .single();
-
-        if (error && error.code !== 'PGRST116') {
-            this.logger.error(`Error fetching settings: ${error.message}`);
-        }
-        
-        return data || {
-            default_llm_provider: 'anthropic',
-            default_embedding_provider: 'auto',
-            waha_dashboard_url: 'http://127.0.0.1:3010/dashboard'
-        };
+        return this.aiSettings.getPublicSettings(tenantId);
     }
 
     async updateSettings(tenantId: string | undefined, payload: any): Promise<any> {
-        const tid = tenantId || '00000000-0000-0000-0000-000000000000';
-        
-        const { data: existing } = await this.supabaseService.getAdminClient()
-            .from('studio_settings')
-            .select('tenant_id')
-            .eq('tenant_id', tid)
-            .single();
-
-        let res;
-        if (existing) {
-            res = await this.supabaseService.getAdminClient()
-                .from('studio_settings')
-                .update({ ...payload, updated_at: new Date().toISOString() })
-                .eq('tenant_id', tid)
-                .select()
-                .single();
-        } else {
-            res = await this.supabaseService.getAdminClient()
-                .from('studio_settings')
-                .insert({ tenant_id: tid, ...payload })
-                .select()
-                .single();
-        }
-
-        if (res.error) {
-            this.logger.error(`Error updating settings: ${res.error.message}`);
-            throw new Error(`Failed to update settings: ${res.error.message}`);
-        }
-        return res.data;
+        return this.aiSettings.updateSettings(tenantId, payload);
     }
 
-    /** AI Studio LLM: Vertex (default) or Anthropic Claude via STUDIO_AI_PROVIDER. */
-    private useAnthropicStudio(): boolean {
-        const v = (this.configService.get<string>('STUDIO_AI_PROVIDER') || 'vertex').toLowerCase();
-        return v === 'anthropic' || v === 'claude';
+    async getAiStatus(tenantId?: string) {
+        return this.aiSettings.getAiStatus(tenantId);
+    }
+
+    async testAiConnection(
+        provider: LlmProvider,
+        tenantId?: string,
+        overrides?: { ollamaBaseUrl?: string; ollamaModel?: string },
+    ): Promise<AiConnectionTestResult> {
+        return this.aiRouter.testConnection(provider, tenantId, overrides);
     }
 
     private studioGenerateText(prompt: string): Promise<string> {
-        return this.useAnthropicStudio()
-            ? this.claudeAiService.generateText(prompt)
-            : this.vertexAiService.generateText(prompt);
+        return this.aiRouter.generateText(prompt);
     }
 
     private studioGenerateStructuredJSON(prompt: string): Promise<any> {
-        return this.useAnthropicStudio()
-            ? this.claudeAiService.generateStructuredJSON(prompt)
-            : this.vertexAiService.generateStructuredJSON(prompt);
+        return this.aiRouter.generateStructuredJSON(prompt);
     }
 
     // ── Notebooks ────────────────────────────────────────────────────
@@ -805,15 +764,7 @@ export class StudioService {
         if (!userPrompt) {
             throw new BadRequestException('userPrompt is required');
         }
-        if (this.useAnthropicStudio()) {
-            return this.claudeAiService.playgroundGenerate({
-                systemPrompt: params.systemPrompt,
-                userPrompt,
-                temperature: params.temperature,
-                maxOutputTokens: params.maxTokens,
-            });
-        }
-        return this.vertexAiService.playgroundGenerate({
+        return this.aiRouter.playgroundGenerate({
             systemPrompt: params.systemPrompt,
             userPrompt,
             temperature: params.temperature,

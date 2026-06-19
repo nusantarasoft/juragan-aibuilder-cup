@@ -1,217 +1,273 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { AuroraText } from "@/components/magicui/aurora-text";
-import { 
-    Form, Input, Button, Card, Select, Switch, Row, Col, Divider, 
-    message, Spin, Typography 
+import {
+    Alert,
+    Button,
+    Card,
+    Form,
+    Tabs,
+    Typography,
+    message,
+    Skeleton,
+    Space,
 } from "antd";
-import { SaveOutlined, ReloadOutlined, RobotOutlined, KeyOutlined, ApiOutlined, GlobalOutlined } from "@ant-design/icons";
+import {
+    SaveOutlined,
+    ReloadOutlined,
+    RobotOutlined,
+    GlobalOutlined,
+    DatabaseOutlined,
+    SettingOutlined,
+} from "@ant-design/icons";
 import { studioService } from "@/lib/studioService";
+import SettingsOverview from "./components/SettingsOverview";
+import ActiveProviderSelector from "./components/ActiveProviderSelector";
+import ProviderPanel from "./components/ProviderPanel";
+import OptionalProvidersPanel from "./components/OptionalProvidersPanel";
+import EmbeddingPanel from "./components/EmbeddingPanel";
+import IntegrationsPanel from "./components/IntegrationsPanel";
+import type { LlmProvider, StudioAiStatus, StudioSettingsFormValues } from "./types";
+import { PROVIDER_LABELS } from "./types";
+import { buildSavePayload, validateActiveProvider } from "./utils/buildSavePayload";
 
 const { Title, Text } = Typography;
 
+const glass = {
+    background: "rgba(255,255,255,0.65)",
+    backdropFilter: "blur(12px)",
+    border: "1px solid rgba(255,255,255,0.45)",
+    borderRadius: 14,
+};
+
+const DEFAULT_VALUES: Partial<StudioSettingsFormValues> = {
+    default_llm_provider: "google",
+    default_embedding_provider: "auto",
+    anthropic_model: "claude-3-5-haiku-20241022",
+    anthropic_max_tokens: 4096,
+    google_location: "us-central1",
+    google_model: "gemini-2.5-flash",
+    google_embedding_model: "gemini-embedding-001",
+    openai_model: "gpt-4o",
+    openai_embedding_model: "text-embedding-3-small",
+    ollama_base_url: "http://127.0.0.1:11434",
+    ollama_model: "llama3",
+    ollama_embedding_model: "nomic-embed-text",
+    waha_dashboard_url: "http://127.0.0.1:3010/dashboard",
+};
+
 export default function AiStudioSettingsPage() {
-    const [form] = Form.useForm();
-    const [loading, setLoading] = useState(false);
+    const [form] = Form.useForm<StudioSettingsFormValues>();
+    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [status, setStatus] = useState<StudioAiStatus | null>(null);
+    const [dirty, setDirty] = useState(false);
+    const activeProvider = Form.useWatch("default_llm_provider", form) as LlmProvider | undefined;
 
-    useEffect(() => {
-        loadSettings();
-    }, []);
-
-    const loadSettings = async () => {
+    const loadAll = useCallback(async () => {
         setLoading(true);
         try {
-            const settings = await studioService.getSettings();
+            const [settings, aiStatus] = await Promise.all([
+                studioService.getSettings(),
+                studioService.getAiStatus(),
+            ]);
             if (settings) {
-                form.setFieldsValue(settings);
+                form.setFieldsValue({ ...DEFAULT_VALUES, ...settings });
             }
-        } catch (error: any) {
-            message.error(error.message || "Failed to load settings");
+            setStatus(aiStatus);
+            setDirty(false);
+        } catch (error: unknown) {
+            message.error(error instanceof Error ? error.message : "Failed to load settings");
         } finally {
             setLoading(false);
         }
-    };
+    }, [form]);
 
-    const handleSave = async (values: any) => {
+    useEffect(() => {
+        loadAll();
+    }, [loadAll]);
+
+    useEffect(() => {
+        const onBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (dirty) e.preventDefault();
+        };
+        window.addEventListener("beforeunload", onBeforeUnload);
+        return () => window.removeEventListener("beforeunload", onBeforeUnload);
+    }, [dirty]);
+
+    const handleSave = async (values: StudioSettingsFormValues) => {
+        const provider = (values.default_llm_provider || "google") as LlmProvider;
+        const validationError = validateActiveProvider(provider, values);
+        if (validationError) {
+            message.error(validationError);
+            return;
+        }
+
         setSaving(true);
         try {
-            await studioService.updateSettings(values);
-            message.success("Settings saved successfully");
-        } catch (error: any) {
-            message.error(error.message || "Failed to save settings");
+            await studioService.updateSettings(buildSavePayload(values));
+            message.success(`Disimpan. Semua modul memakai ${PROVIDER_LABELS[provider]}.`);
+            setDirty(false);
+            await loadAll();
+        } catch (error: unknown) {
+            message.error(error instanceof Error ? error.message : "Failed to save settings");
         } finally {
             setSaving(false);
         }
     };
 
-    const cardStyle = {
-        background: "#ffffff",
-        borderColor: "#f0f0f0",
-        marginBottom: 24,
-    };
+    const tabItems = [
+        {
+            key: "overview",
+            label: "Overview",
+            children: <SettingsOverview status={status} loading={loading} />,
+        },
+        {
+            key: "embeddings",
+            label: <span><DatabaseOutlined /> Embeddings</span>,
+            children: loading ? (
+                <Skeleton active paragraph={{ rows: 4 }} />
+            ) : (
+                <EmbeddingPanel activeProvider={activeProvider} />
+            ),
+        },
+        {
+            key: "integrations",
+            label: <span><GlobalOutlined /> Integrations</span>,
+            children: loading ? <Skeleton active paragraph={{ rows: 2 }} /> : <IntegrationsPanel />,
+        },
+        {
+            key: "other",
+            label: <span><SettingOutlined /> Provider Lain</span>,
+            children: loading ? (
+                <Skeleton active paragraph={{ rows: 3 }} />
+            ) : (
+                <OptionalProvidersPanel activeProvider={activeProvider} status={status} />
+            ),
+        },
+    ];
 
     return (
-        <CMSLayout 
+        <CMSLayout
             title={<AuroraText>AI Models & Configuration</AuroraText>}
             breadcrumb={[{ title: "AI Studio" }, { title: "Settings" }]}
         >
-            <div style={{ maxWidth: 1000, margin: "0 auto", paddingBottom: 64 }}>
-                <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ maxWidth: 1100, margin: "0 auto", paddingBottom: 88 }}>
+                <div
+                    style={{
+                        marginBottom: 24,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        flexWrap: "wrap",
+                        gap: 12,
+                    }}
+                >
                     <div>
-                        <Title level={4} style={{ margin: 0 }}>Model Configurations</Title>
-                        <Text type="secondary">Manage your AI providers, models, and endpoints directly from the database.</Text>
+                        <Title level={4} style={{ margin: 0 }}>
+                            Satu LLM aktif untuk seluruh platform
+                        </Title>
+                        <Text type="secondary">
+                            CRM, ITSM, PM, AI Studio, RAG, dan modul lain hanya memakai provider yang Anda pilih di bawah.
+                        </Text>
                     </div>
-                    <div>
-                        <Button 
-                            icon={<ReloadOutlined />} 
-                            onClick={loadSettings} 
-                            style={{ marginRight: 8 }}
-                        >
+                    <Space>
+                        <Button icon={<ReloadOutlined />} onClick={loadAll} disabled={loading}>
                             Refresh
                         </Button>
-                        <Button 
-                            type="primary" 
-                            icon={<SaveOutlined />} 
-                            loading={saving} 
+                        <Button
+                            type="primary"
+                            icon={<SaveOutlined />}
+                            loading={saving}
                             onClick={() => form.submit()}
                         >
                             Save Settings
                         </Button>
-                    </div>
+                    </Space>
                 </div>
 
-                {loading ? (
-                    <div style={{ textAlign: "center", padding: 100 }}>
-                        <Spin size="large" />
-                        <div style={{ marginTop: 16 }}>Loading configuration...</div>
-                    </div>
-                ) : (
-                    <Form 
-                        form={form} 
-                        layout="vertical" 
-                        onFinish={handleSave}
-                        initialValues={{
-                            default_llm_provider: 'anthropic',
-                            default_embedding_provider: 'auto',
-                            waha_dashboard_url: 'http://127.0.0.1:3010/dashboard'
+                <Form
+                    form={form}
+                    layout="vertical"
+                    onFinish={handleSave}
+                    onFinishFailed={() => message.error("Lengkapi field provider aktif terlebih dahulu.")}
+                    initialValues={DEFAULT_VALUES}
+                    onValuesChange={() => setDirty(true)}
+                >
+                    {/* Always mounted — tidak boleh di dalam tab yang di-destroy */}
+                    <Form.Item name="default_llm_provider" hidden>
+                        <input type="hidden" />
+                    </Form.Item>
+                    <Form.Item name="anthropic_api_key_configured" hidden><input type="hidden" /></Form.Item>
+                    <Form.Item name="google_api_key_configured" hidden><input type="hidden" /></Form.Item>
+                    <Form.Item name="openai_api_key_configured" hidden><input type="hidden" /></Form.Item>
+
+                    <Card
+                        style={{ ...glass, marginBottom: 16 }}
+                        title={
+                            <span>
+                                <RobotOutlined /> LLM Aktif
+                            </span>
+                        }
+                    >
+                        {loading ? (
+                            <Skeleton active paragraph={{ rows: 3 }} />
+                        ) : (
+                            <>
+                                <Text type="secondary" style={{ display: "block", marginBottom: 16 }}>
+                                    Pilih satu provider. Hanya provider ini yang dipakai runtime.
+                                </Text>
+                                <ActiveProviderSelector status={status} />
+                                {activeProvider && (
+                                    <ProviderPanel
+                                        provider={activeProvider}
+                                        isActive
+                                        configured={
+                                            status?.providers.find((p) => p.provider === activeProvider)?.configured
+                                        }
+                                    />
+                                )}
+                            </>
+                        )}
+                    </Card>
+
+                    <Card style={glass}>
+                        <Tabs destroyInactiveTabPane={false} items={tabItems} />
+                    </Card>
+                </Form>
+
+                {dirty && (
+                    <div
+                        style={{
+                            position: "fixed",
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            padding: "12px 24px",
+                            background: "rgba(255,255,255,0.95)",
+                            borderTop: "1px solid #f0f0f0",
+                            display: "flex",
+                            justifyContent: "center",
+                            gap: 12,
+                            zIndex: 100,
                         }}
                     >
-                        <Row gutter={[24, 24]}>
-                            <Col xs={24} lg={8}>
-                                <Card title={<><RobotOutlined /> Global Defaults</>} style={cardStyle} bordered>
-                                    <Form.Item 
-                                        name="default_llm_provider" 
-                                        label="Default Chat LLM Provider"
-                                        rules={[{ required: true }]}
-                                    >
-                                        <Select>
-                                            <Select.Option value="anthropic">Anthropic (Claude)</Select.Option>
-                                            <Select.Option value="google">Google (Gemini/Vertex)</Select.Option>
-                                            <Select.Option value="openai">OpenAI</Select.Option>
-                                            <Select.Option value="ollama">Ollama (Local)</Select.Option>
-                                        </Select>
-                                    </Form.Item>
-                                    
-                                    <Form.Item 
-                                        name="default_embedding_provider" 
-                                        label="Default Embedding Provider"
-                                        rules={[{ required: true }]}
-                                    >
-                                        <Select>
-                                            <Select.Option value="auto">Auto (Google Cloud if available)</Select.Option>
-                                            <Select.Option value="google_ai">Google AI Studio</Select.Option>
-                                            <Select.Option value="vertex">Vertex AI</Select.Option>
-                                            <Select.Option value="ollama">Ollama (Local)</Select.Option>
-                                        </Select>
-                                    </Form.Item>
-                                </Card>
-
-                                <Card title={<><GlobalOutlined /> Integrations</>} style={cardStyle} bordered>
-                                    <Form.Item 
-                                        name="waha_dashboard_url" 
-                                        label="WAHA Dashboard URL"
-                                    >
-                                        <Input placeholder="http://127.0.0.1:3010/dashboard" />
-                                    </Form.Item>
-                                </Card>
-                            </Col>
-
-                            <Col xs={24} lg={16}>
-                                <Card title={<><KeyOutlined /> Anthropic Configuration</>} style={cardStyle} bordered>
-                                    <Row gutter={16}>
-                                        <Col span={24}>
-                                            <Form.Item name="anthropic_api_key" label="API Key">
-                                                <Input.Password placeholder="sk-ant-api03-..." />
-                                            </Form.Item>
-                                        </Col>
-                                        <Col span={24}>
-                                            <Form.Item name="anthropic_model" label="Default Model">
-                                                <Input placeholder="claude-3-5-haiku-20241022" />
-                                            </Form.Item>
-                                        </Col>
-                                    </Row>
-                                </Card>
-
-                                <Card title={<><KeyOutlined /> Google Gemini / Vertex Configuration</>} style={cardStyle} bordered>
-                                    <Row gutter={16}>
-                                        <Col span={24}>
-                                            <Form.Item name="google_api_key" label="Google AI Studio API Key (Overrides Vertex)">
-                                                <Input.Password placeholder="AIzaSy..." />
-                                            </Form.Item>
-                                        </Col>
-                                        <Col span={12}>
-                                            <Form.Item name="google_project_id" label="Vertex Project ID">
-                                                <Input placeholder="my-gcp-project" />
-                                            </Form.Item>
-                                        </Col>
-                                        <Col span={12}>
-                                            <Form.Item name="google_location" label="Vertex Location">
-                                                <Input placeholder="us-central1" />
-                                            </Form.Item>
-                                        </Col>
-                                        <Col span={24}>
-                                            <Form.Item name="google_model" label="Default Generative Model">
-                                                <Input placeholder="gemini-2.5-flash" />
-                                            </Form.Item>
-                                        </Col>
-                                    </Row>
-                                </Card>
-
-                                <Card title={<><ApiOutlined /> Ollama / Local Configuration</>} style={cardStyle} bordered>
-                                    <Row gutter={16}>
-                                        <Col span={12}>
-                                            <Form.Item name="ollama_base_url" label="Ollama Endpoint">
-                                                <Input placeholder="http://host.docker.internal:11434" />
-                                            </Form.Item>
-                                        </Col>
-                                        <Col span={12}>
-                                            <Form.Item name="ollama_model" label="Default Model">
-                                                <Input placeholder="llama3" />
-                                            </Form.Item>
-                                        </Col>
-                                    </Row>
-                                </Card>
-
-                                <Card title={<><KeyOutlined /> OpenAI Configuration</>} style={cardStyle} bordered>
-                                    <Row gutter={16}>
-                                        <Col span={24}>
-                                            <Form.Item name="openai_api_key" label="API Key">
-                                                <Input.Password placeholder="sk-..." />
-                                            </Form.Item>
-                                        </Col>
-                                        <Col span={24}>
-                                            <Form.Item name="openai_model" label="Default Model">
-                                                <Input placeholder="gpt-4o" />
-                                            </Form.Item>
-                                        </Col>
-                                    </Row>
-                                </Card>
-                            </Col>
-                        </Row>
-                    </Form>
+                        <Text type="warning">Perubahan belum disimpan</Text>
+                        <Button
+                            onClick={() => {
+                                form.resetFields();
+                                setDirty(false);
+                                loadAll();
+                            }}
+                        >
+                            Discard
+                        </Button>
+                        <Button type="primary" loading={saving} onClick={() => form.submit()}>
+                            Save Settings
+                        </Button>
+                    </div>
                 )}
             </div>
         </CMSLayout>

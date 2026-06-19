@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
-import { VertexAiService } from '../ai/vertex-ai.service';
+import { AiRouterService } from '../ai/ai-router.service';
 
 @Injectable()
 export class CrmService {
@@ -8,7 +8,7 @@ export class CrmService {
 
     constructor(
         private supabaseService: SupabaseService,
-        private vertexAi: VertexAiService,
+        private aiRouter: AiRouterService,
     ) { }
 
     private get db() {
@@ -562,7 +562,7 @@ export class CrmService {
         `;
 
         try {
-            return await this.vertexAi.generateText(prompt);
+            return await this.aiRouter.generateText(prompt);
         } catch (e) {
             this.logger.error("Failed to generate deal action via Vertex AI", e);
             return "Reach out to the primary contact to confirm the next steps and align on their timeline.";
@@ -747,7 +747,7 @@ export class CrmService {
         `;
 
         try {
-            const content = await this.vertexAi.generateText(prompt);
+            const content = await this.aiRouter.generateText(prompt);
             return content;
         } catch (e) {
             this.logger.error("Failed to generate campaign content via Vertex AI", e);
@@ -1035,7 +1035,7 @@ Respond strictly with a JSON object in this exact format:
 }
                 `;
 
-                const aiResult = await this.vertexAi.generateStructuredJSON(prompt);
+                const aiResult = await this.aiRouter.generateStructuredJSON(prompt);
 
                 return {
                     individualId: ind.id,
@@ -1100,7 +1100,7 @@ Respond strictly with a JSON object in this exact format:
 }
                 `;
 
-                const aiResult = await this.vertexAi.generateStructuredJSON(prompt);
+                const aiResult = await this.aiRouter.generateStructuredJSON(prompt);
 
                 return {
                     dealId: deal.id,

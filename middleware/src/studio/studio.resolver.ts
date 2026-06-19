@@ -31,6 +31,25 @@ export class StudioResolver {
         return this.studioService.updateSettings(tenantId, payload);
     }
 
+    @Query(() => GraphQLJSONObject, { name: 'studioAiStatus' })
+    async getStudioAiStatus(
+        @Args('tenantId', { type: () => String, nullable: true }) tenantId?: string,
+    ) {
+        return this.studioService.getAiStatus(tenantId);
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'studioTestAiConnection' })
+    async testStudioAiConnection(
+        @Args('provider', { type: () => String }) provider: string,
+        @Args('tenantId', { type: () => String, nullable: true }) tenantId?: string,
+        @Args('overrides', { type: () => GraphQLJSONObject, nullable: true }) overrides?: Record<string, unknown>,
+    ) {
+        return this.studioService.testAiConnection(provider as any, tenantId, {
+            ollamaBaseUrl: typeof overrides?.ollama_base_url === 'string' ? overrides.ollama_base_url : undefined,
+            ollamaModel: typeof overrides?.ollama_model === 'string' ? overrides.ollama_model : undefined,
+        });
+    }
+
     // ── Notebooks ────────────────────────────────────────────────────
 
     @Query(() => [GraphQLJSONObject], { name: 'studioNotebooks' })

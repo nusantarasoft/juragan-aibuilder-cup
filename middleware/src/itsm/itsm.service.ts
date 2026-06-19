@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
-import { VertexAiService } from '../ai/vertex-ai.service';
+import { AiRouterService } from '../ai/ai-router.service';
 
 @Injectable()
 export class ItsmService {
@@ -9,7 +9,7 @@ export class ItsmService {
 
     constructor(
         private supabaseService: SupabaseService,
-        private aiService: VertexAiService,
+        private aiRouter: AiRouterService,
     ) {
         this.db = this.supabaseService.getAdminClient();
     }
@@ -354,7 +354,7 @@ Please categorize this ticket and classify ticket category, suggest a priority l
 
 Return JSON with: suggestedCategory, suggestedPriority, suggestedImpact, suggestedUrgency, confidence (0-1), reasoning, suggestedAssignmentGroup, relatedKBArticles (array of strings)`;
 
-        const raw = await this.aiService.generateText(prompt);
+        const raw = await this.aiRouter.generateText(prompt);
         try {
             return JSON.parse(raw.replace(/```json|```/g, '').trim());
         } catch {
@@ -377,7 +377,7 @@ Impact: ${ticket.impact}
 
 Provide step-by-step resolution suggestion steps. Return JSON with: suggestedSteps (array), estimatedResolutionTime, confidence (0-1), relatedIncidents (array)`;
 
-        const raw = await this.aiService.generateText(prompt);
+        const raw = await this.aiRouter.generateText(prompt);
         try {
             return JSON.parse(raw.replace(/```json|```/g, '').trim());
         } catch {
@@ -408,7 +408,7 @@ Created: ${ticket.created_at}
 
 Analyze the SLA risk for this ticket. Return JSON with: riskLevel (low/medium/high/critical), slaStatus (on_track/at_risk/breached), remainingTime, recommendation, suggestedEscalation (boolean), similarTicketsAvgResolution`;
 
-        const raw = await this.aiService.generateText(prompt);
+        const raw = await this.aiRouter.generateText(prompt);
         try {
             return JSON.parse(raw.replace(/```json|```/g, '').trim());
         } catch {

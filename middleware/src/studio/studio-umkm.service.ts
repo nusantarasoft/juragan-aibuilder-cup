@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ClaudeAiService } from '../ai/claude-ai.service';
+import { AiRouterService } from '../ai/ai-router.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import {
     DEFAULT_STUDIO_SALES_CONTEXT,
@@ -41,7 +41,7 @@ export class StudioUmkmService {
 
     constructor(
         private readonly supabaseService: SupabaseService,
-        private readonly claudeAi: ClaudeAiService,
+        private readonly aiRouter: AiRouterService,
     ) {}
 
     private admin() {
@@ -185,7 +185,7 @@ export class StudioUmkmService {
         ].join('\n');
 
         try {
-            const raw = await this.claudeAi.generateText(prompt);
+            const raw = await this.aiRouter.generateText(prompt);
             if (raw.includes('not configured') || raw.includes('request failed')) {
                 return null;
             }

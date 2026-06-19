@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
-import { VertexAiService } from '../ai/vertex-ai.service';
+import { AiRouterService } from '../ai/ai-router.service';
 
 @Injectable()
 export class PmService {
@@ -8,7 +8,7 @@ export class PmService {
 
     constructor(
         private supabaseService: SupabaseService,
-        private vertexAi: VertexAiService
+        private aiRouter: AiRouterService
     ) { }
 
     private get db() {
@@ -289,7 +289,7 @@ export class PmService {
         `;
 
         try {
-            const description = await this.vertexAi.generateText(prompt);
+            const description = await this.aiRouter.generateText(prompt);
             return description;
         } catch (error) {
             this.logger.error("Failed to generate task description via Vertex AI", error);
@@ -333,7 +333,7 @@ export class PmService {
         `;
 
         try {
-            const analysis = await this.vertexAi.generateStructuredJSON(prompt);
+            const analysis = await this.aiRouter.generateStructuredJSON(prompt);
             return analysis;
         } catch (error) {
             this.logger.error("Failed to analyze sprint risk via Vertex AI", error);
@@ -371,7 +371,7 @@ export class PmService {
         `;
 
         try {
-            const retrospective = await this.vertexAi.generateText(prompt);
+            const retrospective = await this.aiRouter.generateText(prompt);
             return retrospective;
         } catch (error) {
             this.logger.error("Failed to generate sprint retrospective via Vertex AI", error);
@@ -407,7 +407,7 @@ export class PmService {
         `;
 
         try {
-            const charterJson = await this.vertexAi.generateStructuredJSON(prompt);
+            const charterJson = await this.aiRouter.generateStructuredJSON(prompt);
             return charterJson;
         } catch (error) {
             this.logger.error("Failed to generate project charter via Vertex AI", error);
@@ -443,7 +443,7 @@ export class PmService {
         `;
 
         try {
-            const response = await this.vertexAi.generateStructuredJSON(prompt);
+            const response = await this.aiRouter.generateStructuredJSON(prompt);
             return response.risks || [];
         } catch (error) {
             this.logger.error("Failed to generate risk register via Vertex AI", error);
@@ -585,7 +585,7 @@ export class PmService {
         `;
 
         try {
-            const evmJson = await this.vertexAi.generateStructuredJSON(prompt);
+            const evmJson = await this.aiRouter.generateStructuredJSON(prompt);
 
             // Save snapshot
             const payload = {
@@ -1385,7 +1385,7 @@ export class PmService {
         `;
 
         try {
-            return await this.vertexAi.generateStructuredJSON(prompt);
+            return await this.aiRouter.generateStructuredJSON(prompt);
         } catch (error) {
             this.logger.error("Failed to generate schedule via AI", error);
             throw new Error("AI Schedule generation failed.");
@@ -1430,7 +1430,7 @@ export class PmService {
         `;
 
         try {
-            return await this.vertexAi.generateStructuredJSON(prompt);
+            return await this.aiRouter.generateStructuredJSON(prompt);
         } catch (error) {
             this.logger.error("Failed to generate tasks from WBS via AI", error);
             throw new Error("AI Task generation failed.");
@@ -1478,7 +1478,7 @@ export class PmService {
         `;
 
         try {
-            return await this.vertexAi.generateStructuredJSON(prompt);
+            return await this.aiRouter.generateStructuredJSON(prompt);
         } catch (error) {
             this.logger.error("Failed to generate WBS via AI", error);
             throw new Error("AI WBS generation failed.");
@@ -1514,7 +1514,7 @@ export class PmService {
         `;
 
         try {
-            return await this.vertexAi.generateStructuredJSON(prompt);
+            return await this.aiRouter.generateStructuredJSON(prompt);
         } catch (error) {
             this.logger.error("Failed to generate stakeholder analysis via AI", error);
             throw new Error("AI Stakeholder analysis failed.");
@@ -1541,7 +1541,7 @@ export class PmService {
         `;
 
         try {
-            return await this.vertexAi.generateStructuredJSON(prompt);
+            return await this.aiRouter.generateStructuredJSON(prompt);
         } catch (error) {
             this.logger.error("Failed to generate quality checklist via AI", error);
             throw new Error("AI Quality Checklist generation failed.");
@@ -1575,7 +1575,7 @@ export class PmService {
         `;
 
         try {
-            return await this.vertexAi.generateStructuredJSON(prompt);
+            return await this.aiRouter.generateStructuredJSON(prompt);
         } catch (error) {
             this.logger.error("Failed to generate comm plan via AI", error);
             throw new Error("AI Communication Plan generation failed.");
@@ -1785,7 +1785,7 @@ export class PmService {
         `;
 
         try {
-            return await this.vertexAi.generateStructuredJSON(prompt);
+            return await this.aiRouter.generateStructuredJSON(prompt);
         } catch (error) {
             this.logger.error("Failed to generate tailoring recommendations via AI", error);
             throw new Error("AI Tailoring Recommendations failed.");
@@ -1963,7 +1963,7 @@ export class PmService {
         `;
 
         try {
-            return await this.vertexAi.generateStructuredJSON(prompt);
+            return await this.aiRouter.generateStructuredJSON(prompt);
         } catch (error) {
             this.logger.error("Failed to generate sustainability impact via AI", error);
             throw new Error("AI Sustainability Impact analysis failed.");
@@ -2028,7 +2028,7 @@ export class PmService {
         `;
 
         try {
-            return await this.vertexAi.generateStructuredJSON(prompt);
+            return await this.aiRouter.generateStructuredJSON(prompt);
         } catch (error) {
             this.logger.error("Failed to generate status report via AI", error);
             throw new Error("AI Status Report generation failed.");
@@ -2082,7 +2082,7 @@ export class PmService {
         `;
 
         try {
-            return await this.vertexAi.generateStructuredJSON(prompt);
+            return await this.aiRouter.generateStructuredJSON(prompt);
         } catch (error) {
             this.logger.error("Failed to generate critical path via AI", error);
             throw new Error("AI Critical Path analysis failed.");
@@ -2130,7 +2130,7 @@ export class PmService {
         `;
 
         try {
-            return await this.vertexAi.generateStructuredJSON(prompt);
+            return await this.aiRouter.generateStructuredJSON(prompt);
         } catch (error) {
             this.logger.error("Failed to generate portfolio analysis via AI", error);
             throw new Error("AI Portfolio Analysis failed.");

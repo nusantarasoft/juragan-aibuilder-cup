@@ -1,9 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { RagService } from '../rag/rag.service';
-import { ClaudeAiService } from '../ai/claude-ai.service';
-import { VertexAiService } from '../ai/vertex-ai.service';
+import { AiRouterService } from '../ai/ai-router.service';
 import { StudioDbContextService, type StudioContextConfig } from './studio-db-context.service';
 import type { QueryUnderstandingResult } from './query-understanding';
 import { filterChunksBySourceIds } from './studio-source-filter.util';
@@ -32,11 +30,9 @@ export class StudioContextService {
     private readonly logger = new Logger(StudioContextService.name);
 
     constructor(
-        private readonly configService: ConfigService,
         private readonly supabaseService: SupabaseService,
         private readonly ragService: RagService,
-        private readonly vertexAiService: VertexAiService,
-        private readonly claudeAiService: ClaudeAiService,
+        private readonly aiRouter: AiRouterService,
         private readonly dbContextService: StudioDbContextService,
     ) { }
 
@@ -44,15 +40,8 @@ export class StudioContextService {
         return this.supabaseService.getAdminClient();
     }
 
-    private useAnthropicStudio(): boolean {
-        const v = (this.configService.get<string>('STUDIO_AI_PROVIDER') || 'vertex').toLowerCase();
-        return v === 'anthropic' || v === 'claude';
-    }
-
     private generateText(prompt: string): Promise<string> {
-        return this.useAnthropicStudio()
-            ? this.claudeAiService.generateText(prompt)
-            : this.vertexAiService.generateText(prompt);
+        return this.aiRouter.generateText(prompt);
     }
 
     async semanticSearchNotebook(

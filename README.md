@@ -290,7 +290,7 @@ Keep infrastructure (Postgres, Kong, MinIO, etc.) running in Docker. Stop only t
 .\scripts\dev-local.ps1
 ```
 
-1. **Middleware:** copy [`middleware/.env.local.example`](middleware/.env.local.example) to `middleware/.env.local`, set **`SUPABASE_ANON_KEY`** and **`SUPABASE_SERVICE_KEY`** from root `.env` (`ANON_KEY` / `SERVICE_ROLE_KEY`). For **AI Studio** you can use **`STUDIO_AI_PROVIDER=anthropic`** with **`ANTHROPIC_API_KEY`** (see example), or keep **`STUDIO_AI_PROVIDER=vertex`** (default) and set **`GOOGLE_CLOUD_PROJECT`** plus credentials. Other modules (RAG, CRM, …) still use Vertex when configured. Then `cd middleware` and `npm run start:dev`.
+1. **Middleware:** copy [`middleware/.env.local.example`](middleware/.env.local.example) to `middleware/.env.local`, set **`SUPABASE_ANON_KEY`** and **`SUPABASE_SERVICE_KEY`** from root `.env` (`ANON_KEY` / `SERVICE_ROLE_KEY`). Configure **AI models and API keys** in the admin UI at **`/admin/ai-studio/settings`** (stored in `studio_settings`). For Vertex AI, optionally set **`GOOGLE_APPLICATION_CREDENTIALS`** to a service account JSON path. Then `cd middleware` and `npm run start:dev`.
 2. **Admin:** copy [`admin/.env.local.example`](admin/.env.local.example) to `admin/.env.local`, copy `NEXT_PUBLIC_*` / `S3_*` values from the repo root `.env`, then `cd admin` and `npm run dev`.
 
 Nest loads `.env.local` after `.env` (see [`middleware/src/app.module.ts`](middleware/src/app.module.ts)). Next.js picks up `admin/.env.local` automatically.

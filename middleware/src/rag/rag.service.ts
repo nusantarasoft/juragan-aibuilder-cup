@@ -1,9 +1,11 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-// import { VertexAI, GenerativeModel } from '@google-cloud/vertexai'; // Removed top-level import
 import * as Minio from 'minio';
 import { SupabaseService } from '../supabase/supabase.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
+import { AiSettingsService } from '../ai/ai-settings.service';
+import { OpenAiService } from '../ai/openai-ai.service';
+import { OllamaAiService } from '../ai/ollama-ai.service';
 
 @Injectable()
 export class RagService implements OnModuleInit {
@@ -16,38 +18,30 @@ export class RagService implements OnModuleInit {
     constructor(
         private configService: ConfigService,
         private webhooksService: WebhooksService,
-        private supabaseService: SupabaseService
+        private supabaseService: SupabaseService,
+        private aiSettings: AiSettingsService,
+        private openAiService: OpenAiService,
+        private ollamaAiService: OllamaAiService,
     ) { }
 
     private async getDbSettings(): Promise<any> {
-        try {
-            const { data } = await this.supabaseService.getAdminClient()
-                .from('studio_settings')
-                .select('*')
-                .limit(1)
-                .single();
-            return data || {};
-        } catch (e) {
-            return {};
-        }
+        return this.aiSettings.getRawSettings();
     }
 
     async onModuleInit() {
-        // Dynamic import for ESM-only package (Bypass TS transpilation to require)
         const { VertexAI } = await (new Function('return import("@google-cloud/vertexai")')());
-
-        // Initialize Vertex AI
-        const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
-        const location = this.configService.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
+        const googleConfig = await this.aiSettings.getGoogleConfig();
+        const projectId = googleConfig.projectId;
+        const location = googleConfig.location;
 
         if (projectId) {
-            this.vertexAI = new VertexAI({ project: projectId, location: location });
-            // Use verified available model
-            this.geminiModel = this.vertexAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
-            // Vertex AI Multimodal Embedding model
-            this.embeddingModel = this.vertexAI.getGenerativeModel({ model: 'multimodalembedding@001' });
+            this.vertexAI = new VertexAI({ project: projectId, location });
+            this.geminiModel = this.vertexAI.getGenerativeModel({ model: googleConfig.model });
+            this.embeddingModel = this.vertexAI.getGenerativeModel({
+                model: googleConfig.embeddingModel || 'multimodalembedding@001',
+            });
         } else {
-            this.logger.warn('GOOGLE_CLOUD_PROJECT not set. Vertex AI features disabled.');
+            this.logger.warn('Google Vertex project not configured in AI Studio Settings.');
         }
 
         this.initializeMinio();
@@ -107,12 +101,11 @@ Answer:`;
 
         // 3. Generate Answer (Try API Key first, then Vertex)
         const settings = await this.getDbSettings();
-        const apiKey = settings?.google_api_key || this.configService.get('GOOGLE_API_KEY');
+        const apiKey = settings?.google_api_key;
 
         try {
             if (apiKey) {
-                // Use Gemini API directly
-                const genModel = settings?.google_model || this.configService.get('GOOGLE_GENERATIVE_MODEL') || 'gemini-2.5-flash';
+                const genModel = settings?.google_model || 'gemini-2.5-flash';
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${genModel}:generateContent?key=${apiKey}`;
                 const response = await fetch(url, {
                     method: 'POST',
@@ -146,10 +139,10 @@ Answer:`;
         if (!text?.trim()) return null;
         const trimmed = text.trim();
         const settings = await this.getDbSettings();
-        
-        const provider = (settings?.default_embedding_provider || this.configService.get('EMBEDDING_PROVIDER') || 'auto').toLowerCase();
-        const projectId = settings?.google_project_id || this.configService.get('GOOGLE_CLOUD_PROJECT');
-        const apiKey = settings?.google_api_key || this.configService.get('GOOGLE_API_KEY');
+
+        const provider = (settings?.default_embedding_provider || 'auto').toLowerCase();
+        const projectId = settings?.google_project_id;
+        const apiKey = settings?.google_api_key;
 
         const useGoogle =
             provider === 'google_ai' ||
@@ -157,7 +150,19 @@ Answer:`;
         const useVertex =
             provider === 'vertex' ||
             (provider === 'auto' && !!projectId);
+        const useOpenAi = provider === 'openai';
+        const useOllama = provider === 'ollama';
 
+        if (useOpenAi) {
+            const emb = await this.openAiService.embedText(trimmed);
+            if (emb) return emb;
+            if (provider === 'openai') return null;
+        }
+        if (useOllama) {
+            const emb = await this.ollamaAiService.embedText(trimmed);
+            if (emb) return emb;
+            if (provider === 'ollama') return null;
+        }
         if (useGoogle && apiKey) {
             const googleEmb = await this.getGoogleAiStudioEmbedding(trimmed);
             if (googleEmb) return googleEmb;
@@ -648,10 +653,11 @@ Answer:`;
 
     /** Google AI Studio embeddings (text-embedding-004 = 768 dims). Used for Studio when EMBEDDING_PROVIDER=google_ai. */
     private async getGoogleAiStudioEmbedding(text: string): Promise<number[] | null> {
-        const apiKey = this.configService.get('GOOGLE_API_KEY');
-        const model = this.configService.get('GOOGLE_EMBEDDING_MODEL') || 'gemini-embedding-001';
+        const config = await this.aiSettings.getGoogleConfig();
+        const apiKey = config.apiKey;
+        const model = config.embeddingModel || 'gemini-embedding-001';
         if (!apiKey) {
-            this.logger.warn('[EMBED] GOOGLE_API_KEY not set');
+            this.logger.warn('[EMBED] Google API key not configured in AI Studio Settings');
             return null;
         }
 
@@ -688,13 +694,14 @@ Answer:`;
 
     // Helper for Vertex AI Embedding (Multimodal - 1408 Dimensions) via REST API
     private async getVertexEmbedding(text: string, image?: { data: string; mimeType: string }): Promise<number[] | null> {
-        const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
-        const location = this.configService.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
+        const config = await this.aiSettings.getGoogleConfig();
+        const projectId = config.projectId;
+        const location = config.location;
 
         this.logger.log(`[EMBED-DEBUG] Starting Vertex Embedding. Project: ${projectId}, Location: ${location}`);
 
         if (!projectId) {
-            this.logger.warn('[EMBED-DEBUG] GOOGLE_CLOUD_PROJECT not set, cannot generate embeddings');
+            this.logger.warn('[EMBED-DEBUG] Google Vertex project not configured in AI Studio Settings');
             return null;
         }
 
