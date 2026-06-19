@@ -163,4 +163,76 @@ describe.skipIf(!RUN)('Studio GraphQL integration (live middleware)', () => {
         `, { notebookId: created.createStudioNotebook.id });
         expect(deleted.deleteStudioNotebook).toBe(true);
     });
+
+    it('addMediaToNotebook links library media and returns source row', async () => {
+        if (!isAuthIntegrationEnabled()) return;
+
+        const creds = authIntegrationCredentials();
+        const signedIn = await authGqlRequest<{
+            signIn: { user: { id: string } };
+        }>(SIGN_IN_MUTATION, creds);
+        const userId = signedIn.signIn.user.id;
+
+        const created = await gqlRequest<{ createStudioNotebook: { id: string } }>(`
+            mutation($name: String!, $userId: String!) {
+                createStudioNotebook(name: $name, userId: $userId)
+            }
+        `, { name: `Media NB ${Date.now()}`, userId });
+        const notebookId = created.createStudioNotebook.id;
+
+        const mediaList = await gqlRequest<{ media: { id: string }[] }>(`
+            query { media(limit: 1) { id } }
+        `);
+        const mediaId = mediaList.media?.[0]?.id;
+        if (!mediaId) return;
+
+        const added = await gqlRequest<{
+            addMediaToNotebook: {
+                id: string;
+                media_id: string;
+                filename: string;
+                file_size: number;
+                parse_status: string;
+            };
+        }>(`
+            mutation($notebookId: String!, $mediaId: String!) {
+                addMediaToNotebook(notebookId: $notebookId, mediaId: $mediaId)
+            }
+        `, { notebookId, mediaId });
+
+        expect(added.addMediaToNotebook.id).toBeTruthy();
+        expect(added.addMediaToNotebook.media_id).toBe(mediaId);
+        expect(added.addMediaToNotebook.filename).toBeTruthy();
+        expect(added.addMediaToNotebook.file_size).toBeGreaterThan(0);
+        expect(added.addMediaToNotebook.parse_status).toBe('pending');
+
+        const sources = await gqlRequest<{ studioSourceStatus: { id: string; media_id?: string }[] }>(`
+            query($notebookId: String!) {
+                studioSourceStatus(notebookId: $notebookId)
+            }
+        `, { notebookId });
+        expect(sources.studioSourceStatus.some((s) => s.id === added.addMediaToNotebook.id)).toBe(true);
+
+        await gqlRequest(`
+            mutation($notebookId: String!) {
+                deleteStudioNotebook(notebookId: $notebookId)
+            }
+        `, { notebookId });
+    });
+
+    it('addMediaToNotebook rejects unknown media id', async () => {
+        const notebookId = process.env.STUDIO_INTEGRATION_NOTEBOOK_ID?.trim();
+        if (!notebookId) return;
+
+        await expect(
+            gqlRequest(`
+                mutation($notebookId: String!, $mediaId: String!) {
+                    addMediaToNotebook(notebookId: $notebookId, mediaId: $mediaId)
+                }
+            `, {
+                notebookId,
+                mediaId: '00000000-0000-0000-0000-000000000099',
+            }),
+        ).rejects.toThrow(/not found/i);
+    });
 });

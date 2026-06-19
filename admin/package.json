@@ -10,7 +10,7 @@
     "postinstall": "patch-package",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:studio": "vitest run src/app/admin/ai-studio",
+    "test:studio": "vitest run src/app/admin/ai-studio src/lib/studioService.media.spec.ts",
     "test:e2e": "playwright test",
     "test:e2e:studio": "playwright test tests/e2e/ai-studio.spec.ts"
   },

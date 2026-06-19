@@ -79,6 +79,7 @@ npm run test:e2e:studio
 | UC | Area test |
 |----|-----------|
 | UC-04 | `studio.service.unit.spec.ts` (create/list/delete notebook) |
+| UC-06–07 | `studio.service.unit.spec.ts`, `studio-ingestion.service.unit.spec.ts`, `studio-source-storage.util.spec.ts`, `studioService.media.spec.ts` (add media library) |
 | UC-05–09 | `studioSourceStatus.spec.ts` |
 | UC-10–13, UC-26–27 | `ai-studio.unit.spec.ts`, `useStudioChat` |
 | UC-29, UC-31 | `notebookSourceSelection.spec.ts` |
