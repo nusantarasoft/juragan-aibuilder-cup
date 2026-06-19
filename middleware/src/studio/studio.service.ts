@@ -18,6 +18,7 @@ import {
     type ConversationLine,
     type QueryUnderstandingResult,
 } from './query-understanding';
+import { assertNoSupabaseError } from './studio-supabase.util';
 
 /**
  * Studio AI business logic — orchestrates notebooks, sources, and conversations.
@@ -156,7 +157,7 @@ export class StudioService {
             .select()
             .single();
 
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to create notebook');
         this.logger.log(`Created notebook "${name}"`);
         return data;
     }
@@ -168,7 +169,7 @@ export class StudioService {
             .eq('user_id', userId)
             .order('updated_at', { ascending: false });
 
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to list notebooks');
         return data || [];
     }
 
@@ -201,7 +202,7 @@ export class StudioService {
             .eq('id', notebookId)
             .select()
             .single();
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to update notebook');
         return data;
     }
 
@@ -212,7 +213,7 @@ export class StudioService {
             .delete()
             .eq('id', notebookId);
 
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to delete notebook');
         return true;
     }
 

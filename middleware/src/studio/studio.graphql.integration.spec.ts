@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { defaultGuideFlowDefinition } from './guide-flow.definition';
 import { gqlRequest, isStudioIntegrationEnabled } from './studio-test.helpers';
+import {
+    authIntegrationCredentials,
+    gqlRequest as authGqlRequest,
+    isAuthIntegrationEnabled,
+    SIGN_IN_MUTATION,
+} from '../auth/auth-test.helpers';
 
 const RUN = isStudioIntegrationEnabled();
 
@@ -122,5 +128,39 @@ describe.skipIf(!RUN)('Studio GraphQL integration (live middleware)', () => {
             }
         `);
         expect(data.studioChunk).toBeNull();
+    });
+
+    it('createStudioNotebook creates, lists, and deletes notebook for signed-in user', async () => {
+        if (!isAuthIntegrationEnabled()) return;
+
+        const creds = authIntegrationCredentials();
+        const signedIn = await authGqlRequest<{
+            signIn: { user: { id: string } };
+        }>(SIGN_IN_MUTATION, creds);
+        const userId = signedIn.signIn.user.id;
+
+        const name = `Integration NB ${Date.now()}`;
+        const created = await gqlRequest<{ createStudioNotebook: { id: string; name: string } }>(`
+            mutation($name: String!, $description: String, $userId: String!) {
+                createStudioNotebook(name: $name, description: $description, userId: $userId)
+            }
+        `, { name, description: 'integration test', userId });
+
+        expect(created.createStudioNotebook.id).toBeTruthy();
+        expect(created.createStudioNotebook.name).toBe(name);
+
+        const listed = await gqlRequest<{ studioNotebooks: { id: string; name: string }[] }>(`
+            query($userId: String!) {
+                studioNotebooks(userId: $userId)
+            }
+        `, { userId });
+        expect(listed.studioNotebooks.some((n) => n.id === created.createStudioNotebook.id)).toBe(true);
+
+        const deleted = await gqlRequest<{ deleteStudioNotebook: boolean }>(`
+            mutation($notebookId: String!) {
+                deleteStudioNotebook(notebookId: $notebookId)
+            }
+        `, { notebookId: created.createStudioNotebook.id });
+        expect(deleted.deleteStudioNotebook).toBe(true);
     });
 });
