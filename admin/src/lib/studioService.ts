@@ -691,6 +691,28 @@ export const studioService = {
         return data.studioSettings;
     },
 
+    async getAiStatus(tenantId?: string): Promise<any> {
+        const data = await graphqlRequest(`
+            query($tenantId: String) {
+                studioAiStatus(tenantId: $tenantId)
+            }
+        `, { tenantId: tenantId ?? null });
+        return data.studioAiStatus;
+    },
+
+    async testAiConnection(
+        provider: string,
+        tenantId?: string,
+        overrides?: { ollama_base_url?: string; ollama_model?: string },
+    ): Promise<any> {
+        const data = await graphqlRequest(`
+            mutation($provider: String!, $tenantId: String, $overrides: JSONObject) {
+                studioTestAiConnection(provider: $provider, tenantId: $tenantId, overrides: $overrides)
+            }
+        `, { provider, tenantId: tenantId ?? null, overrides: overrides ?? null });
+        return data.studioTestAiConnection;
+    },
+
     async updateSettings(payload: any, tenantId?: string): Promise<any> {
         const data = await graphqlRequest(`
             mutation($tenantId: String, $payload: JSONObject!) {

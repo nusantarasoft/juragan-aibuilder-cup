@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
-import { VertexAiService } from '../ai/vertex-ai.service';
+import { AiRouterService } from '../ai/ai-router.service';
 
 @Injectable()
 export class InventoryService {
@@ -8,7 +8,7 @@ export class InventoryService {
 
     constructor(
         private supabaseService: SupabaseService,
-        private vertexAi: VertexAiService,
+        private aiRouter: AiRouterService,
     ) { }
 
     private get db() {
@@ -380,7 +380,7 @@ Return JSON with:
 IMPORTANT: Return ONLY valid JSON. No markdown.`;
 
         try {
-            return await this.vertexAi.generateStructuredJSON(prompt);
+            return await this.aiRouter.generateStructuredJSON(prompt);
         } catch (e) {
             this.logger.error('AI classify failed', e);
             return {
@@ -422,7 +422,7 @@ Return JSON with:
 IMPORTANT: Return ONLY valid JSON.`;
 
         try {
-            return await this.vertexAi.generateStructuredJSON(prompt);
+            return await this.aiRouter.generateStructuredJSON(prompt);
         } catch (e) {
             return { anomalies: [], message: 'AI analysis unavailable' };
         }

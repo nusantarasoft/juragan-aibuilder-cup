@@ -45,8 +45,7 @@ const glass = {
     borderRadius: 14,
 };
 
-const WAHA_DASHBOARD =
-    process.env.NEXT_PUBLIC_WAHA_DASHBOARD_URL || 'http://127.0.0.1:3010/dashboard';
+const DEFAULT_WAHA_DASHBOARD = 'http://127.0.0.1:3010/dashboard';
 
 function slugifyTenant(input: string): string {
     return input
@@ -70,6 +69,13 @@ export default function UmkmStudioPage() {
     const [saving, setSaving] = useState(false);
     const [settingUp, setSettingUp] = useState(false);
     const [form] = Form.useForm();
+    const [wahaDashboard, setWahaDashboard] = useState(DEFAULT_WAHA_DASHBOARD);
+
+    useEffect(() => {
+        studioService.getSettings().then((s) => {
+            if (s?.waha_dashboard_url) setWahaDashboard(s.waha_dashboard_url);
+        }).catch(() => {});
+    }, []);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -293,7 +299,7 @@ export default function UmkmStudioPage() {
                 <Link key="setup" href="/admin/ai-studio/waha-setup">
                     <Button>Setup WAHA</Button>
                 </Link>,
-                <Button key="waha" onClick={() => window.open(WAHA_DASHBOARD, '_blank')}>
+                <Button key="waha" onClick={() => window.open(wahaDashboard, '_blank')}>
                     WAHA Dashboard
                 </Button>,
                 <Button key="r" icon={<ReloadOutlined />} onClick={load} loading={loading} />,

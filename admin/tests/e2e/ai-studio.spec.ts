@@ -46,4 +46,13 @@ test.describe('AI Studio — Advanced pages', () => {
         await page.goto('/admin/ai-studio/advanced/guide-flows');
         await expect(page.getByText(/Guide Flow|guide flow/i).first()).toBeVisible({ timeout: 15_000 });
     });
+
+    test('Settings page loads with provider tabs', async ({ page }) => {
+        await page.goto('/admin/ai-studio/settings');
+        await expect(page.getByText(/Central AI Configuration/i).first()).toBeVisible({ timeout: 15_000 });
+        await expect(page.getByRole('tab', { name: /Overview/i })).toBeVisible();
+        await expect(page.getByRole('tab', { name: /Chat LLM/i })).toBeVisible();
+        await page.getByRole('tab', { name: /Chat LLM/i }).click();
+        await expect(page.getByText(/Anthropic/i).first()).toBeVisible();
+    });
 });

@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { useAppMessage } from "@/hooks/useAppMessage";
 import { studioService, type StudioPlaygroundResult } from "@/lib/studioService";
-import { Alert, Button, Card, Input, Spin, Typography } from "antd";
+import { Alert, Button, Card, Input, Spin, Typography, Tag, Space } from "antd";
 import { RobotOutlined } from "@ant-design/icons";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
@@ -42,6 +42,13 @@ export default function StudioPlaygroundPage() {
     const [pgMetrics, setPgMetrics] = useState<
         { label: string; latencyMs: number; totalTokens?: number }[]
     >([]);
+    const [activeAi, setActiveAi] = useState<{ provider?: string; model?: string }>({});
+
+    useEffect(() => {
+        studioService.getAiStatus().then((s) => {
+            if (s) setActiveAi({ provider: s.llmProvider, model: s.llmModel });
+        }).catch(() => {});
+    }, []);
 
     const chartData = pgMetrics.map((m) => ({
         name: m.label,
@@ -87,7 +94,14 @@ export default function StudioPlaygroundPage() {
                         type="info"
                         showIcon
                         className="!text-xs"
-                        message="Advanced: uji prompt tanpa konteks notebook"
+                        message={
+                            <Space wrap>
+                                <span>Sandbox prompt — tidak memakai RAG notebook</span>
+                                {activeAi.provider && (
+                                    <Tag color="blue">Active: {activeAi.provider} / {activeAi.model}</Tag>
+                                )}
+                            </Space>
+                        }
                     />
                     <Card size="small" title="System Prompt" className="flex-1" style={glass}>
                         <TextArea

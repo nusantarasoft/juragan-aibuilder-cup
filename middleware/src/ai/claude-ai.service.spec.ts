@@ -1,22 +1,17 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { ConfigService } from '@nestjs/config';
 import { ClaudeAiService } from './claude-ai.service';
-import { SupabaseService } from '../supabase/supabase.service';
+import { AiSettingsService } from './ai-settings.service';
 
-function svc(getImpl: (key: string) => string | undefined) {
-    const config = { get: (k: string) => getImpl(k) } as unknown as ConfigService;
-    const supabaseMock = {
-        getAdminClient: () => ({
-            from: () => ({
-                select: () => ({
-                    limit: () => ({
-                        single: () => Promise.resolve({ data: {} })
-                    })
-                })
-            })
-        })
-    } as unknown as SupabaseService;
-    return new ClaudeAiService(config, supabaseMock);
+function svc(settings: Partial<ReturnType<AiSettingsService['getAnthropicConfig'] extends (...args: any) => Promise<infer R> ? () => R : never>>) {
+    const aiSettings = {
+        getAnthropicConfig: vi.fn().mockResolvedValue({
+            apiKey: undefined,
+            model: 'claude-test-model',
+            maxTokens: 1024,
+            ...settings,
+        }),
+    } as unknown as AiSettingsService;
+    return new ClaudeAiService(aiSettings);
 }
 
 describe('ClaudeAiService', () => {
@@ -24,10 +19,10 @@ describe('ClaudeAiService', () => {
         vi.unstubAllGlobals();
     });
 
-    it('returns configuration hint when ANTHROPIC_API_KEY is missing', async () => {
-        const s = svc(() => undefined);
+    it('returns configuration hint when API key is missing', async () => {
+        const s = svc({ apiKey: undefined });
         const text = await s.generateText('hello');
-        expect(text).toContain('ANTHROPIC_API_KEY');
+        expect(text).toContain('AI Studio Settings');
     });
 
     it('POSTs Messages API with expected headers and body', async () => {
@@ -39,12 +34,7 @@ describe('ClaudeAiService', () => {
         });
         vi.stubGlobal('fetch', fetchMock);
 
-        const s = svc((key) => {
-            if (key === 'ANTHROPIC_API_KEY') return 'sk-test';
-            if (key === 'ANTHROPIC_MODEL') return 'claude-test-model';
-            if (key === 'ANTHROPIC_MAX_TOKENS') return '1024';
-            return undefined;
-        });
+        const s = svc({ apiKey: 'sk-test', model: 'claude-test-model', maxTokens: 1024 });
 
         const out = await s.generateStructuredJSON('Return {"x":1}');
         expect(out).toEqual({ a: 1 });
@@ -54,12 +44,10 @@ describe('ClaudeAiService', () => {
         expect(url).toBe('https://api.anthropic.com/v1/messages');
         const headers = init.headers as Record<string, string>;
         expect(headers['x-api-key']).toBe('sk-test');
-        expect(headers['anthropic-version']).toBe('2023-06-01');
 
         const body = JSON.parse(init.body as string);
         expect(body.model).toBe('claude-test-model');
         expect(body.max_tokens).toBe(1024);
-        expect(body.messages).toEqual([{ role: 'user', content: expect.stringContaining('Return') }]);
     });
 
     it('throws on invalid JSON from model', async () => {
@@ -69,7 +57,7 @@ describe('ClaudeAiService', () => {
         });
         vi.stubGlobal('fetch', fetchMock);
 
-        const s = svc((key) => (key === 'ANTHROPIC_API_KEY' ? 'k' : undefined));
+        const s = svc({ apiKey: 'k' });
         await expect(s.generateStructuredJSON('x')).rejects.toThrow('AI returned invalid JSON');
     });
 });

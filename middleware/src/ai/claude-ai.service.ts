@@ -1,150 +1,102 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { SupabaseService } from '../supabase/supabase.service';
+import { AiSettingsService } from './ai-settings.service';
+import type { AiInlineData } from './ai-settings.types';
+import type { PlaygroundResult } from './openai-ai.service';
 
 const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
-
-/** Default: Haiku tier (lower cost). Override with ANTHROPIC_MODEL. */
-const DEFAULT_ANTHROPIC_MODEL = 'claude-3-5-haiku-20241022';
 
 @Injectable()
 export class ClaudeAiService {
     private readonly logger = new Logger(ClaudeAiService.name);
 
-    constructor(
-        private readonly configService: ConfigService,
-        private readonly supabaseService: SupabaseService,
-    ) { }
-
-    private async getDbSettings(): Promise<any> {
-        try {
-            const { data } = await this.supabaseService.getAdminClient()
-                .from('studio_settings')
-                .select('*')
-                .limit(1)
-                .single();
-            return data || {};
-        } catch (e) {
-            return {};
-        }
-    }
-
-    private async getApiKey(): Promise<string | undefined> {
-        const settings = await this.getDbSettings();
-        const dbKey = settings?.anthropic_api_key;
-        if (typeof dbKey === 'string' && dbKey.trim().length > 0) return dbKey.trim();
-        
-        const v = this.configService.get<string>('ANTHROPIC_API_KEY');
-        return typeof v === 'string' && v.trim().length > 0 ? v.trim() : undefined;
-    }
-
-    private async getModel(): Promise<string> {
-        const settings = await this.getDbSettings();
-        const dbModel = settings?.anthropic_model;
-        if (typeof dbModel === 'string' && dbModel.trim().length > 0) return dbModel.trim();
-        
-        const v = this.configService.get<string>('ANTHROPIC_MODEL');
-        if (typeof v === 'string' && v.trim().length > 0) {
-            return v.trim();
-        }
-        return DEFAULT_ANTHROPIC_MODEL;
-    }
-
-    private getMaxTokens(): number {
-        const raw = this.configService.get<string>('ANTHROPIC_MAX_TOKENS');
-        const n = parseInt(String(raw ?? '4096'), 10);
-        if (!Number.isFinite(n) || n < 1) {
-            return 4096;
-        }
-        return Math.min(n, 8192);
-    }
+    constructor(private readonly aiSettings: AiSettingsService) {}
 
     private extractTextFromMessage(data: { content?: { type?: string; text?: string }[] }): string {
         const parts = data?.content;
-        if (!Array.isArray(parts)) {
-            return '';
-        }
+        if (!Array.isArray(parts)) return '';
         return parts
             .filter((b) => b && b.type === 'text' && typeof b.text === 'string')
             .map((b) => b.text as string)
             .join('');
     }
 
-    /**
-     * Anthropic Messages API — text-only (AI Studio).
-     */
-    async generateText(prompt: string): Promise<string> {
-        const apiKey = await this.getApiKey();
-        if (!apiKey) {
-            this.logger.warn('ANTHROPIC_API_KEY is not set.');
-            return 'Claude is not configured. Please set ANTHROPIC_API_KEY environment variable.';
+    private claudeImageMediaType(mimeType: string): string | null {
+        const normalized = mimeType.toLowerCase();
+        if (normalized === 'image/jpg') return 'image/jpeg';
+        if (['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(normalized)) {
+            return normalized;
         }
+        return null;
+    }
+
+    async generateText(prompt: string, tenantId?: string, inlineData?: AiInlineData): Promise<string> {
+        const config = await this.aiSettings.getAnthropicConfig(tenantId);
+        if (!config.apiKey) {
+            this.logger.warn('Anthropic API key is not configured.');
+            return 'Claude is not configured. Add an API key in AI Studio Settings.';
+        }
+
+        const imageMediaType = inlineData ? this.claudeImageMediaType(inlineData.mimeType) : null;
+        const messageContent = imageMediaType
+            ? [
+                  {
+                      type: 'image',
+                      source: {
+                          type: 'base64',
+                          media_type: imageMediaType,
+                          data: inlineData!.data,
+                      },
+                  },
+                  { type: 'text', text: prompt },
+              ]
+            : prompt;
 
         try {
             const response = await fetch(ANTHROPIC_MESSAGES_URL, {
                 method: 'POST',
                 headers: {
-                    'x-api-key': apiKey,
+                    'x-api-key': config.apiKey,
                     'anthropic-version': ANTHROPIC_VERSION,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    model: await this.getModel(),
-                    max_tokens: this.getMaxTokens(),
-                    messages: [{ role: 'user', content: prompt }],
+                    model: config.model,
+                    max_tokens: config.maxTokens,
+                    messages: [{ role: 'user', content: messageContent }],
                 }),
             });
 
             if (!response.ok) {
                 const errorText = await response.text();
                 this.logger.error(`Anthropic API error (${response.status}): ${errorText}`);
-                return `Claude request failed (${response.status}). Check ANTHROPIC_MODEL and API key.`;
+                return `Claude request failed (${response.status}). Check model and API key in Settings.`;
             }
 
             const data = (await response.json()) as { content?: { type?: string; text?: string }[] };
-            const text = this.extractTextFromMessage(data);
-            if (!text) {
-                this.logger.warn('Anthropic returned empty text content.');
-                return '';
-            }
-            return text;
-        } catch (e: any) {
-            this.logger.error(`Anthropic request failed: ${e?.message ?? e}`);
+            return this.extractTextFromMessage(data) || '';
+        } catch (e: unknown) {
+            this.logger.error(`Anthropic request failed: ${e instanceof Error ? e.message : e}`);
             return 'Claude request failed. Check network and configuration.';
         }
     }
 
-    /**
-     * Playground: system + user prompt with generation config (UC-18).
-     */
     async playgroundGenerate(params: {
         systemPrompt?: string;
         userPrompt: string;
         temperature?: number;
         maxOutputTokens?: number;
-    }): Promise<{
-        output: string;
-        latencyMs: number;
-        provider: string;
-        model: string;
-        inputChars: number;
-        outputChars: number;
-        promptTokens?: number;
-        completionTokens?: number;
-        totalTokens?: number;
-    }> {
-        const apiKey = await this.getApiKey();
+    }, tenantId?: string): Promise<PlaygroundResult> {
+        const config = await this.aiSettings.getAnthropicConfig(tenantId);
         const temperature = Math.min(1, Math.max(0, params.temperature ?? 0.7));
         const maxTokens = Math.min(8192, Math.max(64, params.maxOutputTokens ?? 2048));
         const systemPrompt = params.systemPrompt?.trim() || '';
         const userPrompt = params.userPrompt.trim();
-        const model = await this.getModel();
         const inputChars = systemPrompt.length + userPrompt.length;
         const started = Date.now();
 
-        if (!apiKey) {
-            const output = 'Claude is not configured. Please set ANTHROPIC_API_KEY environment variable.';
+        if (!config.apiKey) {
+            const output = 'Claude is not configured. Add an API key in AI Studio Settings.';
             return {
                 output,
                 latencyMs: Date.now() - started,
@@ -157,19 +109,17 @@ export class ClaudeAiService {
 
         try {
             const body: Record<string, unknown> = {
-                model,
+                model: config.model,
                 max_tokens: maxTokens,
                 temperature,
                 messages: [{ role: 'user', content: userPrompt }],
             };
-            if (systemPrompt) {
-                body.system = systemPrompt;
-            }
+            if (systemPrompt) body.system = systemPrompt;
 
             const response = await fetch(ANTHROPIC_MESSAGES_URL, {
                 method: 'POST',
                 headers: {
-                    'x-api-key': apiKey,
+                    'x-api-key': config.apiKey,
                     'anthropic-version': ANTHROPIC_VERSION,
                     'Content-Type': 'application/json',
                 },
@@ -177,14 +127,12 @@ export class ClaudeAiService {
             });
 
             if (!response.ok) {
-                const errorText = await response.text();
-                this.logger.error(`Anthropic playground error (${response.status}): ${errorText}`);
-                const output = `Claude request failed (${response.status}). Check ANTHROPIC_MODEL and API key.`;
+                const output = `Claude request failed (${response.status}). Check model and API key.`;
                 return {
                     output,
                     latencyMs: Date.now() - started,
                     provider: 'anthropic',
-                    model,
+                    model: config.model,
                     inputChars,
                     outputChars: output.length,
                 };
@@ -194,13 +142,12 @@ export class ClaudeAiService {
                 content?: { type?: string; text?: string }[];
                 usage?: { input_tokens?: number; output_tokens?: number };
             };
-            const text = this.extractTextFromMessage(data);
-            const output = text || '';
+            const output = this.extractTextFromMessage(data) || '';
             return {
                 output,
                 latencyMs: Date.now() - started,
                 provider: 'anthropic',
-                model,
+                model: config.model,
                 inputChars,
                 outputChars: output.length,
                 promptTokens: data.usage?.input_tokens,
@@ -210,32 +157,44 @@ export class ClaudeAiService {
                         ? data.usage.input_tokens + data.usage.output_tokens
                         : undefined,
             };
-        } catch (e: unknown) {
-            const output = 'Claude request failed. Check network and configuration.';
+        } catch {
+            const output = 'Claude request failed.';
             return {
                 output,
                 latencyMs: Date.now() - started,
                 provider: 'anthropic',
-                model,
+                model: config.model,
                 inputChars,
                 outputChars: output.length,
             };
         }
     }
 
-    /**
-     * Force JSON output (same contract as VertexAiService.generateStructuredJSON).
-     */
-    async generateStructuredJSON(prompt: string): Promise<any> {
+    async generateStructuredJSON(prompt: string, tenantId?: string): Promise<any> {
         const fullPrompt = `${prompt}\n\nIMPORTANT: Return ONLY valid JSON. Do not include markdown formatting like \`\`\`json.`;
-        const text = await this.generateText(fullPrompt);
-
+        const text = await this.generateText(fullPrompt, tenantId);
         try {
             const cleaned = text.replace(/```json|```/g, '').trim();
             return JSON.parse(cleaned);
         } catch {
-            this.logger.error(`Failed to parse Claude JSON response. Raw text: ${text.substring(0, 80)}...`);
+            this.logger.error(`Failed to parse Claude JSON. Raw: ${text.substring(0, 80)}`);
             throw new Error('AI returned invalid JSON');
         }
+    }
+
+    async testConnection(tenantId?: string): Promise<{ success: boolean; message: string; latencyMs: number; model: string }> {
+        const config = await this.aiSettings.getAnthropicConfig(tenantId);
+        const started = Date.now();
+        if (!config.apiKey) {
+            return { success: false, message: 'Anthropic API key not configured', latencyMs: 0, model: config.model };
+        }
+        const output = await this.generateText('Reply with exactly: OK', tenantId);
+        const ok = output.trim().toUpperCase().includes('OK');
+        return {
+            success: ok,
+            message: ok ? 'Anthropic connection successful' : `Unexpected response: ${output.slice(0, 80)}`,
+            latencyMs: Date.now() - started,
+            model: config.model,
+        };
     }
 }

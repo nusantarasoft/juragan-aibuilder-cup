@@ -1,28 +1,52 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AiSettingsService } from './ai-settings.service';
+import type { PlaygroundResult } from './openai-ai.service';
 
 @Injectable()
 export class VertexAiService {
     private readonly logger = new Logger(VertexAiService.name);
-    private readonly MODEL_NAME = 'gemini-2.5-pro';
 
-    constructor(private configService: ConfigService) { }
+    constructor(
+        private configService: ConfigService,
+        private readonly aiSettings: AiSettingsService,
+    ) {}
+
+    private async googleGenerativeModels(tenantId?: string): Promise<string[]> {
+        const config = await this.aiSettings.getGoogleConfig(tenantId);
+        const configured = config.model?.trim();
+        const defaults = [
+            'gemini-2.5-flash',
+            'gemini-flash-latest',
+            'gemini-2.0-flash-lite',
+            'gemini-2.0-flash',
+        ];
+        if (configured) {
+            return [configured, ...defaults.filter((m) => m !== configured)];
+        }
+        return defaults;
+    }
 
     /**
      * Call Vertex AI with a text prompt.
      * Includes a graceful fallback if GCP credentials are not found.
      */
-    async generateText(prompt: string, inlineData?: { mimeType: string, data: string }): Promise<string> {
-        const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
+    async generateText(
+        prompt: string,
+        inlineData?: { mimeType: string; data: string },
+        tenantId?: string,
+    ): Promise<string> {
+        const config = await this.aiSettings.getGoogleConfig(tenantId);
+        const projectId = config.projectId;
 
         if (!projectId) {
-            const apiKey = this.configService.get<string>('GOOGLE_API_KEY');
-            if (apiKey?.trim()) {
-                const viaStudio = await this.generateTextViaGoogleAiStudio(apiKey.trim(), prompt, inlineData);
+            const apiKey = config.apiKey;
+            if (apiKey) {
+                const viaStudio = await this.generateTextViaGoogleAiStudio(apiKey, prompt, inlineData, tenantId);
                 if (viaStudio.text) return viaStudio.text;
                 if (viaStudio.userMessage) return viaStudio.userMessage;
             }
-            this.logger.warn('GOOGLE_CLOUD_PROJECT is not set and Google AI Studio unavailable. Using fallback AI response.');
+            this.logger.warn('Google is not configured. Set API key or Vertex project in AI Studio Settings.');
             return this.getFallbackResponse(prompt);
         }
 
@@ -32,8 +56,9 @@ export class VertexAiService {
             const client = await auth.getClient();
             const accessToken = await client.getAccessToken();
 
-            const location = this.configService.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
-            const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${this.MODEL_NAME}:generateContent`;
+            const location = config.location;
+            const model = config.model;
+            const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
 
             const parts: any[] = [{ text: prompt }];
             if (inlineData) {
@@ -73,26 +98,12 @@ export class VertexAiService {
         }
     }
 
-    private googleGenerativeModels(): string[] {
-        const configured = this.configService.get<string>('GOOGLE_GENERATIVE_MODEL')?.trim();
-        // gemini-1.5-* removed from Google AI v1beta (404). Prefer models that still accept generateContent.
-        const defaults = [
-            'gemini-2.5-flash',
-            'gemini-flash-latest',
-            'gemini-2.0-flash-lite',
-            'gemini-2.0-flash',
-        ];
-        if (configured) {
-            return [configured, ...defaults.filter((m) => m !== configured)];
-        }
-        return defaults;
-    }
-
     /** Google AI Studio (API key) — used when Vertex/GCP is not configured. */
     private async generateTextViaGoogleAiStudio(
         apiKey: string,
         prompt: string,
         inlineData?: { mimeType: string; data: string },
+        tenantId?: string,
     ): Promise<{ text?: string; userMessage?: string }> {
         const parts: { text?: string; inlineData?: { mimeType: string; data: string } }[] = [{ text: prompt }];
         if (inlineData) {
@@ -102,7 +113,7 @@ export class VertexAiService {
         let lastStatus: number | undefined;
         let lastModel: string | undefined;
 
-        for (const model of this.googleGenerativeModels()) {
+        for (const model of await this.googleGenerativeModels(tenantId)) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
             try {
                 const response = await fetch(url, {
@@ -127,7 +138,8 @@ export class VertexAiService {
                 };
                 const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
                 if (text?.trim()) {
-                    if (model !== this.googleGenerativeModels()[0]) {
+                    const models = await this.googleGenerativeModels(tenantId);
+                    if (model !== models[0]) {
                         this.logger.log(`Google AI Studio succeeded with fallback model: ${model}`);
                     }
                     return { text };
@@ -145,25 +157,21 @@ export class VertexAiService {
         if (status === 429) {
             return (
                 `Kuota Google AI Studio habis${model ? ` (model: ${model})` : ''}. ` +
-                'Tunggu ~1 menit, aktifkan billing di Google AI, atau set di middleware/.env.local: ' +
-                'GOOGLE_GENERATIVE_MODEL=gemini-2.5-flash. Alternatif: STUDIO_AI_PROVIDER=anthropic + ANTHROPIC_API_KEY.'
+                'Tunggu ~1 menit atau ganti model di AI Studio Settings.'
             );
         }
         if (status === 403) {
-            return 'Google API key ditolak untuk generate content. Periksa GOOGLE_API_KEY dan izin API di Google Cloud Console.';
+            return 'Google API key ditolak. Periksa kunci dan izin API di Google Cloud Console (AI Studio Settings).';
         }
-        return (
-            'Tidak dapat menghubungi Google AI Studio. Periksa GOOGLE_API_KEY, atau set GOOGLE_CLOUD_PROJECT (Vertex), ' +
-            'atau STUDIO_AI_PROVIDER=anthropic dengan ANTHROPIC_API_KEY.'
-        );
+        return 'Tidak dapat menghubungi Google AI. Periksa API key atau Vertex project di AI Studio Settings.';
     }
 
     /**
      * Specialized method to force JSON output from Vertex AI.
      */
-    async generateStructuredJSON(prompt: string): Promise<any> {
+    async generateStructuredJSON(prompt: string, tenantId?: string): Promise<any> {
         const fullPrompt = `${prompt}\n\nIMPORTANT: Return ONLY valid JSON. Do not include markdown formatting like \`\`\`json.`;
-        const text = await this.generateText(fullPrompt);
+        const text = await this.generateText(fullPrompt, undefined, tenantId);
 
         try {
             // Clean up any potential markdown if the model ignored the instruction
@@ -421,8 +429,7 @@ export class VertexAiService {
 
         // Generic fallback — return empty JSON object instead of a string
         return JSON.stringify({
-            message:
-                'AI is not configured. Set GOOGLE_CLOUD_PROJECT (Vertex), GOOGLE_API_KEY (Google AI Studio), or STUDIO_AI_PROVIDER=anthropic with ANTHROPIC_API_KEY.',
+            message: 'AI is not configured. Configure a provider in AI Studio Settings.',
         });
     }
 
@@ -432,17 +439,7 @@ export class VertexAiService {
         userPrompt: string;
         temperature?: number;
         maxOutputTokens?: number;
-    }): Promise<{
-        output: string;
-        latencyMs: number;
-        provider: string;
-        model: string;
-        inputChars: number;
-        outputChars: number;
-        promptTokens?: number;
-        completionTokens?: number;
-        totalTokens?: number;
-    }> {
+    }, tenantId?: string): Promise<PlaygroundResult> {
         const temperature = Math.min(2, Math.max(0, params.temperature ?? 0.7));
         const maxOutputTokens = Math.min(8192, Math.max(64, params.maxOutputTokens ?? 2048));
         const systemPrompt = params.systemPrompt?.trim() || '';
@@ -450,8 +447,9 @@ export class VertexAiService {
         const inputChars = systemPrompt.length + userPrompt.length;
         const started = Date.now();
 
-        const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
-        const apiKey = this.configService.get<string>('GOOGLE_API_KEY')?.trim();
+        const config = await this.aiSettings.getGoogleConfig(tenantId);
+        const projectId = config.projectId;
+        const apiKey = config.apiKey;
 
         const buildBody = (model?: string) => {
             const body: Record<string, unknown> = {
@@ -490,7 +488,7 @@ export class VertexAiService {
                     outputChars: output.length,
                 };
             }
-            for (const model of this.googleGenerativeModels()) {
+            for (const model of await this.googleGenerativeModels(tenantId)) {
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
                 try {
                     const response = await fetch(url, {
@@ -537,8 +535,8 @@ export class VertexAiService {
             const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
             const client = await auth.getClient();
             const accessToken = await client.getAccessToken();
-            const location = this.configService.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
-            const model = this.MODEL_NAME;
+            const location = config.location;
+            const model = config.model;
             const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
 
             const response = await fetch(url, {
@@ -584,10 +582,31 @@ export class VertexAiService {
                 output,
                 latencyMs: Date.now() - started,
                 provider: 'vertex',
-                model: this.MODEL_NAME,
+                model: config.model,
                 inputChars,
                 outputChars: output.length,
             };
         }
+    }
+
+    async testConnection(tenantId?: string): Promise<{ success: boolean; message: string; latencyMs: number; model: string }> {
+        const config = await this.aiSettings.getGoogleConfig(tenantId);
+        const started = Date.now();
+        if (!config.apiKey && !config.projectId) {
+            return {
+                success: false,
+                message: 'Google API key or Vertex project ID not configured',
+                latencyMs: 0,
+                model: config.model,
+            };
+        }
+        const output = await this.generateText('Reply with exactly: OK', undefined, tenantId);
+        const ok = output.trim().toUpperCase().includes('OK');
+        return {
+            success: ok,
+            message: ok ? 'Google AI connection successful' : `Response: ${output.slice(0, 100)}`,
+            latencyMs: Date.now() - started,
+            model: config.model,
+        };
     }
 }

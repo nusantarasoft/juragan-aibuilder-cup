@@ -54,7 +54,7 @@ const glass = {
     borderRadius: 14,
 };
 
-const WAHA_DASHBOARD = process.env.NEXT_PUBLIC_WAHA_DASHBOARD_URL || 'http://127.0.0.1:3010/dashboard';
+const DEFAULT_WAHA_DASHBOARD = 'http://127.0.0.1:3010/dashboard';
 
 export default function WhatsAppGatewayPage() {
     return (
@@ -87,6 +87,13 @@ function WhatsAppGatewayPageContent() {
     const [sessionStatus, setSessionStatus] = useState<StudioWhatsAppSessionStatus | null>(null);
     const [securityMeta, setSecurityMeta] = useState<StudioWhatsAppSecurityMeta | null>(null);
     const [authQr, setAuthQr] = useState<StudioWahaAuthQr | null>(null);
+    const [wahaDashboard, setWahaDashboard] = useState(DEFAULT_WAHA_DASHBOARD);
+
+    useEffect(() => {
+        studioService.getSettings().then((s) => {
+            if (s?.waha_dashboard_url) setWahaDashboard(s.waha_dashboard_url);
+        }).catch(() => {});
+    }, []);
 
     const loadStatus = useCallback(async () => {
         try {
@@ -292,7 +299,7 @@ function WhatsAppGatewayPageContent() {
                         Logout WAHA
                     </Button>
                 ),
-                <Button key="dash" icon={<LinkOutlined />} onClick={() => window.open(WAHA_DASHBOARD, '_blank')}>
+                <Button key="dash" icon={<LinkOutlined />} onClick={() => window.open(wahaDashboard, '_blank')}>
                     WAHA Dashboard
                 </Button>,
                 <Button key="r" icon={<ReloadOutlined />} onClick={load} loading={loading} />,
