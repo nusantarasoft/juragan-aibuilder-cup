@@ -152,3 +152,80 @@ describe('StudioService notebooks', () => {
         );
     });
 });
+
+describe('StudioService.addMediaAsSource', () => {
+    it('links media using size_bytes and media bucket s3 key', async () => {
+        const mediaId = '233c0096-0c2c-4738-8860-94559b87e954';
+        const notebookId = 'nb-1';
+        const mediaSingle = vi.fn().mockResolvedValue({
+            data: {
+                id: mediaId,
+                filename: 'report.docx',
+                s3_key: 'report.docx',
+                bucket_name: 'percontohan',
+                mime_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                size_bytes: 1234,
+            },
+            error: null,
+        });
+        const sourceSingle = vi.fn().mockResolvedValue({
+            data: { id: 'src-1', media_id: mediaId, s3_key: 'report.docx', file_size: 1234 },
+            error: null,
+        });
+        const notebookSingle = vi.fn().mockResolvedValue({
+            data: { id: notebookId, source_count: 0, studio_notebook_sources: [] },
+            error: null,
+        });
+        const updateEq = vi.fn().mockResolvedValue({ error: null });
+
+        const from = vi.fn((table: string) => {
+            if (table === 'studio_notebooks') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({ single: notebookSingle }),
+                    }),
+                    update: vi.fn().mockReturnValue({ eq: updateEq }),
+                };
+            }
+            if (table === 'media') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({ single: mediaSingle }),
+                    }),
+                };
+            }
+            if (table === 'studio_notebook_sources') {
+                return {
+                    insert: vi.fn().mockReturnValue({
+                        select: vi.fn().mockReturnValue({ single: sourceSingle }),
+                    }),
+                };
+            }
+            throw new Error(`Unexpected table: ${table}`);
+        });
+
+        const configMock = {
+            get: (key: string) => {
+                if (key === 'S3_ENDPOINT') return 'http://127.0.0.1:9000';
+                if (key === 'S3_BUCKET') return 'cms-media';
+                return undefined;
+            },
+        } as unknown as ConfigService;
+
+        const service = new StudioService(
+            configMock,
+            { getAdminClient: () => ({ from }) } as unknown as SupabaseService,
+            {} as any,
+            {} as any,
+            { ingestSource: vi.fn() } as any,
+            {} as any,
+            {} as any,
+            {} as any,
+        );
+
+        const source = await service.addMediaAsSource(notebookId, mediaId);
+
+        expect(source.id).toBe('src-1');
+        expect(sourceSingle).toHaveBeenCalled();
+    });
+});

@@ -19,6 +19,7 @@ import {
     type QueryUnderstandingResult,
 } from './query-understanding';
 import { assertNoSupabaseError } from './studio-supabase.util';
+import { resolveSourceStorage } from './studio-source-storage.util';
 
 /**
  * Studio AI business logic — orchestrates notebooks, sources, and conversations.
@@ -277,13 +278,14 @@ export class StudioService {
 
         if (mediaError || !mediaRecord) throw new NotFoundException('Media not found');
 
-        // 2. Get file buffer from MinIO
-        const fileKey = mediaRecord.s3_key || mediaRecord.filepath || mediaRecord.filename;
-        const mediaBucket = mediaRecord.bucket_name || this.bucket;
-        const buffer = await this.getFileBuffer(fileKey, mediaBucket);
-        if (!buffer) throw new Error('Failed to read media file from storage');
+        const storage = resolveSourceStorage(
+            { media_id: mediaId, s3_key: mediaRecord.s3_key, filename: mediaRecord.filename },
+            mediaRecord,
+            this.bucket,
+        );
+        if (!storage) throw new BadRequestException('Media has no storage key');
 
-        // 3. Save source linked to media — indexing runs asynchronously
+        // Save source linked to media — indexing runs asynchronously
         const { data, error } = await this.supabaseService.getAdminClient()
             .from('studio_notebook_sources')
             .insert({
@@ -291,8 +293,8 @@ export class StudioService {
                 media_id: mediaId,
                 filename: mediaRecord.filename,
                 file_type: mediaRecord.mime_type,
-                file_size: mediaRecord.size || 0,
-                s3_key: fileKey,
+                file_size: mediaRecord.size_bytes || 0,
+                s3_key: storage.fileKey,
                 parse_status: 'pending',
                 parse_stage: 'queued',
                 parse_progress: 0,
@@ -304,7 +306,7 @@ export class StudioService {
             .select()
             .single();
 
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to add media source');
 
         void this.ingestionService.ingestSource(data.id);
 
