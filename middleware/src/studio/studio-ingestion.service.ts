@@ -4,6 +4,8 @@ import * as Minio from 'minio';
 import { SupabaseService } from '../supabase/supabase.service';
 import { RagService } from '../rag/rag.service';
 import { chunkText } from './studio-chunk.util';
+import { resolveSourceStorage } from './studio-source-storage.util';
+import { assertNoSupabaseError } from './studio-supabase.util';
 
 type IngestStage = 'queued' | 'extracting' | 'chunking' | 'embedding' | 'done' | 'error';
 
@@ -106,9 +108,26 @@ export class StudioIngestionService {
             }
 
             if (!text.trim()) {
-                const buffer = await this.getFileBuffer(source.s3_key, this.bucket);
+                let mediaRecord: { s3_key?: string; filename?: string; bucket_name?: string } | null = null;
+                if (source.media_id) {
+                    const { data: media } = await this.admin()
+                        .from('media')
+                        .select('s3_key, filename, bucket_name')
+                        .eq('id', source.media_id)
+                        .maybeSingle();
+                    mediaRecord = media;
+                }
+
+                const storage = resolveSourceStorage(source, mediaRecord, this.bucket);
+                if (!storage) {
+                    throw new Error('Could not resolve file storage for source');
+                }
+
+                const buffer = await this.getFileBuffer(storage.fileKey, storage.bucket);
                 if (!buffer) {
-                    throw new Error('Could not read file from storage');
+                    throw new Error(
+                        `Could not read file from storage (${storage.bucket}/${storage.fileKey})`,
+                    );
                 }
                 text = await this.ragService.extractDocumentText(
                     buffer,
@@ -162,7 +181,7 @@ export class StudioIngestionService {
                     content: chunkContent,
                     embedding,
                 });
-                if (insErr) throw insErr;
+                if (insErr) assertNoSupabaseError(insErr, 'Failed to insert source chunk');
                 embedded++;
                 await this.patchSource(sourceId, {
                     parse_stage: 'embedding',

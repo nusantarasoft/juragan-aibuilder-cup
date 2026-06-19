@@ -44,7 +44,7 @@ import {
     StudioWahaAuthQr,
 } from '@/lib/studioService';
 import { useAuth } from '@/context/AuthContext';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useStudioUserId } from '../useStudioUserId';
 
 const { Text, Paragraph } = Typography;
 const glass = {
@@ -69,9 +69,8 @@ function WhatsAppGatewayPageContent() {
     const tenantFromUrl = searchParams.get('tenant') || 'default';
 
     const { themeColor } = usePreferencesStore();
-    const { user: contextUser, loading: authLoading } = useAuth();
-    const authUser = useAuthStore((s) => s.user);
-    const userId = authUser?.id ?? contextUser?.id;
+    const { loading: authLoading } = useAuth();
+    const userId = useStudioUserId();
     const [form] = Form.useForm();
     
     // States

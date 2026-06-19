@@ -231,8 +231,7 @@ export function useStudioChat(
                     void loadConversations();
                 }
             } catch (e: unknown) {
-                const err = e as { message?: string };
-                message.error(err.message || "Chat failed");
+                message.error(e instanceof Error ? e.message : "Chat failed");
                 setChatHistory((prev) => prev.slice(0, -1));
             } finally {
                 setIsChatting(false);

@@ -44,6 +44,7 @@ npm run test:rag-eval
 | Variabel | Default | Keterangan |
 |----------|---------|------------|
 | `RUN_STUDIO_INTEGRATION` | — | Set `1` untuk GraphQL integration |
+| `RUN_AUTH_INTEGRATION` | — | Set `1` agar test create notebook pakai sign-in live |
 | `STUDIO_GRAPHQL_URL` | `http://127.0.0.1:4001/graphql` | URL GraphQL |
 | `STUDIO_INTEGRATION_NOTEBOOK_ID` | — | UUID notebook untuk UC-30/33/35 (opsional) |
 | `STUDIO_INTEGRATION_USER_ID` | — | User ID pemilik notebook (opsional) |
@@ -77,6 +78,8 @@ npm run test:e2e:studio
 
 | UC | Area test |
 |----|-----------|
+| UC-04 | `studio.service.unit.spec.ts` (create/list/delete notebook) |
+| UC-06–07 | `studio.service.unit.spec.ts`, `studio-ingestion.service.unit.spec.ts`, `studio-source-storage.util.spec.ts`, `studioService.media.spec.ts` (add media library) |
 | UC-05–09 | `studioSourceStatus.spec.ts` |
 | UC-10–13, UC-26–27 | `ai-studio.unit.spec.ts`, `useStudioChat` |
 | UC-29, UC-31 | `notebookSourceSelection.spec.ts` |

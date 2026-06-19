@@ -15,8 +15,8 @@ import {
 } from "@ant-design/icons";
 import ReactMarkdown from 'react-markdown';
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { useAuthStore } from "@/store/useAuthStore";
 import { useAuth } from "@/context/AuthContext";
+import { useStudioUserId } from "@/app/admin/ai-studio/useStudioUserId";
 import { AnimatePresence, motion } from "framer-motion";
 import {
     getSourceProgressPercent,
@@ -36,8 +36,8 @@ interface AIStudioDrawerProps { visible: boolean; onClose: () => void; }
 
 export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps) {
     const { themeColor } = usePreferencesStore();
-    const { user: contextUser, loading: authLoading } = useAuth();
-    const userId = useAuthStore((s) => s.user?.id) ?? contextUser?.id;
+    const { loading: authLoading } = useAuth();
+    const userId = useStudioUserId();
     const [isDark, setIsDark] = useState(false);
 
     useEffect(() => {

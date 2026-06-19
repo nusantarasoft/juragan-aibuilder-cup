@@ -35,7 +35,7 @@ import {
     StudioWhatsAppConfig,
 } from '@/lib/studioService';
 import { useAuth } from '@/context/AuthContext';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useStudioUserId } from '../useStudioUserId';
 
 const { Text, Paragraph } = Typography;
 const glass = {
@@ -59,9 +59,8 @@ function slugifyTenant(input: string): string {
 
 export default function UmkmStudioPage() {
     const { themeColor } = usePreferencesStore();
-    const { user: contextUser, loading: authLoading } = useAuth();
-    const authUser = useAuthStore((s) => s.user);
-    const userId = authUser?.id ?? contextUser?.id;
+    const { loading: authLoading } = useAuth();
+    const userId = useStudioUserId();
 
     const [loading, setLoading] = useState(true);
     const [configs, setConfigs] = useState<StudioWhatsAppConfig[]>([]);

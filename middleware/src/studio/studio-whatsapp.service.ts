@@ -7,6 +7,7 @@ import { StudioService } from './studio.service';
 import { GuideFlowService } from './guide-flow.service';
 import { StudioDbContextService } from './studio-db-context.service';
 import { StudioUmkmService } from './studio-umkm.service';
+import { assertNoSupabaseError } from './studio-supabase.util';
 import {
     collectUmkmOwnerPhones,
     extractBusinessPhoneFromPayload,
@@ -83,7 +84,7 @@ export class StudioWhatsAppService {
             .from('studio_whatsapp_config')
             .select('*')
             .order('tenant_id');
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to list WhatsApp configs');
         return (data || []) as StudioWhatsAppConfigRow[];
     }
 
@@ -93,7 +94,7 @@ export class StudioWhatsAppService {
             .select('*')
             .eq('tenant_id', tenantId)
             .maybeSingle();
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to get WhatsApp config');
         return data as StudioWhatsAppConfigRow | null;
     }
 
@@ -103,7 +104,7 @@ export class StudioWhatsAppService {
         payload?: Record<string, unknown>,
     ): Promise<StudioWhatsAppConfigRow | null> {
         const { data, error } = await this.admin().from('studio_whatsapp_config').select('*');
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to resolve WhatsApp config for webhook');
         const configs = (data || []) as StudioWhatsAppConfigRow[];
 
         const bySender = pickTenantConfigBySenderPhone(configs, senderPhone);
@@ -138,7 +139,7 @@ export class StudioWhatsAppService {
         if (!incoming.length) return;
 
         const { data, error } = await this.admin().from('studio_whatsapp_config').select('*');
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to validate owner phone uniqueness');
         for (const row of (data || []) as StudioWhatsAppConfigRow[]) {
             if (row.tenant_id === tenantId) continue;
             for (const existing of collectUmkmOwnerPhones(row)) {
@@ -237,7 +238,7 @@ export class StudioWhatsAppService {
             .upsert(row, { onConflict: 'tenant_id' })
             .select()
             .single();
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to save WhatsApp config');
         return data as StudioWhatsAppConfigRow;
     }
 
@@ -482,7 +483,7 @@ export class StudioWhatsAppService {
             })
             .select('id')
             .single();
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to create WhatsApp conversation');
 
         await this.admin().from('studio_whatsapp_sessions').insert({
             tenant_id: tenantId,

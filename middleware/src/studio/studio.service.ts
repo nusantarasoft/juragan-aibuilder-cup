@@ -18,6 +18,8 @@ import {
     type ConversationLine,
     type QueryUnderstandingResult,
 } from './query-understanding';
+import { assertNoSupabaseError, normalizeOptionalUuid, resolveUserIdForDb } from './studio-supabase.util';
+import { resolveSourceStorage } from './studio-source-storage.util';
 
 /**
  * Studio AI business logic — orchestrates notebooks, sources, and conversations.
@@ -144,19 +146,24 @@ export class StudioService {
         audience: 'admin' | 'customer' = 'admin',
         contextConfig?: StudioContextConfig,
     ): Promise<any> {
+        const ownerId = normalizeOptionalUuid(userId);
+        if (!ownerId) {
+            throw new BadRequestException('Invalid user id');
+        }
+
         const { data, error } = await this.supabaseService.getAdminClient()
             .from('studio_notebooks')
             .insert({
                 name,
                 description,
-                user_id: userId,
+                user_id: ownerId,
                 audience,
                 context_config: contextConfig ?? DEFAULT_STUDIO_SALES_CONTEXT,
             })
             .select()
             .single();
 
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to create notebook');
         this.logger.log(`Created notebook "${name}"`);
         return data;
     }
@@ -168,7 +175,7 @@ export class StudioService {
             .eq('user_id', userId)
             .order('updated_at', { ascending: false });
 
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to list notebooks');
         return data || [];
     }
 
@@ -201,7 +208,7 @@ export class StudioService {
             .eq('id', notebookId)
             .select()
             .single();
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to update notebook');
         return data;
     }
 
@@ -212,7 +219,7 @@ export class StudioService {
             .delete()
             .eq('id', notebookId);
 
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to delete notebook');
         return true;
     }
 
@@ -236,6 +243,7 @@ export class StudioService {
                 file_type: file.mimetype,
                 file_size: file.size,
                 s3_key: s3Key,
+                bucket_name: this.bucket,
                 parse_status: 'pending',
                 parse_stage: 'queued',
                 parse_progress: 0,
@@ -247,7 +255,7 @@ export class StudioService {
             .select()
             .single();
 
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to upload source');
 
         void this.ingestionService.ingestSource(data.id);
 
@@ -276,13 +284,14 @@ export class StudioService {
 
         if (mediaError || !mediaRecord) throw new NotFoundException('Media not found');
 
-        // 2. Get file buffer from MinIO
-        const fileKey = mediaRecord.s3_key || mediaRecord.filepath || mediaRecord.filename;
-        const mediaBucket = mediaRecord.bucket_name || this.bucket;
-        const buffer = await this.getFileBuffer(fileKey, mediaBucket);
-        if (!buffer) throw new Error('Failed to read media file from storage');
+        const storage = resolveSourceStorage(
+            { media_id: mediaId, s3_key: mediaRecord.s3_key, filename: mediaRecord.filename },
+            mediaRecord,
+            this.bucket,
+        );
+        if (!storage) throw new BadRequestException('Media has no storage key');
 
-        // 3. Save source linked to media — indexing runs asynchronously
+        // Save source linked to media — indexing runs asynchronously
         const { data, error } = await this.supabaseService.getAdminClient()
             .from('studio_notebook_sources')
             .insert({
@@ -290,8 +299,9 @@ export class StudioService {
                 media_id: mediaId,
                 filename: mediaRecord.filename,
                 file_type: mediaRecord.mime_type,
-                file_size: mediaRecord.size || 0,
-                s3_key: fileKey,
+                file_size: mediaRecord.size_bytes || 0,
+                s3_key: storage.fileKey,
+                bucket_name: storage.bucket,
                 parse_status: 'pending',
                 parse_stage: 'queued',
                 parse_progress: 0,
@@ -303,7 +313,7 @@ export class StudioService {
             .select()
             .single();
 
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to add media source');
 
         void this.ingestionService.ingestSource(data.id);
 
@@ -332,7 +342,7 @@ export class StudioService {
             .eq('id', sourceId)
             .eq('notebook_id', notebookId);
 
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to remove source');
         return true;
     }
 
@@ -395,12 +405,12 @@ export class StudioService {
             .from('studio_conversations')
             .insert({
                 notebook_id: notebookId,
-                user_id: userId,
+                user_id: resolveUserIdForDb(userId, this.logger, 'createConversationSession'),
                 title,
             })
             .select()
             .single();
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to create conversation session');
         return data;
     }
 
@@ -411,7 +421,7 @@ export class StudioService {
         content: string,
         sourceRefs?: any[] | null,
     ): Promise<void> {
-        await this.supabaseService.getAdminClient()
+        const { error: msgErr } = await this.supabaseService.getAdminClient()
             .from('studio_messages')
             .insert({
                 conversation_id: conversationId,
@@ -419,10 +429,13 @@ export class StudioService {
                 content,
                 source_refs: sourceRefs ?? null,
             });
-        await this.supabaseService.getAdminClient()
+        assertNoSupabaseError(msgErr, 'Failed to append studio message');
+
+        const { error: convErr } = await this.supabaseService.getAdminClient()
             .from('studio_conversations')
             .update({ updated_at: new Date() })
             .eq('id', conversationId);
+        assertNoSupabaseError(convErr, 'Failed to update conversation timestamp');
     }
 
     /**
@@ -569,13 +582,13 @@ export class StudioService {
                 .from('studio_conversations')
                 .insert({
                     notebook_id: notebookId,
-                    user_id: userId,
+                    user_id: resolveUserIdForDb(userId, this.logger, 'studio chat'),
                     title: question.substring(0, 100),
                 })
                 .select()
                 .single();
 
-            if (error) throw error;
+            assertNoSupabaseError(error, 'Failed to create conversation');
             conversation = data;
         }
 
@@ -613,7 +626,7 @@ export class StudioService {
             .eq('id', conversationId)
             .single();
 
-        if (convError) throw convError;
+        if (convError) assertNoSupabaseError(convError, 'Failed to load conversation');
 
         const { data: messages, error: msgError } = await this.supabaseService.getAdminClient()
             .from('studio_messages')
@@ -621,7 +634,7 @@ export class StudioService {
             .eq('conversation_id', conversationId)
             .order('created_at', { ascending: true });
 
-        if (msgError) throw msgError;
+        assertNoSupabaseError(msgError, 'Failed to load messages');
 
         return { ...conversation, messages: messages || [] };
     }
@@ -633,7 +646,7 @@ export class StudioService {
             .eq('notebook_id', notebookId)
             .order('updated_at', { ascending: false });
 
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to list conversations');
         return data || [];
     }
 

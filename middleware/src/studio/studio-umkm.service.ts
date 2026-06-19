@@ -24,6 +24,7 @@ import {
     type UmkmCatalogProduct,
     type UmkmSaleItemResolved,
 } from './studio-umkm-product.util';
+import { assertNoSupabaseError } from './studio-supabase.util';
 
 const DEFAULT_TENANT = 'default';
 
@@ -227,7 +228,7 @@ export class StudioUmkmService {
             .select('id, order_number, total_amount')
             .single();
 
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to record UMKM sale');
 
         for (let i = 0; i < sale.items.length; i++) {
             const item = sale.items[i];
@@ -381,7 +382,7 @@ export class StudioUmkmService {
             .from('studio_notebooks')
             .update({ context_config: merged, audience: 'customer', updated_at: new Date() })
             .eq('id', notebookId);
-        if (updErr) throw updErr;
+        assertNoSupabaseError(updErr, 'Failed to update notebook UMKM context');
 
         return {
             notebookId,

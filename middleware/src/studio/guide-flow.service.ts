@@ -28,6 +28,7 @@ import { DremioService } from '../dremio/dremio.service';
 import { StudioDbContextService } from './studio-db-context.service';
 import { StudioUmkmService } from './studio-umkm.service';
 import { formatUnknownUmkmCommand } from './studio-umkm.util';
+import { assertNoSupabaseError } from './studio-supabase.util';
 import { assertXStateStateCoverage } from './guide-flow.xstate-factory';
 
 @Injectable()
@@ -52,7 +53,7 @@ export class GuideFlowService {
             .select('*')
             .eq('notebook_id', notebookId)
             .order('updated_at', { ascending: false });
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to list guide flows');
         return data || [];
     }
 
@@ -91,7 +92,7 @@ export class GuideFlowService {
             })
             .select()
             .single();
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to create guide flow');
         return data;
     }
 
@@ -201,7 +202,7 @@ export class GuideFlowService {
             .eq('id', flowId)
             .select()
             .single();
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to update guide flow');
         return data;
     }
 
@@ -211,7 +212,7 @@ export class GuideFlowService {
             throw new BadRequestException('Unpublish the flow before deleting');
         }
         const { error } = await this.admin().from('studio_guide_flows').delete().eq('id', flowId);
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to delete guide flow');
         return true;
     }
 
@@ -231,8 +232,7 @@ export class GuideFlowService {
             .eq('id', flowId)
             .select()
             .single();
-        if (error) throw error;
-        this.logger.log(`Published guide flow ${flowId} v${nextVersion} for notebook ${row.notebook_id}`);
+        assertNoSupabaseError(error, 'Failed to publish guide flow');
         return data;
     }
 
@@ -254,7 +254,7 @@ export class GuideFlowService {
             .eq('notebook_id', notebookId)
             .eq('status', 'published')
             .maybeSingle();
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to get published guide flow');
         return data;
     }
 

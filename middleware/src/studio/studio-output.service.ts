@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { StudioContextService } from './studio-context.service';
 import { StudioDbContextService } from './studio-db-context.service';
+import { assertNoSupabaseError } from './studio-supabase.util';
 
 export type StudioOutputType =
     | 'report'
@@ -37,7 +38,7 @@ export class StudioOutputService {
                 this.logger.warn('studio_outputs table missing — apply migration');
                 return [];
             }
-            throw error;
+            assertNoSupabaseError(error, 'Failed to list studio outputs');
         }
         return data || [];
     }
@@ -54,7 +55,7 @@ export class StudioOutputService {
 
     async deleteOutput(outputId: string): Promise<boolean> {
         const { error } = await this.admin().from('studio_outputs').delete().eq('id', outputId);
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to delete studio output');
         return true;
     }
 
@@ -76,7 +77,7 @@ export class StudioOutputService {
             })
             .select()
             .single();
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to save studio output');
         return data;
     }
 
