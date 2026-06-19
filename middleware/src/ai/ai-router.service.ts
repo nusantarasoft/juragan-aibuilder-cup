@@ -5,7 +5,9 @@ import { VertexAiService } from './vertex-ai.service';
 import { OpenAiService } from './openai-ai.service';
 import { OllamaAiService } from './ollama-ai.service';
 import type { PlaygroundResult } from './openai-ai.service';
-import type { AiConnectionTestResult, LlmProvider, StudioAiStatus } from './ai-settings.types';
+import type { AiConnectionTestResult, AiInlineData, LlmProvider, StudioAiStatus } from './ai-settings.types';
+
+export type { AiInlineData };
 
 export type AiTestOverrides = {
     ollamaBaseUrl?: string;
@@ -30,18 +32,19 @@ export class AiRouterService {
 
     async generateText(
         prompt: string,
-        opts?: { tenantId?: string; inlineData?: { mimeType: string; data: string } },
+        opts?: { tenantId?: string; inlineData?: AiInlineData },
     ): Promise<string> {
         const provider = await this.aiSettings.getLlmProvider(opts?.tenantId);
+        const inlineData = opts?.inlineData;
         switch (provider) {
             case 'anthropic':
-                return this.claudeAi.generateText(prompt, opts?.tenantId);
+                return this.claudeAi.generateText(prompt, opts?.tenantId, inlineData);
             case 'openai':
-                return this.openAi.generateText(prompt, opts?.tenantId);
+                return this.openAi.generateText(prompt, opts?.tenantId, inlineData);
             case 'ollama':
-                return this.ollamaAi.generateText(prompt, opts?.tenantId);
+                return this.ollamaAi.generateText(prompt, opts?.tenantId, inlineData);
             default:
-                return this.vertexAi.generateText(prompt, opts?.inlineData, opts?.tenantId);
+                return this.vertexAi.generateText(prompt, inlineData, opts?.tenantId);
         }
     }
 

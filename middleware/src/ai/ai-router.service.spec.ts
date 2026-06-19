@@ -25,7 +25,7 @@ describe('AiRouterService', () => {
 
         const out = await router.generateText('hello');
         expect(out).toBe('claude reply');
-        expect(claudeAi.generateText).toHaveBeenCalledWith('hello', undefined);
+        expect(claudeAi.generateText).toHaveBeenCalledWith('hello', undefined, undefined);
     });
 
     it('routes generateText to openai when configured', async () => {

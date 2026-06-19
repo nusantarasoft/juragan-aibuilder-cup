@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiSettingsService } from './ai-settings.service';
+import type { AiInlineData } from './ai-settings.types';
 import type { PlaygroundResult } from './openai-ai.service';
 
 const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
@@ -20,12 +21,36 @@ export class ClaudeAiService {
             .join('');
     }
 
-    async generateText(prompt: string, tenantId?: string): Promise<string> {
+    private claudeImageMediaType(mimeType: string): string | null {
+        const normalized = mimeType.toLowerCase();
+        if (normalized === 'image/jpg') return 'image/jpeg';
+        if (['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(normalized)) {
+            return normalized;
+        }
+        return null;
+    }
+
+    async generateText(prompt: string, tenantId?: string, inlineData?: AiInlineData): Promise<string> {
         const config = await this.aiSettings.getAnthropicConfig(tenantId);
         if (!config.apiKey) {
             this.logger.warn('Anthropic API key is not configured.');
             return 'Claude is not configured. Add an API key in AI Studio Settings.';
         }
+
+        const imageMediaType = inlineData ? this.claudeImageMediaType(inlineData.mimeType) : null;
+        const messageContent = imageMediaType
+            ? [
+                  {
+                      type: 'image',
+                      source: {
+                          type: 'base64',
+                          media_type: imageMediaType,
+                          data: inlineData!.data,
+                      },
+                  },
+                  { type: 'text', text: prompt },
+              ]
+            : prompt;
 
         try {
             const response = await fetch(ANTHROPIC_MESSAGES_URL, {
@@ -38,7 +63,7 @@ export class ClaudeAiService {
                 body: JSON.stringify({
                     model: config.model,
                     max_tokens: config.maxTokens,
-                    messages: [{ role: 'user', content: prompt }],
+                    messages: [{ role: 'user', content: messageContent }],
                 }),
             });
 

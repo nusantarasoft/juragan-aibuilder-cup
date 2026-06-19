@@ -4,6 +4,8 @@ import * as Minio from 'minio';
 import { SupabaseService } from '../supabase/supabase.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
 import { AiSettingsService } from '../ai/ai-settings.service';
+import { AiRouterService } from '../ai/ai-router.service';
+import type { AiInlineData } from '../ai/ai-settings.types';
 import { OpenAiService } from '../ai/openai-ai.service';
 import { OllamaAiService } from '../ai/ollama-ai.service';
 
@@ -20,9 +22,25 @@ export class RagService implements OnModuleInit {
         private webhooksService: WebhooksService,
         private supabaseService: SupabaseService,
         private aiSettings: AiSettingsService,
+        private aiRouter: AiRouterService,
         private openAiService: OpenAiService,
         private ollamaAiService: OllamaAiService,
     ) { }
+
+    private async llmGenerate(prompt: string, inlineData?: AiInlineData): Promise<string | null> {
+        const text = await this.aiRouter.generateText(prompt, { inlineData });
+        if (!text?.trim()) return null;
+        const lower = text.toLowerCase();
+        if (
+            lower.includes('not configured') ||
+            lower.includes('request failed') ||
+            lower.includes('tidak dapat menghubungi')
+        ) {
+            this.logger.warn(`Active LLM error response: ${text.slice(0, 160)}`);
+            return null;
+        }
+        return text.trim();
+    }
 
     private async getDbSettings(): Promise<any> {
         return this.aiSettings.getRawSettings();
@@ -79,16 +97,14 @@ export class RagService implements OnModuleInit {
     }
 
     async generateAnswer(query: string): Promise<string> {
-        this.logger.log(`Generating answer for: "${query}" (REST-gemini-pro)`);
+        this.logger.log(`Generating answer for: "${query}" via active LLM`);
 
-        // 1. Get Context
         const searchResults = await this.semanticSearch(query, 5);
 
         if (searchResults.length === 0) {
             return "I couldn't find any relevant documents in your library to answer this question.";
         }
 
-        // 2. Format Context
         const contextText = searchResults.map(doc => `[File: ${doc.filename}]`).join('\n');
 
         const prompt = `You are an intelligent assistant having access to the user's media library.
@@ -99,39 +115,8 @@ User Question: ${query}
 
 Answer:`;
 
-        // 3. Generate Answer (Try API Key first, then Vertex)
-        const settings = await this.getDbSettings();
-        const apiKey = settings?.google_api_key;
-
-        try {
-            if (apiKey) {
-                const genModel = settings?.google_model || 'gemini-2.5-flash';
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${genModel}:generateContent?key=${apiKey}`;
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }]
-                    })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (text) return text;
-                } else {
-                    this.logger.error(`Gemini API Error: ${response.status} ${response.statusText}`);
-                }
-            }
-
-            // Fallback to Vertex AI (Old Logic)
-            // ... (Removing complex Vertex auth for now to simplify fix, relying on API Key)
-            return "Could not generate answer (API Key issue).";
-
-        } catch (e) {
-            this.logger.error("Gemini Generation Error", e);
-            return `Error: ${e.message}`;
-        }
+        const answer = await this.llmGenerate(prompt);
+        return answer || 'Could not generate answer with the active LLM provider.';
     }
 
     /** Public wrapper for Studio notebook chunk embeddings. */
@@ -217,136 +202,17 @@ Answer:`;
             else if (ext === 'webp') resolvedMime = 'image/webp';
         }
 
-        const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
-        const apiKey = this.configService.get<string>('GOOGLE_API_KEY')?.trim();
         const extractPrompt =
             'Extract and return the full textual content of this document for search indexing. ' +
             'Return plain text only, no markdown fences. Preserve important facts, numbers, and headings.';
 
-        if (!projectId) {
-            if (apiKey) {
-                const viaGoogle = await this.extractDocumentTextViaGoogleAi(
-                    apiKey,
-                    buffer,
-                    resolvedMime,
-                    extractPrompt,
-                );
-                if (viaGoogle?.trim()) return viaGoogle.trim();
-            }
-            return `Document: ${filename}`;
-        }
+        const viaLlm = await this.llmGenerate(extractPrompt, {
+            mimeType: resolvedMime,
+            data: buffer.toString('base64'),
+        });
+        if (viaLlm) return viaLlm;
 
-        try {
-            const { GoogleAuth } = await import('google-auth-library');
-            const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
-            const client = await auth.getClient();
-            const accessToken = await client.getAccessToken();
-            const location = this.configService.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
-            const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/gemini-2.5-pro:generateContent`;
-
-            const apiResponse = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${accessToken.token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        role: 'user',
-                        parts: [
-                            { text: extractPrompt },
-                            { inlineData: { mimeType: resolvedMime, data: buffer.toString('base64') } },
-                        ],
-                    }],
-                }),
-            });
-
-            if (!apiResponse.ok) {
-                this.logger.warn(`extractDocumentText Vertex error: ${apiResponse.status}`);
-                if (apiKey) {
-                    const viaGoogle = await this.extractDocumentTextViaGoogleAi(
-                        apiKey,
-                        buffer,
-                        resolvedMime,
-                        extractPrompt,
-                    );
-                    if (viaGoogle?.trim()) return viaGoogle.trim();
-                }
-                return `Document: ${filename}`;
-            }
-
-            const data = await apiResponse.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            return (text || `Document: ${filename}`).trim();
-        } catch (e: any) {
-            this.logger.warn(`extractDocumentText failed: ${e?.message}`);
-            if (apiKey) {
-                const viaGoogle = await this.extractDocumentTextViaGoogleAi(
-                    apiKey,
-                    buffer,
-                    resolvedMime,
-                    extractPrompt,
-                );
-                if (viaGoogle?.trim()) return viaGoogle.trim();
-            }
-            return `Document: ${filename}`;
-        }
-    }
-
-    /** Google AI Studio multimodal extract (PDF, PPTX, images) without GCP project. */
-    private async extractDocumentTextViaGoogleAi(
-        apiKey: string,
-        buffer: Buffer,
-        mimeType: string,
-        prompt: string,
-    ): Promise<string | null> {
-        const models = [
-            this.configService.get<string>('GOOGLE_GENERATIVE_MODEL')?.trim(),
-            'gemini-2.5-flash',
-            'gemini-flash-latest',
-            'gemini-2.0-flash',
-        ].filter(Boolean) as string[];
-        const uniqueModels = [...new Set(models)];
-
-        for (const model of uniqueModels) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            role: 'user',
-                            parts: [
-                                { text: prompt },
-                                { inlineData: { mimeType, data: buffer.toString('base64') } },
-                            ],
-                        }],
-                    }),
-                });
-                if (!response.ok) {
-                    const errBody = await response.text().catch(() => '');
-                    this.logger.warn(
-                        `extractDocumentTextViaGoogleAi (${model}): HTTP ${response.status} ${errBody.slice(0, 200)}`,
-                    );
-                    if ([404, 429, 503].includes(response.status)) continue;
-                    continue;
-                }
-                const data = (await response.json()) as {
-                    candidates?: { content?: { parts?: { text?: string }[] } }[];
-                };
-                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (text?.trim()) {
-                    this.logger.log(`extractDocumentText via Google AI (${model})`);
-                    return text.trim();
-                }
-            } catch (e: unknown) {
-                this.logger.warn(
-                    `extractDocumentTextViaGoogleAi (${model}): ${e instanceof Error ? e.message : e}`,
-                );
-            }
-        }
-        return null;
+        return `Document: ${filename}`;
     }
 
     /** Offline text extraction for PDF / Office Open XML (no API key required). */
@@ -769,7 +635,7 @@ Answer:`;
     }
 
     async autoLabelMedia(mediaId: string): Promise<string[]> {
-        this.logger.log(`Auto-labelling media ${mediaId} via Gemini 1.5 Pro (Vertex AI)...`);
+        this.logger.log(`Auto-labelling media ${mediaId} via active LLM...`);
 
         // 1. ID Resolution
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(mediaId);
@@ -812,17 +678,6 @@ Answer:`;
             const base64Data = buffer.toString('base64');
             const mimeType = mediaRecord.mime_type || "application/octet-stream";
 
-            // Use GoogleAuth to get access token (REST API Approach)
-            const { GoogleAuth } = await import('google-auth-library');
-            const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
-            const client = await auth.getClient();
-            const accessToken = await client.getAccessToken();
-
-            const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
-            const location = this.configService.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
-            const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/gemini-2.5-pro:generateContent`;
-
-            // Dynamic Prompt based on MimeType
             let promptText = "Analyze this media. Return ONLY a JSON array of 10-15 descriptive string tags.";
 
             if (mimeType.startsWith('image/')) {
@@ -835,43 +690,15 @@ Answer:`;
                 promptText = "Analyze this PDF document. Summarize its key topics, entities, and themes. Return ONLY a JSON array of 10-15 descriptive string tags representing the document content.";
             }
 
-            const requestBody = {
-                contents: [{
-                    role: 'user',
-                    parts: [
-                        { text: promptText },
-                        { inlineData: { mimeType, data: base64Data } }
-                    ]
-                }]
-            };
-
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken.token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(requestBody)
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                this.logger.error(`Vertex API AutoLabel Error: ${response.status} - ${errorText}`);
-                return [];
-            }
-
-            const data = await response.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            const text = await this.llmGenerate(promptText, { mimeType, data: base64Data });
+            if (!text) return [];
 
             let tags: string[] = [];
-            if (text) {
-                // Extract JSON array from text (markdown block handling)
-                const match = text.match(/\[.*\]/s);
-                if (match) {
-                    try { tags = JSON.parse(match[0]); } catch { }
-                } else {
-                    tags = text.split(',').map((t: string) => t.trim());
-                }
+            const match = text.match(/\[.*\]/s);
+            if (match) {
+                try { tags = JSON.parse(match[0]); } catch { /* ignore */ }
+            } else {
+                tags = text.split(',').map((t: string) => t.trim());
             }
 
             if (tags.length > 0) {
@@ -894,7 +721,7 @@ Answer:`;
     // For brevity, assuming describeMedia reuses the pattern above.
 
     async describeMedia(mediaId: string): Promise<string | null> {
-        this.logger.log(`Auto-describing media ${mediaId} via Gemini Vision...`);
+        this.logger.log(`Auto-describing media ${mediaId} via active LLM`);
 
         // 1. ID Resolution
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(mediaId);
@@ -957,50 +784,11 @@ Answer:`;
             }
             mimeType = mimeType || "application/octet-stream";
 
-            // Use GoogleAuth to get access token (REST API Approach)
-            const { GoogleAuth } = await import('google-auth-library');
-            const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
-            const client = await auth.getClient();
-            const accessToken = await client.getAccessToken();
-
-            const projectId = this.configService.get('GOOGLE_CLOUD_PROJECT');
-            const location = this.configService.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
-            const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/gemini-2.5-pro:generateContent`;
-
             let promptText = "Describe this content in detail.";
             if (mimeType.startsWith('image/')) promptText = "Describe this image in detail, capturing visual elements, text, and context.";
             else if (mimeType === 'application/pdf') promptText = "Summarize the content of this document in detail, capturing key points and entities.";
 
-            const requestBody = {
-                contents: [{
-                    role: 'user',
-                    parts: [
-                        { text: promptText },
-                        { inlineData: { mimeType: mimeType, data: base64Data } }
-                    ]
-                }],
-            };
-
-            const apiResponse = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken.token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(requestBody)
-            });
-
-            if (!apiResponse.ok) {
-                const errorText = await apiResponse.text();
-                this.logger.error(`Vertex API Describe Error: ${apiResponse.status} - ${errorText}`);
-                return null;
-            }
-
-            const data = await apiResponse.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-            if (text) return text;
-            return null;
+            return await this.llmGenerate(promptText, { mimeType, data: base64Data });
 
         } catch (e) {
             this.logger.error('DescribeMedia failed', e);

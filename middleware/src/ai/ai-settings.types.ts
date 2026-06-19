@@ -2,6 +2,7 @@ export const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000';
 
 export type LlmProvider = 'anthropic' | 'google' | 'openai' | 'ollama';
 export type EmbeddingProvider = 'auto' | 'google_ai' | 'vertex' | 'openai' | 'ollama';
+export type AiInlineData = { mimeType: string; data: string };
 
 export interface StudioSettingsRow {
     tenant_id?: string;

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiSettingsService } from './ai-settings.service';
 import { resolveOllamaBaseUrl } from './ollama-url.util';
+import type { AiInlineData } from './ai-settings.types';
 import type { PlaygroundResult } from './openai-ai.service';
 
 @Injectable()
@@ -10,7 +11,7 @@ export class OllamaAiService {
     constructor(private readonly aiSettings: AiSettingsService) {}
 
     private async chatRequest(
-        messages: { role: string; content: string }[],
+        messages: { role: string; content: string; images?: string[] }[],
         model: string,
         baseUrl: string,
         options?: { temperature?: number; num_predict?: number },
@@ -42,10 +43,17 @@ export class OllamaAiService {
         }
     }
 
-    async generateText(prompt: string, tenantId?: string): Promise<string> {
+    async generateText(prompt: string, tenantId?: string, inlineData?: AiInlineData): Promise<string> {
         const config = await this.aiSettings.getOllamaConfig(tenantId);
+        const userMessage: { role: string; content: string; images?: string[] } = {
+            role: 'user',
+            content: prompt,
+        };
+        if (inlineData?.mimeType.startsWith('image/')) {
+            userMessage.images = [inlineData.data];
+        }
         const result = await this.chatRequest(
-            [{ role: 'user', content: prompt }],
+            [userMessage],
             config.model,
             config.baseUrl,
         );

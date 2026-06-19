@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiSettingsService } from './ai-settings.service';
+import type { AiInlineData } from './ai-settings.types';
 
 export type PlaygroundResult = {
     output: string;
@@ -19,11 +20,23 @@ export class OpenAiService {
 
     constructor(private readonly aiSettings: AiSettingsService) {}
 
-    async generateText(prompt: string, tenantId?: string): Promise<string> {
+    async generateText(prompt: string, tenantId?: string, inlineData?: AiInlineData): Promise<string> {
         const config = await this.aiSettings.getOpenAiConfig(tenantId);
         if (!config.apiKey) {
             return 'OpenAI is not configured. Add an API key in AI Studio Settings.';
         }
+
+        const userContent = inlineData?.mimeType.startsWith('image/')
+            ? [
+                  { type: 'text', text: prompt },
+                  {
+                      type: 'image_url',
+                      image_url: {
+                          url: `data:${inlineData.mimeType};base64,${inlineData.data}`,
+                      },
+                  },
+              ]
+            : prompt;
 
         try {
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -34,7 +47,7 @@ export class OpenAiService {
                 },
                 body: JSON.stringify({
                     model: config.model,
-                    messages: [{ role: 'user', content: prompt }],
+                    messages: [{ role: 'user', content: userContent }],
                 }),
             });
 
