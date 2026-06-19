@@ -95,6 +95,7 @@ export class StudioWhatsAppService {
             .eq('tenant_id', tenantId)
             .maybeSingle();
         assertNoSupabaseError(error, 'Failed to get WhatsApp config');
+        return data as StudioWhatsAppConfigRow | null;
     }
 
     async resolveConfigForWebhook(
@@ -238,6 +239,10 @@ export class StudioWhatsAppService {
             .select()
             .single();
         assertNoSupabaseError(error, 'Failed to save WhatsApp config');
+        return data as StudioWhatsAppConfigRow;
+    }
+
+    async getWahaSessionStatus() {
         const status = await this.wahaClient.getSessionStatus();
         const sessions = await this.wahaClient.listSessions();
         const version = await this.wahaClient.getVersion();
