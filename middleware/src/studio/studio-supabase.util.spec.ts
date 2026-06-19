@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertNoSupabaseError } from './studio-supabase.util';
+import { assertNoSupabaseError, isValidUuid, normalizeOptionalUuid } from './studio-supabase.util';
 
 describe('assertNoSupabaseError', () => {
     it('does nothing when error is null or undefined', () => {
@@ -29,5 +29,20 @@ describe('assertNoSupabaseError', () => {
             expect(e).toBeInstanceOf(Error);
             expect((e as Error).message).toBe('duplicate key');
         }
+    });
+});
+
+describe('normalizeOptionalUuid', () => {
+    it('accepts valid UUIDs', () => {
+        const id = 'f1888829-75bf-4602-babe-1863d52f61bb';
+        expect(normalizeOptionalUuid(id)).toBe(id);
+        expect(isValidUuid(id)).toBe(true);
+    });
+
+    it('returns null for invalid or empty values', () => {
+        expect(normalizeOptionalUuid('not-a-uuid')).toBeNull();
+        expect(normalizeOptionalUuid('')).toBeNull();
+        expect(normalizeOptionalUuid(undefined)).toBeNull();
+        expect(isValidUuid('admin')).toBe(false);
     });
 });

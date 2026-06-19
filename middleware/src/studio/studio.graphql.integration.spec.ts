@@ -235,4 +235,38 @@ describe.skipIf(!RUN)('Studio GraphQL integration (live middleware)', () => {
             }),
         ).rejects.toThrow(/not found/i);
     });
+
+    it('studioChat tolerates invalid userId (stores null owner on conversation)', async () => {
+        let notebookId = process.env.STUDIO_INTEGRATION_NOTEBOOK_ID?.trim();
+        if (!notebookId) {
+            if (!isAuthIntegrationEnabled()) return;
+            const creds = authIntegrationCredentials();
+            const signedIn = await authGqlRequest<{ signIn: { user: { id: string } } }>(
+                SIGN_IN_MUTATION,
+                creds,
+            );
+            const created = await gqlRequest<{ createStudioNotebook: { id: string } }>(`
+                mutation($name: String!, $userId: String!) {
+                    createStudioNotebook(name: $name, userId: $userId)
+                }
+            `, {
+                name: `Chat UUID test ${Date.now()}`,
+                userId: signedIn.signIn.user.id,
+            });
+            notebookId = created.createStudioNotebook.id;
+        }
+
+        const data = await gqlRequest<{ studioChat: { conversationId: string; answer: string } }>(`
+            mutation($notebookId: String!, $question: String!, $userId: String) {
+                studioChat(notebookId: $notebookId, question: $question, userId: $userId)
+            }
+        `, {
+            notebookId,
+            question: 'Halo, tes chat dengan userId tidak valid',
+            userId: 'not-a-uuid',
+        });
+
+        expect(data.studioChat.conversationId).toBeTruthy();
+        expect(data.studioChat.answer.length).toBeGreaterThan(0);
+    }, 60_000);
 });

@@ -18,7 +18,7 @@ import {
     type ConversationLine,
     type QueryUnderstandingResult,
 } from './query-understanding';
-import { assertNoSupabaseError } from './studio-supabase.util';
+import { assertNoSupabaseError, normalizeOptionalUuid } from './studio-supabase.util';
 import { resolveSourceStorage } from './studio-source-storage.util';
 
 /**
@@ -146,12 +146,17 @@ export class StudioService {
         audience: 'admin' | 'customer' = 'admin',
         contextConfig?: StudioContextConfig,
     ): Promise<any> {
+        const ownerId = normalizeOptionalUuid(userId);
+        if (!ownerId) {
+            throw new BadRequestException('Invalid user id');
+        }
+
         const { data, error } = await this.supabaseService.getAdminClient()
             .from('studio_notebooks')
             .insert({
                 name,
                 description,
-                user_id: userId,
+                user_id: ownerId,
                 audience,
                 context_config: contextConfig ?? DEFAULT_STUDIO_SALES_CONTEXT,
             })
@@ -572,13 +577,13 @@ export class StudioService {
                 .from('studio_conversations')
                 .insert({
                     notebook_id: notebookId,
-                    user_id: userId,
+                    user_id: normalizeOptionalUuid(userId),
                     title: question.substring(0, 100),
                 })
                 .select()
                 .single();
 
-            if (error) throw error;
+            assertNoSupabaseError(error, 'Failed to create conversation');
             conversation = data;
         }
 
@@ -616,7 +621,7 @@ export class StudioService {
             .eq('id', conversationId)
             .single();
 
-        if (convError) throw convError;
+        if (convError) assertNoSupabaseError(convError, 'Failed to load conversation');
 
         const { data: messages, error: msgError } = await this.supabaseService.getAdminClient()
             .from('studio_messages')
@@ -624,7 +629,7 @@ export class StudioService {
             .eq('conversation_id', conversationId)
             .order('created_at', { ascending: true });
 
-        if (msgError) throw msgError;
+        assertNoSupabaseError(msgError, 'Failed to load messages');
 
         return { ...conversation, messages: messages || [] };
     }
@@ -636,7 +641,7 @@ export class StudioService {
             .eq('notebook_id', notebookId)
             .order('updated_at', { ascending: false });
 
-        if (error) throw error;
+        assertNoSupabaseError(error, 'Failed to list conversations');
         return data || [];
     }
 

@@ -5,7 +5,7 @@ import { StudioService } from './studio.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { DEFAULT_STUDIO_SALES_CONTEXT } from './studio-db-context.service';
 
-const USER_ID = '11111111-1111-1111-1111-111111111111';
+const USER_ID = '11111111-1111-4111-8111-111111111111';
 
 function buildStudioService(options: {
     insertResult?: { data: unknown; error: unknown };
