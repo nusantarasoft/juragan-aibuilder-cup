@@ -155,11 +155,32 @@ export class OllamaAiService {
                 };
             }
             const data = (await response.json()) as { models?: { name?: string }[] };
-            const count = data.models?.length ?? 0;
-            const modelHint = count === 0 ? ' — pull a model: ollama pull llama3.2' : '';
+            const modelNames = (data.models ?? []).map((m) => m.name ?? '');
+            const count = modelNames.length;
+            const modelAvailable = modelNames.some(
+                (n) => n === model || n.startsWith(`${model}:`) || n.startsWith(`${model.split(':')[0]}:`),
+            );
+
+            if (count === 0) {
+                return {
+                    success: false,
+                    message: `Ollama terhubung di ${baseUrl}, tapi belum ada model. Jalankan: ollama pull ${model}`,
+                    latencyMs: Date.now() - started,
+                    model,
+                };
+            }
+            if (!modelAvailable) {
+                const available = modelNames.slice(0, 5).join(', ') || '(none)';
+                return {
+                    success: false,
+                    message: `Ollama terhubung, tapi model "${model}" belum ada. Tersedia: ${available}. Jalankan: ollama pull ${model}`,
+                    latencyMs: Date.now() - started,
+                    model,
+                };
+            }
             return {
                 success: true,
-                message: `Connected to Ollama at ${baseUrl} (${count} model${count === 1 ? '' : 's'} available)${modelHint}`,
+                message: `Ollama siap di ${baseUrl} — model ${model} tersedia (${count} model total)`,
                 latencyMs: Date.now() - started,
                 model,
             };
