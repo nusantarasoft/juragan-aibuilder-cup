@@ -1,15 +1,5 @@
 import { test, expect } from '@playwright/test';
-
-const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || 'admin@nusantarasoft.com';
-const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || 'admin123';
-
-async function loginAsAdmin(page: import('@playwright/test').Page) {
-    await page.goto('/login');
-    await page.fill('input[type="email"]', ADMIN_EMAIL);
-    await page.fill('input[type="password"]', ADMIN_PASSWORD);
-    await page.click('button[type="submit"]');
-    await expect(page).toHaveURL(/\/admin\//);
-}
+import { loginAsAdmin } from './helpers/auth';
 
 test.describe('AI Studio — NotebookLM layout', () => {
     test.beforeEach(async ({ page }) => {

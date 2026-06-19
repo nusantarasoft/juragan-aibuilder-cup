@@ -1,0 +1,26 @@
+diff --git a/node_modules/@ant-design/pro-layout/es/components/SiderMenu/SiderMenu.js b/node_modules/@ant-design/pro-layout/es/components/SiderMenu/SiderMenu.js
+index 50ed21e..a837df2 100644
+--- a/node_modules/@ant-design/pro-layout/es/components/SiderMenu/SiderMenu.js
++++ b/node_modules/@ant-design/pro-layout/es/components/SiderMenu/SiderMenu.js
+@@ -159,7 +159,7 @@ var SiderMenu = function SiderMenu(props) {
+     return /*#__PURE__*/_jsx(Space, {
+       align: "center",
+       size: 4,
+-      direction: collapsed ? 'vertical' : 'horizontal',
++      orientation: collapsed ? 'vertical' : 'horizontal',
+       className: classNames(["".concat(baseClassName, "-actions-list"), collapsed && "".concat(baseClassName, "-actions-list-collapsed"), hashId]),
+       children: [actionsRender === null || actionsRender === void 0 ? void 0 : actionsRender(props)].flat(1).map(function (item, index) {
+         return /*#__PURE__*/_jsx("div", {
+diff --git a/node_modules/@ant-design/pro-layout/lib/components/SiderMenu/SiderMenu.js b/node_modules/@ant-design/pro-layout/lib/components/SiderMenu/SiderMenu.js
+index 803d516..e1106ef 100644
+--- a/node_modules/@ant-design/pro-layout/lib/components/SiderMenu/SiderMenu.js
++++ b/node_modules/@ant-design/pro-layout/lib/components/SiderMenu/SiderMenu.js
+@@ -164,7 +164,7 @@ var SiderMenu = exports.SiderMenu = function SiderMenu(props) {
+     return /*#__PURE__*/(0, _jsxRuntime.jsx)(_antd.Space, {
+       align: "center",
+       size: 4,
+-      direction: collapsed ? 'vertical' : 'horizontal',
++      orientation: collapsed ? 'vertical' : 'horizontal',
+       className: (0, _classnames.default)(["".concat(baseClassName, "-actions-list"), collapsed && "".concat(baseClassName, "-actions-list-collapsed"), hashId]),
+       children: [actionsRender === null || actionsRender === void 0 ? void 0 : actionsRender(props)].flat(1).map(function (item, index) {
+         return /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
