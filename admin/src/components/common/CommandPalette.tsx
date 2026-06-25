@@ -65,7 +65,7 @@ const PAGES: PageItem[] = [
     { name: 'Permissions', path: '/admin/permissions/roles', icon: '🔐', group: 'System', keywords: 'roles access control' },
     // Facility Management
     { name: 'Interactive View (2D/3D)', path: '/admin/dcim/3d-view', icon: '🌐', group: 'Facility', keywords: 'data center 3d 2d model digital twin map floor plan' },
-    { name: 'SCADA HMI', path: '/admin/scada/hmi', icon: '🏭', group: 'Facility', keywords: 'scada chiller hvac plc' },
+    { name: 'SCADA Command Center', path: '/admin/scada/3d', icon: '🧊', group: 'Facility', keywords: 'scada 3d model scene map hmi' },
     { name: 'CCTV Live', path: '/admin/bms/cctv', icon: '📷', group: 'Facility', keywords: 'camera vms security video' },
     { name: 'Automation Rules', path: '/admin/bms/automation', icon: '⚙️', group: 'Facility', keywords: 'automation smart rules' },
     { name: 'BIM Models', path: '/admin/pm/construction-3d', icon: '🏗️', group: 'Facility', keywords: 'bim 3d ifc construction' },

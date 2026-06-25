@@ -1,7 +1,7 @@
 "use client";
 import React, { useRef, useState, Suspense, useCallback, useMemo, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Html, ContactShadows, PointerLockControls, SoftShadows, Environment, OrthographicCamera } from "@react-three/drei";
+import { OrbitControls, Html, ContactShadows, PointerLockControls, SoftShadows, Environment, OrthographicCamera, TransformControls } from "@react-three/drei";
 import { EffectComposer, Bloom, SSAO, Vignette, SMAA, DepthOfField } from "@react-three/postprocessing";
 import * as THREE from "three";
 import type { PlacedObject, PlacedObjectType, BuilderPaletteItem, BinOccupancy, RackInventory, ZoneInventory } from "./builderState";
@@ -361,10 +361,13 @@ function RackObject({ obj, selected, ghost, rackInventory, highlightBin, onShelf
                 <Html position={[cx, h + 0.15, cz]} center distanceFactor={14} style={{ pointerEvents: 'none' }}>
                     <div style={{
                         fontSize: 7, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace",
-                        color: dimmed ? '#555' : '#8ba8d4',
-                        background: dimmed ? 'rgba(0,0,0,0.2)' : 'rgba(10,15,30,0.65)',
-                        padding: '1px 5px', borderRadius: 3, whiteSpace: 'nowrap',
-                        border: `1px solid ${dimmed ? 'transparent' : 'rgba(100,140,200,0.2)'}`,
+                        color: dimmed ? '#555' : '#a5f3fc',
+                        background: dimmed ? 'rgba(0,0,0,0.2)' : 'rgba(8,47,73,0.6)',
+                        backdropFilter: 'blur(4px)',
+                        padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap',
+                        border: `1px solid ${dimmed ? 'transparent' : 'rgba(34,211,238,0.4)'}`,
+                        boxShadow: dimmed ? 'none' : '0 0 10px rgba(6,182,212,0.5), inset 0 0 5px rgba(6,182,212,0.3)',
+                        textShadow: dimmed ? 'none' : '0 0 4px rgba(165,243,252,0.8)',
                         letterSpacing: 0.3,
                     }}>
                         {obj.row}{obj.bay ? `-${String(obj.bay).padStart(2, '0')}` : ''}
@@ -591,6 +594,183 @@ function ForkliftObject({ obj, selected, ghost }: { obj: PlacedObject; selected:
 }
 
 // ═══════════════════════════════════════════════════
+// NEW EQUIPMENT OBJECTS
+// ═══════════════════════════════════════════════════
+
+function AGVObject({ obj, selected, ghost }: { obj: PlacedObject; selected: boolean; ghost?: boolean }) {
+    const op = ghost ? 0.4 : 1;
+    const pulseRef = useRef<THREE.Mesh>(null);
+    useFrame((state) => {
+        if (!ghost && pulseRef.current) {
+            (pulseRef.current.material as THREE.Material).opacity = 0.5 + Math.sin(state.clock.elapsedTime * 4) * 0.5;
+        }
+    });
+    return (
+        <group position={[obj.x + 0.5, 0, obj.z + 0.5]} rotation={[0, (obj.rotation * Math.PI) / 180, 0]}>
+            {/* Chassis */}
+            <mesh position={[0, 0.1, 0]} castShadow><boxGeometry args={[0.8, 0.15, 0.6]} /><meshStandardMaterial color="#334155" transparent={ghost} opacity={op} roughness={0.6} metalness={0.4} /></mesh>
+            {/* Sensor dome */}
+            <mesh position={[0.3, 0.22, 0]}><cylinderGeometry args={[0.08, 0.08, 0.08, 16]} /><meshStandardMaterial color="#94a3b8" transparent={ghost} opacity={op} /></mesh>
+            {/* Status light */}
+            <mesh ref={pulseRef} position={[0.3, 0.28, 0]}><sphereGeometry args={[0.04, 16, 16]} /><meshStandardMaterial color="#10b981" emissive="#10b981" emissiveIntensity={1} transparent /></mesh>
+            {/* Wheels */}
+            {[[-0.25, -0.3], [0.25, -0.3], [-0.25, 0.3], [0.25, 0.3]].map(([wx, wz], i) => (
+                <mesh key={`w${i}`} position={[wx, 0.06, wz]} rotation={[Math.PI / 2, 0, 0]}>
+                    <cylinderGeometry args={[0.06, 0.06, 0.04, 16]} />
+                    <meshStandardMaterial color="#1e293b" transparent={ghost} opacity={op} />
+                </mesh>
+            ))}
+            {selected && <mesh position={[0, 0.15, 0]}><boxGeometry args={[0.9, 0.3, 0.7]} /><meshBasicMaterial color="#fff" wireframe transparent opacity={0.3} /></mesh>}
+        </group>
+    );
+}
+
+function ChargingStationObject({ obj, selected, ghost }: { obj: PlacedObject; selected: boolean; ghost?: boolean }) {
+    const op = ghost ? 0.4 : 1;
+    return (
+        <group position={[obj.x + 0.5, 0, obj.z + 0.5]} rotation={[0, (obj.rotation * Math.PI) / 180, 0]}>
+            {/* Base Pad */}
+            <mesh position={[0, 0.02, 0]} receiveShadow><boxGeometry args={[1.2, 0.04, 1.2]} /><meshStandardMaterial color="#475569" transparent={ghost} opacity={op} /></mesh>
+            {/* Charger Column */}
+            <mesh position={[-0.4, 0.6, 0]} castShadow><boxGeometry args={[0.2, 1.2, 0.4]} /><meshStandardMaterial color="#3b82f6" transparent={ghost} opacity={op} /></mesh>
+            {/* Screen */}
+            <mesh position={[-0.29, 0.8, 0]} rotation={[0, 0, -0.1]}><boxGeometry args={[0.02, 0.2, 0.25]} /><meshStandardMaterial color="#10b981" emissive="#10b981" emissiveIntensity={ghost ? 0 : 0.5} transparent={ghost} opacity={op} /></mesh>
+            {/* Charge contacts */}
+            <mesh position={[-0.25, 0.1, 0]}><boxGeometry args={[0.1, 0.05, 0.2]} /><meshStandardMaterial color="#eab308" metalness={0.8} roughness={0.2} transparent={ghost} opacity={op} /></mesh>
+            {selected && <mesh position={[0, 0.6, 0]}><boxGeometry args={[1.3, 1.2, 1.3]} /><meshBasicMaterial color="#fff" wireframe transparent opacity={0.3} /></mesh>}
+        </group>
+    );
+}
+
+function IndustrialFanObject({ obj, selected, ghost }: { obj: PlacedObject; selected: boolean; ghost?: boolean }) {
+    const op = ghost ? 0.4 : 1;
+    const bladesRef = useRef<THREE.Group>(null);
+    useFrame((_, delta) => {
+        if (!ghost && bladesRef.current) bladesRef.current.rotation.y += delta * 5;
+    });
+    return (
+        <group position={[obj.x + 0.5, 0, obj.z + 0.5]} rotation={[0, (obj.rotation * Math.PI) / 180, 0]}>
+            {/* Base stand */}
+            <mesh position={[0, 0.05, 0]} castShadow><cylinderGeometry args={[0.3, 0.4, 0.1, 16]} /><meshStandardMaterial color="#1e293b" transparent={ghost} opacity={op} /></mesh>
+            {/* Pole */}
+            <mesh position={[0, 1.0, 0]} castShadow><cylinderGeometry args={[0.05, 0.05, 2.0, 8]} /><meshStandardMaterial color="#64748b" metalness={0.5} roughness={0.5} transparent={ghost} opacity={op} /></mesh>
+            {/* Motor housing */}
+            <mesh position={[0, 2.0, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow><cylinderGeometry args={[0.15, 0.15, 0.3, 16]} /><meshStandardMaterial color="#334155" transparent={ghost} opacity={op} /></mesh>
+            {/* Blades */}
+            <group ref={bladesRef} position={[0, 2.0, 0.18]}>
+                <mesh rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.05, 0.05, 0.1, 16]} /><meshStandardMaterial color="#94a3b8" transparent={ghost} opacity={op} /></mesh>
+                {[0, 1, 2, 3].map(i => (
+                    <mesh key={i} rotation={[0, 0, i * (Math.PI / 2)]} position={[0, 0, 0]}>
+                        <mesh position={[0, 0.35, 0]} rotation={[0.2, 0, 0]}>
+                            <boxGeometry args={[0.1, 0.6, 0.02]} />
+                            <meshStandardMaterial color="#cbd5e1" metalness={0.2} roughness={0.5} transparent={ghost} opacity={op} />
+                        </mesh>
+                    </mesh>
+                ))}
+            </group>
+            {/* Fan Cage */}
+            <mesh position={[0, 2.0, 0.15]} rotation={[Math.PI / 2, 0, 0]}>
+                <cylinderGeometry args={[0.8, 0.8, 0.1, 32, 1, true]} />
+                <meshStandardMaterial color="#64748b" wireframe transparent={ghost} opacity={op ? 0.5 : 0.2} />
+            </mesh>
+            {selected && <mesh position={[0, 1.0, 0]}><boxGeometry args={[1.7, 2.8, 0.8]} /><meshBasicMaterial color="#fff" wireframe transparent opacity={0.3} /></mesh>}
+        </group>
+    );
+}
+
+function SecurityCameraObject({ obj, selected, ghost }: { obj: PlacedObject; selected: boolean; ghost?: boolean }) {
+    const op = ghost ? 0.4 : 1;
+    const sweepRef = useRef<THREE.Group>(null);
+    useFrame((state) => {
+        if (!ghost && sweepRef.current) {
+            sweepRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.8) * 0.6;
+        }
+    });
+    return (
+        <group position={[obj.x + 0.5, 0, obj.z + 0.5]} rotation={[0, (obj.rotation * Math.PI) / 180, 0]}>
+            {/* Pole (assuming it's pole mounted for now) */}
+            <mesh position={[0, 1.5, 0]} castShadow><cylinderGeometry args={[0.04, 0.05, 3.0, 8]} /><meshStandardMaterial color="#475569" transparent={ghost} opacity={op} /></mesh>
+            {/* Mount bracket */}
+            <mesh position={[0, 2.9, 0.1]}><boxGeometry args={[0.05, 0.1, 0.2]} /><meshStandardMaterial color="#1e293b" transparent={ghost} opacity={op} /></mesh>
+            {/* Camera Body sweeping */}
+            <group position={[0, 2.9, 0.2]} ref={sweepRef}>
+                <mesh castShadow><boxGeometry args={[0.15, 0.15, 0.3]} /><meshStandardMaterial color="#f8fafc" transparent={ghost} opacity={op} /></mesh>
+                {/* Lens */}
+                <mesh position={[0, 0, 0.16]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.05, 0.05, 0.02, 16]} /><meshStandardMaterial color="#0f172a" transparent={ghost} opacity={op} /></mesh>
+                {/* Red recording LED */}
+                <mesh position={[0.05, 0.05, 0.16]}><sphereGeometry args={[0.01, 8, 8]} /><meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={ghost ? 0 : 1} transparent={ghost} opacity={op} /></mesh>
+                {/* View cone (visual) */}
+                {!ghost && selected && (
+                    <mesh position={[0, 0, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+                        <cylinderGeometry args={[1.5, 0.05, 3, 16, 1, true]} />
+                        <meshBasicMaterial color="#ef4444" transparent opacity={0.1} side={THREE.DoubleSide} />
+                    </mesh>
+                )}
+            </group>
+            {selected && <mesh position={[0, 1.5, 0]}><boxGeometry args={[0.4, 3, 0.4]} /><meshBasicMaterial color="#fff" wireframe transparent opacity={0.3} /></mesh>}
+        </group>
+    );
+}
+
+function ShippingContainerObject({ obj, selected, ghost }: { obj: PlacedObject; selected: boolean; ghost?: boolean }) {
+    const op = ghost ? 0.4 : 1;
+    const w = obj.width || 2;
+    const d = obj.depth || 4;
+    return (
+        <group position={[obj.x + w/2, 0, obj.z + d/2]} rotation={[0, (obj.rotation * Math.PI) / 180, 0]}>
+            {/* Main body */}
+            <mesh position={[0, 1.25, 0]} castShadow receiveShadow>
+                <boxGeometry args={[w - 0.05, 2.5, d - 0.05]} />
+                <meshStandardMaterial color={obj.color || '#0ea5e9'} roughness={0.7} metalness={0.2} transparent={ghost} opacity={op} />
+            </mesh>
+            {/* Corrugated vertical lines (simplified as multiple thin boxes) */}
+            {Array.from({ length: Math.floor(d * 2) }).map((_, i) => (
+                <mesh key={`c${i}`} position={[(w - 0.02) / 2, 1.25, -d/2 + 0.25 + i * 0.5]}>
+                    <boxGeometry args={[0.04, 2.4, 0.2]} />
+                    <meshStandardMaterial color={obj.color || '#0ea5e9'} roughness={0.8} transparent={ghost} opacity={op} />
+                </mesh>
+            ))}
+            {Array.from({ length: Math.floor(d * 2) }).map((_, i) => (
+                <mesh key={`c2_${i}`} position={[-(w - 0.02) / 2, 1.25, -d/2 + 0.25 + i * 0.5]}>
+                    <boxGeometry args={[0.04, 2.4, 0.2]} />
+                    <meshStandardMaterial color={obj.color || '#0ea5e9'} roughness={0.8} transparent={ghost} opacity={op} />
+                </mesh>
+            ))}
+            {/* Doors on front */}
+            <mesh position={[0, 1.25, d/2]}><boxGeometry args={[w - 0.1, 2.4, 0.06]} /><meshStandardMaterial color={obj.color || '#0ea5e9'} roughness={0.6} transparent={ghost} opacity={op} /></mesh>
+            {/* Door locking bars */}
+            {[[-0.4, 0.04], [-0.15, 0.04], [0.15, 0.04], [0.4, 0.04]].map(([bx, bz], i) => (
+                <mesh key={`b${i}`} position={[bx, 1.25, d/2 + bz]}><cylinderGeometry args={[0.02, 0.02, 2.3, 8]} /><meshStandardMaterial color="#cbd5e1" metalness={0.6} roughness={0.4} transparent={ghost} opacity={op} /></mesh>
+            ))}
+            {selected && <mesh position={[0, 1.25, 0]}><boxGeometry args={[w + 0.1, 2.6, d + 0.1]} /><meshBasicMaterial color="#fff" wireframe transparent opacity={0.3} /></mesh>}
+        </group>
+    );
+}
+
+function SafetyBarrierObject({ obj, selected, ghost }: { obj: PlacedObject; selected: boolean; ghost?: boolean }) {
+    const op = ghost ? 0.4 : 1;
+    const w = obj.width || 2;
+    return (
+        <group position={[obj.x + w/2, 0, obj.z + 0.5]} rotation={[0, (obj.rotation * Math.PI) / 180, 0]}>
+            {/* Posts */}
+            <mesh position={[-w/2 + 0.1, 0.5, 0]} castShadow><cylinderGeometry args={[0.08, 0.1, 1.0, 12]} /><meshStandardMaterial color="#eab308" transparent={ghost} opacity={op} /></mesh>
+            <mesh position={[w/2 - 0.1, 0.5, 0]} castShadow><cylinderGeometry args={[0.08, 0.1, 1.0, 12]} /><meshStandardMaterial color="#eab308" transparent={ghost} opacity={op} /></mesh>
+            {/* Horizontal rails */}
+            <mesh position={[0, 0.8, 0]} castShadow><boxGeometry args={[w, 0.15, 0.05]} /><meshStandardMaterial color="#eab308" transparent={ghost} opacity={op} /></mesh>
+            <mesh position={[0, 0.4, 0]} castShadow><boxGeometry args={[w, 0.15, 0.05]} /><meshStandardMaterial color="#eab308" transparent={ghost} opacity={op} /></mesh>
+            {/* Black stripes on rails */}
+            {Array.from({ length: Math.floor(w / 0.4) }).map((_, i) => (
+                <group key={`stripe${i}`} position={[-w/2 + 0.3 + i * 0.4, 0.6, 0]}>
+                    <mesh position={[0, 0.2, 0]} rotation={[0, 0, 0.3]}><boxGeometry args={[0.1, 0.18, 0.06]} /><meshStandardMaterial color="#1e293b" transparent={ghost} opacity={op} /></mesh>
+                    <mesh position={[0, -0.2, 0]} rotation={[0, 0, 0.3]}><boxGeometry args={[0.1, 0.18, 0.06]} /><meshStandardMaterial color="#1e293b" transparent={ghost} opacity={op} /></mesh>
+                </group>
+            ))}
+            {selected && <mesh position={[0, 0.5, 0]}><boxGeometry args={[w + 0.2, 1.1, 0.4]} /><meshBasicMaterial color="#fff" wireframe transparent opacity={0.3} /></mesh>}
+        </group>
+    );
+}
+
+// ═══════════════════════════════════════════════════
 // OBJECT RENDERER
 // ═══════════════════════════════════════════════════
 
@@ -615,8 +795,174 @@ function PlacedObjectRenderer({ obj, selected, ghost, rackInventoryMap, zoneInve
         case 'forklift': return <ForkliftObject obj={obj} selected={selected} ghost={ghost} />;
         case 'platform': return <PlatformObject obj={obj} selected={selected} ghost={ghost} />;
         case 'stairs': return <StairsObject obj={obj} selected={selected} ghost={ghost} />;
+        case 'robot_agv': return <AGVObject obj={obj} selected={selected} ghost={ghost} />;
+        case 'charging_station': return <ChargingStationObject obj={obj} selected={selected} ghost={ghost} />;
+        case 'industrial_fan': return <IndustrialFanObject obj={obj} selected={selected} ghost={ghost} />;
+        case 'security_camera': return <SecurityCameraObject obj={obj} selected={selected} ghost={ghost} />;
+        case 'shipping_container': return <ShippingContainerObject obj={obj} selected={selected} ghost={ghost} />;
+        case 'safety_barrier': return <SafetyBarrierObject obj={obj} selected={selected} ghost={ghost} />;
+        case 'tree': return <TreeObject obj={obj} selected={selected} ghost={ghost} />;
+        case 'shrub': return <ShrubObject obj={obj} selected={selected} ghost={ghost} />;
+        case 'road': return <RoadObject obj={obj} selected={selected} ghost={ghost} />;
+        case 'fence': return <FenceObject obj={obj} selected={selected} ghost={ghost} />;
+        case 'truck': return <TruckObject obj={obj} selected={selected} ghost={ghost} />;
+        case 'custom_model': return <CustomModelObject obj={obj} selected={selected} ghost={ghost} />;
         default: return null;
     }
+}
+
+// --- NEW RENDERERS ---
+
+function SelectionHighlight({ w, d, h = 1 }: { w: number, d: number, h?: number }) {
+    return (
+        <mesh position={[w/2, h/2, d/2]}>
+            <boxGeometry args={[w + 0.1, h + 0.1, d + 0.1]} />
+            <meshBasicMaterial color="#fff" wireframe transparent opacity={0.3} />
+        </mesh>
+    );
+}
+
+function TreeObject({ obj, selected, ghost }: { obj: PlacedObject; selected: boolean; ghost?: boolean }) {
+    const w = obj.width || 2;
+    const color = obj.color || '#22c55e';
+    const trunkH = w * 0.8;
+    return (
+        <group position={[obj.x, obj.y || 0, obj.z]} rotation={[0, (obj.rotation * Math.PI) / 180, 0]}>
+            <mesh position={[w/2, trunkH/2, w/2]} castShadow receiveShadow>
+                <cylinderGeometry args={[w*0.1, w*0.15, trunkH, 8]} />
+                <meshStandardMaterial color="#8B5A2B" transparent opacity={ghost ? 0.3 : 1} />
+            </mesh>
+            <mesh position={[w/2, trunkH + w*0.5, w/2]} castShadow receiveShadow>
+                <sphereGeometry args={[w*0.8, 16, 16]} />
+                <meshStandardMaterial color={color} transparent opacity={ghost ? 0.3 : 0.9} roughness={0.8} />
+            </mesh>
+            {selected && <SelectionHighlight w={w} d={w} />}
+        </group>
+    );
+}
+
+function ShrubObject({ obj, selected, ghost }: { obj: PlacedObject; selected: boolean; ghost?: boolean }) {
+    const w = obj.width || 1;
+    const color = obj.color || '#16a34a';
+    return (
+        <group position={[obj.x, obj.y || 0, obj.z]} rotation={[0, (obj.rotation * Math.PI) / 180, 0]}>
+            <mesh position={[w/2, w*0.4, w/2]} castShadow receiveShadow>
+                <sphereGeometry args={[w*0.6, 12, 12]} />
+                <meshStandardMaterial color={color} transparent opacity={ghost ? 0.3 : 0.9} roughness={0.9} />
+            </mesh>
+            {selected && <SelectionHighlight w={w} d={w} />}
+        </group>
+    );
+}
+
+function RoadObject({ obj, selected, ghost }: { obj: PlacedObject; selected: boolean; ghost?: boolean }) {
+    const w = obj.width || 4;
+    const d = obj.depth || 4;
+    const color = obj.color || '#334155';
+    return (
+        <group position={[obj.x, (obj.y || 0) + 0.02, obj.z]} rotation={[0, (obj.rotation * Math.PI) / 180, 0]}>
+            <mesh position={[w/2, 0, d/2]} receiveShadow>
+                <boxGeometry args={[w, 0.02, d]} />
+                <meshStandardMaterial color={color} transparent opacity={ghost ? 0.4 : 1} roughness={0.9} />
+            </mesh>
+            {/* Road markings */}
+            <mesh position={[w/2, 0.02, d/2]}>
+                <boxGeometry args={[0.2, 0.01, d * 0.8]} />
+                <meshBasicMaterial color="#ffffff" transparent opacity={ghost ? 0.2 : 0.6} />
+            </mesh>
+            {selected && <SelectionHighlight w={w} d={d} />}
+        </group>
+    );
+}
+
+function FenceObject({ obj, selected, ghost }: { obj: PlacedObject; selected: boolean; ghost?: boolean }) {
+    const w = obj.width || 4;
+    const d = obj.depth || 1;
+    const color = obj.color || '#94a3b8';
+    return (
+        <group position={[obj.x, obj.y || 0, obj.z]} rotation={[0, (obj.rotation * Math.PI) / 180, 0]}>
+            {/* Posts */}
+            <mesh position={[0.1, 1, d/2]} castShadow><cylinderGeometry args={[0.05, 0.05, 2]} /><meshStandardMaterial color={color} metalness={0.5} transparent opacity={ghost ? 0.4 : 1}/></mesh>
+            <mesh position={[w-0.1, 1, d/2]} castShadow><cylinderGeometry args={[0.05, 0.05, 2]} /><meshStandardMaterial color={color} metalness={0.5} transparent opacity={ghost ? 0.4 : 1}/></mesh>
+            {/* Mesh */}
+            <mesh position={[w/2, 1, d/2]} castShadow receiveShadow>
+                <boxGeometry args={[w, 2, 0.02]} />
+                <meshStandardMaterial color={color} transparent opacity={ghost ? 0.2 : 0.4} wireframe />
+            </mesh>
+            {selected && <SelectionHighlight w={w} d={d} />}
+        </group>
+    );
+}
+
+function TruckObject({ obj, selected, ghost }: { obj: PlacedObject; selected: boolean; ghost?: boolean }) {
+    const w = obj.width || 2;
+    const d = obj.depth || 5;
+    const color = obj.color || '#ef4444';
+    return (
+        <group position={[obj.x, obj.y || 0, obj.z]} rotation={[0, (obj.rotation * Math.PI) / 180, 0]}>
+            {/* Cab */}
+            <mesh position={[w/2, 1, d * 0.15]} castShadow>
+                <boxGeometry args={[w*0.9, 2, d*0.3]} />
+                <meshStandardMaterial color={color} transparent opacity={ghost ? 0.4 : 1} roughness={0.3} />
+            </mesh>
+            {/* Trailer */}
+            <mesh position={[w/2, 1.5, d * 0.65]} castShadow>
+                <boxGeometry args={[w, 3, d*0.7]} />
+                <meshStandardMaterial color="#f8fafc" transparent opacity={ghost ? 0.4 : 1} roughness={0.5} />
+            </mesh>
+            {/* Wheels */}
+            <mesh position={[w*0.1, 0.4, d*0.2]} rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.4,0.4,0.3]} /><meshStandardMaterial color="#1e293b" /></mesh>
+            <mesh position={[w*0.9, 0.4, d*0.2]} rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.4,0.4,0.3]} /><meshStandardMaterial color="#1e293b" /></mesh>
+            <mesh position={[w*0.1, 0.4, d*0.8]} rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.4,0.4,0.3]} /><meshStandardMaterial color="#1e293b" /></mesh>
+            <mesh position={[w*0.9, 0.4, d*0.8]} rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.4,0.4,0.3]} /><meshStandardMaterial color="#1e293b" /></mesh>
+            {selected && <SelectionHighlight w={w} d={d} />}
+        </group>
+    );
+}
+
+function CustomModelObject({ obj, selected, ghost }: { obj: PlacedObject; selected: boolean; ghost?: boolean }) {
+    const w = obj.width || 2;
+    const d = obj.depth || 2;
+    const { useGLTF } = require('@react-three/drei');
+    
+    // We use a small inline component for Suspense fallback if needed, but useGLTF caches it.
+    let model = null;
+    try {
+        if (obj.modelUrl) {
+            // Suspense will catch this during render. The parent WarehouseScene is wrapped in Suspense.
+            const gltf = useGLTF(obj.modelUrl);
+            if (gltf && gltf.scene) {
+                // Clone the scene so we can reuse the same model URL multiple times
+                model = <primitive object={gltf.scene.clone()} position={[w/2, 0, d/2]} />;
+            }
+        }
+    } catch (e) {
+        console.error("Failed to load custom GLTF model:", obj.modelUrl, e);
+    }
+
+    return (
+        <group position={[obj.x, obj.y || 0, obj.z]} rotation={[0, (obj.rotation * Math.PI) / 180, 0]}>
+            {model ? (
+                <group scale={[1, 1, 1]}>
+                    {model}
+                </group>
+            ) : (
+                <mesh position={[w/2, 1, d/2]} castShadow receiveShadow>
+                    <boxGeometry args={[w, 2, d]} />
+                    <meshStandardMaterial color={obj.color || '#a855f7'} transparent opacity={ghost ? 0.3 : 0.8} wireframe />
+                </mesh>
+            )}
+            
+            {!model && (
+                <Html position={[w/2, 2.5, d/2]} center style={{ pointerEvents: 'none' }}>
+                    <div style={{ background: 'rgba(0,0,0,0.7)', color: 'white', padding: '2px 6px', borderRadius: 4, fontSize: 10, whiteSpace: 'nowrap' }}>
+                        Custom Model
+                    </div>
+                </Html>
+            )}
+            {selected && <SelectionHighlight w={w} d={d} />}
+        </group>
+    );
 }
 
 function PlatformObject({ obj, selected, ghost }: { obj: PlacedObject; selected: boolean; ghost?: boolean }) {
@@ -901,8 +1247,9 @@ function BuildingShell({ gridCells, isDark }: { gridCells: number; isDark?: bool
 // BUILD GRID (visible in build mode)
 // ═══════════════════════════════════════════════════
 
-function BuildGrid({ gridCells, onGridClick, ghostObj, buildMode, currentFloor }: {
+function BuildGrid({ gridCells, onGridClick, ghostObj, buildMode, currentFloor, onPointerDown, onPointerMove, onPointerUp }: {
     gridCells: number; onGridClick: (x: number, z: number) => void; ghostObj: PlacedObject | null; buildMode: boolean; currentFloor?: number;
+    onPointerDown?: (e: any) => void; onPointerMove?: (e: any) => void; onPointerUp?: (e: any) => void;
 }) {
     const [hover, setHover] = useState<[number, number] | null>(null);
 
@@ -940,12 +1287,22 @@ function BuildGrid({ gridCells, onGridClick, ghostObj, buildMode, currentFloor }
                     if (gx >= 0 && gz >= 0 && gx < gridCells && gz < gridCells) onGridClick(gx, gz);
                 }}
                 onPointerMove={(e) => {
+                    if (onPointerMove) onPointerMove(e);
                     const pt = e.point;
                     const gx = Math.floor(pt.x / GRID_SIZE) * GRID_SIZE;
                     const gz = Math.floor(pt.z / GRID_SIZE) * GRID_SIZE;
                     setHover([gx, gz]);
                 }}
-                onPointerOut={() => setHover(null)}
+                onPointerDown={(e) => {
+                    if (onPointerDown) onPointerDown(e);
+                }}
+                onPointerUp={(e) => {
+                    if (onPointerUp) onPointerUp(e);
+                }}
+                onPointerOut={(e) => {
+                    setHover(null);
+                    if (onPointerUp) onPointerUp(e); // Trigger up if dragged outside
+                }}
             >
                 <planeGeometry args={[gridCells, gridCells]} />
                 <meshBasicMaterial transparent opacity={0} />
@@ -987,7 +1344,7 @@ function SelectableObject({ obj, selected, buildMode, onClick, rackInventoryMap,
     const yPos = (obj.floorLevel || 0) * floorHeight;
     const isHidden = currentFloor !== undefined && (obj.floorLevel || 0) > currentFloor;
     
-    if (isHidden && buildMode) return null; // Hide upper floors completely in build mode for clarity
+    if (isHidden) return null; // Hide upper floors completely for clarity
     
     return (
         <group
@@ -1127,13 +1484,18 @@ function RoutePath({ route }: { route: Route }) {
     );
 }
 
-function AnimatedParcel({ route, speed = 1.5 }: { route: Route; speed?: number }) {
+function AnimatedFleet({ route, speed = 1.5 }: { route: Route; speed?: number }) {
     const meshRef = useRef<THREE.Group>(null);
     const wheelsRef = useRef<THREE.Mesh[]>([]);
     const progressRef = useRef(0);
     const pathLen = route.fullPath.length;
 
-    useFrame((_, delta) => {
+    // Use route id to deterministically assign a fleet type
+    const hash = route.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const types = ['agv', 'forklift', 'worker'];
+    const fleetType = types[hash % types.length];
+
+    useFrame((state, delta) => {
         if (!meshRef.current || pathLen < 2) return;
         progressRef.current += delta * speed / Math.max(pathLen, 1);
         if (progressRef.current >= 1) progressRef.current = 0;
@@ -1156,69 +1518,81 @@ function AnimatedParcel({ route, speed = 1.5 }: { route: Route; speed?: number }
             meshRef.current.quaternion.slerp(targetRot, 10 * delta);
         }
 
-        // Spin wheels
-        wheelsRef.current.forEach(w => {
-            if (w) w.rotation.x -= speed * delta * 5;
-        });
+        // Spin wheels or animate worker bob
+        if (fleetType === 'worker') {
+            meshRef.current.position.y = Math.abs(Math.sin(progressRef.current * pathLen * Math.PI)) * 0.1;
+        } else {
+            wheelsRef.current.forEach(w => {
+                if (w) w.rotation.x -= speed * delta * 5;
+            });
+        }
     });
 
     if (pathLen < 2) return null;
     const col = route.color;
+
     return (
         <group ref={meshRef}>
-            {/* AGV Base */}
-            <mesh position={[0, 0.15, 0]} castShadow>
-                <boxGeometry args={[0.6, 0.2, 0.9]} />
-                <meshStandardMaterial color={col} roughness={0.4} metalness={0.6} />
-            </mesh>
-            {/* AGV Sensor/Mast */}
-            <mesh position={[0, 0.35, -0.2]} castShadow>
-                <cylinderGeometry args={[0.08, 0.08, 0.2]} />
-                <meshStandardMaterial color="#333" roughness={0.7} />
-            </mesh>
-            {/* Blinking indicator */}
-            <mesh position={[0, 0.46, -0.2]}>
-                <sphereGeometry args={[0.04]} />
-                <meshStandardMaterial color={col} emissive={col} emissiveIntensity={0.8} />
-            </mesh>
-            {/* Forks */}
-            <mesh position={[-0.15, 0.05, 0.45]} castShadow>
-                <boxGeometry args={[0.08, 0.04, 0.6]} />
-                <meshStandardMaterial color="#94a3b8" metalness={0.8} />
-            </mesh>
-            <mesh position={[0.15, 0.05, 0.45]} castShadow>
-                <boxGeometry args={[0.08, 0.04, 0.6]} />
-                <meshStandardMaterial color="#94a3b8" metalness={0.8} />
-            </mesh>
-            {/* Headlights */}
-            <pointLight position={[0.2, 0.2, 0.45]} color="#ffffff" intensity={0.5} distance={2} />
-            <mesh position={[0.2, 0.2, 0.46]}>
-                <circleGeometry args={[0.04, 16]} />
-                <meshBasicMaterial color="#ffffff" />
-            </mesh>
-            <pointLight position={[-0.2, 0.2, 0.45]} color="#ffffff" intensity={0.5} distance={2} />
-            <mesh position={[-0.2, 0.2, 0.46]}>
-                <circleGeometry args={[0.04, 16]} />
-                <meshBasicMaterial color="#ffffff" />
-            </mesh>
-            {/* Cargo Box */}
-            <mesh position={[0, 0.25, 0.5]} castShadow>
-                <boxGeometry args={[0.4, 0.3, 0.4]} />
-                <meshStandardMaterial color="#d4d4d8" roughness={0.9} />
-            </mesh>
-            {/* Tape on cargo */}
-            <mesh position={[0, 0.401, 0.5]}>
-                <boxGeometry args={[0.42, 0.01, 0.1]} />
-                <meshStandardMaterial color={col} />
-            </mesh>
-            {/* Wheels */}
-            {[-0.3, 0.3].map((wx, i) => 
-                [-0.3, 0.3].map((wz, j) => (
-                    <mesh key={`${i}-${j}`} position={[wx, 0.08, wz]} rotation={[0, 0, Math.PI/2]} ref={el => { if(el && !wheelsRef.current.includes(el)) wheelsRef.current.push(el); }}>
-                        <cylinderGeometry args={[0.08, 0.08, 0.08, 16]} />
-                        <meshStandardMaterial color="#111" roughness={0.9} />
+            {fleetType === 'agv' && (
+                <group>
+                    {/* AGV Base */}
+                    <mesh position={[0, 0.15, 0]} castShadow>
+                        <boxGeometry args={[0.6, 0.2, 0.9]} />
+                        <meshStandardMaterial color={col} roughness={0.4} metalness={0.6} />
                     </mesh>
-                ))
+                    <mesh position={[0, 0.35, -0.2]} castShadow>
+                        <cylinderGeometry args={[0.08, 0.08, 0.2]} />
+                        <meshStandardMaterial color="#333" roughness={0.7} />
+                    </mesh>
+                    <mesh position={[0, 0.46, -0.2]}>
+                        <sphereGeometry args={[0.04]} />
+                        <meshStandardMaterial color={col} emissive={col} emissiveIntensity={0.8} />
+                    </mesh>
+                    <mesh position={[-0.15, 0.05, 0.45]} castShadow><boxGeometry args={[0.08, 0.04, 0.6]} /><meshStandardMaterial color="#94a3b8" metalness={0.8} /></mesh>
+                    <mesh position={[0.15, 0.05, 0.45]} castShadow><boxGeometry args={[0.08, 0.04, 0.6]} /><meshStandardMaterial color="#94a3b8" metalness={0.8} /></mesh>
+                    <pointLight position={[0.2, 0.2, 0.45]} color="#ffffff" intensity={0.5} distance={2} />
+                    <mesh position={[0.2, 0.2, 0.46]}><circleGeometry args={[0.04, 16]} /><meshBasicMaterial color="#ffffff" /></mesh>
+                    <pointLight position={[-0.2, 0.2, 0.45]} color="#ffffff" intensity={0.5} distance={2} />
+                    <mesh position={[-0.2, 0.2, 0.46]}><circleGeometry args={[0.04, 16]} /><meshBasicMaterial color="#ffffff" /></mesh>
+                    <mesh position={[0, 0.25, 0.5]} castShadow><boxGeometry args={[0.4, 0.3, 0.4]} /><meshStandardMaterial color="#d4d4d8" roughness={0.9} /></mesh>
+                    <mesh position={[0, 0.401, 0.5]}><boxGeometry args={[0.42, 0.01, 0.1]} /><meshStandardMaterial color={col} /></mesh>
+                    {[-0.3, 0.3].map((wx, i) => 
+                        [-0.3, 0.3].map((wz, j) => (
+                            <mesh key={`${i}-${j}`} position={[wx, 0.08, wz]} rotation={[0, 0, Math.PI/2]} ref={el => { if(el && !wheelsRef.current.includes(el)) wheelsRef.current.push(el); }}>
+                                <cylinderGeometry args={[0.08, 0.08, 0.08, 16]} />
+                                <meshStandardMaterial color="#111" roughness={0.9} />
+                            </mesh>
+                        ))
+                    )}
+                </group>
+            )}
+            {fleetType === 'forklift' && (
+                <group>
+                    <mesh position={[0, 0.35, 0]} castShadow><boxGeometry args={[0.5, 0.4, 0.7]} /><meshStandardMaterial color="#eab308" roughness={0.5} metalness={0.15} /></mesh>
+                    <mesh position={[0, 0.7, -0.05]}><boxGeometry args={[0.52, 0.04, 0.5]} /><meshStandardMaterial color="#333" /></mesh>
+                    {[[-0.24, -0.28], [0.24, -0.28]].map(([px, pz], i) => (
+                        <mesh key={i} position={[px, 0.55, pz]}><boxGeometry args={[0.03, 0.35, 0.03]} /><meshStandardMaterial color="#333" /></mesh>
+                    ))}
+                    <mesh position={[0, 0.65, 0.38]}><boxGeometry args={[0.06, 1.0, 0.04]} /><meshStandardMaterial color="#555" metalness={0.5} /></mesh>
+                    <mesh position={[0.12, 0.65, 0.38]}><boxGeometry args={[0.06, 1.0, 0.04]} /><meshStandardMaterial color="#555" metalness={0.5} /></mesh>
+                    {[-0.08, 0.08].map((fx, i) => (
+                        <mesh key={`fk${i}`} position={[fx, 0.08, 0.6]}><boxGeometry args={[0.06, 0.03, 0.5]} /><meshStandardMaterial color="#777" metalness={0.6} /></mesh>
+                    ))}
+                    {[[-0.22, -0.3], [0.22, -0.3], [-0.15, 0.2], [0.15, 0.2]].map(([wx, wz], i) => (
+                        <mesh key={`w${i}`} position={[wx, 0.08, wz]} rotation={[0, 0, Math.PI / 2]} ref={el => { if(el && !wheelsRef.current.includes(el)) wheelsRef.current.push(el); }}>
+                            <cylinderGeometry args={[0.08, 0.08, 0.06, 8]} />
+                            <meshStandardMaterial color="#222" roughness={0.9} />
+                        </mesh>
+                    ))}
+                    <mesh position={[0, 0.25, 0.65]} castShadow><boxGeometry args={[0.4, 0.3, 0.4]} /><meshStandardMaterial color="#d4d4d8" roughness={0.9} /></mesh>
+                </group>
+            )}
+            {fleetType === 'worker' && (
+                <group position={[0, 0, 0]} scale={[0.8, 0.8, 0.8]}>
+                    <mesh position={[0, 0.4, 0]} castShadow><cylinderGeometry args={[0.15, 0.15, 0.8, 16]} /><meshStandardMaterial color={col} roughness={0.8} /></mesh>
+                    <mesh position={[0, 0.9, 0]} castShadow><sphereGeometry args={[0.15, 16, 16]} /><meshStandardMaterial color="#fcd34d" roughness={0.4} /></mesh>
+                    <mesh position={[0, 1.05, 0]} castShadow><cylinderGeometry args={[0.16, 0.16, 0.1, 16]} /><meshStandardMaterial color="#f59e0b" roughness={0.2} metalness={0.1} /></mesh>
+                </group>
             )}
         </group>
     );
@@ -1575,24 +1949,48 @@ function HeatmapOverlay({ objects, gridCells, mode, rackInventoryMap, zoneInvent
 // ═══════════════════════════════════════════════════
 
 function ActivityMarkerSphere({ marker }: { marker: { id: string; type: 'putaway' | 'pick'; x: number; z: number; binCode: string; itemName?: string } }) {
-    const meshRef = useRef<THREE.Mesh>(null);
+    const meshRef = useRef<THREE.Group>(null);
+    const ring1Ref = useRef<THREE.Mesh>(null);
+    const ring2Ref = useRef<THREE.Mesh>(null);
     const color = marker.type === 'putaway' ? '#3b82f6' : '#f59e0b';
     const icon = marker.type === 'putaway' ? '📥' : '🛒';
 
     useFrame(({ clock }) => {
         if (!meshRef.current) return;
-        const s = 1 + Math.sin(clock.getElapsedTime() * 3 + marker.x * 7) * 0.15;
+        const t = clock.getElapsedTime() * 3 + marker.x * 7;
+        const s = 1 + Math.sin(t) * 0.15;
         meshRef.current.scale.setScalar(s);
+        
+        if (ring1Ref.current) {
+            ring1Ref.current.scale.setScalar(1 + (t % 2) * 2);
+            (ring1Ref.current.material as THREE.MeshStandardMaterial).opacity = Math.max(0, 1 - (t % 2));
+        }
+        if (ring2Ref.current) {
+            const t2 = (t + 1) % 2;
+            ring2Ref.current.scale.setScalar(1 + t2 * 2);
+            (ring2Ref.current.material as THREE.MeshStandardMaterial).opacity = Math.max(0, 1 - t2);
+        }
     });
 
     return (
         <group position={[marker.x + 0.5, 0.5, marker.z + 0.5]}>
-            <mesh ref={meshRef}>
-                <sphereGeometry args={[0.08, 12, 12]} />
-                <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.6} />
-            </mesh>
+            <group ref={meshRef}>
+                <mesh>
+                    <sphereGeometry args={[0.08, 12, 12]} />
+                    <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.6} />
+                </mesh>
+                {/* Holographic rings */}
+                <mesh ref={ring1Ref} rotation={[-Math.PI/2, 0, 0]} position={[0, -0.48, 0]}>
+                    <ringGeometry args={[0.1, 0.12, 32]} />
+                    <meshBasicMaterial color={color} transparent opacity={0.8} side={THREE.DoubleSide} />
+                </mesh>
+                <mesh ref={ring2Ref} rotation={[-Math.PI/2, 0, 0]} position={[0, -0.48, 0]}>
+                    <ringGeometry args={[0.1, 0.12, 32]} />
+                    <meshBasicMaterial color={color} transparent opacity={0.8} side={THREE.DoubleSide} />
+                </mesh>
+            </group>
             <pointLight color={color} intensity={0.3} distance={1.5} />
-            <Html center distanceFactor={10} style={{ pointerEvents: 'none' }}>
+            <Html center distanceFactor={10} style={{ pointerEvents: 'none', transform: 'translate3d(0, -20px, 0)' }}>
                 <div style={{
                     fontSize: 8, fontWeight: 700, fontFamily: 'monospace',
                     color: '#fff', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
@@ -1783,7 +2181,7 @@ function FirstPersonController({ gridCells }: { gridCells: number }) {
 // SCENE CONTENT
 // ═══════════════════════════════════════════════════
 
-function SceneContent({ objects, selectedId, selectedIds, ghostObj, buildMode, gridCells, cameraPreset, onGridClick, onSelectObject, routes, showRoutes, animateRoutes, showTraffic, showGridOverlay, isDark, rackInventoryMap, zoneInventoryMap, binPositionRegistry, highlightBin, onShelfClick, rulerMode, rulerPoints, onRulerClick, heatmapMode, heatmapData, showActivityMarkers, activityMarkers, stockAlerts, onZoneClick, selectedZoneId, zoneStatsData, currentFloor }: {
+function SceneContent({ objects, selectedId, selectedIds, ghostObj, buildMode, gridCells, cameraPreset, onGridClick, onSelectObject, routes, showRoutes, animateRoutes, showTraffic, showGridOverlay, isDark, rackInventoryMap, zoneInventoryMap, binPositionRegistry, highlightBin, onShelfClick, rulerMode, rulerPoints, onRulerClick, heatmapMode, heatmapData, showActivityMarkers, activityMarkers, stockAlerts, onZoneClick, selectedZoneId, zoneStatsData, currentFloor, timeOfDay, envShadows, selectionBox }: {
     objects: PlacedObject[]; selectedId: string | null; selectedIds?: Set<string>; ghostObj: PlacedObject | null;
     buildMode: boolean; gridCells: number; cameraPreset: string; onGridClick: (x: number, z: number) => void; onSelectObject: (id: string, shiftKey: boolean) => void;
     routes?: Route[]; showRoutes?: boolean; animateRoutes?: boolean; showTraffic?: boolean; showGridOverlay?: boolean; isDark?: boolean;
@@ -1801,6 +2199,9 @@ function SceneContent({ objects, selectedId, selectedIds, ghostObj, buildMode, g
     selectedZoneId?: string | null;
     zoneStatsData?: Map<string, { totalBins: number; usedBins: number; totalItems: number; topItems: Array<{ name: string; qty: number }> }>;
     currentFloor?: number;
+    timeOfDay?: number;
+    envShadows?: boolean;
+    selectionBox?: { startX: number, startZ: number, endX: number, endZ: number } | null;
 }) {
     const bgColor = isDark !== false ? '#080814' : '#d5dbe3';
 
@@ -1939,23 +2340,52 @@ function SceneContent({ objects, selectedId, selectedIds, ghostObj, buildMode, g
 
     return (
         <>
-            {/* Enhanced Lighting */}
-            <ambientLight intensity={isDark !== false ? 0.2 : 0.5} />
-            <directionalLight
-                position={[gridCells * 0.8, 14, gridCells * 0.3]}
-                intensity={isDark !== false ? 0.6 : 0.9}
-                castShadow
-                shadow-mapSize-width={4096}
-                shadow-mapSize-height={4096}
-                shadow-camera-left={-gridCells}
-                shadow-camera-right={gridCells}
-                shadow-camera-top={gridCells}
-                shadow-camera-bottom={-gridCells}
-                shadow-camera-near={0.5}
-                shadow-camera-far={gridCells * 3}
-                shadow-bias={-0.0002}
-                color="#fffaf0"
-            />
+            {/* Enhanced Lighting based on Time of Day */}
+            {(() => {
+                const tod = timeOfDay ?? 12;
+                // 6am=0, 12pm=PI/2, 6pm=PI
+                const sunAngle = Math.max(0, Math.min(1, (tod - 6) / 12)) * Math.PI;
+                const sunY = Math.max(2, Math.sin(sunAngle) * 20); // Keep slightly above horizon
+                const sunX = Math.cos(sunAngle) * gridCells;
+                const isNight = tod < 6 || tod > 18;
+                const shadowEnabled = envShadows !== false;
+                const baseIntensity = isDark !== false ? 0.2 : 0.5;
+                
+                let lightColor = "#fffaf0";
+                if (tod < 8 || tod > 16) lightColor = "#ffd1b3"; // Morning / Evening warm glow
+
+                return (
+                    <>
+                        <ambientLight intensity={isNight ? baseIntensity * 0.5 : baseIntensity} />
+                        {!isNight && (
+                            <directionalLight
+                                position={[sunX, sunY, gridCells * 0.3]}
+                                intensity={(isDark !== false ? 0.6 : 0.9) * Math.max(0.2, Math.sin(sunAngle))}
+                                castShadow={shadowEnabled}
+                                shadow-mapSize-width={shadowEnabled ? 4096 : 512}
+                                shadow-mapSize-height={shadowEnabled ? 4096 : 512}
+                                shadow-camera-left={-gridCells}
+                                shadow-camera-right={gridCells}
+                                shadow-camera-top={gridCells}
+                                shadow-camera-bottom={-gridCells}
+                                shadow-camera-near={0.5}
+                                shadow-camera-far={gridCells * 3}
+                                shadow-bias={-0.0002}
+                                color={lightColor}
+                            />
+                        )}
+                        {isNight && (
+                            // Moonlight
+                            <directionalLight 
+                                position={[-gridCells*0.5, 10, -gridCells*0.5]} 
+                                intensity={0.2} 
+                                color="#a5b4fc" 
+                                castShadow={shadowEnabled} 
+                            />
+                        )}
+                    </>
+                );
+            })()}
             <directionalLight position={[-gridCells * 0.3, 8, gridCells * 0.8]} intensity={isDark !== false ? 0.15 : 0.3} color="#b4c6e7" />
             <hemisphereLight color={isDark !== false ? '#c4d4f0' : '#dde4f0'} groundColor={isDark !== false ? '#2a2d3a' : '#b0b8c4'} intensity={isDark !== false ? 0.35 : 0.5} />
             <color attach="background" args={[bgColor]} />
@@ -1994,12 +2424,32 @@ function SceneContent({ objects, selectedId, selectedIds, ghostObj, buildMode, g
                 <group key={route.id}>
                     <RoutePath route={route} />
                     <RouteWaypoints route={route} />
-                    {animateRoutes && <AnimatedParcel route={route} />}
+                    {animateRoutes && <AnimatedFleet route={route} />}
                 </group>
             ))}
 
             {/* Traffic Analyzer */}
-            {showTraffic && routes && routes.length > 0 && <TrafficAnalyzerOverlay routes={routes} />}
+            {/* showTraffic && routes && routes.length > 0 && <TrafficAnalyzerOverlay routes={routes} /> */}
+
+            {/* Selection Box Overlay */}
+            {selectionBox && (() => {
+                const minX = Math.min(selectionBox.startX, selectionBox.endX);
+                const maxX = Math.max(selectionBox.startX, selectionBox.endX);
+                const minZ = Math.min(selectionBox.startZ, selectionBox.endZ);
+                const maxZ = Math.max(selectionBox.startZ, selectionBox.endZ);
+                const w = maxX - minX || 0.1;
+                const d = maxZ - minZ || 0.1;
+                return (
+                    <mesh position={[minX + w/2, 0.05, minZ + d/2]} rotation={[-Math.PI / 2, 0, 0]}>
+                        <planeGeometry args={[w, d]} />
+                        <meshBasicMaterial color="#3b82f6" transparent opacity={0.3} side={THREE.DoubleSide} />
+                        <lineSegments>
+                            <edgesGeometry args={[new THREE.PlaneGeometry(w, d)]} />
+                            <lineBasicMaterial color="#3b82f6" linewidth={2} />
+                        </lineSegments>
+                    </mesh>
+                );
+            })()}
 
             {/* Grid overlay */}
             {showGridOverlay && <FloorGridOverlay objects={objects} gridCells={gridCells} />}
@@ -2304,6 +2754,10 @@ interface WarehouseSceneProps {
     cameraPreset: string;
     onGridClick: (x: number, z: number) => void;
     onSelectObject: (id: string, shiftKey: boolean) => void;
+    onPointerDown?: (e: any) => void;
+    onPointerMove?: (e: any) => void;
+    onPointerUp?: (e: any) => void;
+    selectionBox?: { startX: number, startZ: number, endX: number, endZ: number } | null;
     routes?: Route[];
     showRoutes?: boolean;
     animateRoutes?: boolean;
@@ -2328,6 +2782,8 @@ interface WarehouseSceneProps {
     selectedZoneId?: string | null;
     zoneStatsData?: Map<string, { totalBins: number; usedBins: number; totalItems: number; topItems: Array<{ name: string; qty: number }> }>;
     currentFloor?: number;
+    envShadows?: boolean;
+    timeOfDay?: number;
 }
 
 // Camera controller with fly-to-beacon support

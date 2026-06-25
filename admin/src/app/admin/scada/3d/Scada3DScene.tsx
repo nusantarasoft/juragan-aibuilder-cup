@@ -1,6 +1,6 @@
 import React, { useRef, useMemo, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment, Html, Box, Cylinder, Torus, SoftShadows, GizmoHelper, GizmoViewport } from '@react-three/drei';
+import { OrbitControls, Environment, Html, Box, Cylinder, Torus, SoftShadows, GizmoHelper, GizmoViewport, Sphere } from '@react-three/drei';
 import { EffectComposer, Bloom, SSAO, SMAA, DepthOfField } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import DraggableModel from '@/components/3d/DraggableModel';
@@ -684,12 +684,121 @@ const PipeFlange = ({ position, id, onClick }: { position: [number,number,number
     </group>
 );
 
+// ─── Landscape & World Building ──────────────────────────────────────────────
+
+const Tree = ({ id, onClick }: { id: string, onClick: (id: string) => void }) => (
+    <group onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Cylinder args={[0.2, 0.4, 2, 8]} position={[0, 1, 0]} castShadow>
+            <meshStandardMaterial color="#5c4033" roughness={0.9} />
+        </Cylinder>
+        <Sphere args={[1.5, 16, 16]} position={[0, 2.5, 0]} castShadow>
+            <meshStandardMaterial color="#2e8b57" roughness={0.8} />
+        </Sphere>
+        <Sphere args={[1.2, 16, 16]} position={[0.8, 2.2, 0.5]} castShadow>
+            <meshStandardMaterial color="#228b22" roughness={0.8} />
+        </Sphere>
+        <Sphere args={[1.2, 16, 16]} position={[-0.8, 2.8, -0.5]} castShadow>
+            <meshStandardMaterial color="#3cb371" roughness={0.8} />
+        </Sphere>
+    </group>
+);
+
+const Bush = ({ id, onClick }: { id: string, onClick: (id: string) => void }) => (
+    <group onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Sphere args={[0.8, 16, 16]} position={[0, 0.6, 0]} castShadow>
+            <meshStandardMaterial color="#2e8b57" roughness={0.9} />
+        </Sphere>
+        <Sphere args={[0.6, 16, 16]} position={[0.5, 0.4, 0.2]} castShadow>
+            <meshStandardMaterial color="#228b22" roughness={0.9} />
+        </Sphere>
+        <Sphere args={[0.5, 16, 16]} position={[-0.4, 0.3, -0.4]} castShadow>
+            <meshStandardMaterial color="#3cb371" roughness={0.9} />
+        </Sphere>
+    </group>
+);
+
+const Road = ({ id, color, opacity, metalness, roughness, onClick }: { id: string, color: string, opacity?: number, metalness?: number, roughness?: number, onClick: (id: string) => void }) => (
+    <group onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Box args={[4, 0.1, 4]} position={[0, 0.05, 0]} receiveShadow>
+            <meshStandardMaterial color={color || "#333333"} metalness={metalness ?? 0.1} roughness={roughness ?? 0.9} transparent={opacity !== undefined && opacity < 1} opacity={opacity ?? 1} />
+        </Box>
+        <Box args={[0.2, 0.11, 2]} position={[0, 0.05, 0]} receiveShadow>
+            <meshStandardMaterial color="#ffffff" />
+        </Box>
+    </group>
+);
+
+const Water = ({ id, color, opacity, metalness, roughness, onClick }: { id: string, color: string, opacity?: number, metalness?: number, roughness?: number, onClick: (id: string) => void }) => (
+    <group onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Box args={[4, 0.2, 4]} position={[0, 0.1, 0]} receiveShadow>
+            <meshStandardMaterial color={color || "#1e90ff"} metalness={metalness ?? 0.8} roughness={roughness ?? 0.1} transparent opacity={opacity ?? 0.6} />
+        </Box>
+    </group>
+);
+
+const Grass = ({ id, color, opacity, metalness, roughness, onClick }: { id: string, color: string, opacity?: number, metalness?: number, roughness?: number, onClick: (id: string) => void }) => (
+    <group onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+        <Box args={[4, 0.1, 4]} position={[0, 0.05, 0]} receiveShadow>
+            <meshStandardMaterial color={color || "#4f8f00"} metalness={metalness ?? 0} roughness={roughness ?? 1} transparent={opacity !== undefined && opacity < 1} opacity={opacity ?? 1} />
+        </Box>
+    </group>
+);
+
+// ─── Vehicles ──────────────────────────────────────────────────────────────
+
+const Truck = ({ id, color, opacity, metalness, roughness, onClick }: { id: string, color: string, opacity?: number, metalness?: number, roughness?: number, onClick: (id: string) => void }) => {
+    const matProps = { metalness: metalness ?? 0.6, roughness: roughness ?? 0.4, transparent: opacity !== undefined && opacity < 1, opacity: opacity ?? 1 };
+    return (
+        <group onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+            <Box args={[2, 1.5, 4]} position={[0, 1.5, -1]} castShadow>
+                <meshStandardMaterial color="#e0e0e0" {...matProps} />
+            </Box>
+            <Box args={[1.8, 1.2, 1.5]} position={[0, 1.2, 1.8]} castShadow>
+                <meshStandardMaterial color={color || "#1890ff"} {...matProps} />
+            </Box>
+            {/* Wheels */}
+            {[-1, 1].map(x => [-2, 0, 2].map(z => (
+                <Cylinder key={`${x}-${z}`} args={[0.5, 0.5, 0.4, 16]} rotation={[0, 0, Math.PI/2]} position={[x > 0 ? 1 : -1, 0.5, z]} castShadow>
+                    <meshStandardMaterial color="#222" />
+                </Cylinder>
+            )))}
+        </group>
+    );
+};
+
+const Forklift = ({ id, color, opacity, metalness, roughness, onClick }: { id: string, color: string, opacity?: number, metalness?: number, roughness?: number, onClick: (id: string) => void }) => {
+    const matProps = { metalness: metalness ?? 0.5, roughness: roughness ?? 0.5, transparent: opacity !== undefined && opacity < 1, opacity: opacity ?? 1 };
+    return (
+        <group onClick={(e) => { e.stopPropagation(); onClick(id); }}>
+            <Box args={[1.2, 1, 2]} position={[0, 0.8, 0]} castShadow>
+                <meshStandardMaterial color={color || "#faad14"} {...matProps} />
+            </Box>
+            {/* Forks */}
+            <Box args={[1, 2.5, 0.1]} position={[0, 1.5, 1.1]} castShadow>
+                <meshStandardMaterial color="#333" />
+            </Box>
+            <Box args={[0.1, 0.1, 1.5]} position={[-0.3, 0.1, 1.8]} castShadow>
+                <meshStandardMaterial color="#333" />
+            </Box>
+            <Box args={[0.1, 0.1, 1.5]} position={[0.3, 0.1, 1.8]} castShadow>
+                <meshStandardMaterial color="#333" />
+            </Box>
+            {/* Wheels */}
+            {[-0.65, 0.65].map(x => [-0.8, 0.8].map(z => (
+                <Cylinder key={`${x}-${z}`} args={[0.3, 0.3, 0.2, 16]} rotation={[0, 0, Math.PI/2]} position={[x, 0.3, z]} castShadow>
+                    <meshStandardMaterial color="#222" />
+                </Cylinder>
+            )))}
+        </group>
+    );
+};
+
 // ==================== MAIN SCENE ====================
 
 export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarmActive, editMode = false, transformMode = 'translate', selectedId, showWireframe = false }: { onSelect: (id: any) => void, animateFlow: boolean, thermalMode: boolean, alarmActive: boolean, editMode?: boolean, transformMode?: 'translate' | 'rotate' | 'scale', selectedId?: string | null, showWireframe?: boolean }) {
     
     // Store
-    const { elements, updateElement } = useScada3dStore();
+    const { elements, updateElement, environment } = useScada3dStore();
     const { tags } = useScadaStore();
 
     // Valve states
@@ -714,6 +823,18 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
         const isAlarm = tag ? tag.alarm : alarmActive;
         const isRunning = tag ? !!tag.value : animateFlow;
         const color = el.properties.color || '#888';
+        const m = el.properties.metalness;
+        const r = el.properties.roughness;
+        const o = el.properties.opacity;
+        
+        const matProps = {
+            color,
+            wireframe: showWireframe,
+            metalness: m ?? 0.5,
+            roughness: r ?? 0.5,
+            transparent: o !== undefined && o < 1,
+            opacity: o ?? 1
+        };
 
         switch (el.type) {
             // Original HVAC
@@ -730,17 +851,17 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
 
             // Primitives
             case 'box':
-                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><Box args={[2,2,2]} castShadow receiveShadow><meshStandardMaterial color={color} wireframe={showWireframe} /></Box></group>;
+                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><Box args={[2,2,2]} castShadow receiveShadow><meshStandardMaterial {...matProps} /></Box></group>;
             case 'sphere':
-                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><mesh castShadow receiveShadow><sphereGeometry args={[1, 32, 32]} /><meshStandardMaterial color={color} wireframe={showWireframe} /></mesh></group>;
+                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><mesh castShadow receiveShadow><sphereGeometry args={[1, 32, 32]} /><meshStandardMaterial {...matProps} /></mesh></group>;
             case 'cylinder':
-                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><Cylinder args={[1, 1, 2, 32]} castShadow receiveShadow><meshStandardMaterial color={color} wireframe={showWireframe} /></Cylinder></group>;
+                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><Cylinder args={[1, 1, 2, 32]} castShadow receiveShadow><meshStandardMaterial {...matProps} /></Cylinder></group>;
             case 'cone':
-                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><mesh castShadow receiveShadow><coneGeometry args={[1, 2, 32]} /><meshStandardMaterial color={color} wireframe={showWireframe} /></mesh></group>;
+                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><mesh castShadow receiveShadow><coneGeometry args={[1, 2, 32]} /><meshStandardMaterial {...matProps} /></mesh></group>;
             case 'torus':
-                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><Torus args={[1, 0.4, 16, 32]} castShadow receiveShadow><meshStandardMaterial color={color} wireframe={showWireframe} /></Torus></group>;
+                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><Torus args={[1, 0.4, 16, 32]} castShadow receiveShadow><meshStandardMaterial {...matProps} /></Torus></group>;
             case 'plane':
-                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><mesh rotation={[-Math.PI/2, 0, 0]} receiveShadow><planeGeometry args={[4, 4]} /><meshStandardMaterial color={color} side={THREE.DoubleSide} wireframe={showWireframe} /></mesh></group>;
+                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><mesh rotation={[-Math.PI/2, 0, 0]} receiveShadow><planeGeometry args={[4, 4]} /><meshStandardMaterial side={THREE.DoubleSide} {...matProps} /></mesh></group>;
 
             // Electrical
             case 'transformer':
@@ -752,13 +873,13 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
             case 'switchgear':
                 return <Switchgear position={[0,0,0]} id={el.id} onClick={handleSelect} />;
             case 'ats':
-                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color="#2c3e50" label="ATS" />;
+                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color={color !== '#888' ? color : "#2c3e50"} label="ATS" />;
             case 'pdu':
-                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color="#1a1a2e" label="PDU" />;
+                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color={color !== '#888' ? color : "#1a1a2e"} label="PDU" />;
             case 'mcc':
-                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color="#333" label="MCC" />;
+                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color={color !== '#888' ? color : "#333"} label="MCC" />;
             case 'panel':
-                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color="#444" label="PANEL" />;
+                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color={color !== '#888' ? color : "#444"} label="PANEL" />;
 
             // Data Center
             case 'server_rack':
@@ -776,11 +897,11 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
             case 'ahu':
                 return <AHU position={[0,0,0]} id={el.id} onClick={handleSelect} />;
             case 'fcu':
-                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color="#607d8b" label="FCU" />;
+                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color={color !== '#888' ? color : "#607d8b"} label="FCU" />;
             case 'damper':
-                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color="#78909c" label="DAMPER" />;
+                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color={color !== '#888' ? color : "#78909c"} label="DAMPER" />;
             case 'exhaust_fan':
-                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color="#546e7a" label="EXH FAN" />;
+                return <GenericEquipment position={[0,0,0]} id={el.id} onClick={handleSelect} color={color !== '#888' ? color : "#546e7a"} label="EXH FAN" />;
             case 'duct':
                 return <DuctComponent position={[0,0,0]} id={el.id} onClick={handleSelect} />;
 
@@ -802,7 +923,7 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
 
             // Piping
             case 'pipe':
-                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><Cylinder args={[0.15, 0.15, 4, 16]} rotation={[0, 0, Math.PI/2]} castShadow><meshStandardMaterial color="#1890ff" roughness={0.3} metalness={0.6} /></Cylinder></group>;
+                return <group onClick={(e) => { e.stopPropagation(); handleSelect(el.id); }}><Cylinder args={[0.15, 0.15, 4, 16]} rotation={[0, 0, Math.PI/2]} castShadow><meshStandardMaterial color={color !== '#888' ? color : "#1890ff"} roughness={r ?? 0.3} metalness={m ?? 0.6} transparent={matProps.transparent} opacity={matProps.opacity} /></Cylinder></group>;
             case 'elbow':
                 return <PipeElbow position={[0,0,0]} id={el.id} onClick={handleSelect} />;
             case 'tee':
@@ -812,8 +933,26 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
             case 'flange':
                 return <PipeFlange position={[0,0,0]} id={el.id} onClick={handleSelect} />;
 
+            // Landscape & World Building
+            case 'tree':
+                return <Tree id={el.id} onClick={handleSelect} />;
+            case 'bush':
+                return <Bush id={el.id} onClick={handleSelect} />;
+            case 'road':
+                return <Road id={el.id} color={color} opacity={o} metalness={m} roughness={r} onClick={handleSelect} />;
+            case 'water':
+                return <Water id={el.id} color={color} opacity={o} metalness={m} roughness={r} onClick={handleSelect} />;
+            case 'grass':
+                return <Grass id={el.id} color={color} opacity={o} metalness={m} roughness={r} onClick={handleSelect} />;
+
+            // Vehicles
+            case 'truck':
+                return <Truck id={el.id} color={color} opacity={o} metalness={m} roughness={r} onClick={handleSelect} />;
+            case 'forklift':
+                return <Forklift id={el.id} color={color} opacity={o} metalness={m} roughness={r} onClick={handleSelect} />;
+
             default:
-                return <Box args={[1,1,1]}><meshStandardMaterial color="gray" /></Box>;
+                return <Box args={[1,1,1]}><meshStandardMaterial {...matProps} /></Box>;
         }
     };
 
@@ -830,14 +969,26 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
             </GizmoHelper>
             <SoftShadows size={15} samples={16} focus={0.5} />
             <ambientLight intensity={0.5} />
-            <directionalLight position={[10, 15, 10]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} />
-            <directionalLight position={[-10, 10, -10]} intensity={0.3} />
+            {environment === 'day' && <directionalLight position={[10, 20, 10]} intensity={2.5} castShadow shadow-mapSize={[2048, 2048]} />}
+            {environment === 'studio' && (
+                <>
+                    <directionalLight position={[10, 15, 10]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} />
+                    <directionalLight position={[-10, 10, -10]} intensity={1} color="#e0f0ff" />
+                    <ambientLight intensity={1} />
+                </>
+            )}
+            {environment === 'night' && (
+                <>
+                    <directionalLight position={[10, 15, 10]} intensity={0.5} castShadow shadow-mapSize={[2048, 2048]} color="#aaccff" />
+                    <directionalLight position={[-10, 10, -10]} intensity={0.2} color="#001133" />
+                </>
+            )}
 
             <mesh rotation={[-Math.PI/2, 0, 0]} receiveShadow position={[0, -0.01, 0]}>
                 <planeGeometry args={[100, 100]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.8} />
+                <meshStandardMaterial color={environment === 'night' ? "#1a1a1a" : (environment === 'day' ? '#e8ecef' : '#ffffff')} roughness={0.8} />
             </mesh>
-            <gridHelper args={[100, 100, '#333', '#222']} position={[0, 0, 0]} />
+            <gridHelper args={[100, 100, environment === 'night' ? '#333' : '#ddd', environment === 'night' ? '#222' : '#eee']} position={[0, 0, 0]} />
 
             <group position={[0, 0, -2]}>
                 
@@ -851,7 +1002,7 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
                         scale={el.scale} 
                         editMode={editMode} 
                         transformMode={transformMode} 
-                        selectedId={selectedId} 
+                        selectedId={selectedId || null} 
                         onSelect={handleSelect} 
                         onTransformChange={handleTransformChange}
                     >
@@ -860,16 +1011,6 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
                 ))}
 
                 {/* Static Hardcoded Pipes for context */}
-                <WaterPipe start={[-8, 0.5, 2]} end={[-8, 0.5, 4]} radius={0.2} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
-                <WaterPipe start={[-8, 0.5, 4]} end={[-2, 0.5, 4]} radius={0.2} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
-                <WaterPipe start={[-1.7, 0.5, 4]} end={[2, 0.5, 4]} radius={0.2} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
-                <WaterPipe start={[2, 0.5, 4]} end={[2, 0.6, 2.5]} radius={0.2} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
-                <WaterPipe start={[2.5, 0.6, 2]} end={[6, 0.6, 2]} radius={0.15} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
-                <WaterPipe start={[6, 0.6, 2]} end={[6, 5, 2]} radius={0.15} animateFlow={mainFlow} thermalMode={thermalMode} temperature="cold" />
-                <WaterPipe start={[-8, 1.5, -2]} end={[-8, 1.5, -6]} radius={0.25} animateFlow={secondaryFlow} thermalMode={thermalMode} temperature="hot" />
-                <WaterPipe start={[-8, 1.5, -6]} end={[5, 1.5, -6]} radius={0.25} animateFlow={secondaryFlow} thermalMode={thermalMode} temperature="hot" />
-                <WaterPipe start={[5.3, 1.5, -6]} end={[10, 1.5, -6]} radius={0.25} animateFlow={secondaryFlow} thermalMode={thermalMode} temperature="hot" />
-                <WaterPipe start={[10, 1.5, -6]} end={[10, 5, -6]} radius={0.25} animateFlow={secondaryFlow} thermalMode={thermalMode} temperature="hot" />
 
                 <AlarmBeacon position={[0, 4.5, 8]} active={alarmActive} />
 
@@ -878,12 +1019,12 @@ export default function Scada3DScene({ onSelect, animateFlow, thermalMode, alarm
             <EffectComposer multisampling={0}>
                 <SMAA />
                 <SSAO radius={0.2} intensity={10} luminanceInfluence={0.6} />
-                <Bloom luminanceThreshold={0.5} intensity={1.2} />
+                <Bloom luminanceThreshold={environment === 'night' ? 0.5 : 0.8} intensity={environment === 'night' ? 1.2 : 0.6} />
                 <DepthOfField focusDistance={0.05} focalLength={0.1} bokehScale={2} />
             </EffectComposer>
 
             <OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 2 - 0.05} maxDistance={60} target={[0, 2, 0]} />
-            <Environment preset="night" />
+            <Environment preset={environment === 'studio' ? 'studio' : (environment === 'day' ? 'park' : 'night')} />
         </Canvas>
     );
 }

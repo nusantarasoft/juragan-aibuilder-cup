@@ -7,7 +7,9 @@ export function AirflowParticles({ count = 500 }: { count?: number }) {
     const dummy = useMemo(() => new THREE.Object3D(), []);
     
     // Initial particle positions and speeds
-    const particles = useMemo(() => {
+    const [particles, setParticles] = React.useState<any[]>([]);
+
+    React.useEffect(() => {
         const temp = [];
         for (let i = 0; i < count; i++) {
             const x = (Math.random() - 0.5) * 20;
@@ -16,7 +18,7 @@ export function AirflowParticles({ count = 500 }: { count?: number }) {
             const speed = 0.02 + Math.random() * 0.05;
             temp.push({ x, y, z, speed });
         }
-        return temp;
+        setParticles(temp);
     }, [count]);
 
     useFrame(() => {

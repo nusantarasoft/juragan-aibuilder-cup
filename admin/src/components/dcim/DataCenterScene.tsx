@@ -10,12 +10,17 @@ import { useDcimStore } from '@/store/useDcimStore';
 import DraggableModel from '../3d/DraggableModel';
 import { DataCenterArchitecture } from './DataCenterArchitecture';
 import { Environment } from '@react-three/drei';
+import { WorldObjectRenderer } from './WorldObjectRenderer';
+import { MeasurementTool } from './MeasurementTool';
+import { NetworkOverlay } from './NetworkOverlay';
 
 export function DataCenterScene() {
-    const { racks, pods, cracs, pdus, viewMode, editMode, transformMode, selectedRackId, setSelectedRackId } = useDcimStore();
+    const { racks, pods, cracs, pdus, worldObjects, viewMode, editMode, transformMode, selectedRackId, setSelectedRackId } = useDcimStore();
 
     return (
         <group>
+            {/* Measurement Tool */}
+            <MeasurementTool />
             {/* Environment lighting & reflections */}
             <Environment preset="warehouse" />
 
@@ -74,6 +79,28 @@ export function DataCenterScene() {
                 </DraggableModel>
             ))}
 
+            {/* World Objects */}
+            {worldObjects.map(obj => (
+                <DraggableModel
+                    key={obj.id}
+                    id={obj.id}
+                    position={[obj.x, 0, obj.z]}
+                    rotation={[0, obj.rotationY || 0, 0]}
+                    editMode={editMode}
+                    transformMode={transformMode}
+                    snapToGrid={useDcimStore.getState().snapToGrid}
+                    selectedId={selectedRackId}
+                    onSelect={setSelectedRackId}
+                    onTransformChange={(id, type, value) => {
+                        const state = useDcimStore.getState();
+                        if (type === 'position') state.updateWorldObjectPosition(id, value[0], value[2], obj.rotationY);
+                        if (type === 'rotation') state.updateWorldObjectPosition(id, obj.x, obj.z, value[1]);
+                    }}
+                >
+                    <WorldObjectRenderer data={obj} viewMode={viewMode} />
+                </DraggableModel>
+            ))}
+
             {viewMode === 'Power' && (
                 <group>
                     {racks.map((rack, i) => {
@@ -98,29 +125,12 @@ export function DataCenterScene() {
                 </group>
             )}
             
-            {/* Network Topology Streams (Always visible in Power mode for demo) */}
-            {viewMode === 'Power' && (
-                <group>
-                    <RoundedBox args={[1, 3, 1]} position={[-10, 1.5, 10]} radius={0.05} smoothness={4}>
-                        <meshStandardMaterial color="#722ed1" roughness={0.3} metalness={0.8} emissive="#722ed1" emissiveIntensity={0.2} />
-                    </RoundedBox>
-                    {racks.map((rack, i) => {
-                        const start = new THREE.Vector3(-10, 3, 10);
-                        const end = new THREE.Vector3(rack.x, 2.0, rack.z);
-                        return (
-                            <Line 
-                                key={`net-${i}`}
-                                points={[start, end]} 
-                                color="#d3adf7" 
-                                lineWidth={1} 
-                                dashed 
-                                dashScale={50}
-                                dashSize={0.2}
-                            />
-                        );
-                    })}
-                </group>
-            )}
+            {/* Network Topology Streams */}
+            <NetworkOverlay />
+
+            {/* Thermal visualization particles */}
+            <AirflowParticles />
+
 {/* Racks */}
             {racks.map(rack => (
                 <DraggableModel

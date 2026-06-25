@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Card, Button, Space, Tag, Typography, Row, Col, Input, Drawer, Badge, Spin, Tooltip, Divider, Segmented, message, Popconfirm, Slider, Select, Modal, Upload, ColorPicker, theme as antTheme, InputNumber } from "antd";
+import { Card, Button, Space, Tag, Typography, Row, Col, Input, Drawer, Badge, Spin, Tooltip, Divider, Segmented, message, Popconfirm, Slider, Select, Modal, Upload, ColorPicker, theme as antTheme, InputNumber, Tabs, Switch } from "antd";
 import {
     EnvironmentOutlined, ReloadOutlined, AppstoreOutlined,
     EditOutlined, EyeOutlined, DeleteOutlined, RotateRightOutlined,
@@ -10,10 +10,14 @@ import {
     ImportOutlined, ExportOutlined, AppstoreAddOutlined, RedoOutlined,
     InfoCircleOutlined, BarChartOutlined, LockOutlined, UnlockOutlined,
     ThunderboltOutlined, CameraOutlined, SearchOutlined, AimOutlined,
-    CloseCircleOutlined, InboxOutlined,
+    CloseCircleOutlined, InboxOutlined, FormatPainterOutlined, HomeOutlined, RadarChartOutlined, SettingOutlined
 } from "@ant-design/icons";
 import { motion, AnimatePresence } from "framer-motion";
+import { Canvas } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
 import CMSLayout from "@/components/layout/CMSLayout";
+import CADLayout from "@/components/cad/CADLayout";
+import CADRibbon from "@/components/cad/CADRibbon";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
@@ -187,7 +191,9 @@ export default function WarehouseMapPage() {
     const [showGridOverlay, setShowGridOverlay] = useState(false);
     const [showHelp, setShowHelp] = useState(false);
     const [clipboard, setClipboard] = useState<PlacedObject[]>([]);
-    const [graphicsQuality, setGraphicsQuality] = useState<'high' | 'performance'>('high');
+    const [graphicsQuality, setGraphicsQuality] = useState<'high' | 'performance'>('performance');
+
+    const [activeTool, setActiveTool] = useState<'select' | 'draw_wall' | 'draw_zone' | 'place_object' | 'delete'>('select');
 
     // ═══ NEW FEATURES STATE ═══════════════════════
     // Heatmap overlay
@@ -204,6 +210,12 @@ export default function WarehouseMapPage() {
     // Timelapse playback
     const [timelapseMode, setTimelapseMode] = useState(false);
     const [timelapseHour, setTimelapseHour] = useState(12);
+    
+    // Advanced CAD Features
+    const [dragStartPos, setDragStartPos] = useState<[number, number] | null>(null);
+    const [selectionBox, setSelectionBox] = useState<{ startX: number, startZ: number, endX: number, endZ: number } | null>(null);
+    const [envSettingsOpen, setEnvSettingsOpen] = useState(false);
+    const [envShadows, setEnvShadows] = useState(true);
 
     // Inventory data for rack-level tracking
     const [rackInventoryMap, setRackInventoryMap] = useState<Map<string, RackInventory>>(new Map());
@@ -335,7 +347,7 @@ export default function WarehouseMapPage() {
                 const relevantLedger = ledger;
 
                 for (const l of relevantLedger) {
-                    if (coveredItemIds.has(l.itemId)) continue;
+                    if (coveredItemIds.includes(l.itemId)) continue;
                     const item = items.find((i: any) => i.id === l.itemId);
                     if (!item) continue;
                     if (!item.name?.toLowerCase().includes(q) && !item.sku?.toLowerCase().includes(q)) continue;
@@ -694,7 +706,7 @@ export default function WarehouseMapPage() {
                 // Group bin contents by binId
                 const binContentsMap = new Map<string, Array<{ itemId: string; quantity: number; uom?: string }>>();
                 for (const bc of allBinContents) {
-                    if (!binContentsMap.has(bc.binId)) binContentsMap.set(bc.binId, []);
+                    if (!binContentsMap.includes(bc.binId)) binContentsMap.set(bc.binId, []);
                     binContentsMap.get(bc.binId)!.push({ itemId: bc.itemId, quantity: bc.quantity, uom: bc.uom });
                 }
 
@@ -848,7 +860,7 @@ export default function WarehouseMapPage() {
 
                 // Phase 2: Register all remaining bins by matching to racks via bin code patterns
                 for (const bin of bins) {
-                    if (posRegistry.has(bin.code)) continue; // Already registered
+                    if (posRegistry.includes(bin.code)) continue; // Already registered
 
                     // Try to match by aisle/rack/level fields from the bin
                     if (bin.aisle && bin.rack) {
@@ -928,13 +940,13 @@ export default function WarehouseMapPage() {
 
                 // Phase 3: For any still-unregistered bins, distribute across zones
                 const zones = await inventoryService.getZones().catch(() => []);
-                const unregisteredBins = bins.filter(b => !posRegistry.has(b.code));
+                const unregisteredBins = bins.filter(b => !posRegistry.includes(b.code));
                 if (unregisteredBins.length > 0) {
                     // Group unregistered bins by zoneId
                     const binsByZone = new Map<string, typeof bins>();
                     for (const bin of unregisteredBins) {
                         const zoneId = bin.zoneId;
-                        if (!binsByZone.has(zoneId)) binsByZone.set(zoneId, []);
+                        if (!binsByZone.includes(zoneId)) binsByZone.set(zoneId, []);
                         binsByZone.get(zoneId)!.push(bin);
                     }
 
@@ -1151,29 +1163,92 @@ export default function WarehouseMapPage() {
 
     // Place object on grid
     const handleGridClick = useCallback((x: number, z: number) => {
-        if (!activePalette) return;
-        pushHistory();
-        const newObj: PlacedObject = {
-            id: generateId(), type: activePalette.type,
-            x, z, rotation: 0,
-            width: activePalette.defaultWidth, depth: activePalette.defaultDepth,
-            zoneType: ZONE_TYPE_MAP[activePalette.label] as any,
-            rackLevels: activePalette.type === 'rack' ? 3 : undefined,
-            label: activePalette.label, color: activePalette.color,
-            floorLevel: currentFloor,
-        };
-        setObjects(prev => [...prev, newObj]);
-        messageApi.success(`Placed ${activePalette.label}`);
-    }, [activePalette, pushHistory, messageApi]);
+        if (!buildMode) return;
+        
+        let newObj: PlacedObject | null = null;
+        
+        if (activeTool === 'draw_wall') {
+            newObj = {
+                id: generateId(), type: 'wall', x, z, rotation: 0,
+                width: 4, depth: 0.5, label: 'Wall', color: '#64748b', floorLevel: currentFloor
+            };
+        } else if (activeTool === 'draw_zone') {
+            newObj = {
+                id: generateId(), type: 'zone', x, z, rotation: 0,
+                width: 4, depth: 4, zoneType: 'storage', label: 'Storage Zone', color: '#3b82f6', floorLevel: currentFloor
+            };
+        } else if (activeTool === 'place_object' && activePalette) {
+            newObj = {
+                id: generateId(), type: activePalette.type,
+                x, z, rotation: 0,
+                width: activePalette.defaultWidth, depth: activePalette.defaultDepth,
+                zoneType: ZONE_TYPE_MAP[activePalette.label] as any,
+                rackLevels: activePalette.type === 'rack' ? 3 : undefined,
+                label: activePalette.label, color: activePalette.color,
+                floorLevel: currentFloor,
+            };
+        }
+        
+        if (newObj) {
+            pushHistory();
+            setObjects(prev => [...prev, newObj!]);
+            messageApi.success(`Placed ${newObj!.label}`);
+        }
+    }, [buildMode, activeTool, activePalette, currentFloor, pushHistory, messageApi]);
+    const handlePointerDown = useCallback((e: any) => {
+        if (!buildMode || activeTool !== 'select') return;
+        const pt = e.point;
+        if (pt) setDragStartPos([pt.x, pt.z]);
+    }, [buildMode, activeTool]);
+
+    const handlePointerMove = useCallback((e: any) => {
+        if (!dragStartPos) return;
+        const pt = e.point;
+        if (pt) {
+            setSelectionBox({
+                startX: dragStartPos[0], startZ: dragStartPos[1],
+                endX: pt.x, endZ: pt.z
+            });
+        }
+    }, [dragStartPos]);
+
+    const handlePointerUp = useCallback((e: any) => {
+        if (!dragStartPos) return;
+        if (selectionBox) {
+            const minX = Math.min(selectionBox.startX, selectionBox.endX);
+            const maxX = Math.max(selectionBox.startX, selectionBox.endX);
+            const minZ = Math.min(selectionBox.startZ, selectionBox.endZ);
+            const maxZ = Math.max(selectionBox.startZ, selectionBox.endZ);
+
+            // Find all objects whose center is inside the box
+            const insideIds = objects.filter(o => {
+                const ox = o.x + (o.width || 1) / 2;
+                const oz = o.z + (o.depth || 1) / 2;
+                return ox >= minX && ox <= maxX && oz >= minZ && oz <= maxZ && o.floorLevel === currentFloor;
+            }).map(o => o.id);
+
+            if (insideIds.length > 0) {
+                const newSet = new Set(insideIds);
+                setSelectedIds(newSet);
+                setSelectedId(null);
+                messageApi.info(`Selected ${insideIds.length} objects`);
+            } else {
+                setSelectedIds(new Set());
+            }
+        }
+        setDragStartPos(null);
+        setSelectionBox(null);
+    }, [dragStartPos, selectionBox, objects, currentFloor, messageApi]);
+
 
     // Select object (supports multi-select with Shift)
     const handleSelectObject = useCallback((id: string, shiftKey: boolean = false) => {
-        if (activePalette) return; // placing mode — don't select
+        if (buildMode && activeTool !== 'select') return; // placing mode — don't select
         if (shiftKey) {
             // Multi-select: toggle this id in selectedIds
             setSelectedIds(prev => {
                 const next = new Set(prev);
-                if (next.has(id)) { next.delete(id); } else { next.add(id); }
+                if (next.includes(id)) { next.delete(id); } else { next.add(id); }
                 // Also add the current selectedId if there is one
                 if (selectedId && selectedId !== id) next.add(selectedId);
                 return next;
@@ -1190,20 +1265,29 @@ export default function WarehouseMapPage() {
                 return nextId;
             });
         }
-    }, [activePalette, selectedId, buildMode]);
+    }, [activeTool, selectedId, buildMode]);
 
     // Delete selected (supports multi-select)
     const handleDelete = useCallback(() => {
         const ids = selectedIds.size > 0 ? selectedIds : (selectedId ? new Set([selectedId]) : new Set<string>());
         if (ids.size === 0) return;
-        const hasLocked = objects.some(o => ids.has(o.id) && o.locked);
+        const hasLocked = objects.some(o => ids.includes(o.id) && o.locked);
         if (hasLocked) { messageApi.warning('Some objects are locked'); return; }
         pushHistory();
-        setObjects(prev => prev.filter(o => !ids.has(o.id)));
+        setObjects(prev => prev.filter(o => !ids.includes(o.id)));
         setSelectedId(null);
         setSelectedIds(new Set());
         messageApi.info(`${ids.size} object${ids.size > 1 ? 's' : ''} deleted`);
     }, [selectedId, selectedIds, objects, pushHistory, messageApi]);
+
+    // Clear all objects
+    const handleClear = useCallback(() => {
+        pushHistory();
+        setObjects([]);
+        setSelectedId(null);
+        setSelectedIds(new Set());
+        messageApi.info('Layout cleared');
+    }, [pushHistory, messageApi]);
 
     // Rotate selected
     const handleRotate = useCallback(() => {
@@ -1220,15 +1304,15 @@ export default function WarehouseMapPage() {
     const handleMove = useCallback((dx: number, dz: number) => {
         const ids = selectedIds.size > 0 ? selectedIds : (selectedId ? new Set([selectedId]) : new Set<string>());
         if (ids.size === 0) return;
-        const hasLocked = objects.some(o => ids.has(o.id) && o.locked);
+        const hasLocked = objects.some(o => ids.includes(o.id) && o.locked);
         if (hasLocked) { messageApi.warning('Some objects are locked'); return; }
         
         const proposedObjects = objects.map(o =>
-            ids.has(o.id) ? { ...o, x: Math.max(0, Math.round((o.x + dx * snapIncrement) * 10) / 10), z: Math.max(0, Math.round((o.z + dz * snapIncrement) * 10) / 10) } : o
+            ids.includes(o.id) ? { ...o, x: Math.max(0, Math.round((o.x + dx * snapIncrement) * 10) / 10), z: Math.max(0, Math.round((o.z + dz * snapIncrement) * 10) / 10) } : o
         );
         
         // Collision check
-        const hasCollision = proposedObjects.some(o => ids.has(o.id) && checkCollision(o, proposedObjects));
+        const hasCollision = proposedObjects.some(o => ids.includes(o.id) && checkCollision(o, proposedObjects));
         if (hasCollision) {
             messageApi.warning('Collision prevented movement');
             return;
@@ -1260,7 +1344,7 @@ export default function WarehouseMapPage() {
 
     // Save
     const handleSave = useCallback(async () => {
-        const id = await saveLayout(objects, activeLayoutId || undefined);
+        const id = await saveLayout(objects, activeLayoutId || undefined, selectedWarehouseId || undefined);
         if (id) setActiveLayoutId(id);
         messageApi.success('Layout saved!');
     }, [objects, activeLayoutId, messageApi]);
@@ -1309,7 +1393,7 @@ export default function WarehouseMapPage() {
     const handleDuplicate = useCallback(() => {
         const ids = selectedIds.size > 0 ? selectedIds : (selectedId ? new Set([selectedId]) : new Set<string>());
         if (ids.size === 0) return;
-        const objsToDup = objects.filter(o => ids.has(o.id));
+        const objsToDup = objects.filter(o => ids.includes(o.id));
         if (objsToDup.some(o => o.locked)) { messageApi.warning('Some objects are locked'); return; }
         pushHistory();
         const dups = objsToDup.map(o => ({ ...duplicateObject(o), locked: false }));
@@ -1513,7 +1597,7 @@ export default function WarehouseMapPage() {
             if (e.key === 'c' && (e.ctrlKey || e.metaKey)) {
                 const ids = selectedIds.size > 0 ? selectedIds : (selectedId ? new Set([selectedId]) : new Set<string>());
                 if (ids.size === 0) return;
-                setClipboard(objects.filter(o => ids.has(o.id)));
+                setClipboard(objects.filter(o => ids.includes(o.id)));
                 messageApi.info(`Copied ${ids.size} object${ids.size > 1 ? 's' : ''}`);
                 return;
             }
@@ -1544,176 +1628,757 @@ export default function WarehouseMapPage() {
         <CMSLayout
             title={<AuroraText colors={[themeColor, '#3b82f6', '#22c55e']}>Warehouse Explorer</AuroraText>}
             subTitle={<DecryptedText text="3D warehouse view, item locator, and location browser — all in one" animateOn="view" revealDirection="start" speed={40} sequential />}
-            extra={[
-                <Button key="save" icon={<SaveOutlined />} type="primary" onClick={handleSave}
-                    style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', borderColor: '#22c55e', boxShadow: '0 2px 8px rgba(34,197,94,0.3)' }}>Save</Button>,
-                <Tooltip key="saveas" title="Save as named layout">
-                    <Button icon={<PlusOutlined />} onClick={() => { setSaveAsName(''); setSaveAsOpen(true); }}>Save As</Button>
-                </Tooltip>,
-                <Tooltip key="layouts" title="My saved layouts">
-                    <Button icon={<AppstoreOutlined />} onClick={async () => { setSavedLayouts(await listLayouts()); setLayoutManagerOpen(true); }}>
-                        Layouts{savedLayouts.length > 0 ? ` (${savedLayouts.length})` : ''}
-                    </Button>
-                </Tooltip>,
-                <Space.Compact key="history">
-                    <Tooltip title="Undo (Ctrl+Z)"><Button icon={<UndoOutlined />} onClick={handleUndo} disabled={history.length === 0} /></Tooltip>
-                    <Tooltip title="Redo (Ctrl+Y)"><Button icon={<RedoOutlined />} onClick={handleRedo} disabled={redoHistory.length === 0} /></Tooltip>
-                </Space.Compact>,
-                <Space.Compact key="io">
-                    <Tooltip title="Export JSON"><Button icon={<ExportOutlined />} onClick={handleExport} /></Tooltip>
-                    <Tooltip title="Import JSON"><Button icon={<ImportOutlined />} onClick={() => setImportModalOpen(true)} /></Tooltip>
-                    <Tooltip title="Templates"><Button icon={<AppstoreAddOutlined />} onClick={() => setTemplateModalOpen(true)} /></Tooltip>
-                    <Tooltip title="Screenshot"><Button icon={<CameraOutlined />} onClick={handleScreenshot} /></Tooltip>
-                </Space.Compact>,
-            ]}
         >
-            {ctx}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ height: '100%' }}>
+            <div style={{ height: 'calc(100vh - 180px)', width: '100%', overflow: 'hidden', borderRadius: 8, border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}` }}>
+                <CADLayout isDark={isDark !== false}
+            header={
+                <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '0 16px', height: '100%'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: themeColor, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <AppstoreOutlined /> Workspace
+                        </div>
+                        
+                        {/* Warehouse Selector */}
+                        {warehouses.length > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 12 }}>🏭</span>
+                                <Select
+                                    value={selectedWarehouseId}
+                                    onChange={handleWarehouseChange}
+                                    placeholder="All Warehouses"
+                                    allowClear
+                                    size="small"
+                                    loading={loadingWarehouse}
+                                    style={{ minWidth: 180, fontSize: 12 }}
+                                    options={warehouses.map(wh => {
+                                        const typeIcons: Record<string, string> = { general: '🏭', cold: '❄️', hazardous: '☢️', bonded: '🔒', transit: '🔄' };
+                                        const typeIcon = typeIcons[(wh as any).warehouseType || 'general'] || '🏭';
+                                        return { value: wh.id, label: `${typeIcon} ${wh.name}${wh.code ? ` (${wh.code})` : ''}` };
+                                    })}
+                                />
+                            </div>
+                        )}
 
-                {/* Main content */}
-                <div style={{ display: 'flex', gap: 8, height: 'calc(100vh - 180px)', minHeight: 520 }}>
-                    {/* Left: Explorer Panel (Location Browser + Item Locator — view mode) */}
+                        {/* Mode switch */}
+                        <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: `1px solid ${t.panelBorder}` }}>
+                            {[
+                                { mode: false, icon: <EyeOutlined />, label: 'View', color: '#22c55e' },
+                                { mode: true, icon: <EditOutlined />, label: 'Build', color: '#3b82f6' },
+                            ].map(m => (
+                                <div key={m.label}
+                                    onClick={() => { setBuildMode(m.mode); setActivePalette(null); setSelectedId(null); setSelectedIds(new Set()); }}
+                                    style={{
+                                        padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                                        display: 'flex', alignItems: 'center', gap: 6,
+                                        background: buildMode === m.mode ? `${m.color}20` : 'transparent',
+                                        color: buildMode === m.mode ? m.color : t.textSecondary,
+                                        transition: 'all 0.2s',
+                                    }}>
+                                    {m.icon} {m.label}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Button size="small" type="primary" icon={<SaveOutlined />} onClick={() => handleSave()} style={{ background: themeColor, borderColor: themeColor }}>Save</Button>
+                        <Tooltip title="Save As"><Button size="small" icon={<PlusOutlined />} onClick={() => { setSaveAsName(''); setSaveAsOpen(true); }} /></Tooltip>
+                        <Tooltip title="Layouts"><Button size="small" icon={<AppstoreOutlined />} onClick={async () => { setSavedLayouts(await listLayouts()); setLayoutManagerOpen(true); }} /></Tooltip>
+                        <div style={{ width: 1, height: 16, background: t.panelBorder, margin: '0 4px' }} />
+                        <Tooltip title="Environment"><Button size="small" icon={<SettingOutlined />} onClick={() => setEnvSettingsOpen(true)} /></Tooltip>
+                        <Tooltip title="Export"><Button size="small" icon={<ExportOutlined />} onClick={() => handleExport()} /></Tooltip>
+                        <Tooltip title="Import"><Button size="small" icon={<ImportOutlined />} onClick={() => setImportModalOpen(true)} /></Tooltip>
+                        <Tooltip title="Screenshot"><Button size="small" icon={<CameraOutlined />} onClick={() => handleScreenshot()} /></Tooltip>
+                        <Popconfirm title="Clear all?" onConfirm={() => handleClear()}><Button size="small" danger icon={<ClearOutlined />} /></Popconfirm>
+                    </div>
+                </div>
+            }
+            leftPanel={
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
                     {!buildMode && (
-                        <ExplorerPanel
-                            isDark={isDark}
-                            themeColor={themeColor}
-                            collapsed={explorerCollapsed}
-                            onToggleCollapse={() => setExplorerCollapsed(c => !c)}
-                            onLocateBin={(binCode) => {
-                                setHighlightBin(binCode);
-                                setCameraPreset('iso');
-                                messageApi.success(`Locating bin: ${binCode}`);
-                            }}
-                            onSelectBin={() => {}}
-                            selectedWarehouseId={selectedWarehouseId}
-                        />
+                        <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+                            <div style={{ position: 'absolute', inset: 0 }}>
+                                <ExplorerPanel
+                                    isDark={isDark}
+                                    themeColor={themeColor}
+                                    onLocateBin={(binCode) => {
+                                        setHighlightBin(binCode);
+                                        setCameraPreset('iso');
+                                        messageApi.success(`Locating bin: ${binCode}`);
+                                    }}
+                                    onSelectBin={() => {}}
+                                    selectedWarehouseId={selectedWarehouseId}
+                                />
+                            </div>
+                        </div>
                     )}
-                    {/* Left: Build Palette (only in build mode) */}
-                    <AnimatePresence>
-                        {buildMode && (
-                            <motion.div
-                                initial={{ width: 0, opacity: 0 }}
-                                animate={{ width: 210, opacity: 1 }}
-                                exit={{ width: 0, opacity: 0 }}
-                                transition={{ duration: 0.25, ease: 'easeInOut' }}
-                                style={{ flexShrink: 0, overflow: 'hidden' }}
-                            >
-                                <Card size="small" style={{ ...glass, height: '100%', overflowY: 'auto', color: t.text }}
-                                    styles={{ body: { padding: 10 } }}
-                                    title={
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <div style={{ width: 3, height: 14, borderRadius: 2, background: themeColor }} />
-                                            <Text style={{ color: t.text, fontSize: 12, fontWeight: 700 }}>Object Palette</Text>
+                    {buildMode && (
+                        <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 8, width: 48, margin: '0 auto' }}>
+                            {[
+                                { id: 'select', icon: <AimOutlined />, tip: 'Select (Esc)' },
+                                { id: 'draw_wall', icon: <EditOutlined />, tip: 'Draw Wall' },
+                                { id: 'draw_zone', icon: <AppstoreAddOutlined />, tip: 'Draw Zone' },
+                                { id: 'place_object', icon: <PlusOutlined />, tip: 'Place Object' },
+                                { id: 'delete', icon: <DeleteOutlined />, tip: 'Delete (Del)' },
+                            ].map(tool => {
+                                const active = activeTool === tool.id;
+                                return (
+                                    <Tooltip key={tool.id} title={tool.tip} placement="right">
+                                        <div
+                                            onClick={() => setActiveTool(tool.id as any)}
+                                            style={{
+                                                width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                background: active ? themeColor : isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                                                color: active ? '#fff' : isDark ? '#ccc' : '#555',
+                                                cursor: 'pointer', transition: 'all 0.2s', border: `1px solid ${active ? themeColor : 'transparent'}`,
+                                            }}
+                                        >
+                                            {tool.icon}
                                         </div>
-                                    }
-                                >
-                                    {/* Floor Level Switcher */}
-                                    <div style={{ marginBottom: 16, background: t.appBg, padding: 8, borderRadius: 8, border: `1px solid ${t.panelBorder}` }}>
-                                        <div style={{ fontSize: 10, fontWeight: 700, color: t.textSecondary, marginBottom: 6, textTransform: 'uppercase' }}>Floor Level</div>
-                                        <div style={{ display: 'flex', gap: 4 }}>
-                                            {[0, 1, 2].map(lvl => (
-                                                <div key={lvl} onClick={() => setCurrentFloor(lvl)}
+                                    </Tooltip>
+                                );
+                            })}
+                                <div style={{ height: 1, background: t.panelBorder, margin: '4px 0' }} />
+
+                                <Tooltip title="Undo (Ctrl+Z)" placement="right">
+                                    <div onClick={handleUndo} style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: history.length ? 'pointer' : 'not-allowed', color: history.length ? t.textSecondary : t.textMuted, fontSize: 16 }}>
+                                        <UndoOutlined />
+                                    </div>
+                                </Tooltip>
+                                <Tooltip title="Redo (Ctrl+Y)" placement="right">
+                                    <div onClick={handleRedo} style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: redoHistory.length ? 'pointer' : 'not-allowed', color: redoHistory.length ? t.textSecondary : t.textMuted, fontSize: 16 }}>
+                                        <RedoOutlined />
+                                    </div>
+                                </Tooltip>
+                                
+                                {/* Floor Level Switcher in CAD toolbar */}
+                                <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    {[2, 1, 0].map(lvl => (
+                                        <Tooltip key={lvl} title={`Floor ${lvl === 0 ? 'GND' : `L${lvl}`}`} placement="right">
+                                            <div onClick={() => setCurrentFloor(lvl)}
+                                                style={{
+                                                    width: 32, height: 24, borderRadius: 6, cursor: 'pointer',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontSize: 9, fontWeight: 700, transition: 'all 0.2s',
+                                                    background: currentFloor === lvl ? themeColor : 'transparent',
+                                                    color: currentFloor === lvl ? '#fff' : t.textMuted,
+                                                    border: `1px solid ${currentFloor === lvl ? themeColor : t.panelBorder}`
+                                                }}>
+                                                {lvl === 0 ? 'G' : `L${lvl}`}
+                                            </div>
+                                        </Tooltip>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                }
+                rightPanel={
+                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+                        {buildMode && (activeTool === 'place_object' || selectedId) && (
+                            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                <div style={{ flex: 1, overflowY: "auto", padding: "12px", display: "flex", flexDirection: "column", gap: 16 }}>
+
+                                {activeTool === 'place_object' && !selectedId && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: t.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <EditOutlined /> Object Palette
+                                        </div>
+                                        {/* Category tabs */}
+                                        <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                                            {['zone', 'storage', 'structure', 'equipment'].map(cat => (
+                                                <div key={cat}
+                                                    onClick={() => setPaletteCategory(cat)}
                                                     style={{
-                                                        flex: 1, textAlign: 'center', padding: '4px 0', borderRadius: 4, cursor: 'pointer',
-                                                        fontSize: 11, fontWeight: 700, transition: 'all 0.2s',
-                                                        background: currentFloor === lvl ? themeColor : 'transparent',
-                                                        color: currentFloor === lvl ? '#fff' : t.textMuted,
-                                                        border: `1px solid ${currentFloor === lvl ? themeColor : t.panelBorder}`
+                                                        padding: '4px 8px', borderRadius: 6, cursor: 'pointer', fontSize: 9, fontWeight: 600,
+                                                        background: paletteCategory === cat ? `${themeColor}25` : t.cardBg,
+                                                        border: `1px solid ${paletteCategory === cat ? themeColor : t.panelBorder}`,
+                                                        color: paletteCategory === cat ? themeColor : t.textSecondary,
+                                                        transition: 'all 0.2s', flexGrow: 1, textAlign: 'center'
                                                     }}>
-                                                    {lvl === 0 ? 'GND' : `L${lvl}`}
+                                                    {CATEGORY_ICONS[cat]} {cat.charAt(0).toUpperCase() + cat.slice(1)}
                                                 </div>
                                             ))}
                                         </div>
-                                    </div>
-
-                                    {/* Category tabs */}
-                                    <div style={{ display: 'flex', gap: 3, marginBottom: 10, flexWrap: 'wrap' }}>
-                                        {['zone', 'storage', 'structure', 'equipment'].map(cat => (
-                                            <div key={cat}
-                                                onClick={() => setPaletteCategory(cat)}
-                                                style={{
-                                                    padding: '4px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 10, fontWeight: 600,
-                                                    background: paletteCategory === cat ? `${themeColor}25` : t.cardBg,
-                                                    border: `1px solid ${paletteCategory === cat ? themeColor : t.panelBorder}`,
-                                                    color: paletteCategory === cat ? themeColor : t.textSecondary,
-                                                    transition: 'all 0.2s',
-                                                }}>
-                                                {CATEGORY_ICONS[cat]} {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Palette items */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                        {filteredPalette.map((item, idx) => {
-                                            const isActive = activePalette?.label === item.label;
-                                            return (
-                                                <motion.div
-                                                    key={item.label}
-                                                    initial={{ opacity: 0, x: -10 }}
-                                                    animate={{ opacity: 1, x: 0 }}
-                                                    transition={{ delay: idx * 0.03 }}
-                                                    onClick={() => {
-                                                        setActivePalette(isActive ? null : item);
-                                                        setSelectedId(null);
-                                                    }}
-                                                    style={{
-                                                        padding: '8px 10px', borderRadius: 10, cursor: 'pointer',
-                                                        background: isActive ? `${item.color}20` : t.cardBg,
-                                                        border: `1.5px solid ${isActive ? item.color : 'transparent'}`,
-                                                        boxShadow: isActive ? `0 0 12px ${item.color}30` : 'none',
-                                                        transition: 'all 0.2s',
-                                                    }}
-                                                    whileHover={{ scale: 1.02, backgroundColor: isActive ? undefined : t.cardBgHover }}
-                                                >
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                        <div style={{
-                                                            width: 36, height: 36, borderRadius: 8,
-                                                            background: `${item.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                            fontSize: 20, border: `1px solid ${item.color}30`,
-                                                        }}>{item.icon}</div>
-                                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                                            <Text style={{ color: '#eee', fontSize: 11, fontWeight: 600, display: 'block' }}>{item.label}</Text>
-                                                            <Text style={{ color: '#666', fontSize: 8, lineHeight: '1.2' }}>{item.description}</Text>
+                                        {/* Palette items */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            {filteredPalette.map((item, idx) => {
+                                                const isActive = activePalette?.label === item.label;
+                                                return (
+                                                    <motion.div key={item.label}
+                                                        onClick={() => setActivePalette(isActive ? null : item)}
+                                                        style={{
+                                                            padding: '6px 8px', borderRadius: 8, cursor: 'pointer',
+                                                            background: isActive ? `${item.color}20` : t.cardBg,
+                                                            border: `1.5px solid ${isActive ? item.color : 'transparent'}`,
+                                                            transition: 'all 0.2s',
+                                                        }}
+                                                    >
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                            <div style={{ width: 24, height: 24, borderRadius: 4, background: `${item.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, border: `1px solid ${item.color}30` }}>
+                                                                {item.icon}
+                                                            </div>
+                                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                                <Text style={{ color: t.text, fontSize: 10, fontWeight: 600, display: 'block' }}>{item.label}</Text>
+                                                            </div>
                                                         </div>
-                                                        {isActive && (
-                                                            <motion.div
-                                                                animate={{ scale: [1, 1.3, 1] }}
-                                                                transition={{ repeat: Infinity, duration: 1.5 }}
-                                                                style={{ width: 6, height: 6, borderRadius: 6, background: item.color }}
-                                                            />
-                                                        )}
-                                                    </div>
-                                                </motion.div>
-                                            );
-                                        })}
+                                                    </motion.div>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
+                                )}
 
-                                    <Divider style={{ borderColor: t.panelBorder, margin: '10px 0' }} />
-
-                                    {/* Keyboard shortcuts */}
-                                    <div style={{ ...panelSection(t.textMuted) }}>
-                                        <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Shortcuts</Text>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, marginTop: 4 }}>
-                                        {[
-                                            ['R', 'Rotate'], ['D', 'Duplicate'], ['Del', 'Remove'], ['Esc', 'Deselect'],
-                                            ['⌘Z', 'Undo'], ['⌘Y', 'Redo'], ['↑↓←→', 'Nudge'], ['Click', 'Place'],
-                                        ].map(([key, desc]) => (
-                                            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 0' }}>
-                                                <span style={{ fontSize: 7, padding: '1px 4px', background: t.kbdBg, borderRadius: 3, color: t.kbdText, fontFamily: 'monospace', fontWeight: 700 }}>{key}</span>
-                                                <span style={{ color: t.textMuted, fontSize: 8 }}>{desc}</span>
+                    {/* Right: Properties panel (when object selected in build mode) */}
+                    
+                        {selectedObj && (
+                            <div style={{ flex: 1, overflowY: "auto" }}>
+                                <Card size="small" style={{ ...glass, height: '100%', overflowY: 'auto' }}
+                                    styles={{ body: { padding: 12 } }}
+                                    title={
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <div style={{ width: 3, height: 14, borderRadius: 2, background: '#3b82f6' }} />
+                                                <Text style={{ color: t.text, fontSize: 12, fontWeight: 700 }}>Properties</Text>
                                             </div>
-                                        ))}
-                                    </div>
+                                            {selectedObj.locked && (
+                                                <Tag style={{ fontSize: 8, margin: 0, padding: '0 6px', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', borderRadius: 6 }}>🔒 LOCKED</Tag>
+                                            )}
+                                        </div>
+                                    }
+                                >
+                                    <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                                        {/* Type + Label header */}
+                                        <div style={{ ...panelSection(selectedObj.color || '#3b82f6') }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                                <div style={{
+                                                    width: 28, height: 28, borderRadius: 6,
+                                                    background: `${selectedObj.color || '#3b82f6'}20`,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontSize: 14,
+                                                }}>
+                                                    {PALETTE_ITEMS.find(p => p.type === selectedObj.type)?.icon || '📦'}
+                                                </div>
+                                                <div>
+                                                    <Tag style={{ fontSize: 9, background: `${selectedObj.color || '#3b82f6'}20`, border: `1px solid ${selectedObj.color || '#3b82f6'}40`, color: selectedObj.color || '#3b82f6', borderRadius: 6 }}>{selectedObj.type.toUpperCase()}</Tag>
+                                                    <div style={{ color: t.textMuted, fontSize: 8, marginTop: 1 }}>📍 {gridCoordsLabel(selectedObj.x, selectedObj.z)}</div>
+                                                </div>
+                                            </div>
+                                            <Input size="small" value={selectedObj.label || ''}
+                                                onChange={e => handleLabelChange(e.target.value)}
+                                                placeholder="Enter label..."
+                                                style={{ background: t.inputBg, borderColor: t.inputBorder, color: t.text, fontSize: 11, borderRadius: 6 }} />
+                                        </div>
+                                        {/* Position & Rotation */}
+                                        <div style={{ ...panelSection('#666') }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Position & Rotation</Text>
+                                                <Tooltip title="Rotate 90°">
+                                                    <div onClick={handleRotate} style={{ cursor: 'pointer', fontSize: 10, padding: '2px 6px', background: t.cardBg, borderRadius: 4, border: `1px solid ${t.panelBorder}`, color: t.text }}>↻</div>
+                                                </Tooltip>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                                                {[
+                                                    { label: 'X', value: selectedObj.x, field: 'x' as const },
+                                                    { label: 'Z', value: selectedObj.z, field: 'z' as const },
+                                                    { label: 'R', value: selectedObj.rotation, field: 'rotation' as const },
+                                                ].map(p => (
+                                                    <div key={p.label} style={{ flex: 1 }}>
+                                                        <div style={{ color: t.textMuted, fontSize: 7, fontWeight: 600, marginBottom: 2, textAlign: 'center' }}>{p.label}</div>
+                                                        <InputNumber
+                                                            size="small"
+                                                            value={p.value}
+                                                            step={p.field === 'rotation' ? 90 : snapIncrement}
+                                                            onChange={val => {
+                                                                if (val === null) return;
+                                                                const proposed = { ...selectedObj, [p.field]: val };
+                                                                if (p.field !== 'rotation' && checkCollision(proposed, objects)) {
+                                                                    messageApi.warning('Collision detected!');
+                                                                    return;
+                                                                }
+                                                                pushHistory();
+                                                                setObjects(prev => prev.map(o => o.id === selectedObj.id ? proposed : o));
+                                                            }}
+                                                            style={{ width: '100%', background: t.cardBg, color: t.text, fontSize: 11, borderColor: t.panelBorder }}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Multi-Object Alignment */}
+                                        {selectedIds.size > 1 && (
+                                            <div style={{ ...panelSection('#ec4899') }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Align {selectedIds.size} Objects</Text>
+                                                <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                                                    <Button size="small" style={{ flex: 1, fontSize: 10 }} onClick={() => {
+                                                        const minX = Math.min(...objects.filter(o => selectedIds.has(o.id)).map(o => o.x));
+                                                        pushHistory(); setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, x: minX } : o));
+                                                    }}>Left (X)</Button>
+                                                    <Button size="small" style={{ flex: 1, fontSize: 10 }} onClick={() => {
+                                                        const minZ = Math.min(...objects.filter(o => selectedIds.has(o.id)).map(o => o.z));
+                                                        pushHistory(); setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, z: minZ } : o));
+                                                    }}>Top (Z)</Button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Array Clone Tool */}
+                                        {selectedIds.size > 0 && (
+                                            <div style={{ ...panelSection('#a855f7') }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Array Clone</Text>
+                                                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Cols (X)</div>
+                                                        <InputNumber size="small" min={1} max={50} value={arrayConfig.countX} onChange={v => v && setArrayConfig(c => ({...c, countX: v}))} style={{ width: '100%', fontSize: 10 }} />
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Rows (Z)</div>
+                                                        <InputNumber size="small" min={1} max={50} value={arrayConfig.countZ} onChange={v => v && setArrayConfig(c => ({...c, countZ: v}))} style={{ width: '100%', fontSize: 10 }} />
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Gap X</div>
+                                                        <InputNumber size="small" min={0.1} step={0.1} value={arrayConfig.spaceX} onChange={v => v && setArrayConfig(c => ({...c, spaceX: v}))} style={{ width: '100%', fontSize: 10 }} />
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Gap Z</div>
+                                                        <InputNumber size="small" min={0.1} step={0.1} value={arrayConfig.spaceZ} onChange={v => v && setArrayConfig(c => ({...c, spaceZ: v}))} style={{ width: '100%', fontSize: 10 }} />
+                                                    </div>
+                                                </div>
+                                                <Button size="small" block onClick={() => {
+                                                    const clones: PlacedObject[] = [];
+                                                    const sourceObjects = objects.filter(o => selectedIds.has(o.id));
+                                                    for (let x = 0; x < arrayConfig.countX; x++) {
+                                                        for (let z = 0; z < arrayConfig.countZ; z++) {
+                                                            if (x === 0 && z === 0) continue; // Skip original
+                                                            for (const sourceObj of sourceObjects) {
+                                                                const newObj = {
+                                                                    ...duplicateObject(sourceObj),
+                                                                    x: sourceObj.x + x * arrayConfig.spaceX,
+                                                                    z: sourceObj.z + z * arrayConfig.spaceZ,
+                                                                };
+                                                                clones.push(newObj);
+                                                            }
+                                                        }
+                                                    }
+                                                    if (clones.length === 0) { messageApi.warning('Array blocked'); return; }
+                                                    pushHistory();
+                                                    setObjects(prev => [...prev, ...clones]);
+                                                    messageApi.success(`Generated ${clones.length} clones`);
+                                                }} style={{ marginTop: 6, fontSize: 10 }}>Create Array</Button>
+                                            </div>
+                                        )}
+                                        {/* Zone type selector & Auto-Aisle */}
+                                        {selectedObj.type === 'zone' && (
+                                            <>
+                                                <div style={{ ...panelSection('#a855f7') }}>
+                                                    <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Zone Type</Text>
+                                                    <Select size="small" value={selectedObj.zoneType || 'storage'}
+                                                        onChange={(v: ZoneType) => handleZoneTypeChange(v)}
+                                                        style={{ width: '100%', marginTop: 4 }}
+                                                        options={ZONE_TYPES.map(z => ({ value: z.value, label: z.label }))}
+                                                    />
+                                                </div>
+                                                <div style={{ ...panelSection('#3b82f6') }}>
+                                                    <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Auto Layout</Text>
+                                                    <Button size="small" block type="primary" onClick={() => {
+                                                        const newRacks = autoArrangeRacks(selectedObj, 3, 2);
+                                                        if (newRacks.length === 0) { messageApi.warning('Zone too small'); return; }
+                                                        pushHistory();
+                                                        setObjects(prev => [...prev, ...newRacks]);
+                                                        messageApi.success(`Generated ${newRacks.length} racks`);
+                                                    }} style={{ marginTop: 4, fontSize: 10 }}>⚡ Auto-Fill Racks</Button>
+                                                </div>
+                                            </>
+                                        )}
+                                        {/* Color picker */}
+                                        <div style={{ ...panelSection('#e87722') }}>
+                                            <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Color</Text>
+                                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
+                                                {COLOR_PRESETS.map(c => (
+                                                    <div key={c} onClick={() => handleColorChange(c)}
+                                                        style={{
+                                                            width: 22, height: 22, borderRadius: 6, background: c, cursor: 'pointer',
+                                                            border: selectedObj.color === c ? `2px solid ${t.text}` : `1px solid ${t.inputBorder}`,
+                                                            boxShadow: selectedObj.color === c ? `0 0 8px ${c}60` : 'none',
+                                                            transition: 'all 0.15s',
+                                                        }}
+                                                        onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.2)')}
+                                                        onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                        {/* Size (for zones/walls/racks) */}
+                                        {(selectedObj.type === 'zone' || selectedObj.type === 'wall' || selectedObj.type === 'conveyor' || selectedObj.type === 'rack') && (
+                                            <div style={{ ...panelSection('#22c55e') }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Dimensions</Text>
+                                                <div style={{ marginTop: 4 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <span style={{ color: t.textMuted, fontSize: 8, width: 30 }}>W</span>
+                                                        <Slider min={1} max={10} value={selectedObj.width} onChange={v => handleResize('width', v)}
+                                                            style={{ flex: 1 }} trackStyle={{ background: '#22c55e' }} handleStyle={{ borderColor: '#22c55e' }} />
+                                                        <span style={{ color: t.textSecondary, fontSize: 10, width: 16 }}>{selectedObj.width}</span>
+                                                    </div>
+                                                    {(selectedObj.type === 'zone' || selectedObj.type === 'rack') && (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                            <span style={{ color: t.textMuted, fontSize: 8, width: 30 }}>D</span>
+                                                            <Slider min={1} max={10} value={selectedObj.depth} onChange={v => handleResize('depth', v)}
+                                                                style={{ flex: 1 }} trackStyle={{ background: '#22c55e' }} handleStyle={{ borderColor: '#22c55e' }} />
+                                                            <span style={{ color: t.textSecondary, fontSize: 10, width: 16 }}>{selectedObj.depth}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* Rack levels */}
+                                        {selectedObj.type === 'rack' && (
+                                            <>
+                                            <div style={{ ...panelSection('#e87722') }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Rack Levels</Text>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                                    <Slider min={1} max={6} value={selectedObj.rackLevels || 3} onChange={v => handleRackLevels(v)}
+                                                        style={{ flex: 1 }} trackStyle={{ background: '#e87722' }} handleStyle={{ borderColor: '#e87722' }} />
+                                                    <span style={{ color: '#e87722', fontSize: 14, fontWeight: 700, width: 16 }}>{selectedObj.rackLevels || 3}</span>
+                                                </div>
+                                            </div>
+                                            {/* WMS Location: Row / Bay */}
+                                            <div style={{ ...panelSection('#8b5cf6') }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>📍 Location</Text>
+                                                <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ color: t.textMuted, fontSize: 7, fontWeight: 600, marginBottom: 2 }}>ROW</div>
+                                                        <input
+                                                            value={selectedObj.row || ''}
+                                                            placeholder={suggestRow(selectedObj.z)}
+                                                            maxLength={2}
+                                                            onChange={e => {
+                                                                const val = e.target.value.toUpperCase().replace(/[^A-Z]/g, '');
+                                                                setObjects(prev => prev.map(o => o.id === selectedObj.id ? { ...o, row: val || undefined } : o));
+                                                            }}
+                                                            style={{
+                                                                width: '100%', padding: '4px 6px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+                                                                textAlign: 'center', fontFamily: 'monospace',
+                                                                background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: '#8b5cf6',
+                                                                outline: 'none',
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ color: t.textMuted, fontSize: 7, fontWeight: 600, marginBottom: 2 }}>BAY</div>
+                                                        <input
+                                                            type="number"
+                                                            value={selectedObj.bay ?? ''}
+                                                            placeholder={String(Math.floor(selectedObj.x) + 1)}
+                                                            min={1} max={99}
+                                                            onChange={e => {
+                                                                const val = parseInt(e.target.value);
+                                                                setObjects(prev => prev.map(o => o.id === selectedObj.id ? { ...o, bay: isNaN(val) ? undefined : val } : o));
+                                                            }}
+                                                            style={{
+                                                                width: '100%', padding: '4px 6px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+                                                                textAlign: 'center', fontFamily: 'monospace',
+                                                                background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: '#8b5cf6',
+                                                                outline: 'none',
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                {/* Location code preview */}
+                                                <div style={{
+                                                    marginTop: 6, padding: '4px 8px', borderRadius: 6,
+                                                    background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)',
+                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                }}>
+                                                    <span style={{ color: t.textMuted, fontSize: 7, fontWeight: 600 }}>LOCATION</span>
+                                                    <span style={{ color: '#c4b5fd', fontSize: 11, fontWeight: 700, fontFamily: 'monospace' }}>
+                                                        {locationCode(
+                                                            selectedObj.row || suggestRow(selectedObj.z),
+                                                            selectedObj.bay ?? Math.floor(selectedObj.x) + 1,
+                                                        )}
+                                                    </span>
+                                                </div>
+                                                {/* Auto-assign button */}
+                                                {!selectedObj.row && (
+                                                    <div
+                                                        onClick={() => {
+                                                            const autoRow = suggestRow(selectedObj.z);
+                                                            const autoBay = suggestBay(selectedObj.x, objects, autoRow);
+                                                            setObjects(prev => prev.map(o =>
+                                                                o.id === selectedObj.id ? { ...o, row: autoRow, bay: autoBay } : o
+                                                            ));
+                                                            messageApi.success(`Assigned: Row ${autoRow}, Bay ${autoBay}`);
+                                                        }}
+                                                        style={{
+                                                            marginTop: 4, padding: '4px 8px', borderRadius: 6, cursor: 'pointer',
+                                                            textAlign: 'center', fontSize: 8, fontWeight: 700,
+                                                            background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)',
+                                                            color: '#c4b5fd', transition: 'all 0.2s',
+                                                        }}
+                                                    >
+                                                        ⚡ Auto-Assign Row & Bay
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {/* Link Inventory Bins */}
+                                            <div style={{ ...panelSection('#22c55e') }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>📦 Inventory Link</Text>
+                                                <div style={{ marginTop: 6 }}>
+                                                    {selectedObj.linkedBinIds && selectedObj.linkedBinIds.length > 0 ? (
+                                                        <div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                                                                <div style={{ width: 6, height: 6, borderRadius: 3, background: '#22c55e' }} />
+                                                                <span style={{ color: '#22c55e', fontSize: 9, fontWeight: 600 }}>
+                                                                    {selectedObj.linkedBinIds.length} bins linked
+                                                                </span>
+                                                            </div>
+                                                            {selectedObj.linkedBinIds.map((binId, i) => (
+                                                                <div key={i} style={{
+                                                                    fontSize: 8, color: t.textSecondary, fontFamily: 'monospace',
+                                                                    padding: '1px 0', borderBottom: `1px solid ${t.cardBg}`,
+                                                                }}>
+                                                                    L{i + 1}: {binId.slice(0, 12)}…
+                                                                </div>
+                                                            ))}
+                                                            <Button size="small" block
+                                                                onClick={() => {
+                                                                    const updated = objects.map(o =>
+                                                                        o.id === selectedObj.id ? { ...o, linkedBinIds: undefined } : o
+                                                                    );
+                                                                    setObjects(updated);
+                                                                    messageApi.info('Bins unlinked');
+                                                                }}
+                                                                style={{ marginTop: 4, fontSize: 9, borderRadius: 6, background: 'rgba(239,68,68,0.1)', borderColor: 'rgba(239,68,68,0.2)', color: '#fca5a5' }}>
+                                                                Unlink All
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+                                                                <div style={{ width: 6, height: 6, borderRadius: 3, background: t.textMuted }} />
+                                                                <span style={{ color: t.textMuted, fontSize: 9 }}>No bins linked</span>
+                                                            </div>
+                                                            <Button size="small" block
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        const binInputs = generateRackBinInputs(selectedObj);
+                                                                        const zones = await inventoryService.getZones();
+                                                                        const storageZone = zones.find(z => z.zoneType === 'storage' && z.status === 'active') || zones[0];
+                                                                        if (!storageZone) {
+                                                                            messageApi.warning('No zones found. Create a zone in Warehouses first.');
+                                                                            return;
+                                                                        }
+                                                                        const binIds: string[] = [];
+                                                                        for (const input of binInputs) {
+                                                                            const bin = await inventoryService.createBin(storageZone.id, input);
+                                                                            binIds.push(bin.id);
+                                                                        }
+                                                                        const updated = objects.map(o =>
+                                                                            o.id === selectedObj.id ? { ...o, linkedBinIds: binIds, linkedZoneId: storageZone.id } : o
+                                                                        );
+                                                                        setObjects(updated);
+                                                                        messageApi.success(`${binIds.length} bins auto-generated!`);
+                                                                    } catch (err: any) {
+                                                                        messageApi.error('Failed: ' + (err?.message || 'Unknown error'));
+                                                                    }
+                                                                }}
+                                                                style={{ fontSize: 9, borderRadius: 6, background: 'rgba(34,197,94,0.12)', borderColor: 'rgba(34,197,94,0.25)', color: '#86efac', marginBottom: 4 }}>
+                                                                ⚡ Auto-Generate Bins
+                                                            </Button>
+                                                            <Button size="small" block
+                                                                onClick={() => {
+                                                                    const ids = prompt('Enter bin IDs (comma separated):');
+                                                                    if (!ids) return;
+                                                                    const binIds = ids.split(',').map(s => s.trim()).filter(Boolean);
+                                                                    if (binIds.length === 0) return;
+                                                                    const updated = objects.map(o =>
+                                                                        o.id === selectedObj.id ? { ...o, linkedBinIds: binIds } : o
+                                                                    );
+                                                                    setObjects(updated);
+                                                                    messageApi.success(`${binIds.length} bins linked manually`);
+                                                                }}
+                                                                style={{ fontSize: 9, borderRadius: 6, background: 'rgba(59,130,246,0.1)', borderColor: 'rgba(59,130,246,0.2)', color: '#93c5fd' }}>
+                                                                🔗 Link Existing Bins
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            </>
+                                        )}
+
+                                        <Divider style={{ borderColor: t.panelBorder, margin: '6px 0' }} />
+
+                                        {/* Actions */}
+                                        <div style={{ ...panelSection('#3b82f6') }}>
+                                            <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Actions</Text>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 4 }}>
+                                            <Button size="small" icon={<RotateRightOutlined />} onClick={handleRotate}
+                                                style={{ flex: 1, background: 'rgba(139,92,246,0.12)', borderColor: 'rgba(139,92,246,0.25)', color: '#c4b5fd', borderRadius: 8 }}>90°</Button>
+                                            <Button size="small" icon={<CopyOutlined />} onClick={handleDuplicate}
+                                                style={{ flex: 1, background: 'rgba(59,130,246,0.12)', borderColor: 'rgba(59,130,246,0.25)', color: '#93c5fd', borderRadius: 8 }}>Copy</Button>
+                                        </div>
+                                        {/* D-pad */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3, maxWidth: 110, margin: '0 auto' }}>
+                                            <div />
+                                            <Button size="small" icon={<ArrowUpOutlined />} onClick={() => handleMove(0, -1)}
+                                                style={{ background: t.cardBg, border: `1px solid ${t.panelBorder}`, color: t.textSecondary, borderRadius: 8 }} />
+                                            <div />
+                                            <Button size="small" icon={<ArrowLeftOutlined />} onClick={() => handleMove(-1, 0)}
+                                                style={{ background: t.cardBg, border: `1px solid ${t.panelBorder}`, color: t.textSecondary, borderRadius: 8 }} />
+                                            <div style={{ width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.textFaint, fontSize: 9, background: t.cardBg, border: `1px solid ${t.panelBorder}` }}>
+                                                <DragOutlined />
+                                            </div>
+                                            <Button size="small" icon={<ArrowRightOutlined />} onClick={() => handleMove(1, 0)}
+                                                style={{ background: t.cardBg, border: `1px solid ${t.panelBorder}`, color: t.textSecondary, borderRadius: 8 }} />
+                                            <div />
+                                            <Button size="small" icon={<ArrowDownOutlined />} onClick={() => handleMove(0, 1)}
+                                                style={{ background: t.cardBg, border: `1px solid ${t.panelBorder}`, color: t.textSecondary, borderRadius: 8 }} />
+                                            <div />
+                                        </div>
+
+                                        <Divider style={{ borderColor: t.panelBorder, margin: '4px 0' }} />
+
+                                        {/* Lock + Delete + Auto */}
+                                        <div style={{ display: 'flex', gap: 4 }}>
+                                            <Button size="small"
+                                                icon={selectedObj.locked ? <LockOutlined /> : <UnlockOutlined />}
+                                                onClick={handleLock}
+                                                style={{
+                                                    flex: 1, borderRadius: 8,
+                                                    background: selectedObj.locked ? 'rgba(239,68,68,0.12)' : t.cardBg,
+                                                    borderColor: selectedObj.locked ? 'rgba(239,68,68,0.25)' : t.panelBorder,
+                                                    color: selectedObj.locked ? '#fca5a5' : t.textSecondary,
+                                                }}>
+                                                {selectedObj.locked ? 'Unlock' : 'Lock'}
+                                            </Button>
+                                            <Popconfirm title="Delete this object?" onConfirm={handleDelete}>
+                                                <Button size="small" icon={<DeleteOutlined />} danger
+                                                    disabled={selectedObj.locked}
+                                                    style={{ flex: 1, borderRadius: 8 }}>Delete</Button>
+                                            </Popconfirm>
+                                        </div>
+                                        {selectedObj.type === 'zone' && (selectedObj.zoneType === 'storage' || selectedObj.zoneType === 'cold') && (
+                                            <Button block size="small" icon={<ThunderboltOutlined />}
+                                                onClick={handleAutoArrange}
+                                                style={{ background: 'rgba(232,119,34,0.12)', borderColor: 'rgba(232,119,34,0.25)', color: '#fdba74', borderRadius: 8 }}>
+                                                ⚡ Auto-Fill Racks
+                                            </Button>
+                                        )}
+                                    </Space>
                                 </Card>
-                            </motion.div>
+                            </div>
                         )}
-                    </AnimatePresence>
+                    
+
+                                {selectedId && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: t.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <SettingOutlined /> Properties
+                                        </div>
+                                        {(() => {
+                                            const obj = objects.find(o => o.id === selectedId);
+                                            if (!obj) return null;
+                                            return (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+                                                        <span style={{ color: t.textMuted }}>Type:</span>
+                                                        <span style={{ color: t.text, fontWeight: 600 }}>{obj.type}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+                                                        <span style={{ color: t.textMuted }}>Floor Level:</span>
+                                                        <span style={{ color: t.text, fontWeight: 600 }}>{obj.floorLevel || 0}</span>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Label:</div>
+                                                        <Input size="small" value={obj.label || ''} onChange={e => {
+                                                            setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, label: e.target.value } : o));
+                                                        }} />
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Color:</div>
+                                                        <ColorPicker size="small" value={obj.color} onChange={(_, hex) => {
+                                                            setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, color: hex } : o));
+                                                        }} />
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: 8 }}>
+                                                        <div style={{ flex: 1 }}>
+                                                            <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Width (m):</div>
+                                                            <InputNumber size="small" value={obj.width} onChange={v => {
+                                                                if (v) setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, width: v } : o));
+                                                            }} style={{ width: '100%' }} />
+                                                        </div>
+                                                        <div style={{ flex: 1 }}>
+                                                            <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Depth (m):</div>
+                                                            <InputNumber size="small" value={obj.depth} onChange={v => {
+                                                                if (v) setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, depth: v } : o));
+                                                            }} style={{ width: '100%' }} />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Elevation Y (m):</div>
+                                                        <InputNumber size="small" value={obj.y || 0} step={0.5} onChange={v => {
+                                                            setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, y: v || 0 } : o));
+                                                        }} style={{ width: '100%' }} />
+                                                    </div>
+                                                    {obj.type === 'custom_model' && (
+                                                        <div>
+                                                            <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Model URL (.gltf / .glb):</div>
+                                                            <Input size="small" placeholder="https://..." value={obj.modelUrl || ''} onChange={e => {
+                                                                setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, modelUrl: e.target.value } : o));
+                                                            }} />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
+
+                                {/* Multi-select Alignment Tools */}
+                                {selectedIds.length > 1 && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: t.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <BlockOutlined /> Align Objects ({selectedIds.length})
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                            <Button size="small" onClick={() => {
+                                                const minX = Math.min(...objects.filter(o => selectedIds.has(o.id)).map(o => o.x));
+                                                setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, x: minX } : o));
+                                            }}>Align Left</Button>
+                                            <Button size="small" onClick={() => {
+                                                const maxX = Math.max(...objects.filter(o => selectedIds.has(o.id)).map(o => o.x));
+                                                setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, x: maxX } : o));
+                                            }}>Align Right</Button>
+                                            <Button size="small" onClick={() => {
+                                                const minZ = Math.min(...objects.filter(o => selectedIds.has(o.id)).map(o => o.z));
+                                                setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, z: minZ } : o));
+                                            }}>Align Top</Button>
+                                            <Button size="small" onClick={() => {
+                                                const maxZ = Math.max(...objects.filter(o => selectedIds.has(o.id)).map(o => o.z));
+                                                setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, z: maxZ } : o));
+                                            }}>Align Bottom</Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            }
+            >
+                {ctx}
+                {/* Main content */}
+                <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', background: isDark !== false ? '#111827' : '#e5e7eb' }}>
 
                     {/* Center: 3D Viewport */}
-                    <Card size="small" style={{ ...glass, flex: 1, overflow: 'hidden', padding: 0 }}
-                        styles={{ body: { padding: 0, height: '100%', background: t.viewportBg, borderRadius: 12, position: 'relative' } }}>
+                    <div style={{ flex: 1, width: '100%', height: '100%', background: t.viewportBg, position: 'relative' }}>
                         <WarehouseScene
                             objects={objects}
                             selectedId={selectedId}
@@ -1725,6 +2390,12 @@ export default function WarehouseMapPage() {
                             cameraPreset={cameraPreset}
                             onGridClick={handleGridClick}
                             onSelectObject={handleSelectObject}
+                            onPointerDown={handlePointerDown}
+                            onPointerMove={handlePointerMove}
+                            onPointerUp={handlePointerUp}
+                            selectionBox={selectionBox}
+                            envShadows={envShadows}
+                            timeOfDay={timelapseHour}
                             routes={routes}
                             showRoutes={showRoutes}
                             animateRoutes={animateRoutes}
@@ -1906,140 +2577,59 @@ export default function WarehouseMapPage() {
                             )}
                         </AnimatePresence>
 
-                        {/* Floating toolbar at top-left */}
-                        <div style={{
-                            position: 'absolute', top: 10, left: 10,
-                            display: 'flex', alignItems: 'center', gap: 6, zIndex: 10,
-                        }}>
-                            {/* Warehouse Selector */}
-                            {warehouses.length > 0 && (
-                                <div style={{
-                                    display: 'flex', alignItems: 'center', gap: 4,
-                                    padding: '3px 6px', borderRadius: 10,
-                                    background: t.toolbarBg, backdropFilter: 'blur(8px)',
-                                    border: `1px solid ${t.toolbarBorder}`,
-                                }}>
-                                    <span style={{ fontSize: 12 }}>🏭</span>
-                                    <Select
-                                        value={selectedWarehouseId}
-                                        onChange={handleWarehouseChange}
-                                        placeholder="All Warehouses"
-                                        allowClear
-                                        size="small"
-                                        loading={loadingWarehouse}
-                                        style={{ minWidth: 180, fontSize: 10 }}
-                                        dropdownStyle={{ fontSize: 10 }}
-                                        options={warehouses.map(wh => {
-                                            const typeIcons: Record<string, string> = { general: '🏭', cold: '❄️', hazardous: '☢️', bonded: '🔒', transit: '🔄' };
-                                            const typeIcon = typeIcons[(wh as any).warehouseType || 'general'] || '🏭';
-                                            return {
-                                                value: wh.id,
-                                                label: `${typeIcon} ${wh.name}${wh.code ? ` (${wh.code})` : ''}`,
-                                            };
-                                        })}
-                                    />
-                                </div>
-                            )}
-                            {/* Mode switch */}
+
+
+                        {/* Item search / highlight - right side (only in view mode, or left aligned if properties panel is open) */}
+                        {!buildMode && (
                             <div style={{
-                                display: 'flex', borderRadius: 10, overflow: 'hidden',
-                                border: `1px solid ${t.toolbarBorder}`,
-                                background: t.toolbarBg, backdropFilter: 'blur(8px)',
+                                position: 'absolute', top: 10, right: 10,
+                                display: 'flex', gap: 6, borderRadius: 10, overflow: 'hidden', zIndex: 10,
+                                alignItems: 'center',
                             }}>
-                                {[
-                                    { mode: false, icon: <EyeOutlined />, label: 'View', color: '#22c55e' },
-                                    { mode: true, icon: <EditOutlined />, label: 'Build', color: '#3b82f6' },
-                                ].map(m => (
-                                    <div key={m.label}
-                                        onClick={() => { setBuildMode(m.mode); setActivePalette(null); setSelectedId(null); }}
-                                        style={{
-                                            padding: '5px 14px', cursor: 'pointer', fontSize: 11, fontWeight: 700,
-                                            display: 'flex', alignItems: 'center', gap: 5,
-                                            background: buildMode === m.mode ? `${m.color}30` : 'transparent',
-                                            color: buildMode === m.mode ? m.color : '#666',
-                                            borderBottom: buildMode === m.mode ? `2px solid ${m.color}` : '2px solid transparent',
-                                            transition: 'all 0.2s',
-                                        }}>
-                                        {m.icon} {m.label}
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Active palette indicator */}
-                            <AnimatePresence>
-                                {buildMode && activePalette && (
-                                    <motion.div
-                                        initial={{ opacity: 0, x: -8, scale: 0.9 }}
-                                        animate={{ opacity: 1, x: 0, scale: 1 }}
-                                        exit={{ opacity: 0, x: -8, scale: 0.9 }}
-                                        style={{
-                                            padding: '4px 12px', borderRadius: 8,
-                                            background: `${activePalette.color}25`, border: `1px solid ${activePalette.color}50`,
-                                            backdropFilter: 'blur(8px)',
-                                            color: t.text, fontSize: 10, fontWeight: 600,
-                                            display: 'flex', alignItems: 'center', gap: 6,
-                                            cursor: 'pointer',
-                                        }}
-                                        onClick={() => setActivePalette(null)}
-                                    >
-                                        <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ repeat: Infinity, duration: 1 }}>
-                                            {activePalette.icon}
-                                        </motion.div>
-                                        Placing: {activePalette.label}
-                                        <span style={{ color: '#888', fontSize: 8 }}>✕</span>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-
-                        {/* Camera presets + item search - right side */}
-                        <div style={{
-                            position: 'absolute', top: 10, right: 10,
-                            display: 'flex', gap: 6, borderRadius: 10, overflow: 'hidden', zIndex: 10,
-                            alignItems: 'center',
-                        }}>
-                            {/* Item Search Button */}
-                            <Tooltip title="Search & Locate Item in 3D">
-                                <div
-                                    onClick={() => setItemSearchOpen(prev => !prev)}
-                                    style={{
-                                        width: 34, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        borderRadius: 8, cursor: 'pointer',
-                                        background: itemSearchOpen ? `${themeColor}30` : t.toolbarBg,
-                                        border: `1px solid ${itemSearchOpen ? themeColor + '50' : t.toolbarBorder}`,
-                                        backdropFilter: 'blur(8px)',
-                                        color: itemSearchOpen ? themeColor : t.textSecondary,
-                                        transition: 'all 0.2s',
-                                    }}
-                                >
-                                    <SearchOutlined style={{ fontSize: 13 }} />
-                                </div>
-                            </Tooltip>
-                            {/* Clear highlight */}
-                            {highlightBin && (
-                                <Tooltip title={`Tracking: ${highlightBin} — click to clear`}>
+                                {/* Item Search Button */}
+                                <Tooltip title="Search & Locate Item in 3D">
                                     <div
-                                        onClick={() => { setHighlightBin(null); messageApi.info('Beacon cleared'); }}
+                                        onClick={() => setItemSearchOpen(prev => !prev)}
                                         style={{
-                                            padding: '4px 10px', borderRadius: 8, cursor: 'pointer',
-                                            background: '#22c55e20', border: '1px solid #22c55e40',
+                                            width: 34, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            borderRadius: 8, cursor: 'pointer',
+                                            background: itemSearchOpen ? `${themeColor}30` : t.toolbarBg,
+                                            border: `1px solid ${itemSearchOpen ? themeColor + '50' : t.toolbarBorder}`,
                                             backdropFilter: 'blur(8px)',
-                                            display: 'flex', alignItems: 'center', gap: 5,
-                                            fontSize: 10, fontWeight: 600, color: '#22c55e',
-                                            animation: 'pulse 2s infinite',
+                                            color: itemSearchOpen ? themeColor : t.textSecondary,
+                                            transition: 'all 0.2s',
                                         }}
                                     >
-                                        <AimOutlined style={{ fontSize: 11 }} /> {highlightBin}
+                                        <SearchOutlined style={{ fontSize: 13 }} />
                                     </div>
                                 </Tooltip>
-                            )}
-                        </div>
+                                {/* Clear highlight */}
+                                {highlightBin && (
+                                    <Tooltip title={`Tracking: ${highlightBin} — click to clear`}>
+                                        <div
+                                            onClick={() => { setHighlightBin(null); messageApi.info('Beacon cleared'); }}
+                                            style={{
+                                                padding: '4px 10px', borderRadius: 8, cursor: 'pointer',
+                                                background: '#22c55e20', border: '1px solid #22c55e40',
+                                                backdropFilter: 'blur(8px)',
+                                                display: 'flex', alignItems: 'center', gap: 5,
+                                                fontSize: 10, fontWeight: 600, color: '#22c55e',
+                                                animation: 'pulse 2s infinite',
+                                            }}
+                                        >
+                                            <AimOutlined style={{ fontSize: 11 }} /> {highlightBin}
+                                        </div>
+                                    </Tooltip>
+                                )}
+                            </div>
+                        )}
+
                         <div style={{
-                            position: 'absolute', top: 10, right: 10,
-                            display: 'flex', gap: 3, borderRadius: 10, overflow: 'hidden', zIndex: 9,
+                            position: 'absolute', bottom: 160, right: 10, // Moved up to prevent overlap with Minimap
+                            display: 'flex', flexDirection: 'column', gap: 3, borderRadius: 10, overflow: 'hidden', zIndex: 9,
                             background: t.toolbarBg, backdropFilter: 'blur(8px)',
                             border: `1px solid ${t.toolbarBorder}`, padding: 3,
-                            marginTop: highlightBin ? 40 : 0,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                         }}>
                             {[
                                 { key: 'corner' as CameraPreset, label: '🎥', tip: 'Corner' },
@@ -2062,7 +2652,7 @@ export default function WarehouseMapPage() {
                                     </div>
                                 </Tooltip>
                             ))}
-                            <div style={{ width: 1, background: t.panelBorder, margin: '2px 0' }} />
+                            <div style={{ height: 1, width: '100%', background: t.panelBorder, margin: '2px 0' }} />
                             <Tooltip title={`Grid Snap: ${snapIncrement}`}>
                                 <div onClick={() => setSnapIncrement(prev => prev === 1.0 ? 0.5 : (prev === 0.5 ? 0.1 : 1.0))}
                                     style={{
@@ -3044,461 +3634,10 @@ export default function WarehouseMapPage() {
                                 )}
                             </div>
                         )}
-                    </Card>
+                    </div>
 
-                    {/* Right: Properties panel (when object selected in build mode) */}
-                    <AnimatePresence>
-                        {buildMode && selectedObj && (
-                            <motion.div
-                                initial={{ width: 0, opacity: 0 }}
-                                animate={{ width: 230, opacity: 1 }}
-                                exit={{ width: 0, opacity: 0 }}
-                                transition={{ duration: 0.25, ease: 'easeInOut' }}
-                                style={{ flexShrink: 0, overflow: 'hidden' }}
-                            >
-                                <Card size="small" style={{ ...glass, height: '100%', overflowY: 'auto' }}
-                                    styles={{ body: { padding: 12 } }}
-                                    title={
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                <div style={{ width: 3, height: 14, borderRadius: 2, background: '#3b82f6' }} />
-                                                <Text style={{ color: t.text, fontSize: 12, fontWeight: 700 }}>Properties</Text>
-                                            </div>
-                                            {selectedObj.locked && (
-                                                <Tag style={{ fontSize: 8, margin: 0, padding: '0 6px', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', borderRadius: 6 }}>🔒 LOCKED</Tag>
-                                            )}
-                                        </div>
-                                    }
-                                >
-                                    <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                                        {/* Type + Label header */}
-                                        <div style={{ ...panelSection(selectedObj.color || '#3b82f6') }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                                <div style={{
-                                                    width: 28, height: 28, borderRadius: 6,
-                                                    background: `${selectedObj.color || '#3b82f6'}20`,
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    fontSize: 14,
-                                                }}>
-                                                    {PALETTE_ITEMS.find(p => p.type === selectedObj.type)?.icon || '📦'}
-                                                </div>
-                                                <div>
-                                                    <Tag style={{ fontSize: 9, background: `${selectedObj.color || '#3b82f6'}20`, border: `1px solid ${selectedObj.color || '#3b82f6'}40`, color: selectedObj.color || '#3b82f6', borderRadius: 6 }}>{selectedObj.type.toUpperCase()}</Tag>
-                                                    <div style={{ color: t.textMuted, fontSize: 8, marginTop: 1 }}>📍 {gridCoordsLabel(selectedObj.x, selectedObj.z)}</div>
-                                                </div>
-                                            </div>
-                                            <Input size="small" value={selectedObj.label || ''}
-                                                onChange={e => handleLabelChange(e.target.value)}
-                                                placeholder="Enter label..."
-                                                style={{ background: t.inputBg, borderColor: t.inputBorder, color: t.text, fontSize: 11, borderRadius: 6 }} />
-                                        </div>
-                                        {/* Position & Rotation */}
-                                        <div style={{ ...panelSection('#666') }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Position & Rotation</Text>
-                                                <Tooltip title="Rotate 90°">
-                                                    <div onClick={handleRotate} style={{ cursor: 'pointer', fontSize: 10, padding: '2px 6px', background: t.cardBg, borderRadius: 4, border: `1px solid ${t.panelBorder}`, color: t.text }}>↻</div>
-                                                </Tooltip>
-                                            </div>
-                                            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                                                {[
-                                                    { label: 'X', value: selectedObj.x, field: 'x' as const },
-                                                    { label: 'Z', value: selectedObj.z, field: 'z' as const },
-                                                    { label: 'R', value: selectedObj.rotation, field: 'rotation' as const },
-                                                ].map(p => (
-                                                    <div key={p.label} style={{ flex: 1 }}>
-                                                        <div style={{ color: t.textMuted, fontSize: 7, fontWeight: 600, marginBottom: 2, textAlign: 'center' }}>{p.label}</div>
-                                                        <InputNumber
-                                                            size="small"
-                                                            value={p.value}
-                                                            step={p.field === 'rotation' ? 90 : snapIncrement}
-                                                            onChange={val => {
-                                                                if (val === null) return;
-                                                                const proposed = { ...selectedObj, [p.field]: val };
-                                                                if (p.field !== 'rotation' && checkCollision(proposed, objects)) {
-                                                                    messageApi.warning('Collision detected!');
-                                                                    return;
-                                                                }
-                                                                pushHistory();
-                                                                setObjects(prev => prev.map(o => o.id === selectedObj.id ? proposed : o));
-                                                            }}
-                                                            style={{ width: '100%', background: t.cardBg, color: t.text, fontSize: 11, borderColor: t.panelBorder }}
-                                                        />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        
-                                        {/* Multi-Object Alignment */}
-                                        {selectedIds.size > 1 && (
-                                            <div style={{ ...panelSection('#ec4899') }}>
-                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Align {selectedIds.size} Objects</Text>
-                                                <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-                                                    <Button size="small" style={{ flex: 1, fontSize: 10 }} onClick={() => {
-                                                        const minX = Math.min(...objects.filter(o => selectedIds.has(o.id)).map(o => o.x));
-                                                        pushHistory(); setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, x: minX } : o));
-                                                    }}>Left (X)</Button>
-                                                    <Button size="small" style={{ flex: 1, fontSize: 10 }} onClick={() => {
-                                                        const minZ = Math.min(...objects.filter(o => selectedIds.has(o.id)).map(o => o.z));
-                                                        pushHistory(); setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, z: minZ } : o));
-                                                    }}>Top (Z)</Button>
-                                                </div>
-                                            </div>
-                                        )}
 
-                                        {/* Array Clone Tool */}
-                                        {selectedObj.type !== 'zone' && selectedIds.size <= 1 && (
-                                            <div style={{ ...panelSection('#a855f7') }}>
-                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Array Clone</Text>
-                                                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Cols (X)</div>
-                                                        <InputNumber size="small" min={1} max={50} value={arrayConfig.countX} onChange={v => v && setArrayConfig(c => ({...c, countX: v}))} style={{ width: '100%', fontSize: 10 }} />
-                                                    </div>
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Rows (Z)</div>
-                                                        <InputNumber size="small" min={1} max={50} value={arrayConfig.countZ} onChange={v => v && setArrayConfig(c => ({...c, countZ: v}))} style={{ width: '100%', fontSize: 10 }} />
-                                                    </div>
-                                                </div>
-                                                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Gap X</div>
-                                                        <InputNumber size="small" min={0.1} step={0.1} value={arrayConfig.spaceX} onChange={v => v && setArrayConfig(c => ({...c, spaceX: v}))} style={{ width: '100%', fontSize: 10 }} />
-                                                    </div>
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Gap Z</div>
-                                                        <InputNumber size="small" min={0.1} step={0.1} value={arrayConfig.spaceZ} onChange={v => v && setArrayConfig(c => ({...c, spaceZ: v}))} style={{ width: '100%', fontSize: 10 }} />
-                                                    </div>
-                                                </div>
-                                                <Button size="small" block onClick={() => {
-                                                    const clones: PlacedObject[] = [];
-                                                    for (let x = 0; x < arrayConfig.countX; x++) {
-                                                        for (let z = 0; z < arrayConfig.countZ; z++) {
-                                                            if (x === 0 && z === 0) continue; // Skip original
-                                                            const newObj = {
-                                                                ...duplicateObject(selectedObj),
-                                                                x: selectedObj.x + x * arrayConfig.spaceX,
-                                                                z: selectedObj.z + z * arrayConfig.spaceZ,
-                                                            };
-                                                            // Basic collision check for arrays
-                                                            if (!checkCollision(newObj, [...objects, ...clones])) {
-                                                                clones.push(newObj);
-                                                            }
-                                                        }
-                                                    }
-                                                    if (clones.length === 0) { messageApi.warning('Array blocked by collisions'); return; }
-                                                    pushHistory();
-                                                    setObjects(prev => [...prev, ...clones]);
-                                                    messageApi.success(`Generated ${clones.length} clones`);
-                                                }} style={{ marginTop: 6, fontSize: 10 }}>Create Array</Button>
-                                            </div>
-                                        )}
-                                        {/* Zone type selector & Auto-Aisle */}
-                                        {selectedObj.type === 'zone' && (
-                                            <>
-                                                <div style={{ ...panelSection('#a855f7') }}>
-                                                    <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Zone Type</Text>
-                                                    <Select size="small" value={selectedObj.zoneType || 'storage'}
-                                                        onChange={(v: ZoneType) => handleZoneTypeChange(v)}
-                                                        style={{ width: '100%', marginTop: 4 }}
-                                                        options={ZONE_TYPES.map(z => ({ value: z.value, label: z.label }))}
-                                                    />
-                                                </div>
-                                                <div style={{ ...panelSection('#3b82f6') }}>
-                                                    <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Auto Layout</Text>
-                                                    <Button size="small" block type="primary" onClick={() => {
-                                                        const newRacks = autoArrangeRacks(selectedObj, 3, 2);
-                                                        if (newRacks.length === 0) { messageApi.warning('Zone too small'); return; }
-                                                        pushHistory();
-                                                        setObjects(prev => [...prev, ...newRacks]);
-                                                        messageApi.success(`Generated ${newRacks.length} racks`);
-                                                    }} style={{ marginTop: 4, fontSize: 10 }}>⚡ Auto-Fill Racks</Button>
-                                                </div>
-                                            </>
-                                        )}
-                                        {/* Color picker */}
-                                        <div style={{ ...panelSection('#e87722') }}>
-                                            <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Color</Text>
-                                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
-                                                {COLOR_PRESETS.map(c => (
-                                                    <div key={c} onClick={() => handleColorChange(c)}
-                                                        style={{
-                                                            width: 22, height: 22, borderRadius: 6, background: c, cursor: 'pointer',
-                                                            border: selectedObj.color === c ? `2px solid ${t.text}` : `1px solid ${t.inputBorder}`,
-                                                            boxShadow: selectedObj.color === c ? `0 0 8px ${c}60` : 'none',
-                                                            transition: 'all 0.15s',
-                                                        }}
-                                                        onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.2)')}
-                                                        onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-                                                    />
-                                                ))}
-                                            </div>
-                                        </div>
-                                        {/* Size (for zones/walls/racks) */}
-                                        {(selectedObj.type === 'zone' || selectedObj.type === 'wall' || selectedObj.type === 'conveyor' || selectedObj.type === 'rack') && (
-                                            <div style={{ ...panelSection('#22c55e') }}>
-                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Dimensions</Text>
-                                                <div style={{ marginTop: 4 }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                        <span style={{ color: t.textMuted, fontSize: 8, width: 30 }}>W</span>
-                                                        <Slider min={1} max={10} value={selectedObj.width} onChange={v => handleResize('width', v)}
-                                                            style={{ flex: 1 }} trackStyle={{ background: '#22c55e' }} handleStyle={{ borderColor: '#22c55e' }} />
-                                                        <span style={{ color: t.textSecondary, fontSize: 10, width: 16 }}>{selectedObj.width}</span>
-                                                    </div>
-                                                    {(selectedObj.type === 'zone' || selectedObj.type === 'rack') && (
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                            <span style={{ color: t.textMuted, fontSize: 8, width: 30 }}>D</span>
-                                                            <Slider min={1} max={10} value={selectedObj.depth} onChange={v => handleResize('depth', v)}
-                                                                style={{ flex: 1 }} trackStyle={{ background: '#22c55e' }} handleStyle={{ borderColor: '#22c55e' }} />
-                                                            <span style={{ color: t.textSecondary, fontSize: 10, width: 16 }}>{selectedObj.depth}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
-                                        {/* Rack levels */}
-                                        {selectedObj.type === 'rack' && (
-                                            <>
-                                            <div style={{ ...panelSection('#e87722') }}>
-                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Rack Levels</Text>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                                    <Slider min={1} max={6} value={selectedObj.rackLevels || 3} onChange={v => handleRackLevels(v)}
-                                                        style={{ flex: 1 }} trackStyle={{ background: '#e87722' }} handleStyle={{ borderColor: '#e87722' }} />
-                                                    <span style={{ color: '#e87722', fontSize: 14, fontWeight: 700, width: 16 }}>{selectedObj.rackLevels || 3}</span>
-                                                </div>
-                                            </div>
-                                            {/* WMS Location: Row / Bay */}
-                                            <div style={{ ...panelSection('#8b5cf6') }}>
-                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>📍 Location</Text>
-                                                <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ color: t.textMuted, fontSize: 7, fontWeight: 600, marginBottom: 2 }}>ROW</div>
-                                                        <input
-                                                            value={selectedObj.row || ''}
-                                                            placeholder={suggestRow(selectedObj.z)}
-                                                            maxLength={2}
-                                                            onChange={e => {
-                                                                const val = e.target.value.toUpperCase().replace(/[^A-Z]/g, '');
-                                                                setObjects(prev => prev.map(o => o.id === selectedObj.id ? { ...o, row: val || undefined } : o));
-                                                            }}
-                                                            style={{
-                                                                width: '100%', padding: '4px 6px', borderRadius: 6, fontSize: 12, fontWeight: 700,
-                                                                textAlign: 'center', fontFamily: 'monospace',
-                                                                background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: '#8b5cf6',
-                                                                outline: 'none',
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ color: t.textMuted, fontSize: 7, fontWeight: 600, marginBottom: 2 }}>BAY</div>
-                                                        <input
-                                                            type="number"
-                                                            value={selectedObj.bay ?? ''}
-                                                            placeholder={String(Math.floor(selectedObj.x) + 1)}
-                                                            min={1} max={99}
-                                                            onChange={e => {
-                                                                const val = parseInt(e.target.value);
-                                                                setObjects(prev => prev.map(o => o.id === selectedObj.id ? { ...o, bay: isNaN(val) ? undefined : val } : o));
-                                                            }}
-                                                            style={{
-                                                                width: '100%', padding: '4px 6px', borderRadius: 6, fontSize: 12, fontWeight: 700,
-                                                                textAlign: 'center', fontFamily: 'monospace',
-                                                                background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: '#8b5cf6',
-                                                                outline: 'none',
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                {/* Location code preview */}
-                                                <div style={{
-                                                    marginTop: 6, padding: '4px 8px', borderRadius: 6,
-                                                    background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)',
-                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                                }}>
-                                                    <span style={{ color: t.textMuted, fontSize: 7, fontWeight: 600 }}>LOCATION</span>
-                                                    <span style={{ color: '#c4b5fd', fontSize: 11, fontWeight: 700, fontFamily: 'monospace' }}>
-                                                        {locationCode(
-                                                            selectedObj.row || suggestRow(selectedObj.z),
-                                                            selectedObj.bay ?? Math.floor(selectedObj.x) + 1,
-                                                        )}
-                                                    </span>
-                                                </div>
-                                                {/* Auto-assign button */}
-                                                {!selectedObj.row && (
-                                                    <div
-                                                        onClick={() => {
-                                                            const autoRow = suggestRow(selectedObj.z);
-                                                            const autoBay = suggestBay(selectedObj.x, objects, autoRow);
-                                                            setObjects(prev => prev.map(o =>
-                                                                o.id === selectedObj.id ? { ...o, row: autoRow, bay: autoBay } : o
-                                                            ));
-                                                            messageApi.success(`Assigned: Row ${autoRow}, Bay ${autoBay}`);
-                                                        }}
-                                                        style={{
-                                                            marginTop: 4, padding: '4px 8px', borderRadius: 6, cursor: 'pointer',
-                                                            textAlign: 'center', fontSize: 8, fontWeight: 700,
-                                                            background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)',
-                                                            color: '#c4b5fd', transition: 'all 0.2s',
-                                                        }}
-                                                    >
-                                                        ⚡ Auto-Assign Row & Bay
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {/* Link Inventory Bins */}
-                                            <div style={{ ...panelSection('#22c55e') }}>
-                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>📦 Inventory Link</Text>
-                                                <div style={{ marginTop: 6 }}>
-                                                    {selectedObj.linkedBinIds && selectedObj.linkedBinIds.length > 0 ? (
-                                                        <div>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                                                                <div style={{ width: 6, height: 6, borderRadius: 3, background: '#22c55e' }} />
-                                                                <span style={{ color: '#22c55e', fontSize: 9, fontWeight: 600 }}>
-                                                                    {selectedObj.linkedBinIds.length} bins linked
-                                                                </span>
-                                                            </div>
-                                                            {selectedObj.linkedBinIds.map((binId, i) => (
-                                                                <div key={i} style={{
-                                                                    fontSize: 8, color: t.textSecondary, fontFamily: 'monospace',
-                                                                    padding: '1px 0', borderBottom: `1px solid ${t.cardBg}`,
-                                                                }}>
-                                                                    L{i + 1}: {binId.slice(0, 12)}…
-                                                                </div>
-                                                            ))}
-                                                            <Button size="small" block
-                                                                onClick={() => {
-                                                                    const updated = objects.map(o =>
-                                                                        o.id === selectedObj.id ? { ...o, linkedBinIds: undefined } : o
-                                                                    );
-                                                                    setObjects(updated);
-                                                                    messageApi.info('Bins unlinked');
-                                                                }}
-                                                                style={{ marginTop: 4, fontSize: 9, borderRadius: 6, background: 'rgba(239,68,68,0.1)', borderColor: 'rgba(239,68,68,0.2)', color: '#fca5a5' }}>
-                                                                Unlink All
-                                                            </Button>
-                                                        </div>
-                                                    ) : (
-                                                        <div>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-                                                                <div style={{ width: 6, height: 6, borderRadius: 3, background: t.textMuted }} />
-                                                                <span style={{ color: t.textMuted, fontSize: 9 }}>No bins linked</span>
-                                                            </div>
-                                                            <Button size="small" block
-                                                                onClick={async () => {
-                                                                    try {
-                                                                        const binInputs = generateRackBinInputs(selectedObj);
-                                                                        const zones = await inventoryService.getZones();
-                                                                        const storageZone = zones.find(z => z.zoneType === 'storage' && z.status === 'active') || zones[0];
-                                                                        if (!storageZone) {
-                                                                            messageApi.warning('No zones found. Create a zone in Warehouses first.');
-                                                                            return;
-                                                                        }
-                                                                        const binIds: string[] = [];
-                                                                        for (const input of binInputs) {
-                                                                            const bin = await inventoryService.createBin(storageZone.id, input);
-                                                                            binIds.push(bin.id);
-                                                                        }
-                                                                        const updated = objects.map(o =>
-                                                                            o.id === selectedObj.id ? { ...o, linkedBinIds: binIds, linkedZoneId: storageZone.id } : o
-                                                                        );
-                                                                        setObjects(updated);
-                                                                        messageApi.success(`${binIds.length} bins auto-generated!`);
-                                                                    } catch (err: any) {
-                                                                        messageApi.error('Failed: ' + (err?.message || 'Unknown error'));
-                                                                    }
-                                                                }}
-                                                                style={{ fontSize: 9, borderRadius: 6, background: 'rgba(34,197,94,0.12)', borderColor: 'rgba(34,197,94,0.25)', color: '#86efac', marginBottom: 4 }}>
-                                                                ⚡ Auto-Generate Bins
-                                                            </Button>
-                                                            <Button size="small" block
-                                                                onClick={() => {
-                                                                    const ids = prompt('Enter bin IDs (comma separated):');
-                                                                    if (!ids) return;
-                                                                    const binIds = ids.split(',').map(s => s.trim()).filter(Boolean);
-                                                                    if (binIds.length === 0) return;
-                                                                    const updated = objects.map(o =>
-                                                                        o.id === selectedObj.id ? { ...o, linkedBinIds: binIds } : o
-                                                                    );
-                                                                    setObjects(updated);
-                                                                    messageApi.success(`${binIds.length} bins linked manually`);
-                                                                }}
-                                                                style={{ fontSize: 9, borderRadius: 6, background: 'rgba(59,130,246,0.1)', borderColor: 'rgba(59,130,246,0.2)', color: '#93c5fd' }}>
-                                                                🔗 Link Existing Bins
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            </>
-                                        )}
-
-                                        <Divider style={{ borderColor: t.panelBorder, margin: '6px 0' }} />
-
-                                        {/* Actions */}
-                                        <div style={{ ...panelSection('#3b82f6') }}>
-                                            <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Actions</Text>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: 4 }}>
-                                            <Button size="small" icon={<RotateRightOutlined />} onClick={handleRotate}
-                                                style={{ flex: 1, background: 'rgba(139,92,246,0.12)', borderColor: 'rgba(139,92,246,0.25)', color: '#c4b5fd', borderRadius: 8 }}>90°</Button>
-                                            <Button size="small" icon={<CopyOutlined />} onClick={handleDuplicate}
-                                                style={{ flex: 1, background: 'rgba(59,130,246,0.12)', borderColor: 'rgba(59,130,246,0.25)', color: '#93c5fd', borderRadius: 8 }}>Copy</Button>
-                                        </div>
-                                        {/* D-pad */}
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3, maxWidth: 110, margin: '0 auto' }}>
-                                            <div />
-                                            <Button size="small" icon={<ArrowUpOutlined />} onClick={() => handleMove(0, -1)}
-                                                style={{ background: t.cardBg, border: `1px solid ${t.panelBorder}`, color: t.textSecondary, borderRadius: 8 }} />
-                                            <div />
-                                            <Button size="small" icon={<ArrowLeftOutlined />} onClick={() => handleMove(-1, 0)}
-                                                style={{ background: t.cardBg, border: `1px solid ${t.panelBorder}`, color: t.textSecondary, borderRadius: 8 }} />
-                                            <div style={{ width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.textFaint, fontSize: 9, background: t.cardBg, border: `1px solid ${t.panelBorder}` }}>
-                                                <DragOutlined />
-                                            </div>
-                                            <Button size="small" icon={<ArrowRightOutlined />} onClick={() => handleMove(1, 0)}
-                                                style={{ background: t.cardBg, border: `1px solid ${t.panelBorder}`, color: t.textSecondary, borderRadius: 8 }} />
-                                            <div />
-                                            <Button size="small" icon={<ArrowDownOutlined />} onClick={() => handleMove(0, 1)}
-                                                style={{ background: t.cardBg, border: `1px solid ${t.panelBorder}`, color: t.textSecondary, borderRadius: 8 }} />
-                                            <div />
-                                        </div>
-
-                                        <Divider style={{ borderColor: t.panelBorder, margin: '4px 0' }} />
-
-                                        {/* Lock + Delete + Auto */}
-                                        <div style={{ display: 'flex', gap: 4 }}>
-                                            <Button size="small"
-                                                icon={selectedObj.locked ? <LockOutlined /> : <UnlockOutlined />}
-                                                onClick={handleLock}
-                                                style={{
-                                                    flex: 1, borderRadius: 8,
-                                                    background: selectedObj.locked ? 'rgba(239,68,68,0.12)' : t.cardBg,
-                                                    borderColor: selectedObj.locked ? 'rgba(239,68,68,0.25)' : t.panelBorder,
-                                                    color: selectedObj.locked ? '#fca5a5' : t.textSecondary,
-                                                }}>
-                                                {selectedObj.locked ? 'Unlock' : 'Lock'}
-                                            </Button>
-                                            <Popconfirm title="Delete this object?" onConfirm={handleDelete}>
-                                                <Button size="small" icon={<DeleteOutlined />} danger
-                                                    disabled={selectedObj.locked}
-                                                    style={{ flex: 1, borderRadius: 8 }}>Delete</Button>
-                                            </Popconfirm>
-                                        </div>
-                                        {selectedObj.type === 'zone' && (selectedObj.zoneType === 'storage' || selectedObj.zoneType === 'cold') && (
-                                            <Button block size="small" icon={<ThunderboltOutlined />}
-                                                onClick={handleAutoArrange}
-                                                style={{ background: 'rgba(232,119,34,0.12)', borderColor: 'rgba(232,119,34,0.25)', color: '#fdba74', borderRadius: 8 }}>
-                                                ⚡ Auto-Fill Racks
-                                            </Button>
-                                        )}
-                                    </Space>
-                                </Card>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
                 </div>
-            </motion.div>
-
             {/* Templates Modal */}
             <Modal title={null} open={templateModalOpen} onCancel={() => setTemplateModalOpen(false)} footer={null} width={520}
                 styles={{ body: { padding: '16px 20px' }, header: { display: 'none' } }}>
@@ -3539,6 +3678,38 @@ export default function WarehouseMapPage() {
             </Modal>
 
             {/* Import Modal */}
+            {/* Environment Settings Modal */}
+            <Modal title="🌤️ Environment Settings" open={envSettingsOpen} onCancel={() => setEnvSettingsOpen(false)} footer={null} width={400}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingTop: 10 }}>
+                    <div>
+                        <div style={{ fontWeight: 600, marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Time of Day (Lighting)</span>
+                            <span style={{ color: t.textSecondary }}>{timelapseHour}:00</span>
+                        </div>
+                        <Slider 
+                            min={0} max={24} step={0.5} 
+                            value={timelapseHour} 
+                            onChange={setTimelapseHour}
+                            marks={{ 6: '6am', 12: '12pm', 18: '6pm' }}
+                        />
+                    </div>
+                    
+                    <div>
+                        <div style={{ fontWeight: 600, marginBottom: 8 }}>Visual Toggles</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span>Floor Grid</span>
+                                <Switch checked={showGridOverlay} onChange={setShowGridOverlay} />
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span>Cast Shadows (Performance)</span>
+                                <Switch checked={envShadows} onChange={setEnvShadows} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Modal>
+
             <Modal title="📥 Import Layout" open={importModalOpen} onCancel={() => setImportModalOpen(false)}
                 onOk={handleImport} okText="Import" okButtonProps={{ disabled: !importText.trim() }}>
                 <Text type="secondary" style={{ fontSize: 11, marginBottom: 8, display: 'block' }}>
@@ -3638,7 +3809,7 @@ export default function WarehouseMapPage() {
                 width={360}
                 styles={{
                     header: { background: t.cardBg, borderBottom: `1px solid ${t.panelBorder}`, padding: '16px 20px' },
-                    body: { background: t.appBg, padding: 20 },
+                    body: { background: t.viewportBg, padding: 20 },
                 }}
             >
                 {(() => {
@@ -3652,12 +3823,12 @@ export default function WarehouseMapPage() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: 12, background: t.cardBg, borderRadius: 8, border: `1px solid ${t.panelBorder}` }}>
                                     <div style={{ textAlign: 'center' }}>
                                         <div style={{ fontSize: 10, color: t.textMuted, textTransform: 'uppercase' }}>Utilization</div>
-                                        <div style={{ fontSize: 18, fontWeight: 700, color: inv.utilization > 80 ? '#ef4444' : inv.utilization > 50 ? '#f59e0b' : '#22c55e' }}>{inv.utilization.toFixed(1)}%</div>
+                                        <div style={{ fontSize: 18, fontWeight: 700, color: (inv as any).utilization || (inv as any).fillPercent > 80 ? '#ef4444' : (inv as any).utilization || (inv as any).fillPercent > 50 ? '#f59e0b' : '#22c55e' }}>{(inv as any).utilization || (inv as any).fillPercent.toFixed(1)}%</div>
                                     </div>
                                     <div style={{ width: 1, background: t.panelBorder }} />
                                     <div style={{ textAlign: 'center' }}>
                                         <div style={{ fontSize: 10, color: t.textMuted, textTransform: 'uppercase' }}>Total Qty</div>
-                                        <div style={{ fontSize: 18, fontWeight: 700, color: t.text }}>{inv.totalQty}</div>
+                                        <div style={{ fontSize: 18, fontWeight: 700, color: t.text }}>{inv.totalItems}</div>
                                     </div>
                                     <div style={{ width: 1, background: t.panelBorder }} />
                                     <div style={{ textAlign: 'center' }}>
@@ -3680,22 +3851,22 @@ export default function WarehouseMapPage() {
                                                 >
                                                     📦 3D View
                                                 </div>
-                                                <Tag color={b.utilization > 80 ? 'error' : b.utilization > 0 ? 'processing' : 'default'} style={{ margin: 0 }}>
-                                                    {b.utilization.toFixed(0)}% Full
+                                                <Tag color={(b as any).utilization || (b as any).fillPercent > 80 ? 'error' : (b as any).utilization || (b as any).fillPercent > 0 ? 'processing' : 'default'} style={{ margin: 0 }}>
+                                                    {(b as any).utilization || (b as any).fillPercent.toFixed(0)}% Full
                                                 </Tag>
                                             </div>
                                         </div>
-                                        {b.items.length === 0 ? (
+                                        {(b.items || []).length === 0 ? (
                                             <div style={{ color: t.textMuted, fontSize: 11, fontStyle: 'italic' }}>Empty Bin</div>
                                         ) : (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                                {b.items.map((it, i) => (
-                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: t.appBg, padding: '4px 8px', borderRadius: 4 }}>
+                                                {(b.items || []).map((it, i) => (
+                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: t.viewportBg, padding: '4px 8px', borderRadius: 4 }}>
                                                         <div>
-                                                            <div style={{ fontSize: 11, fontWeight: 600, color: t.text }}>{it.itemCode}</div>
-                                                            <div style={{ fontSize: 9, color: t.textMuted }}>{it.itemName}</div>
+                                                            <div style={{ fontSize: 11, fontWeight: 600, color: t.text }}>{(it as any).itemCode || (it as any).sku}</div>
+                                                            <div style={{ fontSize: 9, color: t.textMuted }}>{(it as any).itemName || (it as any).name}</div>
                                                         </div>
-                                                        <div style={{ fontWeight: 700, color: t.text, fontSize: 12 }}>{it.qty} {it.uom}</div>
+                                                        <div style={{ fontWeight: 700, color: t.text, fontSize: 12 }}>{it.qty} {(it as any).uom}</div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -3712,12 +3883,12 @@ export default function WarehouseMapPage() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: 12, background: t.cardBg, borderRadius: 8, border: `1px solid ${t.panelBorder}` }}>
                                     <div style={{ textAlign: 'center' }}>
                                         <div style={{ fontSize: 10, color: t.textMuted, textTransform: 'uppercase' }}>Utilization</div>
-                                        <div style={{ fontSize: 18, fontWeight: 700, color: inv.utilization > 80 ? '#ef4444' : inv.utilization > 50 ? '#f59e0b' : '#22c55e' }}>{inv.utilization.toFixed(1)}%</div>
+                                        <div style={{ fontSize: 18, fontWeight: 700, color: (inv as any).utilization || (inv as any).fillPercent > 80 ? '#ef4444' : (inv as any).utilization || (inv as any).fillPercent > 50 ? '#f59e0b' : '#22c55e' }}>{(inv as any).utilization || (inv as any).fillPercent.toFixed(1)}%</div>
                                     </div>
                                     <div style={{ width: 1, background: t.panelBorder }} />
                                     <div style={{ textAlign: 'center' }}>
                                         <div style={{ fontSize: 10, color: t.textMuted, textTransform: 'uppercase' }}>Total Qty</div>
-                                        <div style={{ fontSize: 18, fontWeight: 700, color: t.text }}>{inv.totalQty}</div>
+                                        <div style={{ fontSize: 18, fontWeight: 700, color: t.text }}>{inv.totalItems}</div>
                                     </div>
                                 </div>
                                 <Divider style={{ margin: 0, borderColor: t.panelBorder }} />
@@ -3725,10 +3896,10 @@ export default function WarehouseMapPage() {
                                 {inv.items.map((it, i) => (
                                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: t.cardBg, padding: '8px 12px', borderRadius: 8, border: `1px solid ${t.panelBorder}` }}>
                                         <div>
-                                            <div style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{it.itemCode}</div>
-                                            <div style={{ fontSize: 10, color: t.textMuted }}>{it.itemName}</div>
+                                            <div style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{(it as any).itemCode || (it as any).sku}</div>
+                                            <div style={{ fontSize: 10, color: t.textMuted }}>{(it as any).itemName || (it as any).name}</div>
                                         </div>
-                                        <div style={{ fontWeight: 700, color: t.text, fontSize: 13 }}>{it.qty} {it.uom}</div>
+                                        <div style={{ fontWeight: 700, color: t.text, fontSize: 13 }}>{it.qty} {(it as any).uom}</div>
                                     </div>
                                 ))}
                             </div>
@@ -3758,7 +3929,7 @@ export default function WarehouseMapPage() {
                             {visualizingBin.items.map((it: any, i: number) => (
                                 <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                     <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: i % 2 === 0 ? '#3b82f6' : '#f59e0b' }} />
-                                    <span>{it.qty}x {it.itemCode}</span>
+                                    <span>{it.qty}x {(it as any).itemCode || (it as any).sku}</span>
                                 </div>
                             ))}
                         </div>
@@ -3833,7 +4004,7 @@ export default function WarehouseMapPage() {
                     </>
                 )}
             </Modal>
-        </CMSLayout>
+        </CADLayout></div></CMSLayout>
     );
 }
 

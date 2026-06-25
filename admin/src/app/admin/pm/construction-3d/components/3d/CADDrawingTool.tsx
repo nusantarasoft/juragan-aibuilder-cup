@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
-import { Line, Box, Cylinder } from '@react-three/drei';
+import { Line, Box, Cylinder, Text, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
-type DrawingMode = 'none' | 'wall' | 'fence' | 'floor' | 'column' | 'roof' | 'pipe' | 'road' | 'path';
-type DrawnLineType = { id: string; type: string; points: [number, number, number][], color?: string, material?: string, height?: number };
+type DrawingMode = 'none' | 'wall' | 'fence' | 'floor' | 'column' | 'roof' | 'pipe' | 'road' | 'path' | 'water' | 'grass';
+type DrawnLineType = { id: string; type: string; points: [number, number, number][], color?: string, material?: string, height?: number, phase?: number, cost?: number, manufacturer?: string, weight?: string };
 
 const DRAW_COLORS: Record<string, string> = {
   wall: '#aaaaaa',
@@ -15,6 +15,8 @@ const DRAW_COLORS: Record<string, string> = {
   pipe: '#22d3ee',
   road: '#555555',
   path: '#a0824a',
+  water: '#3b82f6',
+  grass: '#22c55e',
 };
 
 export function CADDrawingTool({
@@ -24,22 +26,57 @@ export function CADDrawingTool({
   setCurrentLine,
   setDrawnLines,
   onSelectLine,
+  snapToGrid = false,
+  snapSize = 1.0,
 }: {
-  drawingMode: DrawingMode;
+  drawingMode: DrawingMode | string;
   drawnLines: DrawnLineType[];
   currentLine: [number, number, number][];
   setCurrentLine: (pts: [number, number, number][]) => void;
   setDrawnLines: (lines: any) => void;
   onSelectLine?: (id: string) => void;
+  snapToGrid?: boolean;
+  snapSize?: number;
 }) {
   const [mousePos, setMousePos] = useState<[number, number, number] | null>(null);
 
   const handlePointerMove = (e: any) => {
     if (drawingMode === 'none') return;
     const { point } = e;
-    const snap = 1;
-    const x = Math.round(point.x / snap) * snap;
-    const z = Math.round(point.z / snap) * snap;
+    let x = point.x;
+    let z = point.z;
+    
+    // Grid Snapping
+    if (snapToGrid) {
+      x = Math.round(point.x / snapSize) * snapSize;
+      z = Math.round(point.z / snapSize) * snapSize;
+    }
+
+    // Vertex Snapping
+    let snapped = false;
+    for (const line of drawnLines) {
+      for (const pt of line.points) {
+        const dist = Math.sqrt(Math.pow(pt[0] - point.x, 2) + Math.pow(pt[2] - point.z, 2));
+        if (dist < 0.8) {
+          x = pt[0];
+          z = pt[2];
+          snapped = true;
+          break;
+        }
+      }
+      if (snapped) break;
+    }
+    
+    // Also snap to current line points
+    if (!snapped && currentLine.length > 0) {
+      const pt = currentLine[0];
+      const dist = Math.sqrt(Math.pow(pt[0] - point.x, 2) + Math.pow(pt[2] - point.z, 2));
+      if (dist < 0.8) {
+        x = pt[0];
+        z = pt[2];
+      }
+    }
+
     setMousePos([x, 0.05, z]);
   };
 
@@ -71,6 +108,43 @@ export function CADDrawingTool({
     }
     setCurrentLine([]);
   };
+
+  const [typedLength, setTypedLength] = useState<string>("");
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (drawingMode === 'none' || currentLine.length === 0) {
+        setTypedLength("");
+        return;
+      }
+      
+      if (e.key >= '0' && e.key <= '9' || e.key === '.') {
+        setTypedLength(prev => prev + e.key);
+      } else if (e.key === 'Backspace') {
+        setTypedLength(prev => prev.slice(0, -1));
+      } else if (e.key === 'Enter' && typedLength.length > 0) {
+        // Calculate exact point
+        const length = parseFloat(typedLength);
+        if (!isNaN(length) && mousePos) {
+          const lastPt = currentLine[currentLine.length - 1];
+          const dir = new THREE.Vector3(mousePos[0] - lastPt[0], 0, mousePos[2] - lastPt[2]).normalize();
+          const newPt: [number, number, number] = [
+            lastPt[0] + dir.x * length,
+            0.05,
+            lastPt[2] + dir.z * length
+          ];
+          setCurrentLine([...currentLine, newPt]);
+          setMousePos(newPt);
+        }
+        setTypedLength("");
+      } else if (e.key === 'Escape') {
+        setTypedLength("");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [drawingMode, currentLine, mousePos, typedLength, setCurrentLine]);
 
   const lineColor = DRAW_COLORS[drawingMode] || '#ffffff';
 
@@ -132,23 +206,46 @@ export function CADDrawingTool({
             );
           })}
 
-          {/* Floor slab extrusion */}
-          {line.type === 'floor' && line.points.length > 2 && (() => {
+          {/* Floor / Water / Grass slab extrusion */}
+          {['floor', 'water', 'grass'].includes(line.type) && line.points.length > 2 && (() => {
             const shape = new THREE.Shape();
             shape.moveTo(line.points[0][0], line.points[0][2]);
             for (let i = 1; i < line.points.length; i++) {
               shape.lineTo(line.points[i][0], line.points[i][2]);
             }
             shape.closePath();
+            
+            let color = line.color;
+            let roughness = 0.9;
+            let metalness = 0.1;
+            let transparent = false;
+            let opacity = 1.0;
+            let yPos = 0.15;
+            
+            if (line.type === 'water') {
+              color = color || "#3b82f6";
+              roughness = 0.1;
+              metalness = 0.8;
+              transparent = true;
+              opacity = 0.7;
+              yPos = 0.05;
+            } else if (line.type === 'grass') {
+              color = color || "#22c55e";
+              roughness = 1.0;
+              yPos = 0.08;
+            } else {
+              color = color || "#94a3b8";
+            }
+
             return (
               <mesh 
-                key={`${line.id}-floor`} 
+                key={`${line.id}-${line.type}`} 
                 rotation={[-Math.PI / 2, 0, 0]} 
-                position={[0, 0.15, 0]}
+                position={[0, yPos, 0]}
                 onClick={(e) => { e.stopPropagation(); if (onSelectLine) onSelectLine(line.id); }}
               >
-                <extrudeGeometry args={[shape, { depth: 0.3, bevelEnabled: false }]} />
-                <meshStandardMaterial color={line.color || "#94a3b8"} roughness={0.9} />
+                <extrudeGeometry args={[shape, { depth: line.height ?? 0.2, bevelEnabled: false }]} />
+                <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} transparent={transparent} opacity={opacity} />
               </mesh>
             );
           })()}
@@ -247,19 +344,62 @@ export function CADDrawingTool({
               </Box>
             );
           })}
+          {/* Measure segments */}
+          {line.type === 'measure' && line.points.map((pt, i) => {
+            if (i === 0) return null;
+            const prev = line.points[i - 1];
+            const dist = new THREE.Vector3(...pt).distanceTo(new THREE.Vector3(...prev));
+            const midX = (pt[0] + prev[0]) / 2;
+            const midZ = (pt[2] + prev[2]) / 2;
+            return (
+              <group key={`${line.id}-measure-${i}`}>
+                <Line points={[prev, pt]} color="#ef4444" lineWidth={3} dashed dashScale={10} dashSize={0.5} gapSize={0.5} />
+                <Html position={[midX, 1, midZ]} center style={{ pointerEvents: 'none' }}>
+                  <div style={{ background: "rgba(239, 68, 68, 0.9)", color: "white", padding: "2px 6px", borderRadius: 4, fontSize: 12, fontWeight: 700, boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
+                    {dist.toFixed(2)}m
+                  </div>
+                </Html>
+              </group>
+            );
+          })}
         </group>
       ))}
 
       {/* Render current line being drawn */}
       {currentLine.length > 0 && mousePos && (
-        <Line
-          points={[...currentLine, mousePos]}
-          color={lineColor}
-          lineWidth={3}
-          dashed
-        />
+        <group>
+          <Line
+            points={[...currentLine, mousePos]}
+            color={lineColor}
+            lineWidth={3}
+            dashed
+          />
+          {/* Live Measurement */}
+          {(() => {
+            const lastPoint = currentLine[currentLine.length - 1];
+            const dist = new THREE.Vector3(...lastPoint).distanceTo(new THREE.Vector3(...mousePos));
+            const midX = (lastPoint[0] + mousePos[0]) / 2;
+            const midZ = (lastPoint[2] + mousePos[2]) / 2;
+            return (
+              <Html position={[midX, 1, midZ]} center style={{ pointerEvents: 'none' }}>
+                <div style={{ background: "rgba(239, 68, 68, 0.9)", color: "white", padding: "2px 6px", borderRadius: 4, fontSize: 12, fontWeight: 700, boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
+                  {dist.toFixed(2)}m
+                </div>
+              </Html>
+            );
+          })()}
+        </group>
       )}
       
+      {/* Typed Length HUD */}
+      {typedLength && mousePos && (
+        <Html position={[mousePos[0], 2, mousePos[2]]} center style={{ pointerEvents: 'none' }}>
+          <div style={{ background: "#22c55e", color: "white", padding: "4px 8px", borderRadius: 4, fontSize: 14, fontWeight: 700, boxShadow: "0 4px 12px rgba(0,0,0,0.4)", border: "2px solid white" }}>
+            L: {typedLength} m
+          </div>
+        </Html>
+      )}
+
       {/* Snap indicator */}
       {drawingMode !== 'none' && mousePos && (
         <mesh position={mousePos} rotation={[-Math.PI / 2, 0, 0]}>
