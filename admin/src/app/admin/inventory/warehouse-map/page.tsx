@@ -10,7 +10,7 @@ import {
     ImportOutlined, ExportOutlined, AppstoreAddOutlined, RedoOutlined,
     InfoCircleOutlined, BarChartOutlined, LockOutlined, UnlockOutlined,
     ThunderboltOutlined, CameraOutlined, SearchOutlined, AimOutlined,
-    CloseCircleOutlined, InboxOutlined, FormatPainterOutlined, HomeOutlined, RadarChartOutlined, SettingOutlined
+    CloseCircleOutlined, InboxOutlined, FormatPainterOutlined, HomeOutlined, RadarChartOutlined, SettingOutlined, BlockOutlined, DatabaseOutlined
 } from "@ant-design/icons";
 import { motion, AnimatePresence } from "framer-motion";
 import { Canvas } from "@react-three/fiber";
@@ -18,6 +18,7 @@ import { OrbitControls } from "@react-three/drei";
 import CMSLayout from "@/components/layout/CMSLayout";
 import CADLayout from "@/components/cad/CADLayout";
 import CADRibbon from "@/components/cad/CADRibbon";
+import { GlassPanel } from "@/components/ui/GlassPanel";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
@@ -1624,755 +1625,95 @@ export default function WarehouseMapPage() {
         return () => window.removeEventListener('keydown', handler);
     }, [buildMode, showHelp, objects, clipboard, selectedId, selectedIds, handleDelete, handleRotate, handleDuplicate, handleUndo, handleRedo, handleMove, pushHistory, messageApi, snapIncrement]);
 
+    const StatCard = ({
+        title,
+        value,
+        suffix,
+        icon,
+        gradient,
+    }: {
+        title: string;
+        value: number | string;
+        suffix?: string;
+        icon: React.ReactNode;
+        gradient: string;
+    }) => (
+        <Card
+            size="small"
+            style={{
+                background: isDark ? "rgba(15, 15, 23, 0.65)" : "rgba(255,255,255,0.75)",
+                backdropFilter: "blur(24px)",
+                border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.4)",
+                boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.4)" : "0 8px 32px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.02)",
+                borderRadius: 16,
+                overflow: "hidden",
+                position: "relative",
+                transition: "transform 0.2s ease, box-shadow 0.2s ease",
+            }}
+            styles={{ body: { padding: "16px 14px", position: "relative", zIndex: 1 } }}
+            hoverable
+        >
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: gradient, borderRadius: "16px 16px 0 0" }} />
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                <div>
+                    <Typography.Text type="secondary" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 }}>{title}</Typography.Text>
+                    <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.2, marginTop: 2, background: gradient, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                        {value}{suffix && <span style={{ fontSize: 16 }}>{suffix}</span>}
+                    </div>
+                </div>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#fff", opacity: 0.85 }}>
+                    {icon}
+                </div>
+            </div>
+        </Card>
+    );
+
     return (
         <CMSLayout
-            title={<AuroraText colors={[themeColor, '#3b82f6', '#22c55e']}>Warehouse Explorer</AuroraText>}
-            subTitle={<DecryptedText text="3D warehouse view, item locator, and location browser — all in one" animateOn="view" revealDirection="start" speed={40} sequential />}
+            title={
+                <div style={{ margin: 0, padding: 0, fontSize: 24 }}>
+                    <AuroraText className="text-xl font-bold tracking-tighter" colors={[themeColor, '#3b82f6', '#22c55e']}>
+                        Warehouse Explorer
+                    </AuroraText>
+                </div>
+            }
+            subTitle={
+                <DecryptedText 
+                    text="3D warehouse view, item locator, and location browser — all in one" 
+                    animateOn="view" 
+                    revealDirection="start" 
+                    speed={40} 
+                    sequential 
+                />
+            }
         >
-            <div style={{ height: 'calc(100vh - 180px)', width: '100%', overflow: 'hidden', borderRadius: 8, border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}` }}>
-                <CADLayout isDark={isDark !== false}
-            header={
-                <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '0 16px', height: '100%'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: themeColor, display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <AppstoreOutlined /> Workspace
-                        </div>
-                        
-                        {/* Warehouse Selector */}
-                        {warehouses.length > 0 && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 12 }}>🏭</span>
-                                <Select
-                                    value={selectedWarehouseId}
-                                    onChange={handleWarehouseChange}
-                                    placeholder="All Warehouses"
-                                    allowClear
-                                    size="small"
-                                    loading={loadingWarehouse}
-                                    style={{ minWidth: 180, fontSize: 12 }}
-                                    options={warehouses.map(wh => {
-                                        const typeIcons: Record<string, string> = { general: '🏭', cold: '❄️', hazardous: '☢️', bonded: '🔒', transit: '🔄' };
-                                        const typeIcon = typeIcons[(wh as any).warehouseType || 'general'] || '🏭';
-                                        return { value: wh.id, label: `${typeIcon} ${wh.name}${wh.code ? ` (${wh.code})` : ''}` };
-                                    })}
-                                />
-                            </div>
-                        )}
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                <Col xs={24} sm={12} lg={6}>
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
+                        <StatCard title="Total Capacity" value={objects.filter(o => o.type === 'rack').reduce((acc, curr) => acc + ((curr.rackLevels || 3) * (curr.width || 1) * (curr.depth || 1)), 0) * 10} suffix=" items" icon={<AppstoreOutlined />} gradient="linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)" />
+                    </motion.div>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                        <StatCard title="Storage Zones" value={objects.filter(o => o.type === 'zone').length} icon={<BlockOutlined />} gradient="linear-gradient(135deg, #22c55e 0%, #15803d 100%)" />
+                    </motion.div>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                        <StatCard title="Equipment" value={objects.filter(o => o.type === 'equipment').length} icon={<ThunderboltOutlined />} gradient="linear-gradient(135deg, #f59e0b 0%, #d97706 100%)" />
+                    </motion.div>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                        <StatCard title="Total Objects" value={objects.length} icon={<DatabaseOutlined />} gradient="linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)" />
+                    </motion.div>
+                </Col>
+            </Row>
 
-                        {/* Mode switch */}
-                        <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: `1px solid ${t.panelBorder}` }}>
-                            {[
-                                { mode: false, icon: <EyeOutlined />, label: 'View', color: '#22c55e' },
-                                { mode: true, icon: <EditOutlined />, label: 'Build', color: '#3b82f6' },
-                            ].map(m => (
-                                <div key={m.label}
-                                    onClick={() => { setBuildMode(m.mode); setActivePalette(null); setSelectedId(null); setSelectedIds(new Set()); }}
-                                    style={{
-                                        padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                                        display: 'flex', alignItems: 'center', gap: 6,
-                                        background: buildMode === m.mode ? `${m.color}20` : 'transparent',
-                                        color: buildMode === m.mode ? m.color : t.textSecondary,
-                                        transition: 'all 0.2s',
-                                    }}>
-                                    {m.icon} {m.label}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+            <div style={{ position: 'relative', height: 'calc(100vh - 220px)', overflow: 'hidden', borderRadius: 0, border: `1px solid ${isDark ? '#333' : '#ccc'}` }}>
+                {/* CANVAS IN BACKGROUND */}
+                <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
                     
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Button size="small" type="primary" icon={<SaveOutlined />} onClick={() => handleSave()} style={{ background: themeColor, borderColor: themeColor }}>Save</Button>
-                        <Tooltip title="Save As"><Button size="small" icon={<PlusOutlined />} onClick={() => { setSaveAsName(''); setSaveAsOpen(true); }} /></Tooltip>
-                        <Tooltip title="Layouts"><Button size="small" icon={<AppstoreOutlined />} onClick={async () => { setSavedLayouts(await listLayouts()); setLayoutManagerOpen(true); }} /></Tooltip>
-                        <div style={{ width: 1, height: 16, background: t.panelBorder, margin: '0 4px' }} />
-                        <Tooltip title="Environment"><Button size="small" icon={<SettingOutlined />} onClick={() => setEnvSettingsOpen(true)} /></Tooltip>
-                        <Tooltip title="Export"><Button size="small" icon={<ExportOutlined />} onClick={() => handleExport()} /></Tooltip>
-                        <Tooltip title="Import"><Button size="small" icon={<ImportOutlined />} onClick={() => setImportModalOpen(true)} /></Tooltip>
-                        <Tooltip title="Screenshot"><Button size="small" icon={<CameraOutlined />} onClick={() => handleScreenshot()} /></Tooltip>
-                        <Popconfirm title="Clear all?" onConfirm={() => handleClear()}><Button size="small" danger icon={<ClearOutlined />} /></Popconfirm>
-                    </div>
-                </div>
-            }
-            leftPanel={
-                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
-                    {!buildMode && (
-                        <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-                            <div style={{ position: 'absolute', inset: 0 }}>
-                                <ExplorerPanel
-                                    isDark={isDark}
-                                    themeColor={themeColor}
-                                    onLocateBin={(binCode) => {
-                                        setHighlightBin(binCode);
-                                        setCameraPreset('iso');
-                                        messageApi.success(`Locating bin: ${binCode}`);
-                                    }}
-                                    onSelectBin={() => {}}
-                                    selectedWarehouseId={selectedWarehouseId}
-                                />
-                            </div>
-                        </div>
-                    )}
-                    {buildMode && (
-                        <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 8, width: 48, margin: '0 auto' }}>
-                            {[
-                                { id: 'select', icon: <AimOutlined />, tip: 'Select (Esc)' },
-                                { id: 'draw_wall', icon: <EditOutlined />, tip: 'Draw Wall' },
-                                { id: 'draw_zone', icon: <AppstoreAddOutlined />, tip: 'Draw Zone' },
-                                { id: 'place_object', icon: <PlusOutlined />, tip: 'Place Object' },
-                                { id: 'delete', icon: <DeleteOutlined />, tip: 'Delete (Del)' },
-                            ].map(tool => {
-                                const active = activeTool === tool.id;
-                                return (
-                                    <Tooltip key={tool.id} title={tool.tip} placement="right">
-                                        <div
-                                            onClick={() => setActiveTool(tool.id as any)}
-                                            style={{
-                                                width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                background: active ? themeColor : isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                                                color: active ? '#fff' : isDark ? '#ccc' : '#555',
-                                                cursor: 'pointer', transition: 'all 0.2s', border: `1px solid ${active ? themeColor : 'transparent'}`,
-                                            }}
-                                        >
-                                            {tool.icon}
-                                        </div>
-                                    </Tooltip>
-                                );
-                            })}
-                                <div style={{ height: 1, background: t.panelBorder, margin: '4px 0' }} />
-
-                                <Tooltip title="Undo (Ctrl+Z)" placement="right">
-                                    <div onClick={handleUndo} style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: history.length ? 'pointer' : 'not-allowed', color: history.length ? t.textSecondary : t.textMuted, fontSize: 16 }}>
-                                        <UndoOutlined />
-                                    </div>
-                                </Tooltip>
-                                <Tooltip title="Redo (Ctrl+Y)" placement="right">
-                                    <div onClick={handleRedo} style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: redoHistory.length ? 'pointer' : 'not-allowed', color: redoHistory.length ? t.textSecondary : t.textMuted, fontSize: 16 }}>
-                                        <RedoOutlined />
-                                    </div>
-                                </Tooltip>
-                                
-                                {/* Floor Level Switcher in CAD toolbar */}
-                                <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    {[2, 1, 0].map(lvl => (
-                                        <Tooltip key={lvl} title={`Floor ${lvl === 0 ? 'GND' : `L${lvl}`}`} placement="right">
-                                            <div onClick={() => setCurrentFloor(lvl)}
-                                                style={{
-                                                    width: 32, height: 24, borderRadius: 6, cursor: 'pointer',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    fontSize: 9, fontWeight: 700, transition: 'all 0.2s',
-                                                    background: currentFloor === lvl ? themeColor : 'transparent',
-                                                    color: currentFloor === lvl ? '#fff' : t.textMuted,
-                                                    border: `1px solid ${currentFloor === lvl ? themeColor : t.panelBorder}`
-                                                }}>
-                                                {lvl === 0 ? 'G' : `L${lvl}`}
-                                            </div>
-                                        </Tooltip>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                }
-                rightPanel={
-                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
-                        {buildMode && (activeTool === 'place_object' || selectedId) && (
-                            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                                <div style={{ flex: 1, overflowY: "auto", padding: "12px", display: "flex", flexDirection: "column", gap: 16 }}>
-
-                                {activeTool === 'place_object' && !selectedId && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                        <div style={{ fontSize: 12, fontWeight: 700, color: t.text, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <EditOutlined /> Object Palette
-                                        </div>
-                                        {/* Category tabs */}
-                                        <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                                            {['zone', 'storage', 'structure', 'equipment'].map(cat => (
-                                                <div key={cat}
-                                                    onClick={() => setPaletteCategory(cat)}
-                                                    style={{
-                                                        padding: '4px 8px', borderRadius: 6, cursor: 'pointer', fontSize: 9, fontWeight: 600,
-                                                        background: paletteCategory === cat ? `${themeColor}25` : t.cardBg,
-                                                        border: `1px solid ${paletteCategory === cat ? themeColor : t.panelBorder}`,
-                                                        color: paletteCategory === cat ? themeColor : t.textSecondary,
-                                                        transition: 'all 0.2s', flexGrow: 1, textAlign: 'center'
-                                                    }}>
-                                                    {CATEGORY_ICONS[cat]} {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                                                </div>
-                                            ))}
-                                        </div>
-                                        {/* Palette items */}
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                            {filteredPalette.map((item, idx) => {
-                                                const isActive = activePalette?.label === item.label;
-                                                return (
-                                                    <motion.div key={item.label}
-                                                        onClick={() => setActivePalette(isActive ? null : item)}
-                                                        style={{
-                                                            padding: '6px 8px', borderRadius: 8, cursor: 'pointer',
-                                                            background: isActive ? `${item.color}20` : t.cardBg,
-                                                            border: `1.5px solid ${isActive ? item.color : 'transparent'}`,
-                                                            transition: 'all 0.2s',
-                                                        }}
-                                                    >
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                            <div style={{ width: 24, height: 24, borderRadius: 4, background: `${item.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, border: `1px solid ${item.color}30` }}>
-                                                                {item.icon}
-                                                            </div>
-                                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                                <Text style={{ color: t.text, fontSize: 10, fontWeight: 600, display: 'block' }}>{item.label}</Text>
-                                                            </div>
-                                                        </div>
-                                                    </motion.div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-
-                    {/* Right: Properties panel (when object selected in build mode) */}
-                    
-                        {selectedObj && (
-                            <div style={{ flex: 1, overflowY: "auto" }}>
-                                <Card size="small" style={{ ...glass, height: '100%', overflowY: 'auto' }}
-                                    styles={{ body: { padding: 12 } }}
-                                    title={
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                <div style={{ width: 3, height: 14, borderRadius: 2, background: '#3b82f6' }} />
-                                                <Text style={{ color: t.text, fontSize: 12, fontWeight: 700 }}>Properties</Text>
-                                            </div>
-                                            {selectedObj.locked && (
-                                                <Tag style={{ fontSize: 8, margin: 0, padding: '0 6px', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', borderRadius: 6 }}>🔒 LOCKED</Tag>
-                                            )}
-                                        </div>
-                                    }
-                                >
-                                    <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                                        {/* Type + Label header */}
-                                        <div style={{ ...panelSection(selectedObj.color || '#3b82f6') }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                                <div style={{
-                                                    width: 28, height: 28, borderRadius: 6,
-                                                    background: `${selectedObj.color || '#3b82f6'}20`,
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    fontSize: 14,
-                                                }}>
-                                                    {PALETTE_ITEMS.find(p => p.type === selectedObj.type)?.icon || '📦'}
-                                                </div>
-                                                <div>
-                                                    <Tag style={{ fontSize: 9, background: `${selectedObj.color || '#3b82f6'}20`, border: `1px solid ${selectedObj.color || '#3b82f6'}40`, color: selectedObj.color || '#3b82f6', borderRadius: 6 }}>{selectedObj.type.toUpperCase()}</Tag>
-                                                    <div style={{ color: t.textMuted, fontSize: 8, marginTop: 1 }}>📍 {gridCoordsLabel(selectedObj.x, selectedObj.z)}</div>
-                                                </div>
-                                            </div>
-                                            <Input size="small" value={selectedObj.label || ''}
-                                                onChange={e => handleLabelChange(e.target.value)}
-                                                placeholder="Enter label..."
-                                                style={{ background: t.inputBg, borderColor: t.inputBorder, color: t.text, fontSize: 11, borderRadius: 6 }} />
-                                        </div>
-                                        {/* Position & Rotation */}
-                                        <div style={{ ...panelSection('#666') }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Position & Rotation</Text>
-                                                <Tooltip title="Rotate 90°">
-                                                    <div onClick={handleRotate} style={{ cursor: 'pointer', fontSize: 10, padding: '2px 6px', background: t.cardBg, borderRadius: 4, border: `1px solid ${t.panelBorder}`, color: t.text }}>↻</div>
-                                                </Tooltip>
-                                            </div>
-                                            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                                                {[
-                                                    { label: 'X', value: selectedObj.x, field: 'x' as const },
-                                                    { label: 'Z', value: selectedObj.z, field: 'z' as const },
-                                                    { label: 'R', value: selectedObj.rotation, field: 'rotation' as const },
-                                                ].map(p => (
-                                                    <div key={p.label} style={{ flex: 1 }}>
-                                                        <div style={{ color: t.textMuted, fontSize: 7, fontWeight: 600, marginBottom: 2, textAlign: 'center' }}>{p.label}</div>
-                                                        <InputNumber
-                                                            size="small"
-                                                            value={p.value}
-                                                            step={p.field === 'rotation' ? 90 : snapIncrement}
-                                                            onChange={val => {
-                                                                if (val === null) return;
-                                                                const proposed = { ...selectedObj, [p.field]: val };
-                                                                if (p.field !== 'rotation' && checkCollision(proposed, objects)) {
-                                                                    messageApi.warning('Collision detected!');
-                                                                    return;
-                                                                }
-                                                                pushHistory();
-                                                                setObjects(prev => prev.map(o => o.id === selectedObj.id ? proposed : o));
-                                                            }}
-                                                            style={{ width: '100%', background: t.cardBg, color: t.text, fontSize: 11, borderColor: t.panelBorder }}
-                                                        />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        
-                                        {/* Multi-Object Alignment */}
-                                        {selectedIds.size > 1 && (
-                                            <div style={{ ...panelSection('#ec4899') }}>
-                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Align {selectedIds.size} Objects</Text>
-                                                <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-                                                    <Button size="small" style={{ flex: 1, fontSize: 10 }} onClick={() => {
-                                                        const minX = Math.min(...objects.filter(o => selectedIds.has(o.id)).map(o => o.x));
-                                                        pushHistory(); setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, x: minX } : o));
-                                                    }}>Left (X)</Button>
-                                                    <Button size="small" style={{ flex: 1, fontSize: 10 }} onClick={() => {
-                                                        const minZ = Math.min(...objects.filter(o => selectedIds.has(o.id)).map(o => o.z));
-                                                        pushHistory(); setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, z: minZ } : o));
-                                                    }}>Top (Z)</Button>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Array Clone Tool */}
-                                        {selectedIds.size > 0 && (
-                                            <div style={{ ...panelSection('#a855f7') }}>
-                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Array Clone</Text>
-                                                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Cols (X)</div>
-                                                        <InputNumber size="small" min={1} max={50} value={arrayConfig.countX} onChange={v => v && setArrayConfig(c => ({...c, countX: v}))} style={{ width: '100%', fontSize: 10 }} />
-                                                    </div>
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Rows (Z)</div>
-                                                        <InputNumber size="small" min={1} max={50} value={arrayConfig.countZ} onChange={v => v && setArrayConfig(c => ({...c, countZ: v}))} style={{ width: '100%', fontSize: 10 }} />
-                                                    </div>
-                                                </div>
-                                                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Gap X</div>
-                                                        <InputNumber size="small" min={0.1} step={0.1} value={arrayConfig.spaceX} onChange={v => v && setArrayConfig(c => ({...c, spaceX: v}))} style={{ width: '100%', fontSize: 10 }} />
-                                                    </div>
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Gap Z</div>
-                                                        <InputNumber size="small" min={0.1} step={0.1} value={arrayConfig.spaceZ} onChange={v => v && setArrayConfig(c => ({...c, spaceZ: v}))} style={{ width: '100%', fontSize: 10 }} />
-                                                    </div>
-                                                </div>
-                                                <Button size="small" block onClick={() => {
-                                                    const clones: PlacedObject[] = [];
-                                                    const sourceObjects = objects.filter(o => selectedIds.has(o.id));
-                                                    for (let x = 0; x < arrayConfig.countX; x++) {
-                                                        for (let z = 0; z < arrayConfig.countZ; z++) {
-                                                            if (x === 0 && z === 0) continue; // Skip original
-                                                            for (const sourceObj of sourceObjects) {
-                                                                const newObj = {
-                                                                    ...duplicateObject(sourceObj),
-                                                                    x: sourceObj.x + x * arrayConfig.spaceX,
-                                                                    z: sourceObj.z + z * arrayConfig.spaceZ,
-                                                                };
-                                                                clones.push(newObj);
-                                                            }
-                                                        }
-                                                    }
-                                                    if (clones.length === 0) { messageApi.warning('Array blocked'); return; }
-                                                    pushHistory();
-                                                    setObjects(prev => [...prev, ...clones]);
-                                                    messageApi.success(`Generated ${clones.length} clones`);
-                                                }} style={{ marginTop: 6, fontSize: 10 }}>Create Array</Button>
-                                            </div>
-                                        )}
-                                        {/* Zone type selector & Auto-Aisle */}
-                                        {selectedObj.type === 'zone' && (
-                                            <>
-                                                <div style={{ ...panelSection('#a855f7') }}>
-                                                    <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Zone Type</Text>
-                                                    <Select size="small" value={selectedObj.zoneType || 'storage'}
-                                                        onChange={(v: ZoneType) => handleZoneTypeChange(v)}
-                                                        style={{ width: '100%', marginTop: 4 }}
-                                                        options={ZONE_TYPES.map(z => ({ value: z.value, label: z.label }))}
-                                                    />
-                                                </div>
-                                                <div style={{ ...panelSection('#3b82f6') }}>
-                                                    <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Auto Layout</Text>
-                                                    <Button size="small" block type="primary" onClick={() => {
-                                                        const newRacks = autoArrangeRacks(selectedObj, 3, 2);
-                                                        if (newRacks.length === 0) { messageApi.warning('Zone too small'); return; }
-                                                        pushHistory();
-                                                        setObjects(prev => [...prev, ...newRacks]);
-                                                        messageApi.success(`Generated ${newRacks.length} racks`);
-                                                    }} style={{ marginTop: 4, fontSize: 10 }}>⚡ Auto-Fill Racks</Button>
-                                                </div>
-                                            </>
-                                        )}
-                                        {/* Color picker */}
-                                        <div style={{ ...panelSection('#e87722') }}>
-                                            <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Color</Text>
-                                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
-                                                {COLOR_PRESETS.map(c => (
-                                                    <div key={c} onClick={() => handleColorChange(c)}
-                                                        style={{
-                                                            width: 22, height: 22, borderRadius: 6, background: c, cursor: 'pointer',
-                                                            border: selectedObj.color === c ? `2px solid ${t.text}` : `1px solid ${t.inputBorder}`,
-                                                            boxShadow: selectedObj.color === c ? `0 0 8px ${c}60` : 'none',
-                                                            transition: 'all 0.15s',
-                                                        }}
-                                                        onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.2)')}
-                                                        onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-                                                    />
-                                                ))}
-                                            </div>
-                                        </div>
-                                        {/* Size (for zones/walls/racks) */}
-                                        {(selectedObj.type === 'zone' || selectedObj.type === 'wall' || selectedObj.type === 'conveyor' || selectedObj.type === 'rack') && (
-                                            <div style={{ ...panelSection('#22c55e') }}>
-                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Dimensions</Text>
-                                                <div style={{ marginTop: 4 }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                        <span style={{ color: t.textMuted, fontSize: 8, width: 30 }}>W</span>
-                                                        <Slider min={1} max={10} value={selectedObj.width} onChange={v => handleResize('width', v)}
-                                                            style={{ flex: 1 }} trackStyle={{ background: '#22c55e' }} handleStyle={{ borderColor: '#22c55e' }} />
-                                                        <span style={{ color: t.textSecondary, fontSize: 10, width: 16 }}>{selectedObj.width}</span>
-                                                    </div>
-                                                    {(selectedObj.type === 'zone' || selectedObj.type === 'rack') && (
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                            <span style={{ color: t.textMuted, fontSize: 8, width: 30 }}>D</span>
-                                                            <Slider min={1} max={10} value={selectedObj.depth} onChange={v => handleResize('depth', v)}
-                                                                style={{ flex: 1 }} trackStyle={{ background: '#22c55e' }} handleStyle={{ borderColor: '#22c55e' }} />
-                                                            <span style={{ color: t.textSecondary, fontSize: 10, width: 16 }}>{selectedObj.depth}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
-                                        {/* Rack levels */}
-                                        {selectedObj.type === 'rack' && (
-                                            <>
-                                            <div style={{ ...panelSection('#e87722') }}>
-                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Rack Levels</Text>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                                    <Slider min={1} max={6} value={selectedObj.rackLevels || 3} onChange={v => handleRackLevels(v)}
-                                                        style={{ flex: 1 }} trackStyle={{ background: '#e87722' }} handleStyle={{ borderColor: '#e87722' }} />
-                                                    <span style={{ color: '#e87722', fontSize: 14, fontWeight: 700, width: 16 }}>{selectedObj.rackLevels || 3}</span>
-                                                </div>
-                                            </div>
-                                            {/* WMS Location: Row / Bay */}
-                                            <div style={{ ...panelSection('#8b5cf6') }}>
-                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>📍 Location</Text>
-                                                <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ color: t.textMuted, fontSize: 7, fontWeight: 600, marginBottom: 2 }}>ROW</div>
-                                                        <input
-                                                            value={selectedObj.row || ''}
-                                                            placeholder={suggestRow(selectedObj.z)}
-                                                            maxLength={2}
-                                                            onChange={e => {
-                                                                const val = e.target.value.toUpperCase().replace(/[^A-Z]/g, '');
-                                                                setObjects(prev => prev.map(o => o.id === selectedObj.id ? { ...o, row: val || undefined } : o));
-                                                            }}
-                                                            style={{
-                                                                width: '100%', padding: '4px 6px', borderRadius: 6, fontSize: 12, fontWeight: 700,
-                                                                textAlign: 'center', fontFamily: 'monospace',
-                                                                background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: '#8b5cf6',
-                                                                outline: 'none',
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ color: t.textMuted, fontSize: 7, fontWeight: 600, marginBottom: 2 }}>BAY</div>
-                                                        <input
-                                                            type="number"
-                                                            value={selectedObj.bay ?? ''}
-                                                            placeholder={String(Math.floor(selectedObj.x) + 1)}
-                                                            min={1} max={99}
-                                                            onChange={e => {
-                                                                const val = parseInt(e.target.value);
-                                                                setObjects(prev => prev.map(o => o.id === selectedObj.id ? { ...o, bay: isNaN(val) ? undefined : val } : o));
-                                                            }}
-                                                            style={{
-                                                                width: '100%', padding: '4px 6px', borderRadius: 6, fontSize: 12, fontWeight: 700,
-                                                                textAlign: 'center', fontFamily: 'monospace',
-                                                                background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: '#8b5cf6',
-                                                                outline: 'none',
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                {/* Location code preview */}
-                                                <div style={{
-                                                    marginTop: 6, padding: '4px 8px', borderRadius: 6,
-                                                    background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)',
-                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                                }}>
-                                                    <span style={{ color: t.textMuted, fontSize: 7, fontWeight: 600 }}>LOCATION</span>
-                                                    <span style={{ color: '#c4b5fd', fontSize: 11, fontWeight: 700, fontFamily: 'monospace' }}>
-                                                        {locationCode(
-                                                            selectedObj.row || suggestRow(selectedObj.z),
-                                                            selectedObj.bay ?? Math.floor(selectedObj.x) + 1,
-                                                        )}
-                                                    </span>
-                                                </div>
-                                                {/* Auto-assign button */}
-                                                {!selectedObj.row && (
-                                                    <div
-                                                        onClick={() => {
-                                                            const autoRow = suggestRow(selectedObj.z);
-                                                            const autoBay = suggestBay(selectedObj.x, objects, autoRow);
-                                                            setObjects(prev => prev.map(o =>
-                                                                o.id === selectedObj.id ? { ...o, row: autoRow, bay: autoBay } : o
-                                                            ));
-                                                            messageApi.success(`Assigned: Row ${autoRow}, Bay ${autoBay}`);
-                                                        }}
-                                                        style={{
-                                                            marginTop: 4, padding: '4px 8px', borderRadius: 6, cursor: 'pointer',
-                                                            textAlign: 'center', fontSize: 8, fontWeight: 700,
-                                                            background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)',
-                                                            color: '#c4b5fd', transition: 'all 0.2s',
-                                                        }}
-                                                    >
-                                                        ⚡ Auto-Assign Row & Bay
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {/* Link Inventory Bins */}
-                                            <div style={{ ...panelSection('#22c55e') }}>
-                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>📦 Inventory Link</Text>
-                                                <div style={{ marginTop: 6 }}>
-                                                    {selectedObj.linkedBinIds && selectedObj.linkedBinIds.length > 0 ? (
-                                                        <div>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                                                                <div style={{ width: 6, height: 6, borderRadius: 3, background: '#22c55e' }} />
-                                                                <span style={{ color: '#22c55e', fontSize: 9, fontWeight: 600 }}>
-                                                                    {selectedObj.linkedBinIds.length} bins linked
-                                                                </span>
-                                                            </div>
-                                                            {selectedObj.linkedBinIds.map((binId, i) => (
-                                                                <div key={i} style={{
-                                                                    fontSize: 8, color: t.textSecondary, fontFamily: 'monospace',
-                                                                    padding: '1px 0', borderBottom: `1px solid ${t.cardBg}`,
-                                                                }}>
-                                                                    L{i + 1}: {binId.slice(0, 12)}…
-                                                                </div>
-                                                            ))}
-                                                            <Button size="small" block
-                                                                onClick={() => {
-                                                                    const updated = objects.map(o =>
-                                                                        o.id === selectedObj.id ? { ...o, linkedBinIds: undefined } : o
-                                                                    );
-                                                                    setObjects(updated);
-                                                                    messageApi.info('Bins unlinked');
-                                                                }}
-                                                                style={{ marginTop: 4, fontSize: 9, borderRadius: 6, background: 'rgba(239,68,68,0.1)', borderColor: 'rgba(239,68,68,0.2)', color: '#fca5a5' }}>
-                                                                Unlink All
-                                                            </Button>
-                                                        </div>
-                                                    ) : (
-                                                        <div>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-                                                                <div style={{ width: 6, height: 6, borderRadius: 3, background: t.textMuted }} />
-                                                                <span style={{ color: t.textMuted, fontSize: 9 }}>No bins linked</span>
-                                                            </div>
-                                                            <Button size="small" block
-                                                                onClick={async () => {
-                                                                    try {
-                                                                        const binInputs = generateRackBinInputs(selectedObj);
-                                                                        const zones = await inventoryService.getZones();
-                                                                        const storageZone = zones.find(z => z.zoneType === 'storage' && z.status === 'active') || zones[0];
-                                                                        if (!storageZone) {
-                                                                            messageApi.warning('No zones found. Create a zone in Warehouses first.');
-                                                                            return;
-                                                                        }
-                                                                        const binIds: string[] = [];
-                                                                        for (const input of binInputs) {
-                                                                            const bin = await inventoryService.createBin(storageZone.id, input);
-                                                                            binIds.push(bin.id);
-                                                                        }
-                                                                        const updated = objects.map(o =>
-                                                                            o.id === selectedObj.id ? { ...o, linkedBinIds: binIds, linkedZoneId: storageZone.id } : o
-                                                                        );
-                                                                        setObjects(updated);
-                                                                        messageApi.success(`${binIds.length} bins auto-generated!`);
-                                                                    } catch (err: any) {
-                                                                        messageApi.error('Failed: ' + (err?.message || 'Unknown error'));
-                                                                    }
-                                                                }}
-                                                                style={{ fontSize: 9, borderRadius: 6, background: 'rgba(34,197,94,0.12)', borderColor: 'rgba(34,197,94,0.25)', color: '#86efac', marginBottom: 4 }}>
-                                                                ⚡ Auto-Generate Bins
-                                                            </Button>
-                                                            <Button size="small" block
-                                                                onClick={() => {
-                                                                    const ids = prompt('Enter bin IDs (comma separated):');
-                                                                    if (!ids) return;
-                                                                    const binIds = ids.split(',').map(s => s.trim()).filter(Boolean);
-                                                                    if (binIds.length === 0) return;
-                                                                    const updated = objects.map(o =>
-                                                                        o.id === selectedObj.id ? { ...o, linkedBinIds: binIds } : o
-                                                                    );
-                                                                    setObjects(updated);
-                                                                    messageApi.success(`${binIds.length} bins linked manually`);
-                                                                }}
-                                                                style={{ fontSize: 9, borderRadius: 6, background: 'rgba(59,130,246,0.1)', borderColor: 'rgba(59,130,246,0.2)', color: '#93c5fd' }}>
-                                                                🔗 Link Existing Bins
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            </>
-                                        )}
-
-                                        <Divider style={{ borderColor: t.panelBorder, margin: '6px 0' }} />
-
-                                        {/* Actions */}
-                                        <div style={{ ...panelSection('#3b82f6') }}>
-                                            <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Actions</Text>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: 4 }}>
-                                            <Button size="small" icon={<RotateRightOutlined />} onClick={handleRotate}
-                                                style={{ flex: 1, background: 'rgba(139,92,246,0.12)', borderColor: 'rgba(139,92,246,0.25)', color: '#c4b5fd', borderRadius: 8 }}>90°</Button>
-                                            <Button size="small" icon={<CopyOutlined />} onClick={handleDuplicate}
-                                                style={{ flex: 1, background: 'rgba(59,130,246,0.12)', borderColor: 'rgba(59,130,246,0.25)', color: '#93c5fd', borderRadius: 8 }}>Copy</Button>
-                                        </div>
-                                        {/* D-pad */}
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3, maxWidth: 110, margin: '0 auto' }}>
-                                            <div />
-                                            <Button size="small" icon={<ArrowUpOutlined />} onClick={() => handleMove(0, -1)}
-                                                style={{ background: t.cardBg, border: `1px solid ${t.panelBorder}`, color: t.textSecondary, borderRadius: 8 }} />
-                                            <div />
-                                            <Button size="small" icon={<ArrowLeftOutlined />} onClick={() => handleMove(-1, 0)}
-                                                style={{ background: t.cardBg, border: `1px solid ${t.panelBorder}`, color: t.textSecondary, borderRadius: 8 }} />
-                                            <div style={{ width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.textFaint, fontSize: 9, background: t.cardBg, border: `1px solid ${t.panelBorder}` }}>
-                                                <DragOutlined />
-                                            </div>
-                                            <Button size="small" icon={<ArrowRightOutlined />} onClick={() => handleMove(1, 0)}
-                                                style={{ background: t.cardBg, border: `1px solid ${t.panelBorder}`, color: t.textSecondary, borderRadius: 8 }} />
-                                            <div />
-                                            <Button size="small" icon={<ArrowDownOutlined />} onClick={() => handleMove(0, 1)}
-                                                style={{ background: t.cardBg, border: `1px solid ${t.panelBorder}`, color: t.textSecondary, borderRadius: 8 }} />
-                                            <div />
-                                        </div>
-
-                                        <Divider style={{ borderColor: t.panelBorder, margin: '4px 0' }} />
-
-                                        {/* Lock + Delete + Auto */}
-                                        <div style={{ display: 'flex', gap: 4 }}>
-                                            <Button size="small"
-                                                icon={selectedObj.locked ? <LockOutlined /> : <UnlockOutlined />}
-                                                onClick={handleLock}
-                                                style={{
-                                                    flex: 1, borderRadius: 8,
-                                                    background: selectedObj.locked ? 'rgba(239,68,68,0.12)' : t.cardBg,
-                                                    borderColor: selectedObj.locked ? 'rgba(239,68,68,0.25)' : t.panelBorder,
-                                                    color: selectedObj.locked ? '#fca5a5' : t.textSecondary,
-                                                }}>
-                                                {selectedObj.locked ? 'Unlock' : 'Lock'}
-                                            </Button>
-                                            <Popconfirm title="Delete this object?" onConfirm={handleDelete}>
-                                                <Button size="small" icon={<DeleteOutlined />} danger
-                                                    disabled={selectedObj.locked}
-                                                    style={{ flex: 1, borderRadius: 8 }}>Delete</Button>
-                                            </Popconfirm>
-                                        </div>
-                                        {selectedObj.type === 'zone' && (selectedObj.zoneType === 'storage' || selectedObj.zoneType === 'cold') && (
-                                            <Button block size="small" icon={<ThunderboltOutlined />}
-                                                onClick={handleAutoArrange}
-                                                style={{ background: 'rgba(232,119,34,0.12)', borderColor: 'rgba(232,119,34,0.25)', color: '#fdba74', borderRadius: 8 }}>
-                                                ⚡ Auto-Fill Racks
-                                            </Button>
-                                        )}
-                                    </Space>
-                                </Card>
-                            </div>
-                        )}
-                    
-
-                                {selectedId && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                        <div style={{ fontSize: 12, fontWeight: 700, color: t.text, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <SettingOutlined /> Properties
-                                        </div>
-                                        {(() => {
-                                            const obj = objects.find(o => o.id === selectedId);
-                                            if (!obj) return null;
-                                            return (
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
-                                                        <span style={{ color: t.textMuted }}>Type:</span>
-                                                        <span style={{ color: t.text, fontWeight: 600 }}>{obj.type}</span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
-                                                        <span style={{ color: t.textMuted }}>Floor Level:</span>
-                                                        <span style={{ color: t.text, fontWeight: 600 }}>{obj.floorLevel || 0}</span>
-                                                    </div>
-                                                    <div>
-                                                        <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Label:</div>
-                                                        <Input size="small" value={obj.label || ''} onChange={e => {
-                                                            setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, label: e.target.value } : o));
-                                                        }} />
-                                                    </div>
-                                                    <div>
-                                                        <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Color:</div>
-                                                        <ColorPicker size="small" value={obj.color} onChange={(_, hex) => {
-                                                            setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, color: hex } : o));
-                                                        }} />
-                                                    </div>
-                                                    <div style={{ display: 'flex', gap: 8 }}>
-                                                        <div style={{ flex: 1 }}>
-                                                            <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Width (m):</div>
-                                                            <InputNumber size="small" value={obj.width} onChange={v => {
-                                                                if (v) setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, width: v } : o));
-                                                            }} style={{ width: '100%' }} />
-                                                        </div>
-                                                        <div style={{ flex: 1 }}>
-                                                            <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Depth (m):</div>
-                                                            <InputNumber size="small" value={obj.depth} onChange={v => {
-                                                                if (v) setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, depth: v } : o));
-                                                            }} style={{ width: '100%' }} />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Elevation Y (m):</div>
-                                                        <InputNumber size="small" value={obj.y || 0} step={0.5} onChange={v => {
-                                                            setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, y: v || 0 } : o));
-                                                        }} style={{ width: '100%' }} />
-                                                    </div>
-                                                    {obj.type === 'custom_model' && (
-                                                        <div>
-                                                            <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Model URL (.gltf / .glb):</div>
-                                                            <Input size="small" placeholder="https://..." value={obj.modelUrl || ''} onChange={e => {
-                                                                setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, modelUrl: e.target.value } : o));
-                                                            }} />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })()}
-                                    </div>
-                                )}
-
-                                {/* Multi-select Alignment Tools */}
-                                {selectedIds.length > 1 && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                        <div style={{ fontSize: 12, fontWeight: 700, color: t.text, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <BlockOutlined /> Align Objects ({selectedIds.length})
-                                        </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                                            <Button size="small" onClick={() => {
-                                                const minX = Math.min(...objects.filter(o => selectedIds.has(o.id)).map(o => o.x));
-                                                setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, x: minX } : o));
-                                            }}>Align Left</Button>
-                                            <Button size="small" onClick={() => {
-                                                const maxX = Math.max(...objects.filter(o => selectedIds.has(o.id)).map(o => o.x));
-                                                setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, x: maxX } : o));
-                                            }}>Align Right</Button>
-                                            <Button size="small" onClick={() => {
-                                                const minZ = Math.min(...objects.filter(o => selectedIds.has(o.id)).map(o => o.z));
-                                                setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, z: minZ } : o));
-                                            }}>Align Top</Button>
-                                            <Button size="small" onClick={() => {
-                                                const maxZ = Math.max(...objects.filter(o => selectedIds.has(o.id)).map(o => o.z));
-                                                setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, z: maxZ } : o));
-                                            }}>Align Bottom</Button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            }
-            >
                 {ctx}
                 {/* Main content */}
                 <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', background: isDark !== false ? '#111827' : '#e5e7eb' }}>
@@ -2625,11 +1966,13 @@ export default function WarehouseMapPage() {
                         )}
 
                         <div style={{
-                            position: 'absolute', bottom: 160, right: 10, // Moved up to prevent overlap with Minimap
-                            display: 'flex', flexDirection: 'column', gap: 3, borderRadius: 10, overflow: 'hidden', zIndex: 9,
-                            background: t.toolbarBg, backdropFilter: 'blur(8px)',
-                            border: `1px solid ${t.toolbarBorder}`, padding: 3,
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                            position: 'absolute', bottom: 160, right: 24, // Moved up to prevent overlap with Minimap
+                            display: 'flex', flexDirection: 'column', gap: 6, borderRadius: 0, overflow: 'hidden', zIndex: 9,
+                            background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.7)",
+                            backdropFilter: 'blur(16px)',
+                            border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.6)"}`,
+                            padding: 6,
+                            boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.4)" : "0 8px 32px rgba(31,38,135,0.1)",
                         }}>
                             {[
                                 { key: 'corner' as CameraPreset, label: '🎥', tip: 'Corner' },
@@ -2823,11 +2166,13 @@ export default function WarehouseMapPage() {
 
                         {/* Mini-map */}
                         <div style={{
-                            position: 'absolute', bottom: 28, right: 10, zIndex: 5,
-                            width: 120, height: 120, borderRadius: 10,
-                            background: t.panelBg, border: `1px solid ${t.panelBorder}`,
+                            position: 'absolute', bottom: 28, right: 24, zIndex: 5,
+                            width: 120, height: 120, borderRadius: 0,
+                            background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.7)",
+                            backdropFilter: 'blur(16px)',
+                            border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.6)"}`,
+                            boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.4)" : "0 8px 32px rgba(31,38,135,0.1)",
                             overflow: 'hidden', padding: 5,
-                            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
                         }}>
                             <div style={{ position: 'relative', width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden' }}>
                                 {/* Grid pattern background */}
@@ -3066,19 +2411,21 @@ export default function WarehouseMapPage() {
                                         </>
                                     )}
                                 </span>
-                                <span onClick={() => setShowHelp(true)} style={{ cursor: 'pointer', color: t.textFaint, fontSize: 10, fontWeight: 700, padding: '0 4px', borderRadius: 3, border: `1px solid ${t.toolbarBorder}` }}>?</span>
+                                <span onClick={() => setShowHelp(true)} style={{ cursor: 'pointer', color: t.textFaint, fontSize: 10, fontWeight: 700, padding: '0 4px', borderRadius: 0, border: `1px solid ${t.toolbarBorder}` }}>?</span>
                             </div>
                         )}
 
                         {/* View Mode Analytics Overlay */}
                         {!buildMode && (
                             <div style={{
-                                position: 'absolute', top: 48, right: 10, zIndex: 8,
-                                padding: 10, borderRadius: 10,
-                                background: t.panelBg, backdropFilter: 'blur(8px)',
-                                border: `1px solid ${t.panelBorder}`,
-                                color: t.text, fontSize: 10, width: 180,
-                                maxHeight: 'calc(100% - 48px - 160px)',
+                                position: 'absolute', top: 24, left: 24, zIndex: 8,
+                                padding: 16, borderRadius: 0,
+                                background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.7)",
+                                backdropFilter: 'blur(16px)',
+                                border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.6)"}`,
+                                boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.4)" : "0 8px 32px rgba(31,38,135,0.1)",
+                                color: t.text, fontSize: 11, width: 240,
+                                maxHeight: 'calc(100% - 120px)',
                                 overflowY: 'auto',
                             }}>
                                 <div style={{ fontWeight: 700, fontSize: 11, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -3241,13 +2588,14 @@ export default function WarehouseMapPage() {
                         {/* ═══ AI Route Planner Panel (View Mode) ═══ */}
                         {!buildMode && (
                             <div style={{
-                                position: 'absolute', bottom: 28, left: 10, zIndex: 6,
-                                borderRadius: 12,
-                                background: t.panelBg, backdropFilter: 'blur(12px)',
-                                border: `1px solid ${t.panelBorder}`,
+                                position: 'absolute', bottom: 28, left: 24, zIndex: 6,
+                                borderRadius: 0,
+                                background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.7)",
+                                backdropFilter: 'blur(16px)',
+                                border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.6)"}`,
+                                boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.4)" : "0 8px 32px rgba(31,38,135,0.1)",
                                 color: t.text, fontSize: 10,
                                 overflow: 'hidden',
-                                boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
                                 width: routePlannerOpen ? 260 : 'auto',
                                 transition: 'width 0.3s ease',
                             }}>
@@ -4004,7 +3352,779 @@ export default function WarehouseMapPage() {
                     </>
                 )}
             </Modal>
-        </CADLayout></div></CMSLayout>
+        
+                </div>
+
+                {/* OVERLAYS */}
+                <div style={{ position: 'absolute', inset: 0, zIndex: 10, pointerEvents: 'none' }}>
+                    {/* Header Overlay */}
+                    <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} style={{ position: 'absolute', top: 0, left: 0, right: 0, pointerEvents: 'auto' }}>
+                        <GlassPanel style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 24px', borderRadius: 0, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                            
+                <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: themeColor, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <AppstoreOutlined /> Workspace
+                        </div>
+                        
+                        {/* Warehouse Selector */}
+                        {warehouses.length > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 12 }}>🏭</span>
+                                <Select
+                                    value={selectedWarehouseId}
+                                    onChange={handleWarehouseChange}
+                                    placeholder="All Warehouses"
+                                    allowClear
+                                    size="small"
+                                    loading={loadingWarehouse}
+                                    style={{ minWidth: 180, fontSize: 12 }}
+                                    options={warehouses.map(wh => {
+                                        const typeIcons: Record<string, string> = { general: '🏭', cold: '❄️', hazardous: '☢️', bonded: '🔒', transit: '🔄' };
+                                        const typeIcon = typeIcons[(wh as any).warehouseType || 'general'] || '🏭';
+                                        return { value: wh.id, label: `${typeIcon} ${wh.name}${wh.code ? ` (${wh.code})` : ''}` };
+                                    })}
+                                />
+                            </div>
+                        )}
+
+                        {/* Mode switch */}
+                        <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: `1px solid ${t.panelBorder}` }}>
+                            {[
+                                { mode: false, icon: <EyeOutlined />, label: 'View', color: '#22c55e' },
+                                { mode: true, icon: <EditOutlined />, label: 'Build', color: '#3b82f6' },
+                            ].map(m => (
+                                <div key={m.label}
+                                    onClick={() => { setBuildMode(m.mode); setActivePalette(null); setSelectedId(null); setSelectedIds(new Set()); }}
+                                    style={{
+                                        padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                                        display: 'flex', alignItems: 'center', gap: 6,
+                                        background: buildMode === m.mode ? `${m.color}20` : 'transparent',
+                                        color: buildMode === m.mode ? m.color : t.textSecondary,
+                                        transition: 'all 0.2s',
+                                    }}>
+                                    {m.icon} {m.label}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Button size="small" type="primary" icon={<SaveOutlined />} onClick={() => handleSave()} style={{ background: themeColor, borderColor: themeColor }}>Save</Button>
+                        <Tooltip title="Save As"><Button size="small" icon={<PlusOutlined />} onClick={() => { setSaveAsName(''); setSaveAsOpen(true); }} /></Tooltip>
+                        <Tooltip title="Layouts"><Button size="small" icon={<AppstoreOutlined />} onClick={async () => { setSavedLayouts(await listLayouts()); setLayoutManagerOpen(true); }} /></Tooltip>
+                        <div style={{ width: 1, height: 16, background: t.panelBorder, margin: '0 4px' }} />
+                        <Tooltip title="Environment"><Button size="small" icon={<SettingOutlined />} onClick={() => setEnvSettingsOpen(true)} /></Tooltip>
+                        <Tooltip title="Export"><Button size="small" icon={<ExportOutlined />} onClick={() => handleExport()} /></Tooltip>
+                        <Tooltip title="Import"><Button size="small" icon={<ImportOutlined />} onClick={() => setImportModalOpen(true)} /></Tooltip>
+                        <Tooltip title="Screenshot"><Button size="small" icon={<CameraOutlined />} onClick={() => handleScreenshot()} /></Tooltip>
+                        <Popconfirm title="Clear all?" onConfirm={() => handleClear()}><Button size="small" danger icon={<ClearOutlined />} /></Popconfirm>
+                    </div>
+                </div>
+            
+                        </GlassPanel>
+                    </motion.div>
+
+                    {/* Left Panel Overlay */}
+                    <AnimatePresence>
+                        {buildMode && (
+                            <motion.div initial={{ x: -340, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -340, opacity: 0 }} style={{ position: 'absolute', top: 80, left: 16, bottom: 16, width: 'fit-content', pointerEvents: 'auto' }}>
+                                <GlassPanel style={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                                    
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+                    {!buildMode && (
+                        <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+                            <div style={{ position: 'absolute', inset: 0 }}>
+                                <ExplorerPanel
+                                    isDark={isDark}
+                                    themeColor={themeColor}
+                                    onLocateBin={(binCode) => {
+                                        setHighlightBin(binCode);
+                                        setCameraPreset('iso');
+                                        messageApi.success(`Locating bin: ${binCode}`);
+                                    }}
+                                    onSelectBin={() => {}}
+                                    selectedWarehouseId={selectedWarehouseId}
+                                />
+                            </div>
+                        </div>
+                    )}
+                    {buildMode && (
+                        <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 8, width: 48, margin: '0 auto' }}>
+                            {[
+                                { id: 'select', icon: <AimOutlined />, tip: 'Select (Esc)' },
+                                { id: 'draw_wall', icon: <EditOutlined />, tip: 'Draw Wall' },
+                                { id: 'draw_zone', icon: <AppstoreAddOutlined />, tip: 'Draw Zone' },
+                                { id: 'place_object', icon: <PlusOutlined />, tip: 'Place Object' },
+                                { id: 'delete', icon: <DeleteOutlined />, tip: 'Delete (Del)' },
+                            ].map(tool => {
+                                const active = activeTool === tool.id;
+                                return (
+                                    <Tooltip key={tool.id} title={tool.tip} placement="right">
+                                        <div
+                                            onClick={() => setActiveTool(tool.id as any)}
+                                            style={{
+                                                width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                background: active ? themeColor : isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                                                color: active ? '#fff' : isDark ? '#ccc' : '#555',
+                                                cursor: 'pointer', transition: 'all 0.2s', border: `1px solid ${active ? themeColor : 'transparent'}`,
+                                            }}
+                                        >
+                                            {tool.icon}
+                                        </div>
+                                    </Tooltip>
+                                );
+                            })}
+                                <div style={{ height: 1, background: t.panelBorder, margin: '4px 0' }} />
+
+                                <Tooltip title="Undo (Ctrl+Z)" placement="right">
+                                    <div onClick={handleUndo} style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: history.length ? 'pointer' : 'not-allowed', color: history.length ? t.textSecondary : t.textMuted, fontSize: 16 }}>
+                                        <UndoOutlined />
+                                    </div>
+                                </Tooltip>
+                                <Tooltip title="Redo (Ctrl+Y)" placement="right">
+                                    <div onClick={handleRedo} style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: redoHistory.length ? 'pointer' : 'not-allowed', color: redoHistory.length ? t.textSecondary : t.textMuted, fontSize: 16 }}>
+                                        <RedoOutlined />
+                                    </div>
+                                </Tooltip>
+                                
+                                {/* Floor Level Switcher in CAD toolbar */}
+                                <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    {[2, 1, 0].map(lvl => (
+                                        <Tooltip key={lvl} title={`Floor ${lvl === 0 ? 'GND' : `L${lvl}`}`} placement="right">
+                                            <div onClick={() => setCurrentFloor(lvl)}
+                                                style={{
+                                                    width: 32, height: 24, borderRadius: 6, cursor: 'pointer',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontSize: 9, fontWeight: 700, transition: 'all 0.2s',
+                                                    background: currentFloor === lvl ? themeColor : 'transparent',
+                                                    color: currentFloor === lvl ? '#fff' : t.textMuted,
+                                                    border: `1px solid ${currentFloor === lvl ? themeColor : t.panelBorder}`
+                                                }}>
+                                                {lvl === 0 ? 'G' : `L${lvl}`}
+                                            </div>
+                                        </Tooltip>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                
+                                </GlassPanel>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Right Panel Overlay */}
+                    <AnimatePresence>
+                        {selectedId || (buildMode && activeTool === 'place_object') ? (
+                            <motion.div initial={{ x: 340, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 340, opacity: 0 }} style={{ position: 'absolute', top: 80, right: 16, bottom: 16, width: 'fit-content', pointerEvents: 'auto' }}>
+                                <GlassPanel style={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                                    
+                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+                        {buildMode && (activeTool === 'place_object' || selectedId) && (
+                            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                <div style={{ flex: 1, overflowY: "auto", padding: "12px", display: "flex", flexDirection: "column", gap: 16 }}>
+
+                                {activeTool === 'place_object' && !selectedId && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: t.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <EditOutlined /> Object Palette
+                                        </div>
+                                        {/* Category tabs */}
+                                        <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                                            {['zone', 'storage', 'structure', 'equipment'].map(cat => (
+                                                <div key={cat}
+                                                    onClick={() => setPaletteCategory(cat)}
+                                                    style={{
+                                                        padding: '4px 8px', borderRadius: 6, cursor: 'pointer', fontSize: 9, fontWeight: 600,
+                                                        background: paletteCategory === cat ? `${themeColor}25` : t.cardBg,
+                                                        border: `1px solid ${paletteCategory === cat ? themeColor : t.panelBorder}`,
+                                                        color: paletteCategory === cat ? themeColor : t.textSecondary,
+                                                        transition: 'all 0.2s', flexGrow: 1, textAlign: 'center'
+                                                    }}>
+                                                    {CATEGORY_ICONS[cat]} {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {/* Palette items */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            {filteredPalette.map((item, idx) => {
+                                                const isActive = activePalette?.label === item.label;
+                                                return (
+                                                    <motion.div key={item.label}
+                                                        onClick={() => setActivePalette(isActive ? null : item)}
+                                                        style={{
+                                                            padding: '6px 8px', borderRadius: 8, cursor: 'pointer',
+                                                            background: isActive ? `${item.color}20` : t.cardBg,
+                                                            border: `1.5px solid ${isActive ? item.color : 'transparent'}`,
+                                                            transition: 'all 0.2s',
+                                                        }}
+                                                    >
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                            <div style={{ width: 24, height: 24, borderRadius: 4, background: `${item.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, border: `1px solid ${item.color}30` }}>
+                                                                {item.icon}
+                                                            </div>
+                                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                                <Text style={{ color: t.text, fontSize: 10, fontWeight: 600, display: 'block' }}>{item.label}</Text>
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                    {/* Right: Properties panel (when object selected in build mode) */}
+                    
+                        {selectedObj && (
+                            <div style={{ flex: 1, overflowY: "auto" }}>
+                                <Card size="small" style={{ ...glass, height: '100%', overflowY: 'auto' }}
+                                    styles={{ body: { padding: 12 } }}
+                                    title={
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <div style={{ width: 3, height: 14, borderRadius: 2, background: '#3b82f6' }} />
+                                                <Text style={{ color: t.text, fontSize: 12, fontWeight: 700 }}>Properties</Text>
+                                            </div>
+                                            {selectedObj.locked && (
+                                                <Tag style={{ fontSize: 8, margin: 0, padding: '0 6px', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', borderRadius: 6 }}>🔒 LOCKED</Tag>
+                                            )}
+                                        </div>
+                                    }
+                                >
+                                    <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                                        {/* Type + Label header */}
+                                        <div style={{ ...panelSection(selectedObj.color || '#3b82f6') }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                                <div style={{
+                                                    width: 28, height: 28, borderRadius: 6,
+                                                    background: `${selectedObj.color || '#3b82f6'}20`,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontSize: 14,
+                                                }}>
+                                                    {PALETTE_ITEMS.find(p => p.type === selectedObj.type)?.icon || '📦'}
+                                                </div>
+                                                <div>
+                                                    <Tag style={{ fontSize: 9, background: `${selectedObj.color || '#3b82f6'}20`, border: `1px solid ${selectedObj.color || '#3b82f6'}40`, color: selectedObj.color || '#3b82f6', borderRadius: 6 }}>{selectedObj.type.toUpperCase()}</Tag>
+                                                    <div style={{ color: t.textMuted, fontSize: 8, marginTop: 1 }}>📍 {gridCoordsLabel(selectedObj.x, selectedObj.z)}</div>
+                                                </div>
+                                            </div>
+                                            <Input size="small" value={selectedObj.label || ''}
+                                                onChange={e => handleLabelChange(e.target.value)}
+                                                placeholder="Enter label..."
+                                                style={{ background: t.inputBg, borderColor: t.inputBorder, color: t.text, fontSize: 11, borderRadius: 6 }} />
+                                        </div>
+                                        {/* Position & Rotation */}
+                                        <div style={{ ...panelSection('#666') }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Position & Rotation</Text>
+                                                <Tooltip title="Rotate 90°">
+                                                    <div onClick={handleRotate} style={{ cursor: 'pointer', fontSize: 10, padding: '2px 6px', background: t.cardBg, borderRadius: 4, border: `1px solid ${t.panelBorder}`, color: t.text }}>↻</div>
+                                                </Tooltip>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                                                {[
+                                                    { label: 'X', value: selectedObj.x, field: 'x' as const },
+                                                    { label: 'Z', value: selectedObj.z, field: 'z' as const },
+                                                    { label: 'R', value: selectedObj.rotation, field: 'rotation' as const },
+                                                ].map(p => (
+                                                    <div key={p.label} style={{ flex: 1 }}>
+                                                        <div style={{ color: t.textMuted, fontSize: 7, fontWeight: 600, marginBottom: 2, textAlign: 'center' }}>{p.label}</div>
+                                                        <InputNumber
+                                                            size="small"
+                                                            value={p.value}
+                                                            step={p.field === 'rotation' ? 90 : snapIncrement}
+                                                            onChange={val => {
+                                                                if (val === null) return;
+                                                                const proposed = { ...selectedObj, [p.field]: val };
+                                                                if (p.field !== 'rotation' && checkCollision(proposed, objects)) {
+                                                                    messageApi.warning('Collision detected!');
+                                                                    return;
+                                                                }
+                                                                pushHistory();
+                                                                setObjects(prev => prev.map(o => o.id === selectedObj.id ? proposed : o));
+                                                            }}
+                                                            style={{ width: '100%', background: t.cardBg, color: t.text, fontSize: 11, borderColor: t.panelBorder }}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Multi-Object Alignment */}
+                                        {selectedIds.size > 1 && (
+                                            <div style={{ ...panelSection('#ec4899') }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Align {selectedIds.size} Objects</Text>
+                                                <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                                                    <Button size="small" style={{ flex: 1, fontSize: 10 }} onClick={() => {
+                                                        const minX = Math.min(...objects.filter(o => selectedIds.has(o.id)).map(o => o.x));
+                                                        pushHistory(); setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, x: minX } : o));
+                                                    }}>Left (X)</Button>
+                                                    <Button size="small" style={{ flex: 1, fontSize: 10 }} onClick={() => {
+                                                        const minZ = Math.min(...objects.filter(o => selectedIds.has(o.id)).map(o => o.z));
+                                                        pushHistory(); setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, z: minZ } : o));
+                                                    }}>Top (Z)</Button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Array Clone Tool */}
+                                        {selectedIds.size > 0 && (
+                                            <div style={{ ...panelSection('#a855f7') }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Array Clone</Text>
+                                                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Cols (X)</div>
+                                                        <InputNumber size="small" min={1} max={50} value={arrayConfig.countX} onChange={v => v && setArrayConfig(c => ({...c, countX: v}))} style={{ width: '100%', fontSize: 10 }} />
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Rows (Z)</div>
+                                                        <InputNumber size="small" min={1} max={50} value={arrayConfig.countZ} onChange={v => v && setArrayConfig(c => ({...c, countZ: v}))} style={{ width: '100%', fontSize: 10 }} />
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Gap X</div>
+                                                        <InputNumber size="small" min={0.1} step={0.1} value={arrayConfig.spaceX} onChange={v => v && setArrayConfig(c => ({...c, spaceX: v}))} style={{ width: '100%', fontSize: 10 }} />
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: 7, color: t.textMuted }}>Gap Z</div>
+                                                        <InputNumber size="small" min={0.1} step={0.1} value={arrayConfig.spaceZ} onChange={v => v && setArrayConfig(c => ({...c, spaceZ: v}))} style={{ width: '100%', fontSize: 10 }} />
+                                                    </div>
+                                                </div>
+                                                <Button size="small" block onClick={() => {
+                                                    const clones: PlacedObject[] = [];
+                                                    const sourceObjects = objects.filter(o => selectedIds.has(o.id));
+                                                    for (let x = 0; x < arrayConfig.countX; x++) {
+                                                        for (let z = 0; z < arrayConfig.countZ; z++) {
+                                                            if (x === 0 && z === 0) continue; // Skip original
+                                                            for (const sourceObj of sourceObjects) {
+                                                                const newObj = {
+                                                                    ...duplicateObject(sourceObj),
+                                                                    x: sourceObj.x + x * arrayConfig.spaceX,
+                                                                    z: sourceObj.z + z * arrayConfig.spaceZ,
+                                                                };
+                                                                clones.push(newObj);
+                                                            }
+                                                        }
+                                                    }
+                                                    if (clones.length === 0) { messageApi.warning('Array blocked'); return; }
+                                                    pushHistory();
+                                                    setObjects(prev => [...prev, ...clones]);
+                                                    messageApi.success(`Generated ${clones.length} clones`);
+                                                }} style={{ marginTop: 6, fontSize: 10 }}>Create Array</Button>
+                                            </div>
+                                        )}
+                                        {/* Zone type selector & Auto-Aisle */}
+                                        {selectedObj.type === 'zone' && (
+                                            <>
+                                                <div style={{ ...panelSection('#a855f7') }}>
+                                                    <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Zone Type</Text>
+                                                    <Select size="small" value={selectedObj.zoneType || 'storage'}
+                                                        onChange={(v: ZoneType) => handleZoneTypeChange(v)}
+                                                        style={{ width: '100%', marginTop: 4 }}
+                                                        options={ZONE_TYPES.map(z => ({ value: z.value, label: z.label }))}
+                                                    />
+                                                </div>
+                                                <div style={{ ...panelSection('#3b82f6') }}>
+                                                    <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Auto Layout</Text>
+                                                    <Button size="small" block type="primary" onClick={() => {
+                                                        const newRacks = autoArrangeRacks(selectedObj, 3, 2);
+                                                        if (newRacks.length === 0) { messageApi.warning('Zone too small'); return; }
+                                                        pushHistory();
+                                                        setObjects(prev => [...prev, ...newRacks]);
+                                                        messageApi.success(`Generated ${newRacks.length} racks`);
+                                                    }} style={{ marginTop: 4, fontSize: 10 }}>⚡ Auto-Fill Racks</Button>
+                                                </div>
+                                            </>
+                                        )}
+                                        {/* Color picker */}
+                                        <div style={{ ...panelSection('#e87722') }}>
+                                            <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Color</Text>
+                                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
+                                                {COLOR_PRESETS.map(c => (
+                                                    <div key={c} onClick={() => handleColorChange(c)}
+                                                        style={{
+                                                            width: 22, height: 22, borderRadius: 6, background: c, cursor: 'pointer',
+                                                            border: selectedObj.color === c ? `2px solid ${t.text}` : `1px solid ${t.inputBorder}`,
+                                                            boxShadow: selectedObj.color === c ? `0 0 8px ${c}60` : 'none',
+                                                            transition: 'all 0.15s',
+                                                        }}
+                                                        onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.2)')}
+                                                        onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                        {/* Size (for zones/walls/racks) */}
+                                        {(selectedObj.type === 'zone' || selectedObj.type === 'wall' || selectedObj.type === 'conveyor' || selectedObj.type === 'rack') && (
+                                            <div style={{ ...panelSection('#22c55e') }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Dimensions</Text>
+                                                <div style={{ marginTop: 4 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <span style={{ color: t.textMuted, fontSize: 8, width: 30 }}>W</span>
+                                                        <Slider min={1} max={10} value={selectedObj.width} onChange={v => handleResize('width', v)}
+                                                            style={{ flex: 1 }} trackStyle={{ background: '#22c55e' }} handleStyle={{ borderColor: '#22c55e' }} />
+                                                        <span style={{ color: t.textSecondary, fontSize: 10, width: 16 }}>{selectedObj.width}</span>
+                                                    </div>
+                                                    {(selectedObj.type === 'zone' || selectedObj.type === 'rack') && (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                            <span style={{ color: t.textMuted, fontSize: 8, width: 30 }}>D</span>
+                                                            <Slider min={1} max={10} value={selectedObj.depth} onChange={v => handleResize('depth', v)}
+                                                                style={{ flex: 1 }} trackStyle={{ background: '#22c55e' }} handleStyle={{ borderColor: '#22c55e' }} />
+                                                            <span style={{ color: t.textSecondary, fontSize: 10, width: 16 }}>{selectedObj.depth}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* Rack levels */}
+                                        {selectedObj.type === 'rack' && (
+                                            <>
+                                            <div style={{ ...panelSection('#e87722') }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Rack Levels</Text>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                                    <Slider min={1} max={6} value={selectedObj.rackLevels || 3} onChange={v => handleRackLevels(v)}
+                                                        style={{ flex: 1 }} trackStyle={{ background: '#e87722' }} handleStyle={{ borderColor: '#e87722' }} />
+                                                    <span style={{ color: '#e87722', fontSize: 14, fontWeight: 700, width: 16 }}>{selectedObj.rackLevels || 3}</span>
+                                                </div>
+                                            </div>
+                                            {/* WMS Location: Row / Bay */}
+                                            <div style={{ ...panelSection('#8b5cf6') }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>📍 Location</Text>
+                                                <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ color: t.textMuted, fontSize: 7, fontWeight: 600, marginBottom: 2 }}>ROW</div>
+                                                        <input
+                                                            value={selectedObj.row || ''}
+                                                            placeholder={suggestRow(selectedObj.z)}
+                                                            maxLength={2}
+                                                            onChange={e => {
+                                                                const val = e.target.value.toUpperCase().replace(/[^A-Z]/g, '');
+                                                                setObjects(prev => prev.map(o => o.id === selectedObj.id ? { ...o, row: val || undefined } : o));
+                                                            }}
+                                                            style={{
+                                                                width: '100%', padding: '4px 6px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+                                                                textAlign: 'center', fontFamily: 'monospace',
+                                                                background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: '#8b5cf6',
+                                                                outline: 'none',
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ color: t.textMuted, fontSize: 7, fontWeight: 600, marginBottom: 2 }}>BAY</div>
+                                                        <input
+                                                            type="number"
+                                                            value={selectedObj.bay ?? ''}
+                                                            placeholder={String(Math.floor(selectedObj.x) + 1)}
+                                                            min={1} max={99}
+                                                            onChange={e => {
+                                                                const val = parseInt(e.target.value);
+                                                                setObjects(prev => prev.map(o => o.id === selectedObj.id ? { ...o, bay: isNaN(val) ? undefined : val } : o));
+                                                            }}
+                                                            style={{
+                                                                width: '100%', padding: '4px 6px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+                                                                textAlign: 'center', fontFamily: 'monospace',
+                                                                background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: '#8b5cf6',
+                                                                outline: 'none',
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                {/* Location code preview */}
+                                                <div style={{
+                                                    marginTop: 6, padding: '4px 8px', borderRadius: 6,
+                                                    background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)',
+                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                }}>
+                                                    <span style={{ color: t.textMuted, fontSize: 7, fontWeight: 600 }}>LOCATION</span>
+                                                    <span style={{ color: '#c4b5fd', fontSize: 11, fontWeight: 700, fontFamily: 'monospace' }}>
+                                                        {locationCode(
+                                                            selectedObj.row || suggestRow(selectedObj.z),
+                                                            selectedObj.bay ?? Math.floor(selectedObj.x) + 1,
+                                                        )}
+                                                    </span>
+                                                </div>
+                                                {/* Auto-assign button */}
+                                                {!selectedObj.row && (
+                                                    <div
+                                                        onClick={() => {
+                                                            const autoRow = suggestRow(selectedObj.z);
+                                                            const autoBay = suggestBay(selectedObj.x, objects, autoRow);
+                                                            setObjects(prev => prev.map(o =>
+                                                                o.id === selectedObj.id ? { ...o, row: autoRow, bay: autoBay } : o
+                                                            ));
+                                                            messageApi.success(`Assigned: Row ${autoRow}, Bay ${autoBay}`);
+                                                        }}
+                                                        style={{
+                                                            marginTop: 4, padding: '4px 8px', borderRadius: 6, cursor: 'pointer',
+                                                            textAlign: 'center', fontSize: 8, fontWeight: 700,
+                                                            background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)',
+                                                            color: '#c4b5fd', transition: 'all 0.2s',
+                                                        }}
+                                                    >
+                                                        ⚡ Auto-Assign Row & Bay
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {/* Link Inventory Bins */}
+                                            <div style={{ ...panelSection('#22c55e') }}>
+                                                <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>📦 Inventory Link</Text>
+                                                <div style={{ marginTop: 6 }}>
+                                                    {selectedObj.linkedBinIds && selectedObj.linkedBinIds.length > 0 ? (
+                                                        <div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                                                                <div style={{ width: 6, height: 6, borderRadius: 3, background: '#22c55e' }} />
+                                                                <span style={{ color: '#22c55e', fontSize: 9, fontWeight: 600 }}>
+                                                                    {selectedObj.linkedBinIds.length} bins linked
+                                                                </span>
+                                                            </div>
+                                                            {selectedObj.linkedBinIds.map((binId, i) => (
+                                                                <div key={i} style={{
+                                                                    fontSize: 8, color: t.textSecondary, fontFamily: 'monospace',
+                                                                    padding: '1px 0', borderBottom: `1px solid ${t.cardBg}`,
+                                                                }}>
+                                                                    L{i + 1}: {binId.slice(0, 12)}…
+                                                                </div>
+                                                            ))}
+                                                            <Button size="small" block
+                                                                onClick={() => {
+                                                                    const updated = objects.map(o =>
+                                                                        o.id === selectedObj.id ? { ...o, linkedBinIds: undefined } : o
+                                                                    );
+                                                                    setObjects(updated);
+                                                                    messageApi.info('Bins unlinked');
+                                                                }}
+                                                                style={{ marginTop: 4, fontSize: 9, borderRadius: 6, background: 'rgba(239,68,68,0.1)', borderColor: 'rgba(239,68,68,0.2)', color: '#fca5a5' }}>
+                                                                Unlink All
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+                                                                <div style={{ width: 6, height: 6, borderRadius: 3, background: t.textMuted }} />
+                                                                <span style={{ color: t.textMuted, fontSize: 9 }}>No bins linked</span>
+                                                            </div>
+                                                            <Button size="small" block
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        const binInputs = generateRackBinInputs(selectedObj);
+                                                                        const zones = await inventoryService.getZones();
+                                                                        const storageZone = zones.find(z => z.zoneType === 'storage' && z.status === 'active') || zones[0];
+                                                                        if (!storageZone) {
+                                                                            messageApi.warning('No zones found. Create a zone in Warehouses first.');
+                                                                            return;
+                                                                        }
+                                                                        const binIds: string[] = [];
+                                                                        for (const input of binInputs) {
+                                                                            const bin = await inventoryService.createBin(storageZone.id, input);
+                                                                            binIds.push(bin.id);
+                                                                        }
+                                                                        const updated = objects.map(o =>
+                                                                            o.id === selectedObj.id ? { ...o, linkedBinIds: binIds, linkedZoneId: storageZone.id } : o
+                                                                        );
+                                                                        setObjects(updated);
+                                                                        messageApi.success(`${binIds.length} bins auto-generated!`);
+                                                                    } catch (err: any) {
+                                                                        messageApi.error('Failed: ' + (err?.message || 'Unknown error'));
+                                                                    }
+                                                                }}
+                                                                style={{ fontSize: 9, borderRadius: 6, background: 'rgba(34,197,94,0.12)', borderColor: 'rgba(34,197,94,0.25)', color: '#86efac', marginBottom: 4 }}>
+                                                                ⚡ Auto-Generate Bins
+                                                            </Button>
+                                                            <Button size="small" block
+                                                                onClick={() => {
+                                                                    const ids = prompt('Enter bin IDs (comma separated):');
+                                                                    if (!ids) return;
+                                                                    const binIds = ids.split(',').map(s => s.trim()).filter(Boolean);
+                                                                    if (binIds.length === 0) return;
+                                                                    const updated = objects.map(o =>
+                                                                        o.id === selectedObj.id ? { ...o, linkedBinIds: binIds } : o
+                                                                    );
+                                                                    setObjects(updated);
+                                                                    messageApi.success(`${binIds.length} bins linked manually`);
+                                                                }}
+                                                                style={{ fontSize: 9, borderRadius: 6, background: 'rgba(59,130,246,0.1)', borderColor: 'rgba(59,130,246,0.2)', color: '#93c5fd' }}>
+                                                                🔗 Link Existing Bins
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            </>
+                                        )}
+
+                                        <Divider style={{ borderColor: t.panelBorder, margin: '6px 0' }} />
+
+                                        {/* Actions */}
+                                        <div style={{ ...panelSection('#3b82f6') }}>
+                                            <Text style={{ color: t.textMuted, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Actions</Text>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 4 }}>
+                                            <Button size="small" icon={<RotateRightOutlined />} onClick={handleRotate}
+                                                style={{ flex: 1, background: 'rgba(139,92,246,0.12)', borderColor: 'rgba(139,92,246,0.25)', color: '#c4b5fd', borderRadius: 8 }}>90°</Button>
+                                            <Button size="small" icon={<CopyOutlined />} onClick={handleDuplicate}
+                                                style={{ flex: 1, background: 'rgba(59,130,246,0.12)', borderColor: 'rgba(59,130,246,0.25)', color: '#93c5fd', borderRadius: 8 }}>Copy</Button>
+                                        </div>
+                                        {/* D-pad */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3, maxWidth: 110, margin: '0 auto' }}>
+                                            <div />
+                                            <Button size="small" icon={<ArrowUpOutlined />} onClick={() => handleMove(0, -1)}
+                                                style={{ background: t.cardBg, border: `1px solid ${t.panelBorder}`, color: t.textSecondary, borderRadius: 8 }} />
+                                            <div />
+                                            <Button size="small" icon={<ArrowLeftOutlined />} onClick={() => handleMove(-1, 0)}
+                                                style={{ background: t.cardBg, border: `1px solid ${t.panelBorder}`, color: t.textSecondary, borderRadius: 8 }} />
+                                            <div style={{ width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.textFaint, fontSize: 9, background: t.cardBg, border: `1px solid ${t.panelBorder}` }}>
+                                                <DragOutlined />
+                                            </div>
+                                            <Button size="small" icon={<ArrowRightOutlined />} onClick={() => handleMove(1, 0)}
+                                                style={{ background: t.cardBg, border: `1px solid ${t.panelBorder}`, color: t.textSecondary, borderRadius: 8 }} />
+                                            <div />
+                                            <Button size="small" icon={<ArrowDownOutlined />} onClick={() => handleMove(0, 1)}
+                                                style={{ background: t.cardBg, border: `1px solid ${t.panelBorder}`, color: t.textSecondary, borderRadius: 8 }} />
+                                            <div />
+                                        </div>
+
+                                        <Divider style={{ borderColor: t.panelBorder, margin: '4px 0' }} />
+
+                                        {/* Lock + Delete + Auto */}
+                                        <div style={{ display: 'flex', gap: 4 }}>
+                                            <Button size="small"
+                                                icon={selectedObj.locked ? <LockOutlined /> : <UnlockOutlined />}
+                                                onClick={handleLock}
+                                                style={{
+                                                    flex: 1, borderRadius: 8,
+                                                    background: selectedObj.locked ? 'rgba(239,68,68,0.12)' : t.cardBg,
+                                                    borderColor: selectedObj.locked ? 'rgba(239,68,68,0.25)' : t.panelBorder,
+                                                    color: selectedObj.locked ? '#fca5a5' : t.textSecondary,
+                                                }}>
+                                                {selectedObj.locked ? 'Unlock' : 'Lock'}
+                                            </Button>
+                                            <Popconfirm title="Delete this object?" onConfirm={handleDelete}>
+                                                <Button size="small" icon={<DeleteOutlined />} danger
+                                                    disabled={selectedObj.locked}
+                                                    style={{ flex: 1, borderRadius: 8 }}>Delete</Button>
+                                            </Popconfirm>
+                                        </div>
+                                        {selectedObj.type === 'zone' && (selectedObj.zoneType === 'storage' || selectedObj.zoneType === 'cold') && (
+                                            <Button block size="small" icon={<ThunderboltOutlined />}
+                                                onClick={handleAutoArrange}
+                                                style={{ background: 'rgba(232,119,34,0.12)', borderColor: 'rgba(232,119,34,0.25)', color: '#fdba74', borderRadius: 8 }}>
+                                                ⚡ Auto-Fill Racks
+                                            </Button>
+                                        )}
+                                    </Space>
+                                </Card>
+                            </div>
+                        )}
+                    
+
+                                {selectedId && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: t.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <SettingOutlined /> Properties
+                                        </div>
+                                        {(() => {
+                                            const obj = objects.find(o => o.id === selectedId);
+                                            if (!obj) return null;
+                                            return (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+                                                        <span style={{ color: t.textMuted }}>Type:</span>
+                                                        <span style={{ color: t.text, fontWeight: 600 }}>{obj.type}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+                                                        <span style={{ color: t.textMuted }}>Floor Level:</span>
+                                                        <span style={{ color: t.text, fontWeight: 600 }}>{obj.floorLevel || 0}</span>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Label:</div>
+                                                        <Input size="small" value={obj.label || ''} onChange={e => {
+                                                            setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, label: e.target.value } : o));
+                                                        }} />
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Color:</div>
+                                                        <ColorPicker size="small" value={obj.color} onChange={(_, hex) => {
+                                                            setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, color: hex } : o));
+                                                        }} />
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: 8 }}>
+                                                        <div style={{ flex: 1 }}>
+                                                            <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Width (m):</div>
+                                                            <InputNumber size="small" value={obj.width} onChange={v => {
+                                                                if (v) setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, width: v } : o));
+                                                            }} style={{ width: '100%' }} />
+                                                        </div>
+                                                        <div style={{ flex: 1 }}>
+                                                            <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Depth (m):</div>
+                                                            <InputNumber size="small" value={obj.depth} onChange={v => {
+                                                                if (v) setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, depth: v } : o));
+                                                            }} style={{ width: '100%' }} />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Elevation Y (m):</div>
+                                                        <InputNumber size="small" value={obj.y || 0} step={0.5} onChange={v => {
+                                                            setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, y: v || 0 } : o));
+                                                        }} style={{ width: '100%' }} />
+                                                    </div>
+                                                    {obj.type === 'custom_model' && (
+                                                        <div>
+                                                            <div style={{ color: t.textMuted, fontSize: 10, marginBottom: 4 }}>Model URL (.gltf / .glb):</div>
+                                                            <Input size="small" placeholder="https://..." value={obj.modelUrl || ''} onChange={e => {
+                                                                setObjects(prev => prev.map(o => o.id === selectedId ? { ...o, modelUrl: e.target.value } : o));
+                                                            }} />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
+
+                                {/* Multi-select Alignment Tools */}
+                                {selectedIds.length > 1 && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: t.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <BlockOutlined /> Align Objects ({selectedIds.length})
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                            <Button size="small" onClick={() => {
+                                                const minX = Math.min(...objects.filter(o => selectedIds.has(o.id)).map(o => o.x));
+                                                setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, x: minX } : o));
+                                            }}>Align Left</Button>
+                                            <Button size="small" onClick={() => {
+                                                const maxX = Math.max(...objects.filter(o => selectedIds.has(o.id)).map(o => o.x));
+                                                setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, x: maxX } : o));
+                                            }}>Align Right</Button>
+                                            <Button size="small" onClick={() => {
+                                                const minZ = Math.min(...objects.filter(o => selectedIds.has(o.id)).map(o => o.z));
+                                                setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, z: minZ } : o));
+                                            }}>Align Top</Button>
+                                            <Button size="small" onClick={() => {
+                                                const maxZ = Math.max(...objects.filter(o => selectedIds.has(o.id)).map(o => o.z));
+                                                setObjects(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, z: maxZ } : o));
+                                            }}>Align Bottom</Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            
+                                </GlassPanel>
+                            </motion.div>
+                        ) : null}
+                    </AnimatePresence>
+                </div>
+            </div>
+</CMSLayout>
     );
 }
 
