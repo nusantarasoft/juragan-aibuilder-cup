@@ -1,6 +1,6 @@
 export const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000';
 
-export type LlmProvider = 'anthropic' | 'google' | 'openai' | 'ollama';
+export type LlmProvider = 'anthropic' | 'google' | 'openai' | 'ollama' | 'groq';
 export type EmbeddingProvider = 'auto' | 'google_ai' | 'vertex' | 'openai' | 'ollama';
 export type AiInlineData = { mimeType: string; data: string };
 
@@ -19,6 +19,8 @@ export interface StudioSettingsRow {
     openai_api_key?: string | null;
     openai_model: string;
     openai_embedding_model?: string;
+    groq_api_key?: string | null;
+    groq_model: string;
     ollama_base_url: string;
     ollama_model: string;
     ollama_embedding_model?: string;
@@ -29,11 +31,12 @@ export interface StudioSettingsRow {
 
 export interface StudioSettingsPublic extends Omit<
     StudioSettingsRow,
-    'anthropic_api_key' | 'google_api_key' | 'openai_api_key'
+    'anthropic_api_key' | 'google_api_key' | 'openai_api_key' | 'groq_api_key'
 > {
     anthropic_api_key_configured: boolean;
     google_api_key_configured: boolean;
     openai_api_key_configured: boolean;
+    groq_api_key_configured: boolean;
 }
 
 export interface ProviderReadiness {
@@ -70,13 +73,14 @@ export const DEFAULT_STUDIO_SETTINGS: StudioSettingsRow = {
     google_embedding_model: 'gemini-embedding-001',
     openai_model: 'gpt-4o',
     openai_embedding_model: 'text-embedding-3-small',
+    groq_model: 'openai/gpt-oss-20b',
     ollama_base_url: 'http://127.0.0.1:11434',
     ollama_model: 'llama3',
     ollama_embedding_model: 'nomic-embed-text',
     waha_dashboard_url: 'http://127.0.0.1:3010/dashboard',
 };
 
-const SECRET_FIELDS = ['anthropic_api_key', 'google_api_key', 'openai_api_key'] as const;
+const SECRET_FIELDS = ['anthropic_api_key', 'google_api_key', 'openai_api_key', 'groq_api_key'] as const;
 
 export const STUDIO_SETTINGS_DB_FIELDS = [
     'default_llm_provider',
@@ -92,6 +96,8 @@ export const STUDIO_SETTINGS_DB_FIELDS = [
     'openai_api_key',
     'openai_model',
     'openai_embedding_model',
+    'groq_api_key',
+    'groq_model',
     'ollama_base_url',
     'ollama_model',
     'ollama_embedding_model',
@@ -104,11 +110,12 @@ export type StudioSettingsUpdatePayload = Partial<
     clear_anthropic_api_key?: boolean;
     clear_google_api_key?: boolean;
     clear_openai_api_key?: boolean;
+    clear_groq_api_key?: boolean;
 };
 
 export function maskSettingsForClient(row: StudioSettingsRow | null): StudioSettingsPublic {
     const base = { ...DEFAULT_STUDIO_SETTINGS, ...(row || {}) };
-    const { anthropic_api_key, google_api_key, openai_api_key, ...rest } = base;
+    const { anthropic_api_key, google_api_key, openai_api_key, groq_api_key, ...rest } = base;
     return {
         ...rest,
         default_llm_provider: normalizeLlmProvider(rest.default_llm_provider),
@@ -116,6 +123,7 @@ export function maskSettingsForClient(row: StudioSettingsRow | null): StudioSett
         anthropic_api_key_configured: !!anthropic_api_key?.trim(),
         google_api_key_configured: !!google_api_key?.trim(),
         openai_api_key_configured: !!openai_api_key?.trim(),
+        groq_api_key_configured: !!groq_api_key?.trim(),
     };
 }
 
@@ -124,6 +132,7 @@ export function normalizeLlmProvider(v: unknown): LlmProvider {
     if (s === 'anthropic' || s === 'claude') return 'anthropic';
     if (s === 'openai') return 'openai';
     if (s === 'ollama') return 'ollama';
+    if (s === 'groq') return 'groq';
     return 'google';
 }
 
@@ -169,6 +178,9 @@ export function mergeSettingsUpdate(
     }
     if (payload.clear_openai_api_key) {
         merged.openai_api_key = null;
+    }
+    if (payload.clear_groq_api_key) {
+        merged.groq_api_key = null;
     }
     return merged as Partial<StudioSettingsRow>;
 }

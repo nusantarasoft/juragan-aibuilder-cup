@@ -26,6 +26,14 @@ export default function EmbeddingPanel({ activeProvider }: Props) {
                     message={`LLM aktif: ${PROVIDER_LABELS.ollama}. Untuk RAG, pilih Embedding Provider = Ollama dan pull model nomic-embed-text.`}
                 />
             )}
+            {activeProvider === "groq" && (
+                <Alert
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    message={`LLM aktif: ${PROVIDER_LABELS.groq}. Groq tidak dipakai untuk embedding — pilih Google / OpenAI / Ollama untuk RAG.`}
+                />
+            )}
             <Card title="Embedding (RAG / pencarian dokumen)" bordered={false} style={{ padding: 0 }}>
                 <Form.Item
                     name="default_embedding_provider"

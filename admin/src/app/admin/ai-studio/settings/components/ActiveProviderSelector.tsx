@@ -8,7 +8,7 @@ import { PROVIDER_LABELS } from "../types";
 
 const { Text } = Typography;
 
-const PROVIDERS: LlmProvider[] = ["anthropic", "google", "openai", "ollama"];
+const PROVIDERS: LlmProvider[] = ["anthropic", "google", "openai", "groq", "ollama"];
 
 type Props = {
     status: StudioAiStatus | null;
@@ -24,7 +24,7 @@ export default function ActiveProviderSelector({ status }: Props) {
                 const meta = status?.providers.find((x) => x.provider === p);
                 const selected = active === p;
                 return (
-                    <Col xs={12} md={6} key={p}>
+                    <Col xs={12} md={8} lg={4} key={p}>
                         <div
                             role="button"
                             tabIndex={0}

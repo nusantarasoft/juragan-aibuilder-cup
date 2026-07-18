@@ -15,6 +15,8 @@ const DB_FIELDS = [
     "openai_api_key",
     "openai_model",
     "openai_embedding_model",
+    "groq_api_key",
+    "groq_model",
     "ollama_base_url",
     "ollama_model",
     "ollama_embedding_model",
@@ -33,6 +35,7 @@ export function buildSavePayload(values: StudioSettingsFormValues): Record<strin
     if (values.clear_anthropic_api_key) payload.clear_anthropic_api_key = true;
     if (values.clear_google_api_key) payload.clear_google_api_key = true;
     if (values.clear_openai_api_key) payload.clear_openai_api_key = true;
+    if (values.clear_groq_api_key) payload.clear_groq_api_key = true;
 
     return payload;
 }
@@ -57,6 +60,12 @@ export function validateActiveProvider(
                 return "OpenAI API key wajib untuk provider aktif.";
             }
             if (!values.openai_model?.trim()) return "OpenAI model wajib diisi.";
+            return null;
+        case "groq":
+            if (!values.groq_api_key_configured && !values.groq_api_key?.trim()) {
+                return "Groq API key wajib untuk provider aktif.";
+            }
+            if (!values.groq_model?.trim()) return "Groq model wajib diisi.";
             return null;
         case "google":
             if (

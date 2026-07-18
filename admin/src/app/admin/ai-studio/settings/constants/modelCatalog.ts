@@ -16,6 +16,13 @@ export const CHAT_MODEL_CATALOG: Record<LlmProvider, { label: string; value: str
         { label: 'GPT-4o mini', value: 'gpt-4o-mini' },
         { label: 'GPT-4 Turbo', value: 'gpt-4-turbo' },
     ],
+    groq: [
+        { label: 'GPT OSS 20B (fast)', value: 'openai/gpt-oss-20b' },
+        { label: 'GPT OSS 120B', value: 'openai/gpt-oss-120b' },
+        { label: 'Llama 3.3 70B Versatile', value: 'llama-3.3-70b-versatile' },
+        { label: 'Llama 3.1 8B Instant', value: 'llama-3.1-8b-instant' },
+        { label: 'Qwen3.6 27B', value: 'qwen/qwen3.6-27b' },
+    ],
     ollama: [
         { label: 'Llama 3', value: 'llama3' },
         { label: 'Llama 3.1', value: 'llama3.1' },

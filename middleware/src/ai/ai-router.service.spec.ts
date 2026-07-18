@@ -5,6 +5,7 @@ import { ClaudeAiService } from './claude-ai.service';
 import { VertexAiService } from './vertex-ai.service';
 import { OpenAiService } from './openai-ai.service';
 import { OllamaAiService } from './ollama-ai.service';
+import { GroqAiService } from './groq-ai.service';
 
 describe('AiRouterService', () => {
     it('routes generateText to anthropic when configured', async () => {
@@ -21,6 +22,7 @@ describe('AiRouterService', () => {
             {} as VertexAiService,
             {} as OpenAiService,
             {} as OllamaAiService,
+            {} as GroqAiService,
         );
 
         const out = await router.generateText('hello');
@@ -41,9 +43,31 @@ describe('AiRouterService', () => {
             {} as VertexAiService,
             openAi,
             {} as OllamaAiService,
+            {} as GroqAiService,
         );
 
         const out = await router.generateText('hi');
         expect(out).toBe('openai reply');
+    });
+
+    it('routes generateText to groq when configured', async () => {
+        const aiSettings = {
+            getLlmProvider: vi.fn().mockResolvedValue('groq'),
+        } as unknown as AiSettingsService;
+        const groqAi = {
+            generateText: vi.fn().mockResolvedValue('groq reply'),
+        } as unknown as GroqAiService;
+        const router = new AiRouterService(
+            aiSettings,
+            {} as ClaudeAiService,
+            {} as VertexAiService,
+            {} as OpenAiService,
+            {} as OllamaAiService,
+            groqAi,
+        );
+
+        const out = await router.generateText('hi groq');
+        expect(out).toBe('groq reply');
+        expect(groqAi.generateText).toHaveBeenCalledWith('hi groq', undefined, undefined);
     });
 });

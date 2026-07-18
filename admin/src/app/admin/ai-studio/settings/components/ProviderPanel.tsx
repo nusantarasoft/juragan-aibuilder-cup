@@ -20,6 +20,7 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
     const anthropicKeyConfigured = Form.useWatch("anthropic_api_key_configured");
     const googleKeyConfigured = Form.useWatch("google_api_key_configured");
     const openaiKeyConfigured = Form.useWatch("openai_api_key_configured");
+    const groqKeyConfigured = Form.useWatch("groq_api_key_configured");
 
     const req = isActive ? [{ required: true, message: "Wajib diisi untuk provider aktif" }] : [];
 
@@ -93,6 +94,31 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
                         provider="openai"
                         rules={req}
                     />
+                </>
+            )}
+
+            {provider === "groq" && (
+                <>
+                    <ApiKeyField
+                        name="groq_api_key"
+                        label="API Key"
+                        configured={!!groqKeyConfigured}
+                        clearFieldName="clear_groq_api_key"
+                        placeholder="gsk_..."
+                    />
+                    <ModelSelect
+                        name="groq_model"
+                        label="Chat Model"
+                        provider="groq"
+                        rules={req}
+                    />
+                    <Text type="secondary" style={{ display: "block", marginBottom: 8, fontSize: 12 }}>
+                        Ambil key di{" "}
+                        <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">
+                            console.groq.com/keys
+                        </a>
+                        . Embedding tetap pakai provider terpisah (Google / OpenAI / Ollama).
+                    </Text>
                 </>
             )}
 
