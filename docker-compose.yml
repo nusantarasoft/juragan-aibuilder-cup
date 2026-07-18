@@ -677,6 +677,10 @@ services:
       - WHATSAPP_RESTART_ALL_SESSIONS=True
     volumes:
       - waha-sessions:/app/.sessions
+      # Patch WEBJS MsgKey._serialized → $1 (WhatsApp Web change drops inbound message events otherwise)
+      - ./scripts/waha-patch-lid-id.js:/patches/waha-patch-lid-id.js:ro
+      - ./scripts/waha-entrypoint.sh:/patches/waha-entrypoint.sh:ro
+    command: ["/bin/sh", "/patches/waha-entrypoint.sh"]
     # Required so WHATSAPP_HOOK_URL reaches middleware on the Windows host (custom dns below would otherwise break this name)
     extra_hosts:
       - "host.docker.internal:host-gateway"
