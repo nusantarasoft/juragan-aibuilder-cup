@@ -2,9 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
-import { AuroraText } from "@/components/magicui/aurora-text";
 import {
-    Alert,
     Button,
     Card,
     Form,
@@ -35,11 +33,12 @@ import { buildSavePayload, validateActiveProvider } from "./utils/buildSavePaylo
 
 const { Title, Text } = Typography;
 
-const glass = {
-    background: "rgba(255,255,255,0.65)",
-    backdropFilter: "blur(12px)",
-    border: "1px solid rgba(255,255,255,0.45)",
-    borderRadius: 14,
+/** Solid cards — avoid glass over animated CMS background (text/color stacking). */
+const panelCard: React.CSSProperties = {
+    background: "#ffffff",
+    border: "1px solid #e5e7eb",
+    borderRadius: 12,
+    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
 };
 
 const DEFAULT_VALUES: Partial<StudioSettingsFormValues> = {
@@ -152,29 +151,34 @@ export default function AiStudioSettingsPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText>AI Models & Configuration</AuroraText>}
+            title="AI Models & Configuration"
             breadcrumb={[{ title: "AI Studio" }, { title: "Settings" }]}
         >
-            <div style={{ maxWidth: 1100, margin: "0 auto", paddingBottom: 88 }}>
+            <div style={{ maxWidth: 1100, margin: "0 auto", paddingBottom: 88, position: "relative", zIndex: 1 }}>
                 <div
                     style={{
-                        marginBottom: 24,
+                        marginBottom: 20,
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "flex-start",
                         flexWrap: "wrap",
                         gap: 12,
+                        background: "rgba(255,255,255,0.92)",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 12,
+                        padding: "16px 20px",
                     }}
                 >
-                    <div>
-                        <Title level={4} style={{ margin: 0 }}>
+                    <div style={{ minWidth: 0, flex: "1 1 240px" }}>
+                        <Title level={4} style={{ margin: 0, color: "#111827" }}>
                             Satu LLM aktif untuk seluruh platform
                         </Title>
-                        <Text type="secondary">
-                            CRM, ITSM, PM, AI Studio, RAG, dan modul lain hanya memakai provider yang Anda pilih di bawah.
+                        <Text type="secondary" style={{ display: "block", marginTop: 4 }}>
+                            CRM, ITSM, PM, AI Studio, RAG, dan modul lain hanya memakai provider yang
+                            Anda pilih di bawah.
                         </Text>
                     </div>
-                    <Space>
+                    <Space wrap>
                         <Button icon={<ReloadOutlined />} onClick={loadAll} disabled={loading}>
                             Refresh
                         </Button>
@@ -207,9 +211,10 @@ export default function AiStudioSettingsPage() {
                     <Form.Item name="groq_api_key_configured" hidden><input type="hidden" /></Form.Item>
 
                     <Card
-                        style={{ ...glass, marginBottom: 16 }}
+                        style={{ ...panelCard, marginBottom: 16 }}
+                        styles={{ body: { paddingTop: 16 } }}
                         title={
-                            <span>
+                            <span style={{ color: "#111827" }}>
                                 <RobotOutlined /> LLM Aktif
                             </span>
                         }
@@ -235,7 +240,7 @@ export default function AiStudioSettingsPage() {
                         )}
                     </Card>
 
-                    <Card style={glass}>
+                    <Card style={panelCard} styles={{ body: { paddingTop: 8 } }}>
                         <Tabs destroyInactiveTabPane={false} items={tabItems} />
                     </Card>
                 </Form>
@@ -248,12 +253,14 @@ export default function AiStudioSettingsPage() {
                             left: 0,
                             right: 0,
                             padding: "12px 24px",
-                            background: "rgba(255,255,255,0.95)",
-                            borderTop: "1px solid #f0f0f0",
+                            background: "#ffffff",
+                            borderTop: "1px solid #e5e7eb",
                             display: "flex",
                             justifyContent: "center",
+                            alignItems: "center",
                             gap: 12,
                             zIndex: 100,
+                            boxShadow: "0 -4px 12px rgba(0,0,0,0.06)",
                         }}
                     >
                         <Text type="warning">Perubahan belum disimpan</Text>

@@ -56,6 +56,23 @@ function slugifyTenant(input: string): string {
         .slice(0, 48);
 }
 
+/** Normalize to 628... digits; drop short/invalid entries. */
+function normalizeOwnerPhones(raw: unknown): string[] {
+    const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+    const out: string[] = [];
+    for (const entry of list) {
+        const digits = String(entry || '').replace(/\D/g, '');
+        if (digits.length < 8) continue;
+        if (!out.includes(digits)) out.push(digits);
+    }
+    return out;
+}
+
+/** All phones that can chat as this UMKM (primary + allowlist). */
+function collectConfigOwnerPhones(row: StudioWhatsAppConfig): string[] {
+    return normalizeOwnerPhones([row.business_phone, ...(row.allowlist_phones || [])]);
+}
+
 export default function UmkmStudioPage() {
     const { themeColor } = usePreferencesStore();
     const { loading: authLoading } = useAuth();
@@ -106,7 +123,7 @@ export default function UmkmStudioPage() {
             enabled: true,
             useGuidedFlow: true,
             wahaSession: 'default',
-            allowlistPhones: [],
+            ownerPhones: [],
             createNewNotebook: true,
         });
         setDrawerOpen(true);
@@ -118,11 +135,10 @@ export default function UmkmStudioPage() {
             tenantId: row.tenant_id,
             label: row.label ?? '',
             wahaSession: row.waha_session ?? '',
-            businessPhone: row.business_phone ?? '',
+            ownerPhones: collectConfigOwnerPhones(row),
             notebookId: row.notebook_id ?? undefined,
             enabled: row.enabled,
             useGuidedFlow: row.use_guided_flow,
-            allowlistPhones: row.allowlist_phones ?? [],
             createNewNotebook: false,
         });
         setDrawerOpen(true);
@@ -161,14 +177,20 @@ export default function UmkmStudioPage() {
                 throw new Error('Pilih atau buat notebook');
             }
 
+            const ownerPhones = normalizeOwnerPhones(values.ownerPhones);
+            if (ownerPhones.length === 0) {
+                throw new Error('Minimal satu nomor pemilik toko');
+            }
+
+            // WAHA tetap 1 inbox; semua nomor pemilik di-routing ke tenant ini
             await studioService.updateWhatsAppConfig({
                 tenantId: values.tenantId,
                 notebookId,
                 enabled: values.enabled,
                 useGuidedFlow: values.useGuidedFlow,
-                allowlistPhones: values.allowlistPhones || [],
+                allowlistPhones: ownerPhones,
                 wahaSession: 'default',
-                businessPhone: values.businessPhone?.replace(/\D/g, '') || null,
+                businessPhone: ownerPhones[0],
                 label: values.label || null,
             });
 
@@ -216,19 +238,20 @@ export default function UmkmStudioPage() {
         },
         {
             title: 'Nomor pemilik',
-            dataIndex: 'business_phone',
-            key: 'business_phone',
-            render: (v: string) => v || '—',
-        },
-        {
-            title: 'Staff',
-            key: 'staff',
-            render: (_: unknown, row: StudioWhatsAppConfig) =>
-                row.allowlist_phones?.length ? (
-                    <Text type="secondary">{row.allowlist_phones.length} nomor</Text>
-                ) : (
-                    '—'
-                ),
+            key: 'owner_phones',
+            render: (_: unknown, row: StudioWhatsAppConfig) => {
+                const phones = collectConfigOwnerPhones(row);
+                if (!phones.length) return '—';
+                return (
+                    <Space size={[4, 4]} wrap>
+                        {phones.map((p, i) => (
+                            <Tag key={p} color={i === 0 ? 'green' : 'default'}>
+                                {p}
+                            </Tag>
+                        ))}
+                    </Space>
+                );
+            },
         },
         {
             title: 'Status',
@@ -284,7 +307,7 @@ export default function UmkmStudioPage() {
             }
             subTitle={
                 <DecryptedText
-                    text="Satu nomor WA admin — setiap UMKM dikenali dari nomor HP pemilik yang mengirim pesan"
+                    text="Satu nomor WA admin — tiap UMKM boleh punya beberapa nomor pemilik toko"
                     animateOn="view"
                     revealDirection="center"
                     speed={40}
@@ -321,9 +344,9 @@ export default function UmkmStudioPage() {
                                 <Link href="/admin/ai-studio/waha-setup">Setup WAHA</Link> (session{' '}
                                 <code>default</code>)
                             </li>
-                            <li><strong>Tambah UMKM</strong> — daftarkan <strong>nomor HP pemilik</strong> yang akan chat ke admin</li>
+                            <li><strong>Tambah UMKM</strong> — daftarkan <strong>satu atau lebih nomor HP pemilik</strong> toko</li>
                             <li><strong>Setup UMKM</strong> — aktifkan flow penjualan</li>
-                            <li>Pemilik kirim WA ke nomor admin: <em>jual ...</em>, <em>laporan</em>, dll.</li>
+                            <li>Pemilik (mana saja yang terdaftar) kirim WA ke nomor admin: <em>jual ...</em>, <em>laporan</em>, dll.</li>
                             <li>Isi <strong>Katalog</strong> per tenant</li>
                         </ol>
                     }
@@ -375,12 +398,26 @@ export default function UmkmStudioPage() {
                         <Input />
                     </Form.Item>
                     <Form.Item
-                        name="businessPhone"
-                        label="Nomor HP pemilik UMKM"
-                        rules={[{ required: true, message: 'Nomor pemilik wajib' }]}
-                        extra="Nomor ini yang dipakai pemilik mengirim WA ke nomor admin. 628... tanpa +"
+                        name="ownerPhones"
+                        label="Nomor HP pemilik toko"
+                        rules={[
+                            {
+                                validator: async (_, value) => {
+                                    const phones = normalizeOwnerPhones(value);
+                                    if (phones.length === 0) {
+                                        throw new Error('Minimal satu nomor pemilik');
+                                    }
+                                },
+                            },
+                        ]}
+                        extra="Boleh lebih dari 1. Ketik 628... lalu Enter. Semua nomor ini boleh catat jual/laporan ke WA admin yang sama."
                     >
-                        <Input placeholder="6288123456789" />
+                        <Select
+                            mode="tags"
+                            placeholder="6288123456789 — Enter untuk tambah lagi"
+                            tokenSeparators={[',', ' ', ';']}
+                            open={false}
+                        />
                     </Form.Item>
 
                     {!editing ? (
@@ -418,13 +455,6 @@ export default function UmkmStudioPage() {
                     </Form.Item>
                     <Form.Item name="useGuidedFlow" label="Gunakan guided flow UMKM" valuePropName="checked">
                         <Switch />
-                    </Form.Item>
-                    <Form.Item
-                        name="allowlistPhones"
-                        label="Nomor staff tambahan (opsional)"
-                        extra="Karyawan yang juga boleh catat penjualan untuk toko ini"
-                    >
-                        <Select mode="tags" placeholder="628..." tokenSeparators={[',', ' ']} />
                     </Form.Item>
                 </Form>
             </Drawer>

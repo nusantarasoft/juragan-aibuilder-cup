@@ -160,7 +160,11 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
 
     return (
         <Card
-            title={`Konfigurasi ${PROVIDER_LABELS[provider]}`}
+            title={
+                <span style={{ color: "#111827" }}>
+                    Konfigurasi {PROVIDER_LABELS[provider]}
+                </span>
+            }
             extra={
                 configured ? (
                     <Text type="success">Siap digunakan</Text>
@@ -168,7 +172,13 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
                     <Text type="warning">Lengkapi lalu Save</Text>
                 )
             }
-            style={{ marginTop: 16 }}
+            style={{
+                marginTop: 16,
+                background: "#f9fafb",
+                border: "1px solid #e5e7eb",
+                borderRadius: 10,
+            }}
+            styles={{ header: { borderBottom: "1px solid #e5e7eb" } }}
         >
             {inner}
         </Card>

@@ -34,7 +34,7 @@ export default function EmbeddingPanel({ activeProvider }: Props) {
                     message={`LLM aktif: ${PROVIDER_LABELS.groq}. Groq tidak dipakai untuk embedding — pilih Google / OpenAI / Ollama untuk RAG.`}
                 />
             )}
-            <Card title="Embedding (RAG / pencarian dokumen)" bordered={false} style={{ padding: 0 }}>
+            <Card title="Embedding (RAG / pencarian dokumen)" bordered={false} styles={{ body: { padding: 0 } }}>
                 <Form.Item
                     name="default_embedding_provider"
                     label="Embedding Provider"
