@@ -325,8 +325,12 @@ export function formatMenuHubPrompt(): string {
         '*2* Tambah menu',
         '*3* Tambah stok menu',
         '',
-        'Balas angka, atau ketik *batal*.',
+        'Balas *1* / *2* / *3*, atau ketik *batal* untuk kembali.',
     ].join('\n');
+}
+
+export function formatMenuHubUnknownChoice(): string {
+    return ['Pilihan tidak dikenali. Pakai *1*, *2*, atau *3*.', '', formatMenuHubPrompt()].join('\n');
 }
 
 export function formatPurchaseHubPrompt(): string {

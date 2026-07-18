@@ -10,6 +10,7 @@ import {
 import {
     DEFAULT_UMKM_COMMANDS,
     formatMenuHubPrompt,
+    formatMenuHubUnknownChoice,
     formatPurchaseHubPrompt,
     formatReportHubPrompt,
     sanitizeUmkmCommandsInput,
@@ -22,6 +23,8 @@ import {
 } from './studio-umkm-feedback.util';
 import {
     detectReportPeriod,
+    explainAddProductParseFailure,
+    explainAddStockParseFailure,
     formatIdrShort,
     generatePurchaseNumber,
     parseAddProductMessage,
@@ -34,6 +37,7 @@ import {
 import {
     detectUmkmConfirmReply,
     detectUmkmIntent,
+    detectUmkmMenuDigit,
     extractStockProductQuery,
     formatDailyReportWa,
     formatRecordSaleMenuPrompt,
@@ -999,7 +1003,7 @@ export class StudioUmkmService {
         this.pendingPurchaseByChat.set(this.chatKey(tenantId, phone, conversationId), pending);
     }
 
-    /** Continue active submenu/wizard; undefined = no wizard. */
+    /** Continue active submenu/wizard; undefined = no wizard / re-route to top-level intent. */
     async continueWizard(
         text: string,
         tenantId: string,
@@ -1010,6 +1014,13 @@ export class StudioUmkmService {
         const wizard = this.getWizard(tenantId, phone, conversationId);
         if (!wizard) return undefined;
         const t = text.trim();
+        const commands = this.resolveCommands(config);
+
+        // Escape hatch: batal / cancel exits any wizard back to main menu
+        if (detectUmkmConfirmReply(t, commands) === 'cancel') {
+            this.clearWizard(tenantId, phone, conversationId);
+            return `❌ Dibatalkan.\n\n${formatUmkmHelp(commands)}`;
+        }
 
         if (wizard.kind === 'menu_hub') {
             if (t === '1') {
@@ -1018,13 +1029,23 @@ export class StudioUmkmService {
             }
             if (t === '2') {
                 this.setWizard(tenantId, { kind: 'await_add_product', createdAt: Date.now() }, phone, conversationId);
-                return 'Kirim: *nama menu* [harga]\nContoh: *mie ayam 15000* atau *bakso modal 10000 18000*';
+                return [
+                    'Kirim: *nama menu* [harga]',
+                    'Contoh: *mie ayam 15000* atau *bakso modal 10000 18000*',
+                    '',
+                    'Ketik *batal* untuk kembali ke menu.',
+                ].join('\n');
             }
             if (t === '3') {
                 this.setWizard(tenantId, { kind: 'await_add_stock', createdAt: Date.now() }, phone, conversationId);
-                return 'Kirim: *nama menu* *qty*\nContoh: *mie ayam 10*';
+                return [
+                    'Kirim: *nama menu* *qty*',
+                    'Contoh: *mie ayam 10*',
+                    '',
+                    'Ketik *batal* untuk kembali ke menu.',
+                ].join('\n');
             }
-            return formatMenuHubPrompt();
+            return formatMenuHubUnknownChoice();
         }
 
         if (wizard.kind === 'purchase_hub') {
@@ -1042,6 +1063,8 @@ export class StudioUmkmService {
                     'Kirim detail belanja:',
                     '• *belanja 10 mie ayam @5000*',
                     '• *belanja 2026-07-18 5 bakso 3000, 2 es teh 2000*',
+                    '',
+                    'Ketik *batal* untuk kembali ke menu.',
                 ].join('\n');
             }
             return formatPurchaseHubPrompt();
@@ -1062,6 +1085,16 @@ export class StudioUmkmService {
             return formatReportHubPrompt();
         }
 
+        // Input wizards: bare menu digit exits so top-level menu can run
+        const isInputWizard =
+            wizard.kind === 'await_add_product' ||
+            wizard.kind === 'await_add_stock' ||
+            wizard.kind === 'await_purchase';
+        if (isInputWizard && detectUmkmMenuDigit(t, commands)) {
+            this.clearWizard(tenantId, phone, conversationId);
+            return undefined;
+        }
+
         if (wizard.kind === 'await_add_product') {
             return this.beginOrRunAddProduct(text, tenantId, phone, conversationId, true);
         }
@@ -1072,6 +1105,11 @@ export class StudioUmkmService {
             return this.beginOrRunPurchase(text, tenantId, phone, conversationId, config, true);
         }
         return undefined;
+    }
+
+    /** Clear stuck wizard (e.g. after failed add-product). */
+    clearWizardPublic(tenantId: string, phone?: string, conversationId?: string) {
+        this.clearWizard(tenantId, phone, conversationId);
     }
 
     async beginOrRunAddProduct(
@@ -1086,7 +1124,7 @@ export class StudioUmkmService {
             if (!fromWizard) {
                 this.setWizard(tenantId, { kind: 'await_add_product', createdAt: Date.now() }, phone, conversationId);
             }
-            return 'Format: *nama menu* [harga]\nContoh: *mie ayam 15000*';
+            return explainAddProductParseFailure(text);
         }
         try {
             const item = await this.inventoryService.createItem(tenantId, {
@@ -1103,7 +1141,11 @@ export class StudioUmkmService {
             ].join('\n');
         } catch (e: any) {
             this.logger.warn(`add product failed: ${e?.message}`);
-            return `Gagal menambah menu: ${e?.message || 'error'}`;
+            return [
+                `Gagal menambah menu: ${e?.message || 'error'}`,
+                '',
+                'Coba lagi, atau ketik *batal* untuk kembali ke menu.',
+            ].join('\n');
         }
     }
 
@@ -1119,12 +1161,16 @@ export class StudioUmkmService {
             if (!fromWizard) {
                 this.setWizard(tenantId, { kind: 'await_add_stock', createdAt: Date.now() }, phone, conversationId);
             }
-            return 'Format: *nama menu* *qty*\nContoh: *mie ayam 10*';
+            return explainAddStockParseFailure(text);
         }
         const products = await this.fetchActiveProducts(tenantId);
         const match = findBestProductMatch(parsed.productQuery, products, 40);
         if (!match) {
-            return `Menu *${parsed.productQuery}* tidak ditemukan. Ketik *daftar menu* dulu.`;
+            return [
+                `Menu *${parsed.productQuery}* tidak ditemukan.`,
+                'Ketik *batal*, lalu *2* → *1* untuk lihat daftar menu,',
+                'atau ketik ulang nama yang lebih mirip + jumlah (contoh: *mie ayam 10*).',
+            ].join('\n');
         }
         try {
             await this.inventoryService.createStockMovement(tenantId, {

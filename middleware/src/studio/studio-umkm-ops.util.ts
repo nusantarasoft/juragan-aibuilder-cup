@@ -126,20 +126,87 @@ export function parseAddProductMessage(text: string): ParsedAddProduct | null {
     const costPrice = costMatch ? parseMoneyToken(costMatch[1]) || undefined : undefined;
     const withoutCost = costMatch ? t.replace(costMatch[0], '').trim() : t;
 
-    const priceMatch = withoutCost.match(/(?:@|harga|rp\.?\s*)?\s*([\d][\d.,]*(?:\s*rb)?)\s*$/i);
     let sellingPrice = 0;
     let name = withoutCost;
-    if (priceMatch) {
-        sellingPrice = parseMoneyToken(priceMatch[1]) || 0;
-        name = withoutCost.slice(0, priceMatch.index).trim();
+
+    const isWeakName = (n: string) =>
+        !n ||
+        n.length < 2 ||
+        !/[a-zA-ZÀ-ÿ]/.test(n) ||
+        /^(?:rp|idr|harga)$/i.test(n) ||
+        /^[\d.,\s]+$/.test(n) ||
+        /^(?:rp\.?\s*)?[\d.,]+(?:\s*rb)?$/i.test(n);
+
+    // Trailing price: "mie ayam 15000" / "es teh @5000" / "bakso harga 18rb"
+    const priceMatch = withoutCost.match(/(?:@|harga|rp\.?\s*)?\s*([\d][\d.,]*(?:\s*rb)?)\s*$/i);
+    if (priceMatch && priceMatch.index != null && priceMatch.index > 0) {
+        const before = withoutCost.slice(0, priceMatch.index).trim();
+        if (!isWeakName(before)) {
+            sellingPrice = parseMoneyToken(priceMatch[1]) || 0;
+            name = before;
+        }
     }
-    name = name.replace(/[,\-–]+$/, '').trim();
-    if (name.length < 2) return null;
+
+    // Leading price: "Rp 15000 mie ayam" / "15000 bakso"
     if (sellingPrice <= 0) {
-        // allow name-only; price 0
+        const lead = withoutCost.match(/^(?:rp\.?\s*|harga\s+)?([\d.,]+(?:\s*rb)?)\s+(.+)$/i);
+        if (lead && !isWeakName(lead[2].trim())) {
+            sellingPrice = parseMoneyToken(lead[1]) || 0;
+            name = lead[2].trim();
+        }
+    }
+
+    name = name.replace(/[,\-–]+$/, '').trim();
+    if (isWeakName(name)) return null;
+    if (sellingPrice <= 0) {
         sellingPrice = 0;
     }
     return { name, sellingPrice, costPrice };
+}
+
+/** Human-friendly tip when add-product parse fails (avoid looping silent "format" only). */
+export function explainAddProductParseFailure(text: string): string {
+    const t = text.trim();
+    const lines = [
+        'Belum bisa saya baca sebagai menu baru.',
+        '',
+        'Kirim: *nama menu* diikuti *harga*',
+        'Contoh: *mie ayam 15000*',
+        'Atau dengan modal: *bakso modal 10000 18000*',
+    ];
+    if (!t || /^[0-9]$/.test(t)) {
+        lines.push('', 'Ketik *batal* atau *0* untuk kembali ke menu.');
+        return lines.join('\n');
+    }
+    if (/^[\d.,\s]+(?:rb)?$/i.test(t) || /^(?:rp\.?\s*)?[\d.,]+(?:\s*rb)?$/i.test(t)) {
+        lines.push('', 'Yang dikirim hanya angka/harga — sertakan juga *nama* menunya.');
+    } else if (t.length < 2) {
+        lines.push('', 'Nama menu terlalu pendek (minimal 2 huruf).');
+    } else if (/^\d+\s+\d+$/.test(t)) {
+        lines.push('', 'Sepertinya dua angka tanpa nama. Contoh yang benar: *es teh 5000*.');
+    }
+    lines.push('', 'Ketik *batal* atau *0* untuk kembali ke menu.');
+    return lines.join('\n');
+}
+
+/** Human-friendly tip when add-stock parse fails. */
+export function explainAddStockParseFailure(text: string): string {
+    const t = text.trim();
+    const lines = [
+        'Belum bisa saya baca sebagai tambah stok.',
+        '',
+        'Kirim: *nama menu* *jumlah*',
+        'Contoh: *mie ayam 10* atau *10 mie ayam*',
+    ];
+    if (!t || /^[0-9]$/.test(t)) {
+        lines.push('', 'Ketik *batal* atau *0* untuk kembali ke menu.');
+        return lines.join('\n');
+    }
+    if (/^[a-zA-ZÀ-ÿ0-9][\wÀ-ÿ\s.'-]{0,40}$/i.test(t) && !/\d/.test(t)) {
+        lines.push('', `Anda menulis *${t}* tanpa jumlah. Contoh: *${t} 10*.`);
+    }
+    lines.push('', 'Ketik *batal* atau *0* untuk kembali ke menu.');
+    return lines.join('\n');
 }
 
 /** Parse: tambah stok mie ayam 10 */
