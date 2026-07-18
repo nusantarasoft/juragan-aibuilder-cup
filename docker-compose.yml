@@ -659,8 +659,8 @@ services:
       # Bind IPv4 only — localhost (::1) often hangs on Windows Docker
       - "127.0.0.1:${WAHA_HOST_PORT:-3010}:3000"
     environment:
-      # Host-run middleware: set WHATSAPP_HOOK_URL in .env to http://<LAN-IP>:4001/... (host.docker.internal often fails on Windows)
-      - WHATSAPP_HOOK_URL=${WHATSAPP_HOOK_URL:-http://${LOCAL_HOST_IP:-host.docker.internal}:4001/api/studio/whatsapp/webhook}
+      # Host-run middleware: use host.docker.internal (extra_hosts below). LAN IP often unreachable from Docker Desktop VM.
+      - WHATSAPP_HOOK_URL=${WHATSAPP_HOOK_URL:-http://host.docker.internal:4001/api/studio/whatsapp/webhook}
       - WHATSAPP_HOOK_EVENTS=message,message.any
       - WHATSAPP_HOOK_HMAC_KEY=${WAHA_WEBHOOK_HMAC_KEY:-}
       - WAHA_API_KEY=${WAHA_API_KEY:-}
@@ -677,6 +677,9 @@ services:
       - WHATSAPP_RESTART_ALL_SESSIONS=True
     volumes:
       - waha-sessions:/app/.sessions
+    # Required so WHATSAPP_HOOK_URL reaches middleware on the Windows host (custom dns below would otherwise break this name)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     dns:
       - 8.8.8.8
       - 8.8.4.4

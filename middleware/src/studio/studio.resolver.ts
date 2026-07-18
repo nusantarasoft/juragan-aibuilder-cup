@@ -428,6 +428,10 @@ export class StudioResolver {
         );
         if (notebookId && resolvedTenant) {
             await this.studioUmkmService.setupUmkmNotebook(notebookId, resolvedTenant);
+            // Ensure AIDLC guide flow exists when UMKM WA config is enabled
+            if (enabled && useGuidedFlow !== false) {
+                await this.guideFlowService.createAndPublishUmkmFlow(notebookId);
+            }
         }
         return row;
     }
