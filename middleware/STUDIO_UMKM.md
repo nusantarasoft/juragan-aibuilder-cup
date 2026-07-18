@@ -157,15 +157,30 @@ Kirim ke nomor bisnis yang ter-pair:
 
 | Pesan | Hasil yang diharapkan |
 |-------|-----------------------|
-| `bantuan` | Menu format catat, stok & laporan |
+| `5` / `bantuan` / `menu` | Menu angka + contoh format |
+| `1` | Prompt catat penjualan (minta detail `jual ...`) |
 | `jual 3 es kopi 45000` | Preview konfirmasi (belum ke DB) |
-| `ya` | Order tersimpan + nomor `WA-...` |
-| `batal` | Draft dibatalkan |
-| `cek stok kopi` | Qty available dari ledger |
-| `catat 2 tas total 500rb tunai` lalu `ya` | Order lunas |
-| `laporan hari ini` | Ringkasan omzet + produk terlaris |
+| `ya` / `1` (saat ada preview) | Order tersimpan + nomor `WA-...` |
+| `batal` / `0` (saat ada preview) | Draft dibatalkan |
+| `2` / `cek stok kopi` | Qty available dari ledger |
+| `3` / `daftar barang` | Katalog `inv_items` aktif |
+| `4` / `laporan hari ini` | Ringkasan omzet + produk terlaris |
 | `berapa penjualan hari ini` | Sama (laporan) |
-| `daftar barang` | Katalog `inv_items` aktif (nama, SKU, harga) |
+| `catat 2 tas total 500rb tunai` lalu `ya` | Order lunas |
+
+### Menu angka (gaya CS)
+
+Balas **satu digit** kapan saja (bisa digabung dengan kalimat):
+
+| Angka | Aksi |
+|-------|------|
+| `1` | Catat penjualan → lalu kirim detail `jual ...` |
+| `2` | Cek stok (semua / lanjut `cek stok [nama]`) |
+| `3` | Daftar barang |
+| `4` | Laporan hari ini |
+| `5` / `0` / `9` | Bantuan / menu |
+
+Saat ada preview penjualan: `1` = konfirmasi simpan, `0` = batalkan (setara `ya` / `batal`).
 
 ## Katalog produk (`inv_items`)
 
@@ -199,7 +214,7 @@ order pelanggan Budi 1 sabun 25000 transfer
 jualan 5 kopi susu @ 15000
 ```
 
-Setelah parse berhasil, bot mengirim **preview**. Commit ke DB hanya setelah pengguna membalas `ya` / `benar` / `ok` (staging di konteks percakapan / memory chat, TTL 15 menit).
+Setelah parse berhasil, bot mengirim **preview**. Commit ke DB hanya setelah pengguna membalas `ya` / `benar` / `ok` / `1` (staging di konteks percakapan / memory chat, TTL 15 menit). Batalkan dengan `batal` / `0`.
 
 Field yang diekstrak:
 
@@ -289,7 +304,7 @@ Unit test: `studio-umkm.util.spec.ts` (intent, parsing, guide flow graph).
 
 ## Fase 3 (sudah)
 
-- **Feedback logging** — ketik `1–5` / `puas` / `kurang` → tabel `studio_umkm_feedback`
+- **Feedback logging** — ketik `nilai 1–5` / `4/5` / `puas` / `kurang` → tabel `studio_umkm_feedback` (angka polos `1–5` = menu CS, bukan rating)
 - **Potong stok otomatis** — `SALE_OUT` via `InventoryService` saat commit (item match katalog)
 - **Laporan harian cron** — `StudioUmkmCronService` pukul 13:00 UTC (~20:00 WIB); matikan dengan `STUDIO_UMKM_DAILY_REPORT_ENABLED=false`
 - **WhatsApp via WAHA** — inbound webhook + outbound `sendText` (tidak memakai Meta Cloud API)

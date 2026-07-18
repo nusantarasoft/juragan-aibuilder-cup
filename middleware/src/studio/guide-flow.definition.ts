@@ -132,11 +132,13 @@ export function defaultUmkmGuideFlowDefinition(): GuideFlowDefinition {
                 type: 'message',
                 content:
                     'Halo! Saya asisten penjualan UMKM Anda.\n\n' +
-                    '• Ketik *jual ...* untuk catat penjualan (konfirmasi dengan *ya*)\n' +
-                    '• Ketik *cek stok [nama]* untuk lihat stok\n' +
-                    '• Ketik *daftar barang* untuk katalog produk\n' +
-                    '• Ketik *laporan* untuk rekap hari ini\n' +
-                    '• Tanya bebas soal toko/produk, atau *bantuan* untuk contoh format',
+                    '*Menu* — balas angka:\n' +
+                    '*1* Catat penjualan\n' +
+                    '*2* Cek stok\n' +
+                    '*3* Daftar barang\n' +
+                    '*4* Laporan hari ini\n' +
+                    '*5* Bantuan\n\n' +
+                    'Atau ketik kalimat: *jual ...*, *cek stok*, *laporan*, *daftar barang*.',
                 next: 'listen_intent',
             },
             {
@@ -147,6 +149,12 @@ export function defaultUmkmGuideFlowDefinition(): GuideFlowDefinition {
                     { when: 'keyword', value: 'bantuan', target: 'help' },
                     { when: 'keyword', value: 'help', target: 'help' },
                     { when: 'keyword', value: 'menu', target: 'help' },
+                    // CS-style numbered menu (also mirrored in detectUmkmIntent)
+                    { when: 'regex', pattern: '^1$', target: 'do_record' },
+                    { when: 'regex', pattern: '^2$', target: 'do_stock' },
+                    { when: 'regex', pattern: '^3$', target: 'do_list' },
+                    { when: 'regex', pattern: '^4$', target: 'do_report' },
+                    { when: 'regex', pattern: '^(0|5|9)$', target: 'help' },
                     { when: 'regex', pattern: '^(ya|iya|y|yes|benar|betul|ok|oke|okay|setuju|simpan|confirm|lanjut)$', target: 'do_confirm' },
                     { when: 'regex', pattern: '^(batal|batalkan|cancel|tidak|tdk|no|ngga|enggak|jangan)$', target: 'do_cancel' },
                     { when: 'keyword', value: 'daftar', target: 'do_list' },
@@ -190,7 +198,7 @@ export function defaultUmkmGuideFlowDefinition(): GuideFlowDefinition {
                 type: 'rag',
                 instruction:
                     'Jawab singkat dalam Bahasa Indonesia untuk pertanyaan UMKM seputar toko, produk, atau cara pakai asisten. ' +
-                    'Gunakan konteks dokumen/notebook bila relevan. Jika tidak yakin, arahkan ke ketik *bantuan*, *cek stok*, *laporan*, atau *jual ...*. ' +
+                    'Gunakan konteks dokumen/notebook bila relevan. Jika tidak yakin, arahkan ke menu angka *1–5* atau ketik *bantuan*, *cek stok*, *laporan*, atau *jual ...*. ' +
                     'Pertanyaan: {{rewrittenQuery}}',
                 next: 'listen_intent',
             },

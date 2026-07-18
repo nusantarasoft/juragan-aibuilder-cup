@@ -91,7 +91,7 @@ export function isUmkmSalesListenNode(node: Extract<GuideFlowNode, { type: 'list
 
 /**
  * UMKM listen routing: keyword/regex first, then intent detection before blind record_sale.
- * When a pending sale exists, ya/batal route to confirm/cancel even if flow transitions differ.
+ * When a pending sale exists, ya/batal (or digit 1/0) route to confirm/cancel even if flow transitions differ.
  */
 export function resolveUmkmListenTarget(
     node: Extract<GuideFlowNode, { type: 'listen' }>,

@@ -29,19 +29,21 @@ flowchart TD
     U --> M1[Kirim pesan ke nomor bisnis]
     M1 --> W{Jenis pesan?}
 
-    W -->|bantuan / menu| H[Terima panduan format]
-    W -->|jual / catat / order| R[Preview penjualan]
-    W -->|cek stok| S[Lihat stok ledger]
-    W -->|laporan / rekap / omzet| L[Lihat laporan hari ini]
+    W -->|1 / jual / catat / order| R[Preview penjualan]
+    W -->|2 / cek stok| S[Lihat stok ledger]
+    W -->|3 / daftar barang| K[Katalog produk]
+    W -->|4 / laporan / rekap / omzet| L[Lihat laporan hari ini]
+    W -->|5 / 0 / bantuan / menu| H[Terima panduan format]
     W -->|bye| X[Penutup]
 
-    R --> P{User: ya / batal?}
-    P -->|ya| RC[Commit: nomor order + total]
-    P -->|batal| CX[Draft dibatalkan]
+    R --> P{User: ya/1 atau batal/0?}
+    P -->|ya / 1| RC[Commit: nomor order + total]
+    P -->|batal / 0| CX[Draft dibatalkan]
     L --> LR[Ringkasan: order, omzet, produk terlaris]
 
     H --> M1
     S --> M1
+    K --> M1
     RC --> M1
     CX --> M1
     LR --> M1
@@ -50,19 +52,22 @@ flowchart TD
 ### Contoh percakapan
 
 ```
-UMKM  → bantuan
-Bot   → Menu format catat, stok & laporan
+UMKM  → 5
+Bot   → Menu angka 1–5 + contoh format
+
+UMKM  → 1
+Bot   → Prompt: kirim detail jual ...
 
 UMKM  → jual 3 es kopi 45000 tunai
-Bot   → 📋 Konfirmasi penjualan … Ketik ya / batal
+Bot   → 📋 Konfirmasi penjualan … Ketik ya / 1 atau batal / 0
 
-UMKM  → ya
+UMKM  → 1
 Bot   → ✅ Penjualan tercatat! No. order WA-... Total Rp 45.000
 
-UMKM  → cek stok kopi
-Bot   → 📦 Es Kopi — tersedia 12 …
+UMKM  → 2
+Bot   → 📦 Stok tersedia …
 
-UMKM  → laporan hari ini
+UMKM  → 4
 Bot   → 📊 Order hari ini: 1, Omzet: Rp 45.000, ...
 ```
 
@@ -162,13 +167,13 @@ stateDiagram-v2
     start --> welcome: auto
     welcome --> listen_intent: pesan sambutan
 
-    listen_intent --> help: keyword bantuan/help/menu
-    listen_intent --> do_confirm: ya (saat ada pending)
-    listen_intent --> do_cancel: batal (saat ada pending)
-    listen_intent --> do_list: daftar/katalog
-    listen_intent --> do_stock: cek stok
-    listen_intent --> do_report: keyword laporan/rekap/omzet
-    listen_intent --> do_record: regex jual/catat/order
+    listen_intent --> help: keyword bantuan/help/menu atau 0/5/9
+    listen_intent --> do_confirm: ya / 1 (saat ada pending)
+    listen_intent --> do_cancel: batal / 0 (saat ada pending)
+    listen_intent --> do_list: 3 / daftar/katalog
+    listen_intent --> do_stock: 2 / cek stok
+    listen_intent --> do_report: 4 / keyword laporan/rekap/omzet
+    listen_intent --> do_record: 1 / regex jual/catat/order
     listen_intent --> do_ask: default / tanya_umum
     listen_intent --> goodbye: keyword bye
 

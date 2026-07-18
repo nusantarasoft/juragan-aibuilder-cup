@@ -16,9 +16,11 @@ import {
     detectUmkmIntent,
     extractStockProductQuery,
     formatDailyReportWa,
+    formatRecordSaleMenuPrompt,
     formatSaleCancelled,
     formatUmkmHelp,
     generateWaOrderNumber,
+    isUmkmMenuOnly,
     parseSaleHeuristic,
     parseSaleJsonFromLlm,
     toAidlcIntent,
@@ -479,6 +481,10 @@ export class StudioUmkmService {
         | { kind: 'preview'; message: string; pending: PendingUmkmSale }
         | { kind: 'error'; message: string }
     > {
+        if (isUmkmMenuOnly(text) && detectUmkmIntent(text) === 'record_sale') {
+            return { kind: 'error', message: formatRecordSaleMenuPrompt() };
+        }
+
         const parsed = await this.parseSaleMessage(text);
         if (!parsed) {
             return {
@@ -491,7 +497,7 @@ export class StudioUmkmService {
                     '• catat 2 tas total 500rb tunai',
                     '• order pelanggan Budi 1 sabun 25000 transfer',
                     '',
-                    'Ketik *daftar barang* untuk lihat produk terdaftar.',
+                    'Ketik *3* / *daftar barang* untuk lihat produk, atau *5* untuk menu.',
                 ].join('\n'),
             };
         }
@@ -581,6 +587,9 @@ export class StudioUmkmService {
     }
 
     async parseSaleMessage(text: string): Promise<ParsedUmkmSale | null> {
+        // Avoid LLM hallucination on CS menu digits (e.g. "1")
+        if (isUmkmMenuOnly(text)) return null;
+
         const heuristic = parseSaleHeuristic(text);
         if (heuristic) return heuristic;
 

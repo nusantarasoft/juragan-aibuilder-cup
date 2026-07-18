@@ -55,9 +55,36 @@ const LIST_PRODUCTS_KEYWORDS =
 const CHECK_STOCK_KEYWORDS =
     /\b(?:cek\s+stok|stok\s+(?:berapa|ada)?|berapa\s+stok|stock\b|sisa\s+(?:stok|barang))\b/i;
 const CONFIRM_REPLY =
-    /^(ya|iya|y|yes|benar|betul|ok|oke|okay|setuju|simpan|confirm|lanjut)$/i;
+    /^(ya|iya|y|yes|benar|betul|ok|oke|okay|setuju|simpan|confirm|lanjut|1)$/i;
 const CANCEL_REPLY =
-    /^(batal|batalkan|cancel|tidak|tdk|no|ngga|enggak|jangan)$/i;
+    /^(batal|batalkan|cancel|tidak|tdk|no|ngga|enggak|jangan|0)$/i;
+
+/** CS-style menu digit → intent. Returns null if not a single menu digit. */
+export function detectUmkmMenuDigit(text: string): UmkmIntent | null {
+    const t = text.trim();
+    if (!/^[0-9]$/.test(t)) return null;
+    switch (t) {
+        case '1':
+            return 'record_sale';
+        case '2':
+            return 'check_stock';
+        case '3':
+            return 'list_products';
+        case '4':
+            return 'sales_report';
+        case '0':
+        case '5':
+        case '9':
+            return 'help';
+        default:
+            return null;
+    }
+}
+
+/** True when message is only a CS menu digit (0–9). */
+export function isUmkmMenuOnly(text: string): boolean {
+    return /^[0-9]$/.test(text.trim());
+}
 
 /** Map internal UMKM intent → AIDLC label (telemetry / docs). */
 export function toAidlcIntent(intent: UmkmIntent): AidlcUmkmIntent {
@@ -110,6 +137,8 @@ export function extractStockProductQuery(text: string): string | null {
 export function detectUmkmIntent(text: string): UmkmIntent {
     const t = text.trim();
     if (!t) return 'unknown';
+    const menu = detectUmkmMenuDigit(t);
+    if (menu) return menu;
     const hasRecord = RECORD_KEYWORDS.test(t);
     const hasReport = REPORT_KEYWORDS.test(t);
     if (!hasRecord && CHECK_STOCK_KEYWORDS.test(t)) return 'check_stock';
@@ -333,7 +362,22 @@ export function formatSalePreview(sale: {
 }
 
 export function formatSaleCancelled(): string {
-    return '❌ Penjualan dibatalkan. Ketik *jual ...* untuk catat ulang, atau *bantuan* untuk menu.';
+    return '❌ Penjualan dibatalkan. Ketik *jual ...* / *1* untuk catat ulang, atau *5* / *bantuan* untuk menu.';
+}
+
+/** Prompt after user picks menu *1* (catat penjualan) without sale details. */
+export function formatRecordSaleMenuPrompt(): string {
+    return [
+        '🛒 *Catat penjualan*',
+        '',
+        'Kirim detail transaksi, contoh:',
+        '• jual 2 mie ayam 30000',
+        '• jual 1 bakso 15000 tunai',
+        '• catat 3 es teh total 15rb',
+        '',
+        'Setelah preview, ketik *ya* / *1* untuk simpan, atau *batal* / *0*.',
+        'Ketik *5* untuk kembali ke menu.',
+    ].join('\n');
 }
 
 /** Short reply when free-text command is not recognized. */
@@ -341,12 +385,12 @@ export function formatUnknownUmkmCommand(): string {
     return [
         '🤔 Perintah belum dikenali.',
         '',
-        'Coba salah satu:',
-        '• *daftar barang* — lihat katalog',
-        '• *cek stok kopi* — cek stok produk',
-        '• *laporan* — rekap penjualan hari ini',
-        '• *jual 3 kopi 45000* — catat penjualan (konfirmasi dulu)',
-        '• *bantuan* — contoh lengkap',
+        'Balas angka menu, atau ketik perintah:',
+        '*1* Catat penjualan',
+        '*2* Cek stok',
+        '*3* Daftar barang',
+        '*4* Laporan hari ini',
+        '*5* Bantuan / contoh lengkap',
     ].join('\n');
 }
 
@@ -354,24 +398,20 @@ export function formatUmkmHelp(): string {
     return [
         '📒 *Asisten Penjualan UMKM*',
         '',
-        '*Catat penjualan* — contoh:',
+        '*Menu* — balas angka:',
+        '*1* Catat penjualan',
+        '*2* Cek stok',
+        '*3* Daftar barang',
+        '*4* Laporan hari ini',
+        '*5* Bantuan (pesan ini)',
+        '',
+        '*Atau ketik kalimat* — contoh:',
         '• jual 3 es kopi 45000',
-        '• catat 2 tas total 500rb tunai',
-        '• order: pelanggan Budi, 1 sabun 25000 transfer',
-        'Setelah detail dikenali, ketik *ya* untuk simpan atau *batal*.',
-        '',
-        '*Cek stok* — contoh:',
         '• cek stok gula',
-        '• stok kopi berapa',
-        '',
-        '*Daftar barang* — ketik:',
         '• daftar barang',
-        '',
-        '*Laporan* — contoh:',
         '• laporan hari ini',
-        '• rekap omzet',
         '',
-        'Ketik pesan penjualan, *cek stok*, *daftar barang*, atau *laporan* kapan saja.',
+        'Setelah preview penjualan: *ya* / *1* = simpan, *batal* / *0* = batalkan.',
     ].join('\n');
 }
 

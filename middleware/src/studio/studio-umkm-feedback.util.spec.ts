@@ -3,8 +3,9 @@ import { detectUmkmFeedback, formatFeedbackThanks } from './studio-umkm-feedback
 
 describe('studio-umkm-feedback.util', () => {
     it('parses numeric ratings', () => {
-        expect(detectUmkmFeedback('5')?.score).toBe(5);
+        expect(detectUmkmFeedback('5')).toBeNull();
         expect(detectUmkmFeedback('nilai 3')?.score).toBe(3);
+        expect(detectUmkmFeedback('rating 5')?.score).toBe(5);
         expect(detectUmkmFeedback('4/5')?.score).toBe(4);
     });
 

@@ -14,14 +14,20 @@ const SCORE_WORDS: { re: RegExp; score: number; label: UmkmFeedbackRating['label
     { re: /^(sangat\s+buruk|parah|bintang\s*1|⭐)$/i, score: 1, label: 'buruk' },
 ];
 
-/** Parse explicit feedback (1–5 or keyword). Returns null if not feedback. */
+/** Parse explicit feedback (nilai/rating/N/5 or keyword). Bare digits 1–5 are menu, not rating. */
 export function detectUmkmFeedback(text: string): UmkmFeedbackRating | null {
     const t = text.trim().replace(/^[.!]+|[.!]+$/g, '').trim();
     if (!t) return null;
 
-    const bare = t.match(/^(?:nilai|rating|bintang)?\s*([1-5])\s*(?:\/\s*5)?$/i);
+    // Require explicit rating phrasing so CS menu digits (1–5) are not stolen.
+    const bare = t.match(/^(?:nilai|rating|bintang)\s*([1-5])\s*(?:\/\s*5)?$/i);
     if (bare) {
         const score = parseInt(bare[1], 10);
+        return { score, label: scoreToLabel(score), raw: t };
+    }
+    const slash = t.match(/^([1-5])\s*\/\s*5$/i);
+    if (slash) {
+        const score = parseInt(slash[1], 10);
         return { score, label: scoreToLabel(score), raw: t };
     }
 
@@ -44,10 +50,10 @@ export function formatFeedbackThanks(rating: UmkmFeedbackRating): string {
         `🙏 Terima kasih atas penilaiannya (*${rating.score}/5*).`,
         'Masukan ini membantu kami memperbaiki asisten UMKM.',
         '',
-        'Ketik *bantuan* untuk menu, atau lanjut catat penjualan.',
+        'Ketik *5* / *bantuan* untuk menu, atau lanjut catat penjualan.',
     ].join('\n');
 }
 
 export function formatFeedbackInvite(): string {
-    return 'Beri nilai layanan? Ketik *1–5*, *puas*, atau *kurang*.';
+    return 'Beri nilai layanan? Ketik *nilai 1–5*, *4/5*, *puas*, atau *kurang*.';
 }
