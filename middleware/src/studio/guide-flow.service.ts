@@ -31,6 +31,7 @@ import { detectUmkmIntent, formatSaleCancelled, formatUnknownUmkmCommand, format
 import { aidlcIntentToListenTarget } from './studio-umkm-qu';
 import { assertNoSupabaseError } from './studio-supabase.util';
 import { assertXStateStateCoverage } from './guide-flow.xstate-factory';
+import { stripWhatsAppMediaAnnotations } from './studio-whatsapp.util';
 
 @Injectable()
 export class GuideFlowService {
@@ -452,6 +453,8 @@ export class GuideFlowService {
                         lastResolvedListenNodeId = nodeId;
                         let next: string;
                         if (isUmkmFlow(def)) {
+                            userJust = stripWhatsAppMediaAnnotations(userJust);
+                            ctx.lastUserMessage = userJust;
                             const notebook = await this.studioService.getNotebook(notebookId);
                             const cfg = this.dbContextService.parseConfig(notebook.context_config);
                             const commands = getUmkmCommandsFromConfig(cfg);

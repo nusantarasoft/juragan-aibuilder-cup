@@ -36,6 +36,12 @@ describe('studio-umkm.util', () => {
         expect(detectUmkmIntent('stok kopi berapa')).toBe('check_stock');
         expect(detectUmkmIntent('bantuan')).toBe('help');
         expect(detectUmkmIntent('halo')).toBe('unknown');
+        expect(detectUmkmMenuDigit('2\n[User mengirim media yang tidak dapat diunduh]')).toBe(
+            'menu_hub',
+        );
+        expect(detectUmkmIntent('2\n[User mengirim media yang tidak dapat diunduh]')).toBe(
+            'menu_hub',
+        );
     });
 
     it('detects CS-style numbered menu', () => {

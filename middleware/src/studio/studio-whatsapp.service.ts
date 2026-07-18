@@ -21,6 +21,8 @@ import {
     pickSingleTenantFallback,
     pickTenantConfigBySenderPhone,
     StudioWhatsAppRateLimiter,
+    stripWhatsAppMediaAnnotations,
+    wahaPayloadHasMedia,
 } from './studio-whatsapp.util';
 
 const WA_CHUNK = 4000;
@@ -375,7 +377,9 @@ export class StudioWhatsAppService {
             return;
         }
 
-        const question = await this.buildQuestionFromPayload(payload, wahaSession);
+        const question = stripWhatsAppMediaAnnotations(
+            await this.buildQuestionFromPayload(payload, wahaSession),
+        );
         if (!question.trim()) return;
 
         const { conversationId } = await this.resolveSession(
@@ -469,7 +473,7 @@ export class StudioWhatsAppService {
         const body = String(payload.body || payload.caption || '').trim();
         if (body) parts.push(body);
 
-        const hasMedia = payload.hasMedia === true || payload.mediaUrl || payload._data;
+        const hasMedia = wahaPayloadHasMedia(payload);
         const messageId = String(payload.id || '');
         if (hasMedia && messageId) {
             const media = await this.wahaClient.downloadMedia(messageId, session);
@@ -481,7 +485,8 @@ export class StudioWhatsAppService {
                         '(Catatan: konten visual belum di-OCR otomatis; gunakan deskripsi teks user jika ada.)',
                     );
                 }
-            } else {
+            } else if (!body) {
+                // Don't append failure noise onto text commands (breaks menu digit ^2$)
                 parts.push('[User mengirim media yang tidak dapat diunduh]');
             }
         }

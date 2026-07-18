@@ -64,7 +64,13 @@ export function detectUmkmMenuDigit(
     text: string,
     commands?: UmkmCommandsConfig | unknown,
 ): UmkmIntent | null {
-    const t = text.trim();
+    const lines = text
+        .trim()
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+    // Prefer first line so "2\n[User mengirim media...]" still maps to menu digit 2
+    const t = lines[0] || '';
     if (!/^[0-9]$/.test(t)) return null;
     const m = matcherFrom(commands);
     return (m.digitToIntent.get(t) as UmkmIntent | undefined) ?? null;
