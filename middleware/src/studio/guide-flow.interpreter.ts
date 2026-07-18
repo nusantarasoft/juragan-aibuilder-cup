@@ -1,6 +1,6 @@
 import type { GuideFlowDefinition, GuideFlowNode } from './guide-flow.definition';
 import type { QueryUnderstandingResult } from './query-understanding';
-import { detectUmkmIntent } from './studio-umkm.util';
+import { detectUmkmConfirmReply, detectUmkmIntent } from './studio-umkm.util';
 
 export type FlowContext = Record<string, unknown> & {
     lastUserMessage?: string;
@@ -11,6 +11,27 @@ export type FlowContext = Record<string, unknown> & {
     guidedUserTurns?: string[];
     /** Clarifications asked this listen→rag cycle. */
     clarificationCount?: number;
+    /** UMKM AIDLC: draft sale awaiting ya/batal before DB commit. */
+    pendingUmkmSale?: {
+        sale: {
+            items: { name: string; quantity: number; unitPrice: number }[];
+            totalAmount: number;
+            customerName?: string;
+            paymentMethod?: string;
+            notes?: string;
+        };
+        resolved: {
+            name: string;
+            quantity: number;
+            unitPrice: number;
+            itemId?: string;
+            itemSku?: string;
+            catalogMatched: boolean;
+            catalogName?: string;
+        }[];
+        phone?: string;
+        createdAt: number;
+    };
 };
 
 export function getNode(def: GuideFlowDefinition, nodeId: string): GuideFlowNode | undefined {
@@ -70,11 +91,21 @@ export function isUmkmSalesListenNode(node: Extract<GuideFlowNode, { type: 'list
 
 /**
  * UMKM listen routing: keyword/regex first, then intent detection before blind record_sale.
+ * When a pending sale exists, ya/batal route to confirm/cancel even if flow transitions differ.
  */
 export function resolveUmkmListenTarget(
     node: Extract<GuideFlowNode, { type: 'listen' }>,
     userText: string,
+    opts?: { hasPendingSale?: boolean },
 ): string {
+    const confirm = detectUmkmConfirmReply(userText);
+    if (opts?.hasPendingSale && confirm === 'confirm') {
+        return node.transitions.some((t) => t.target === 'do_confirm') ? 'do_confirm' : 'do_record';
+    }
+    if (opts?.hasPendingSale && confirm === 'cancel') {
+        return node.transitions.some((t) => t.target === 'do_cancel') ? 'do_cancel' : 'help';
+    }
+
     const text = userText.toLowerCase();
     for (const t of node.transitions) {
         if (t.when === 'default') continue;
@@ -93,6 +124,8 @@ export function resolveUmkmListenTarget(
     switch (detectUmkmIntent(userText)) {
         case 'list_products':
             return 'do_list';
+        case 'check_stock':
+            return node.transitions.some((t) => t.target === 'do_stock') ? 'do_stock' : 'do_list';
         case 'sales_report':
             return 'do_report';
         case 'help':
@@ -100,6 +133,6 @@ export function resolveUmkmListenTarget(
         case 'record_sale':
             return 'do_record';
         default:
-            return 'help';
+            return node.transitions.some((t) => t.target === 'do_ask') ? 'do_ask' : 'help';
     }
 }

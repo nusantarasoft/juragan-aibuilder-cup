@@ -4,14 +4,18 @@ import {
     validateGuideFlowGraph,
 } from './guide-flow.definition';
 import {
+    detectUmkmConfirmReply,
     detectUmkmIntent,
+    extractStockProductQuery,
     formatDailyReportWa,
     formatSaleConfirmation,
+    formatSalePreview,
     formatUnknownUmkmCommand,
     generateWaOrderNumber,
     parseRupiahToken,
     parseSaleHeuristic,
     parseSaleJsonFromLlm,
+    toAidlcIntent,
 } from './studio-umkm.util';
 import { resolveUmkmListenTarget } from './guide-flow.interpreter';
 
@@ -25,12 +29,33 @@ describe('studio-umkm.util', () => {
         expect(detectUmkmIntent('berapa omzet')).toBe('sales_report');
         expect(detectUmkmIntent('daftar barang')).toBe('list_products');
         expect(detectUmkmIntent('list barang')).toBe('list_products');
+        expect(detectUmkmIntent('cek stok gula')).toBe('check_stock');
+        expect(detectUmkmIntent('stok kopi berapa')).toBe('check_stock');
         expect(detectUmkmIntent('bantuan')).toBe('help');
         expect(detectUmkmIntent('halo')).toBe('unknown');
     });
 
+    it('maps AIDLC intent aliases', () => {
+        expect(toAidlcIntent('record_sale')).toBe('catat_transaksi');
+        expect(toAidlcIntent('check_stock')).toBe('cek_stok');
+        expect(toAidlcIntent('sales_report')).toBe('laporan');
+        expect(toAidlcIntent('unknown')).toBe('lainnya');
+    });
+
+    it('detects confirm / cancel replies', () => {
+        expect(detectUmkmConfirmReply('ya')).toBe('confirm');
+        expect(detectUmkmConfirmReply('batal')).toBe('cancel');
+        expect(detectUmkmConfirmReply('jual 2 kopi')).toBeNull();
+    });
+
+    it('extracts stock product query', () => {
+        expect(extractStockProductQuery('cek stok gula')).toBe('gula');
+        expect(extractStockProductQuery('stok kopi berapa')).toMatch(/kopi/i);
+    });
+
     it('formats unknown command hint', () => {
         expect(formatUnknownUmkmCommand()).toContain('belum dikenali');
+        expect(formatUnknownUmkmCommand()).toContain('cek stok');
     });
 
     it('parses rupiah tokens', () => {
@@ -57,7 +82,7 @@ describe('studio-umkm.util', () => {
         expect(parsed?.totalAmount).toBe(25000);
     });
 
-    it('formats confirmation and report for WhatsApp', () => {
+    it('formats confirmation, preview, and report for WhatsApp', () => {
         const confirm = formatSaleConfirmation({
             orderNumber: 'WA-20260609-120000-1234',
             totalAmount: 45000,
@@ -66,6 +91,13 @@ describe('studio-umkm.util', () => {
         });
         expect(confirm).toContain('tercatat');
         expect(confirm).toMatch(/45[.\s]?000/);
+
+        const preview = formatSalePreview({
+            totalAmount: 45000,
+            items: [{ name: 'Es Kopi', quantity: 3, unitPrice: 15000 }],
+        });
+        expect(preview).toContain('Konfirmasi');
+        expect(preview).toContain('ya');
 
         const report = formatDailyReportWa({
             salesDate: '2026-06-09',
@@ -91,6 +123,8 @@ describe('defaultUmkmGuideFlowDefinition', () => {
         const def = defaultUmkmGuideFlowDefinition();
         validateGuideFlowGraph(def);
         expect(def.nodes.some((n) => n.type === 'action' && n.action === 'record_sale')).toBe(true);
+        expect(def.nodes.some((n) => n.type === 'action' && n.action === 'confirm_sale')).toBe(true);
+        expect(def.nodes.some((n) => n.type === 'action' && n.action === 'check_stock')).toBe(true);
     });
 
     it('routes unknown text to help via intent resolver', () => {
@@ -98,9 +132,12 @@ describe('defaultUmkmGuideFlowDefinition', () => {
         const listen = def.nodes.find((n) => n.id === 'listen_intent');
         expect(listen?.type).toBe('listen');
         if (listen?.type !== 'listen') return;
-        expect(resolveUmkmListenTarget(listen, 'halo')).toBe('help');
+        expect(resolveUmkmListenTarget(listen, 'halo')).toBe('do_ask');
         expect(resolveUmkmListenTarget(listen, 'list barang')).toBe('do_list');
+        expect(resolveUmkmListenTarget(listen, 'cek stok gula')).toBe('do_stock');
         expect(resolveUmkmListenTarget(listen, 'ringkasan')).toBe('do_report');
         expect(resolveUmkmListenTarget(listen, 'jual 2 kopi 30000')).toBe('do_record');
-    });
+        expect(resolveUmkmListenTarget(listen, 'ya', { hasPendingSale: true })).toBe('do_confirm');
+        expect(resolveUmkmListenTarget(listen, 'batal', { hasPendingSale: true })).toBe('do_cancel');
+        expect(def.nodes.some((n) => n.id === 'do_ask' && n.type === 'rag')).toBe(true);    });
 });

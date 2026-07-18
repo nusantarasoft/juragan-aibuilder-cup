@@ -7,6 +7,11 @@ import { StudioService } from './studio.service';
 import { GuideFlowService } from './guide-flow.service';
 import { StudioDbContextService } from './studio-db-context.service';
 import { StudioUmkmService } from './studio-umkm.service';
+import {
+    detectUmkmFeedback,
+    formatFeedbackThanks,
+} from './studio-umkm-feedback.util';
+import { detectUmkmConfirmReply } from './studio-umkm.util';
 import { assertNoSupabaseError } from './studio-supabase.util';
 import {
     collectUmkmOwnerPhones,
@@ -53,6 +58,24 @@ export class StudioWhatsAppService {
         private readonly umkmService: StudioUmkmService,
     ) {
         this.rateLimiter = new StudioWhatsAppRateLimiter(this.getRateLimitPerMinute());
+    }
+
+    /** Cron helper: enabled configs with notebook. */
+    async listEnabledConfigsForCron(): Promise<StudioWhatsAppConfigRow[]> {
+        const all = await this.listConfigs();
+        return all.filter((c) => c.enabled && c.notebook_id);
+    }
+
+    /** Outbound text to phone (digits or chatId). Used by daily report cron — WAHA only. */
+    async sendOutboundText(phoneOrChatId: string, text: string, session?: string): Promise<boolean> {
+        const chatId = phoneOrChatId.includes('@')
+            ? phoneOrChatId
+            : this.wahaClient.phoneToChatId(phoneOrChatId);
+        const res = await this.wahaClient.sendText(chatId, text, session);
+        if (!res.success) {
+            this.logger.warn(`sendOutboundText failed (WAHA): ${res.error}`);
+        }
+        return res.success;
     }
 
     private admin() {
@@ -373,6 +396,26 @@ export class StudioWhatsAppService {
         }
         const umkmMode = this.umkmService.isUmkmMode(notebookCfg);
 
+        // Feedback (AIDLC Operate) — after pending ya/batal so "ok" still confirms sales
+        const feedback = detectUmkmFeedback(question);
+        if (feedback && umkmMode) {
+            const pending = await this.umkmService.resolvePendingSale({
+                tenantId,
+                phone,
+                conversationId,
+            });
+            const confirm = detectUmkmConfirmReply(question);
+            if (!(pending && confirm)) {
+                await this.umkmService.logFeedback(tenantId, feedback, {
+                    phone,
+                    conversationId,
+                    metadata: { provider: 'waha' },
+                });
+                await this.sendReplyChunks(chatId, formatFeedbackThanks(feedback), wahaSession);
+                return;
+            }
+        }
+
         let answer: string;
         if (config.use_guided_flow) {
             answer = await this.runGuidedTurn(
@@ -388,6 +431,7 @@ export class StudioWhatsAppService {
                 tenantId,
                 phone,
                 { ...notebookCfg, tenant_id: tenantId },
+                { conversationId },
             );
             if (umkmAnswer) {
                 answer = umkmAnswer;
@@ -574,7 +618,7 @@ export class StudioWhatsAppService {
             const chunk = text.slice(i, i + WA_CHUNK);
             const res = await this.wahaClient.sendText(chatId, chunk, session);
             if (!res.success) {
-                this.logger.error(`Failed to send WA chunk: ${res.error}`);
+                this.logger.error(`Failed to send WA chunk (WAHA): ${res.error}`);
                 break;
             }
         }

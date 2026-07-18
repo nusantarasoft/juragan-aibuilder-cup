@@ -1,6 +1,20 @@
 /** UMKM WhatsApp — intent detection, sale parsing helpers, report formatting. */
 
-export type UmkmIntent = 'record_sale' | 'sales_report' | 'list_products' | 'help' | 'unknown';
+export type UmkmIntent =
+    | 'record_sale'
+    | 'sales_report'
+    | 'list_products'
+    | 'check_stock'
+    | 'help'
+    | 'unknown';
+
+/** AIDLC intent labels from dokumen AI Development Life Cycle UMKM. */
+export type AidlcUmkmIntent =
+    | 'catat_transaksi'
+    | 'cek_stok'
+    | 'laporan'
+    | 'tanya_umum'
+    | 'lainnya';
 
 export type UmkmSaleItem = {
     name: string;
@@ -37,7 +51,60 @@ const REPORT_KEYWORDS =
     /\b(laporan|laporkan|rekap|ringkasan|ringkas|omzet|omset|report|summary|total\s+penjualan|berapa\s+(?:omzet|omset|penjualan|jualan)|penjualan\s+hari\s+ini|hari\s+ini)\b/i;
 const HELP_KEYWORDS = /\b(bantuan|help|menu|panduan|cara\s+pakai|contoh)\b/i;
 const LIST_PRODUCTS_KEYWORDS =
-    /\b(daftar\s+barang|daftar\s+produk|list\s+produk|list\s+barang|katalog|catalog|produk\s+apa\s+saja|barang\s+apa\s+saja|(?:lihat|cek)\s+(?:produk|barang|stok|stock))\b/i;
+    /\b(daftar\s+barang|daftar\s+produk|list\s+produk|list\s+barang|katalog|catalog|produk\s+apa\s+saja|barang\s+apa\s+saja|(?:lihat|cek)\s+(?:produk|barang))\b/i;
+const CHECK_STOCK_KEYWORDS =
+    /\b(?:cek\s+stok|stok\s+(?:berapa|ada)?|berapa\s+stok|stock\b|sisa\s+(?:stok|barang))\b/i;
+const CONFIRM_REPLY =
+    /^(ya|iya|y|yes|benar|betul|ok|oke|okay|setuju|simpan|confirm|lanjut)$/i;
+const CANCEL_REPLY =
+    /^(batal|batalkan|cancel|tidak|tdk|no|ngga|enggak|jangan)$/i;
+
+/** Map internal UMKM intent → AIDLC label (telemetry / docs). */
+export function toAidlcIntent(intent: UmkmIntent): AidlcUmkmIntent {
+    switch (intent) {
+        case 'record_sale':
+            return 'catat_transaksi';
+        case 'check_stock':
+            return 'cek_stok';
+        case 'sales_report':
+            return 'laporan';
+        case 'list_products':
+            return 'tanya_umum';
+        case 'help':
+            return 'tanya_umum';
+        default:
+            return 'lainnya';
+    }
+}
+
+/** Detect ya/batal reply while a pending sale awaits confirmation. */
+export function detectUmkmConfirmReply(text: string): 'confirm' | 'cancel' | null {
+    const t = text.trim().replace(/^[.!]+|[.!]+$/g, '').trim();
+    if (!t) return null;
+    if (CONFIRM_REPLY.test(t)) return 'confirm';
+    if (CANCEL_REPLY.test(t)) return 'cancel';
+    return null;
+}
+
+/** Extract product query from stock-check phrasing. */
+export function extractStockProductQuery(text: string): string | null {
+    const t = text.trim();
+    const patterns = [
+        /(?:cek\s+)?stok\s+(?:berapa\s+)?(.+?)(?:\s+berapa)?$/i,
+        /berapa\s+stok\s+(.+)$/i,
+        /sisa\s+(?:stok|barang)\s+(.+)$/i,
+        /stock\s+(.+)$/i,
+    ];
+    for (const re of patterns) {
+        const m = t.match(re);
+        if (!m?.[1]) continue;
+        const q = m[1]
+            .replace(/\b(berapa|ya|dong|kah|sih|aja|sekarang)\b/gi, '')
+            .trim();
+        if (q.length >= 2 && !/^(berapa|ada|semua|all)$/i.test(q)) return q;
+    }
+    return null;
+}
 
 /** Detect primary UMKM intent from free-text WhatsApp message. */
 export function detectUmkmIntent(text: string): UmkmIntent {
@@ -45,6 +112,7 @@ export function detectUmkmIntent(text: string): UmkmIntent {
     if (!t) return 'unknown';
     const hasRecord = RECORD_KEYWORDS.test(t);
     const hasReport = REPORT_KEYWORDS.test(t);
+    if (!hasRecord && CHECK_STOCK_KEYWORDS.test(t)) return 'check_stock';
     if (!hasRecord && LIST_PRODUCTS_KEYWORDS.test(t)) return 'list_products';
     if (HELP_KEYWORDS.test(t) && !hasRecord && !hasReport) return 'help';
     if (hasReport && !hasRecord) return 'sales_report';
@@ -242,6 +310,32 @@ export function formatSaleConfirmation(order: {
     return lines.join('\n');
 }
 
+/** Preview before commit (AIDLC: konfirmasi wajib sebelum simpan). */
+export function formatSalePreview(sale: {
+    totalAmount: number;
+    items: UmkmSaleItem[];
+    paymentMethod?: string;
+    customerName?: string;
+}): string {
+    const lines = ['📋 *Konfirmasi penjualan*', ''];
+    if (sale.items.length) {
+        lines.push('Item:');
+        for (const it of sale.items) {
+            lines.push(`• ${it.quantity}x ${it.name} — ${formatIdr(it.quantity * it.unitPrice)}`);
+        }
+    }
+    lines.push(`Total: *${formatIdr(sale.totalAmount)}*`);
+    if (sale.paymentMethod) lines.push(`Pembayaran: ${sale.paymentMethod}`);
+    if (sale.customerName) lines.push(`Pelanggan: ${sale.customerName}`);
+    lines.push('');
+    lines.push('Benar? Ketik *ya* untuk simpan, atau *batal* untuk batalkan.');
+    return lines.join('\n');
+}
+
+export function formatSaleCancelled(): string {
+    return '❌ Penjualan dibatalkan. Ketik *jual ...* untuk catat ulang, atau *bantuan* untuk menu.';
+}
+
 /** Short reply when free-text command is not recognized. */
 export function formatUnknownUmkmCommand(): string {
     return [
@@ -249,8 +343,9 @@ export function formatUnknownUmkmCommand(): string {
         '',
         'Coba salah satu:',
         '• *daftar barang* — lihat katalog',
+        '• *cek stok kopi* — cek stok produk',
         '• *laporan* — rekap penjualan hari ini',
-        '• *jual 3 kopi 45000* — catat penjualan',
+        '• *jual 3 kopi 45000* — catat penjualan (konfirmasi dulu)',
         '• *bantuan* — contoh lengkap',
     ].join('\n');
 }
@@ -263,6 +358,11 @@ export function formatUmkmHelp(): string {
         '• jual 3 es kopi 45000',
         '• catat 2 tas total 500rb tunai',
         '• order: pelanggan Budi, 1 sabun 25000 transfer',
+        'Setelah detail dikenali, ketik *ya* untuk simpan atau *batal*.',
+        '',
+        '*Cek stok* — contoh:',
+        '• cek stok gula',
+        '• stok kopi berapa',
         '',
         '*Daftar barang* — ketik:',
         '• daftar barang',
@@ -271,7 +371,7 @@ export function formatUmkmHelp(): string {
         '• laporan hari ini',
         '• rekap omzet',
         '',
-        'Ketik pesan penjualan, *daftar barang*, atau *laporan* kapan saja.',
+        'Ketik pesan penjualan, *cek stok*, *daftar barang*, atau *laporan* kapan saja.',
     ].join('\n');
 }
 

@@ -30,7 +30,15 @@ export const guideFlowNodeSchema = z.discriminatedUnion('type', [
     z.object({
         id: z.string().min(1),
         type: z.literal('action'),
-        action: z.enum(['record_sale', 'sales_report', 'list_products', 'umkm_help']),
+        action: z.enum([
+            'record_sale',
+            'sales_report',
+            'list_products',
+            'check_stock',
+            'confirm_sale',
+            'cancel_sale',
+            'umkm_help',
+        ]),
         next: z.string().min(1),
     }),
     z.object({ id: z.string().min(1), type: z.literal('end') }),
@@ -107,12 +115,16 @@ export function defaultGuideFlowDefinition(): GuideFlowDefinition {
     };
 }
 
-/** UMKM sales assistant — catat penjualan & laporan via WhatsApp. */
+/** UMKM sales assistant — catat penjualan & laporan via WhatsApp (AIDLC guided-flow). */
 export function defaultUmkmGuideFlowDefinition(): GuideFlowDefinition {
     return {
         version: 1,
         startNodeId: 'start',
-        meta: { flowKind: 'umkm', description: 'Asisten penjualan UMKM via WhatsApp (action nodes)' },
+        meta: {
+            flowKind: 'umkm',
+            description:
+                'AIDLC UMKM: parse → preview konfirmasi → commit; cek stok; laporan via WhatsApp',
+        },
         nodes: [
             { id: 'start', type: 'start', next: 'welcome' },
             {
@@ -120,10 +132,11 @@ export function defaultUmkmGuideFlowDefinition(): GuideFlowDefinition {
                 type: 'message',
                 content:
                     'Halo! Saya asisten penjualan UMKM Anda.\n\n' +
-                    '• Ketik *jual ...* untuk catat penjualan\n' +
+                    '• Ketik *jual ...* untuk catat penjualan (konfirmasi dengan *ya*)\n' +
+                    '• Ketik *cek stok [nama]* untuk lihat stok\n' +
                     '• Ketik *daftar barang* untuk katalog produk\n' +
                     '• Ketik *laporan* untuk rekap hari ini\n' +
-                    '• Ketik *bantuan* untuk contoh format',
+                    '• Tanya bebas soal toko/produk, atau *bantuan* untuk contoh format',
                 next: 'listen_intent',
             },
             {
@@ -134,16 +147,22 @@ export function defaultUmkmGuideFlowDefinition(): GuideFlowDefinition {
                     { when: 'keyword', value: 'bantuan', target: 'help' },
                     { when: 'keyword', value: 'help', target: 'help' },
                     { when: 'keyword', value: 'menu', target: 'help' },
+                    { when: 'regex', pattern: '^(ya|iya|y|yes|benar|betul|ok|oke|okay|setuju|simpan|confirm|lanjut)$', target: 'do_confirm' },
+                    { when: 'regex', pattern: '^(batal|batalkan|cancel|tidak|tdk|no|ngga|enggak|jangan)$', target: 'do_cancel' },
                     { when: 'keyword', value: 'daftar', target: 'do_list' },
                     { when: 'keyword', value: 'katalog', target: 'do_list' },
-                    { when: 'keyword', value: 'produk', target: 'do_list' },
-                    { when: 'keyword', value: 'stok', target: 'do_list' },
                     {
                         when: 'regex',
                         pattern:
                             '\\b(daftar\\s+barang|daftar\\s+produk|list\\s+produk|list\\s+barang|barang\\s+apa|produk\\s+apa)\\b',
                         target: 'do_list',
                     },
+                    {
+                        when: 'regex',
+                        pattern: '\\b(cek\\s+stok|berapa\\s+stok|sisa\\s+stok|stock)\\b',
+                        target: 'do_stock',
+                    },
+                    { when: 'keyword', value: 'stok', target: 'do_stock' },
                     { when: 'keyword', value: 'laporan', target: 'do_report' },
                     { when: 'keyword', value: 'laporkan', target: 'do_report' },
                     { when: 'keyword', value: 'rekap', target: 'do_report' },
@@ -157,12 +176,24 @@ export function defaultUmkmGuideFlowDefinition(): GuideFlowDefinition {
                         target: 'do_report',
                     },
                     { when: 'regex', pattern: '\\b(jual|jualan|catat|order|transaksi)\\b', target: 'do_record' },
-                    { when: 'default', target: 'help' },
+                    { when: 'default', target: 'do_ask' },
                 ],
             },
             { id: 'do_record', type: 'action', action: 'record_sale', next: 'listen_intent' },
+            { id: 'do_confirm', type: 'action', action: 'confirm_sale', next: 'listen_intent' },
+            { id: 'do_cancel', type: 'action', action: 'cancel_sale', next: 'listen_intent' },
             { id: 'do_report', type: 'action', action: 'sales_report', next: 'listen_intent' },
             { id: 'do_list', type: 'action', action: 'list_products', next: 'listen_intent' },
+            { id: 'do_stock', type: 'action', action: 'check_stock', next: 'listen_intent' },
+            {
+                id: 'do_ask',
+                type: 'rag',
+                instruction:
+                    'Jawab singkat dalam Bahasa Indonesia untuk pertanyaan UMKM seputar toko, produk, atau cara pakai asisten. ' +
+                    'Gunakan konteks dokumen/notebook bila relevan. Jika tidak yakin, arahkan ke ketik *bantuan*, *cek stok*, *laporan*, atau *jual ...*. ' +
+                    'Pertanyaan: {{rewrittenQuery}}',
+                next: 'listen_intent',
+            },
             { id: 'help', type: 'action', action: 'umkm_help', next: 'listen_intent' },
             {
                 id: 'goodbye',
@@ -219,7 +250,7 @@ export const GUIDE_FLOW_TEMPLATES: Record<
     },
     umkm: {
         label: 'UMKM Penjualan',
-        description: 'Intent routing + action nodes (catat jual, laporan, katalog)',
+        description: 'AIDLC: QU + konfirmasi jual, cek stok, laporan, tanya_umum RAG',
         definition: defaultUmkmGuideFlowDefinition,
     },
     blank: {

@@ -1,13 +1,16 @@
-# AI Studio UMKM — Catat Penjualan & Laporan via WhatsApp
+﻿# AI Studio UMKM — Catat Penjualan & Laporan via WhatsApp
 
 > **Alur & diagram flow:** lihat [STUDIO_UMKM_FLOW.md](./STUDIO_UMKM_FLOW.md) (alur bisnis, guide flow, sesi WA, sub-alur catat/laporan).
+>
+> Acuan metodologi: **AIDLC** (AI Development Life Cycle) — guided-flow pipeline: pahami pesan → routing intent → preview konfirmasi → commit → evaluasi.
 
 Modul ini mengubah AI Studio menjadi **asisten penjualan UMKM** lewat WhatsApp:
 
-1. **Catat penjualan** — pesan natural → `ecom_orders` + `ecom_order_items`
-2. **Laporan penjualan** — ringkasan harian dari view `v_studio_sales_*`
+1. **Catat penjualan** — pesan natural → preview → konfirmasi `ya` → `ecom_orders` + `ecom_order_items`
+2. **Cek stok** — baca `inv_stock_ledger` (available / on hand)
+3. **Laporan penjualan** — ringkasan harian dari view `v_studio_sales_*`
 
-## Arsitektur
+## Arsitektur (AIDLC-aligned)
 
 ```
 UMKM (WhatsApp)
@@ -15,18 +18,29 @@ UMKM (WhatsApp)
     → StudioWhatsAppService
         ├─ use_guided_flow=true  → GuideFlow (UMKM Penjualan WA) → action nodes
         └─ umkm_mode (tanpa guided flow) → StudioUmkmService.handleMessage()
-    → ecom_orders (WRITE) / v_studio_sales_* (READ)
+    → staging percakapan (pending sale) → konfirmasi
+    → ecom_orders (WRITE) / inv_stock_ledger (READ) / v_studio_sales_* (READ)
     → balasan WhatsApp
 ```
+
+Intent internal ↔ label AIDLC:
+
+| Internal | AIDLC |
+|----------|-------|
+| `record_sale` | `catat_transaksi` |
+| `check_stock` | `cek_stok` |
+| `sales_report` | `laporan` |
+| `list_products` / `help` | `tanya_umum` |
+| `unknown` | `lainnya` |
 
 ### File utama
 
 | File | Peran |
 |------|-------|
-| `studio-umkm.util.ts` | Intent, parsing rupiah, format WA |
-| `studio-umkm.service.ts` | Simpan order, fetch laporan, setup notebook |
+| `studio-umkm.util.ts` | Intent, parsing rupiah, format WA, alias AIDLC |
+| `studio-umkm.service.ts` | Preview/commit sale, stok, laporan, setup notebook |
 | `guide-flow.definition.ts` | `defaultUmkmGuideFlowDefinition()` + node `action` |
-| `guide-flow.service.ts` | Eksekusi `record_sale`, `sales_report`, `umkm_help` |
+| `guide-flow.service.ts` | Eksekusi `record_sale`, `confirm_sale`, `check_stock`, … |
 | `studio-whatsapp.service.ts` | Routing UMKM saat `umkm_mode` |
 
 ## Setup aplikasi (step by step)
@@ -142,10 +156,13 @@ Lihat `middleware/sql/studio_umkm_setup.sql`.
 Kirim ke nomor bisnis yang ter-pair:
 
 | Pesan | Hasil yang diharapkan |
-|-------|----------------------|
-| `bantuan` | Menu format catat & laporan |
-| `jual 3 es kopi 45000` | Konfirmasi + nomor order `WA-...` |
-| `catat 2 tas total 500rb tunai` | Order tersimpan, status lunas |
+|-------|-----------------------|
+| `bantuan` | Menu format catat, stok & laporan |
+| `jual 3 es kopi 45000` | Preview konfirmasi (belum ke DB) |
+| `ya` | Order tersimpan + nomor `WA-...` |
+| `batal` | Draft dibatalkan |
+| `cek stok kopi` | Qty available dari ledger |
+| `catat 2 tas total 500rb tunai` lalu `ya` | Order lunas |
 | `laporan hari ini` | Ringkasan omzet + produk terlaris |
 | `berapa penjualan hari ini` | Sama (laporan) |
 | `daftar barang` | Katalog `inv_items` aktif (nama, SKU, harga) |
@@ -155,7 +172,7 @@ Kirim ke nomor bisnis yang ter-pair:
 Saat catat penjualan, nama barang **dicocokkan** ke `inv_items` (status `active`, `tenant_id` sama):
 
 - Cocok → `ecom_order_items.item_id` terisi, nama/SKU dari katalog
-- Tidak cocok → tetap tersimpan dengan label _(belum di katalog)_ (mode default)
+- Tidak cocok → tetap bisa dikonfirmasi dengan label _(belum di katalog)_ (mode default)
 
 Opsional di `context_config`:
 
@@ -167,6 +184,10 @@ Jika `true` dan ada katalog, penjualan **ditolak** bila nama tidak match.
 
 Perintah WA: `daftar barang`, `daftar produk`, `katalog`.
 
+## Cek stok (`inv_stock_ledger`)
+
+`cek stok [nama]` menjumlahkan `available` (= on_hand − reserved − committed) per item.
+
 ## Format pesan penjualan
 
 Parser mendukung (rule-based + LLM fallback):
@@ -177,6 +198,8 @@ catat 2 tas total 500rb tunai
 order pelanggan Budi 1 sabun 25000 transfer
 jualan 5 kopi susu @ 15000
 ```
+
+Setelah parse berhasil, bot mengirim **preview**. Commit ke DB hanya setelah pengguna membalas `ya` / `benar` / `ok` (staging di konteks percakapan / memory chat, TTL 15 menit).
 
 Field yang diekstrak:
 
@@ -195,19 +218,24 @@ Node `action`:
 
 | Action | Perilaku |
 |--------|----------|
-| `record_sale` | Parse + match katalog + INSERT order |
+| `record_sale` | Parse + match katalog → **preview** (pending) |
+| `confirm_sale` | Commit pending → INSERT order |
+| `cancel_sale` | Hapus draft pending |
+| `check_stock` | Query `inv_stock_ledger` |
 | `sales_report` | Query views + template WA |
 | `list_products` | Daftar barang dari `inv_items` |
 | `umkm_help` | Tampilkan menu bantuan |
 
 Aktifkan dengan `useGuidedFlow: true` di config WhatsApp.
 
+> Notebook yang sudah publish flow lama perlu **re-publish** template UMKM agar node `confirm_sale` / `check_stock` aktif. Mode `umkm_mode` tanpa guided flow sudah mendukung konfirmasi via memory per nomor.
+
 ## Mode operasi
 
 | `umkm_mode` | `use_guided_flow` | Perilaku |
 |-------------|-------------------|----------|
 | `true` | `true` | Guide flow UMKM (disarankan) |
-| `true` | `false` | Intent langsung via `StudioUmkmService` |
+| `true` | `false` | Intent langsung via `StudioUmkmService` (+ pending in-memory) |
 | `false` | * | Chat RAG generik (bukan UMKM) |
 
 `umkm_mode` diset lewat `studio_notebooks.context_config`:
@@ -247,17 +275,33 @@ Unit test: `studio-umkm.util.spec.ts` (intent, parsing, guide flow graph).
 | Masalah | Solusi |
 |---------|--------|
 | "belum bisa memahami penjualan" | Gunakan format contoh; set `ANTHROPIC_API_KEY` |
-| Laporan selalu 0 | Pastikan `studio_sales_views.sql` terpasang; catat penjualan dulu |
+| Preview muncul tapi order tidak tersimpan | Balas `ya` dalam 15 menit |
+| Laporan selalu 0 | Pastikan `studio_sales_views.sql` terpasang; catat + konfirmasi dulu |
 | WA tidak membalas | Cek allowlist, WAHA status WORKING, notebook_id di config |
 | Order tidak muncul di laporan | View filter `tenant_id=default`; sesuaikan `context_config.tenant_id` |
+| Stok selalu 0 | Isi `inv_stock_ledger` untuk `item_id` terkait |
 
-## Roadmap (belum di v1)
+## Fase 2 (sudah)
 
-- Konfirmasi sebelum simpan (preview → ya/tidak)
-- Push laporan harian otomatis (cron)
-- Multi-tenant per UMKM (`tenant_id` per notebook)
-- OCR struk dari gambar WA
-- Integrasi stok (`inv_items`)
+- Query Understanding AIDLC (`studio-umkm-qu.ts`) untuk pesan ambigu → intent + klarifikasi
+- Staging durable `studio_umkm_pending_sales`
+- `tanya_umum` → node RAG `do_ask` di guide flow UMKM
+
+## Fase 3 (sudah)
+
+- **Feedback logging** — ketik `1–5` / `puas` / `kurang` → tabel `studio_umkm_feedback`
+- **Potong stok otomatis** — `SALE_OUT` via `InventoryService` saat commit (item match katalog)
+- **Laporan harian cron** — `StudioUmkmCronService` pukul 13:00 UTC (~20:00 WIB); matikan dengan `STUDIO_UMKM_DAILY_REPORT_ENABLED=false`
+- **WhatsApp via WAHA** — inbound webhook + outbound `sendText` (tidak memakai Meta Cloud API)
+
+```env
+STUDIO_UMKM_DAILY_REPORT_ENABLED=true
+```
+
+```powershell
+Get-Content .\middleware\sql\studio_umkm_pending_sales.sql -Raw | docker exec -i postgres psql -U supabase_admin -d nusantarasoft -v ON_ERROR_STOP=1
+Get-Content .\middleware\sql\studio_umkm_feedback.sql -Raw | docker exec -i postgres psql -U supabase_admin -d nusantarasoft -v ON_ERROR_STOP=1
+```
 
 ## Referensi
 

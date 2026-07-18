@@ -3,6 +3,8 @@ import {
     findBestProductMatch,
     formatProductListWa,
     formatSaleConfirmationWithCatalog,
+    formatSalePreviewWithCatalog,
+    formatStockCheckWa,
     resolveSaleItemsAgainstCatalog,
     scoreProductMatch,
     type UmkmCatalogProduct,
@@ -59,5 +61,33 @@ describe('studio-umkm-product.util', () => {
             unmatchedBlocked: true,
         });
         expect(msg).toContain('tidak dikenali');
+    });
+
+    it('formats sale preview before commit', () => {
+        const msg = formatSalePreviewWithCatalog({
+            totalAmount: 30000,
+            items: [
+                {
+                    name: 'Es Kopi',
+                    quantity: 2,
+                    unitPrice: 15000,
+                    catalogMatched: true,
+                    itemSku: 'KOPI-001',
+                },
+            ],
+            paymentMethod: 'tunai',
+        });
+        expect(msg).toContain('Konfirmasi');
+        expect(msg).toContain('ya');
+        expect(msg).not.toContain('tercatat');
+    });
+
+    it('formats stock check rows', () => {
+        const msg = formatStockCheckWa(
+            [{ name: 'Es Kopi', sku: 'KOPI-001', available: 12, onHand: 15, reserved: 3 }],
+            { query: 'kopi' },
+        );
+        expect(msg).toContain('Cek Stok');
+        expect(msg).toContain('12');
     });
 });
