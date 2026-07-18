@@ -8,6 +8,7 @@ import {
     Alert,
     Button,
     Card,
+    Divider,
     Drawer,
     Form,
     Input,
@@ -25,6 +26,7 @@ import {
     WhatsAppOutlined,
     SettingOutlined,
     UnorderedListOutlined,
+    DeleteOutlined,
 } from '@ant-design/icons';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
@@ -33,6 +35,9 @@ import {
     studioService,
     StudioNotebook,
     StudioWhatsAppConfig,
+    UmkmCommandIntent,
+    UmkmCommandsConfig,
+    UmkmMenuCommand,
 } from '@/lib/studioService';
 import { useAuth } from '@/context/AuthContext';
 import { useStudioUserId } from '../useStudioUserId';
@@ -46,6 +51,38 @@ const glass = {
 };
 
 const DEFAULT_WAHA_DASHBOARD = 'http://127.0.0.1:3010/dashboard';
+
+const INTENT_OPTIONS: { value: UmkmCommandIntent; label: string }[] = [
+    { value: 'ask', label: 'Tanya' },
+    { value: 'menu_hub', label: 'Hub Menu' },
+    { value: 'list_products', label: 'Daftar menu' },
+    { value: 'add_product', label: 'Tambah menu' },
+    { value: 'add_stock', label: 'Tambah stok' },
+    { value: 'purchase_hub', label: 'Hub Belanja' },
+    { value: 'list_purchases', label: 'Daftar belanja' },
+    { value: 'record_purchase', label: 'Tambah belanja' },
+    { value: 'list_sales', label: 'Daftar penjualan' },
+    { value: 'record_sale', label: 'Tambah penjualan' },
+    { value: 'report_hub', label: 'Hub Laporan' },
+    { value: 'sales_report', label: 'Laporan' },
+    { value: 'help', label: 'Bantuan' },
+];
+
+const KEYWORD_INTENTS: UmkmCommandIntent[] = [
+    'ask',
+    'menu_hub',
+    'list_products',
+    'add_product',
+    'add_stock',
+    'purchase_hub',
+    'list_purchases',
+    'record_purchase',
+    'list_sales',
+    'record_sale',
+    'report_hub',
+    'sales_report',
+    'help',
+];
 
 function slugifyTenant(input: string): string {
     return input
@@ -73,6 +110,34 @@ function collectConfigOwnerPhones(row: StudioWhatsAppConfig): string[] {
     return normalizeOwnerPhones([row.business_phone, ...(row.allowlist_phones || [])]);
 }
 
+function emptyCommands(): UmkmCommandsConfig {
+    return {
+        menu: [],
+        keywords: {
+            ask: [],
+            menu_hub: [],
+            list_products: [],
+            add_product: [],
+            add_stock: [],
+            purchase_hub: [],
+            list_purchases: [],
+            record_purchase: [],
+            list_sales: [],
+            record_sale: [],
+            report_hub: [],
+            sales_report: [],
+            help: [],
+        },
+        confirm: [],
+        cancel: [],
+    };
+}
+
+function commandsFromNotebook(nb: StudioNotebook | undefined): UmkmCommandsConfig | null {
+    const cfg = nb?.context_config as { umkm_commands?: UmkmCommandsConfig } | undefined;
+    return cfg?.umkm_commands ?? null;
+}
+
 export default function UmkmStudioPage() {
     const { themeColor } = usePreferencesStore();
     const { loading: authLoading } = useAuth();
@@ -87,11 +152,14 @@ export default function UmkmStudioPage() {
     const [settingUp, setSettingUp] = useState(false);
     const [form] = Form.useForm();
     const [wahaDashboard, setWahaDashboard] = useState(DEFAULT_WAHA_DASHBOARD);
+    const [commands, setCommands] = useState<UmkmCommandsConfig>(emptyCommands());
+    const [defaults, setDefaults] = useState<UmkmCommandsConfig | null>(null);
 
     useEffect(() => {
         studioService.getSettings().then((s) => {
             if (s?.waha_dashboard_url) setWahaDashboard(s.waha_dashboard_url);
         }).catch(() => {});
+        studioService.getUmkmCommandsDefaults().then(setDefaults).catch(() => {});
     }, []);
 
     const load = useCallback(async () => {
@@ -116,6 +184,39 @@ export default function UmkmStudioPage() {
         load();
     }, [load, authLoading]);
 
+    const loadCommandsForNotebook = (notebookId?: string | null) => {
+        if (!notebookId) {
+            setCommands(defaults ? structuredClone(defaults) : emptyCommands());
+            return;
+        }
+        const nb = notebooks.find((n) => n.id === notebookId);
+        const fromNb = commandsFromNotebook(nb);
+        if (fromNb) {
+            setCommands({
+                menu: [...(fromNb.menu || [])],
+                keywords: {
+                    ask: [...(fromNb.keywords?.ask || [])],
+                    menu_hub: [...(fromNb.keywords?.menu_hub || [])],
+                    list_products: [...(fromNb.keywords?.list_products || [])],
+                    add_product: [...(fromNb.keywords?.add_product || [])],
+                    add_stock: [...(fromNb.keywords?.add_stock || [])],
+                    purchase_hub: [...(fromNb.keywords?.purchase_hub || [])],
+                    list_purchases: [...(fromNb.keywords?.list_purchases || [])],
+                    record_purchase: [...(fromNb.keywords?.record_purchase || [])],
+                    list_sales: [...(fromNb.keywords?.list_sales || [])],
+                    record_sale: [...(fromNb.keywords?.record_sale || [])],
+                    report_hub: [...(fromNb.keywords?.report_hub || [])],
+                    sales_report: [...(fromNb.keywords?.sales_report || [])],
+                    help: [...(fromNb.keywords?.help || [])],
+                },
+                confirm: [...(fromNb.confirm || [])],
+                cancel: [...(fromNb.cancel || [])],
+            });
+        } else {
+            setCommands(defaults ? structuredClone(defaults) : emptyCommands());
+        }
+    };
+
     const openCreate = () => {
         setEditing(null);
         form.resetFields();
@@ -126,6 +227,7 @@ export default function UmkmStudioPage() {
             ownerPhones: [],
             createNewNotebook: true,
         });
+        setCommands(defaults ? structuredClone(defaults) : emptyCommands());
         setDrawerOpen(true);
     };
 
@@ -141,19 +243,20 @@ export default function UmkmStudioPage() {
             useGuidedFlow: row.use_guided_flow,
             createNewNotebook: false,
         });
+        loadCommandsForNotebook(row.notebook_id);
         setDrawerOpen(true);
     };
 
     const handleLabelChange = (label: string) => {
-            if (!editing) {
-                const slug = slugifyTenant(label);
-                if (slug) {
-                    const current = form.getFieldValue('tenantId');
-                    if (!current || String(current).startsWith('umkm-')) {
-                        form.setFieldsValue({ tenantId: `umkm-${slug}` });
-                    }
+        if (!editing) {
+            const slug = slugifyTenant(label);
+            if (slug) {
+                const current = form.getFieldValue('tenantId');
+                if (!current || String(current).startsWith('umkm-')) {
+                    form.setFieldsValue({ tenantId: `umkm-${slug}` });
                 }
             }
+        }
     };
 
     const handleSave = async () => {
@@ -182,7 +285,6 @@ export default function UmkmStudioPage() {
                 throw new Error('Minimal satu nomor pemilik toko');
             }
 
-            // WAHA tetap 1 inbox; semua nomor pemilik di-routing ke tenant ini
             await studioService.updateWhatsAppConfig({
                 tenantId: values.tenantId,
                 notebookId,
@@ -193,6 +295,8 @@ export default function UmkmStudioPage() {
                 businessPhone: ownerPhones[0],
                 label: values.label || null,
             });
+
+            await studioService.updateUmkmCommands(notebookId, commands, values.useGuidedFlow !== false);
 
             message.success(editing ? 'UMKM diperbarui' : 'UMKM baru ditambahkan');
             setDrawerOpen(false);
@@ -221,6 +325,14 @@ export default function UmkmStudioPage() {
         } finally {
             setSettingUp(false);
         }
+    };
+
+    const updateMenuRow = (index: number, patch: Partial<UmkmMenuCommand>) => {
+        setCommands((prev) => {
+            const menu = [...prev.menu];
+            menu[index] = { ...menu[index], ...patch };
+            return { ...prev, menu };
+        });
     };
 
     const columns = [
@@ -344,9 +456,15 @@ export default function UmkmStudioPage() {
                                 <Link href="/admin/ai-studio/waha-setup">Setup WAHA</Link> (session{' '}
                                 <code>default</code>)
                             </li>
-                            <li><strong>Tambah UMKM</strong> — daftarkan <strong>satu atau lebih nomor HP pemilik</strong> toko</li>
-                            <li><strong>Setup UMKM</strong> — aktifkan flow penjualan</li>
-                            <li>Pemilik (mana saja yang terdaftar) kirim WA ke nomor admin: <em>jual ...</em>, <em>laporan</em>, dll.</li>
+                            <li>
+                                <strong>Tambah UMKM</strong> — daftarkan nomor HP pemilik + atur perintah WA
+                            </li>
+                            <li>
+                                <strong>Setup UMKM</strong> — aktifkan flow penjualan
+                            </li>
+                            <li>
+                                Pemilik kirim WA ke nomor admin memakai angka menu atau keyword yang Anda set
+                            </li>
                             <li>Isi <strong>Katalog</strong> per tenant</li>
                         </ol>
                     }
@@ -366,7 +484,7 @@ export default function UmkmStudioPage() {
 
             <Drawer
                 title={editing ? 'Edit UMKM' : 'Tambah UMKM baru'}
-                size={480}
+                size={560}
                 open={drawerOpen}
                 onClose={() => setDrawerOpen(false)}
                 extra={
@@ -410,7 +528,7 @@ export default function UmkmStudioPage() {
                                 },
                             },
                         ]}
-                        extra="Boleh lebih dari 1. Ketik 628... lalu Enter. Semua nomor ini boleh catat jual/laporan ke WA admin yang sama."
+                        extra="Boleh lebih dari 1. Ketik 628... lalu Enter."
                     >
                         <Select
                             mode="tags"
@@ -440,6 +558,7 @@ export default function UmkmStudioPage() {
                                             value: n.id,
                                             label: n.name,
                                         }))}
+                                        onChange={(id) => loadCommandsForNotebook(id)}
                                     />
                                 </Form.Item>
                             ) : (
@@ -455,6 +574,127 @@ export default function UmkmStudioPage() {
                     </Form.Item>
                     <Form.Item name="useGuidedFlow" label="Gunakan guided flow UMKM" valuePropName="checked">
                         <Switch />
+                    </Form.Item>
+
+                    <Divider orientation="left" plain>
+                        Perintah WhatsApp
+                    </Divider>
+                    <Paragraph type="secondary" style={{ fontSize: 12, marginTop: -8 }}>
+                        Tambah/hapus angka menu dan kata kunci. Intent aksi tetap (catat, stok, daftar, laporan,
+                        bantuan).
+                    </Paragraph>
+
+                    <Space style={{ marginBottom: 8 }} wrap>
+                        <Button
+                            size="small"
+                            icon={<PlusOutlined />}
+                            onClick={() =>
+                                setCommands((prev) => ({
+                                    ...prev,
+                                    menu: [
+                                        ...prev.menu,
+                                        { digit: '', intent: 'help', label: 'Baru' },
+                                    ],
+                                }))
+                            }
+                        >
+                            Tambah menu
+                        </Button>
+                        <Button
+                            size="small"
+                            onClick={() => {
+                                if (defaults) setCommands(structuredClone(defaults));
+                                else message.warning('Default belum termuat');
+                            }}
+                        >
+                            Reset ke default
+                        </Button>
+                    </Space>
+
+                    {commands.menu.map((row, index) => (
+                        <Space key={`menu-${index}`} align="start" style={{ display: 'flex', marginBottom: 8 }} wrap>
+                            <Input
+                                style={{ width: 56 }}
+                                maxLength={1}
+                                value={row.digit}
+                                placeholder="#"
+                                onChange={(e) =>
+                                    updateMenuRow(index, {
+                                        digit: e.target.value.replace(/\D/g, '').slice(0, 1),
+                                    })
+                                }
+                            />
+                            <Select
+                                style={{ width: 160 }}
+                                value={row.intent}
+                                options={INTENT_OPTIONS}
+                                onChange={(intent) => updateMenuRow(index, { intent })}
+                            />
+                            <Input
+                                style={{ flex: 1, minWidth: 120 }}
+                                value={row.label}
+                                placeholder="Label"
+                                onChange={(e) => updateMenuRow(index, { label: e.target.value })}
+                            />
+                            <Button
+                                danger
+                                size="small"
+                                icon={<DeleteOutlined />}
+                                onClick={() =>
+                                    setCommands((prev) => ({
+                                        ...prev,
+                                        menu: prev.menu.filter((_, i) => i !== index),
+                                    }))
+                                }
+                            />
+                        </Space>
+                    ))}
+
+                    {KEYWORD_INTENTS.map((intent) => (
+                        <Form.Item
+                            key={intent}
+                            label={`Keyword: ${INTENT_OPTIONS.find((o) => o.value === intent)?.label}`}
+                            style={{ marginBottom: 10 }}
+                        >
+                            <Select
+                                mode="tags"
+                                value={commands.keywords[intent] || []}
+                                placeholder="Ketik lalu Enter"
+                                tokenSeparators={[',']}
+                                open={false}
+                                onChange={(tags: string[]) =>
+                                    setCommands((prev) => ({
+                                        ...prev,
+                                        keywords: { ...prev.keywords, [intent]: tags },
+                                    }))
+                                }
+                            />
+                        </Form.Item>
+                    ))}
+
+                    <Form.Item label="Konfirmasi (ya / 1 / …)" style={{ marginBottom: 10 }}>
+                        <Select
+                            mode="tags"
+                            value={commands.confirm}
+                            placeholder="ya, oke, 1"
+                            tokenSeparators={[',']}
+                            open={false}
+                            onChange={(tags: string[]) =>
+                                setCommands((prev) => ({ ...prev, confirm: tags }))
+                            }
+                        />
+                    </Form.Item>
+                    <Form.Item label="Batal (batal / 0 / …)" style={{ marginBottom: 10 }}>
+                        <Select
+                            mode="tags"
+                            value={commands.cancel}
+                            placeholder="batal, 0"
+                            tokenSeparators={[',']}
+                            open={false}
+                            onChange={(tags: string[]) =>
+                                setCommands((prev) => ({ ...prev, cancel: tags }))
+                            }
+                        />
                     </Form.Item>
                 </Form>
             </Drawer>

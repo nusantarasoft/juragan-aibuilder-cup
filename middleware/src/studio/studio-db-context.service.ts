@@ -3,6 +3,20 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { DremioService } from '../dremio/dremio.service';
 import type { QueryUnderstandingResult } from './query-understanding';
 import { assertNoSupabaseError } from './studio-supabase.util';
+import {
+    DEFAULT_UMKM_COMMANDS,
+    resolveUmkmCommands,
+    type UmkmCommandsConfig,
+} from './studio-umkm-commands';
+
+export {
+    DEFAULT_UMKM_COMMANDS,
+    resolveUmkmCommands,
+    sanitizeUmkmCommandsInput,
+    type UmkmCommandsConfig,
+    type UmkmCommandIntent,
+    type UmkmMenuCommand,
+} from './studio-umkm-commands';
 
 /** Notebook-level DB context configuration (stored in studio_notebooks.context_config). */
 export type StudioContextConfig = {
@@ -11,6 +25,8 @@ export type StudioContextConfig = {
     umkm_mode?: boolean;
     /** If true, reject sales when item name does not match inv_items catalog. */
     umkm_require_catalog_match?: boolean;
+    /** Configurable WA commands (keywords, menu digits, confirm/cancel). */
+    umkm_commands?: UmkmCommandsConfig;
     /** Tenant for ecom_orders / sales views (default: default). */
     tenant_id?: string;
     supabase_views?: string[];
@@ -23,6 +39,11 @@ export type StudioContextConfig = {
     brief_summary?: string;
     brief_generated_at?: string;
 };
+
+/** Resolve umkm_commands from notebook context (defaults if missing). */
+export function getUmkmCommandsFromConfig(config: StudioContextConfig): UmkmCommandsConfig {
+    return resolveUmkmCommands(config.umkm_commands ?? DEFAULT_UMKM_COMMANDS);
+}
 
 /** Default views for new notebooks — e-commerce sales analytics. */
 export const DEFAULT_STUDIO_SALES_CONTEXT: StudioContextConfig = {

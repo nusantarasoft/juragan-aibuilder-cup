@@ -4,6 +4,7 @@ import { GuideFlowService } from './guide-flow.service';
 import { StudioWhatsAppService } from './studio-whatsapp.service';
 import { StudioUmkmService } from './studio-umkm.service';
 import { GraphQLJSONObject } from 'graphql-type-json';
+import { DEFAULT_UMKM_COMMANDS } from './studio-umkm-commands';
 
 @Resolver()
 export class StudioResolver {
@@ -400,6 +401,25 @@ export class StudioResolver {
             flow = await this.guideFlowService.createAndPublishUmkmFlow(notebookId);
         }
         return { ...setup, flow };
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'updateStudioUmkmCommands' })
+    async updateStudioUmkmCommands(
+        @Args('notebookId', { type: () => String }) notebookId: string,
+        @Args('commands', { type: () => GraphQLJSONObject }) commands: Record<string, unknown>,
+        @Args('republishGuideFlow', { type: () => Boolean, nullable: true }) republishGuideFlow?: boolean,
+    ) {
+        const result = await this.studioUmkmService.updateUmkmCommands(notebookId, commands);
+        let flow = null;
+        if (republishGuideFlow !== false) {
+            flow = await this.guideFlowService.createAndPublishUmkmFlow(notebookId);
+        }
+        return { ...result, flow };
+    }
+
+    @Query(() => GraphQLJSONObject, { name: 'studioUmkmCommandsDefaults' })
+    async studioUmkmCommandsDefaults() {
+        return DEFAULT_UMKM_COMMANDS;
     }
 
     @Mutation(() => GraphQLJSONObject, { name: 'updateStudioWhatsAppConfig' })

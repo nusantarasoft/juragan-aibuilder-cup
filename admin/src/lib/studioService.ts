@@ -572,6 +572,28 @@ export const studioService = {
         return data.studioSetupUmkmNotebook;
     },
 
+    async getUmkmCommandsDefaults(): Promise<UmkmCommandsConfig> {
+        const data = await graphqlRequest(`query { studioUmkmCommandsDefaults }`);
+        return data.studioUmkmCommandsDefaults;
+    },
+
+    async updateUmkmCommands(
+        notebookId: string,
+        commands: UmkmCommandsConfig,
+        republishGuideFlow = true,
+    ): Promise<{ notebookId: string; commands: UmkmCommandsConfig }> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!, $commands: JSONObject!, $republishGuideFlow: Boolean) {
+                updateStudioUmkmCommands(
+                    notebookId: $notebookId
+                    commands: $commands
+                    republishGuideFlow: $republishGuideFlow
+                )
+            }
+        `, { notebookId, commands, republishGuideFlow });
+        return data.updateStudioUmkmCommands;
+    },
+
     // ── WhatsApp (WAHA) ─────────────────────────────────────
 
     async listWhatsAppConfigs(): Promise<StudioWhatsAppConfig[]> {
@@ -722,6 +744,35 @@ export const studioService = {
         return data.updateStudioSettings;
     },
 };
+
+export type UmkmCommandIntent =
+    | 'ask'
+    | 'menu_hub'
+    | 'list_products'
+    | 'add_product'
+    | 'add_stock'
+    | 'purchase_hub'
+    | 'list_purchases'
+    | 'record_purchase'
+    | 'list_sales'
+    | 'record_sale'
+    | 'report_hub'
+    | 'sales_report'
+    | 'check_stock'
+    | 'help';
+
+export interface UmkmMenuCommand {
+    digit: string;
+    intent: UmkmCommandIntent;
+    label: string;
+}
+
+export interface UmkmCommandsConfig {
+    menu: UmkmMenuCommand[];
+    keywords: Partial<Record<UmkmCommandIntent, string[]>>;
+    confirm: string[];
+    cancel: string[];
+}
 
 export interface StudioUmkmSetupResult {
     notebookId: string;

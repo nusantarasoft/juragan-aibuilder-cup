@@ -156,8 +156,9 @@ handleWebhook()
 
 ## 5. Guide flow — UMKM Penjualan WA
 
-Definisi: `defaultUmkmGuideFlowDefinition()` di `guide-flow.definition.ts`  
-Nama published: **UMKM Penjualan WA** (AIDLC: preview → ya/batal → commit)
+Definisi: `defaultUmkmGuideFlowDefinition(commands?)` di `guide-flow.definition.ts`  
+Nama published: **UMKM Penjualan WA** (AIDLC: preview → ya/batal → commit)  
+Perintah (keyword + digit) dari `context_config.umkm_commands` — edit di Admin UMKM.
 
 ### Diagram state
 

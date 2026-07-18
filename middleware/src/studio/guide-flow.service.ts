@@ -25,9 +25,9 @@ import {
     shouldAskClarification,
 } from './query-understanding';
 import { DremioService } from '../dremio/dremio.service';
-import { StudioDbContextService } from './studio-db-context.service';
+import { StudioDbContextService, getUmkmCommandsFromConfig } from './studio-db-context.service';
 import { StudioUmkmService } from './studio-umkm.service';
-import { detectUmkmIntent, formatSaleCancelled, formatUnknownUmkmCommand } from './studio-umkm.util';
+import { detectUmkmIntent, formatSaleCancelled, formatUnknownUmkmCommand, formatUmkmHelp, detectUmkmConfirmReply } from './studio-umkm.util';
 import { aidlcIntentToListenTarget } from './studio-umkm-qu';
 import { assertNoSupabaseError } from './studio-supabase.util';
 import { assertXStateStateCoverage } from './guide-flow.xstate-factory';
@@ -238,7 +238,10 @@ export class GuideFlowService {
     }
 
     async createAndPublishUmkmFlow(notebookId: string): Promise<any> {
-        const def = defaultUmkmGuideFlowDefinition();
+        const notebook = await this.studioService.getNotebook(notebookId);
+        const cfg = this.dbContextService.parseConfig(notebook.context_config);
+        const commands = getUmkmCommandsFromConfig(cfg);
+        const def = defaultUmkmGuideFlowDefinition(commands);
         const existing = await this.getPublishedFlowForNotebook(notebookId);
         if (existing?.name === 'UMKM Penjualan WA') {
             await this.updateFlow(existing.id, { definition: def });
@@ -449,19 +452,109 @@ export class GuideFlowService {
                         lastResolvedListenNodeId = nodeId;
                         let next: string;
                         if (isUmkmFlow(def)) {
+                            const notebook = await this.studioService.getNotebook(notebookId);
+                            const cfg = this.dbContextService.parseConfig(notebook.context_config);
+                            const commands = getUmkmCommandsFromConfig(cfg);
+                            const tenantId = this.umkmService.resolveTenantId(cfg);
                             const hydrated = await this.umkmService.resolvePendingSale({
-                                tenantId: 'default',
+                                tenantId,
                                 conversationId: conversation.id,
                                 memoryPending: ctx.pendingUmkmSale as any,
                             });
                             if (hydrated && !ctx.pendingUmkmSale) {
                                 ctx.pendingUmkmSale = hydrated;
                             }
+
+                            const pendingBuy = this.umkmService.getPendingPurchase(
+                                tenantId,
+                                undefined,
+                                conversation.id,
+                            );
+                            const confirmBuy = detectUmkmConfirmReply(userJust, commands);
+                            if (pendingBuy && confirmBuy === 'confirm') {
+                                this.umkmService.clearPendingPurchasePublic(
+                                    tenantId,
+                                    undefined,
+                                    conversation.id,
+                                );
+                                const committed = await this.umkmService.commitPendingPurchase(
+                                    pendingBuy,
+                                    tenantId,
+                                );
+                                await this.studioService.appendStudioMessage(
+                                    conversation.id,
+                                    'assistant',
+                                    committed,
+                                );
+                                replies.push({ content: committed });
+                                await this.persistFlowState(conversation.id, nodeId, ctx);
+                                return {
+                                    replies,
+                                    finalNodeId: nodeId,
+                                    finalContext: ctx,
+                                    waitingForInput: true,
+                                };
+                            }
+                            if (pendingBuy && confirmBuy === 'cancel') {
+                                this.umkmService.clearPendingPurchasePublic(
+                                    tenantId,
+                                    undefined,
+                                    conversation.id,
+                                );
+                                const cancelled = '❌ Belanja dibatalkan.';
+                                await this.studioService.appendStudioMessage(
+                                    conversation.id,
+                                    'assistant',
+                                    cancelled,
+                                );
+                                replies.push({ content: cancelled });
+                                await this.persistFlowState(conversation.id, nodeId, ctx);
+                                return {
+                                    replies,
+                                    finalNodeId: nodeId,
+                                    finalContext: ctx,
+                                    waitingForInput: true,
+                                };
+                            }
+
+                            // Submenu / wizard replies (1/2/3) must win over top-level menu digits
+                            const wizardReply = await this.umkmService.continueWizard(
+                                userJust,
+                                tenantId,
+                                undefined,
+                                conversation.id,
+                                cfg,
+                            );
+                            if (wizardReply !== undefined) {
+                                await this.studioService.appendStudioMessage(
+                                    conversation.id,
+                                    'assistant',
+                                    wizardReply,
+                                );
+                                replies.push({ content: wizardReply });
+                                await this.recordEvent(
+                                    conversation.id,
+                                    flowRowId,
+                                    nodeId,
+                                    nodeId,
+                                    'umkm_wizard',
+                                    userJust,
+                                );
+                                await this.persistFlowState(conversation.id, nodeId, ctx);
+                                return {
+                                    replies,
+                                    finalNodeId: nodeId,
+                                    finalContext: ctx,
+                                    waitingForInput: true,
+                                };
+                            }
+
                             next = resolveUmkmListenTarget(node, userJust, {
                                 hasPendingSale: !!ctx.pendingUmkmSale,
+                                commands,
                             });
 
-                            const keywordIntent = detectUmkmIntent(userJust);
+                            const keywordIntent = detectUmkmIntent(userJust, commands);
 
                             // AIDLC QU when keyword path is open/ambiguous (not explicit help / confirm)
                             if (
@@ -635,6 +728,7 @@ export class GuideFlowService {
                 case 'action': {
                     const notebook = await this.studioService.getNotebook(notebookId);
                     const cfg = this.dbContextService.parseConfig(notebook.context_config);
+                    const commands = getUmkmCommandsFromConfig(cfg);
                     const tenantId = this.umkmService.resolveTenantId(cfg);
                     const raw =
                         typeof ctx.lastUserMessage === 'string' ? ctx.lastUserMessage : '';
@@ -642,7 +736,7 @@ export class GuideFlowService {
                     switch (node.action) {
                         case 'record_sale': {
                             // Fallback when published flow predates newer transitions.
-                            const intent = this.umkmService.detectIntent(raw);
+                            const intent = this.umkmService.detectIntent(raw, commands);
                             if (intent === 'list_products') {
                                 content = await this.umkmService.buildProductListMessage(tenantId);
                             } else if (intent === 'check_stock') {
@@ -650,11 +744,9 @@ export class GuideFlowService {
                             } else if (intent === 'sales_report') {
                                 content = await this.umkmService.buildDailyReportMessage(tenantId);
                             } else if (intent === 'help') {
-                                content =
-                                    (await this.umkmService.handleMessage('bantuan', tenantId, undefined, cfg)) ||
-                                    '';
+                                content = formatUmkmHelp(commands);
                             } else if (intent === 'unknown') {
-                                content = formatUnknownUmkmCommand();
+                                content = formatUnknownUmkmCommand(commands);
                             } else {
                                 const prepared = await this.umkmService.prepareSaleFromText(
                                     raw,
@@ -686,8 +778,8 @@ export class GuideFlowService {
                                 })) || undefined;
                             if (!pending || !this.umkmService.isPendingSaleFresh(pending)) {
                                 delete ctx.pendingUmkmSale;
-                                content =
-                                    'Tidak ada draft penjualan menunggu konfirmasi. Ketik *jual ...* untuk mulai.';
+                                const saleKw = (commands.keywords.record_sale || [])[0] || 'jual';
+                                content = `Tidak ada draft penjualan menunggu konfirmasi. Ketik *${saleKw} ...* untuk mulai.`;
                             } else {
                                 content = await this.umkmService.commitPendingSale(pending, tenantId);
                                 delete ctx.pendingUmkmSale;
@@ -707,15 +799,16 @@ export class GuideFlowService {
                                     'cancelled',
                                 );
                                 delete ctx.pendingUmkmSale;
-                                content = formatSaleCancelled();
+                                content = formatSaleCancelled(commands);
                             } else {
-                                content =
-                                    'Tidak ada draft yang dibatalkan. Ketik *jual ...* atau *bantuan*.';
+                                const saleKw = (commands.keywords.record_sale || [])[0] || 'jual';
+                                const helpKw = (commands.keywords.help || [])[0] || 'bantuan';
+                                content = `Tidak ada draft yang dibatalkan. Ketik *${saleKw} ...* atau *${helpKw}*.`;
                             }
                             break;
                         }
                         case 'sales_report':
-                            content = await this.umkmService.buildDailyReportMessage(tenantId);
+                            content = await this.umkmService.buildCombinedReportMessage(tenantId, 'today');
                             break;
                         case 'list_products':
                             content = await this.umkmService.buildProductListMessage(tenantId);
@@ -723,17 +816,62 @@ export class GuideFlowService {
                         case 'check_stock':
                             content = await this.umkmService.buildStockCheckMessage(raw, tenantId);
                             break;
+                        case 'menu_hub':
+                            content = this.umkmService.openMenuHub(tenantId, undefined, conversation.id);
+                            break;
+                        case 'purchase_hub':
+                            content = this.umkmService.openPurchaseHub(tenantId, undefined, conversation.id);
+                            break;
+                        case 'report_hub':
+                            content = this.umkmService.openReportHub(tenantId, undefined, conversation.id);
+                            break;
+                        case 'add_product':
+                            content = await this.umkmService.beginOrRunAddProduct(
+                                raw,
+                                tenantId,
+                                undefined,
+                                conversation.id,
+                            );
+                            break;
+                        case 'add_stock':
+                            content = await this.umkmService.beginOrRunAddStock(
+                                raw,
+                                tenantId,
+                                undefined,
+                                conversation.id,
+                            );
+                            break;
+                        case 'list_purchases':
+                            content = await this.umkmService.buildPurchaseListMessage(tenantId, 'all');
+                            break;
+                        case 'record_purchase':
+                            content = await this.umkmService.beginOrRunPurchase(
+                                raw,
+                                tenantId,
+                                undefined,
+                                conversation.id,
+                                cfg,
+                            );
+                            break;
+                        case 'list_sales':
+                            content = await this.umkmService.buildSalesListMessage(tenantId, 'today');
+                            break;
                         case 'umkm_help': {
-                            const helpIntent = this.umkmService.detectIntent(raw);
-                            content =
-                                helpIntent === 'unknown'
-                                    ? formatUnknownUmkmCommand()
-                                    : (await this.umkmService.handleMessage('bantuan', tenantId, undefined, cfg)) ||
-                                      '';
+                            content = formatUmkmHelp(commands);
                             break;
                         }
-                        default:
-                            throw new BadRequestException(`Unknown action "${(node as any).action}"`);
+                        default: {
+                            // Wizard continuation / unknown action → full handleMessage
+                            const handled = await this.umkmService.handleMessage(
+                                raw,
+                                tenantId,
+                                undefined,
+                                cfg,
+                                { conversationId: conversation.id },
+                            );
+                            content = handled || formatUnknownUmkmCommand(commands);
+                            break;
+                        }
                     }
                     await this.studioService.appendStudioMessage(conversation.id, 'assistant', content);
                     replies.push({ content });

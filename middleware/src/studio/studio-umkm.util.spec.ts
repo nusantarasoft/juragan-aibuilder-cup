@@ -39,17 +39,22 @@ describe('studio-umkm.util', () => {
     });
 
     it('detects CS-style numbered menu', () => {
-        expect(detectUmkmMenuDigit('1')).toBe('record_sale');
-        expect(detectUmkmMenuDigit('2')).toBe('check_stock');
-        expect(detectUmkmMenuDigit('3')).toBe('list_products');
-        expect(detectUmkmMenuDigit('4')).toBe('sales_report');
-        expect(detectUmkmMenuDigit('5')).toBe('help');
-        expect(detectUmkmMenuDigit('0')).toBe('help');
+        expect(detectUmkmMenuDigit('1')).toBe('ask');
+        expect(detectUmkmMenuDigit('5')).toBe('record_sale');
+        expect(detectUmkmMenuDigit('6')).toBe('report_hub');
         expect(detectUmkmMenuDigit('12')).toBeNull();
-        expect(detectUmkmIntent('1')).toBe('record_sale');
-        expect(detectUmkmIntent('4')).toBe('sales_report');
-        expect(formatRecordSaleMenuPrompt()).toContain('Catat penjualan');
+        expect(detectUmkmIntent('1')).toBe('ask');
+        expect(detectUmkmIntent('5')).toBe('record_sale');
+        expect(formatRecordSaleMenuPrompt()).toMatch(/penjualan/i);
         expect(formatUmkmHelp()).toMatch(/\*1\*/);
+    });
+
+    it('detects confirm / cancel replies', () => {
+        expect(detectUmkmConfirmReply('ya')).toBe('confirm');
+        expect(detectUmkmConfirmReply('batal')).toBe('cancel');
+        expect(detectUmkmConfirmReply('1')).toBeNull();
+        expect(detectUmkmConfirmReply('0')).toBeNull();
+        expect(detectUmkmConfirmReply('jual 2 kopi')).toBeNull();
     });
 
     it('maps AIDLC intent aliases', () => {
@@ -57,14 +62,6 @@ describe('studio-umkm.util', () => {
         expect(toAidlcIntent('check_stock')).toBe('cek_stok');
         expect(toAidlcIntent('sales_report')).toBe('laporan');
         expect(toAidlcIntent('unknown')).toBe('lainnya');
-    });
-
-    it('detects confirm / cancel replies', () => {
-        expect(detectUmkmConfirmReply('ya')).toBe('confirm');
-        expect(detectUmkmConfirmReply('batal')).toBe('cancel');
-        expect(detectUmkmConfirmReply('1')).toBe('confirm');
-        expect(detectUmkmConfirmReply('0')).toBe('cancel');
-        expect(detectUmkmConfirmReply('jual 2 kopi')).toBeNull();
     });
 
     it('extracts stock product query', () => {
@@ -153,17 +150,11 @@ describe('defaultUmkmGuideFlowDefinition', () => {
         if (listen?.type !== 'listen') return;
         expect(resolveUmkmListenTarget(listen, 'halo')).toBe('do_ask');
         expect(resolveUmkmListenTarget(listen, 'list barang')).toBe('do_list');
-        expect(resolveUmkmListenTarget(listen, 'cek stok gula')).toBe('do_stock');
-        expect(resolveUmkmListenTarget(listen, 'ringkasan')).toBe('do_report');
         expect(resolveUmkmListenTarget(listen, 'jual 2 kopi 30000')).toBe('do_record');
-        expect(resolveUmkmListenTarget(listen, '1')).toBe('do_record');
-        expect(resolveUmkmListenTarget(listen, '2')).toBe('do_stock');
-        expect(resolveUmkmListenTarget(listen, '3')).toBe('do_list');
-        expect(resolveUmkmListenTarget(listen, '4')).toBe('do_report');
-        expect(resolveUmkmListenTarget(listen, '5')).toBe('help');
+        expect(resolveUmkmListenTarget(listen, '1')).toBe('do_ask');
+        expect(resolveUmkmListenTarget(listen, '5')).toBe('do_record');
+        expect(resolveUmkmListenTarget(listen, 'tambah belanja')).toBe('do_record_purchase');
         expect(resolveUmkmListenTarget(listen, 'ya', { hasPendingSale: true })).toBe('do_confirm');
-        expect(resolveUmkmListenTarget(listen, '1', { hasPendingSale: true })).toBe('do_confirm');
         expect(resolveUmkmListenTarget(listen, 'batal', { hasPendingSale: true })).toBe('do_cancel');
-        expect(resolveUmkmListenTarget(listen, '0', { hasPendingSale: true })).toBe('do_cancel');
         expect(def.nodes.some((n) => n.id === 'do_ask' && n.type === 'rag')).toBe(true);    });
 });

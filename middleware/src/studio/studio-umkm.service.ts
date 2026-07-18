@@ -4,13 +4,33 @@ import { InventoryService } from '../inventory/inventory.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import {
     DEFAULT_STUDIO_SALES_CONTEXT,
+    getUmkmCommandsFromConfig,
     type StudioContextConfig,
 } from './studio-db-context.service';
+import {
+    DEFAULT_UMKM_COMMANDS,
+    formatMenuHubPrompt,
+    formatPurchaseHubPrompt,
+    formatReportHubPrompt,
+    sanitizeUmkmCommandsInput,
+    type UmkmCommandsConfig,
+} from './studio-umkm-commands';
 import {
     detectUmkmFeedback,
     formatFeedbackThanks,
     type UmkmFeedbackRating,
 } from './studio-umkm-feedback.util';
+import {
+    detectReportPeriod,
+    formatIdrShort,
+    generatePurchaseNumber,
+    parseAddProductMessage,
+    parseAddStockMessage,
+    parsePurchaseHeuristic,
+    periodRange,
+    type ParsedUmkmPurchase,
+    type UmkmReportPeriod,
+} from './studio-umkm-ops.util';
 import {
     detectUmkmConfirmReply,
     detectUmkmIntent,
@@ -61,11 +81,28 @@ export type PendingUmkmSale = {
     pendingId?: string;
 };
 
+export type PendingUmkmPurchase = {
+    purchase: ParsedUmkmPurchase;
+    resolved: { name: string; quantity: number; unitCost: number; itemId?: string; catalogMatched: boolean }[];
+    phone?: string;
+    createdAt: number;
+    pendingId?: string;
+};
+
+type UmkmWizard =
+    | { kind: 'menu_hub'; createdAt: number }
+    | { kind: 'purchase_hub'; createdAt: number }
+    | { kind: 'report_hub'; createdAt: number }
+    | { kind: 'await_add_product'; createdAt: number }
+    | { kind: 'await_add_stock'; createdAt: number }
+    | { kind: 'await_purchase'; createdAt: number };
+
 export const DEFAULT_STUDIO_UMKM_CONTEXT: StudioContextConfig = {
     umkm_mode: true,
     audience: 'customer',
     tenant_id: DEFAULT_TENANT,
     supabase_views: DEFAULT_STUDIO_SALES_CONTEXT.supabase_views,
+    umkm_commands: structuredClone(DEFAULT_UMKM_COMMANDS),
 };
 
 @Injectable()
@@ -73,6 +110,8 @@ export class StudioUmkmService {
     private readonly logger = new Logger(StudioUmkmService.name);
     /** Pending confirmations for non-guided umkm_mode (key = tenant:phone). */
     private readonly pendingByChat = new Map<string, PendingUmkmSale>();
+    private readonly pendingPurchaseByChat = new Map<string, PendingUmkmPurchase>();
+    private readonly wizardByChat = new Map<string, UmkmWizard>();
 
     constructor(
         private readonly supabaseService: SupabaseService,
@@ -84,6 +123,28 @@ export class StudioUmkmService {
         return this.supabaseService.getAdminClient();
     }
 
+    private chatKey(tenantId: string, phone?: string, conversationId?: string): string {
+        return `${tenantId}:${phone || conversationId || 'anon'}`;
+    }
+
+    private setWizard(tenantId: string, wizard: UmkmWizard, phone?: string, conversationId?: string) {
+        this.wizardByChat.set(this.chatKey(tenantId, phone, conversationId), wizard);
+    }
+
+    private clearWizard(tenantId: string, phone?: string, conversationId?: string) {
+        this.wizardByChat.delete(this.chatKey(tenantId, phone, conversationId));
+    }
+
+    private getWizard(tenantId: string, phone?: string, conversationId?: string): UmkmWizard | null {
+        const w = this.wizardByChat.get(this.chatKey(tenantId, phone, conversationId));
+        if (!w) return null;
+        if (Date.now() - w.createdAt > PENDING_TTL_MS) {
+            this.clearWizard(tenantId, phone, conversationId);
+            return null;
+        }
+        return w;
+    }
+
     isUmkmMode(config: StudioContextConfig): boolean {
         return config.umkm_mode === true;
     }
@@ -93,8 +154,12 @@ export class StudioUmkmService {
         return typeof tid === 'string' && tid.trim() ? tid.trim() : DEFAULT_TENANT;
     }
 
-    detectIntent(text: string): UmkmIntent {
-        return detectUmkmIntent(text);
+    detectIntent(text: string, commands?: UmkmCommandsConfig | unknown): UmkmIntent {
+        return detectUmkmIntent(text, commands);
+    }
+
+    resolveCommands(config?: StudioContextConfig): UmkmCommandsConfig {
+        return getUmkmCommandsFromConfig(config || {});
     }
 
     /** AIDLC Query Understanding — LLM with keyword fallback. */
@@ -300,20 +365,41 @@ export class StudioUmkmService {
         options?: { conversationId?: string; conversationLines?: ConversationLine[] },
     ): Promise<string | null> {
         const conversationId = options?.conversationId;
+        const commands = this.resolveCommands(config);
         const pending = await this.resolvePendingSale({
             tenantId,
             phone,
             conversationId,
         });
-        const confirm = detectUmkmConfirmReply(text);
+        const confirm = detectUmkmConfirmReply(text, commands);
+
+        const pendingPurchase = this.getPendingPurchase(tenantId, phone, conversationId);
+        if (pendingPurchase && confirm === 'confirm') {
+            this.clearPendingPurchase(tenantId, phone, conversationId);
+            return this.commitPendingPurchase(pendingPurchase, tenantId);
+        }
+        if (pendingPurchase && confirm === 'cancel') {
+            this.clearPendingPurchase(tenantId, phone, conversationId);
+            return '❌ Belanja dibatalkan.';
+        }
+
         if (pending && confirm === 'confirm') {
             this.clearPendingSale(tenantId, phone);
+            this.clearWizard(tenantId, phone, conversationId);
             return this.commitPendingSale(pending, tenantId);
         }
         if (pending && confirm === 'cancel') {
             this.clearPendingSale(tenantId, phone);
             await this.markPendingSaleStatus(pending.pendingId, 'cancelled');
-            return formatSaleCancelled();
+            return formatSaleCancelled(commands);
+        }
+
+        // Active submenu / wizard takes priority over new intents (except cancel)
+        if (confirm === 'cancel') {
+            this.clearWizard(tenantId, phone, conversationId);
+        } else {
+            const wizardReply = await this.continueWizard(text, tenantId, phone, conversationId, config);
+            if (wizardReply !== undefined) return wizardReply;
         }
 
         const feedback = detectUmkmFeedback(text);
@@ -322,7 +408,7 @@ export class StudioUmkmService {
             return formatFeedbackThanks(feedback);
         }
 
-        let intent = detectUmkmIntent(text);
+        let intent = detectUmkmIntent(text, commands);
         if (intent === 'unknown' || intent === 'help') {
             const qu = await this.understandUmkmQuery(text, {
                 conversationLines: options?.conversationLines,
@@ -354,24 +440,61 @@ export class StudioUmkmService {
 
         this.logger.debug(`UMKM intent=${intent} aidlc=${toAidlcIntent(intent)}`);
         switch (intent) {
-            case 'record_sale':
-                return this.recordSaleFromText(text, tenantId, phone, config, { conversationId });
-            case 'sales_report':
-                return this.buildDailyReportMessage(tenantId);
+            case 'ask':
+                this.clearWizard(tenantId, phone, conversationId);
+                return null; // RAG / guided do_ask
+            case 'menu_hub':
+                return this.openMenuHub(tenantId, phone, conversationId);
+            case 'purchase_hub':
+                return this.openPurchaseHub(tenantId, phone, conversationId);
+            case 'report_hub':
+                return this.openReportHub(tenantId, phone, conversationId);
             case 'list_products':
+                this.clearWizard(tenantId, phone, conversationId);
                 return this.buildProductListMessage(tenantId);
-            case 'check_stock':
-                return this.buildStockCheckMessage(text, tenantId);
+            case 'add_product':
+                return this.beginOrRunAddProduct(text, tenantId, phone, conversationId);
+            case 'add_stock':
+            case 'check_stock': {
+                // check_stock legacy: if looks like query show stock; else add-stock flow
+                if (intent === 'check_stock' || /cek\s+stok|berapa\s+stok|sisa\s+stok/i.test(text)) {
+                    const q = extractStockProductQuery(text);
+                    if (q || /cek\s+stok|berapa\s+stok/i.test(text)) {
+                        this.clearWizard(tenantId, phone, conversationId);
+                        return this.buildStockCheckMessage(text, tenantId);
+                    }
+                }
+                return this.beginOrRunAddStock(text, tenantId, phone, conversationId);
+            }
+            case 'list_purchases':
+                this.clearWizard(tenantId, phone, conversationId);
+                return this.buildPurchaseListMessage(tenantId, detectReportPeriod(text) || 'all');
+            case 'record_purchase':
+                return this.beginOrRunPurchase(text, tenantId, phone, conversationId, config);
+            case 'list_sales':
+                this.clearWizard(tenantId, phone, conversationId);
+                return this.buildSalesListMessage(tenantId, detectReportPeriod(text) || 'today');
+            case 'record_sale':
+                this.clearWizard(tenantId, phone, conversationId);
+                return this.recordSaleFromText(text, tenantId, phone, config, { conversationId });
+            case 'sales_report': {
+                this.clearWizard(tenantId, phone, conversationId);
+                const period = detectReportPeriod(text) || 'today';
+                return this.buildCombinedReportMessage(tenantId, period);
+            }
             case 'help':
-                return formatUmkmHelp();
+                this.clearWizard(tenantId, phone, conversationId);
+                return formatUmkmHelp(commands);
             default:
                 if (pending) {
+                    const confirmHint = commands.confirm[0] || 'ya';
+                    const cancelHint = commands.cancel[0] || 'batal';
+                    const saleKw = (commands.keywords.record_sale || [])[0] || 'jual';
                     return [
                         'Masih ada draft penjualan menunggu konfirmasi.',
-                        'Ketik *ya* untuk simpan, *batal* untuk batalkan, atau kirim ulang *jual ...*.',
+                        `Ketik *${confirmHint}* untuk simpan, *${cancelHint}* untuk batalkan, atau kirim ulang *${saleKw} ...*.`,
                     ].join('\n');
                 }
-                // tanya_umum / lainnya → null so WhatsApp caller can fall back to RAG chat
                 return null;
         }
     }
@@ -481,11 +604,12 @@ export class StudioUmkmService {
         | { kind: 'preview'; message: string; pending: PendingUmkmSale }
         | { kind: 'error'; message: string }
     > {
-        if (isUmkmMenuOnly(text) && detectUmkmIntent(text) === 'record_sale') {
-            return { kind: 'error', message: formatRecordSaleMenuPrompt() };
+        const commands = this.resolveCommands(config);
+        if (isUmkmMenuOnly(text) && detectUmkmIntent(text, commands) === 'record_sale') {
+            return { kind: 'error', message: formatRecordSaleMenuPrompt(commands) };
         }
 
-        const parsed = await this.parseSaleMessage(text);
+        const parsed = await this.parseSaleMessage(text, commands);
         if (!parsed) {
             return {
                 kind: 'error',
@@ -493,11 +617,10 @@ export class StudioUmkmService {
                     'Maaf, saya belum bisa memahami detail penjualannya.',
                     '',
                     'Contoh format:',
-                    '• jual 3 es kopi 45000',
-                    '• catat 2 tas total 500rb tunai',
-                    '• order pelanggan Budi 1 sabun 25000 transfer',
+                    `• ${(commands.keywords.record_sale || [])[0] || 'jual'} 3 es kopi 45000`,
+                    `• ${(commands.keywords.record_sale || [])[0] || 'catat'} 2 tas total 500rb tunai`,
                     '',
-                    'Ketik *3* / *daftar barang* untuk lihat produk, atau *5* untuk menu.',
+                    `Ketik *${(commands.keywords.list_products || [])[0] || 'daftar barang'}* untuk lihat produk, atau *${(commands.keywords.help || [])[0] || 'bantuan'}* untuk menu.`,
                 ].join('\n'),
             };
         }
@@ -540,12 +663,18 @@ export class StudioUmkmService {
         return {
             kind: 'preview',
             pending,
-            message: formatSalePreviewWithCatalog({
-                totalAmount: saleForSave.totalAmount,
-                items: resolved,
-                paymentMethod: parsed.paymentMethod,
-                customerName: parsed.customerName,
-            }),
+            message: formatSalePreviewWithCatalog(
+                {
+                    totalAmount: saleForSave.totalAmount,
+                    items: resolved,
+                    paymentMethod: parsed.paymentMethod,
+                    customerName: parsed.customerName,
+                },
+                {
+                    confirm: commands.confirm[0] || 'ya',
+                    cancel: commands.cancel[0] || 'batal',
+                },
+            ),
         };
     }
 
@@ -586,11 +715,14 @@ export class StudioUmkmService {
         return prepared.message;
     }
 
-    async parseSaleMessage(text: string): Promise<ParsedUmkmSale | null> {
+    async parseSaleMessage(
+        text: string,
+        commands?: UmkmCommandsConfig | unknown,
+    ): Promise<ParsedUmkmSale | null> {
         // Avoid LLM hallucination on CS menu digits (e.g. "1")
         if (isUmkmMenuOnly(text)) return null;
 
-        const heuristic = parseSaleHeuristic(text);
+        const heuristic = parseSaleHeuristic(text, commands);
         if (heuristic) return heuristic;
 
         const llm = await this.parseSaleWithLlm(text);
@@ -821,9 +953,412 @@ export class StudioUmkmService {
         };
     }
 
+    openMenuHub(tenantId: string, phone?: string, conversationId?: string): string {
+        this.setWizard(tenantId, { kind: 'menu_hub', createdAt: Date.now() }, phone, conversationId);
+        return formatMenuHubPrompt();
+    }
+
+    openPurchaseHub(tenantId: string, phone?: string, conversationId?: string): string {
+        this.setWizard(tenantId, { kind: 'purchase_hub', createdAt: Date.now() }, phone, conversationId);
+        return formatPurchaseHubPrompt();
+    }
+
+    openReportHub(tenantId: string, phone?: string, conversationId?: string): string {
+        this.setWizard(tenantId, { kind: 'report_hub', createdAt: Date.now() }, phone, conversationId);
+        return formatReportHubPrompt();
+    }
+
+    getPendingPurchase(
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+    ): PendingUmkmPurchase | null {
+        const p = this.pendingPurchaseByChat.get(this.chatKey(tenantId, phone, conversationId));
+        if (!p) return null;
+        if (Date.now() - p.createdAt > PENDING_TTL_MS) {
+            this.clearPendingPurchase(tenantId, phone, conversationId);
+            return null;
+        }
+        return p;
+    }
+
+    clearPendingPurchasePublic(tenantId: string, phone?: string, conversationId?: string) {
+        this.clearPendingPurchase(tenantId, phone, conversationId);
+    }
+
+    private clearPendingPurchase(tenantId: string, phone?: string, conversationId?: string) {
+        this.pendingPurchaseByChat.delete(this.chatKey(tenantId, phone, conversationId));
+    }
+
+    private setPendingPurchase(
+        tenantId: string,
+        pending: PendingUmkmPurchase,
+        phone?: string,
+        conversationId?: string,
+    ) {
+        this.pendingPurchaseByChat.set(this.chatKey(tenantId, phone, conversationId), pending);
+    }
+
+    /** Continue active submenu/wizard; undefined = no wizard. */
+    async continueWizard(
+        text: string,
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+        config?: StudioContextConfig,
+    ): Promise<string | undefined> {
+        const wizard = this.getWizard(tenantId, phone, conversationId);
+        if (!wizard) return undefined;
+        const t = text.trim();
+
+        if (wizard.kind === 'menu_hub') {
+            if (t === '1') {
+                this.clearWizard(tenantId, phone, conversationId);
+                return this.buildProductListMessage(tenantId);
+            }
+            if (t === '2') {
+                this.setWizard(tenantId, { kind: 'await_add_product', createdAt: Date.now() }, phone, conversationId);
+                return 'Kirim: *nama menu* [harga]\nContoh: *mie ayam 15000* atau *bakso modal 10000 18000*';
+            }
+            if (t === '3') {
+                this.setWizard(tenantId, { kind: 'await_add_stock', createdAt: Date.now() }, phone, conversationId);
+                return 'Kirim: *nama menu* *qty*\nContoh: *mie ayam 10*';
+            }
+            return formatMenuHubPrompt();
+        }
+
+        if (wizard.kind === 'purchase_hub') {
+            if (t === '1') {
+                this.clearWizard(tenantId, phone, conversationId);
+                return this.buildPurchaseListMessage(tenantId, 'all');
+            }
+            if (t === '2') {
+                this.clearWizard(tenantId, phone, conversationId);
+                return this.buildPurchaseListMessage(tenantId, 'month');
+            }
+            if (t === '3') {
+                this.setWizard(tenantId, { kind: 'await_purchase', createdAt: Date.now() }, phone, conversationId);
+                return [
+                    'Kirim detail belanja:',
+                    '• *belanja 10 mie ayam @5000*',
+                    '• *belanja 2026-07-18 5 bakso 3000, 2 es teh 2000*',
+                ].join('\n');
+            }
+            return formatPurchaseHubPrompt();
+        }
+
+        if (wizard.kind === 'report_hub') {
+            const map: Record<string, UmkmReportPeriod> = {
+                '1': 'today',
+                '2': 'week',
+                '3': 'month',
+                '4': 'all',
+            };
+            const period = map[t] || detectReportPeriod(t);
+            if (period) {
+                this.clearWizard(tenantId, phone, conversationId);
+                return this.buildCombinedReportMessage(tenantId, period);
+            }
+            return formatReportHubPrompt();
+        }
+
+        if (wizard.kind === 'await_add_product') {
+            return this.beginOrRunAddProduct(text, tenantId, phone, conversationId, true);
+        }
+        if (wizard.kind === 'await_add_stock') {
+            return this.beginOrRunAddStock(text, tenantId, phone, conversationId, true);
+        }
+        if (wizard.kind === 'await_purchase') {
+            return this.beginOrRunPurchase(text, tenantId, phone, conversationId, config, true);
+        }
+        return undefined;
+    }
+
+    async beginOrRunAddProduct(
+        text: string,
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+        fromWizard = false,
+    ): Promise<string> {
+        const parsed = parseAddProductMessage(text);
+        if (!parsed) {
+            if (!fromWizard) {
+                this.setWizard(tenantId, { kind: 'await_add_product', createdAt: Date.now() }, phone, conversationId);
+            }
+            return 'Format: *nama menu* [harga]\nContoh: *mie ayam 15000*';
+        }
+        try {
+            const item = await this.inventoryService.createItem(tenantId, {
+                name: parsed.name,
+                sellingPrice: parsed.sellingPrice,
+                costPrice: parsed.costPrice ?? 0,
+                status: 'active',
+            });
+            this.clearWizard(tenantId, phone, conversationId);
+            return [
+                '✅ *Menu ditambahkan*',
+                `• ${item.name}${item.sku ? ` [${item.sku}]` : ''}`,
+                `• Harga jual: ${formatIdrShort(Number(item.selling_price || 0))}`,
+            ].join('\n');
+        } catch (e: any) {
+            this.logger.warn(`add product failed: ${e?.message}`);
+            return `Gagal menambah menu: ${e?.message || 'error'}`;
+        }
+    }
+
+    async beginOrRunAddStock(
+        text: string,
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+        fromWizard = false,
+    ): Promise<string> {
+        const parsed = parseAddStockMessage(text);
+        if (!parsed || !Number.isFinite(parsed.quantity) || parsed.quantity <= 0) {
+            if (!fromWizard) {
+                this.setWizard(tenantId, { kind: 'await_add_stock', createdAt: Date.now() }, phone, conversationId);
+            }
+            return 'Format: *nama menu* *qty*\nContoh: *mie ayam 10*';
+        }
+        const products = await this.fetchActiveProducts(tenantId);
+        const match = findBestProductMatch(parsed.productQuery, products, 40);
+        if (!match) {
+            return `Menu *${parsed.productQuery}* tidak ditemukan. Ketik *daftar menu* dulu.`;
+        }
+        try {
+            await this.inventoryService.createStockMovement(tenantId, {
+                itemId: match.id,
+                movementType: 'MANUAL_IN',
+                quantity: parsed.quantity,
+                referenceType: 'umkm_stock_in',
+                notes: `WA tambah stok ${parsed.quantity}x ${match.name}`,
+            });
+            this.clearWizard(tenantId, phone, conversationId);
+            return `✅ Stok *${match.name}* +${parsed.quantity}`;
+        } catch (e: any) {
+            this.logger.warn(`add stock failed: ${e?.message}`);
+            return `Gagal tambah stok: ${e?.message || 'error'}`;
+        }
+    }
+
+    async beginOrRunPurchase(
+        text: string,
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+        _config?: StudioContextConfig,
+        fromWizard = false,
+    ): Promise<string> {
+        const parsed = parsePurchaseHeuristic(text);
+        if (!parsed) {
+            if (!fromWizard && !/^tambah\s+belanja|^belanja$/i.test(text.trim())) {
+                // bare "tambah belanja" / menu digit path
+            }
+            if (!fromWizard) {
+                this.setWizard(tenantId, { kind: 'await_purchase', createdAt: Date.now() }, phone, conversationId);
+            }
+            return [
+                'Format belanja:',
+                '• *10 mie ayam @5000*',
+                '• *belanja 2026-07-18 5 bakso 3000*',
+            ].join('\n');
+        }
+
+        const products = await this.fetchActiveProducts(tenantId);
+        const resolved = parsed.items.map((it) => {
+            const match = findBestProductMatch(it.name, products, 40);
+            return {
+                name: match?.name || it.name,
+                quantity: it.quantity,
+                unitCost: it.unitCost,
+                itemId: match?.id,
+                catalogMatched: !!match,
+            };
+        });
+        const pending: PendingUmkmPurchase = {
+            purchase: { ...parsed, totalCost: resolved.reduce((s, r) => s + r.quantity * r.unitCost, 0) },
+            resolved,
+            phone,
+            createdAt: Date.now(),
+        };
+        this.setPendingPurchase(tenantId, pending, phone, conversationId);
+        this.clearWizard(tenantId, phone, conversationId);
+
+        const lines = ['📋 *Konfirmasi belanja*', `Tanggal: ${parsed.purchaseDate}`, ''];
+        for (const it of resolved) {
+            const tag = it.catalogMatched ? '' : ' _(belum di katalog)_';
+            lines.push(
+                `• ${it.quantity}x ${it.name} @ ${formatIdrShort(it.unitCost)} = ${formatIdrShort(it.quantity * it.unitCost)}${tag}`,
+            );
+        }
+        lines.push(`Total: *${formatIdrShort(pending.purchase.totalCost)}*`);
+        lines.push('', 'Ketik *ya* untuk simpan, *batal* untuk batalkan.');
+        return lines.join('\n');
+    }
+
+    async commitPendingPurchase(pending: PendingUmkmPurchase, tenantId: string): Promise<string> {
+        const purchaseNumber = generatePurchaseNumber();
+        const { data: header, error } = await this.admin()
+            .from('studio_umkm_purchases')
+            .insert({
+                tenant_id: tenantId,
+                purchase_number: purchaseNumber,
+                purchase_date: pending.purchase.purchaseDate,
+                supplier_name: pending.purchase.supplierName || null,
+                total_cost: pending.purchase.totalCost,
+                notes: pending.purchase.notes || null,
+                source: 'whatsapp',
+                status: 'completed',
+            })
+            .select('id')
+            .single();
+        if (error || !header) {
+            this.logger.warn(`commit purchase: ${error?.message}`);
+            return 'Gagal menyimpan belanja.';
+        }
+
+        for (const it of pending.resolved) {
+            await this.admin().from('studio_umkm_purchase_items').insert({
+                purchase_id: header.id,
+                item_id: it.itemId || null,
+                item_name: it.name,
+                quantity: it.quantity,
+                unit_cost: it.unitCost,
+                subtotal: it.quantity * it.unitCost,
+            });
+            if (it.itemId) {
+                try {
+                    await this.inventoryService.createStockMovement(tenantId, {
+                        itemId: it.itemId,
+                        movementType: 'MANUAL_IN',
+                        quantity: it.quantity,
+                        unitCost: it.unitCost,
+                        referenceType: 'umkm_purchase',
+                        referenceId: header.id,
+                        reference: purchaseNumber,
+                        notes: `Belanja WA ${purchaseNumber}`,
+                    });
+                } catch (e: any) {
+                    this.logger.warn(`stock in after purchase: ${e?.message}`);
+                }
+            }
+        }
+
+        return [
+            '✅ *Belanja tercatat*',
+            `No. ${purchaseNumber}`,
+            `Tanggal: ${pending.purchase.purchaseDate}`,
+            `Total: ${formatIdrShort(pending.purchase.totalCost)}`,
+        ].join('\n');
+    }
+
+    async buildPurchaseListMessage(
+        tenantId: string,
+        period: UmkmReportPeriod = 'all',
+    ): Promise<string> {
+        const range = periodRange(period);
+        let q = this.admin()
+            .from('studio_umkm_purchases')
+            .select('purchase_number, purchase_date, total_cost, supplier_name')
+            .eq('tenant_id', tenantId)
+            .eq('status', 'completed')
+            .order('purchase_date', { ascending: false })
+            .limit(15);
+        if (range.from) q = q.gte('purchase_date', range.from.slice(0, 10));
+        if (range.to) q = q.lte('purchase_date', range.to.slice(0, 10));
+        const { data, error } = await q;
+        if (error) {
+            this.logger.warn(`list purchases: ${error.message}`);
+            return 'Gagal memuat daftar belanja.';
+        }
+        if (!data?.length) {
+            return `Belum ada belanja untuk *${range.label}*.\nKetik *tambah belanja* untuk mencatat.`;
+        }
+        const lines = [`🛒 *Daftar belanja (${range.label})*`, ''];
+        let total = 0;
+        for (const row of data) {
+            total += Number(row.total_cost || 0);
+            lines.push(
+                `• ${row.purchase_date} ${row.purchase_number} — ${formatIdrShort(Number(row.total_cost || 0))}`,
+            );
+        }
+        lines.push('', `Total: *${formatIdrShort(total)}*`);
+        return lines.join('\n');
+    }
+
+    async buildSalesListMessage(
+        tenantId: string,
+        period: UmkmReportPeriod = 'today',
+    ): Promise<string> {
+        const range = periodRange(period);
+        let q = this.admin()
+            .from('ecom_orders')
+            .select('order_number, customer_name, total_amount, created_at')
+            .eq('tenant_id', tenantId)
+            .order('created_at', { ascending: false })
+            .limit(15);
+        if (range.from) q = q.gte('created_at', range.from);
+        if (range.to) q = q.lte('created_at', range.to);
+        const { data, error } = await q;
+        if (error) {
+            this.logger.warn(`list sales: ${error.message}`);
+            return 'Gagal memuat daftar penjualan.';
+        }
+        if (!data?.length) {
+            return `Belum ada penjualan untuk *${range.label}*.\nKetik *jual ...* untuk mencatat.`;
+        }
+        const lines = [`💵 *Daftar penjualan (${range.label})*`, ''];
+        let total = 0;
+        for (const row of data) {
+            total += Number(row.total_amount || 0);
+            const when = String(row.created_at || '').slice(0, 16).replace('T', ' ');
+            lines.push(`• ${when} ${row.order_number} — ${formatIdrShort(Number(row.total_amount || 0))}`);
+        }
+        lines.push('', `Total: *${formatIdrShort(total)}*`);
+        return lines.join('\n');
+    }
+
+    async buildCombinedReportMessage(
+        tenantId: string,
+        period: UmkmReportPeriod = 'today',
+    ): Promise<string> {
+        const range = periodRange(period);
+
+        let salesQ = this.admin()
+            .from('ecom_orders')
+            .select('total_amount, paid_amount, payment_status')
+            .eq('tenant_id', tenantId);
+        if (range.from) salesQ = salesQ.gte('created_at', range.from);
+        if (range.to) salesQ = salesQ.lte('created_at', range.to);
+        const { data: sales } = await salesQ;
+
+        let buyQ = this.admin()
+            .from('studio_umkm_purchases')
+            .select('total_cost')
+            .eq('tenant_id', tenantId)
+            .eq('status', 'completed');
+        if (range.from) buyQ = buyQ.gte('purchase_date', range.from.slice(0, 10));
+        if (range.to) buyQ = buyQ.lte('purchase_date', range.to.slice(0, 10));
+        const { data: buys } = await buyQ;
+
+        const orderCount = sales?.length || 0;
+        const revenue = (sales || []).reduce((s, r: any) => s + Number(r.total_amount || 0), 0);
+        const purchaseTotal = (buys || []).reduce((s, r: any) => s + Number(r.total_cost || 0), 0);
+        const margin = revenue - purchaseTotal;
+
+        return [
+            `📊 *Laporan ${range.label}*`,
+            '',
+            `Penjualan: *${orderCount}* order`,
+            `Total penjualan: *${formatIdrShort(revenue)}*`,
+            `Total belanja: *${formatIdrShort(purchaseTotal)}*`,
+            `Selisih: *${formatIdrShort(margin)}*`,
+        ].join('\n');
+    }
+
     async buildDailyReportMessage(tenantId = DEFAULT_TENANT): Promise<string> {
-        const report = await this.fetchDailyReport(tenantId);
-        return formatDailyReportWa(report);
+        return this.buildCombinedReportMessage(tenantId, 'today');
     }
 
     /** Setup notebook for UMKM mode (context + optional guide flow creation). */
@@ -847,14 +1382,21 @@ export class StudioUmkmService {
                 ? tenantId.trim()
                 : undefined;
 
+        const existingCfg =
+            typeof notebook.context_config === 'object' && notebook.context_config
+                ? (notebook.context_config as StudioContextConfig)
+                : {};
+
         const merged: StudioContextConfig = {
             ...DEFAULT_STUDIO_UMKM_CONTEXT,
-            ...(typeof notebook.context_config === 'object' && notebook.context_config
-                ? (notebook.context_config as StudioContextConfig)
-                : {}),
+            ...existingCfg,
             umkm_mode: true,
             audience: 'customer',
             ...(resolvedTenant ? { tenant_id: resolvedTenant } : {}),
+            // Seed default commands only when missing — never overwrite custom
+            umkm_commands: existingCfg.umkm_commands
+                ? existingCfg.umkm_commands
+                : structuredClone(DEFAULT_UMKM_COMMANDS),
         };
 
         const { error: updErr } = await this.admin()
@@ -867,6 +1409,45 @@ export class StudioUmkmService {
             notebookId,
             tenantId: this.resolveTenantId(merged),
             contextConfig: merged,
+        };
+    }
+
+    /** Save configurable WA commands onto notebook context_config. */
+    async updateUmkmCommands(
+        notebookId: string,
+        commandsRaw: unknown,
+    ): Promise<{ notebookId: string; contextConfig: StudioContextConfig; commands: UmkmCommandsConfig }> {
+        const commands = sanitizeUmkmCommandsInput(commandsRaw);
+
+        const { data: notebook, error: nbErr } = await this.admin()
+            .from('studio_notebooks')
+            .select('id, context_config')
+            .eq('id', notebookId)
+            .single();
+        if (nbErr || !notebook) throw nbErr || new Error('Notebook not found');
+
+        const existing =
+            typeof notebook.context_config === 'object' && notebook.context_config
+                ? (notebook.context_config as StudioContextConfig)
+                : {};
+        const merged: StudioContextConfig = {
+            ...existing,
+            umkm_mode: true,
+            umkm_commands: commands,
+        };
+
+        const { data, error } = await this.admin()
+            .from('studio_notebooks')
+            .update({ context_config: merged, updated_at: new Date() })
+            .eq('id', notebookId)
+            .select('id, context_config')
+            .single();
+        assertNoSupabaseError(error, 'Failed to update UMKM commands');
+
+        return {
+            notebookId: data.id,
+            contextConfig: data.context_config as StudioContextConfig,
+            commands,
         };
     }
 }

@@ -182,6 +182,58 @@ Balas **satu digit** kapan saja (bisa digabung dengan kalimat):
 
 Saat ada preview penjualan: `1` = konfirmasi simpan, `0` = batalkan (setara `ya` / `batal`).
 
+## Menu WhatsApp (default baru)
+
+| Angka | Aksi |
+|-------|------|
+| `1` | Tanya (RAG) |
+| `2` | Hub Menu → daftar / tambah menu / tambah stok |
+| `3` | Hub Belanja → daftar / bulan ini / tambah belanja |
+| `4` | Daftar penjualan |
+| `5` | Tambah penjualan |
+| `6` | Hub Laporan → hari / minggu / bulan / semua (penjualan + belanja) |
+| `0` | Bantuan |
+
+Belanja tersimpan di `studio_umkm_purchases` (+ item) dan menambah stok katalog bila nama match.
+
+## Perintah yang bisa dikonfigurasi (`umkm_commands`)
+
+Kata kunci, angka menu, dan ya/batal **bukan hardcoded tetap** — disimpan per notebook di `studio_notebooks.context_config.umkm_commands`.
+
+Edit di **Admin → AI Studio → UMKM → Edit** (section *Perintah WhatsApp*), atau GraphQL:
+
+```graphql
+mutation {
+  updateStudioUmkmCommands(
+    notebookId: "..."
+    commands: {
+      menu: [
+        { digit: "1", intent: "record_sale", label: "Catat penjualan" }
+        { digit: "2", intent: "check_stock", label: "Cek stok" }
+      ]
+      keywords: {
+        record_sale: ["jual", "catat"]
+        sales_report: ["laporan", "omzet"]
+        check_stock: ["cek stok", "stok"]
+        list_products: ["daftar barang"]
+        help: ["bantuan", "menu"]
+      }
+      confirm: ["ya", "ok", "1"]
+      cancel: ["batal", "0"]
+    }
+    republishGuideFlow: true
+  )
+}
+```
+
+- **Tambah/hapus** item di `menu` atau array keyword = perintah berubah.
+- Intent aksi tetap: `record_sale` | `check_stock` | `list_products` | `sales_report` | `help`.
+- Saat simpan dengan `republishGuideFlow: true`, guide flow **UMKM Penjualan WA** digenerate ulang dari config yang sama.
+- Setup UMKM men-seed default jika `umkm_commands` belum ada (tidak menimpa custom).
+- Query default: `studioUmkmCommandsDefaults`.
+
+Default menu/keyword = tabel di atas (1–5, jual/laporan/…).
+
 ## Katalog produk (`inv_items`)
 
 Saat catat penjualan, nama barang **dicocokkan** ke `inv_items` (status `active`, `tenant_id` sama):
@@ -227,7 +279,9 @@ Data disimpan ke `ecom_orders` dengan `source=api`, `status=completed`.
 
 ## Guide flow UMKM
 
-Flow bawaan: **UMKM Penjualan WA** (`defaultUmkmGuideFlowDefinition`).
+Flow bawaan: **UMKM Penjualan WA** (`defaultUmkmGuideFlowDefinition(commands)`).
+
+Welcome + transisi `listen_intent` digenerate dari `context_config.umkm_commands` saat `createAndPublishUmkmFlow`.
 
 Node `action`:
 

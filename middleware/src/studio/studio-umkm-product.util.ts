@@ -168,12 +168,17 @@ export function formatSaleConfirmationWithCatalog(order: {
 }
 
 /** Preview ringkasan sebelum commit (AIDLC staging di percakapan). */
-export function formatSalePreviewWithCatalog(sale: {
-    totalAmount: number;
-    items: UmkmSaleItemResolved[];
-    paymentMethod?: string;
-    customerName?: string;
-}): string {
+export function formatSalePreviewWithCatalog(
+    sale: {
+        totalAmount: number;
+        items: UmkmSaleItemResolved[];
+        paymentMethod?: string;
+        customerName?: string;
+    },
+    hints?: { confirm?: string; cancel?: string },
+): string {
+    const confirmHint = hints?.confirm || 'ya';
+    const cancelHint = hints?.cancel || 'batal';
     const lines = ['📋 *Konfirmasi penjualan*', ''];
     if (sale.items.length) {
         lines.push('Item:');
@@ -189,7 +194,7 @@ export function formatSalePreviewWithCatalog(sale: {
     if (sale.paymentMethod) lines.push(`Pembayaran: ${sale.paymentMethod}`);
     if (sale.customerName) lines.push(`Pelanggan: ${sale.customerName}`);
     lines.push('');
-    lines.push('Benar? Ketik *ya* untuk simpan, atau *batal* untuk batalkan.');
+    lines.push(`Benar? Ketik *${confirmHint}* untuk simpan, atau *${cancelHint}* untuk batalkan.`);
     return lines.join('\n');
 }
 
