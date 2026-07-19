@@ -186,7 +186,7 @@ Saat ada preview penjualan: `1` = konfirmasi simpan, `0` = batalkan (setara `ya`
 
 | Angka | Aksi |
 |-------|------|
-| `1` | Tanya (RAG) |
+| `1` | Tanya (**Agentic RAG** — baca data toko + dokumen) |
 | `2` | Hub Menu → daftar / tambah menu / tambah stok |
 | `3` | Hub Belanja → daftar / bulan ini / tambah belanja |
 | `4` | Daftar penjualan |
@@ -354,7 +354,8 @@ Unit test: `studio-umkm.util.spec.ts` (intent, parsing, guide flow graph).
 
 - Query Understanding AIDLC (`studio-umkm-qu.ts`) untuk pesan ambigu → intent + klarifikasi
 - Staging durable `studio_umkm_pending_sales`
-- `tanya_umum` → node RAG `do_ask` di guide flow UMKM
+- `tanya_umum` → node `do_ask` memakai **Agentic Ask** (tool terbatas: stok, penjualan, belanja, laporan, katalog, dokumen, arahkan menu) — bukan RAG dokumen saja
+- Modul: `studio-umkm-agentic-ask.*` (planner murni + orchestrator). Aksi tulis (jual/tambah) **tidak** dieksekusi dari Tanya; diarahkan ke menu + konfirmasi.
 
 ## Fase 3 (sudah)
 

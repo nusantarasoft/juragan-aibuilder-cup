@@ -22,7 +22,6 @@ import {
     parseSaleHeuristic,
 } from './studio-umkm.util';
 import { resolveUmkmListenTarget } from './guide-flow.interpreter';
-import type { GuideFlowNode } from './guide-flow.definition';
 import { stripWhatsAppMediaAnnotations } from './studio-whatsapp.util';
 import {
     DEFAULT_STUDIO_UMKM_CONTEXT,
@@ -45,7 +44,7 @@ const listenStub = {
         { when: 'regex' as const, pattern: '^6$', target: 'do_report_hub' },
         { when: 'default' as const, target: 'help' },
     ],
-} as GuideFlowNode;
+};
 
 const DIGIT_INTENTS: Record<string, string> = {
     '0': 'help',
@@ -119,10 +118,16 @@ describe('Perintah 1 — Tanya (ask)', () => {
         expect(detectUmkmIntent('bertanya', cmds)).toBe('ask');
     });
 
-    it('POSITIF handleMessage ask → null (serahkan RAG)', async () => {
+    it('POSITIF handleMessage ask → null (serahkan agentic RAG di guide-flow)', async () => {
         const { svc } = makeUmkmService();
         const r = await svc.handleMessage('1', 't', undefined, cfg, { conversationId: 'c-ask' });
         expect(r).toBeNull();
+    });
+
+    it('POSITIF planner tanya stok memakai get_stock', async () => {
+        const { planAgenticAskTools } = await import('./studio-umkm-agentic-ask.planner');
+        const p = planAgenticAskTools('stok bakso berapa');
+        expect(p.tools.some((t) => t.name === 'get_stock')).toBe(true);
     });
 
     it('NEGATIF "tanya harga mie" tetap ask (bukan sale)', () => {

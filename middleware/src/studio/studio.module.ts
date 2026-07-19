@@ -17,6 +17,7 @@ import { StudioWhatsAppController } from './studio-whatsapp.controller';
 import { StudioWhatsAppService } from './studio-whatsapp.service';
 import { StudioUmkmService } from './studio-umkm.service';
 import { StudioUmkmCronService } from './studio-umkm.cron';
+import { StudioUmkmAgenticAskService } from './studio-umkm-agentic-ask.service';
 import { StudioOutputService } from './studio-output.service';
 
 @Module({
@@ -40,6 +41,7 @@ import { StudioOutputService } from './studio-output.service';
         StudioOutputService,
         StudioWhatsAppService,
         StudioUmkmService,
+        StudioUmkmAgenticAskService,
         StudioUmkmCronService,
     ],
     exports: [
@@ -49,6 +51,7 @@ import { StudioOutputService } from './studio-output.service';
         StudioContextService,
         StudioWhatsAppService,
         StudioUmkmService,
+        StudioUmkmAgenticAskService,
     ],
 })
 export class StudioModule {}

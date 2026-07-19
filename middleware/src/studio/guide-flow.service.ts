@@ -27,6 +27,7 @@ import {
 import { DremioService } from '../dremio/dremio.service';
 import { StudioDbContextService, getUmkmCommandsFromConfig } from './studio-db-context.service';
 import { StudioUmkmService } from './studio-umkm.service';
+import { StudioUmkmAgenticAskService } from './studio-umkm-agentic-ask.service';
 import { detectUmkmIntent, formatSaleCancelled, formatUnknownUmkmCommand, formatUmkmHelp, detectUmkmConfirmReply } from './studio-umkm.util';
 import { aidlcIntentToListenTarget } from './studio-umkm-qu';
 import { assertNoSupabaseError } from './studio-supabase.util';
@@ -43,6 +44,7 @@ export class GuideFlowService {
         private readonly dremioService: DremioService,
         private readonly dbContextService: StudioDbContextService,
         private readonly umkmService: StudioUmkmService,
+        private readonly agenticAskService: StudioUmkmAgenticAskService,
     ) { }
 
     private admin() {
@@ -686,10 +688,59 @@ export class GuideFlowService {
                     delete ctx.guidedUserTurns;
 
                     const instructionResolved = substituteInstruction(node.instruction, ctx);
+                    const askQuery = qu.rewritten_query?.trim() || raw;
+
+                    // UMKM Tanya → agentic RAG (tool-limited). Other flows keep classic RAG.
+                    if (isUmkmFlow(def) && (node.id === 'do_ask' || node.id.includes('ask'))) {
+                        const notebook = await this.studioService.getNotebook(notebookId);
+                        const cfg = this.dbContextService.parseConfig(notebook.context_config);
+                        const tenantId = this.umkmService.resolveTenantId(cfg);
+                        const agentic = await this.agenticAskService.answer(
+                            {
+                                question: askQuery,
+                                notebookId,
+                                conversationId: conversation.id,
+                                tenantId,
+                                notebookName: notebook.name,
+                                conversationLines: conversationLines.map(
+                                    (l) => `${l.role === 'assistant' ? 'Assistant' : 'User'}: ${l.content}`,
+                                ),
+                                instruction: instructionResolved,
+                            },
+                            cfg,
+                        );
+                        await this.studioService.appendStudioMessage(
+                            conversation.id,
+                            'assistant',
+                            agentic.answer,
+                            agentic.rawChunks,
+                        );
+                        replies.push({
+                            content: agentic.answer,
+                            references: agentic.references,
+                        });
+                        await this.recordEvent(
+                            conversation.id,
+                            flowRowId,
+                            nodeId,
+                            node.next,
+                            'rag_agentic',
+                            raw,
+                            {
+                                main_intent: qu.main_intent,
+                                plan_reason: agentic.plan.reason,
+                                tools: agentic.plan.tools.map((t) => t.name),
+                                confidence: qu.confidence,
+                            },
+                        );
+                        nodeId = node.next;
+                        break;
+                    }
+
                     const { answer, references, rawChunks } = await this.studioService.invokeRagQuery(
                         notebookId,
                         conversation.id,
-                        qu.rewritten_query?.trim() || raw,
+                        askQuery,
                         {
                             instruction: instructionResolved,
                             queryUnderstanding: qu,

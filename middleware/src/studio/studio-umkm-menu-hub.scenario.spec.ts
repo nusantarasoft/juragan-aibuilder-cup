@@ -21,7 +21,6 @@ import {
     formatUmkmHelp,
 } from './studio-umkm.util';
 import { resolveUmkmListenTarget } from './guide-flow.interpreter';
-import type { GuideFlowNode } from './guide-flow.definition';
 import { stripWhatsAppMediaAnnotations, wahaPayloadHasMedia } from './studio-whatsapp.util';
 import { formatProductListWa, findBestProductMatch } from './studio-umkm-product.util';
 import {
@@ -45,7 +44,7 @@ const listenStub = {
         { when: 'regex' as const, pattern: '^6$', target: 'do_report_hub' },
         { when: 'default' as const, target: 'help' },
     ],
-} as GuideFlowNode;
+};
 
 const CATALOG = [
     { id: 'p1', name: 'Mie Ayam', sku: 'MA-01', sellingPrice: 15000 },

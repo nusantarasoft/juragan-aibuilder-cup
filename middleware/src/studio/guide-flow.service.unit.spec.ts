@@ -6,7 +6,7 @@ import {
 } from './guide-flow.definition';
 
 function makeService(): GuideFlowService {
-    return new GuideFlowService({} as any, {} as any, {} as any, {} as any, {} as any);
+    return new GuideFlowService({} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
 }
 
 describe('GuideFlowService.validateDefinition', () => {

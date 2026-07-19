@@ -264,8 +264,9 @@ export function defaultUmkmGuideFlowDefinition(
                 id: 'do_ask',
                 type: 'rag',
                 instruction:
-                    'Jawab singkat dalam Bahasa Indonesia untuk pertanyaan UMKM seputar toko, produk, cara tingkatkan omzet, atau cara pakai asisten. ' +
-                    `Gunakan konteks dokumen/notebook bila relevan. Jika tidak yakin, arahkan ke menu angka (${menuDigits || 'lihat bantuan'}) atau ketik *${helpKw}*, *${stockKw}*, *${reportKw}*, atau *${saleKw} ...*. ` +
+                    'Jawab singkat dalam Bahasa Indonesia. Gunakan data toko dari tool (stok/penjualan/belanja/laporan/katalog) dan dokumen notebook bila relevan. ' +
+                    'Jangan mengarang angka. Jika user ingin mencatat transaksi, arahkan ke menu angka — jangan mengeksekusi aksi tulis. ' +
+                    `Menu: ${menuDigits || 'lihat bantuan'}; *${helpKw}*, *${stockKw}*, *${reportKw}*, atau *${saleKw} ...*. ` +
                     'Pertanyaan: {{rewrittenQuery}}',
                 next: 'listen_intent',
             },
@@ -325,7 +326,7 @@ export const GUIDE_FLOW_TEMPLATES: Record<
     },
     umkm: {
         label: 'UMKM Penjualan',
-        description: 'AIDLC: QU + konfirmasi jual, cek stok, laporan, tanya_umum RAG',
+        description: 'AIDLC: QU + konfirmasi jual, cek stok, laporan, tanya_umum agentic RAG',
         definition: defaultUmkmGuideFlowDefinition,
     },
     blank: {
