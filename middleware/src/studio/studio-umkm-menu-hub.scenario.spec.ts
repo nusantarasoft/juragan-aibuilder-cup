@@ -254,11 +254,15 @@ describe('Alur tambah menu (2→2→…)', () => {
         });
     }
 
-    it('POSITIF wizard: simpan menu → sukses & wizard selesai', async () => {
+    it('POSITIF wizard: simpan menu → sukses & kembali ke Menu toko', async () => {
         const reply = await svc.continueWizard('mie ayam bakso 16000', tenant, undefined, conv, cfg);
         expect(reply).toMatch(/Menu ditambahkan/i);
+        expect(reply).toMatch(/Posisi Anda: \*Menu toko\*/i);
+        expect(reply).toMatch(/Tambah menu lagi/i);
         expect(createItem).toHaveBeenCalled();
-        expect(await svc.continueWizard('xyz', tenant, undefined, conv, cfg)).toBeUndefined();
+        // masih di hub: 2 = tambah lagi
+        const again = await svc.continueWizard('2', tenant, undefined, conv, cfg);
+        expect(again).toMatch(/nama menu|batal/i);
     });
 
     it('NEGATIF DB error → pesan gagal + arah batal', async () => {
@@ -348,11 +352,13 @@ describe('Alur tambah stok (2→3→…)', () => {
         expect(s!.quantity).toBe(qty);
     });
 
-    it('POSITIF wizard: stok produk dikenal → sukses', async () => {
+    it('POSITIF wizard: stok produk dikenal → sukses & kembali ke Menu toko', async () => {
         const reply = await svc.continueWizard('mie ayam 10', tenant, undefined, conv, cfg);
         expect(reply).toMatch(/Stok.*Mie Ayam|\+10/i);
+        expect(reply).toMatch(/Posisi Anda: \*Menu toko\*/i);
         expect(createStockMovement).toHaveBeenCalled();
-        expect(await svc.continueWizard('x', tenant, undefined, conv, cfg)).toBeUndefined();
+        const again = await svc.continueWizard('3', tenant, undefined, conv, cfg);
+        expect(again).toMatch(/qty|jumlah|nama menu|batal/i);
     });
 
     it('NEGATIF produk tidak ada → arah daftar, tetap bisa coba lagi', async () => {
@@ -431,7 +437,7 @@ describe('Conversasi end-to-end (simulasi user WA)', () => {
         expect(await svc.continueWizard('halo', t, undefined, c, cfg)).toBeUndefined();
     });
 
-    it('P: buka → tambah → simpan → digit menu bebas lagi', async () => {
+    it('P: buka → tambah → simpan → bisa tambah lagi dari hub', async () => {
         const { svc } = makeService();
         const t = 't2';
         const c = 'c2';
@@ -439,7 +445,8 @@ describe('Conversasi end-to-end (simulasi user WA)', () => {
         await svc.continueWizard('2', t, undefined, c, cfg);
         const saved = await svc.continueWizard('gado gado 12000', t, undefined, c, cfg);
         expect(saved).toMatch(/ditambahkan/i);
-        expect(await svc.continueWizard('2', t, undefined, c, cfg)).toBeUndefined();
+        expect(saved).toMatch(/Posisi Anda/i);
+        expect(await svc.continueWizard('2', t, undefined, c, cfg)).toMatch(/nama menu/i);
     });
 
     it('P: buka → stok → sukses', async () => {
@@ -448,7 +455,9 @@ describe('Conversasi end-to-end (simulasi user WA)', () => {
         const c = 'c3';
         svc.openMenuHub(t, undefined, c);
         await svc.continueWizard('3', t, undefined, c, cfg);
-        expect(await svc.continueWizard('es teh 20', t, undefined, c, cfg)).toMatch(/\+20|Stok/i);
+        const stock = await svc.continueWizard('es teh 20', t, undefined, c, cfg);
+        expect(stock).toMatch(/\+20|Stok/i);
+        expect(stock).toMatch(/Posisi Anda/i);
     });
 
     it('N: stuck recovery — salah berkali-kali lalu batal', async () => {

@@ -27,8 +27,8 @@ export const UMKM_INTENT_DETECT_ORDER: UmkmCommandIntent[] = [
     'add_product',
     'add_stock',
     'check_stock',
+    'list_purchases', // before record_purchase so "daftar belanja" ≠ "belanja"
     'record_purchase',
-    'list_purchases',
     'list_sales',
     'record_sale',
     'list_products',
@@ -341,8 +341,14 @@ export function formatPurchaseHubPrompt(): string {
         '*2* Belanja bulan ini',
         '*3* Tambah belanja',
         '',
-        'Balas angka, atau ketik *batal*.',
+        'Balas *1* / *2* / *3*, atau ketik *batal* untuk kembali.',
     ].join('\n');
+}
+
+export function formatPurchaseHubUnknownChoice(): string {
+    return ['Pilihan tidak dikenali. Pakai *1*, *2*, atau *3*.', '', formatPurchaseHubPrompt()].join(
+        '\n',
+    );
 }
 
 export function formatReportHubPrompt(): string {
@@ -354,6 +360,13 @@ export function formatReportHubPrompt(): string {
         '*3* Bulan ini',
         '*4* Semua',
         '',
-        'Balas angka — total *penjualan* + *belanja*.',
+        'Balas *1*–*4* — total *penjualan* + *belanja*.',
+        'Atau ketik *batal* untuk menu utama.',
     ].join('\n');
+}
+
+export function formatReportHubUnknownChoice(): string {
+    return ['Pilihan tidak dikenali. Pakai *1*, *2*, *3*, atau *4*.', '', formatReportHubPrompt()].join(
+        '\n',
+    );
 }

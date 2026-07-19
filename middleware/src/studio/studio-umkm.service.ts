@@ -12,7 +12,9 @@ import {
     formatMenuHubPrompt,
     formatMenuHubUnknownChoice,
     formatPurchaseHubPrompt,
+    formatPurchaseHubUnknownChoice,
     formatReportHubPrompt,
+    formatReportHubUnknownChoice,
     sanitizeUmkmCommandsInput,
     type UmkmCommandsConfig,
 } from './studio-umkm-commands';
@@ -1067,7 +1069,7 @@ export class StudioUmkmService {
                     'Ketik *batal* untuk kembali ke menu.',
                 ].join('\n');
             }
-            return formatPurchaseHubPrompt();
+            return formatPurchaseHubUnknownChoice();
         }
 
         if (wizard.kind === 'report_hub') {
@@ -1082,7 +1084,7 @@ export class StudioUmkmService {
                 this.clearWizard(tenantId, phone, conversationId);
                 return this.buildCombinedReportMessage(tenantId, period);
             }
-            return formatReportHubPrompt();
+            return formatReportHubUnknownChoice();
         }
 
         // Input wizards: bare menu digit exits so top-level menu can run
@@ -1133,11 +1135,19 @@ export class StudioUmkmService {
                 costPrice: parsed.costPrice ?? 0,
                 status: 'active',
             });
-            this.clearWizard(tenantId, phone, conversationId);
+            // Kembali ke hub Menu toko supaya user tahu posisi & bisa tambah lagi
+            this.setWizard(tenantId, { kind: 'menu_hub', createdAt: Date.now() }, phone, conversationId);
             return [
                 '✅ *Menu ditambahkan*',
                 `• ${item.name}${item.sku ? ` [${item.sku}]` : ''}`,
                 `• Harga jual: ${formatIdrShort(Number(item.selling_price || 0))}`,
+                '',
+                'Posisi Anda: *Menu toko*',
+                '*1* Lihat daftar menu',
+                '*2* Tambah menu lagi',
+                '*3* Tambah stok',
+                '',
+                'Atau ketik *batal* / *0* untuk menu utama.',
             ].join('\n');
         } catch (e: any) {
             this.logger.warn(`add product failed: ${e?.message}`);
@@ -1180,11 +1190,24 @@ export class StudioUmkmService {
                 referenceType: 'umkm_stock_in',
                 notes: `WA tambah stok ${parsed.quantity}x ${match.name}`,
             });
-            this.clearWizard(tenantId, phone, conversationId);
-            return `✅ Stok *${match.name}* +${parsed.quantity}`;
+            this.setWizard(tenantId, { kind: 'menu_hub', createdAt: Date.now() }, phone, conversationId);
+            return [
+                `✅ Stok *${match.name}* +${parsed.quantity}`,
+                '',
+                'Posisi Anda: *Menu toko*',
+                '*1* Lihat daftar menu',
+                '*2* Tambah menu',
+                '*3* Tambah stok lagi',
+                '',
+                'Atau ketik *batal* / *0* untuk menu utama.',
+            ].join('\n');
         } catch (e: any) {
             this.logger.warn(`add stock failed: ${e?.message}`);
-            return `Gagal tambah stok: ${e?.message || 'error'}`;
+            return [
+                `Gagal tambah stok: ${e?.message || 'error'}`,
+                '',
+                'Coba lagi, atau ketik *batal* untuk kembali ke menu.',
+            ].join('\n');
         }
     }
 
@@ -1205,9 +1228,13 @@ export class StudioUmkmService {
                 this.setWizard(tenantId, { kind: 'await_purchase', createdAt: Date.now() }, phone, conversationId);
             }
             return [
-                'Format belanja:',
+                'Belum bisa saya baca sebagai belanja.',
+                '',
+                'Kirim detail, contoh:',
                 '• *10 mie ayam @5000*',
                 '• *belanja 2026-07-18 5 bakso 3000*',
+                '',
+                'Ketik *batal* atau *0* untuk kembali ke menu.',
             ].join('\n');
         }
 
@@ -1319,7 +1346,11 @@ export class StudioUmkmService {
             return 'Gagal memuat daftar belanja.';
         }
         if (!data?.length) {
-            return `Belum ada belanja untuk *${range.label}*.\nKetik *tambah belanja* untuk mencatat.`;
+            return [
+                `Belum ada belanja untuk *${range.label}*.`,
+                'Ketik *3* di menu Belanja, atau *tambah belanja*, untuk mencatat.',
+                'Ketik *0* untuk menu utama.',
+            ].join('\n');
         }
         const lines = [`🛒 *Daftar belanja (${range.label})*`, ''];
         let total = 0;
@@ -1330,6 +1361,7 @@ export class StudioUmkmService {
             );
         }
         lines.push('', `Total: *${formatIdrShort(total)}*`);
+        lines.push('', 'Ketik *0* menu utama, atau *tambah belanja* untuk menambah.');
         return lines.join('\n');
     }
 
@@ -1352,7 +1384,11 @@ export class StudioUmkmService {
             return 'Gagal memuat daftar penjualan.';
         }
         if (!data?.length) {
-            return `Belum ada penjualan untuk *${range.label}*.\nKetik *jual ...* untuk mencatat.`;
+            return [
+                `Belum ada penjualan untuk *${range.label}*.`,
+                'Ketik *5* atau *jual 2 mie ayam 30000* untuk mencatat.',
+                'Ketik *0* untuk menu utama.',
+            ].join('\n');
         }
         const lines = [`💵 *Daftar penjualan (${range.label})*`, ''];
         let total = 0;
@@ -1362,6 +1398,7 @@ export class StudioUmkmService {
             lines.push(`• ${when} ${row.order_number} — ${formatIdrShort(Number(row.total_amount || 0))}`);
         }
         lines.push('', `Total: *${formatIdrShort(total)}*`);
+        lines.push('', 'Ketik *5* untuk tambah penjualan, atau *0* untuk menu utama.');
         return lines.join('\n');
     }
 
@@ -1400,6 +1437,8 @@ export class StudioUmkmService {
             `Total penjualan: *${formatIdrShort(revenue)}*`,
             `Total belanja: *${formatIdrShort(purchaseTotal)}*`,
             `Selisih: *${formatIdrShort(margin)}*`,
+            '',
+            'Ketik *6* untuk laporan periode lain, atau *0* untuk menu utama.',
         ].join('\n');
     }
 
