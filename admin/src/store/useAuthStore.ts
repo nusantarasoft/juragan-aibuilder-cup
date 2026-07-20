@@ -1,34 +1,39 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
-// ─── Role Hierarchy ─────────────────────────────────────────────────────
-export type AppRole = 'super_admin' | 'admin' | 'manager' | 'viewer' | 'guest';
+// ─── Role Hierarchy (CMS login roles) ───────────────────────────────────
+export type AppRole = 'super_admin' | 'admin';
+
+/** Legacy requirement aliases still used by RbacGuard call sites map to admin. */
+export type RoleRequirement = AppRole | 'manager' | 'viewer' | 'guest';
 
 const ROLE_LEVELS: Record<AppRole, number> = {
     super_admin: 100,
     admin: 80,
-    manager: 60,
-    viewer: 40,
-    guest: 20,
+};
+
+const REQUIREMENT_LEVELS: Record<RoleRequirement, number> = {
+    super_admin: 100,
+    admin: 80,
+    manager: 80,
+    viewer: 80,
+    guest: 80,
 };
 
 export const ROLE_LABELS: Record<AppRole, string> = {
     super_admin: 'Super Admin',
     admin: 'Administrator',
-    manager: 'Manager',
-    viewer: 'Viewer',
-    guest: 'Guest',
 };
 
 /** Map any role string from the backend to a valid AppRole */
 export function normalizeRole(raw?: string | null): AppRole {
-    if (!raw) return 'viewer';
+    if (!raw) return 'admin';
     const lower = raw.toLowerCase().replace(/[\s-]/g, '_');
-    if (lower in ROLE_LEVELS) return lower as AppRole;
-    // Common Supabase role mappings
+    if (lower === 'super_admin') return 'super_admin';
+    if (lower === 'admin') return 'admin';
     if (lower === 'service_role' || lower === 'supabase_admin') return 'super_admin';
-    if (lower === 'authenticated') return 'viewer';
-    return 'viewer';
+    // Legacy roles and Supabase JWT role collapse to admin (pengguna)
+    return 'admin';
 }
 
 // ─── User Session ───────────────────────────────────────────────────────
@@ -55,7 +60,7 @@ interface AuthState {
     syncFromAuth: (userData: { id: string; email: string; fullName?: string; role?: string }) => void;
 
     /** Check if the current user meets the minimum role level */
-    hasRole: (requiredRole: AppRole) => boolean;
+    hasRole: (requiredRole: RoleRequirement) => boolean;
 
     /** Get the numeric level for the current user's role */
     getRoleLevel: () => number;
@@ -117,12 +122,12 @@ export const useAuthStore = create<AuthState>()(
                 const { user } = get();
                 // Default to admin for dev when no user session exists
                 const effectiveRole = user?.role ?? 'admin';
-                return ROLE_LEVELS[effectiveRole] >= ROLE_LEVELS[requiredRole];
+                return ROLE_LEVELS[effectiveRole] >= REQUIREMENT_LEVELS[requiredRole];
             },
 
             getRoleLevel: () => {
                 const { user } = get();
-                return user ? ROLE_LEVELS[user.role] : ROLE_LEVELS['admin'];
+                return user ? ROLE_LEVELS[user.role] : ROLE_LEVELS.admin;
             },
         }),
         {

@@ -10,6 +10,9 @@
     "start:prod": "node dist/main.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run src/auth src/users --coverage",
+    "test:users": "vitest run src/users",
+    "test:auth": "vitest run src/auth",
     "test:studio": "vitest run src/studio",
     "test:studio:integration": "vitest run src/studio/studio.graphql.integration.spec.ts",
     "test:rag-eval": "vitest run src/studio/studio-rag-eval.integration.spec.ts",
@@ -58,6 +61,7 @@
     "@types/nodemailer": "^6.4.0",
     "@types/pdf-parse": "^1.1.5",
     "@types/sharp": "^0.31.1",
+    "@vitest/coverage-v8": "^4.1.10",
     "typescript": "^5.5.4",
     "vitest": "^4.1.5"
   }

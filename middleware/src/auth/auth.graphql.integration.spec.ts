@@ -29,7 +29,7 @@ describe.skipIf(!RUN)('Auth GraphQL integration (live middleware + Supabase)', (
         expect(data.signIn.refreshToken).toBeTruthy();
         expect(data.signIn.user.email).toBe(creds.email);
         expect(data.signIn.user.id).toBeTruthy();
-        expect(['super_admin', 'admin', 'authenticated']).toContain(data.signIn.user.role);
+        expect(['super_admin', 'admin']).toContain(data.signIn.user.role);
     });
 
     it('signIn rejects invalid password', async () => {

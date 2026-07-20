@@ -140,8 +140,8 @@ export const queries = {
     }`,
 
     // Users queries
-    users: `query { users { id email fullName role createdAt } }`,
-    user: `query User($id: ID!) { user(id: $id) { id email fullName role createdAt } }`,
+    users: `query { users { id email fullName role status createdAt updatedAt } }`,
+    user: `query User($id: ID!) { user(id: $id) { id email fullName role status createdAt updatedAt } }`,
 };
 
 /**
@@ -214,17 +214,42 @@ export const mutations = {
     }`,
 
     // Users mutations
-    updateUser: `mutation UpdateUser($id: ID!, $input: UpdateUserInput!) {
-        updateUser(id: $id, updateUserInput: $input) {
+    createUser: `mutation CreateUser($input: CreateUserInput!) {
+        createUser(input: $input) {
             id
             email
             fullName
             role
+            status
+            createdAt
+            updatedAt
+        }
+    }`,
+
+    updateUser: `mutation UpdateUser($id: ID!, $input: UpdateUserInput!) {
+        updateUser(id: $id, input: $input) {
+            id
+            email
+            fullName
+            role
+            status
+            createdAt
+            updatedAt
+        }
+    }`,
+
+    setUserStatus: `mutation SetUserStatus($id: ID!, $status: String!) {
+        setUserStatus(id: $id, status: $status) {
+            id
+            email
+            fullName
+            role
+            status
         }
     }`,
 
     deleteUser: `mutation DeleteUser($id: ID!) {
-        deleteUser(id: $id) { success }
+        deleteUser(id: $id)
     }`,
 };
 

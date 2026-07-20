@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
@@ -17,83 +17,211 @@ import {
     Form,
     Select,
     message,
-    Card, Row, Col, Statistic, Tooltip,
+    Card, Row, Col, Statistic, Tooltip, Spin,
 } from "antd";
 import { motion } from "framer-motion";
 import {
     PlusOutlined,
     EditOutlined,
-    DeleteOutlined,
     MoreOutlined,
     SearchOutlined,
     UserOutlined,
-    FileExcelOutlined, FilePdfOutlined,
+    FileExcelOutlined, FilePdfOutlined, ReloadOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useDateRangeStore } from "@/store/useDateRangeStore";
 import { exportToPdf, exportToExcel } from "@/lib/exportUtils";
 import RbacGuard from "@/components/common/RbacGuard";
+import { graphql, mutations, queries } from "@/lib/graphqlClient";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 
-interface UserData {
+interface ManagedUser {
+    id: string;
+    email: string;
+    fullName?: string | null;
+    role: string;
+    status: string;
+    createdAt?: string | null;
+    updatedAt?: string | null;
+}
+
+interface UserRow {
     key: string;
     id: string;
     name: string;
     email: string;
     role: string;
     status: "active" | "inactive";
-    lastLogin: string;
     createdAt: string;
 }
-
-const sampleUsers: UserData[] = [
-    {
-        key: "1",
-        id: "1",
-        name: "Super Admin",
-        email: "admin@nusantarasoft.local",
-        role: "super_admin",
-        status: "active",
-        lastLogin: "2024-12-23 10:30",
-        createdAt: "2024-01-01",
-    },
-    {
-        key: "2",
-        id: "2",
-        name: "John Editor",
-        email: "john@nusantarasoft.local",
-        role: "editor",
-        status: "active",
-        lastLogin: "2024-12-22 15:45",
-        createdAt: "2024-06-15",
-    },
-    {
-        key: "3",
-        id: "3",
-        name: "Jane Viewer",
-        email: "jane@nusantarasoft.local",
-        role: "viewer",
-        status: "inactive",
-        lastLogin: "2024-12-01 09:00",
-        createdAt: "2024-09-20",
-    },
-];
 
 const roleColors: Record<string, string> = {
     super_admin: "gold",
     admin: "blue",
-    editor: "green",
-    viewer: "default",
 };
+
+function toRow(user: ManagedUser): UserRow {
+    return {
+        key: user.id,
+        id: user.id,
+        name: user.fullName || user.email.split("@")[0],
+        email: user.email,
+        role: user.role,
+        status: user.status === "inactive" ? "inactive" : "active",
+        createdAt: user.createdAt ? new Date(user.createdAt).toLocaleString() : "—",
+    };
+}
 
 export default function UsersListPage() {
     const { themeColor } = usePreferencesStore();
     const { startDate, endDate } = useDateRangeStore();
+    const currentUser = useAuthStore((s) => s.user);
+    const isSuperAdmin = useAuthStore((s) => s.hasRole("super_admin"));
+
+    const [users, setUsers] = useState<UserRow[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editing, setEditing] = useState<UserRow | null>(null);
+    const [saving, setSaving] = useState(false);
     const [form] = Form.useForm();
 
-    const columns: ColumnsType<UserData> = [
+    const loadUsers = useCallback(async () => {
+        setLoading(true);
+        try {
+            const data = await graphql<{ users: ManagedUser[] }>(queries.users);
+            setUsers((data.users || []).map(toRow));
+        } catch (err) {
+            message.error(err instanceof Error ? err.message : "Failed to load users");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        void loadUsers();
+    }, [loadUsers]);
+
+    const filtered = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return users;
+        return users.filter(
+            (u) =>
+                u.name.toLowerCase().includes(q)
+                || u.email.toLowerCase().includes(q)
+                || u.role.toLowerCase().includes(q),
+        );
+    }, [users, search]);
+
+    const roleOptions = useMemo(() => {
+        const options = [{ value: "admin", label: "Admin (Pengguna)" }];
+        if (isSuperAdmin) {
+            options.unshift({ value: "super_admin", label: "Super Admin" });
+        }
+        return options;
+    }, [isSuperAdmin]);
+
+    const openCreate = () => {
+        setEditing(null);
+        form.resetFields();
+        form.setFieldsValue({ role: "admin" });
+        setIsModalOpen(true);
+    };
+
+    const openEdit = (record: UserRow) => {
+        setEditing(record);
+        form.setFieldsValue({
+            name: record.name,
+            email: record.email,
+            role: record.role,
+            password: undefined,
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleSave = async () => {
+        try {
+            const values = await form.validateFields();
+            setSaving(true);
+
+            if (editing) {
+                await graphql(mutations.updateUser, {
+                    variables: {
+                        id: editing.id,
+                        input: {
+                            fullName: values.name,
+                            role: values.role,
+                            ...(values.password ? { password: values.password } : {}),
+                        },
+                    },
+                });
+                message.success("User updated");
+            } else {
+                await graphql(mutations.createUser, {
+                    variables: {
+                        input: {
+                            email: values.email,
+                            password: values.password,
+                            fullName: values.name,
+                            role: values.role,
+                        },
+                    },
+                });
+                message.success(`User ${values.email} created`);
+            }
+
+            setIsModalOpen(false);
+            form.resetFields();
+            await loadUsers();
+        } catch (err) {
+            if (err && typeof err === "object" && "errorFields" in err) return;
+            message.error(err instanceof Error ? err.message : "Failed to save user");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const toggleStatus = (record: UserRow) => {
+        const next = record.status === "active" ? "inactive" : "active";
+        Modal.confirm({
+            title: next === "inactive" ? "Deactivate user?" : "Activate user?",
+            content: `${record.email} will be marked ${next}.`,
+            onOk: async () => {
+                try {
+                    await graphql(mutations.setUserStatus, {
+                        variables: { id: record.id, status: next },
+                    });
+                    message.success(`User ${next}`);
+                    await loadUsers();
+                } catch (err) {
+                    message.error(err instanceof Error ? err.message : "Failed to update status");
+                }
+            },
+        });
+    };
+
+    const removeUser = (record: UserRow) => {
+        Modal.confirm({
+            title: "Delete user?",
+            content: `This permanently removes ${record.email} from login access.`,
+            okType: "danger",
+            onOk: async () => {
+                try {
+                    await graphql(mutations.deleteUser, {
+                        variables: { id: record.id },
+                    });
+                    message.success("User deleted");
+                    await loadUsers();
+                } catch (err) {
+                    message.error(err instanceof Error ? err.message : "Failed to delete user");
+                }
+            },
+        });
+    };
+
+    const columns: ColumnsType<UserRow> = [
         {
             title: "User",
             key: "user",
@@ -111,8 +239,8 @@ export default function UsersListPage() {
             title: "Role",
             dataIndex: "role",
             key: "role",
-            render: (role) => (
-                <Tag color={roleColors[role]}>
+            render: (role: string) => (
+                <Tag color={roleColors[role] || "default"}>
                     {role.replace("_", " ").toUpperCase()}
                 </Tag>
             ),
@@ -121,16 +249,11 @@ export default function UsersListPage() {
             title: "Status",
             dataIndex: "status",
             key: "status",
-            render: (status) => (
+            render: (status: string) => (
                 <Tag color={status === "active" ? "green" : "default"}>
                     {status.toUpperCase()}
                 </Tag>
             ),
-        },
-        {
-            title: "Last Login",
-            dataIndex: "lastLogin",
-            key: "lastLogin",
         },
         {
             title: "Created",
@@ -140,48 +263,100 @@ export default function UsersListPage() {
         {
             title: "Actions",
             key: "actions",
-            render: (_, record) => (
-                <Space>
-                    <Button type="text" icon={<EditOutlined />} title="Edit" />
-                    <Dropdown
-                        menu={{
-                            items: [
-                                { key: "resetPassword", label: "Reset Password" },
-                                { key: "toggle2FA", label: "Enable/Disable 2FA" },
-                                {
-                                    key: "deactivate",
-                                    label: record.status === "active" ? "Deactivate" : "Activate"
-                                },
-                                { key: "delete", label: "Delete", danger: true },
-                            ],
-                        }}
-                    >
-                        <Button type="text" icon={<MoreOutlined />} />
-                    </Dropdown>
-                </Space>
-            ),
+            render: (_, record) => {
+                const isSelf = currentUser?.id === record.id;
+                return (
+                    <Space>
+                        <Button type="text" icon={<EditOutlined />} title="Edit" onClick={() => openEdit(record)} />
+                        <Dropdown
+                            menu={{
+                                items: [
+                                    {
+                                        key: "deactivate",
+                                        label: record.status === "active" ? "Deactivate" : "Activate",
+                                        disabled: isSelf,
+                                        onClick: () => toggleStatus(record),
+                                    },
+                                    {
+                                        key: "delete",
+                                        label: "Delete",
+                                        danger: true,
+                                        disabled: isSelf,
+                                        onClick: () => removeUser(record),
+                                    },
+                                ],
+                            }}
+                        >
+                            <Button type="text" icon={<MoreOutlined />} />
+                        </Dropdown>
+                    </Space>
+                );
+            },
         },
     ];
 
-    const handleAddUser = () => {
-        form.validateFields().then((values) => {
-            message.success(`User ${values.email} created`);
-            setIsModalOpen(false);
-            form.resetFields();
-        });
-    };
+    const exportData = filtered.map((u) => ({
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        status: u.status,
+        createdAt: u.createdAt,
+    }));
 
     return (
         <CMSLayout
             title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>User Management</AuroraText>}
-            subTitle={<DecryptedText text="Manage users and their access" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
+            subTitle={<DecryptedText text="Manage who can log in (super admin & admin)" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
-                <RbacGuard key="exports" requiredRole="manager"><Tooltip title="Export to Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'users', title: 'User Management', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Email', key: 'email' }, { header: 'Role', key: 'role' }, { header: 'Status', key: 'status' }, { header: 'Last Login', key: 'lastLogin' }, { header: 'Created', key: 'createdAt' }], data: sampleUsers })} /></Tooltip> <Tooltip title="Export to PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'users', title: 'User Management', dateRange: { start: startDate, end: endDate }, columns: [{ header: 'Name', key: 'name' }, { header: 'Email', key: 'email' }, { header: 'Role', key: 'role' }, { header: 'Status', key: 'status' }, { header: 'Last Login', key: 'lastLogin' }, { header: 'Created', key: 'createdAt' }], data: sampleUsers })} /></Tooltip></RbacGuard>,
+                <RbacGuard key="exports" requiredRole="admin">
+                    <Tooltip title="Export to Excel">
+                        <Button
+                            icon={<FileExcelOutlined />}
+                            size="small"
+                            onClick={() => exportToExcel({
+                                fileName: 'users',
+                                title: 'User Management',
+                                dateRange: { start: startDate, end: endDate },
+                                columns: [
+                                    { header: 'Name', key: 'name' },
+                                    { header: 'Email', key: 'email' },
+                                    { header: 'Role', key: 'role' },
+                                    { header: 'Status', key: 'status' },
+                                    { header: 'Created', key: 'createdAt' },
+                                ],
+                                data: exportData,
+                            })}
+                        />
+                    </Tooltip>
+                    {" "}
+                    <Tooltip title="Export to PDF">
+                        <Button
+                            icon={<FilePdfOutlined />}
+                            size="small"
+                            onClick={() => exportToPdf({
+                                fileName: 'users',
+                                title: 'User Management',
+                                dateRange: { start: startDate, end: endDate },
+                                columns: [
+                                    { header: 'Name', key: 'name' },
+                                    { header: 'Email', key: 'email' },
+                                    { header: 'Role', key: 'role' },
+                                    { header: 'Status', key: 'status' },
+                                    { header: 'Created', key: 'createdAt' },
+                                ],
+                                data: exportData,
+                            })}
+                        />
+                    </Tooltip>
+                </RbacGuard>,
+                <Button key="reload" icon={<ReloadOutlined />} onClick={() => void loadUsers()}>
+                    Refresh
+                </Button>,
                 <Button
                     key="add"
                     type="primary"
                     icon={<PlusOutlined />}
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={openCreate}
                 >
                     Add User
                 </Button>,
@@ -189,9 +364,9 @@ export default function UsersListPage() {
         >
             <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
                 {[
-                    { title: 'Total Users', value: sampleUsers.length, icon: <UserOutlined />, color: '#3b82f6' },
-                    { title: 'Active', value: sampleUsers.filter(u => u.status === 'active').length, icon: <UserOutlined />, color: '#10b981' },
-                    { title: 'Admins', value: sampleUsers.filter(u => u.role.includes('admin')).length, icon: <UserOutlined />, color: '#f59e0b' },
+                    { title: 'Total Users', value: users.length, icon: <UserOutlined />, color: '#3b82f6' },
+                    { title: 'Active', value: users.filter(u => u.status === 'active').length, icon: <UserOutlined />, color: '#10b981' },
+                    { title: 'Super Admins', value: users.filter(u => u.role === 'super_admin').length, icon: <UserOutlined />, color: '#f59e0b' },
                 ].map((s, i) => (
                     <Col key={i} xs={12} md={8}>
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
@@ -207,24 +382,31 @@ export default function UsersListPage() {
                     placeholder="Search users..."
                     prefix={<SearchOutlined />}
                     style={{ maxWidth: 300 }}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    allowClear
                 />
             </div>
 
-            <Table scroll={{ x: 900 }}
-                columns={columns}
-                dataSource={sampleUsers}
-                pagination={{
-                    pageSize: 10,
-                    showTotal: (total) => `Total ${total} users`,
-                }}
-            />
+            <Spin spinning={loading}>
+                <Table
+                    scroll={{ x: 900 }}
+                    columns={columns}
+                    dataSource={filtered}
+                    pagination={{
+                        pageSize: 10,
+                        showTotal: (total) => `Total ${total} users`,
+                    }}
+                />
+            </Spin>
 
             <Modal
-                title="Add New User"
+                title={editing ? "Edit User" : "Add New User"}
                 open={isModalOpen}
-                onOk={handleAddUser}
+                onOk={() => void handleSave()}
                 onCancel={() => setIsModalOpen(false)}
-                okText="Create User"
+                okText={editing ? "Save" : "Create User"}
+                confirmLoading={saving}
             >
                 <Form form={form} layout="vertical">
                     <Form.Item
@@ -242,26 +424,26 @@ export default function UsersListPage() {
                             { type: "email", message: "Please enter a valid email" },
                         ]}
                     >
-                        <Input placeholder="user@nusantarasoft.local" />
+                        <Input placeholder="user@nusantarasoft.local" disabled={!!editing} />
                     </Form.Item>
                     <Form.Item
                         name="role"
                         label="Role"
                         rules={[{ required: true, message: "Please select a role" }]}
                     >
-                        <Select
-                            options={[
-                                { value: "admin", label: "Admin" },
-                                { value: "editor", label: "Editor" },
-                                { value: "viewer", label: "Viewer" },
-                            ]}
-                        />
+                        <Select options={roleOptions} />
                     </Form.Item>
-                    <Form.Item name="enable2FA" valuePropName="checked">
-                        <label>
-                            <input type="checkbox" style={{ marginRight: 8 }} />
-                            Require 2FA
-                        </label>
+                    <Form.Item
+                        name="password"
+                        label={editing ? "New Password (optional)" : "Password"}
+                        rules={editing
+                            ? [{ min: 8, message: "Password must be at least 8 characters" }]
+                            : [
+                                { required: true, message: "Please enter password" },
+                                { min: 8, message: "Password must be at least 8 characters" },
+                            ]}
+                    >
+                        <Input.Password placeholder="Min. 8 characters" />
                     </Form.Item>
                 </Form>
             </Modal>

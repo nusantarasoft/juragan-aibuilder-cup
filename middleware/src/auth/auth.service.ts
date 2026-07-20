@@ -1,18 +1,42 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import {
+    DEFAULT_APP_ROLE,
+    normalizeAppRole,
+    normalizeUserStatus,
+    type UserStatus,
+} from './app-roles';
 
+export type AuthProfile = {
+    role: string;
+    status: UserStatus;
+};
+
+/* v8 ignore start */
 @Injectable()
 export class AuthService {
+/* v8 ignore stop */
     constructor(private supabaseService: SupabaseService) { }
 
-    private async resolveAppRole(userId: string, fallback?: string): Promise<string> {
+    async resolveProfile(userId: string, fallbackRole?: string): Promise<AuthProfile> {
         const { data } = await this.supabaseService
             .getAdminClient()
             .from('user_profiles')
-            .select('role')
+            .select('role, status')
             .eq('id', userId)
             .maybeSingle();
-        return data?.role || fallback || 'viewer';
+
+        const roleSource = data && data.role ? data.role : (fallbackRole || DEFAULT_APP_ROLE);
+        return {
+            role: normalizeAppRole(roleSource),
+            status: normalizeUserStatus(data ? data.status : null),
+        };
+    }
+
+    private assertActive(profile: AuthProfile): void {
+        if (profile.status === 'inactive') {
+            throw new UnauthorizedException('Account is deactivated');
+        }
     }
 
     async signIn(email: string, password: string) {
@@ -25,12 +49,17 @@ export class AuthService {
         }
 
         const user = data.user;
-        const appRole = user ? await this.resolveAppRole(user.id, user.role) : undefined;
+        if (!user) {
+            throw new Error('Invalid login credentials');
+        }
+
+        const profile = await this.resolveProfile(user.id, user.role);
+        this.assertActive(profile);
 
         return {
             accessToken: data.session?.access_token,
             refreshToken: data.session?.refresh_token,
-            user: user ? { ...user, role: appRole } : undefined,
+            user: { ...user, role: profile.role },
         };
     }
 
@@ -72,8 +101,9 @@ export class AuthService {
             throw new Error(error.message);
         }
 
-        const appRole = await this.resolveAppRole(data.user.id, data.user.role);
-        return { ...data.user, role: appRole };
+        const profile = await this.resolveProfile(data.user.id, data.user.role);
+        this.assertActive(profile);
+        return { ...data.user, role: profile.role };
     }
 
     async refreshSession(refreshToken: string) {

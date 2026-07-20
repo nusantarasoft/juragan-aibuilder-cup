@@ -20,11 +20,13 @@ describe('useAuthStore.normalizeRole', () => {
     it('maps known CMS roles', () => {
         expect(normalizeRole('super_admin')).toBe('super_admin');
         expect(normalizeRole('admin')).toBe('admin');
-        expect(normalizeRole('manager')).toBe('manager');
+        expect(normalizeRole('super-admin')).toBe('super_admin');
     });
 
-    it('maps Supabase authenticated role to viewer', () => {
-        expect(normalizeRole('authenticated')).toBe('viewer');
+    it('maps legacy roles and Supabase authenticated to admin', () => {
+        expect(normalizeRole('manager')).toBe('admin');
+        expect(normalizeRole('viewer')).toBe('admin');
+        expect(normalizeRole('authenticated')).toBe('admin');
     });
 
     it('maps service roles to super_admin', () => {
@@ -32,17 +34,17 @@ describe('useAuthStore.normalizeRole', () => {
         expect(normalizeRole('supabase_admin')).toBe('super_admin');
     });
 
-    it('defaults empty values to viewer', () => {
-        expect(normalizeRole(undefined)).toBe('viewer');
-        expect(normalizeRole(null)).toBe('viewer');
-        expect(normalizeRole('unknown-role')).toBe('viewer');
+    it('defaults empty values to admin', () => {
+        expect(normalizeRole(undefined)).toBe('admin');
+        expect(normalizeRole(null)).toBe('admin');
+        expect(normalizeRole('unknown-role')).toBe('admin');
     });
 });
 
 describe('ROLE_LABELS', () => {
-    it('provides human-readable labels for all app roles', () => {
+    it('provides human-readable labels for CMS roles', () => {
         expect(ROLE_LABELS.super_admin).toBe('Super Admin');
         expect(ROLE_LABELS.admin).toBe('Administrator');
-        expect(ROLE_LABELS.viewer).toBe('Viewer');
+        expect(Object.keys(ROLE_LABELS)).toEqual(['super_admin', 'admin']);
     });
 });

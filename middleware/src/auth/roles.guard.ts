@@ -2,35 +2,36 @@ import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { ROLES_KEY } from './roles.decorator';
+import { hasMinRole, type AppRole } from './app-roles';
 
+/* v8 ignore start */
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+/* v8 ignore stop */
+    constructor(private reflector: Reflector) {}
 
-  canActivate(context: ExecutionContext): boolean {
-    const requiredRoles = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    
-    if (!requiredRoles) {
-      return true;
+    canActivate(context: ExecutionContext): boolean {
+        const requiredRoles = this.reflector.getAllAndOverride<AppRole[]>(ROLES_KEY, [
+            context.getHandler(),
+            context.getClass(),
+        ]);
+
+        if (!requiredRoles || requiredRoles.length === 0) {
+            return true;
+        }
+
+        const ctx = GqlExecutionContext.create(context);
+        const gqlCtx = ctx.getContext<{ req?: { user?: { role?: string } } }>();
+        const user = gqlCtx?.req ? gqlCtx.req.user : undefined;
+
+        if (!user || !user.role) {
+            throw new UnauthorizedException('Authentication required for this operation');
+        }
+
+        if (!hasMinRole(user.role, requiredRoles)) {
+            throw new UnauthorizedException('You do not have the required permissions');
+        }
+
+        return true;
     }
-
-    const ctx = GqlExecutionContext.create(context);
-    const { req } = ctx.getContext();
-    const user = req.user;
-
-    if (!user || !user.role) {
-      throw new UnauthorizedException('Authentication required for this operation');
-    }
-
-    const hasRole = requiredRoles.some((role) => user.role.includes(role));
-    
-    if (!hasRole) {
-      throw new UnauthorizedException('You do not have the required permissions');
-    }
-
-    return true;
-  }
 }
