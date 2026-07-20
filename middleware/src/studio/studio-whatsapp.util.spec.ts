@@ -7,6 +7,8 @@ import {
     pickSingleTenantFallback,
     collectUmkmOwnerPhones,
     StudioWhatsAppRateLimiter,
+    stripWhatsAppMediaAnnotations,
+    wahaPayloadHasMedia,
 } from './studio-whatsapp.util';
 
 describe('normalizePhoneDigits', () => {
@@ -16,6 +18,27 @@ describe('normalizePhoneDigits', () => {
 
     it('strips non-digits from plain phone', () => {
         expect(normalizePhoneDigits('+62 812-3456-7890')).toBe('6281234567890');
+    });
+});
+
+describe('wahaPayloadHasMedia', () => {
+    it('ignores bare _data on text messages', () => {
+        expect(wahaPayloadHasMedia({ body: '2', _data: { id: 'x', type: 'chat' } })).toBe(false);
+    });
+
+    it('detects hasMedia flag and image type', () => {
+        expect(wahaPayloadHasMedia({ hasMedia: true })).toBe(true);
+        expect(wahaPayloadHasMedia({ _data: { type: 'image', mimetype: 'image/jpeg' } })).toBe(
+            true,
+        );
+    });
+});
+
+describe('stripWhatsAppMediaAnnotations', () => {
+    it('keeps menu digit when media download note is appended', () => {
+        expect(
+            stripWhatsAppMediaAnnotations('2\n[User mengirim media yang tidak dapat diunduh]'),
+        ).toBe('2');
     });
 });
 

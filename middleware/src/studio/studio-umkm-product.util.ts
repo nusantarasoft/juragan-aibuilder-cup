@@ -163,5 +163,78 @@ export function formatSaleConfirmationWithCatalog(order: {
     }
     lines.push('');
     lines.push('Ketik *laporan* atau *daftar barang* untuk menu lain.');
+    lines.push('Beri nilai layanan? Ketik *1–5*, *puas*, atau *kurang*.');
     return lines.join('\n');
+}
+
+/** Preview ringkasan sebelum commit (AIDLC staging di percakapan). */
+export function formatSalePreviewWithCatalog(
+    sale: {
+        totalAmount: number;
+        items: UmkmSaleItemResolved[];
+        paymentMethod?: string;
+        customerName?: string;
+    },
+    hints?: { confirm?: string; cancel?: string },
+): string {
+    const confirmHint = hints?.confirm || 'ya';
+    const cancelHint = hints?.cancel || 'batal';
+    const lines = ['📋 *Konfirmasi penjualan*', ''];
+    if (sale.items.length) {
+        lines.push('Item:');
+        for (const it of sale.items) {
+            const tag = it.catalogMatched ? '' : ' _(belum di katalog)_';
+            const sku = it.itemSku ? ` [${it.itemSku}]` : '';
+            lines.push(
+                `• ${it.quantity}x ${it.name}${sku} — ${formatIdrShort(it.quantity * it.unitPrice)}${tag}`,
+            );
+        }
+    }
+    lines.push(`Total: *${formatIdrShort(sale.totalAmount)}*`);
+    if (sale.paymentMethod) lines.push(`Pembayaran: ${sale.paymentMethod}`);
+    if (sale.customerName) lines.push(`Pelanggan: ${sale.customerName}`);
+    lines.push('');
+    lines.push(`Benar? Ketik *${confirmHint}* untuk simpan, atau *${cancelHint}* untuk batalkan.`);
+    return lines.join('\n');
+}
+
+export type UmkmStockRow = {
+    name: string;
+    sku: string | null;
+    available: number;
+    onHand: number;
+    reserved: number;
+};
+
+export function formatStockCheckWa(
+    rows: UmkmStockRow[],
+    opts?: { query?: string | null; maxItems?: number },
+): string {
+    const max = opts?.maxItems ?? 20;
+    const q = opts?.query?.trim();
+    if (rows.length === 0) {
+        return [
+            '📦 *Cek Stok*',
+            '',
+            q
+                ? `Tidak ditemukan stok untuk *${q}*.`
+                : 'Belum ada data stok di ledger.',
+            'Ketik *daftar barang* untuk lihat katalog, atau *cek stok [nama]* lagi.',
+        ].join('\n');
+    }
+    const lines = ['📦 *Cek Stok*', ''];
+    if (q) lines.push(`Pencarian: *${q}*`, '');
+    for (const r of rows.slice(0, max)) {
+        const sku = r.sku ? ` [${r.sku}]` : '';
+        lines.push(`• ${r.name}${sku} — tersedia *${formatQty(r.available)}* (on hand ${formatQty(r.onHand)})`);
+    }
+    if (rows.length > max) {
+        lines.push(`… dan ${rows.length - max} item lainnya`);
+    }
+    return lines.join('\n');
+}
+
+function formatQty(n: number): string {
+    if (Number.isInteger(n)) return String(n);
+    return String(Math.round(n * 1000) / 1000);
 }

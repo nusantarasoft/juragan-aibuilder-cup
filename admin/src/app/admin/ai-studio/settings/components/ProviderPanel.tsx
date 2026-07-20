@@ -20,6 +20,7 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
     const anthropicKeyConfigured = Form.useWatch("anthropic_api_key_configured");
     const googleKeyConfigured = Form.useWatch("google_api_key_configured");
     const openaiKeyConfigured = Form.useWatch("openai_api_key_configured");
+    const groqKeyConfigured = Form.useWatch("groq_api_key_configured");
 
     const req = isActive ? [{ required: true, message: "Wajib diisi untuk provider aktif" }] : [];
 
@@ -96,6 +97,31 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
                 </>
             )}
 
+            {provider === "groq" && (
+                <>
+                    <ApiKeyField
+                        name="groq_api_key"
+                        label="API Key"
+                        configured={!!groqKeyConfigured}
+                        clearFieldName="clear_groq_api_key"
+                        placeholder="gsk_..."
+                    />
+                    <ModelSelect
+                        name="groq_model"
+                        label="Chat Model"
+                        provider="groq"
+                        rules={req}
+                    />
+                    <Text type="secondary" style={{ display: "block", marginBottom: 8, fontSize: 12 }}>
+                        Ambil key di{" "}
+                        <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">
+                            console.groq.com/keys
+                        </a>
+                        . Embedding tetap pakai provider terpisah (Google / OpenAI / Ollama).
+                    </Text>
+                </>
+            )}
+
             {provider === "ollama" && (
                 <Row gutter={16}>
                     <Col xs={24} md={12}>
@@ -134,7 +160,11 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
 
     return (
         <Card
-            title={`Konfigurasi ${PROVIDER_LABELS[provider]}`}
+            title={
+                <span style={{ color: "#111827" }}>
+                    Konfigurasi {PROVIDER_LABELS[provider]}
+                </span>
+            }
             extra={
                 configured ? (
                     <Text type="success">Siap digunakan</Text>
@@ -142,7 +172,13 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
                     <Text type="warning">Lengkapi lalu Save</Text>
                 )
             }
-            style={{ marginTop: 16 }}
+            style={{
+                marginTop: 16,
+                background: "#f9fafb",
+                border: "1px solid #e5e7eb",
+                borderRadius: 10,
+            }}
+            styles={{ header: { borderBottom: "1px solid #e5e7eb" } }}
         >
             {inner}
         </Card>

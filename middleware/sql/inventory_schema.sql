@@ -42,6 +42,14 @@ CREATE TABLE IF NOT EXISTS inv_items (
     max_stock INT DEFAULT 0,
     reorder_point INT DEFAULT 0,
     reorder_qty INT DEFAULT 0,
+    has_expiry BOOLEAN DEFAULT FALSE,
+    default_shelf_life_days INT,
+    has_depreciation BOOLEAN DEFAULT FALSE,
+    depreciation_method TEXT DEFAULT 'none',
+    useful_life_months INT,
+    salvage_value NUMERIC(15,2) DEFAULT 0,
+    is_fixed_asset BOOLEAN DEFAULT FALSE,
+    asset_category TEXT,
     metadata JSONB DEFAULT '{}', -- flexible per fulfillment type
     status TEXT DEFAULT 'active', -- active, draft, archived
     created_at TIMESTAMPTZ DEFAULT NOW(),

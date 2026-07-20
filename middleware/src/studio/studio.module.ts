@@ -12,13 +12,24 @@ import { AiModule } from '../ai/ai.module';
 import { RagModule } from '../rag/rag.module';
 import { DremioModule } from '../dremio/dremio.module';
 import { WahaModule } from '../waha/waha.module';
+import { InventoryModule } from '../inventory/inventory.module';
 import { StudioWhatsAppController } from './studio-whatsapp.controller';
 import { StudioWhatsAppService } from './studio-whatsapp.service';
 import { StudioUmkmService } from './studio-umkm.service';
+import { StudioUmkmCronService } from './studio-umkm.cron';
+import { StudioUmkmAgenticAskService } from './studio-umkm-agentic-ask.service';
 import { StudioOutputService } from './studio-output.service';
 
 @Module({
-    imports: [ConfigModule, SupabaseModule, AiModule, RagModule, DremioModule, WahaModule],
+    imports: [
+        ConfigModule,
+        SupabaseModule,
+        AiModule,
+        RagModule,
+        DremioModule,
+        WahaModule,
+        InventoryModule,
+    ],
     controllers: [StudioUploadController, StudioWhatsAppController],
     providers: [
         StudioService,
@@ -30,6 +41,8 @@ import { StudioOutputService } from './studio-output.service';
         StudioOutputService,
         StudioWhatsAppService,
         StudioUmkmService,
+        StudioUmkmAgenticAskService,
+        StudioUmkmCronService,
     ],
     exports: [
         StudioService,
@@ -38,6 +51,7 @@ import { StudioOutputService } from './studio-output.service';
         StudioContextService,
         StudioWhatsAppService,
         StudioUmkmService,
+        StudioUmkmAgenticAskService,
     ],
 })
-export class StudioModule { }
+export class StudioModule {}

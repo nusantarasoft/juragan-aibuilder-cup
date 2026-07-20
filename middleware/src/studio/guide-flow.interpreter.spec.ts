@@ -42,6 +42,7 @@ describe('guide-flow.interpreter', () => {
         if (listen?.type !== 'listen') return;
         expect(resolveUmkmListenTarget(listen, 'daftar barang')).toBe('do_list');
         expect(resolveUmkmListenTarget(listen, 'laporan hari ini')).toBe('do_report');
+        expect(resolveUmkmListenTarget(listen, 'cek stok gula')).toBe('do_stock');
     });
 });
 

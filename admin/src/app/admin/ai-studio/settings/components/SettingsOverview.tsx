@@ -9,13 +9,6 @@ import { AFFECTED_MODULES, PROVIDER_LABELS } from "../types";
 
 const { Text } = Typography;
 
-const glass = {
-    background: "rgba(255,255,255,0.65)",
-    backdropFilter: "blur(12px)",
-    border: "1px solid rgba(255,255,255,0.45)",
-    borderRadius: 14,
-};
-
 type Props = {
     status: StudioAiStatus | null;
     loading?: boolean;
@@ -23,7 +16,7 @@ type Props = {
 
 export default function SettingsOverview({ status, loading }: Props) {
     if (loading || !status) {
-        return <Card style={glass} loading={loading} />;
+        return <Card loading={loading} bordered={false} style={{ background: "transparent" }} />;
     }
 
     const activeReady = status.providers.find((p) => p.provider === status.llmProvider)?.configured;
@@ -40,54 +33,57 @@ export default function SettingsOverview({ status, loading }: Props) {
                 }
             />
 
-            <Card style={glass} title="Yang dipakai sekarang">
-                <Space wrap size={[8, 12]}>
-                    <Tag color="blue">Chat LLM: {PROVIDER_LABELS[status.llmProvider]}</Tag>
+            <div>
+                <Text strong style={{ display: "block", marginBottom: 8, color: "#111827" }}>
+                    Yang dipakai sekarang
+                </Text>
+                <Space wrap size={[8, 8]}>
+                    <Tag color="blue">Chat: {PROVIDER_LABELS[status.llmProvider]}</Tag>
                     <Tag>{status.llmModel}</Tag>
-                    <Tag color="purple">Embedding: {status.embeddingProvider}</Tag>
+                    <Tag color="geekblue">Embedding: {status.embeddingProvider}</Tag>
                     <Tag>{status.embeddingModel}</Tag>
                 </Space>
-                <div style={{ marginTop: 16 }}>
+                <div style={{ marginTop: 12 }}>
                     <Link href="/admin/ai-studio/advanced/playground">
-                        <Button icon={<ExperimentOutlined />} type="primary" ghost>
-                            Test di Playground
-                        </Button>
+                        <Button icon={<ExperimentOutlined />}>Test di Playground</Button>
                     </Link>
                 </div>
-            </Card>
+            </div>
 
-            <Card style={glass} title="Modul yang memakai LLM aktif">
-                <Text type="secondary">
-                    Semua modul di bawah memakai provider dan model chat yang sama dari halaman ini.
+            <div>
+                <Text strong style={{ display: "block", marginBottom: 4, color: "#111827" }}>
+                    Modul yang memakai LLM aktif
+                </Text>
+                <Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
+                    Semua modul di bawah memakai provider dan model chat yang sama.
                 </Text>
                 <List
                     size="small"
-                    style={{ marginTop: 8 }}
                     dataSource={AFFECTED_MODULES}
+                    split={false}
                     renderItem={(item) => (
-                        <List.Item style={{ padding: "4px 0", border: "none" }}>
+                        <List.Item style={{ padding: "4px 0" }}>
                             <CheckCircleOutlined style={{ color: "#52c41a", marginRight: 8 }} />
-                            {item}
+                            <span style={{ color: "#374151" }}>{item}</span>
                         </List.Item>
                     )}
                 />
-            </Card>
+            </div>
 
-            <Card style={glass} title="Provider lain (tidak aktif)">
-                <Space wrap>
+            <div>
+                <Text strong style={{ display: "block", marginBottom: 8, color: "#111827" }}>
+                    Provider lain (tidak aktif)
+                </Text>
+                <Space wrap size={[8, 8]}>
                     {status.providers
                         .filter((p) => p.provider !== status.llmProvider)
                         .map((p) => (
-                            <Tag
-                                key={p.provider}
-                                color="default"
-                                icon={<CloseCircleOutlined />}
-                            >
-                                {PROVIDER_LABELS[p.provider]} — tidak dipakai
+                            <Tag key={p.provider} icon={<CloseCircleOutlined />}>
+                                {PROVIDER_LABELS[p.provider]}
                             </Tag>
                         ))}
                 </Space>
-            </Card>
+            </div>
         </Space>
     );
 }

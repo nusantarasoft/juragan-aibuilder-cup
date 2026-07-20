@@ -120,6 +120,8 @@ export class AiSettingsService {
                 return settings.anthropic_model?.trim() || DEFAULT_STUDIO_SETTINGS.anthropic_model;
             case 'openai':
                 return settings.openai_model?.trim() || DEFAULT_STUDIO_SETTINGS.openai_model;
+            case 'groq':
+                return settings.groq_model?.trim() || DEFAULT_STUDIO_SETTINGS.groq_model;
             case 'ollama':
                 return settings.ollama_model?.trim() || DEFAULT_STUDIO_SETTINGS.ollama_model;
             default:
@@ -195,6 +197,14 @@ export class AiSettingsService {
         };
     }
 
+    async getGroqConfig(tenantId?: string) {
+        const s = await this.getRawSettings(tenantId);
+        return {
+            apiKey: s.groq_api_key?.trim() || undefined,
+            model: s.groq_model?.trim() || DEFAULT_STUDIO_SETTINGS.groq_model,
+        };
+    }
+
     async getOllamaConfig(tenantId?: string) {
         const s = await this.getRawSettings(tenantId);
         const rawBase = s.ollama_base_url?.trim() || DEFAULT_STUDIO_SETTINGS.ollama_base_url;
@@ -214,6 +224,7 @@ export class AiSettingsService {
             await this.checkProviderReadiness('anthropic', settings),
             await this.checkProviderReadiness('google', settings),
             await this.checkProviderReadiness('openai', settings),
+            await this.checkProviderReadiness('groq', settings),
             await this.checkProviderReadiness('ollama', settings),
         ];
 
@@ -255,6 +266,13 @@ export class AiSettingsService {
                     configured: !!settings.openai_api_key?.trim(),
                     model: settings.openai_model || DEFAULT_STUDIO_SETTINGS.openai_model,
                     message: settings.openai_api_key?.trim() ? undefined : 'API key required',
+                };
+            case 'groq':
+                return {
+                    provider,
+                    configured: !!settings.groq_api_key?.trim(),
+                    model: settings.groq_model || DEFAULT_STUDIO_SETTINGS.groq_model,
+                    message: settings.groq_api_key?.trim() ? undefined : 'API key required',
                 };
             case 'ollama':
                 return {

@@ -1,6 +1,25 @@
 /** UMKM WhatsApp — intent detection, sale parsing helpers, report formatting. */
 
-export type UmkmIntent = 'record_sale' | 'sales_report' | 'list_products' | 'help' | 'unknown';
+import {
+    buildUmkmCommandMatcher,
+    DEFAULT_UMKM_COMMANDS,
+    resolveUmkmCommands,
+    uniqueMenuForDisplay,
+    UMKM_INTENT_DETECT_ORDER,
+    type UmkmCommandIntent,
+    type UmkmCommandsConfig,
+    type UmkmCommandMatcher,
+} from './studio-umkm-commands';
+
+export type UmkmIntent = UmkmCommandIntent | 'unknown' | 'check_stock';
+
+/** AIDLC intent labels from dokumen AI Development Life Cycle UMKM. */
+export type AidlcUmkmIntent =
+    | 'catat_transaksi'
+    | 'cek_stok'
+    | 'laporan'
+    | 'tanya_umum'
+    | 'lainnya';
 
 export type UmkmSaleItem = {
     name: string;
@@ -31,26 +50,117 @@ export type UmkmDailyReport = {
     }[];
 };
 
-const RECORD_KEYWORDS =
-    /\b(jual|jualan|catat|order|pesan|beli|transaksi|terjual|sold)\b/i;
-const REPORT_KEYWORDS =
-    /\b(laporan|laporkan|rekap|ringkasan|ringkas|omzet|omset|report|summary|total\s+penjualan|berapa\s+(?:omzet|omset|penjualan|jualan)|penjualan\s+hari\s+ini|hari\s+ini)\b/i;
-const HELP_KEYWORDS = /\b(bantuan|help|menu|panduan|cara\s+pakai|contoh)\b/i;
-const LIST_PRODUCTS_KEYWORDS =
-    /\b(daftar\s+barang|daftar\s+produk|list\s+produk|list\s+barang|katalog|catalog|produk\s+apa\s+saja|barang\s+apa\s+saja|(?:lihat|cek)\s+(?:produk|barang|stok|stock))\b/i;
+export type { UmkmCommandsConfig, UmkmCommandIntent };
+
+const defaultMatcher = buildUmkmCommandMatcher(DEFAULT_UMKM_COMMANDS);
+
+function matcherFrom(commands?: UmkmCommandsConfig | unknown): UmkmCommandMatcher {
+    if (!commands) return defaultMatcher;
+    return buildUmkmCommandMatcher(commands);
+}
+
+/** CS-style menu digit → intent. Returns null if not a single menu digit. */
+export function detectUmkmMenuDigit(
+    text: string,
+    commands?: UmkmCommandsConfig | unknown,
+): UmkmIntent | null {
+    const lines = text
+        .trim()
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+    // Prefer first line so "2\n[User mengirim media...]" still maps to menu digit 2
+    const t = lines[0] || '';
+    if (!/^[0-9]$/.test(t)) return null;
+    const m = matcherFrom(commands);
+    return (m.digitToIntent.get(t) as UmkmIntent | undefined) ?? null;
+}
+
+/** True when message is only a CS menu digit (0–9). */
+export function isUmkmMenuOnly(text: string): boolean {
+    return /^[0-9]$/.test(text.trim());
+}
+
+/** Map internal UMKM intent → AIDLC label (telemetry / docs). */
+export function toAidlcIntent(intent: UmkmIntent): AidlcUmkmIntent {
+    switch (intent) {
+        case 'record_sale':
+            return 'catat_transaksi';
+        case 'check_stock':
+        case 'add_stock':
+            return 'cek_stok';
+        case 'sales_report':
+        case 'report_hub':
+            return 'laporan';
+        case 'list_products':
+        case 'ask':
+        case 'help':
+        case 'menu_hub':
+            return 'tanya_umum';
+        default:
+            return 'lainnya';
+    }
+}
+
+/** Detect ya/batal reply while a pending sale awaits confirmation. */
+export function detectUmkmConfirmReply(
+    text: string,
+    commands?: UmkmCommandsConfig | unknown,
+): 'confirm' | 'cancel' | null {
+    const t = text.trim().replace(/^[.!]+|[.!]+$/g, '').trim();
+    if (!t) return null;
+    const m = matcherFrom(commands);
+    if (m.confirmRe?.test(t)) return 'confirm';
+    if (m.cancelRe?.test(t)) return 'cancel';
+    return null;
+}
+
+/** Extract product query from stock-check phrasing. */
+export function extractStockProductQuery(text: string): string | null {
+    const t = text.trim();
+    const patterns = [
+        /(?:cek\s+)?stok\s+(?:berapa\s+)?(.+?)(?:\s+berapa)?$/i,
+        /berapa\s+stok\s+(.+)$/i,
+        /sisa\s+(?:stok|barang)\s+(.+)$/i,
+        /stock\s+(.+)$/i,
+        /tambah\s+stok\s+(.+)$/i,
+    ];
+    for (const re of patterns) {
+        const m = t.match(re);
+        if (!m?.[1]) continue;
+        const q = m[1]
+            .replace(/\b(berapa|ya|dong|kah|sih|aja|sekarang)\b/gi, '')
+            .trim();
+        if (q.length >= 2 && !/^(berapa|ada|semua|all)$/i.test(q)) return q;
+    }
+    return null;
+}
 
 /** Detect primary UMKM intent from free-text WhatsApp message. */
-export function detectUmkmIntent(text: string): UmkmIntent {
+export function detectUmkmIntent(
+    text: string,
+    commands?: UmkmCommandsConfig | unknown,
+): UmkmIntent {
     const t = text.trim();
     if (!t) return 'unknown';
-    const hasRecord = RECORD_KEYWORDS.test(t);
-    const hasReport = REPORT_KEYWORDS.test(t);
-    if (!hasRecord && LIST_PRODUCTS_KEYWORDS.test(t)) return 'list_products';
-    if (HELP_KEYWORDS.test(t) && !hasRecord && !hasReport) return 'help';
-    if (hasReport && !hasRecord) return 'sales_report';
-    if (hasRecord) return 'record_sale';
-    if (hasReport) return 'sales_report';
+    const m = matcherFrom(commands);
+    const menu = detectUmkmMenuDigit(t, m.commands);
+    if (menu) return menu;
+
+    for (const intent of UMKM_INTENT_DETECT_ORDER) {
+        const re = m.intentRegex.get(intent);
+        if (re?.test(t)) return intent;
+    }
     return 'unknown';
+}
+
+/** True if text looks like a sale message (for heuristic parser gate). */
+export function looksLikeSaleMessage(
+    text: string,
+    commands?: UmkmCommandsConfig | unknown,
+): boolean {
+    const m = matcherFrom(commands);
+    return !!m.intentRegex.get('record_sale')?.test(text);
 }
 
 /** 2.5 / 2,5 → decimal; 15.000 / 15000 → integer thousands separator. */
@@ -108,9 +218,12 @@ export function extractRupiahAmounts(text: string): number[] {
 }
 
 /** Rule-based sale parser for common UMKM WhatsApp patterns. */
-export function parseSaleHeuristic(text: string): ParsedUmkmSale | null {
+export function parseSaleHeuristic(
+    text: string,
+    commands?: UmkmCommandsConfig | unknown,
+): ParsedUmkmSale | null {
     const raw = text.trim();
-    if (!raw || !RECORD_KEYWORDS.test(raw)) return null;
+    if (!raw || !looksLikeSaleMessage(raw, commands)) return null;
 
     const paymentMatch = raw.match(/\b(tunai|cash|transfer|qris|debit|kredit|cod)\b/i);
     const paymentMethod = paymentMatch ? paymentMatch[1].toLowerCase() : undefined;
@@ -242,37 +355,109 @@ export function formatSaleConfirmation(order: {
     return lines.join('\n');
 }
 
-/** Short reply when free-text command is not recognized. */
-export function formatUnknownUmkmCommand(): string {
-    return [
-        '🤔 Perintah belum dikenali.',
-        '',
-        'Coba salah satu:',
-        '• *daftar barang* — lihat katalog',
-        '• *laporan* — rekap penjualan hari ini',
-        '• *jual 3 kopi 45000* — catat penjualan',
-        '• *bantuan* — contoh lengkap',
-    ].join('\n');
+/** Preview before commit (AIDLC: konfirmasi wajib sebelum simpan). */
+export function formatSalePreview(
+    sale: {
+        totalAmount: number;
+        items: UmkmSaleItem[];
+        paymentMethod?: string;
+        customerName?: string;
+    },
+    commands?: UmkmCommandsConfig | unknown,
+): string {
+    const cfg = resolveUmkmCommands(commands ?? DEFAULT_UMKM_COMMANDS);
+    const confirmHint = (cfg.confirm[0] || 'ya');
+    const cancelHint = (cfg.cancel[0] || 'batal');
+    const lines = ['📋 *Konfirmasi penjualan*', ''];
+    if (sale.items.length) {
+        lines.push('Item:');
+        for (const it of sale.items) {
+            lines.push(`• ${it.quantity}x ${it.name} — ${formatIdr(it.quantity * it.unitPrice)}`);
+        }
+    }
+    lines.push(`Total: *${formatIdr(sale.totalAmount)}*`);
+    if (sale.paymentMethod) lines.push(`Pembayaran: ${sale.paymentMethod}`);
+    if (sale.customerName) lines.push(`Pelanggan: ${sale.customerName}`);
+    lines.push('');
+    lines.push(`Benar? Ketik *${confirmHint}* untuk simpan, atau *${cancelHint}* untuk batalkan.`);
+    return lines.join('\n');
 }
 
-export function formatUmkmHelp(): string {
+export function formatSaleCancelled(commands?: UmkmCommandsConfig | unknown): string {
+    const cfg = resolveUmkmCommands(commands ?? DEFAULT_UMKM_COMMANDS);
+    const saleKw = (cfg.keywords.record_sale || [])[0] || 'jual';
+    const saleDigit = cfg.menu.find((m) => m.intent === 'record_sale')?.digit;
+    const helpDigit = cfg.menu.find((m) => m.intent === 'help')?.digit;
+    const helpKw = (cfg.keywords.help || [])[0] || 'bantuan';
+    const saleHint = saleDigit ? `*${saleKw} ...* / *${saleDigit}*` : `*${saleKw} ...*`;
+    const helpHint = helpDigit ? `*${helpDigit}* / *${helpKw}*` : `*${helpKw}*`;
+    return `❌ Penjualan dibatalkan. Ketik ${saleHint} untuk catat ulang, atau ${helpHint} untuk menu.`;
+}
+
+/** Prompt after user picks menu catat penjualan without sale details. */
+export function formatRecordSaleMenuPrompt(commands?: UmkmCommandsConfig | unknown): string {
+    const cfg = resolveUmkmCommands(commands ?? DEFAULT_UMKM_COMMANDS);
+    const saleKw = (cfg.keywords.record_sale || [])[0] || 'jual';
+    const confirmHint = cfg.confirm.slice(0, 2).map((c) => `*${c}*`).join(' / ') || '*ya*';
+    const cancelHint = cfg.cancel.slice(0, 2).map((c) => `*${c}*`).join(' / ') || '*batal*';
+    const helpDigit = cfg.menu.find((m) => m.intent === 'help')?.digit;
+    const label = cfg.menu.find((m) => m.intent === 'record_sale')?.label || 'Catat penjualan';
     return [
-        '📒 *Asisten Penjualan UMKM*',
+        `🛒 *${label}*`,
         '',
-        '*Catat penjualan* — contoh:',
-        '• jual 3 es kopi 45000',
-        '• catat 2 tas total 500rb tunai',
-        '• order: pelanggan Budi, 1 sabun 25000 transfer',
+        'Kirim detail transaksi, contoh:',
+        `• ${saleKw} 2 mie ayam 30000`,
+        `• ${saleKw} 1 bakso 15000 tunai`,
         '',
-        '*Daftar barang* — ketik:',
-        '• daftar barang',
-        '',
-        '*Laporan* — contoh:',
-        '• laporan hari ini',
-        '• rekap omzet',
-        '',
-        'Ketik pesan penjualan, *daftar barang*, atau *laporan* kapan saja.',
-    ].join('\n');
+        `Setelah preview, ketik ${confirmHint} untuk simpan, atau ${cancelHint}.`,
+        helpDigit ? `Ketik *${helpDigit}* untuk kembali ke menu.` : '',
+    ]
+        .filter(Boolean)
+        .join('\n');
+}
+
+/** Short reply when free-text command is not recognized. */
+export function formatUnknownUmkmCommand(commands?: UmkmCommandsConfig | unknown): string {
+    const cfg = resolveUmkmCommands(commands ?? DEFAULT_UMKM_COMMANDS);
+    const menu = uniqueMenuForDisplay(cfg);
+    const lines = ['🤔 Perintah belum dikenali.', '', 'Balas angka menu, atau ketik perintah:'];
+    for (const m of menu) {
+        lines.push(`*${m.digit}* ${m.label}`);
+    }
+    if (menu.length === 0) {
+        for (const intent of ['record_sale', 'check_stock', 'list_products', 'sales_report', 'help'] as const) {
+            const kw = (cfg.keywords[intent] || [])[0];
+            if (kw) lines.push(`• *${kw}*`);
+        }
+    }
+    return lines.join('\n');
+}
+
+export function formatUmkmHelp(commands?: UmkmCommandsConfig | unknown): string {
+    const cfg = resolveUmkmCommands(commands ?? DEFAULT_UMKM_COMMANDS);
+    const menu = uniqueMenuForDisplay(cfg);
+    const lines = ['📒 *Asisten Penjualan UMKM*', ''];
+    if (menu.length) {
+        lines.push('*Menu* — balas angka:');
+        for (const m of menu) {
+            lines.push(`*${m.digit}* ${m.label}`);
+        }
+        lines.push('');
+    }
+    lines.push('*Atau ketik kalimat* — contoh:');
+    const saleKw = (cfg.keywords.record_sale || [])[0];
+    if (saleKw) lines.push(`• ${saleKw} 3 es kopi 45000`);
+    const stockKw = (cfg.keywords.check_stock || [])[0];
+    if (stockKw) lines.push(`• ${stockKw} gula`);
+    const listKw = (cfg.keywords.list_products || [])[0];
+    if (listKw) lines.push(`• ${listKw}`);
+    const reportKw = (cfg.keywords.sales_report || [])[0];
+    if (reportKw) lines.push(`• ${reportKw}`);
+    lines.push('');
+    const confirmHint = cfg.confirm.slice(0, 2).map((c) => `*${c}*`).join(' / ') || '*ya*';
+    const cancelHint = cfg.cancel.slice(0, 2).map((c) => `*${c}*`).join(' / ') || '*batal*';
+    lines.push(`Setelah preview penjualan: ${confirmHint} = simpan, ${cancelHint} = batalkan.`);
+    return lines.join('\n');
 }
 
 export function formatDailyReportWa(report: UmkmDailyReport): string {

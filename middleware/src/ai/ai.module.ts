@@ -5,6 +5,7 @@ import { ClaudeAiService } from './claude-ai.service';
 import { VertexAiService } from './vertex-ai.service';
 import { OpenAiService } from './openai-ai.service';
 import { OllamaAiService } from './ollama-ai.service';
+import { GroqAiService } from './groq-ai.service';
 import { AiRouterService } from './ai-router.service';
 
 @Module({
@@ -15,6 +16,7 @@ import { AiRouterService } from './ai-router.service';
         ClaudeAiService,
         OpenAiService,
         OllamaAiService,
+        GroqAiService,
         AiRouterService,
     ],
     exports: [
@@ -23,6 +25,7 @@ import { AiRouterService } from './ai-router.service';
         ClaudeAiService,
         OpenAiService,
         OllamaAiService,
+        GroqAiService,
         AiRouterService,
     ],
 })

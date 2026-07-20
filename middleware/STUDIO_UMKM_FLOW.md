@@ -29,29 +29,45 @@ flowchart TD
     U --> M1[Kirim pesan ke nomor bisnis]
     M1 --> W{Jenis pesan?}
 
-    W -->|bantuan / menu| H[Terima panduan format]
-    W -->|jual / catat / order| R[Catat penjualan]
-    W -->|laporan / rekap / omzet| L[Lihat laporan hari ini]
+    W -->|1 / jual / catat / order| R[Preview penjualan]
+    W -->|2 / cek stok| S[Lihat stok ledger]
+    W -->|3 / daftar barang| K[Katalog produk]
+    W -->|4 / laporan / rekap / omzet| L[Lihat laporan hari ini]
+    W -->|5 / 0 / bantuan / menu| H[Terima panduan format]
     W -->|bye| X[Penutup]
 
-    R --> RC[Konfirmasi: nomor order + total]
+    R --> P{User: ya/1 atau batal/0?}
+    P -->|ya / 1| RC[Commit: nomor order + total]
+    P -->|batal / 0| CX[Draft dibatalkan]
     L --> LR[Ringkasan: order, omzet, produk terlaris]
 
     H --> M1
+    S --> M1
+    K --> M1
     RC --> M1
+    CX --> M1
     LR --> M1
 ```
 
 ### Contoh percakapan
 
 ```
-UMKM  → bantuan
-Bot   → Menu format catat & laporan
+UMKM  → 5
+Bot   → Menu angka 1–5 + contoh format
+
+UMKM  → 1
+Bot   → Prompt: kirim detail jual ...
 
 UMKM  → jual 3 es kopi 45000 tunai
+Bot   → 📋 Konfirmasi penjualan … Ketik ya / 1 atau batal / 0
+
+UMKM  → 1
 Bot   → ✅ Penjualan tercatat! No. order WA-... Total Rp 45.000
 
-UMKM  → laporan hari ini
+UMKM  → 2
+Bot   → 📦 Stok tersedia …
+
+UMKM  → 4
 Bot   → 📊 Order hari ini: 1, Omzet: Rp 45.000, ...
 ```
 
@@ -140,8 +156,9 @@ handleWebhook()
 
 ## 5. Guide flow — UMKM Penjualan WA
 
-Definisi: `defaultUmkmGuideFlowDefinition()` di `guide-flow.definition.ts`  
-Nama published: **UMKM Penjualan WA**
+Definisi: `defaultUmkmGuideFlowDefinition(commands?)` di `guide-flow.definition.ts`  
+Nama published: **UMKM Penjualan WA** (AIDLC: preview → ya/batal → commit)  
+Perintah (keyword + digit) dari `context_config.umkm_commands` — edit di Admin UMKM.
 
 ### Diagram state
 
@@ -151,16 +168,24 @@ stateDiagram-v2
     start --> welcome: auto
     welcome --> listen_intent: pesan sambutan
 
-    listen_intent --> help: keyword bantuan/help/menu
-    listen_intent --> do_report: keyword laporan/rekap/omzet
-    listen_intent --> do_report: regex penjualan hari ini
-    listen_intent --> do_record: regex jual/catat/order
-    listen_intent --> do_record: default
+    listen_intent --> help: keyword bantuan/help/menu atau 0/5/9
+    listen_intent --> do_confirm: ya / 1 (saat ada pending)
+    listen_intent --> do_cancel: batal / 0 (saat ada pending)
+    listen_intent --> do_list: 3 / daftar/katalog
+    listen_intent --> do_stock: 2 / cek stok
+    listen_intent --> do_report: 4 / keyword laporan/rekap/omzet
+    listen_intent --> do_record: 1 / regex jual/catat/order
+    listen_intent --> do_ask: default / tanya_umum
     listen_intent --> goodbye: keyword bye
 
     help --> listen_intent: action umkm_help
-    do_record --> listen_intent: action record_sale
+    do_record --> listen_intent: action record_sale (preview)
+    do_confirm --> listen_intent: action confirm_sale
+    do_cancel --> listen_intent: action cancel_sale
+    do_stock --> listen_intent: action check_stock
+    do_list --> listen_intent: action list_products
     do_report --> listen_intent: action sales_report
+    do_ask --> listen_intent: rag tanya_umum
 
     goodbye --> end: auto
     end --> [*]
@@ -172,20 +197,27 @@ stateDiagram-v2
 |--------|---------|--------|
 | 1 | mengandung `bye` | `goodbye` |
 | 2 | `bantuan`, `help`, `menu` | `help` |
-| 3 | `laporan`, `rekap`, `omzet` | `do_report` |
-| 4 | regex `penjualan hari ini`, `berapa penjualan` | `do_report` |
-| 5 | regex `jual`, `jualan`, `catat`, `order`, `transaksi` | `do_record` |
-| 6 | **default** (sisanya) | `do_record` |
+| 3 | `ya` / `benar` / `ok` (ada pending) | `do_confirm` |
+| 4 | `batal` / `tidak` (ada pending) | `do_cancel` |
+| 5 | `daftar` / `katalog` / list produk | `do_list` |
+| 6 | `cek stok` / `stok` | `do_stock` |
+| 7 | `laporan`, `rekap`, `omzet` | `do_report` |
+| 8 | regex `jual`, `jualan`, `catat`, `order`, `transaksi` | `do_record` |
+| 9 | **default** / `tanya_umum` (via QU) | `do_ask` (RAG) |
 
-> **Catatan:** Pesan yang tidak dikenali sebagai laporan akan dicoba sebagai **catat penjualan**. Jika parsing gagal, bot meminta format ulang.
+> **Catatan:** Pesan bebas masuk `do_ask` (RAG). Query Understanding AIDLC dipakai bila jalur default/ambigu untuk remap intent atau minta klarifikasi. Commit hanya setelah `ya`.
 
 ### Node `action` — eksekusi
 
 | Node | Action | Service | Output |
 |------|--------|---------|--------|
-| `do_record` | `record_sale` | `StudioUmkmService.recordSaleFromText()` | Konfirmasi order |
-| `do_report` | `sales_report` | `StudioUmkmService.buildDailyReportMessage()` | Template laporan WA |
-| `help` | `umkm_help` | `StudioUmkmService` / `formatUmkmHelp()` | Menu contoh |
+| `do_record` | `record_sale` | `prepareSaleFromText()` | Preview (pending) |
+| `do_confirm` | `confirm_sale` | `commitPendingSale()` | Order tersimpan |
+| `do_cancel` | `cancel_sale` | hapus pending | Draft dibatalkan |
+| `do_stock` | `check_stock` | `buildStockCheckMessage()` | Qty stok |
+| `do_list` | `list_products` | `buildProductListMessage()` | Katalog |
+| `do_report` | `sales_report` | `buildDailyReportMessage()` | Template laporan WA |
+| `help` | `umkm_help` | `formatUmkmHelp()` | Menu contoh |
 
 ---
 
@@ -198,15 +230,20 @@ flowchart TD
 
     P --> H[parseSaleHeuristic rule-based]
     H -->|berhasil| S[ParsedUmkmSale]
-    H -->|gagal| L[parseSaleWithLlm Claude]
+    H -->|gagal| L[parseSaleWithLlm]
     L -->|berhasil| S
     L -->|gagal| E[Pesan error + contoh format]
 
-    S --> W[saveSale]
+    S --> M[Match katalog inv_items]
+    M --> PV[formatSalePreview → pending]
+    PV --> CF{ya / batal?}
+    CF -->|ya| W[saveSale]
+    CF -->|batal| X[Hapus draft]
     W --> O[INSERT ecom_orders]
     W --> I2[INSERT ecom_order_items per baris]
     O --> C[formatSaleConfirmation → balasan WA]
 
+    style PV fill:#fff8e1
     style O fill:#e8f5e9
     style I2 fill:#e8f5e9
 ```
@@ -230,6 +267,8 @@ jual 3 es kopi 45000
 catat 2 tas total 500rb tunai
 order pelanggan Budi 1 sabun 25000 transfer
 ```
+
+Staging: pending di `guide_flow_context` (guided) atau memory per `tenant:phone` (TTL 15 menit).
 
 ---
 

@@ -1,4 +1,4 @@
-export type LlmProvider = 'anthropic' | 'google' | 'openai' | 'ollama';
+export type LlmProvider = 'anthropic' | 'google' | 'openai' | 'ollama' | 'groq';
 export type EmbeddingProvider = 'auto' | 'google_ai' | 'vertex' | 'openai' | 'ollama';
 
 export interface StudioSettings {
@@ -15,6 +15,8 @@ export interface StudioSettings {
     openai_model: string;
     openai_embedding_model?: string;
     openai_api_key_configured: boolean;
+    groq_model: string;
+    groq_api_key_configured: boolean;
     ollama_base_url: string;
     ollama_model: string;
     ollama_embedding_model?: string;
@@ -49,15 +51,18 @@ export type StudioSettingsFormValues = StudioSettings & {
     anthropic_api_key?: string;
     google_api_key?: string;
     openai_api_key?: string;
+    groq_api_key?: string;
     clear_anthropic_api_key?: boolean;
     clear_google_api_key?: boolean;
     clear_openai_api_key?: boolean;
+    clear_groq_api_key?: boolean;
 };
 
 export const PROVIDER_LABELS: Record<LlmProvider, string> = {
     anthropic: 'Anthropic (Claude)',
     google: 'Google (Gemini / Vertex)',
     openai: 'OpenAI',
+    groq: 'Groq',
     ollama: 'Ollama (Local)',
 };
 

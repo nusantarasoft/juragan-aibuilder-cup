@@ -32,6 +32,39 @@ export function normalizePhoneDigits(input: string): string {
     return input.replace(/\D/g, '');
 }
 
+/**
+ * True only when the WAHA payload actually carries media.
+ * Do NOT treat `payload._data` alone as media — NOWEB always includes `_data` for text too.
+ */
+export function wahaPayloadHasMedia(payload: Record<string, unknown>): boolean {
+    if (payload.hasMedia === true) return true;
+    if (typeof payload.mediaUrl === 'string' && payload.mediaUrl.trim()) return true;
+
+    const data = payload._data as Record<string, unknown> | undefined;
+    if (!data || typeof data !== 'object') return false;
+
+    if (data.mediaKey || data.directPath || data.fileSha256 || data.fileEncSha256) return true;
+    if (typeof data.mimetype === 'string' && data.mimetype.trim()) return true;
+
+    const type = String(data.type || payload.type || '').toLowerCase();
+    return /^(image|video|audio|document|sticker|ptt|album)$/.test(type);
+}
+
+/** Remove synthetic media notes so menu digits / intents still match. */
+export function stripWhatsAppMediaAnnotations(text: string): string {
+    return text
+        .split(/\r?\n/)
+        .filter((line) => {
+            const t = line.trim();
+            if (!t) return true;
+            if (/^\[User mengirim .+\]$/i.test(t)) return false;
+            if (/^\(Catatan: konten visual belum di-OCR/i.test(t)) return false;
+            return true;
+        })
+        .join('\n')
+        .trim();
+}
+
 export function phonesMatch(phoneA: string, phoneB: string): boolean {
     const a = normalizePhoneDigits(phoneA);
     const b = normalizePhoneDigits(phoneB);
