@@ -1,6 +1,11 @@
 import type { GuideFlowDefinition, GuideFlowNode } from './guide-flow.definition';
 import type { QueryUnderstandingResult } from './query-understanding';
-import { detectUmkmConfirmReply, detectUmkmIntent } from './studio-umkm.util';
+import {
+    detectUmkmConfirmReply,
+    detectUmkmIntent,
+    looksLikeUmkmDirectDataQuery,
+    looksLikeUmkmOpenQuestion,
+} from './studio-umkm.util';
 
 export type FlowContext = Record<string, unknown> & {
     lastUserMessage?: string;
@@ -104,6 +109,11 @@ export function resolveUmkmListenTarget(
     }
     if (opts?.hasPendingSale && confirm === 'cancel') {
         return node.transitions.some((t) => t.target === 'do_cancel') ? 'do_cancel' : 'help';
+    }
+
+    // Before baked regex/keywords (published flows may still have bare omzet→do_report).
+    if (looksLikeUmkmOpenQuestion(userText) && !looksLikeUmkmDirectDataQuery(userText)) {
+        return node.transitions.some((t) => t.target === 'do_ask') ? 'do_ask' : 'help';
     }
 
     const text = userText.toLowerCase();

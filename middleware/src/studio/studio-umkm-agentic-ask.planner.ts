@@ -64,45 +64,55 @@ export function planAgenticAskTools(question: string): AgenticAskPlan {
             q,
         );
     const wantsHowTo =
-        /\b(cara\s+pakai|bagaimana\s+cara|gimana\s+cara|petunjuk|bantuan|panduan)\b/i.test(q) ||
-        /\b(bagaimana|gimana)\b.*\b(jual|catat|stok|laporan|belanja)\b/i.test(q);
+        /\b(cara\s+pakai|petunjuk|bantuan|panduan)\b/i.test(q) ||
+        /\b(bagaimana|gimana)\s+cara\b.{0,40}\b(jual|catat|stok|laporan|belanja|pakai|gunakan|tambah|cek)\b/i.test(
+            q,
+        ) ||
+        /\b(bagaimana|gimana)\b.{0,30}\b(jual|catat)\b/i.test(q);
     const wantsAdvice =
-        /\b(tingkatkan|naikkan|strategi|tips|saran|rekomendasi|ide)\b/i.test(q);
+        (/\b(?:meningkatkan|menaikkan|tingkatkan|naikkan)\b/i.test(q) ||
+            /\b(strategi|tips|saran|rekomendasi|ide)\b/i.test(q) ||
+            /\b(bagaimana|gimana)\b.{0,40}\b(?:omzet|omset|laba|usaha|bisnis)\b/i.test(q) ||
+            /\b(bagaimana|gimana)\s+cara\b.{0,40}\b(?:penjualan|omzet|omset)\b/i.test(q)) &&
+        !wantsHowTo;
 
     const period = periodFromQuestion(q);
+    // Advice/howto: don't treat "omzet" as a request to dump today's report alone.
+    const wantsOpsNumbers = (wantsSales || wantsPurchase || wantsReport) && !wantsAdvice;
 
     if (wantsStock) {
         const productQuery = extractStockProductQuery(q) || undefined;
         pushUnique(tools, { name: 'get_stock', productQuery });
         reasons.push('stock');
     }
-    if (wantsReport) {
+    if (wantsAdvice) {
+        // Context for tips: light ops snapshot + docs + catalog — synthesizer must advise, not paste laporan.
+        pushUnique(tools, { name: 'search_docs' });
         pushUnique(tools, { name: 'get_combined_report', period });
-        reasons.push('combined_report');
-    } else {
-        if (wantsSales) {
-            pushUnique(tools, { name: 'get_sales_summary', period });
-            reasons.push('sales');
-        }
-        if (wantsPurchase) {
-            pushUnique(tools, { name: 'get_purchases_summary', period });
-            reasons.push('purchases');
-        }
-    }
-    if (wantsCatalog) {
         pushUnique(tools, { name: 'list_products' });
-        reasons.push('catalog');
-    }
-    if (wantsHowTo) {
+        reasons.push('advice');
+    } else if (wantsHowTo) {
         pushUnique(tools, { name: 'suggest_menu_action' });
         pushUnique(tools, { name: 'search_docs' });
         reasons.push('howto');
+    } else if (wantsOpsNumbers) {
+        if (wantsReport) {
+            pushUnique(tools, { name: 'get_combined_report', period });
+            reasons.push('combined_report');
+        } else {
+            if (wantsSales) {
+                pushUnique(tools, { name: 'get_sales_summary', period });
+                reasons.push('sales');
+            }
+            if (wantsPurchase) {
+                pushUnique(tools, { name: 'get_purchases_summary', period });
+                reasons.push('purchases');
+            }
+        }
     }
-    if (wantsAdvice) {
-        pushUnique(tools, { name: 'get_combined_report', period });
-        pushUnique(tools, { name: 'search_docs' });
+    if (wantsCatalog && !wantsAdvice) {
         pushUnique(tools, { name: 'list_products' });
-        reasons.push('advice');
+        reasons.push('catalog');
     }
 
     // Soft / general Q&A — docs + light ops context

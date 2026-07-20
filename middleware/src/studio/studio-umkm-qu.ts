@@ -3,7 +3,14 @@
 import { z } from 'zod';
 import type { ConversationLine } from './query-understanding';
 import { CLARIFICATION_CONFIDENCE_THRESHOLD } from './query-understanding';
-import { detectUmkmIntent, toAidlcIntent, type AidlcUmkmIntent, type UmkmIntent } from './studio-umkm.util';
+import {
+    detectUmkmIntent,
+    looksLikeUmkmDirectDataQuery,
+    looksLikeUmkmOpenQuestion,
+    toAidlcIntent,
+    type AidlcUmkmIntent,
+    type UmkmIntent,
+} from './studio-umkm.util';
 
 const jsonBoolean = z.preprocess((val) => {
     if (val === true || val === 'true' || val === 1) return true;
@@ -37,12 +44,13 @@ Tugas: klasifikasi intent dan normalisasi pesan. JANGAN menjawab pertanyaan peng
 Intent yang diizinkan (pilih SATU):
 - catat_transaksi — user mencatat penjualan/pembelian/order (contoh: "jual 3 kopi 15rb")
 - cek_stok — user bertanya sisa/stok barang
-- laporan — user minta rekap/omzet/ringkasan penjualan
-- tanya_umum — pertanyaan umum soal toko/produk/cara pakai/data (bukan aksi catat/stok/laporan langsung)
+- laporan — user minta LIHAT angka rekap/omzet/ringkasan (contoh: "berapa omzet", "laporan hari ini", "rekap penjualan")
+- tanya_umum — tips/saran/strategi, "bagaimana cara meningkatkan omset", pertanyaan umum toko/produk/cara pakai (BUKAN minta laporan angka)
 - lainnya — sapaan, tidak jelas, di luar cakupan
 
 Aturan:
 - rewritten_query: versi jelas dari pesan (untuk handler berikutnya), bukan jawaban.
+- JANGAN pilih "laporan" untuk tips/cara menaikkan omzet/meningkatkan penjualan — itu "tanya_umum".
 - needs_clarification: true jika catat_transaksi tapi qty/nama/harga masih ambigu setelah mempertimbangkan riwayat.
 - Jika confidence_score < ${CLARIFICATION_CONFIDENCE_THRESHOLD}, set needs_clarification true (kecuali riwayat sudah cukup).
 - Output HANYA JSON valid:
@@ -133,6 +141,17 @@ export function normalizeUmkmQueryUnderstanding(
             intent === 'catat_transaksi'
                 ? 'Mohon sebutkan jumlah, nama barang, dan harga/total. Contoh: jual 3 kopi 45000'
                 : 'Mohon jelaskan lebih spesifik apa yang Anda maksud.';
+    }
+
+    // LLM often mislabels "cara meningkatkan omset" as laporan — keep as tanya_umum.
+    if (
+        intent === 'laporan' &&
+        looksLikeUmkmOpenQuestion(originalUserText) &&
+        !looksLikeUmkmDirectDataQuery(originalUserText)
+    ) {
+        intent = 'tanya_umum';
+        needs_clarification = false;
+        clarifyQ = '';
     }
 
     return {

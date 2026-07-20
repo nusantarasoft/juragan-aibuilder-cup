@@ -136,6 +136,45 @@ export function extractStockProductQuery(text: string): string | null {
     return null;
 }
 
+/**
+ * Advice / open question (tips, bagaimana, menaikkan omzet…) — route to Tanya,
+ * not operational commands that share keywords like "omzet" / "penjualan".
+ */
+export function looksLikeUmkmOpenQuestion(text: string): boolean {
+    const t = text.trim();
+    if (!t || t.length < 8) return false;
+    if (
+        /\b(bagaimana|gimana|tips|saran|rekomendasi|strategi|ide|kenapa|mengapa)\b/i.test(t)
+    ) {
+        return true;
+    }
+    if (/\b(cara\s+(?:me)?(?:naikkan|ningkatkan|tingkatkan|agar|supaya))\b/i.test(t)) {
+        return true;
+    }
+    if (
+        /\b(?:meningkatkan|menaikkan|tingkatkan|naikkan)\b.{0,40}\b(?:omzet|omset|penjualan|laba|pendapatan)\b/i.test(
+            t,
+        )
+    ) {
+        return true;
+    }
+    return false;
+}
+
+/** Explicit data lookup — keep sales_report even if phrasing is long. */
+export function looksLikeUmkmDirectDataQuery(text: string): boolean {
+    const t = text.trim();
+    if (!t) return false;
+    if (
+        /\b(berapa|lihat|tampilkan|cek|show|total|hari\s+ini|minggu\s+ini|bulan\s+ini|rekap|laporan)\b/i.test(
+            t,
+        )
+    ) {
+        return true;
+    }
+    return /^(omzet|omset|laporan|rekap|ringkasan)\b/i.test(t);
+}
+
 /** Detect primary UMKM intent from free-text WhatsApp message. */
 export function detectUmkmIntent(
     text: string,
@@ -146,6 +185,11 @@ export function detectUmkmIntent(
     const m = matcherFrom(commands);
     const menu = detectUmkmMenuDigit(t, m.commands);
     if (menu) return menu;
+
+    // Advice Q before keyword scan: "cara menaikkan omzet" must not hit sales_report.
+    if (looksLikeUmkmOpenQuestion(t) && !looksLikeUmkmDirectDataQuery(t)) {
+        return 'ask';
+    }
 
     for (const intent of UMKM_INTENT_DETECT_ORDER) {
         const re = m.intentRegex.get(intent);

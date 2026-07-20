@@ -91,4 +91,29 @@ describe('StudioUmkmAgenticAskService', () => {
         });
         expect(out.answer).toMatch(/Stok|data yang berhasil/i);
     });
+
+    it('NEGATIF LLM down pada tips omzet → saran, bukan template laporan utuh', async () => {
+        aiRouter.generateText.mockResolvedValueOnce('LLM provider not configured');
+        umkm.buildCombinedReportMessage.mockResolvedValueOnce(
+            [
+                '📊 *Laporan hari ini*',
+                '',
+                'Penjualan: *0* order',
+                'Total penjualan: *Rp 0*',
+                'Total belanja: *Rp 0*',
+                'Selisih: *Rp 0*',
+                '',
+                'Ketik *6* untuk laporan periode lain, atau *0* untuk menu utama.',
+            ].join('\n'),
+        );
+        const out = await svc.answer({
+            question: 'Bagaimana cara menaikkan omzet usaha saya hingga 20%',
+            notebookId: 'nb1',
+            conversationId: 'c1',
+            tenantId: 't1',
+        });
+        expect(out.plan.reason).toMatch(/advice/);
+        expect(out.answer).toMatch(/saran|Dorong|Catat/i);
+        expect(out.answer).not.toMatch(/Ketik \*6\* untuk laporan periode lain/i);
+    });
 });

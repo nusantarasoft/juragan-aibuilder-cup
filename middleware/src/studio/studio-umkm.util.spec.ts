@@ -30,6 +30,12 @@ describe('studio-umkm.util', () => {
         expect(detectUmkmIntent('berapa penjualan hari ini')).toBe('sales_report');
         expect(detectUmkmIntent('ringkasan')).toBe('sales_report');
         expect(detectUmkmIntent('berapa omzet')).toBe('sales_report');
+        expect(detectUmkmIntent('omzet hari ini')).toBe('sales_report');
+        expect(
+            detectUmkmIntent('Bagaimana cara menaikkan omzet usaha saya hingga 20%'),
+        ).toBe('ask');
+        expect(detectUmkmIntent('bagaimana cara meningkatkan omset')).toBe('ask');
+        expect(detectUmkmIntent('tips tingkatkan omzet toko')).toBe('ask');
         expect(detectUmkmIntent('daftar barang')).toBe('list_products');
         expect(detectUmkmIntent('list barang')).toBe('list_products');
         expect(detectUmkmIntent('cek stok gula')).toBe('check_stock');

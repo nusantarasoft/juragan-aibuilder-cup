@@ -118,6 +118,41 @@ describe('Perintah 1 — Tanya (ask)', () => {
         expect(detectUmkmIntent('bertanya', cmds)).toBe('ask');
     });
 
+    it('POSITIF tips omset → ask / do_ask (bukan laporan)', () => {
+        const tips = [
+            'bagaimana menaikkan omset',
+            'bagaimana cara meningkatkan omset',
+            'Bagaimana cara menaikkan omzet usaha saya hingga 20%',
+            'tips tingkatkan omzet toko',
+        ];
+        for (const q of tips) {
+            expect(detectUmkmIntent(q, cmds)).toBe('ask');
+            expect(resolveUmkmListenTarget(listenStub, q, { commands: cmds })).toBe('do_ask');
+        }
+    });
+
+    it('POSITIF berapa omzet tetap laporan', () => {
+        expect(detectUmkmIntent('berapa omzet', cmds)).toBe('sales_report');
+        expect(detectUmkmIntent('omzet hari ini', cmds)).toBe('sales_report');
+    });
+
+    it('NEGATIF stale flow regex omset → tetap do_ask untuk tips', () => {
+        const stale = {
+            ...listenStub,
+            transitions: [
+                {
+                    when: 'regex' as const,
+                    pattern: '(?:\\bomzet\\b|\\bomset\\b|\\blaporan\\b)',
+                    target: 'do_report',
+                },
+                ...listenStub.transitions,
+            ],
+        };
+        expect(resolveUmkmListenTarget(stale, 'bagaimana menaikkan omset', { commands: cmds })).toBe(
+            'do_ask',
+        );
+    });
+
     it('POSITIF handleMessage ask → null (serahkan agentic RAG di guide-flow)', async () => {
         const { svc } = makeUmkmService();
         const r = await svc.handleMessage('1', 't', undefined, cfg, { conversationId: 'c-ask' });
@@ -128,6 +163,13 @@ describe('Perintah 1 — Tanya (ask)', () => {
         const { planAgenticAskTools } = await import('./studio-umkm-agentic-ask.planner');
         const p = planAgenticAskTools('stok bakso berapa');
         expect(p.tools.some((t) => t.name === 'get_stock')).toBe(true);
+    });
+
+    it('POSITIF planner tips omset → advice tools', async () => {
+        const { planAgenticAskTools } = await import('./studio-umkm-agentic-ask.planner');
+        const p = planAgenticAskTools('bagaimana menaikkan omset');
+        expect(p.reason).toMatch(/advice/);
+        expect(p.tools.some((t) => t.name === 'search_docs')).toBe(true);
     });
 
     it('NEGATIF "tanya harga mie" tetap ask (bukan sale)', () => {
@@ -346,7 +388,11 @@ describe('Perintah 6 — Laporan (report_hub)', () => {
     it('POSITIF digit & keyword', () => {
         expect(detectUmkmIntent('6', cmds)).toBe('report_hub');
         expect(detectUmkmIntent('laporan', cmds)).toBe('sales_report');
-        expect(detectUmkmIntent('omzet', cmds)).toBe('sales_report');
+        expect(detectUmkmIntent('berapa omzet', cmds)).toBe('sales_report');
+        expect(detectUmkmIntent('omzet hari ini', cmds)).toBe('sales_report');
+        expect(
+            detectUmkmIntent('Bagaimana cara menaikkan omzet usaha saya hingga 20%', cmds),
+        ).toBe('ask');
     });
 
     it('POSITIF open hub', () => {

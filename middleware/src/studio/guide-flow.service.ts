@@ -28,7 +28,15 @@ import { DremioService } from '../dremio/dremio.service';
 import { StudioDbContextService, getUmkmCommandsFromConfig } from './studio-db-context.service';
 import { StudioUmkmService } from './studio-umkm.service';
 import { StudioUmkmAgenticAskService } from './studio-umkm-agentic-ask.service';
-import { detectUmkmIntent, formatSaleCancelled, formatUnknownUmkmCommand, formatUmkmHelp, detectUmkmConfirmReply } from './studio-umkm.util';
+import {
+    detectUmkmIntent,
+    formatSaleCancelled,
+    formatUnknownUmkmCommand,
+    formatUmkmHelp,
+    detectUmkmConfirmReply,
+    looksLikeUmkmDirectDataQuery,
+    looksLikeUmkmOpenQuestion,
+} from './studio-umkm.util';
 import { aidlcIntentToListenTarget } from './studio-umkm-qu';
 import { assertNoSupabaseError } from './studio-supabase.util';
 import { assertXStateStateCoverage } from './guide-flow.xstate-factory';
@@ -604,7 +612,17 @@ export class GuideFlowService {
 
                                 const quTarget = aidlcIntentToListenTarget(qu.intent);
                                 const targetExists = def.nodes.some((n) => n.id === quTarget);
-                                if (targetExists) next = quTarget;
+                                // Keyword/heuristic already chose Tanya — don't let QU demote
+                                // "cara meningkatkan omset" → laporan/do_report.
+                                const lockAsk =
+                                    keywordIntent === 'ask' ||
+                                    (looksLikeUmkmOpenQuestion(userJust) &&
+                                        !looksLikeUmkmDirectDataQuery(userJust));
+                                if (targetExists && !(lockAsk && quTarget !== 'do_ask')) {
+                                    next = quTarget;
+                                } else if (lockAsk) {
+                                    next = 'do_ask';
+                                }
                             }
                         } else {
                             next = resolveListenTarget(node, userJust);

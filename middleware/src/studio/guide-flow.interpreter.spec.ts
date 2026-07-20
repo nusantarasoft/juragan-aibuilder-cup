@@ -43,6 +43,33 @@ describe('guide-flow.interpreter', () => {
         expect(resolveUmkmListenTarget(listen, 'daftar barang')).toBe('do_list');
         expect(resolveUmkmListenTarget(listen, 'laporan hari ini')).toBe('do_report');
         expect(resolveUmkmListenTarget(listen, 'cek stok gula')).toBe('do_stock');
+        expect(resolveUmkmListenTarget(listen, 'berapa omzet')).toBe('do_report');
+        expect(resolveUmkmListenTarget(listen, 'bagaimana menaikkan omset')).toBe('do_ask');
+        expect(resolveUmkmListenTarget(listen, 'bagaimana cara meningkatkan omset')).toBe('do_ask');
+    });
+
+    it('NEGATIF: stale published regex omzet/omset tidak menelan tips', () => {
+        const staleListen = {
+            id: 'listen_intent',
+            type: 'listen' as const,
+            transitions: [
+                {
+                    when: 'regex' as const,
+                    pattern:
+                        '(?:\\blaporan\\b|\\blaporkan\\b|\\brekap\\b|\\bringkasan\\b|\\bomzet\\b|\\bomset\\b|\\breport\\b|total\\s+penjualan|penjualan\\s+hari\\s+ini)',
+                    target: 'do_report',
+                },
+                { when: 'regex' as const, pattern: '(?:\\bbagaimana\\b|\\bgimana\\b)', target: 'do_ask' },
+                { when: 'default' as const, target: 'do_ask' },
+            ],
+        };
+        // Without open-question guard, omset would win first → do_report
+        expect(resolveUmkmListenTarget(staleListen, 'bagaimana menaikkan omset')).toBe('do_ask');
+        expect(resolveUmkmListenTarget(staleListen, 'bagaimana cara meningkatkan omset')).toBe(
+            'do_ask',
+        );
+        expect(resolveUmkmListenTarget(staleListen, 'berapa omzet')).toBe('do_report');
+        expect(resolveUmkmListenTarget(staleListen, 'omzet hari ini')).toBe('do_report');
     });
 });
 

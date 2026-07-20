@@ -35,4 +35,35 @@ describe('studio-umkm-qu', () => {
         expect(aidlcIntentToListenTarget('tanya_umum')).toBe('do_ask');
         expect(aidlcIntentToListenTarget('lainnya')).toBe('help');
     });
+
+    it('NEGATIF: LLM salah label tips omset sebagai laporan → tanya_umum', () => {
+        const out = normalizeUmkmQueryUnderstanding(
+            {
+                intent: 'laporan',
+                normalized_text: 'bagaimana cara meningkatkan omset',
+                rewritten_query: 'cara meningkatkan omset',
+                needs_clarification: false,
+                clarification_question: null,
+                confidence_score: 0.9,
+            },
+            'bagaimana cara meningkatkan omset',
+        );
+        expect(out.intent).toBe('tanya_umum');
+        expect(aidlcIntentToListenTarget(out.intent)).toBe('do_ask');
+    });
+
+    it('POSITIF: berapa omzet tetap laporan', () => {
+        const out = normalizeUmkmQueryUnderstanding(
+            {
+                intent: 'laporan',
+                normalized_text: 'berapa omzet',
+                rewritten_query: 'berapa omzet hari ini',
+                needs_clarification: false,
+                clarification_question: null,
+                confidence_score: 0.9,
+            },
+            'berapa omzet',
+        );
+        expect(out.intent).toBe('laporan');
+    });
 });

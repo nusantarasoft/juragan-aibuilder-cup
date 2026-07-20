@@ -32,11 +32,29 @@ describe('planAgenticAskTools', () => {
         const names = p.tools.map((t) => t.name);
         expect(names).toContain('get_combined_report');
         expect(names).toContain('search_docs');
+        expect(p.reason).toMatch(/advice/);
+    });
+
+    it('POSITIF bagaimana menaikkan omzet → advice (bukan dump sales saja)', () => {
+        const p = planAgenticAskTools(
+            'Bagaimana cara menaikkan omzet usaha saya hingga 20%',
+        );
+        expect(p.reason).toMatch(/advice/);
+        expect(p.tools.some((t) => t.name === 'search_docs')).toBe(true);
+        expect(p.tools.some((t) => t.name === 'get_combined_report')).toBe(true);
+        expect(p.reason).not.toBe('sales');
+    });
+
+    it('POSITIF bagaimana meningkatkan omset → advice', () => {
+        const p = planAgenticAskTools('bagaimana cara meningkatkan omset');
+        expect(p.reason).toMatch(/advice/);
+        expect(p.tools.some((t) => t.name === 'search_docs')).toBe(true);
     });
 
     it('POSITIF cara catat jual → suggest menu (bukan tulis)', () => {
         const p = planAgenticAskTools('bagaimana cara catat penjualan');
         expect(p.tools.some((t) => t.name === 'suggest_menu_action')).toBe(true);
+        expect(p.reason).toMatch(/howto/);
     });
 
     it('NEGATIF aksi tulis langsung → hanya suggest_menu_action', () => {

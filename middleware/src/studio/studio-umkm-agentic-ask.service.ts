@@ -76,13 +76,13 @@ export class StudioUmkmAgenticAskService {
         }
 
         if (!answer?.trim() || answer.includes('not configured') || answer.includes('request failed')) {
-            answer = this.fallbackAnswer(toolResults);
+            answer = this.fallbackAnswer(toolResults, question);
         }
 
         return { answer: answer.trim(), plan, toolResults, references, rawChunks };
     }
 
-    private fallbackAnswer(results: AgenticAskToolResult[]): string {
+    private fallbackAnswer(results: AgenticAskToolResult[], question?: string): string {
         const ok = results.filter((r) => r.ok && r.content.trim());
         if (ok.length === 0) {
             return [
@@ -90,6 +90,39 @@ export class StudioUmkmAgenticAskService {
                 'Coba ketik *0* untuk menu, *6* untuk laporan, atau *2* untuk kelola menu.',
             ].join('\n');
         }
+
+        const q = (question || '').toLowerCase();
+        const adviceLike =
+            /\b(bagaimana|gimana|tips|saran|strategi|rekomendasi|menaikkan|meningkatkan|tingkatkan|naikkan)\b/i.test(
+                q,
+            );
+        if (adviceLike) {
+            const report = ok.find((r) => r.name === 'get_combined_report' || r.name === 'get_sales_summary');
+            const catalog = ok.find((r) => r.name === 'list_products');
+            const lines = [
+                'Berikut saran singkat berdasarkan data toko saat ini:',
+                '',
+                '1. Dorong menu terlaris / yang stoknya siap jual; kurangi fokus ke item yang jarang laku.',
+                '2. Catat setiap penjualan (*5*) dan belanja (*3*) supaya laporan akurat untuk evaluasi.',
+                '3. Cek *6* berkala — naikkan omzet dengan target harian kecil (mis. +10–20% vs rata-rata).',
+                '4. Pakai promo bundling atau upsell item pelengkap di jam sepi.',
+            ];
+            if (report?.content) {
+                const snap = report.content
+                    .split('\n')
+                    .filter((l) => /Penjualan|Total penjualan|Total belanja|Selisih/i.test(l))
+                    .slice(0, 4);
+                if (snap.length) {
+                    lines.push('', '*Ringkasan data (konteks):*', ...snap);
+                }
+            }
+            if (catalog?.content) {
+                lines.push('', 'Ketik *2* lalu *1* untuk lihat daftar menu lengkap.');
+            }
+            lines.push('', 'Ketik *1* untuk tanya lagi, atau *0* untuk menu utama.');
+            return lines.join('\n');
+        }
+
         return ['Berikut data yang berhasil diambil:', '', ...ok.map((r) => r.content)].join('\n');
     }
 
