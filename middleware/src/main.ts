@@ -22,18 +22,25 @@ async function bootstrap() {
         }),
     );
 
-    // Enable CORS for frontend apps
+    // Enable CORS for frontend apps. Extra origins (e.g. the production
+    // IP/domain the browser loads the admin from) can be added via the
+    // comma-separated CORS_ORIGINS env var without a code change.
+    const defaultOrigins = [
+        'http://localhost:3000',      // Landing page local
+        'http://localhost:3001',      // Admin local dev server
+        'http://localhost:3003',      // Admin local (alternative port)
+        'http://127.0.0.1:3000',      // Landing page IP
+        'http://127.0.0.1:3001',      // Admin IP dev server
+        'http://127.0.0.1:3003',      // Admin IP (alternative port)
+        'http://landing-page:3000',   // Landing page container
+        'http://admin:3003',          // Admin container
+    ];
+    const envOrigins = (process.env.CORS_ORIGINS || '')
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean);
     app.enableCors({
-        origin: [
-            'http://localhost:3000',      // Landing page local
-            'http://localhost:3001',      // Admin local dev server
-            'http://localhost:3003',      // Admin local (alternative port)
-            'http://127.0.0.1:3000',      // Landing page IP
-            'http://127.0.0.1:3001',      // Admin IP dev server
-            'http://127.0.0.1:3003',      // Admin IP (alternative port)
-            'http://landing-page:3000',   // Landing page container
-            'http://admin:3003',          // Admin container
-        ],
+        origin: [...new Set([...defaultOrigins, ...envOrigins])],
         credentials: true,
     });
 
