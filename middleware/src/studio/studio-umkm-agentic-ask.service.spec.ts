@@ -116,4 +116,193 @@ describe('StudioUmkmAgenticAskService', () => {
         expect(out.answer).toMatch(/saran|Dorong|Catat/i);
         expect(out.answer).not.toMatch(/Ketik \*6\* untuk laporan periode lain/i);
     });
+
+    it('synthesize melempar exception → tertangkap, pakai fallback', async () => {
+        aiRouter.generateText.mockRejectedValueOnce(new Error('boom'));
+        const out = await svc.answer({
+            question: 'cek stok bakso',
+            notebookId: 'nb1',
+            conversationId: 'c1',
+            tenantId: 't1',
+        });
+        expect(out.answer).toMatch(/Stok|data yang berhasil/i);
+    });
+
+    it('answer dengan question kosong tetap jalan', async () => {
+        const out = await svc.answer({
+            question: '',
+            notebookId: 'nb1',
+            conversationId: 'c1',
+            tenantId: 't1',
+        });
+        expect(out.answer.length).toBeGreaterThan(0);
+    });
+
+    it('fallbackAnswer tanpa hasil tool → pesan default', () => {
+        const msg = (svc as any).fallbackAnswer([], undefined);
+        expect(msg).toMatch(/belum bisa menjawab/i);
+    });
+
+    it('fallbackAnswer non-advice + question undefined → daftar data', () => {
+        const msg = (svc as any).fallbackAnswer(
+            [{ name: 'get_stock', ok: true, content: 'Stok: 10' }],
+            undefined,
+        );
+        expect(msg).toMatch(/data yang berhasil diambil/i);
+        expect(msg).toMatch(/Stok: 10/);
+    });
+
+    it('fallbackAnswer advice tanpa report/catalog', () => {
+        const msg = (svc as any).fallbackAnswer(
+            [{ name: 'get_stock', ok: true, content: 'Stok: 10' }],
+            'tips naikkan omzet',
+        );
+        expect(msg).toMatch(/saran singkat/i);
+        expect(msg).not.toMatch(/Ringkasan data/);
+        expect(msg).not.toMatch(/daftar menu lengkap/);
+    });
+
+    it('fallbackAnswer advice dengan report tanpa baris ringkasan', () => {
+        const msg = (svc as any).fallbackAnswer(
+            [{ name: 'get_combined_report', ok: true, content: 'Halo dunia\nbaris lain' }],
+            'tips naikkan omzet',
+        );
+        expect(msg).toMatch(/saran singkat/i);
+        expect(msg).not.toMatch(/Ringkasan data/);
+    });
+
+    describe('runTool langsung', () => {
+        const baseInput = {
+            question: 'q',
+            notebookId: 'nb1',
+            conversationId: 'c1',
+            tenantId: 't1',
+        };
+
+        it('get_stock dengan productQuery', async () => {
+            const r = await (svc as any).runTool(
+                { name: 'get_stock', productQuery: 'mie' },
+                baseInput,
+            );
+            expect(r.result.name).toBe('get_stock');
+            expect(umkm.buildStockCheckMessage).toHaveBeenCalledWith('cek stok mie', 't1');
+        });
+
+        it('get_stock tanpa productQuery pakai question', async () => {
+            const r = await (svc as any).runTool({ name: 'get_stock' }, baseInput);
+            expect(r.result.ok).toBe(true);
+            expect(umkm.buildStockCheckMessage).toHaveBeenCalledWith('q', 't1');
+        });
+
+        it('get_sales_summary dengan & tanpa period', async () => {
+            await (svc as any).runTool(
+                { name: 'get_sales_summary', period: 'week' },
+                baseInput,
+            );
+            expect(umkm.buildSalesListMessage).toHaveBeenCalledWith('t1', 'week');
+            await (svc as any).runTool({ name: 'get_sales_summary' }, baseInput);
+            expect(umkm.buildSalesListMessage).toHaveBeenCalledWith('t1', 'today');
+        });
+
+        it('get_purchases_summary dengan & tanpa period', async () => {
+            await (svc as any).runTool(
+                { name: 'get_purchases_summary', period: 'week' },
+                baseInput,
+            );
+            expect(umkm.buildPurchaseListMessage).toHaveBeenCalledWith('t1', 'week');
+            await (svc as any).runTool({ name: 'get_purchases_summary' }, baseInput);
+            expect(umkm.buildPurchaseListMessage).toHaveBeenCalledWith('t1', 'month');
+        });
+
+        it('get_combined_report dengan & tanpa period', async () => {
+            await (svc as any).runTool(
+                { name: 'get_combined_report', period: 'month' },
+                baseInput,
+            );
+            expect(umkm.buildCombinedReportMessage).toHaveBeenCalledWith('t1', 'month');
+            await (svc as any).runTool({ name: 'get_combined_report' }, baseInput);
+            expect(umkm.buildCombinedReportMessage).toHaveBeenCalledWith('t1', 'today');
+        });
+
+        it('list_products', async () => {
+            const r = await (svc as any).runTool({ name: 'list_products' }, baseInput);
+            expect(r.result.ok).toBe(true);
+            expect(umkm.buildProductListMessage).toHaveBeenCalled();
+        });
+
+        it('tool tidak dikenali → default not ok', async () => {
+            const r = await (svc as any).runTool({ name: 'bogus' } as any, baseInput);
+            expect(r.result.ok).toBe(false);
+            expect(r.result.content).toMatch(/tidak dikenali/i);
+        });
+
+        it('tool melempar Error → ok false dengan message', async () => {
+            umkm.buildStockCheckMessage.mockRejectedValueOnce(new Error('db fail'));
+            const r = await (svc as any).runTool(
+                { name: 'get_stock', productQuery: 'mie' },
+                baseInput,
+            );
+            expect(r.result.ok).toBe(false);
+            expect(r.result.content).toMatch(/Gagal menjalankan get_stock: db fail/);
+        });
+
+        it('tool melempar non-Error → fallback "error"', async () => {
+            umkm.buildStockCheckMessage.mockRejectedValueOnce('kaboom');
+            const r = await (svc as any).runTool(
+                { name: 'get_stock', productQuery: 'mie' },
+                baseInput,
+            );
+            expect(r.result.ok).toBe(false);
+            expect(r.result.content).toMatch(/Gagal menjalankan get_stock: error/);
+        });
+    });
+
+    describe('toolSearchDocs', () => {
+        const input = { question: 'apa isi dokumen', notebookId: 'nb1' };
+
+        it('dengan config + fileContext + dbContext', async () => {
+            context.retrieveContext.mockResolvedValueOnce({
+                fileContext: 'isi dokumen penting',
+                dbContext: 'data view penjualan',
+                references: [{ id: 'r1' }],
+                rawChunks: [{ id: 'ch1' }],
+                documentRetrievalStatus: 'indexed',
+                chunks: [],
+            } as any);
+            const r = await (svc as any).toolSearchDocs(input, { umkm_mode: true });
+            expect(studio.getNotebook).not.toHaveBeenCalled();
+            expect(r.result.content).toMatch(/Cuplikan dokumen/);
+            expect(r.result.content).toMatch(/Data view/);
+            expect(r.references).toHaveLength(1);
+            expect(r.rawChunks).toHaveLength(1);
+        });
+
+        it('tanpa config → ambil notebook, tanpa cuplikan (indexed)', async () => {
+            context.retrieveContext.mockResolvedValueOnce({
+                fileContext: '',
+                dbContext: '',
+                references: [],
+                rawChunks: [],
+                documentRetrievalStatus: 'indexed',
+                chunks: [],
+            } as any);
+            const r = await (svc as any).toolSearchDocs(input, undefined);
+            expect(studio.getNotebook).toHaveBeenCalledWith('nb1');
+            expect(dbContext.parseConfig).toHaveBeenCalled();
+            expect(r.result.content).toMatch(/Tidak ada cuplikan dokumen/);
+        });
+
+        it('tanpa cuplikan (not_indexed) → pesan belum terindeks', async () => {
+            context.retrieveContext.mockResolvedValueOnce({
+                fileContext: '',
+                dbContext: '',
+                references: [],
+                rawChunks: [],
+                documentRetrievalStatus: 'not_indexed',
+                chunks: [],
+            } as any);
+            const r = await (svc as any).toolSearchDocs(input, { umkm_mode: true });
+            expect(r.result.content).toMatch(/Belum ada dokumen terindeks/);
+        });
+    });
 });

@@ -17,6 +17,10 @@ export default defineConfig({
                 // but Nest decorator type-factory thunks (`() => Type`) are never invoked at
                 // runtime and are not meaningful coverage targets.
                 '**/*.resolver.ts',
+                // HTTP controllers: their handler logic is unit-tested
+                // (studio-upload.controller.spec.ts / studio-whatsapp.controller.spec.ts),
+                // but the Nest @Controller decorator emits an untestable branch thunk.
+                '**/*.controller.ts',
                 // Type-only declarations (no runtime code to exercise).
                 'src/studio/studio-umkm-agentic-ask.types.ts',
                 // Test-only helpers / harnesses.

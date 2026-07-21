@@ -18,8 +18,17 @@ function streamFromText(text: string): Readable {
 
 function buildIngestionService(options?: {
     source?: Record<string, unknown>;
+    sourceResult?: { data: unknown; error: unknown };
     media?: Record<string, unknown> | null;
     getObjectImpl?: (bucket: string, key: string) => Readable | null;
+    getObjectError?: boolean;
+    describeMedia?: unknown;
+    describeMediaReject?: unknown;
+    extractText?: string;
+    embedImpl?: () => Promise<unknown>;
+    chunksInsertError?: unknown;
+    config?: Record<string, string | undefined>;
+    sourcesList?: { data: unknown; error?: unknown };
 }) {
     const sourceRow = options?.source ?? {
         id: SOURCE_ID,
@@ -30,7 +39,9 @@ function buildIngestionService(options?: {
         s3_key: 'report.docx',
     };
 
-    const sourceSingle = vi.fn().mockResolvedValue({ data: sourceRow, error: null });
+    const sourceSingle = vi
+        .fn()
+        .mockResolvedValue(options?.sourceResult ?? { data: sourceRow, error: null });
     const sourceUpdateEq = vi.fn().mockResolvedValue({ error: null });
     const sourceUpdate = vi.fn().mockReturnValue({ eq: sourceUpdateEq });
     const mediaMaybeSingle = vi.fn().mockResolvedValue({
@@ -42,13 +53,21 @@ function buildIngestionService(options?: {
         error: null,
     });
     const chunksDeleteEq = vi.fn().mockResolvedValue({ error: null });
-    const chunksInsert = vi.fn().mockResolvedValue({ error: null });
+    const chunksInsert = vi.fn().mockResolvedValue({ error: options?.chunksInsertError ?? null });
+
+    // .eq() is both a thenable (reindex awaits the list) and exposes .single() (ingest reads one row).
+    const sourcesListValue = options?.sourcesList ?? { data: [], error: null };
+    const eqReturn: Record<string, unknown> = {
+        single: sourceSingle,
+        then: (resolve: (v: unknown) => void, reject: (e: unknown) => void) =>
+            Promise.resolve(sourcesListValue).then(resolve, reject),
+    };
 
     const from = vi.fn((table: string) => {
         if (table === 'studio_notebook_sources') {
             return {
                 select: vi.fn().mockReturnValue({
-                    eq: vi.fn().mockReturnValue({ single: sourceSingle }),
+                    eq: vi.fn().mockReturnValue(eqReturn),
                 }),
                 update: sourceUpdate,
             };
@@ -69,20 +88,27 @@ function buildIngestionService(options?: {
         throw new Error(`Unexpected table: ${table}`);
     });
 
+    const describeMedia = options?.describeMediaReject
+        ? vi.fn().mockRejectedValue(options.describeMediaReject)
+        : vi.fn().mockResolvedValue(options?.describeMedia ?? null);
+
     const ragService = {
-        describeMedia: vi.fn().mockResolvedValue(null),
+        describeMedia,
         extractDocumentText: vi.fn().mockResolvedValue(
-            'Laporan penjualan kuartal ini menunjukkan pertumbuhan yang stabil di seluruh kategori produk utama.',
+            options?.extractText ??
+                'Laporan penjualan kuartal ini menunjukkan pertumbuhan yang stabil di seluruh kategori produk utama.',
         ),
-        embedText: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+        embedText: options?.embedImpl
+            ? vi.fn().mockImplementation(options.embedImpl)
+            : vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
     } as unknown as RagService;
 
+    const configValues: Record<string, string | undefined> = options?.config ?? {
+        S3_ENDPOINT: 'http://127.0.0.1:9000',
+        S3_BUCKET: 'cms-media',
+    };
     const configMock = {
-        get: (key: string) => {
-            if (key === 'S3_ENDPOINT') return 'http://127.0.0.1:9000';
-            if (key === 'S3_BUCKET') return 'cms-media';
-            return undefined;
-        },
+        get: (key: string) => configValues[key],
     } as unknown as ConfigService;
 
     const service = new StudioIngestionService(
@@ -92,6 +118,12 @@ function buildIngestionService(options?: {
     );
 
     const getObject = vi.fn((bucket: string, key: string, cb: (err: Error | null, stream?: Readable) => void) => {
+        if (options?.getObjectError) {
+            const stream = new Readable({ read() {} });
+            cb(null, stream);
+            setImmediate(() => stream.emit('error', new Error('stream boom')));
+            return;
+        }
         const stream = options?.getObjectImpl?.(bucket, key);
         if (!stream) {
             cb(new Error('NoSuchKey'));
@@ -108,6 +140,12 @@ function buildIngestionService(options?: {
         sourceUpdate,
         chunksInsert,
     };
+}
+
+function errorPatchOf(sourceUpdate: ReturnType<typeof vi.fn>) {
+    return sourceUpdate.mock.calls
+        .map((call) => call[0] as { parse_status?: string; parse_error?: string })
+        .find((patch) => patch?.parse_status === 'error');
 }
 
 describe('StudioIngestionService.ingestSource', () => {
@@ -173,5 +211,176 @@ describe('StudioIngestionService.ingestSource', () => {
             .find((patch) => patch?.parse_status === 'error');
         expect(errorPatch?.parse_error).toContain('percontohan/report.docx');
         expect(errorPatch?.parse_stage).toBe('error');
+    });
+
+    it('returns early (no patch) when the source row is missing', async () => {
+        const { service, sourceUpdate } = buildIngestionService({
+            sourceResult: { data: null, error: { message: 'not found' } },
+        });
+        await service.ingestSource(SOURCE_ID);
+        expect(sourceUpdate).not.toHaveBeenCalled();
+    });
+
+    it('uses media description text and skips document extraction', async () => {
+        const { service, ragService } = buildIngestionService({
+            describeMedia:
+                'Deskripsi media panjang yang cukup untuk lolos ambang teks lemah pada ingestion service ini.',
+        });
+        await service.ingestSource(SOURCE_ID);
+        expect(ragService.extractDocumentText).not.toHaveBeenCalled();
+    });
+
+    it('errors when extracted text is empty', async () => {
+        const { service, sourceUpdate } = buildIngestionService({
+            extractText: '',
+            getObjectImpl: () => streamFromText('bin'),
+        });
+        await service.ingestSource(SOURCE_ID);
+        expect(errorPatchOf(sourceUpdate)?.parse_error).toContain('No extractable text');
+    });
+
+    it('errors when extracted text is too short (weak)', async () => {
+        const { service, sourceUpdate } = buildIngestionService({
+            extractText: 'pendek',
+            getObjectImpl: () => streamFromText('bin'),
+        });
+        await service.ingestSource(SOURCE_ID);
+        expect(errorPatchOf(sourceUpdate)?.parse_error).toContain('Ekstraksi teks gagal');
+    });
+
+    it('errors when extracted text is only a placeholder', async () => {
+        // Long filename so the placeholder string clears the 40-char "weak" length gate and
+        // is caught specifically by the placeholder regex branch.
+        const longName = 'laporan-penjualan-kuartal-tiga-2026-final-v3.docx';
+        const { service, sourceUpdate } = buildIngestionService({
+            source: {
+                id: SOURCE_ID,
+                notebook_id: NOTEBOOK_ID,
+                media_id: null,
+                filename: longName,
+                file_type: 'application/pdf',
+                s3_key: 'studio/nb-1/' + longName,
+            },
+            media: null,
+            extractText: `Document: ${longName}`,
+            getObjectImpl: () => streamFromText('bin'),
+        });
+        await service.ingestSource(SOURCE_ID);
+        expect(errorPatchOf(sourceUpdate)?.parse_error).toContain('Ekstraksi teks gagal');
+    });
+
+    it('defaults file_type to octet-stream when missing', async () => {
+        const { service, ragService } = buildIngestionService({
+            source: {
+                id: SOURCE_ID,
+                notebook_id: NOTEBOOK_ID,
+                media_id: null,
+                filename: 'upload.bin',
+                file_type: null,
+                s3_key: 'studio/nb-1/upload.bin',
+            },
+            media: null,
+            getObjectImpl: () => streamFromText('bin'),
+        });
+        await service.ingestSource(SOURCE_ID);
+        expect(ragService.extractDocumentText).toHaveBeenCalledWith(
+            expect.any(Buffer),
+            'application/octet-stream',
+            'upload.bin',
+        );
+    });
+
+    it('errors when storage cannot be resolved', async () => {
+        const { service, sourceUpdate } = buildIngestionService({
+            source: {
+                id: SOURCE_ID,
+                notebook_id: NOTEBOOK_ID,
+                media_id: null,
+                filename: '',
+                file_type: 'application/pdf',
+                s3_key: '',
+            },
+            media: null,
+        });
+        await service.ingestSource(SOURCE_ID);
+        expect(errorPatchOf(sourceUpdate)?.parse_error).toContain('Could not resolve file storage');
+    });
+
+    it('errors when no chunk could be embedded', async () => {
+        const { service, sourceUpdate } = buildIngestionService({
+            embedImpl: async () => null,
+            getObjectImpl: () => streamFromText('bin'),
+        });
+        await service.ingestSource(SOURCE_ID);
+        expect(errorPatchOf(sourceUpdate)?.parse_error).toContain('Vektorisasi gagal');
+    });
+
+    it('propagates a chunk insert error into parse_error', async () => {
+        const { service, sourceUpdate } = buildIngestionService({
+            chunksInsertError: { message: 'insert failed' },
+            getObjectImpl: () => streamFromText('bin'),
+        });
+        await service.ingestSource(SOURCE_ID);
+        expect(errorPatchOf(sourceUpdate)?.parse_status).toBe('error');
+    });
+
+    it('handles a non-Error thrown during ingestion', async () => {
+        const { service, sourceUpdate } = buildIngestionService({
+            describeMediaReject: 'string failure',
+        });
+        await service.ingestSource(SOURCE_ID);
+        expect(errorPatchOf(sourceUpdate)?.parse_error).toContain('string failure');
+    });
+
+    it('handles a storage stream error', async () => {
+        const { service, sourceUpdate } = buildIngestionService({
+            getObjectError: true,
+        });
+        await service.ingestSource(SOURCE_ID);
+        expect(errorPatchOf(sourceUpdate)?.parse_status).toBe('error');
+    });
+});
+
+describe('StudioIngestionService constructor', () => {
+    it('falls back to defaults for missing/invalid config', () => {
+        const svc = buildIngestionService({ config: { S3_ENDPOINT: undefined, S3_BUCKET: undefined } }).service;
+        expect((svc as unknown as { bucket: string }).bucket).toBe('cms-media');
+    });
+
+    it('handles an https endpoint without an explicit port', () => {
+        const svc = buildIngestionService({
+            config: { S3_ENDPOINT: 'https://minio.example.com', S3_BUCKET: 'b' },
+        }).service;
+        expect((svc as unknown as { bucket: string }).bucket).toBe('b');
+    });
+
+    it('handles an invalid endpoint URL', () => {
+        const svc = buildIngestionService({
+            config: { S3_ENDPOINT: 'not a valid url', S3_BUCKET: 'b' },
+        }).service;
+        expect((svc as unknown as { bucket: string }).bucket).toBe('b');
+    });
+});
+
+describe('StudioIngestionService.reindexNotebook', () => {
+    it('re-ingests every source in the notebook', async () => {
+        const { service } = buildIngestionService({
+            sourcesList: { data: [{ id: 'a' }, { id: 'b' }], error: null },
+            getObjectImpl: () => streamFromText('bin'),
+        });
+        const spy = vi.spyOn(service, 'ingestSource').mockResolvedValue();
+        await service.reindexNotebook(NOTEBOOK_ID);
+        expect(spy).toHaveBeenCalledTimes(2);
+        expect(spy).toHaveBeenCalledWith('a');
+        expect(spy).toHaveBeenCalledWith('b');
+    });
+
+    it('handles a null source list', async () => {
+        const { service } = buildIngestionService({
+            sourcesList: { data: null, error: null },
+        });
+        const spy = vi.spyOn(service, 'ingestSource').mockResolvedValue();
+        await service.reindexNotebook(NOTEBOOK_ID);
+        expect(spy).not.toHaveBeenCalled();
     });
 });
