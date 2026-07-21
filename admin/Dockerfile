@@ -5,7 +5,7 @@ WORKDIR /app
 
 # ===== Dependencies Stage =====
 FROM base AS deps
-RUN apk add --no-cache python3 make g++
+RUN apk add --no-cache python3 make g++ vips-dev
 COPY package.json ./
 RUN npm config set fetch-retry-mintimeout 600000 && \
     npm config set fetch-retry-maxtimeout 1200000 && \

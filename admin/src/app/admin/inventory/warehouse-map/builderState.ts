@@ -4,7 +4,9 @@
 export type PlacedObjectType =
     | 'zone' | 'rack' | 'wall' | 'door' | 'pallet'
     | 'bollard' | 'workstation' | 'conveyor' | 'forklift'
-    | 'platform' | 'stairs';
+    | 'platform' | 'stairs' | 'robot_agv' | 'charging_station'
+    | 'industrial_fan' | 'security_camera' | 'shipping_container'
+    | 'safety_barrier' | 'tree' | 'shrub' | 'road' | 'fence' | 'truck' | 'custom_model';
 
 export type ZoneType = 'receiving' | 'storage' | 'picking' | 'packing' | 'shipping' | 'cold' | 'quarantine' | 'hazardous' | 'staging' | 'climate_controlled';
 
@@ -24,9 +26,12 @@ export interface PlacedObject {
     color?: string;
     locked?: boolean;
     floorLevel?: number; // 0 = ground, 1 = mezzanine 1, etc.
+    modelUrl?: string; // URL for custom GLTF models
     // WMS location hierarchy: Row → Rack (Bay) → Bin (Level)
     row?: string;              // Row identifier (A, B, C...)
     bay?: number;              // Bay position within the row (1, 2, 3...)
+    level?: number;            // Vertical level (1, 2, 3...)
+    y?: number;                // Elevation control for world building
     // inventory linking
     linkedZoneId?: string;     // Links zone to InvZone
     linkedBinIds?: string[];   // Links rack shelves to InvBin records (index = level)
@@ -64,6 +69,20 @@ export const PALETTE_ITEMS: BuilderPaletteItem[] = [
     { type: 'conveyor', label: 'Conveyor', icon: '⚙️', description: 'Roller conveyor belt', defaultWidth: 4, defaultDepth: 1, category: 'equipment', color: '#64748b' },
     { type: 'bollard', label: 'Bollard', icon: '⚠️', description: 'Safety bollard', defaultWidth: 1, defaultDepth: 1, category: 'equipment', color: '#f59e0b' },
     { type: 'forklift', label: 'Forklift', icon: '🚜', description: 'Forklift parking', defaultWidth: 1, defaultDepth: 2, category: 'equipment', color: '#eab308' },
+    { type: 'robot_agv', label: 'AGV Robot', icon: '🤖', description: 'Automated guided vehicle', defaultWidth: 1, defaultDepth: 1, category: 'equipment', color: '#10b981' },
+    { type: 'charging_station', label: 'Charging Station', icon: '🔋', description: 'AGV/Forklift charging', defaultWidth: 1, defaultDepth: 1, category: 'equipment', color: '#3b82f6' },
+    { type: 'industrial_fan', label: 'Industrial Fan', icon: '🌪️', description: 'Ceiling/floor fan', defaultWidth: 1, defaultDepth: 1, category: 'equipment', color: '#94a3b8' },
+    { type: 'security_camera', label: 'Security Camera', icon: '📹', description: 'CCTV camera', defaultWidth: 1, defaultDepth: 1, category: 'equipment', color: '#ef4444' },
+    { type: 'shipping_container', label: 'Shipping Container', icon: '🚢', description: 'Standard container', defaultWidth: 2, defaultDepth: 4, category: 'equipment', color: '#0ea5e9' },
+    { type: 'safety_barrier', label: 'Safety Barrier', icon: '🚧', description: 'Pedestrian barrier', defaultWidth: 2, defaultDepth: 1, category: 'equipment', color: '#f59e0b' },
+    // Landscape & Exterior
+    { type: 'tree', label: 'Tree', icon: '🌳', description: 'Landscape tree', defaultWidth: 2, defaultDepth: 2, category: 'equipment', color: '#22c55e' },
+    { type: 'shrub', label: 'Shrub', icon: '🌿', description: 'Small plant/shrub', defaultWidth: 1, defaultDepth: 1, category: 'equipment', color: '#16a34a' },
+    { type: 'road', label: 'Road Segment', icon: '🛣️', description: 'Asphalt road segment', defaultWidth: 4, defaultDepth: 4, category: 'structure', color: '#334155' },
+    { type: 'fence', label: 'Security Fence', icon: '⛓️', description: 'Perimeter fencing', defaultWidth: 4, defaultDepth: 1, category: 'structure', color: '#94a3b8' },
+    { type: 'truck', label: 'Delivery Truck', icon: '🚛', description: 'Logistics vehicle', defaultWidth: 2, defaultDepth: 5, category: 'equipment', color: '#ef4444' },
+    // Custom Import
+    { type: 'custom_model', label: 'Custom GLTF Model', icon: '📦', description: 'Imported 3D Model', defaultWidth: 2, defaultDepth: 2, category: 'equipment', color: '#a855f7' },
 ];
 
 export const ZONE_TYPE_MAP: Record<string, ZoneType> = {
@@ -280,10 +299,11 @@ import { inventoryService } from '@/lib/inventoryService';
 const LOCAL_CACHE_KEY = 'nusantarasoft_warehouse_layout_cache';
 
 // Save active layout to backend
-export async function saveLayout(objects: PlacedObject[], layoutId?: string): Promise<string | null> {
+export async function saveLayout(objects: PlacedObject[], layoutId?: string, warehouseId?: string): Promise<string | null> {
     try {
         const result = await inventoryService.saveWarehouseLayout(undefined, {
             id: layoutId || undefined,
+            warehouseId,
             name: 'Active Layout',
             objects,
             isActive: true,
@@ -299,9 +319,9 @@ export async function saveLayout(objects: PlacedObject[], layoutId?: string): Pr
 }
 
 // Load active layout from backend (with local cache fallback)
-export async function loadLayout(): Promise<{ objects: PlacedObject[]; layoutId: string | null }> {
+export async function loadLayout(warehouseId?: string): Promise<{ objects: PlacedObject[]; layoutId: string | null }> {
     try {
-        const layouts = await inventoryService.getWarehouseLayouts();
+        const layouts = await inventoryService.getWarehouseLayouts(warehouseId);
         const active = layouts.find(l => l.isActive);
         if (active) {
             try { localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(active.objects)); } catch { /* ignore */ }

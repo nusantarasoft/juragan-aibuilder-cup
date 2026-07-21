@@ -15,31 +15,45 @@ export function DataCenterArchitecture() {
         metalness: 0.3
     });
 
-    const ceilingMaterial = new THREE.MeshStandardMaterial({
-        color: '#1a1a1a', // dark industrial ceiling
-        roughness: 0.8,
+    const ceilingMaterial = new THREE.MeshPhysicalMaterial({
+        color: '#ffffff',
+        roughness: 0.1,
+        metalness: 0.1,
+        transmission: 0.9, // glass-like
+        transparent: true,
+        opacity: 0.3,
+        side: THREE.DoubleSide
+    });
+
+    const glassMaterial = new THREE.MeshPhysicalMaterial({
+        color: '#e0f2fe',
+        transmission: 0.9,
+        transparent: true,
+        opacity: 0.4,
+        roughness: 0.1,
+        metalness: 0.2
     });
 
     // Generate Pillars (3x3 grid)
     const pillars = [];
-    for (let x of [-12, 0, 12]) {
-        for (let z of [-12, 0, 12]) {
-            pillars.push(<Box key={`pillar-${x}-${z}`} args={[0.6, 4.5, 0.6]} position={[x, 2.25, z]} material={pillarMaterial} castShadow receiveShadow />);
+    for (const x of [-12, 0, 12]) {
+        for (const z of [-12, 0, 12]) {
+            pillars.push(<Box key={`pillar-${x}-${z}`} args={[0.8, 6, 0.8]} position={[x, 3, z]} material={pillarMaterial} castShadow receiveShadow />);
         }
     }
 
     // Generate Ceiling Lights (4x4 grid)
     const lights = [];
-    for (let x of [-15, -5, 5, 15]) {
-        for (let z of [-15, -5, 5, 15]) {
+    for (const x of [-15, -5, 5, 15]) {
+        for (const z of [-15, -5, 5, 15]) {
             lights.push(
-                <group key={`light-${x}-${z}`} position={[x, 4.48, z]}>
+                <group key={`light-${x}-${z}`} position={[x, 5.9, z]}>
                     {/* The physical LED panel */}
                     <Box args={[2, 0.05, 2]}>
                         <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={2} />
                     </Box>
                     {/* The actual light source */}
-                    <pointLight distance={15} intensity={0.5} decay={2} color="#ffffff" castShadow />
+                    <pointLight distance={18} intensity={0.6} decay={2} color="#ffffff" castShadow />
                 </group>
             );
         }
@@ -47,25 +61,35 @@ export function DataCenterArchitecture() {
 
     return (
         <group>
-            {/* Raised Floor */}
-            <Grid args={[40, 40]} position={[0, 0.01, 0]} sectionSize={0.6} sectionColor="#444" cellColor="#333" fadeDistance={30} />
+            {/* Raised Floor Texture */}
+            <Grid args={[40, 40]} position={[0, 0.01, 0]} sectionSize={0.6} sectionColor="#111" cellColor="#333" cellThickness={1.5} fadeDistance={30} />
             <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
                 <planeGeometry args={[40, 40]} />
-                <meshStandardMaterial color="#262626" roughness={0.7} />
+                <meshStandardMaterial color="#1a1a1a" roughness={0.4} metalness={0.6} />
             </mesh>
 
             {/* Back Wall */}
-            <Box args={[40, 4.5, 0.5]} position={[0, 2.25, -20.25]} material={wallMaterial} receiveShadow />
+            <Box args={[40, 6, 0.5]} position={[0, 3, -20.25]} material={wallMaterial} receiveShadow />
             
             {/* Left Wall */}
-            <Box args={[0.5, 4.5, 40]} position={[-20.25, 2.25, 0]} material={wallMaterial} receiveShadow />
+            <Box args={[0.5, 6, 40]} position={[-20.25, 3, 0]} material={wallMaterial} receiveShadow />
             
             {/* Right Wall */}
-            <Box args={[0.5, 4.5, 40]} position={[20.25, 2.25, 0]} material={wallMaterial} receiveShadow />
+            <Box args={[0.5, 6, 40]} position={[20.25, 3, 0]} material={wallMaterial} receiveShadow />
+
+            {/* Front Wall with Glass Doors */}
+            <group position={[0, 3, 20.25]}>
+                <Box args={[16, 6, 0.5]} position={[-12, 0, 0]} material={wallMaterial} receiveShadow />
+                <Box args={[16, 6, 0.5]} position={[12, 0, 0]} material={wallMaterial} receiveShadow />
+                <Box args={[8, 2, 0.5]} position={[0, 2, 0]} material={wallMaterial} receiveShadow />
+                {/* Glass Doors */}
+                <Box args={[3.9, 4, 0.2]} position={[-2, -1, 0]} material={glassMaterial} />
+                <Box args={[3.9, 4, 0.2]} position={[2, -1, 0]} material={glassMaterial} />
+            </group>
 
             {/* Ceiling */}
-            <mesh position={[0, 4.5, 0]} rotation={[Math.PI / 2, 0, 0]} receiveShadow>
-                <planeGeometry args={[40.5, 40.5]} />
+            <mesh position={[0, 6, 0]} rotation={[Math.PI / 2, 0, 0]} receiveShadow>
+                <planeGeometry args={[41, 41]} />
                 <primitive object={ceilingMaterial} />
             </mesh>
 

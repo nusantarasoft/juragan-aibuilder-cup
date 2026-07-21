@@ -1,50 +1,23 @@
-# Security Assessment Module Implementation Walkthrough
+# Native PrimeReact Dock & Dialog Update
 
 ## Overview
-We have successfully implemented the new **Security Assessment (Pentest) Module** for NusantaraSoft. This module allows you to perform automated, passive security scans on target websites to identify potential vulnerabilities, assess compliance, and monitor the overall attack surface.
+We have fully transitioned the custom macOS-style dock component to utilize native **PrimeReact** components (`primereact/dock` and `primereact/dialog`), drastically simplifying the codebase while providing native macOS-style physics, magnification, and window management.
 
-## What Was Built
+## What Was Updated
 
-### 1. Database Schema
-Created 6 new tables in PostgreSQL (via Supabase migrations) to support the module:
-- `pentest_targets`: Stores target URLs, metadata, and latest grades.
-- `pentest_scans`: Tracks scan history, overall scores, and execution times.
-- `pentest_findings`: Detailed individual security findings with severities, CWEs, and recommendations.
-- `pentest_domains`: For tracking discovered subdomains (attack surface).
-- `pentest_compliance`: Compliance mappings (e.g., PCI DSS, HIPAA).
-- `pentest_reports`: Stored generated PDF/JSON reports.
+### 1. PrimeReact `<Dock />` Integration
+- **Removed Custom Physics:** The custom Framer Motion physics engine was gutted.
+- **Native Magnification:** We are now utilizing the official `import { Dock } from 'primereact/dock'` component. This provides a buttery-smooth, native "fisheye" magnification effect out-of-the-box.
+- **Sleek Dock Shelf:** The dock is wrapped in a heavily blurred, glassy pill shape to seamlessly match your system aesthetics.
+- **Freestanding 3D Emoji Icons:** The standalone emojis are injected directly into the PrimeReact `template` renderer, giving them high-fidelity scaling and perfect drop shadows.
 
-### 2. Backend Module (`middleware/src/pentest`)
-Built a NestJS GraphQL module (`PentestModule`) that integrates `HttpService` and native Node.js libraries (`dns`, `tls`, `net`) to perform 11 categories of passive security checks:
-1. **HTTP Headers**: Validates CSP, HSTS, X-Frame-Options, etc.
-2. **SSL/TLS**: Analyzes certificate validity, cipher suites, and protocol versions.
-3. **DNS Records**: Checks A, AAAA, MX, NS, TXT, and CAA records.
-4. **Cookie Security**: Verifies Secure, HttpOnly, and SameSite attributes.
-5. **Technology Detection**: Identifies server software, frameworks, WAFs, and CDNs via headers and meta tags.
-6. **Performance**: Analyzes TTFB, compression, and redirect chains.
-7. **CORS**: Tests for wildcard origins and insecure credential passing.
-8. **Information Disclosure**: Checks for `robots.txt`, `security.txt`, `.env`, exposed `.git` directories, and more.
-9. **Subdomains**: Discovers subdomains via Certificate Transparency logs (`crt.sh`).
-10. **Open Ports**: Scans common ports (21, 22, 80, 443, 3306, etc.) using `net.Socket`.
-11. **Email Security**: Deep analysis of SPF, DMARC, DKIM, and MTA-STS records.
+### 2. PrimeReact `<Dialog />` Integration
+- **Removed Custom Windows:** The custom drag-and-drop `DockWindow` wrapper was gutted.
+- **Native Window Management:** The widgets are now powered by `import { Dialog } from 'primereact/dialog'`.
+- **System Theme Integration:** We pushed the Ant Design system integration directly into the PrimeReact passthrough (`pt`) props. The Dialogs now utilize `token.colorBgElevated` with a 70% opacity and a massive `blur(50px)` backdrop filter, perfectly mimicking the previous frosted-glass UI.
+- **Advanced Controls:** By using PrimeReact Dialogs, your widget windows now have native drag-and-drop, native edge resizing, and native maximize/minimize header controls right out of the box!
 
-The backend calculates an overall **Security Score (0-100)** and a **Grade (A+ to F)** based on the findings.
-
-### 3. Frontend Pages (`admin/src/app/admin/security/pentest`)
-- **Dashboard (`/page.tsx`)**: Displays a high-level summary of all targets, average scores, and recent scans. You can add new targets here and trigger scans directly.
-- **Detail Page (`/[id]/page.tsx`)**: A detailed view of a specific target. It features a circular gauge for the score, a breakdown of findings by category (with custom icons), and an expandable data table for deep-diving into individual vulnerabilities and recommended fixes.
-
-## Validation Results
-- Code successfully compiled with TypeScript in strict mode.
-- Docker containers (`admin` and `middleware`) successfully built and started.
-- All dependencies (`@nestjs/axios`, `axios`) installed and configured.
-
-## How to Test
-1. Navigate to the **Security > Pentest** menu in the admin dashboard.
-2. Click **Add Target** and enter a domain (e.g., `https://tenos.id`).
-3. Click **Scan Now** on the target card.
-4. Wait for the background scan to complete.
-5. Click **Results** to view the comprehensive security report, including grade, score, and all identified vulnerabilities.
-
-> [!WARNING]
-> This tool performs active reconnaissance (like connecting to open ports). Ensure you only scan websites you have explicit permission to test, such as `tenos.id` as requested. All checks are strictly informational/passive and do not exploit vulnerabilities.
+## Verification
+1. **Move your mouse** quickly back and forth across the dock to see the native PrimeReact fisheye magnification effect in action.
+2. **Open the Calculator** and try clicking the **Maximize** icon in the header, or try dragging the edges of the window to resize it!
+3. Switch your CMS to **Dark Mode** and watch the PrimeReact dialogs natively adapt their frosted-glass panels.

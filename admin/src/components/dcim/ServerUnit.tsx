@@ -7,9 +7,8 @@ import { ServerData } from '@/store/useDcimStore';
 export function ServerUnit({ server, position, isSelected, onClick }: { server: ServerData, position: [number, number, number], isSelected: boolean, onClick: () => void }) {
     const ledRef = useRef<THREE.MeshStandardMaterial>(null);
     const groupRef = useRef<THREE.Group>(null);
-    const [targetZ] = useState(() => new THREE.Vector3());
 
-    useFrame(({ clock }) => {
+    useFrame(() => {
         if (ledRef.current) {
             // Blinking activity light
             if (server.status === 'normal') {

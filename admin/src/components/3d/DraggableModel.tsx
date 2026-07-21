@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
+import { useDcimStore } from '@/store/useDcimStore';
 
 interface DraggableModelProps {
   id: string;
@@ -55,6 +56,12 @@ export default function DraggableModel({
           } else if (onPositionChange && transformMode === 'translate') {
             onPositionChange(id, [p.x, p.y, p.z]);
           }
+        }
+        
+        // Lock camera rotation while dragging gizmo
+        const state = useDcimStore.getState();
+        if (state.setOrbitEnabled) {
+            state.setOrbitEnabled(!event.value);
         }
       };
       controls.addEventListener('dragging-changed', callback);

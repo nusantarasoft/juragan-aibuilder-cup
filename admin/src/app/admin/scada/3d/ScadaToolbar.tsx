@@ -30,8 +30,12 @@ import {
     AlertOutlined,
     PlusOutlined,
     EditOutlined,
+    ClearOutlined,
+    ExportOutlined,
+    ImportOutlined,
+    BulbOutlined,
 } from "@ant-design/icons";
-import { useScada3dStore, type Scada3dElementType } from "@/store/useScada3dStore";
+import { useScada3dStore, type Scada3dElementType, type EnvironmentType } from "@/store/useScada3dStore";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 
 const { Text } = Typography;
@@ -174,11 +178,42 @@ export default function ScadaToolbar(props: ScadaToolbarProps) {
 
     const { token } = theme.useToken();
     const { themeColor } = usePreferencesStore();
-    const { addElement, deleteElement, duplicateElement, undo, redo, historyIndex, history } =
+    const { addElement, deleteElement, duplicateElement, undo, redo, historyIndex, history, exportScene, importScene, clearScene, environment, setEnvironment } =
         useScada3dStore();
 
     const canUndo = historyIndex >= 0;
     const canRedo = historyIndex < history.length - 1;
+
+    const handleImport = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const content = e.target?.result;
+                    if (typeof content === 'string') {
+                        importScene(content);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        };
+        input.click();
+    };
+
+    const handleExport = () => {
+        const json = exportScene();
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'scada_scene.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    };
 
     const handleAddPrimitive = (type: Scada3dElementType) => {
         addElement({
@@ -195,17 +230,9 @@ export default function ScadaToolbar(props: ScadaToolbarProps) {
             style={{
                 display: "flex",
                 alignItems: "center",
-                height: 40,
-                padding: "0 8px",
+                height: 32,
                 gap: 2,
-                background: "rgba(18, 18, 24, 0.78)",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-                borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.08)",
-                boxShadow: "0 2px 12px rgba(0,0,0,0.35)",
                 userSelect: "none",
-                overflow: "hidden",
                 flexShrink: 0,
             }}
         >
@@ -229,6 +256,33 @@ export default function ScadaToolbar(props: ScadaToolbarProps) {
                     {editMode ? "Edit" : "View"}
                 </Button>
             </Tooltip>
+
+            <VDivider />
+
+            {/* ── 1.5 File Operations ────────────────────────────── */}
+            <Space size={0}>
+                <ToolBtn
+                    tooltip="Import JSON"
+                    icon={<ImportOutlined />}
+                    disabled={!editMode}
+                    onClick={handleImport}
+                />
+                <ToolBtn
+                    tooltip="Export JSON"
+                    icon={<ExportOutlined />}
+                    disabled={!editMode}
+                    onClick={handleExport}
+                />
+                <ToolBtn
+                    tooltip="Clear Scene"
+                    icon={<ClearOutlined />}
+                    disabled={!editMode}
+                    danger={true}
+                    onClick={() => {
+                        if (confirm("Are you sure you want to clear the entire scene?")) clearScene();
+                    }}
+                />
+            </Space>
 
             <VDivider />
 
@@ -321,6 +375,13 @@ export default function ScadaToolbar(props: ScadaToolbarProps) {
 
             {/* ── 5. View Options ─────────────────────────────────── */}
             <Space size={0}>
+                <ToolBtn
+                    tooltip={`Environment: ${environment.toUpperCase()}`}
+                    icon={<BulbOutlined />}
+                    active={environment !== 'night'}
+                    themeColor={themeColor}
+                    onClick={() => setEnvironment(environment === 'night' ? 'day' : (environment === 'day' ? 'studio' : 'night'))}
+                />
                 <ToolBtn
                     tooltip="Snap to Grid"
                     icon={<AimOutlined />}

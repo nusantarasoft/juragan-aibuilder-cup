@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
@@ -25,20 +25,24 @@ export default function DcimThermal() {
     };
 
     // Demo Data
-    const thermalTrend = Array.from({ length: 24 }).map((_, i) => ({
-        time: `${i}:00`,
-        coldAisle: 20 + Math.random() * 2,
-        hotAisle: 32 + Math.random() * 4,
-        supply: 18 + Math.random() * 1,
-    }));
+    const [thermalTrend, setThermalTrend] = useState<any[]>([]);
+    const [heatMapData, setHeatMapData] = useState<any[]>([]);
 
-    // Grid for heatmap
-    const heatMapData = Array.from({ length: 5 }).map((_, y) => 
-        Array.from({ length: 10 }).map((_, x) => ({
-            x, y,
-            temp: 20 + Math.random() * 15
-        }))
-    ).flat();
+    useEffect(() => {
+        setThermalTrend(Array.from({ length: 24 }).map((_, i) => ({
+            time: `${i}:00`,
+            coldAisle: 20 + Math.random() * 2,
+            hotAisle: 32 + Math.random() * 4,
+            supply: 18 + Math.random() * 1,
+        })));
+
+        setHeatMapData(Array.from({ length: 5 }).map((_, y) => 
+            Array.from({ length: 10 }).map((_, x) => ({
+                x, y,
+                temp: 20 + Math.random() * 15
+            }))
+        ).flat());
+    }, []);
 
     const getTempColor = (temp: number) => {
         if (temp < 22) return '#1890ff'; // Blue (Cold)

@@ -5,8 +5,13 @@ import { App, ConfigProvider } from "antd";
 import enUS from "antd/locale/en_US";
 import { AuthProvider } from "@/context/AuthContext";
 import { SocketProvider } from "@/components/providers/SocketProvider";
-import "./globals.css";
+import MacDock from "@/components/dock/MacDock";
 
+import "primereact/resources/themes/lara-light-cyan/theme.css";
+import "primereact/resources/primereact.min.css";
+import "primeicons/primeicons.css";
+
+import "./globals.css";
 export const metadata: Metadata = {
   title: "Nusantarasoft CMS",
   description: "Content Management System with Interactive Page Builder",
@@ -45,6 +50,7 @@ export default function RootLayout({
             <App>
               <AuthProvider>
                 <SocketProvider>
+                  <MacDock />
                   {children}
                 </SocketProvider>
               </AuthProvider>

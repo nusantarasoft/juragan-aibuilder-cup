@@ -56,18 +56,36 @@ export interface PduData {
     status: 'normal' | 'warning' | 'critical';
 }
 
+export interface WorldObjectData {
+    id: string;
+    type: 'wall' | 'tree' | 'generator' | 'zone' | 'pillar' | 'cableTray' | 'pipe';
+    material?: 'grass' | 'concrete' | 'tiles' | 'metal';
+    x: number;
+    z: number;
+    width?: number;
+    depth?: number;
+    rotationY?: number;
+}
+
 interface DcimState {
     racks: RackData[];
     pods: PodData[];
     cracs: CracData[];
     pdus: PduData[];
+    worldObjects: WorldObjectData[];
     selectedRackId: string | null;
     selectedServerId: string | null;
-    viewMode: 'Normal' | 'Thermal' | 'Power' | 'Utilization';
+    viewMode: 'Normal' | 'Thermal' | 'Power' | 'Utilization' | 'Network';
     editMode: boolean;
+    measureMode: boolean;
+    measurePoints: [number, number, number][];
     snapToGrid: boolean;
+    orbitEnabled: boolean;
     transformMode: 'translate' | 'rotate';
+    setOrbitEnabled: (enabled: boolean) => void;
     setTransformMode: (mode: 'translate' | 'rotate') => void;
+    setMeasureMode: (mode: boolean) => void;
+    setMeasurePoints: (points: [number, number, number][]) => void;
     setRacks: (racks: RackData[]) => void;
     setPods: (pods: PodData[]) => void;
     setSelectedRackId: (id: string | null) => void;
@@ -90,6 +108,13 @@ interface DcimState {
     addPdu: (pdu: PduData) => void;
     removePdu: (id: string) => void;
     updatePduPosition: (id: string, x: number, z: number, rotationY?: number) => void;
+
+    // World Object Actions
+    setWorldObjects: (objects: WorldObjectData[]) => void;
+    addWorldObject: (obj: WorldObjectData) => void;
+    removeWorldObject: (id: string) => void;
+    updateWorldObjectPosition: (id: string, x: number, z: number, rotationY?: number) => void;
+    updateWorldObjectDimensions: (id: string, width: number, depth: number) => void;
 }
 
 // Generate demo racks
@@ -209,13 +234,20 @@ export const useDcimStore = create<DcimState>((set) => ({
     pods: generatePods(),
     cracs: generateCracs(),
     pdus: generatePdus(),
+    worldObjects: [],
     selectedRackId: null,
     selectedServerId: null,
-    viewMode: 'Normal',
+    viewMode: 'Utilization',
     editMode: false,
+    measureMode: false,
+    measurePoints: [],
     snapToGrid: true,
+    orbitEnabled: true,
     transformMode: 'translate',
-    setTransformMode: (transformMode) => set({ transformMode }),
+    setOrbitEnabled: (enabled) => set({ orbitEnabled: enabled }),
+    setTransformMode: (mode) => set({ transformMode: mode }),
+    setMeasureMode: (measureMode) => set({ measureMode, measurePoints: [] }),
+    setMeasurePoints: (measurePoints) => set({ measurePoints }),
     setRacks: (racks) => set({ racks }),
     setPods: (pods) => set({ pods }),
     setSelectedRackId: (id) => set({ selectedRackId: id, selectedServerId: null }), // clear server selection when changing rack
@@ -241,5 +273,15 @@ export const useDcimStore = create<DcimState>((set) => ({
     removePdu: (id) => set((state) => ({ pdus: state.pdus.filter(p => p.id !== id), selectedRackId: state.selectedRackId === id ? null : state.selectedRackId })),
     updatePduPosition: (id, x, z, rotationY) => set((state) => ({
         pdus: state.pdus.map(p => p.id === id ? { ...p, x, z, ...(rotationY !== undefined ? { rotationY } : {}) } : p)
+    })),
+
+    setWorldObjects: (worldObjects) => set({ worldObjects }),
+    addWorldObject: (obj) => set((state) => ({ worldObjects: [...state.worldObjects, obj] })),
+    removeWorldObject: (id) => set((state) => ({ worldObjects: state.worldObjects.filter(o => o.id !== id), selectedRackId: state.selectedRackId === id ? null : state.selectedRackId })),
+    updateWorldObjectPosition: (id, x, z, rotationY) => set((state) => ({
+        worldObjects: state.worldObjects.map(o => o.id === id ? { ...o, x, z, ...(rotationY !== undefined ? { rotationY } : {}) } : o)
+    })),
+    updateWorldObjectDimensions: (id, width, depth) => set((state) => ({
+        worldObjects: state.worldObjects.map(o => o.id === id ? { ...o, width, depth } : o)
     })),
 }));

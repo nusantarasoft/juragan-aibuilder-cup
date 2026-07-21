@@ -1377,8 +1377,7 @@ const menuConfig = {
                 icon: <MonitorOutlined />,
                 routes: [
                     { path: "/admin/scada", name: "Dashboard", icon: <DashboardOutlined />, isLeaf: true },
-                    { path: "/admin/scada/hmi", name: "HMI", icon: <FundProjectionScreenOutlined />, isLeaf: true },
-                    { path: "/admin/scada/3d", name: "3D View", icon: <VideoCameraOutlined />, isLeaf: true },
+                    { path: "/admin/scada/3d", name: "Command Center", icon: <VideoCameraOutlined />, isLeaf: true },
                     { path: "/admin/scada/trends", name: "Trends", icon: <LineChartOutlined />, isLeaf: true },
                     { path: "/admin/scada/alarms", name: "Alarms", icon: <AlertOutlined />, isLeaf: true },
                     { path: "/admin/scada/predictive", name: "Predictive Maintenance", icon: <ThunderboltOutlined />, isLeaf: true },

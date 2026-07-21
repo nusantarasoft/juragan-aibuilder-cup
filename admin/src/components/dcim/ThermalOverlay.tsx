@@ -6,14 +6,14 @@ export function ThermalOverlay({ width, length, yOffset = 0.05 }: { width: numbe
     const meshRef = useRef<THREE.Mesh>(null);
     
     // Advanced Shader Material for volumetric heat maps
-    const uniforms = useMemo(() => ({
+    const uniforms = useRef({
         time: { value: 0 },
         hotspots: { value: [
             new THREE.Vector2(-0.2, 0.1), // Normalized coords
             new THREE.Vector2(0.3, -0.3),
             new THREE.Vector2(0.0, 0.0)
         ]}
-    }), []);
+    }).current;
 
     useFrame((state) => {
         if (meshRef.current) {

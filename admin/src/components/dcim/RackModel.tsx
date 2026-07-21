@@ -8,7 +8,7 @@ import { useDcimStore, RackData } from '@/store/useDcimStore';
 interface RackModelProps {
     data: RackData;
     viewMode: string;
-    onClick: (data: any) => void;
+    onClick: (data: RackData) => void;
     isSelected: boolean;
 }
 

@@ -28,6 +28,8 @@ import {
     SwapOutlined,
     UserOutlined,
     DownOutlined,
+    MenuOutlined,
+    CloseOutlined,
 } from "@ant-design/icons";
 import {
     PageContainer,
@@ -62,14 +64,13 @@ import NotificationBell from "@/components/common/NotificationBell";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
 import LiveCursors from "@/components/common/LiveCursors";
 import { useWebSocketStore } from "@/store/useWebSocketStore";
+import { useDockStore } from "@/store/useDockStore";
 // Dynamic import for MetaBalls to prevent SSR crash (ogl WebGL library requires browser)
 const MetaBalls = dynamic(
     () => import("@/components/react-bits/MetaBalls"),
     { ssr: false }
 );
 import { SpeedDial } from 'primereact/speeddial';
-import 'primereact/resources/themes/lara-light-cyan/theme.css';
-import 'primeicons/primeicons.css';
 
 const { Text } = Typography;
 
@@ -347,6 +348,8 @@ export default function CMSLayoutImpl({
         setSelectedSegment
     } = usePreferencesStore();
 
+    const { dockMode, setDockMode } = useDockStore();
+
     const [darkMode, setDarkMode] = useState(false);
     const [appListOpen, setAppListOpen] = useState(false);
     const [showBackground, setShowBackground] = useState(true);
@@ -458,15 +461,63 @@ export default function CMSLayoutImpl({
 
     // Sidebar Actions Component (Language, Notification, Theme) - for outer ProLayout actionsRender
     const SidebarActions = () => (
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-around", gap: 12 }}>
+            <Divider type="vertical" style={{ height: 16, background: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)', margin: 0 }} />
             <LanguageSwitcher isDark={darkMode} />
             <NotificationBell />
-            <AnimatedThemeToggler
-                isDark={darkMode}
-                onThemeChange={handleDarkModeChange}
-                size={18}
-                style={{ color: darkMode ? "#fff" : "#000" }}
-            />
+            <Dropdown
+                key="account-menu"
+                menu={{
+                    items: [
+                        {
+                            key: 'settings',
+                            icon: <SettingOutlined />,
+                            label: 'Account Settings',
+                        },
+                        {
+                            key: 'switch',
+                            icon: <SwapOutlined />,
+                            label: 'Sign in another account',
+                        },
+                        {
+                            type: 'divider',
+                        },
+                        {
+                            key: 'logout',
+                            icon: <LogoutOutlined />,
+                            label: 'Sign Out',
+                            danger: true,
+                        },
+                    ],
+                    onClick: ({ key }) => {
+                        if (key === 'logout') {
+                            message.success('Signed out successfully');
+                        } else if (key === 'settings') {
+                            message.info('Navigating to settings...');
+                        } else if (key === 'switch') {
+                            message.info('Switching account...');
+                        }
+                    }
+                }}
+                trigger={['click']}
+                placement="bottomRight"
+            >
+                <div style={{
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    transition: 'all 0.2s',
+                    color: darkMode ? '#fff' : '#000',
+                }}
+                className="hover:bg-gray-200 dark:hover:bg-gray-800"
+                >
+                    <Avatar icon={<UserOutlined />} size="small" style={{ backgroundColor: themePalette.primary, width: 24, height: 24, lineHeight: "24px" }} />
+                </div>
+            </Dropdown>
         </div>
     );
 
@@ -1200,6 +1251,7 @@ export default function CMSLayoutImpl({
                             }}
                             hasSiderMenu={true}
                             fixSiderbar={false}
+                            // @ts-ignore
                             siderStyle={{
                                 position: 'sticky',
                                 top: 0,
@@ -1243,57 +1295,7 @@ export default function CMSLayoutImpl({
                                 </div>
                             )}
                             actionsRender={(props) => {
-                                if (props.isMobile) return [];
-                                return [
-                                    <Dropdown
-                                        key="account-menu"
-                                        menu={{
-                                            items: [
-                                                {
-                                                    key: 'settings',
-                                                    icon: <SettingOutlined />,
-                                                    label: 'Account Settings',
-                                                },
-                                                {
-                                                    key: 'switch',
-                                                    icon: <SwapOutlined />,
-                                                    label: 'Sign in another account',
-                                                },
-                                                {
-                                                    type: 'divider',
-                                                },
-                                                {
-                                                    key: 'logout',
-                                                    icon: <LogoutOutlined />,
-                                                    label: 'Sign Out',
-                                                    danger: true,
-                                                },
-                                            ],
-                                            onClick: ({ key }) => {
-                                                if (key === 'logout') {
-                                                    message.success('Signed out successfully');
-                                                } else if (key === 'settings') {
-                                                    message.info('Navigating to settings...');
-                                                } else if (key === 'switch') {
-                                                    message.info('Switching account...');
-                                                }
-                                            }
-                                        }}
-                                        trigger={['click']}
-                                        placement="topRight"
-                                    >
-                                        <div style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            cursor: 'pointer',
-                                            padding: '4px',
-                                            borderRadius: '50%',
-                                            background: darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
-                                        }}>
-                                            <Avatar icon={<UserOutlined />} size="small" style={{ backgroundColor: themePalette.primary }} />
-                                        </div>
-                                    </Dropdown>
-                                ];
+                                return [];
                             }}
 
                             menuItemRender={(item, dom) => {
@@ -1405,10 +1407,9 @@ export default function CMSLayoutImpl({
                         />
                     </div>
                 )}
-                {/* SpeedDial - positioned in center, above MetaBalls */}
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, pointerEvents: 'none' }}>
-                    <div style={{ pointerEvents: 'auto' }}>
-                        <SpeedDial
+                {/* SpeedDial - positioned at bottom right */}
+                <div style={{ position: 'absolute', inset: 0, zIndex: 10, pointerEvents: 'none' }}>
+                    <SpeedDial
                             model={[
                                 {
                                     label: 'AI Studio',
@@ -1435,6 +1436,16 @@ export default function CMSLayoutImpl({
                                     command: () => handleDarkModeChange(!darkMode)
                                 },
                                 {
+                                    label: dockMode === 'hidden' ? 'Show Dock' : 'Hide Dock',
+                                    icon: dockMode === 'hidden' ? 'pi pi-eye' : 'pi pi-eye-slash',
+                                    command: () => useDockStore.getState().setDockMode(dockMode === 'hidden' ? 'auto' : 'hidden')
+                                },
+                                {
+                                    label: dockMode === 'always' ? 'Unpin Dock' : 'Pin Dock',
+                                    icon: dockMode === 'always' ? 'pi pi-unlock' : 'pi pi-lock',
+                                    command: () => useDockStore.getState().setDockMode(dockMode === 'always' ? 'auto' : 'always')
+                                },
+                                {
                                     label: 'Settings',
                                     icon: 'pi pi-cog',
                                     command: () => router.push('/admin/settings')
@@ -1442,16 +1453,42 @@ export default function CMSLayoutImpl({
                             ]}
                             direction="up-left"
                             type="quarter-circle"
-                            buttonClassName="speeddial-metaballs-btn"
-                            showIcon="pi pi-ellipsis-v"
+                            buttonTemplate={(options) => {
+                                return (
+                                    <div 
+                                        onClick={options.onClick}
+                                        style={{
+                                            width: 56, height: 56, borderRadius: '50%',
+                                            background: themeColor,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            boxShadow: 'none',
+                                            cursor: 'pointer',
+                                            border: 'none',
+                                            transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = 'scale(1.1)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = 'scale(1)';
+                                        }}
+                                    >
+                                        {options.visible ? <CloseOutlined style={{ fontSize: 24, color: '#fff' }} /> : <MenuOutlined style={{ fontSize: 24, color: '#fff' }} />}
+                                    </div>
+                                );
+                            }}
+                            showIcon="pi pi-bars"
                             hideIcon="pi pi-times"
                             rotateAnimation={true}
                             style={{
+                                position: 'absolute',
+                                right: 16,
+                                bottom: 16,
+                                pointerEvents: 'auto',
                                 '--p-speeddial-button-width': '2.5rem',
                                 '--p-speeddial-button-height': '2.5rem',
                             } as React.CSSProperties}
                         />
-                    </div>
                 </div>
             </div>
 

@@ -127,10 +127,25 @@ export const PALETTE_CATEGORIES_3D: Category3D[] = [
     ],
   },
   {
-    key: "automation",
-    label: "Automation",
-    icon: "🤖",
-    items: [{ type: "robot", name: "Robot", icon: "🤖" }],
+    key: "landscape",
+    label: "Landscape / World",
+    icon: "🌳",
+    items: [
+      { type: "tree", name: "Tree", icon: "🌳" },
+      { type: "bush", name: "Bush", icon: "🌿" },
+      { type: "road", name: "Road", icon: "🛣️" },
+      { type: "water", name: "Water", icon: "🌊" },
+      { type: "grass", name: "Grass", icon: "🌱" },
+    ],
+  },
+  {
+    key: "vehicles",
+    label: "Vehicles",
+    icon: "🚚",
+    items: [
+      { type: "truck", name: "Truck", icon: "🚚" },
+      { type: "forklift", name: "Forklift", icon: "🚜" },
+    ],
   },
 ];
 

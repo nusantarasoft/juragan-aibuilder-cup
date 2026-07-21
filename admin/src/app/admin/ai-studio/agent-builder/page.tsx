@@ -59,7 +59,7 @@ export default function AgentBuilderPage() {
                             {/* Mocked Node Chain */}
                             <Card style={{ width: 300, borderTop: `4px solid #1890ff` }} size="small">
                                 <Space direction="vertical" style={{ width: '100%' }}>
-                                    <Space justifyContent="space-between" style={{ width: '100%', display: 'flex' }}>
+                                    <Space  style={{ width: '100%', display: 'flex' }}>
                                         <Text strong><GlobalOutlined /> Trigger: Webhook</Text>
                                         <Tag color="blue">Input</Tag>
                                     </Space>
@@ -71,7 +71,7 @@ export default function AgentBuilderPage() {
 
                             <Card style={{ width: 300, borderTop: `4px solid ${themeColor}` }} size="small">
                                 <Space direction="vertical" style={{ width: '100%' }}>
-                                    <Space justifyContent="space-between" style={{ width: '100%', display: 'flex' }}>
+                                    <Space  style={{ width: '100%', display: 'flex' }}>
                                         <Text strong><RobotOutlined /> Intent Classifier</Text>
                                         <Tag color="purple">LLM</Tag>
                                     </Space>
@@ -86,7 +86,7 @@ export default function AgentBuilderPage() {
                                 <Col>
                                     <Card style={{ width: 250, borderTop: `4px solid #52c41a` }} size="small">
                                         <Space direction="vertical" style={{ width: '100%' }}>
-                                            <Space justifyContent="space-between" style={{ width: '100%', display: 'flex' }}>
+                                            <Space  style={{ width: '100%', display: 'flex' }}>
                                                 <Text strong><DatabaseOutlined /> Context Retrieval</Text>
                                                 <Tag color="green">Tool</Tag>
                                             </Space>
@@ -97,7 +97,7 @@ export default function AgentBuilderPage() {
                                 <Col>
                                     <Card style={{ width: 250, borderTop: `4px solid #faad14` }} size="small">
                                         <Space direction="vertical" style={{ width: '100%' }}>
-                                            <Space justifyContent="space-between" style={{ width: '100%', display: 'flex' }}>
+                                            <Space  style={{ width: '100%', display: 'flex' }}>
                                                 <Text strong><CodeOutlined /> Python Script</Text>
                                                 <Tag color="orange">Logic</Tag>
                                             </Space>

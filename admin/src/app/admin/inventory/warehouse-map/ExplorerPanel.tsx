@@ -597,90 +597,18 @@ export default function ExplorerPanel({
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(() => performItemSearch(val), 300);
   }, [performItemSearch]);
-
-  // ─── Collapsed bar ─────────────────────────────────
-  if (collapsed) {
-    return (
-      <motion.div
-        initial={{ width: 0, opacity: 0 }}
-        animate={{ width: 40, opacity: 1 }}
-        exit={{ width: 0, opacity: 0 }}
-        transition={{ duration: 0.25, ease: 'easeInOut' }}
-        style={{
-          flexShrink: 0,
-          width: 40,
-          height: '100%',
-          background: t.panelBg,
-          backdropFilter: 'blur(16px)',
-          border: `1px solid ${t.panelBorder}`,
-          borderRadius: 14,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          paddingTop: 14,
-          gap: 10,
-          cursor: 'pointer',
-          overflow: 'hidden',
-        }}
-        onClick={onToggleCollapse}
-      >
-        <Tooltip title="Expand Explorer" placement="right">
-          <div style={{
-            width: 28, height: 28, borderRadius: 8,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: `linear-gradient(135deg, ${themeColor}30, ${themeColor}10)`,
-            color: themeColor, fontSize: 13,
-            border: `1px solid ${themeColor}20`,
-          }}>
-            <RightOutlined />
-          </div>
-        </Tooltip>
-        <div style={{
-          writingMode: 'vertical-rl', textOrientation: 'mixed',
-          color: t.textMuted, fontSize: 10, letterSpacing: 2,
-          fontWeight: 700, textTransform: 'uppercase', marginTop: 4,
-        }}>
-          Explorer
-        </div>
-        {/* Mini stats dots */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 'auto', marginBottom: 14 }}>
-          <Tooltip title={`${stats.totalBins} bins`} placement="right">
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: themeColor, opacity: 0.7 }} />
-          </Tooltip>
-          <Tooltip title={`${stats.utilization}% utilization`} placement="right">
-            <div style={{
-              width: 8, height: 8, borderRadius: '50%',
-              background: stats.utilization > 80 ? '#ef4444' : stats.utilization > 50 ? '#f59e0b' : '#22c55e',
-            }} />
-          </Tooltip>
-          <Tooltip title={`${stats.totalOnHand} items`} placement="right">
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', opacity: 0.7 }} />
-          </Tooltip>
-        </div>
-      </motion.div>
-    );
-  }
-
-  // ─── Expanded panel ─────────────────────────────────
-  const panelWidth = 310;
+  // ─── Render ─────────────────────────────────
 
   return (
-    <motion.div
-      initial={{ width: 0, opacity: 0 }}
-      animate={{ width: panelWidth, opacity: 1 }}
-      exit={{ width: 0, opacity: 0 }}
-      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+    <div
       style={{
         flexShrink: 0,
-        width: panelWidth,
+        width: '100%',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
         background: t.panelBg,
-        backdropFilter: 'blur(16px)',
-        border: `1px solid ${t.panelBorder}`,
-        borderRadius: 14,
       }}
     >
       {/* ── Header ─────────────────────────────────── */}
@@ -1316,6 +1244,6 @@ export default function ExplorerPanel({
           width: 4px !important;
         }
       `}</style>
-    </motion.div>
+    </div>
   );
 }
