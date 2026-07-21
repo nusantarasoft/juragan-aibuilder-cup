@@ -237,6 +237,8 @@ export class StudioDbContextService {
             return wantsCustomer;
         }
 
+        /* v8 ignore start -- defensive: every COMPACT/LEGACY view name is already
+           matched by the explicit checks above, so these fallbacks never run */
         if (COMPACT_ANALYTICS_VIEWS.has(view) && wantsSales) {
             return true;
         }
@@ -244,6 +246,7 @@ export class StudioDbContextService {
         if (LEGACY_DEFAULT_VIEWS.includes(view)) {
             return wantsOrder || wantsCustomer || /status|stok|stock/.test(text);
         }
+        /* v8 ignore stop */
 
         return wantsSales || wantsOrder || wantsCustomer;
     }
