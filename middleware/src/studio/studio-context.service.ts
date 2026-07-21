@@ -57,7 +57,7 @@ export class StudioContextService {
             filterChunksBySourceIds(hits, sourceIds);
 
         const mapRows = (data: unknown[]) =>
-            (data || []).map((row: any) => ({
+            data.map((row: any) => ({
                 chunkId: row.chunk_id,
                 sourceId: row.source_id,
                 filename: row.filename,
