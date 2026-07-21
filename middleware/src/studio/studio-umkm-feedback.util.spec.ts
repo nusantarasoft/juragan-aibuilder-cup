@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { detectUmkmFeedback, formatFeedbackThanks } from './studio-umkm-feedback.util';
+import {
+    detectUmkmFeedback,
+    formatFeedbackThanks,
+    formatFeedbackInvite,
+} from './studio-umkm-feedback.util';
 
 describe('studio-umkm-feedback.util', () => {
     it('parses numeric ratings', () => {
@@ -15,8 +19,22 @@ describe('studio-umkm-feedback.util', () => {
         expect(detectUmkmFeedback('jual 2 kopi')).toBeNull();
     });
 
+    it('maps explicit low scores to labels', () => {
+        expect(detectUmkmFeedback('nilai 2')?.label).toBe('kurang');
+        expect(detectUmkmFeedback('nilai 1')?.label).toBe('buruk');
+    });
+
+    it('returns null for empty/punctuation-only text', () => {
+        expect(detectUmkmFeedback('...')).toBeNull();
+        expect(detectUmkmFeedback('   ')).toBeNull();
+    });
+
     it('formats thanks', () => {
         const msg = formatFeedbackThanks({ score: 5, label: 'sangat_puas', raw: '5' });
         expect(msg).toContain('5/5');
+    });
+
+    it('formats the feedback invite', () => {
+        expect(formatFeedbackInvite()).toContain('nilai');
     });
 });

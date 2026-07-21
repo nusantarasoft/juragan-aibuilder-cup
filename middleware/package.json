@@ -14,6 +14,7 @@
     "test:users": "vitest run src/users",
     "test:auth": "vitest run src/auth",
     "test:studio": "vitest run src/studio",
+    "test:studio:coverage": "vitest run --config vitest.studio.config.ts --coverage",
     "test:studio:integration": "vitest run src/studio/studio.graphql.integration.spec.ts",
     "test:rag-eval": "vitest run src/studio/studio-rag-eval.integration.spec.ts",
     "test:studio:all-integration": "vitest run src/studio/studio.graphql.integration.spec.ts src/studio/studio-rag-eval.integration.spec.ts"
