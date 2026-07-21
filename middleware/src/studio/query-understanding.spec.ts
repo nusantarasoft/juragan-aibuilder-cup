@@ -51,6 +51,61 @@ describe('normalizeQueryUnderstanding', () => {
         expect(out.needs_clarification).toBe(true);
         expect(out.clarification_question.length).toBeGreaterThan(0);
     });
+
+    it('coerces stringy/numeric booleans (needs_clarification: 0)', () => {
+        const out = normalizeQueryUnderstanding(
+            {
+                original_query: 'x',
+                detected_language: 'id',
+                normalized_text: 'x',
+                main_intent: 'i',
+                rewritten_query: 'rw',
+                needs_clarification: 0,
+                clarification_question: '',
+                confidence: 0.9,
+            },
+            'x',
+        );
+        expect(out.needs_clarification).toBe(false);
+    });
+
+    it('falls back to base when needs_clarification is not boolean-like', () => {
+        const out = normalizeQueryUnderstanding(
+            {
+                original_query: 'x',
+                detected_language: 'id',
+                normalized_text: 'x',
+                main_intent: 'i',
+                rewritten_query: 'rw',
+                needs_clarification: 'maybe',
+                clarification_question: '',
+                confidence: 0.9,
+            },
+            'raw text',
+        );
+        expect(out.rewritten_query).toBe('raw text');
+        expect(out.confidence).toBe(0.35);
+    });
+
+    it('defaults blank fields and clamps out-of-range confidence', () => {
+        const out = normalizeQueryUnderstanding(
+            {
+                original_query: '   ',
+                detected_language: '  ',
+                normalized_text: '  ',
+                main_intent: '  ',
+                rewritten_query: '  ',
+                needs_clarification: false,
+                clarification_question: '  ',
+                confidence: 5,
+            },
+            'fallback',
+        );
+        expect(out.original_query).toBe('fallback');
+        expect(out.detected_language).toBe('unknown');
+        expect(out.rewritten_query).toBe('fallback');
+        expect(out.confidence).toBe(1);
+    });
 });
 
 describe('guided clarification cap', () => {
@@ -95,5 +150,78 @@ describe('buildQueryUnderstandingPrompt', () => {
         expect(prompt).toContain('saya mau belanja');
         expect(prompt).toContain('product x');
         expect(prompt).toContain('Pesan terbaru');
+    });
+
+    it('omits the history block when there are no conversation lines', () => {
+        const prompt = buildQueryUnderstandingPrompt('halo\\dunia """test"""');
+        expect(prompt).not.toContain('Riwayat percakapan');
+        expect(prompt).toContain('Pesan terbaru');
+    });
+});
+
+describe('buildRetrievalQueryFromTurns', () => {
+    const qu = (rewritten: string) =>
+        ({
+            original_query: 'x', detected_language: 'id', normalized_text: 'x',
+            main_intent: 'i', rewritten_query: rewritten, needs_clarification: false,
+            clarification_question: '', confidence: 0.9,
+        }) as any;
+
+    it('prefers the rewritten query when not merging turns', () => {
+        expect(buildRetrievalQueryFromTurns('latest', ['a', 'b'], qu('RW'))).toBe('RW');
+    });
+
+    it('falls back to merged turns when rewritten is blank', () => {
+        expect(buildRetrievalQueryFromTurns('latest', ['a', 'b'], qu('   '))).toBe('a — b — latest');
+    });
+
+    it('returns merged turns when preferMergedTurns is set', () => {
+        expect(
+            buildRetrievalQueryFromTurns('latest', ['a'], qu('RW'), { preferMergedTurns: true }),
+        ).toBe('a — latest');
+    });
+
+    it('returns empty latest message when nothing else is available', () => {
+        expect(buildRetrievalQueryFromTurns('', [], qu(''))).toBe('');
+    });
+});
+
+describe('normalizeQueryUnderstanding — confidence edge cases', () => {
+    it('rejects non-numeric confidence (schema fail) and returns base', () => {
+        const out = normalizeQueryUnderstanding(
+            {
+                original_query: 'x', detected_language: 'id', normalized_text: 'x',
+                main_intent: 'i', rewritten_query: 'rw', needs_clarification: false,
+                clarification_question: '', confidence: 'not-a-number',
+            },
+            'raw',
+        );
+        expect(out.confidence).toBe(0.35);
+        expect(out.rewritten_query).toBe('raw');
+    });
+
+    it('coerces numeric-string confidence', () => {
+        const out = normalizeQueryUnderstanding(
+            {
+                original_query: 'x', detected_language: 'id', normalized_text: 'x',
+                main_intent: 'i', rewritten_query: 'rw', needs_clarification: false,
+                clarification_question: '', confidence: '0.9',
+            },
+            'x',
+        );
+        expect(out.confidence).toBe(0.9);
+    });
+
+    it('falls back to original text when every field is blank', () => {
+        const out = normalizeQueryUnderstanding(
+            {
+                original_query: '', detected_language: '', normalized_text: '',
+                main_intent: '', rewritten_query: '', needs_clarification: true,
+                clarification_question: '', confidence: 0.9,
+            },
+            '',
+        );
+        expect(out.rewritten_query).toBe('');
+        expect(out.original_query).toBe('');
     });
 });

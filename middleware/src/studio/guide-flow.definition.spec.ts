@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+    buildUmkmListenTransitions,
     defaultGuideFlowDefinition,
     defaultUmkmGuideFlowDefinition,
     getGuideFlowTemplate,
@@ -73,6 +74,20 @@ describe('guide-flow.definition', () => {
         );
     });
 
+    it('rejects a startNodeId that is not among the nodes', () => {
+        const bad = {
+            version: 1,
+            startNodeId: 'nope',
+            nodes: [
+                { id: 'start', type: 'start', next: 'end' },
+                { id: 'end', type: 'end' },
+            ],
+        };
+        expect(() => validateGuideFlowGraph(parseGuideFlowDefinition(bad))).toThrow(
+            /startNodeId "nope" not found/,
+        );
+    });
+
     it('rejects listen without default transition', () => {
         const bad = {
             version: 1,
@@ -138,6 +153,55 @@ describe('assertXStateStateCoverage — dangling targets', () => {
 
     it('fails when the start node id is not present', () => {
         expect(assertXStateStateCoverage(mk([{ id: 'end', type: 'end' }], 'missing'))).toBe(false);
+    });
+});
+
+describe('buildUmkmListenTransitions — command-driven branches', () => {
+    it('skips confirm/cancel regex and empty keyword intents', () => {
+        const cfg = {
+            menu: [],
+            keywords: { ask: ['tanya'] },
+            confirm: [],
+            cancel: [],
+        } as any;
+        const transitions = buildUmkmListenTransitions(cfg);
+        // No confirm/cancel regex transitions produced
+        expect(transitions.some((t) => t.target === 'do_confirm')).toBe(false);
+        expect(transitions.some((t) => t.target === 'do_cancel')).toBe(false);
+        // ask keyword produced, other (empty) intents skipped
+        expect(transitions.some((t) => t.target === 'do_ask')).toBe(true);
+        // always ends with default
+        expect(transitions[transitions.length - 1]).toEqual({ when: 'default', target: 'do_ask' });
+    });
+
+    it('drops bare-digit confirm/cancel words from keyword alternation', () => {
+        const cfg = {
+            menu: [],
+            keywords: {},
+            confirm: ['ya', '5'],
+            cancel: ['batal', '0'],
+        } as any;
+        const transitions = buildUmkmListenTransitions(cfg);
+        const confirmT = transitions.find((t) => t.target === 'do_confirm') as any;
+        expect(confirmT?.pattern).toContain('ya');
+        expect(confirmT?.pattern).not.toContain('5');
+    });
+});
+
+describe('defaultUmkmGuideFlowDefinition — keyword fallbacks', () => {
+    it('uses default command words when keyword lists are empty', () => {
+        const def = defaultUmkmGuideFlowDefinition({
+            keywords: { help: [], record_sale: [], add_stock: [], sales_report: [] },
+        });
+        const rag = def.nodes.find((n) => n.id === 'do_ask') as any;
+        expect(rag.instruction).toContain('bantuan');
+        expect(rag.instruction).toContain('jual');
+    });
+
+    it('falls back to "lihat bantuan" when the menu is empty', () => {
+        const def = defaultUmkmGuideFlowDefinition({ menu: [] });
+        const rag = def.nodes.find((n) => n.id === 'do_ask') as any;
+        expect(rag.instruction).toContain('lihat bantuan');
     });
 });
 

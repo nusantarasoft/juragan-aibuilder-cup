@@ -126,6 +126,11 @@ const LEGACY_INTENT_ALIASES: Record<string, UmkmCommandIntent> = {};
 
 const INTENT_SET = new Set<string>(UMKM_COMMAND_INTENTS);
 
+/* v8 ignore next 3 -- every UMKM intent has a default keyword list; the `|| []` is a type-guard */
+function defaultKeywordsFor(intent: UmkmCommandIntent): string[] {
+    return [...(DEFAULT_UMKM_COMMANDS.keywords[intent] || [])];
+}
+
 function normalizeKeywordList(raw: unknown): string[] {
     if (!Array.isArray(raw)) return [];
     const out: string[] = [];
@@ -150,6 +155,7 @@ function normalizeMenu(raw: unknown): UmkmMenuCommand[] {
             .replace(/\D/g, '')
             .slice(0, 1);
         let intent = String(r.intent ?? '').trim();
+        /* v8 ignore next -- LEGACY_INTENT_ALIASES is currently empty; kept for forward-compat with old configs */
         if (LEGACY_INTENT_ALIASES[intent]) intent = LEGACY_INTENT_ALIASES[intent];
         const label = String(r.label ?? intent).trim() || intent;
         if (!/^[0-9]$/.test(digit)) continue;
@@ -179,19 +185,21 @@ export function resolveUmkmCommands(raw?: unknown): UmkmCommandsConfig {
         if (hasKeywords && src.keywords && typeof src.keywords === 'object') {
             const userList = (src.keywords as Record<string, unknown>)[intent];
             if (userList === undefined) {
-                keywords[intent] = [...(DEFAULT_UMKM_COMMANDS.keywords[intent] || [])];
+                keywords[intent] = defaultKeywordsFor(intent);
             } else {
                 keywords[intent] = normalizeKeywordList(userList);
             }
         } else {
-            keywords[intent] = [...(DEFAULT_UMKM_COMMANDS.keywords[intent] || [])];
+            keywords[intent] = defaultKeywordsFor(intent);
         }
     }
 
     // Legacy check_stock keywords → add_stock if user had them
     if (hasKeywords && src.keywords && typeof src.keywords === 'object') {
         const legacy = (src.keywords as Record<string, unknown>).check_stock;
-        if (legacy !== undefined && (keywords.add_stock || []).length === 0) {
+        /* v8 ignore next -- keywords.add_stock is always populated in the loop above; `?? []` is a type-guard */
+        const addStock = keywords.add_stock ?? [];
+        if (legacy !== undefined && addStock.length === 0) {
             keywords.add_stock = normalizeKeywordList(legacy);
         }
     }
@@ -209,6 +217,7 @@ export function resolveUmkmCommands(raw?: unknown): UmkmCommandsConfig {
 export function sanitizeUmkmCommandsInput(raw: unknown): UmkmCommandsConfig {
     const resolved = resolveUmkmCommands(raw);
     const digits = resolved.menu.map((m) => m.digit);
+    /* v8 ignore start -- defensive: resolveUmkmCommands() already dedupes digits and drops invalid intents */
     if (new Set(digits).size !== digits.length) {
         throw new Error('Menu digit harus unik');
     }
@@ -217,6 +226,7 @@ export function sanitizeUmkmCommandsInput(raw: unknown): UmkmCommandsConfig {
             throw new Error(`Intent menu tidak valid: ${m.intent}`);
         }
     }
+    /* v8 ignore stop */
     return resolved;
 }
 
@@ -260,6 +270,7 @@ export function buildUmkmCommandMatcher(commands?: UmkmCommandsConfig | unknown)
     }
     const intentRegex = new Map<UmkmCommandIntent, RegExp>();
     for (const intent of UMKM_COMMAND_INTENTS) {
+        /* v8 ignore next -- resolveUmkmCommands() populates every intent; `|| []` is a type-guard */
         const re = keywordsToRegex(resolved.keywords[intent] || []);
         if (re) intentRegex.set(intent, re);
     }
@@ -302,6 +313,7 @@ export function umkmIntentToListenTarget(intent: UmkmCommandIntent): string {
             return 'do_report';
         case 'help':
             return 'help';
+        /* v8 ignore next 2 -- exhaustive switch over UmkmCommandIntent; default is unreachable */
         default:
             return 'help';
     }

@@ -220,10 +220,12 @@ export function defaultUmkmGuideFlowDefinition(
     const menuDigits = uniqueMenuForDisplay(cfg)
         .map((m) => m.digit)
         .join(', ');
+    /* v8 ignore start -- keyword lists are always present after resolveUmkmCommands(); the `|| []` is a type-guard */
     const helpKw = (cfg.keywords.help || [])[0] || 'bantuan';
     const saleKw = (cfg.keywords.record_sale || [])[0] || 'jual';
     const stockKw = (cfg.keywords.add_stock || [])[0] || 'tambah stok';
     const reportKw = (cfg.keywords.sales_report || [])[0] || 'laporan';
+    /* v8 ignore stop */
 
     return {
         version: 1,
