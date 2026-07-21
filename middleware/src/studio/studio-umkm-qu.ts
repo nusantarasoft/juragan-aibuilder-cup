@@ -88,6 +88,7 @@ ${escapeForPrompt(userInput)}
 }
 
 function clampConfidence(n: unknown): number {
+    /* v8 ignore next -- confidence_score is always a finite number after schema validation (Zod rejects NaN); the `: 0` guard is defensive */
     const x = typeof n === 'number' && !Number.isNaN(n) ? n : 0;
     return Math.min(1, Math.max(0, x));
 }

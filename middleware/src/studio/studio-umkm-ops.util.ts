@@ -36,6 +36,7 @@ export function jakartaDateParts(d = new Date()): { y: number; m: number; day: n
         day: '2-digit',
     });
     const parts = fmt.formatToParts(d);
+    /* v8 ignore next -- Intl always provides year/month/day parts, so `?.value || 0` never falls back */
     const get = (t: string) => Number(parts.find((p) => p.type === t)?.value || 0);
     return { y: get('year'), m: get('month'), day: get('day') };
 }
@@ -104,10 +105,12 @@ export function parseIndonesianDate(raw: string): string | null {
 
 function parseMoneyToken(raw: string): number | null {
     const s = raw.trim().toLowerCase().replace(/rp\.?|idr/gi, '').replace(/\s/g, '');
+    /* v8 ignore next -- callers always pass captures containing digits, so `s` is never empty here */
     if (!s) return null;
     const rb = s.match(/^([\d.,]+)\s*rb$/);
     if (rb) {
         const n = parseFloat(rb[1].replace(/\./g, '').replace(',', '.'));
+        /* v8 ignore next -- rb[1] always starts with a digit from the caller regexes, so parseFloat is finite */
         return Number.isFinite(n) ? Math.round(n * 1000) : null;
     }
     const plain = parseFloat(s.replace(/\./g, '').replace(',', '.'));
@@ -182,9 +185,12 @@ export function explainAddProductParseFailure(text: string): string {
         lines.push('', 'Yang dikirim hanya angka/harga — sertakan juga *nama* menunya.');
     } else if (t.length < 2) {
         lines.push('', 'Nama menu terlalu pendek (minimal 2 huruf).');
-    } else if (/^\d+\s+\d+$/.test(t)) {
+    }
+    /* v8 ignore start -- unreachable: "\d+ \d+" is already matched by the numbers-only branch above ([\d.,\s]+) */
+    else if (/^\d+\s+\d+$/.test(t)) {
         lines.push('', 'Sepertinya dua angka tanpa nama. Contoh yang benar: *es teh 5000*.');
     }
+    /* v8 ignore stop */
     lines.push('', 'Ketik *batal* atau *0* untuk kembali ke menu.');
     return lines.join('\n');
 }
@@ -284,6 +290,9 @@ export function parsePurchaseHeuristic(text: string): ParsedUmkmPurchase | null 
             costRaw = m[3];
         }
         const unitCost = parseMoneyToken(costRaw) || 0;
+        // qty>0 & name>=2 chars are the only reachable checks; the regex already guarantees a finite
+        // qty and a >=2 char name, so those guards are defensive.
+        /* v8 ignore next -- Number.isFinite(qty) and name.length<2 are unreachable given the capture regex */
         if (!Number.isFinite(qty) || qty <= 0 || name.length < 2) continue;
         items.push({ name, quantity: qty, unitCost });
     }
