@@ -28,6 +28,7 @@ import {
     Alert,
     Badge,
     Select,
+    Segmented,
 } from "antd";
 import type { UploadProps } from "antd";
 import {
@@ -54,6 +55,7 @@ import {
 } from "@ant-design/icons";
 import SourcesPanel from "./SourcesPanel";
 import StudioOutputsPanel from "./StudioOutputsPanel";
+import NotesPanel from "./NotesPanel";
 import ConfigureChatModal from "./ConfigureChatModal";
 import ChunkPreviewDrawer from "./ChunkPreviewDrawer";
 import {
@@ -119,6 +121,8 @@ export default function AIStudioPage() {
     const [configureChatOpen, setConfigureChatOpen] = useState(false);
     const [savingChatConfig, setSavingChatConfig] = useState(false);
     const [chunkPreview, setChunkPreview] = useState<{ chunkId: string; docName: string; score: number } | null>(null);
+    const [rightTab, setRightTab] = useState<"studio" | "notes">("studio");
+    const [notesRefresh, setNotesRefresh] = useState(0);
     const briefGeneratedRef = useRef<Set<string>>(new Set());
 
     const sourceStats = summarizeSources(sources);
@@ -449,6 +453,27 @@ export default function AIStudioPage() {
         await loadSourceStatus(activeNotebook.id);
     };
 
+    const handleSaveChatToNote = async (content: string) => {
+        if (!activeNotebook || !content.trim()) return;
+        try {
+            await studioService.createNote(activeNotebook.id, {
+                title: content.trim().slice(0, 60) || "Catatan",
+                content,
+                origin: "chat",
+            });
+            message.success("Disimpan ke Notes");
+            setNotesRefresh((n) => n + 1);
+            setShowStudio(true);
+            setRightTab("notes");
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Gagal menyimpan catatan");
+        }
+    };
+
+    const handleNoteConvertedToSource = () => {
+        if (activeNotebook) void loadSourceStatus(activeNotebook.id);
+    };
+
     const handleSaveChatInstruction = async (instruction: string) => {
         if (!activeNotebook) return;
         setSavingChatConfig(true);
@@ -600,6 +625,7 @@ export default function AIStudioPage() {
                                     onSetChatMode={setChatMode}
                                     onResumeConversation={(id) => void resumeConversation(id)}
                                     onCitationClick={(chunkId, docName, score) => setChunkPreview({ chunkId, docName, score })}
+                                    onSaveToNote={(content) => void handleSaveChatToNote(content)}
                                 />
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-full gap-4 opacity-80 p-6">
@@ -627,13 +653,39 @@ export default function AIStudioPage() {
                                 <Card size="small" className="h-full dark:!bg-transparent"
                                     style={{ background: "transparent", boxShadow: "none", border: `1px solid ${themeColor}22` }}
                                     styles={{ body: { padding: 0, height: "100%", overflow: "hidden" } }}>
-                                    <StudioOutputsPanel
-                                        themeColor={themeColor}
-                                        notebookId={activeNotebook?.id ?? null}
-                                        notebookName={activeNotebook?.name}
-                                        sourcesReady={sourceStats.anyIndexed}
-                                        selectedSourceIds={selectedSourceIds}
-                                    />
+                                    <div className="flex flex-col h-full">
+                                        <div className="px-2 pt-2">
+                                            <Segmented
+                                                block
+                                                size="small"
+                                                value={rightTab}
+                                                onChange={(v) => setRightTab(v as "studio" | "notes")}
+                                                options={[
+                                                    { label: "Studio", value: "studio" },
+                                                    { label: "Notes", value: "notes" },
+                                                ]}
+                                            />
+                                        </div>
+                                        <div className="flex-1 min-h-0">
+                                            {rightTab === "studio" ? (
+                                                <StudioOutputsPanel
+                                                    themeColor={themeColor}
+                                                    notebookId={activeNotebook?.id ?? null}
+                                                    notebookName={activeNotebook?.name}
+                                                    sourcesReady={sourceStats.anyIndexed}
+                                                    selectedSourceIds={selectedSourceIds}
+                                                    onNoteSaved={() => setNotesRefresh((n) => n + 1)}
+                                                />
+                                            ) : (
+                                                <NotesPanel
+                                                    themeColor={themeColor}
+                                                    notebookId={activeNotebook?.id ?? null}
+                                                    refreshSignal={notesRefresh}
+                                                    onSourceAdded={handleNoteConvertedToSource}
+                                                />
+                                            )}
+                                        </div>
+                                    </div>
                                 </Card>
                             </motion.div>
                         )}

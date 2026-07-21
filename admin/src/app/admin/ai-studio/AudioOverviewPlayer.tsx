@@ -1,0 +1,241 @@
+"use client";
+
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Button, Select, Slider, Space, Tag, Typography } from "antd";
+import {
+    PauseOutlined,
+    CaretRightOutlined,
+    StepForwardOutlined,
+    StopOutlined,
+} from "@ant-design/icons";
+import { parseAudioScript, speakerOrder, type DialogueSegment } from "./audioScript";
+
+const { Text } = Typography;
+
+type Props = { script: string; themeColor: string };
+
+/**
+ * Audio Overview player. Reads a two-host podcast script aloud using the browser
+ * Web Speech API (SpeechSynthesis) — no API key required, works offline. Speakers
+ * are mapped to distinct voices (Indonesian preferred) so it feels like a duet.
+ */
+export default function AudioOverviewPlayer({ script, themeColor }: Props) {
+    const segments = useMemo(() => parseAudioScript(script), [script]);
+    const speakers = useMemo(() => speakerOrder(segments), [segments]);
+
+    const supported =
+        typeof window !== "undefined" && "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+
+    const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+    const [rate, setRate] = useState(1);
+    const [voiceA, setVoiceA] = useState<string>("");
+    const [voiceB, setVoiceB] = useState<string>("");
+    const [playing, setPlaying] = useState(false);
+    const [paused, setPaused] = useState(false);
+    const [current, setCurrent] = useState(-1);
+
+    const idxRef = useRef(0);
+    const stoppedRef = useRef(false);
+
+    useEffect(() => {
+        if (!supported) return;
+        const load = () => {
+            const list = window.speechSynthesis.getVoices();
+            if (list.length) setVoices(list);
+        };
+        load();
+        window.speechSynthesis.addEventListener?.("voiceschanged", load);
+        return () => {
+            window.speechSynthesis.removeEventListener?.("voiceschanged", load);
+            window.speechSynthesis.cancel();
+        };
+    }, [supported]);
+
+    // Pick sensible default voices once the list loads (Indonesian first).
+    useEffect(() => {
+        if (!voices.length) return;
+        const idVoices = voices.filter((v) => v.lang?.toLowerCase().startsWith("id"));
+        const pool = idVoices.length ? idVoices : voices;
+        setVoiceA((prev) => prev || pool[0]?.voiceURI || "");
+        setVoiceB((prev) => prev || (pool[1]?.voiceURI ?? pool[0]?.voiceURI) || "");
+    }, [voices]);
+
+    const voiceFor = useCallback(
+        (seg: DialogueSegment): SpeechSynthesisVoice | undefined => {
+            const isSecond = seg.speaker ? speakers.indexOf(seg.speaker) % 2 === 1 : false;
+            const uri = isSecond ? voiceB : voiceA;
+            return voices.find((v) => v.voiceURI === uri);
+        },
+        [speakers, voiceA, voiceB, voices],
+    );
+
+    const speakFrom = useCallback(
+        (start: number) => {
+            if (!supported || start >= segments.length) {
+                setPlaying(false);
+                setPaused(false);
+                setCurrent(-1);
+                return;
+            }
+            stoppedRef.current = false;
+            idxRef.current = start;
+
+            const speakNext = () => {
+                if (stoppedRef.current) return;
+                const i = idxRef.current;
+                if (i >= segments.length) {
+                    setPlaying(false);
+                    setPaused(false);
+                    setCurrent(-1);
+                    return;
+                }
+                const seg = segments[i];
+                setCurrent(i);
+                const utt = new SpeechSynthesisUtterance(seg.text);
+                const v = voiceFor(seg);
+                if (v) {
+                    utt.voice = v;
+                    utt.lang = v.lang;
+                }
+                utt.rate = rate;
+                utt.onend = () => {
+                    if (stoppedRef.current) return;
+                    idxRef.current += 1;
+                    speakNext();
+                };
+                utt.onerror = () => {
+                    if (stoppedRef.current) return;
+                    idxRef.current += 1;
+                    speakNext();
+                };
+                window.speechSynthesis.speak(utt);
+            };
+
+            window.speechSynthesis.cancel();
+            setPlaying(true);
+            setPaused(false);
+            speakNext();
+        },
+        [segments, supported, rate, voiceFor],
+    );
+
+    const handlePlay = () => {
+        if (paused) {
+            window.speechSynthesis.resume();
+            setPaused(false);
+            setPlaying(true);
+            return;
+        }
+        speakFrom(current >= 0 ? current : 0);
+    };
+
+    const handlePause = () => {
+        if (!supported) return;
+        window.speechSynthesis.pause();
+        setPaused(true);
+        setPlaying(false);
+    };
+
+    const handleStop = () => {
+        if (!supported) return;
+        stoppedRef.current = true;
+        window.speechSynthesis.cancel();
+        setPlaying(false);
+        setPaused(false);
+        setCurrent(-1);
+        idxRef.current = 0;
+    };
+
+    const handleSkip = () => {
+        if (!supported || !segments.length) return;
+        const next = Math.min((current < 0 ? 0 : current) + 1, segments.length - 1);
+        speakFrom(next);
+    };
+
+    if (!supported) {
+        return (
+            <Alert
+                type="warning"
+                showIcon
+                message="Audio Overview tidak didukung"
+                description="Browser ini tidak mendukung Web Speech API. Coba Chrome/Edge terbaru."
+            />
+        );
+    }
+
+    if (segments.length === 0) {
+        return <Alert type="info" showIcon message="Naskah audio kosong atau tidak bisa diparse." />;
+    }
+
+    const voiceOptions = voices.map((v) => ({ value: v.voiceURI, label: `${v.name} (${v.lang})` }));
+
+    return (
+        <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 mb-3 bg-[rgba(var(--theme-color-rgb,139,92,246),0.04)]">
+            <div className="flex items-center gap-2 mb-2">
+                {!playing ? (
+                    <Button
+                        type="primary"
+                        shape="circle"
+                        icon={<CaretRightOutlined />}
+                        onClick={handlePlay}
+                        style={{ backgroundColor: themeColor, borderColor: themeColor }}
+                    />
+                ) : (
+                    <Button type="primary" shape="circle" icon={<PauseOutlined />} onClick={handlePause}
+                        style={{ backgroundColor: themeColor, borderColor: themeColor }} />
+                )}
+                <Button shape="circle" icon={<StepForwardOutlined />} onClick={handleSkip} title="Lewati segmen" />
+                <Button shape="circle" icon={<StopOutlined />} onClick={handleStop} title="Berhenti" />
+                <Text className="text-[11px] text-gray-400 ml-1">
+                    {current >= 0 ? `Segmen ${current + 1}/${segments.length}` : `${segments.length} segmen`}
+                </Text>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+                <Space size={4}>
+                    <Text className="text-[10px] text-gray-400">Suara 1</Text>
+                    <Select
+                        size="small"
+                        style={{ minWidth: 150 }}
+                        value={voiceA || undefined}
+                        options={voiceOptions}
+                        onChange={setVoiceA}
+                        placeholder="Voice"
+                    />
+                </Space>
+                <Space size={4}>
+                    <Text className="text-[10px] text-gray-400">Suara 2</Text>
+                    <Select
+                        size="small"
+                        style={{ minWidth: 150 }}
+                        value={voiceB || undefined}
+                        options={voiceOptions}
+                        onChange={setVoiceB}
+                        placeholder="Voice"
+                    />
+                </Space>
+                <Space size={4} className="flex-1 min-w-[120px]">
+                    <Text className="text-[10px] text-gray-400">Kecepatan</Text>
+                    <Slider
+                        className="flex-1"
+                        min={0.5}
+                        max={1.75}
+                        step={0.05}
+                        value={rate}
+                        onChange={setRate}
+                        tooltip={{ formatter: (v) => `${v}x` }}
+                    />
+                </Space>
+            </div>
+
+            {current >= 0 && (
+                <div className="text-[11px] text-gray-600 dark:text-gray-300 line-clamp-2">
+                    {segments[current].speaker && (
+                        <Tag color={themeColor} className="!text-[9px] !mr-1">{segments[current].speaker}</Tag>
+                    )}
+                    {segments[current].text}
+                </div>
+            )}
+        </div>
+    );
+}

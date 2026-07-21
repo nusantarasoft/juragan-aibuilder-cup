@@ -52,6 +52,26 @@ export class AiRouterService {
         }
     }
 
+    /**
+     * Streaming text generation. Emits incremental fragments via `onDelta` and
+     * resolves with the full text. Only the Google (Vertex/AI Studio) provider
+     * supports true token streaming; other providers generate the full answer and
+     * emit it once, so the calling contract stays identical everywhere.
+     */
+    async generateTextStream(
+        prompt: string,
+        onDelta: (text: string) => void,
+        opts?: { tenantId?: string; inlineData?: AiInlineData },
+    ): Promise<string> {
+        const provider = await this.aiSettings.getLlmProvider(opts?.tenantId);
+        if (provider === 'google') {
+            return this.vertexAi.generateTextStream(prompt, onDelta, opts?.inlineData, opts?.tenantId);
+        }
+        const full = await this.generateText(prompt, opts);
+        if (full) onDelta(full);
+        return full;
+    }
+
     async generateStructuredJSON(prompt: string, tenantId?: string): Promise<any> {
         const provider = await this.aiSettings.getLlmProvider(tenantId);
         switch (provider) {

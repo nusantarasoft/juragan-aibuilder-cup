@@ -96,6 +96,18 @@ export interface StudioOutput {
     updated_at?: string;
 }
 
+export interface StudioNote {
+    id: string;
+    notebook_id: string;
+    user_id?: string | null;
+    title: string;
+    content: string;
+    origin: 'manual' | 'chat' | 'output';
+    source_output_id?: string | null;
+    created_at: string;
+    updated_at?: string;
+}
+
 export interface StudioChunk {
     id: string;
     content: string;
@@ -300,6 +312,89 @@ export const studioService = {
         return data.studioChat;
     },
 
+    /**
+     * Streaming chat over Server-Sent Events. Invokes callbacks as the answer is
+     * produced. Falls back callers should use {@link chat} if this throws.
+     *  - onMeta  → conversationId + references (once, before tokens)
+     *  - onDelta → each answer fragment
+     *  - onDone  → final answer + references
+     */
+    async chatStream(
+        notebookId: string,
+        question: string,
+        callbacks: {
+            onMeta?: (data: { conversationId: string; references: ChatResponse['references'] }) => void;
+            onDelta?: (text: string) => void;
+            onDone?: (data: ChatResponse) => void;
+        },
+        options?: { conversationId?: string; userId?: string; sourceIds?: string[]; signal?: AbortSignal },
+    ): Promise<void> {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        const token = getStoredToken();
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const url = `${GRAPHQL_URL.replace('/graphql', '')}/studio/chat/stream`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                notebookId,
+                question,
+                conversationId: options?.conversationId,
+                sourceIds: options?.sourceIds?.length ? options.sourceIds : undefined,
+            }),
+            signal: options?.signal,
+        });
+
+        if (!response.ok || !response.body) {
+            let msg = `Stream failed (${response.status})`;
+            try {
+                const j = await response.json();
+                msg = j.message || msg;
+            } catch { /* non-JSON error body */ }
+            throw new Error(msg);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        const dispatch = (rawEvent: string) => {
+            const lines = rawEvent.split('\n');
+            let event = 'message';
+            let dataStr = '';
+            for (const line of lines) {
+                if (line.startsWith('event:')) event = line.slice(6).trim();
+                else if (line.startsWith('data:')) dataStr += line.slice(5).trim();
+            }
+            if (!dataStr) return;
+            let data: any;
+            try {
+                data = JSON.parse(dataStr);
+            } catch {
+                return;
+            }
+            if (event === 'meta') callbacks.onMeta?.(data);
+            else if (event === 'delta') callbacks.onDelta?.(typeof data.text === 'string' ? data.text : '');
+            else if (event === 'done') callbacks.onDone?.(data);
+            else if (event === 'error') throw new Error(data.message || 'Streaming error');
+        };
+
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            let sep: number;
+            while ((sep = buffer.indexOf('\n\n')) !== -1) {
+                const rawEvent = buffer.slice(0, sep);
+                buffer = buffer.slice(sep + 2);
+                dispatch(rawEvent);
+            }
+        }
+        if (buffer.trim()) dispatch(buffer);
+    },
+
     async getConversations(notebookId: string): Promise<StudioConversation[]> {
         const data = await graphqlRequest(`
             query($notebookId: String!) {
@@ -316,6 +411,68 @@ export const studioService = {
             }
         `, { conversationId });
         return data.studioConversation;
+    },
+
+    // ── Notes ────────────────────────────────
+
+    async listNotes(notebookId: string): Promise<StudioNote[]> {
+        const data = await graphqlRequest(`
+            query($notebookId: String!) {
+                studioNotes(notebookId: $notebookId)
+            }
+        `, { notebookId });
+        return data.studioNotes || [];
+    },
+
+    async createNote(
+        notebookId: string,
+        payload: { title?: string; content?: string; origin?: 'manual' | 'chat' | 'output'; sourceOutputId?: string },
+    ): Promise<StudioNote> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!, $title: String, $content: String, $origin: String, $sourceOutputId: String) {
+                createStudioNote(
+                    notebookId: $notebookId
+                    title: $title
+                    content: $content
+                    origin: $origin
+                    sourceOutputId: $sourceOutputId
+                )
+            }
+        `, {
+            notebookId,
+            title: payload.title ?? null,
+            content: payload.content ?? null,
+            origin: payload.origin ?? null,
+            sourceOutputId: payload.sourceOutputId ?? null,
+        });
+        return data.createStudioNote;
+    },
+
+    async updateNote(noteId: string, patch: { title?: string; content?: string }): Promise<StudioNote> {
+        const data = await graphqlRequest(`
+            mutation($noteId: String!, $title: String, $content: String) {
+                updateStudioNote(noteId: $noteId, title: $title, content: $content)
+            }
+        `, { noteId, title: patch.title ?? null, content: patch.content ?? null });
+        return data.updateStudioNote;
+    },
+
+    async deleteNote(noteId: string): Promise<boolean> {
+        const data = await graphqlRequest(`
+            mutation($noteId: String!) {
+                deleteStudioNote(noteId: $noteId)
+            }
+        `, { noteId });
+        return data.deleteStudioNote;
+    },
+
+    async convertNoteToSource(noteId: string): Promise<StudioSource> {
+        const data = await graphqlRequest(`
+            mutation($noteId: String!) {
+                convertStudioNoteToSource(noteId: $noteId)
+            }
+        `, { noteId });
+        return data.convertStudioNoteToSource;
     },
 
     // ── Generate ─────────────────────────────

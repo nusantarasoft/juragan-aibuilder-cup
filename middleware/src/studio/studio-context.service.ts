@@ -44,6 +44,10 @@ export class StudioContextService {
         return this.aiRouter.generateText(prompt);
     }
 
+    private generateTextStream(prompt: string, onDelta: (text: string) => void): Promise<string> {
+        return this.aiRouter.generateTextStream(prompt, onDelta);
+    }
+
     async semanticSearchNotebook(
         notebookId: string,
         query: string,
@@ -182,7 +186,7 @@ export class StudioContextService {
         }
     }
 
-    async generateGroundedAnswer(params: {
+    private buildGroundedPrompt(params: {
         notebookName: string;
         audience: 'admin' | 'customer';
         question: string;
@@ -190,7 +194,7 @@ export class StudioContextService {
         chatInstruction?: string;
         conversationLines: string[];
         retrieval: RetrievalResult;
-    }): Promise<string> {
+    }): string {
         const { notebookName, audience, question, instruction, chatInstruction, conversationLines, retrieval } =
             params;
         const hasFile = retrieval.fileContext.length > 0;
@@ -214,7 +218,7 @@ export class StudioContextService {
             'Gunakan markdown. Kutip nama file bila relevan.',
         ].filter(Boolean);
 
-        const prompt = [
+        return [
             rules.join('\n'),
             instruction ? `\nInstruksi tambahan:\n${instruction}` : '',
             '',
@@ -228,8 +232,38 @@ export class StudioContextService {
             '',
             '## Jawaban',
         ].join('\n');
+    }
 
-        const answer = await this.generateText(prompt);
+    async generateGroundedAnswer(params: {
+        notebookName: string;
+        audience: 'admin' | 'customer';
+        question: string;
+        instruction?: string;
+        chatInstruction?: string;
+        conversationLines: string[];
+        retrieval: RetrievalResult;
+    }): Promise<string> {
+        const answer = await this.generateText(this.buildGroundedPrompt(params));
+        return answer || 'Maaf, saya tidak dapat menghasilkan jawaban saat ini.';
+    }
+
+    /**
+     * Streaming variant of {@link generateGroundedAnswer}. Emits answer fragments
+     * via `onDelta` as they are produced and resolves with the full answer.
+     */
+    async generateGroundedAnswerStream(
+        params: {
+            notebookName: string;
+            audience: 'admin' | 'customer';
+            question: string;
+            instruction?: string;
+            chatInstruction?: string;
+            conversationLines: string[];
+            retrieval: RetrievalResult;
+        },
+        onDelta: (text: string) => void,
+    ): Promise<string> {
+        const answer = await this.generateTextStream(this.buildGroundedPrompt(params), onDelta);
         return answer || 'Maaf, saya tidak dapat menghasilkan jawaban saat ini.';
     }
 

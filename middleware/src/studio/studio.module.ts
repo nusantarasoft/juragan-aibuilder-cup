@@ -4,6 +4,7 @@ import { StudioService } from './studio.service';
 import { GuideFlowService } from './guide-flow.service';
 import { StudioResolver } from './studio.resolver';
 import { StudioUploadController } from './studio-upload.controller';
+import { StudioChatController } from './studio-chat.controller';
 import { StudioIngestionService } from './studio-ingestion.service';
 import { StudioContextService } from './studio-context.service';
 import { StudioDbContextService } from './studio-db-context.service';
@@ -33,7 +34,7 @@ import { StudioOutputService } from './studio-output.service';
         WahaModule,
         InventoryModule,
     ],
-    controllers: [StudioUploadController, StudioWhatsAppController],
+    controllers: [StudioUploadController, StudioChatController, StudioWhatsAppController],
     providers: [
         GqlAuthGuard,
         StudioService,

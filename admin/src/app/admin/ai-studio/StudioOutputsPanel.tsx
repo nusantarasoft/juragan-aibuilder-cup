@@ -11,6 +11,7 @@ import {
     List,
     Modal,
     Row,
+    Space,
     Spin,
     Tag,
     Typography,
@@ -18,6 +19,7 @@ import {
 import {
     AudioOutlined,
     DeleteOutlined,
+    FileAddOutlined,
     FileTextOutlined,
     FundProjectionScreenOutlined,
     NodeIndexOutlined,
@@ -32,6 +34,8 @@ import {
     type StudioOutputType,
 } from "@/lib/studioService";
 import { useAppMessage } from "@/hooks/useAppMessage";
+import MindMapView from "./MindMapView";
+import AudioOverviewPlayer from "./AudioOverviewPlayer";
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -52,6 +56,7 @@ type Props = {
     notebookName?: string;
     sourcesReady: boolean;
     selectedSourceIds?: string[];
+    onNoteSaved?: () => void;
 };
 
 export default function StudioOutputsPanel({
@@ -60,14 +65,19 @@ export default function StudioOutputsPanel({
     notebookName,
     sourcesReady,
     selectedSourceIds,
+    onNoteSaved,
 }: Props) {
     const message = useAppMessage();
     const [outputs, setOutputs] = useState<StudioOutput[]>([]);
     const [loading, setLoading] = useState(false);
     const [generating, setGenerating] = useState<StudioOutputType | null>(null);
     const [viewOutput, setViewOutput] = useState<StudioOutput | null>(null);
+    const [mindMapRaw, setMindMapRaw] = useState(false);
     const [reportModal, setReportModal] = useState(false);
     const [reportQuery, setReportQuery] = useState("");
+
+    const isMindMap = viewOutput?.output_type === "mind_map";
+    const isAudioScript = viewOutput?.output_type === "audio_script";
 
     const loadOutputs = useCallback(async () => {
         if (!notebookId) return;
@@ -106,6 +116,22 @@ export default function StudioOutputsPanel({
         } finally {
             setGenerating(null);
             setReportModal(false);
+        }
+    };
+
+    const handleSaveOutputToNote = async (output: StudioOutput) => {
+        if (!notebookId) return;
+        try {
+            await studioService.createNote(notebookId, {
+                title: output.title,
+                content: output.content,
+                origin: "output",
+                sourceOutputId: output.id,
+            });
+            message.success("Disimpan ke Notes");
+            onNoteSaved?.();
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Gagal menyimpan ke Notes");
         }
     };
 
@@ -209,13 +235,43 @@ export default function StudioOutputsPanel({
             <Drawer
                 title={viewOutput?.title}
                 open={!!viewOutput}
-                onClose={() => setViewOutput(null)}
-                width={480}
+                onClose={() => {
+                    setViewOutput(null);
+                    setMindMapRaw(false);
+                }}
+                width={isMindMap ? 760 : 480}
+                extra={
+                    viewOutput ? (
+                        <Space>
+                            {isMindMap && (
+                                <Button size="small" onClick={() => setMindMapRaw((v) => !v)}>
+                                    {mindMapRaw ? "Lihat diagram" : "Lihat teks"}
+                                </Button>
+                            )}
+                            <Button
+                                size="small"
+                                icon={<FileAddOutlined />}
+                                onClick={() => void handleSaveOutputToNote(viewOutput)}
+                            >
+                                Simpan ke Notes
+                            </Button>
+                        </Space>
+                    ) : undefined
+                }
             >
                 {viewOutput && (
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                        <ReactMarkdown>{viewOutput.content}</ReactMarkdown>
-                    </div>
+                    isMindMap && !mindMapRaw ? (
+                        <MindMapView markdown={viewOutput.content} height="calc(100vh - 140px)" />
+                    ) : (
+                        <>
+                            {isAudioScript && (
+                                <AudioOverviewPlayer script={viewOutput.content} themeColor={themeColor} />
+                            )}
+                            <div className="prose prose-sm dark:prose-invert max-w-none">
+                                <ReactMarkdown>{viewOutput.content}</ReactMarkdown>
+                            </div>
+                        </>
+                    )
                 )}
             </Drawer>
 

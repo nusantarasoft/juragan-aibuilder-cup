@@ -208,27 +208,64 @@ export function useStudioChat(
                     );
                     applyGuidedReplies(res);
                 } else {
-                    const result: ChatResponse = await studioService.chat(
-                        notebookId,
-                        text.trim(),
-                        conversationId,
-                        userId,
-                        {
-                            sourceIds:
-                                selectedSourceIds.length > 0 ? selectedSourceIds : undefined,
-                        },
-                    );
-                    setConversationId(result.conversationId);
+                    const sourceIds =
+                        selectedSourceIds.length > 0 ? selectedSourceIds : undefined;
+
+                    // Append an empty assistant bubble that fills in as tokens stream.
                     setChatHistory((prev) => [
                         ...prev,
-                        {
-                            role: "assistant",
+                        { role: "assistant", content: "", timestamp: Date.now() },
+                    ]);
+
+                    const updateAssistant = (patch: Partial<StudioChatMessage>) => {
+                        setChatHistory((prev) => {
+                            const copy = [...prev];
+                            const last = copy[copy.length - 1];
+                            if (last && last.role === "assistant") {
+                                copy[copy.length - 1] = { ...last, ...patch };
+                            }
+                            return copy;
+                        });
+                    };
+
+                    let acc = "";
+                    try {
+                        await studioService.chatStream(
+                            notebookId,
+                            text.trim(),
+                            {
+                                onMeta: (m) => setConversationId(m.conversationId),
+                                onDelta: (t) => {
+                                    acc += t;
+                                    updateAssistant({ content: acc });
+                                },
+                                onDone: (d) => {
+                                    setConversationId(d.conversationId);
+                                    updateAssistant({
+                                        content: d.answer || acc,
+                                        references: d.references,
+                                    });
+                                },
+                            },
+                            { conversationId, userId, sourceIds },
+                        );
+                        void loadConversations();
+                    } catch {
+                        // Streaming unavailable → fall back to single-shot chat.
+                        const result: ChatResponse = await studioService.chat(
+                            notebookId,
+                            text.trim(),
+                            conversationId,
+                            userId,
+                            { sourceIds },
+                        );
+                        setConversationId(result.conversationId);
+                        updateAssistant({
                             content: result.answer,
                             references: result.references,
-                            timestamp: Date.now(),
-                        },
-                    ]);
-                    void loadConversations();
+                        });
+                        void loadConversations();
+                    }
                 }
             } catch (e: unknown) {
                 message.error(e instanceof Error ? e.message : "Chat failed");

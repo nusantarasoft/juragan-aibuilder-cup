@@ -140,6 +140,18 @@ export class StudioService {
         await this.assertNotebookOwner(data.notebook_id, userId);
     }
 
+    /** Throws if the note's notebook is not owned by `userId`; returns the note row. */
+    async assertNoteOwner(noteId: string, userId: string): Promise<any> {
+        const { data, error } = await this.supabaseService.getAdminClient()
+            .from('studio_notes')
+            .select('*')
+            .eq('id', noteId)
+            .single();
+        if (error || !data) throw new NotFoundException('Note not found');
+        await this.assertNotebookOwner(data.notebook_id, userId);
+        return data;
+    }
+
     async createNotebook(
         name: string,
         description: string,
@@ -620,6 +632,97 @@ export class StudioService {
         };
     }
 
+    /**
+     * Streaming chat. Runs the same retrieval + persistence pipeline as {@link chat}
+     * but emits incremental events so the UI can render tokens as they arrive:
+     *  - `meta`  → { conversationId, references } (sent once, before generation)
+     *  - `delta` → { text } (repeated for each answer fragment)
+     *  - `done`  → { conversationId, answer, references }
+     * Persistence (user + assistant messages) mirrors {@link chat} exactly.
+     */
+    async chatStream(
+        notebookId: string,
+        question: string,
+        conversationId: string | undefined,
+        userId: string | undefined,
+        options: { sourceIds?: string[] } | undefined,
+        emit: (event: 'meta' | 'delta' | 'done', data: Record<string, unknown>) => void,
+    ): Promise<void> {
+        const notebook = await this.getNotebook(notebookId);
+
+        let conversation: any;
+        if (conversationId) {
+            const { data } = await this.supabaseService.getAdminClient()
+                .from('studio_conversations')
+                .select('*')
+                .eq('id', conversationId)
+                .single();
+            conversation = data;
+        }
+
+        const isNewConversation = !conversation;
+        if (!conversation) {
+            const { data, error } = await this.supabaseService.getAdminClient()
+                .from('studio_conversations')
+                .insert({
+                    notebook_id: notebookId,
+                    user_id: resolveUserIdForDb(userId, this.logger, 'studio chatStream'),
+                    title: question.substring(0, 100),
+                })
+                .select()
+                .single();
+            assertNoSupabaseError(error, 'Failed to create conversation');
+            conversation = data;
+        }
+
+        await this.appendStudioMessage(conversation.id, 'user', question);
+
+        const conversationLines = await this.getRecentConversationLines(conversation.id, 12);
+        const qu = await this.understandUserQuery(question, { conversationLines });
+        const searchQuery = qu.rewritten_query?.trim() || question;
+        const config = this.dbContextService.parseConfig(notebook.context_config);
+        const audience = (notebook.audience === 'customer' ? 'customer' : 'admin') as 'admin' | 'customer';
+
+        const retrieval = await this.contextService.retrieveContext(
+            notebookId,
+            searchQuery,
+            qu,
+            config,
+            { sourceIds: options?.sourceIds },
+        );
+
+        emit('meta', { conversationId: conversation.id, references: retrieval.references });
+
+        const answer = await this.contextService.generateGroundedAnswerStream(
+            {
+                notebookName: notebook.name,
+                audience,
+                question: searchQuery,
+                chatInstruction: config.chat_instruction,
+                conversationLines: conversationLines.map(
+                    (l) => `${l.role === 'assistant' ? 'Assistant' : 'User'}: ${l.content}`,
+                ),
+                retrieval,
+            },
+            (text) => emit('delta', { text }),
+        );
+
+        await this.appendStudioMessage(conversation.id, 'assistant', answer, retrieval.rawChunks);
+
+        if (isNewConversation) {
+            await this.supabaseService.getAdminClient()
+                .from('studio_conversations')
+                .update({ title: question.substring(0, 100) })
+                .eq('id', conversation.id);
+        }
+
+        emit('done', {
+            conversationId: conversation.id,
+            answer,
+            references: retrieval.references,
+        });
+    }
+
     async getConversation(conversationId: string): Promise<any> {
         const { data: conversation, error: convError } = await this.supabaseService.getAdminClient()
             .from('studio_conversations')
@@ -714,6 +817,81 @@ export class StudioService {
 
     async deleteOutput(outputId: string): Promise<boolean> {
         return this.outputService.deleteOutput(outputId);
+    }
+
+    // ── Notes ────────────────────────────────────────────────────────
+
+    async listNotes(notebookId: string): Promise<any[]> {
+        const { data, error } = await this.supabaseService.getAdminClient()
+            .from('studio_notes')
+            .select('*')
+            .eq('notebook_id', notebookId)
+            .order('updated_at', { ascending: false });
+        assertNoSupabaseError(error, 'Failed to list notes');
+        return data || [];
+    }
+
+    async createNote(
+        notebookId: string,
+        userId: string | undefined,
+        payload: { title?: string; content?: string; origin?: 'manual' | 'chat' | 'output'; sourceOutputId?: string },
+    ): Promise<any> {
+        const title = payload.title?.trim() || 'Catatan';
+        const { data, error } = await this.supabaseService.getAdminClient()
+            .from('studio_notes')
+            .insert({
+                notebook_id: notebookId,
+                user_id: normalizeOptionalUuid(userId) ?? null,
+                title: title.substring(0, 500),
+                content: payload.content ?? '',
+                origin: payload.origin ?? 'manual',
+                source_output_id: normalizeOptionalUuid(payload.sourceOutputId) ?? null,
+            })
+            .select()
+            .single();
+        assertNoSupabaseError(error, 'Failed to create note');
+        return data;
+    }
+
+    async updateNote(
+        noteId: string,
+        patch: { title?: string; content?: string },
+    ): Promise<any> {
+        const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (patch.title !== undefined) updates.title = (patch.title.trim() || 'Catatan').substring(0, 500);
+        if (patch.content !== undefined) updates.content = patch.content;
+        const { data, error } = await this.supabaseService.getAdminClient()
+            .from('studio_notes')
+            .update(updates)
+            .eq('id', noteId)
+            .select()
+            .single();
+        assertNoSupabaseError(error, 'Failed to update note');
+        return data;
+    }
+
+    async deleteNote(noteId: string): Promise<boolean> {
+        const { error } = await this.supabaseService.getAdminClient()
+            .from('studio_notes')
+            .delete()
+            .eq('id', noteId);
+        assertNoSupabaseError(error, 'Failed to delete note');
+        return true;
+    }
+
+    /** Turn a note into an indexed notebook source (mirrors NotebookLM's "convert to source"). */
+    async convertNoteToSource(note: { id: string; notebook_id: string; title: string; content: string }): Promise<any> {
+        const text = (note.content ?? '').trim();
+        if (text.length < 1) throw new BadRequestException('Note is empty');
+        const safeTitle = (note.title?.trim() || 'catatan').replace(/[^\w\-]+/g, '_').slice(0, 60);
+        const filename = `note_${safeTitle}_${Date.now()}.txt`;
+        const buffer = Buffer.from(text, 'utf8');
+        return this.uploadSource(note.notebook_id, {
+            buffer,
+            originalname: filename,
+            mimetype: 'text/plain',
+            size: buffer.length,
+        });
     }
 
     async generateStudioOutput(

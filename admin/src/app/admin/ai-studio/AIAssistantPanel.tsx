@@ -14,6 +14,7 @@ import {
 } from "antd";
 import {
     CheckCircleFilled,
+    FileAddOutlined,
     HistoryOutlined,
     LoadingOutlined,
     RobotOutlined,
@@ -50,6 +51,7 @@ type Props = {
     onSetChatMode: (mode: StudioChatMode) => void;
     onResumeConversation: (id: string) => void;
     onCitationClick?: (chunkId: string, docName: string, score: number) => void;
+    onSaveToNote?: (content: string) => void;
 };
 
 export default function AIAssistantPanel({
@@ -75,6 +77,7 @@ export default function AIAssistantPanel({
     onSetChatMode,
     onResumeConversation,
     onCitationClick,
+    onSaveToNote,
 }: Props) {
     const [chatInput, setChatInput] = useState("");
     const [showReferences, setShowReferences] = useState<number | null>(null);
@@ -250,7 +253,11 @@ export default function AIAssistantPanel({
                     </div>
                 )}
 
-                {chatHistory.map((msg, i) => (
+                {chatHistory.map((msg, i) => {
+                    // Empty assistant bubble (pre-first-token while streaming) is hidden;
+                    // the loading indicator below covers that state.
+                    if (msg.role === "assistant" && !msg.content.trim()) return null;
+                    return (
                     <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-4`}>
                         <div className="max-w-[85%]">
                             <div
@@ -338,9 +345,21 @@ export default function AIAssistantPanel({
                                     </AnimatePresence>
                                 </div>
                             )}
+                            {msg.role === "assistant" && msg.content.trim() && onSaveToNote && (
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<FileAddOutlined />}
+                                    className="text-[10px] text-gray-400 p-0 h-auto mt-1"
+                                    onClick={() => onSaveToNote(msg.content)}
+                                >
+                                    Simpan ke Notes
+                                </Button>
+                            )}
                         </div>
                     </div>
-                ))}
+                    );
+                })}
 
                 {isChatting && (
                     <div className="flex justify-start mb-4">

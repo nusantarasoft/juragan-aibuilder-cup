@@ -98,6 +98,123 @@ export class VertexAiService {
         }
     }
 
+    /**
+     * Streaming variant of {@link generateText}. Invokes `onDelta` for every text
+     * fragment received from Gemini's SSE endpoint and resolves with the full text.
+     * Falls back to a single-shot emit (fallback response) if streaming is
+     * unavailable or fails, so callers always get a usable result.
+     */
+    async generateTextStream(
+        prompt: string,
+        onDelta: (text: string) => void,
+        inlineData?: { mimeType: string; data: string },
+        tenantId?: string,
+    ): Promise<string> {
+        const config = await this.aiSettings.getGoogleConfig(tenantId);
+        const projectId = config.projectId;
+        const parts: any[] = [{ text: prompt }];
+        if (inlineData) {
+            parts.push({ inlineData: { mimeType: inlineData.mimeType, data: inlineData.data } });
+        }
+        const body = JSON.stringify({ contents: [{ role: 'user', parts }] });
+
+        try {
+            if (!projectId) {
+                const apiKey = config.apiKey;
+                if (!apiKey) return this.emitFallback(prompt, onDelta);
+                for (const model of await this.googleGenerativeModels(tenantId)) {
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body,
+                    });
+                    if (!res.ok) {
+                        if ([404, 429, 503].includes(res.status)) continue;
+                        break;
+                    }
+                    const full = await this.consumeGeminiSse(res, onDelta);
+                    if (full.trim()) return full;
+                }
+                return this.emitFallback(prompt, onDelta);
+            }
+
+            const { GoogleAuth } = await import('google-auth-library');
+            const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
+            const client = await auth.getClient();
+            const accessToken = await client.getAccessToken();
+            const location = config.location;
+            const model = config.model;
+            const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:streamGenerateContent?alt=sse`;
+
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken?.token}`,
+                    'Content-Type': 'application/json',
+                },
+                body,
+            });
+            if (!res.ok) {
+                const errText = await res.text();
+                this.logger.error(`Vertex AI stream error (${res.status}): ${errText.slice(0, 200)}`);
+                return this.emitFallback(prompt, onDelta);
+            }
+            const full = await this.consumeGeminiSse(res, onDelta);
+            return full.trim() ? full : this.emitFallback(prompt, onDelta);
+        } catch (error: any) {
+            this.logger.error(`Failed to stream from Vertex AI: ${error?.message}`);
+            return this.emitFallback(prompt, onDelta);
+        }
+    }
+
+    private emitFallback(prompt: string, onDelta: (text: string) => void): string {
+        const text = this.getFallbackResponse(prompt);
+        onDelta(text);
+        return text;
+    }
+
+    /** Parse a Gemini `alt=sse` response body, emitting text fragments as they arrive. */
+    private async consumeGeminiSse(
+        res: Response,
+        onDelta: (text: string) => void,
+    ): Promise<string> {
+        const reader = res.body?.getReader();
+        if (!reader) return '';
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let full = '';
+        const handleLine = (line: string) => {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data:')) return;
+            const payload = trimmed.slice(5).trim();
+            if (!payload || payload === '[DONE]') return;
+            try {
+                const json = JSON.parse(payload);
+                const text: string = (json.candidates?.[0]?.content?.parts ?? [])
+                    .map((p: { text?: string }) => p.text ?? '')
+                    .join('');
+                if (text) {
+                    full += text;
+                    onDelta(text);
+                }
+            } catch {
+                /* ignore partial/non-JSON keepalive lines */
+            }
+        };
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? '';
+            for (const line of lines) handleLine(line);
+        }
+        if (buffer) handleLine(buffer);
+        return full;
+    }
+
     /** Google AI Studio (API key) — used when Vertex/GCP is not configured. */
     private async generateTextViaGoogleAiStudio(
         apiKey: string,

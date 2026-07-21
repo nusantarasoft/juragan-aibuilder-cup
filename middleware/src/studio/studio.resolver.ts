@@ -288,6 +288,69 @@ export class StudioResolver {
         );
     }
 
+    // ── Notes ────────────────────────────────────────────────────────
+
+    @Query(() => [GraphQLJSONObject], { name: 'studioNotes' })
+    async listNotes(
+        @Context() context: StudioAuthContext,
+        @Args('notebookId', { type: () => String }) notebookId: string,
+    ) {
+        await this.studioService.assertNotebookOwner(notebookId, this.requireUserId(context));
+        return this.studioService.listNotes(notebookId);
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'createStudioNote' })
+    async createNote(
+        @Context() context: StudioAuthContext,
+        @Args('notebookId', { type: () => String }) notebookId: string,
+        @Args('title', { type: () => String, nullable: true }) title: string,
+        @Args('content', { type: () => String, nullable: true }) content: string,
+        @Args('origin', { type: () => String, nullable: true }) origin: string,
+        @Args('sourceOutputId', { type: () => String, nullable: true }) sourceOutputId: string,
+    ) {
+        const userId = this.requireUserId(context);
+        await this.studioService.assertNotebookOwner(notebookId, userId);
+        const safeOrigin = origin === 'chat' || origin === 'output' ? origin : 'manual';
+        return this.studioService.createNote(notebookId, userId, {
+            title: title ?? undefined,
+            content: content ?? undefined,
+            origin: safeOrigin,
+            sourceOutputId: sourceOutputId ?? undefined,
+        });
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'updateStudioNote' })
+    async updateNote(
+        @Context() context: StudioAuthContext,
+        @Args('noteId', { type: () => String }) noteId: string,
+        @Args('title', { type: () => String, nullable: true }) title: string,
+        @Args('content', { type: () => String, nullable: true }) content: string,
+    ) {
+        await this.studioService.assertNoteOwner(noteId, this.requireUserId(context));
+        return this.studioService.updateNote(noteId, {
+            title: title ?? undefined,
+            content: content ?? undefined,
+        });
+    }
+
+    @Mutation(() => Boolean, { name: 'deleteStudioNote' })
+    async deleteNote(
+        @Context() context: StudioAuthContext,
+        @Args('noteId', { type: () => String }) noteId: string,
+    ) {
+        await this.studioService.assertNoteOwner(noteId, this.requireUserId(context));
+        return this.studioService.deleteNote(noteId);
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'convertStudioNoteToSource' })
+    async convertNoteToSource(
+        @Context() context: StudioAuthContext,
+        @Args('noteId', { type: () => String }) noteId: string,
+    ) {
+        const note = await this.studioService.assertNoteOwner(noteId, this.requireUserId(context));
+        return this.studioService.convertNoteToSource(note);
+    }
+
     @Mutation(() => GraphQLJSONObject, { name: 'studioPlaygroundTest' })
     async playgroundTest(
         @Args('userPrompt', { type: () => String }) userPrompt: string,
