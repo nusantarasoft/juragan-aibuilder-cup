@@ -13,8 +13,10 @@ import {
 } from './studio-umkm-agentic-ask.types';
 
 function pushUnique(out: AgenticAskToolCall[], call: AgenticAskToolCall) {
+    /* v8 ignore start -- defensive dedup/cap: planner branches never push a duplicate name nor exceed the cap (final slice enforces the limit) */
     if (out.some((c) => c.name === call.name)) return;
     if (out.length >= AGENTIC_ASK_MAX_TOOLS) return;
+    /* v8 ignore stop */
     out.push(call);
 }
 
@@ -124,12 +126,16 @@ export function planAgenticAskTools(question: string): AgenticAskPlan {
         }
         pushUnique(tools, { name: 'suggest_menu_action' });
         reasons.push('general');
-    } else if (!tools.some((t) => t.name === 'search_docs') && (wantsAdvice || wantsHowTo)) {
+    }
+    /* v8 ignore start -- defensive: the advice/howto branches always push search_docs first, so this re-add is unreachable in practice */
+    else if (!tools.some((t) => t.name === 'search_docs') && (wantsAdvice || wantsHowTo)) {
         pushUnique(tools, { name: 'search_docs' });
     }
+    /* v8 ignore stop */
 
     return {
         tools: tools.slice(0, AGENTIC_ASK_MAX_TOOLS),
+        /* v8 ignore next -- reasons is always non-empty here (every tool-adding branch, incl. 'general', pushes a reason) */
         reason: reasons.join('+') || 'default',
     };
 }

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { planAgenticAskTools } from './studio-umkm-agentic-ask.planner';
+import {
+    planAgenticAskTools,
+    isAgenticAskToolName,
+} from './studio-umkm-agentic-ask.planner';
 import { AGENTIC_ASK_MAX_TOOLS } from './studio-umkm-agentic-ask.types';
 import { formatSuggestMenuActionContent } from './studio-umkm-agentic-ask.prompts';
 
@@ -84,5 +87,50 @@ describe('planAgenticAskTools', () => {
         expect(c).toMatch(/\*1\*/);
         expect(c).toMatch(/\*5\*/);
         expect(c).toMatch(/ya/);
+    });
+
+    it('general soft question → docs + suggest (no live context)', () => {
+        const p = planAgenticAskTools('apa kabar semua');
+        const names = p.tools.map((t) => t.name);
+        expect(names).toContain('search_docs');
+        expect(names).toContain('suggest_menu_action');
+        expect(names).not.toContain('get_combined_report');
+        expect(p.reason).toBe('general');
+    });
+
+    it('general question mentioning toko → adds live combined_report', () => {
+        const p = planAgenticAskTools('info toko dong');
+        const names = p.tools.map((t) => t.name);
+        expect(names).toContain('search_docs');
+        expect(names).toContain('get_combined_report');
+        expect(names).toContain('suggest_menu_action');
+    });
+
+    it('catalog request also fetches list_products', () => {
+        const p = planAgenticAskTools('produk apa saja yang ada');
+        expect(p.tools.some((t) => t.name === 'list_products')).toBe(true);
+        expect(p.reason).toMatch(/catalog/);
+    });
+
+    it('purchase-only question → purchases summary', () => {
+        const p = planAgenticAskTools('belanja hari ini berapa');
+        expect(p.tools.some((t) => t.name === 'get_purchases_summary')).toBe(true);
+    });
+
+    it('generic stock question without a product → get_stock with no productQuery', () => {
+        const p = planAgenticAskTools('berapa stok sekarang');
+        const stock = p.tools.find((t) => t.name === 'get_stock');
+        expect(stock).toBeDefined();
+        expect(stock?.productQuery).toBeUndefined();
+    });
+});
+
+describe('isAgenticAskToolName', () => {
+    it('recognizes known tool names', () => {
+        expect(isAgenticAskToolName('get_stock')).toBe(true);
+        expect(isAgenticAskToolName('search_docs')).toBe(true);
+    });
+    it('rejects unknown tool names', () => {
+        expect(isAgenticAskToolName('nope')).toBe(false);
     });
 });
