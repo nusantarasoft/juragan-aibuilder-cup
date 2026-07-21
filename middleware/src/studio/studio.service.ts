@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as Minio from 'minio';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -97,6 +97,48 @@ export class StudioService {
     }
 
     // ── Notebooks ────────────────────────────────────────────────────
+
+    // ── Ownership guards ─────────────────────────────────────────────
+    // These enforce that a notebook (and anything derived from it) belongs to
+    // the authenticated user. Callers must pass the id taken from the JWT, not
+    // a client-supplied value.
+
+    /** Throws ForbiddenException if the notebook is not owned by `userId`. */
+    async assertNotebookOwner(notebookId: string, userId: string): Promise<void> {
+        const uid = normalizeOptionalUuid(userId);
+        if (!uid) throw new ForbiddenException('Authentication required');
+        const { data, error } = await this.supabaseService.getAdminClient()
+            .from('studio_notebooks')
+            .select('user_id')
+            .eq('id', notebookId)
+            .single();
+        if (error || !data) throw new NotFoundException('Notebook not found');
+        if (data.user_id !== uid) {
+            throw new ForbiddenException('You do not have access to this notebook');
+        }
+    }
+
+    /** Throws if the conversation's notebook is not owned by `userId`. */
+    async assertConversationOwner(conversationId: string, userId: string): Promise<void> {
+        const { data, error } = await this.supabaseService.getAdminClient()
+            .from('studio_conversations')
+            .select('notebook_id')
+            .eq('id', conversationId)
+            .single();
+        if (error || !data) throw new NotFoundException('Conversation not found');
+        await this.assertNotebookOwner(data.notebook_id, userId);
+    }
+
+    /** Throws if the output's notebook is not owned by `userId`. */
+    async assertOutputOwner(outputId: string, userId: string): Promise<void> {
+        const { data, error } = await this.supabaseService.getAdminClient()
+            .from('studio_outputs')
+            .select('notebook_id')
+            .eq('id', outputId)
+            .single();
+        if (error || !data) throw new NotFoundException('Output not found');
+        await this.assertNotebookOwner(data.notebook_id, userId);
+    }
 
     async createNotebook(
         name: string,

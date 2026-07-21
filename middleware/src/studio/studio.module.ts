@@ -8,6 +8,8 @@ import { StudioIngestionService } from './studio-ingestion.service';
 import { StudioContextService } from './studio-context.service';
 import { StudioDbContextService } from './studio-db-context.service';
 import { SupabaseModule } from '../supabase/supabase.module';
+import { AuthModule } from '../auth/auth.module';
+import { GqlAuthGuard } from '../auth/gql-auth.guard';
 import { AiModule } from '../ai/ai.module';
 import { RagModule } from '../rag/rag.module';
 import { DremioModule } from '../dremio/dremio.module';
@@ -24,6 +26,7 @@ import { StudioOutputService } from './studio-output.service';
     imports: [
         ConfigModule,
         SupabaseModule,
+        AuthModule,
         AiModule,
         RagModule,
         DremioModule,
@@ -32,6 +35,7 @@ import { StudioOutputService } from './studio-output.service';
     ],
     controllers: [StudioUploadController, StudioWhatsAppController],
     providers: [
+        GqlAuthGuard,
         StudioService,
         GuideFlowService,
         StudioResolver,
