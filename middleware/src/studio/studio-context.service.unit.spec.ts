@@ -49,7 +49,9 @@ function build(opts: {
         ),
     };
     const aiRouter = {
-        generateText: vi.fn(async () => (opts.answer === undefined ? 'ANSWER' : opts.answer)),
+        generateText: vi.fn((_prompt: string) =>
+            Promise.resolve(opts.answer === undefined ? 'ANSWER' : opts.answer),
+        ),
     };
     const dbContextService = {
         fetchSupabaseContext: vi.fn(async () => opts.supa ?? ''),
