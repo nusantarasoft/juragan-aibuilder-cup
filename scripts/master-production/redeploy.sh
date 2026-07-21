@@ -20,16 +20,16 @@ EF=".env.master-production"
 PG="nsoft3-postgres"
 DB="${POSTGRES_DB:-nusantarasoft}"
 
-echo "==> [1/6] make entrypoints executable"
+echo "==> [1/7] make entrypoints executable"
 chmod +x volumes/api/kong-entrypoint.sh scripts/waha-entrypoint.sh 2>/dev/null || true
 
-echo "==> [2/6] build app images (serial: middleware, landing-page, admin)"
+echo "==> [2/7] build app images (serial: middleware, landing-page, admin)"
 for svc in middleware landing-page admin; do
   echo "    building $svc ..."
   docker compose -f "$CF" --env-file "$EF" build "$svc"
 done
 
-echo "==> [3/6] ensure postgres is up & healthy"
+echo "==> [3/7] ensure postgres is up & healthy"
 docker compose -f "$CF" --env-file "$EF" up -d postgres
 for i in $(seq 1 60); do
   if docker exec "$PG" pg_isready -U postgres -h localhost >/dev/null 2>&1; then
@@ -38,14 +38,14 @@ for i in $(seq 1 60); do
   sleep 2
 done
 
-echo "==> [4/6] ensure _supabase database + schemas exist"
+echo "==> [4/7] ensure _supabase database + schemas exist"
 if ! docker exec "$PG" psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='_supabase';" | grep -q 1; then
   docker exec "$PG" psql -U postgres -c "CREATE DATABASE _supabase WITH OWNER supabase_admin;"
 fi
 docker exec "$PG" psql -U postgres -d _supabase -c \
   "CREATE SCHEMA IF NOT EXISTS _analytics AUTHORIZATION supabase_admin; CREATE SCHEMA IF NOT EXISTS _supavisor AUTHORIZATION supabase_admin;"
 
-echo "==> [5/6] fix auth schema ownership (so GoTrue migrations can run)"
+echo "==> [5/7] fix auth schema ownership (so GoTrue migrations can run)"
 docker exec "$PG" psql -U postgres -d "$DB" <<'SQL'
 DO $$
 DECLARE r record;
@@ -63,7 +63,10 @@ END $$;
 ALTER SCHEMA auth OWNER TO supabase_auth_admin;
 SQL
 
-echo "==> [6/6] bring the whole stack up"
+echo "==> [6/7] apply app schema migrations (idempotent)"
+POSTGRES_DB="$DB" PG_CONTAINER="$PG" bash "$DIR/scripts/master-production/apply-migrations.sh"
+
+echo "==> [7/7] bring the whole stack up"
 docker compose -f "$CF" --env-file "$EF" up -d
 
 echo
