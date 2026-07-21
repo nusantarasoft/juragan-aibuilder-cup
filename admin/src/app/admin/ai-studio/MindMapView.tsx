@@ -25,10 +25,12 @@ function colorForDepth(depth: number): string {
 function MindMapNodeCard({ data }: NodeProps) {
     const depth = typeof data.depth === "number" ? data.depth : 1;
     const label = typeof data.label === "string" ? data.label : "";
+    const clickable = data.clickable === true;
     const color = colorForDepth(depth);
     const isRoot = depth <= 1;
     return (
         <div
+            title={clickable ? "Klik untuk tanya di chat" : undefined}
             style={{
                 borderLeft: `3px solid ${color}`,
                 background: "var(--mm-node-bg, #ffffff)",
@@ -40,6 +42,7 @@ function MindMapNodeCard({ data }: NodeProps) {
                 fontWeight: isRoot ? 600 : 400,
                 maxWidth: 200,
                 lineHeight: 1.3,
+                cursor: clickable ? "pointer" : "grab",
             }}
         >
             <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
@@ -51,14 +54,21 @@ function MindMapNodeCard({ data }: NodeProps) {
 
 const nodeTypes = { mindmap: MindMapNodeCard };
 
-type Props = { markdown: string; height?: number | string };
+type Props = {
+    markdown: string;
+    height?: number | string;
+    onNodeAsk?: (label: string) => void;
+};
 
-export default function MindMapView({ markdown, height = 460 }: Props) {
+export default function MindMapView({ markdown, height = 460, onNodeAsk }: Props) {
     const { nodes, edges } = useMemo(() => {
         const parsed = parseMindMapMarkdown(markdown);
         const flow = mindMapToFlow(parsed);
         return {
-            nodes: flow.nodes as unknown as Node[],
+            nodes: flow.nodes.map((n) => ({
+                ...n,
+                data: { ...n.data, clickable: Boolean(onNodeAsk) },
+            })) as unknown as Node[],
             edges: flow.edges.map((e) => ({
                 ...e,
                 type: "smoothstep",
@@ -66,7 +76,7 @@ export default function MindMapView({ markdown, height = 460 }: Props) {
                 style: { stroke: "#c4b5fd", strokeWidth: 1.5 },
             })) as unknown as Edge[],
         };
-    }, [markdown]);
+    }, [markdown, onNodeAsk]);
 
     if (nodes.length === 0) {
         return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Mind map kosong" />;
@@ -86,6 +96,14 @@ export default function MindMapView({ markdown, height = 460 }: Props) {
                 nodesDraggable
                 nodesConnectable={false}
                 elementsSelectable
+                onNodeClick={
+                    onNodeAsk
+                        ? (_, node) => {
+                              const label = typeof node.data?.label === "string" ? node.data.label : "";
+                              if (label) onNodeAsk(label);
+                          }
+                        : undefined
+                }
             >
                 <Background gap={16} color="#e5e7eb" />
                 <Controls showInteractive={false} />

@@ -297,13 +297,20 @@ describe('StudioResolver — generate', () => {
     });
 
     it('generateOutput with sourceIds', async () => {
-        await h.resolver.generateOutput(ctx(), 'nb-1', 'report', 'q', ['s1']);
-        expect(h.studioService.generateStudioOutput).toHaveBeenCalledWith('nb-1', 'report', 'q', ['s1']);
+        await h.resolver.generateOutput(ctx(), 'nb-1', 'report', 'q', ['s1'], null as any);
+        expect(h.studioService.generateStudioOutput).toHaveBeenCalledWith('nb-1', 'report', 'q', ['s1'], undefined);
     });
 
     it('generateOutput without query/sourceIds', async () => {
-        await h.resolver.generateOutput(ctx(), 'nb-1', 'quiz', null as any, undefined as any);
-        expect(h.studioService.generateStudioOutput).toHaveBeenCalledWith('nb-1', 'quiz', undefined, undefined);
+        await h.resolver.generateOutput(ctx(), 'nb-1', 'quiz', null as any, undefined as any, null as any);
+        expect(h.studioService.generateStudioOutput).toHaveBeenCalledWith('nb-1', 'quiz', undefined, undefined, undefined);
+    });
+
+    it('generateOutput forwards valid audioLength option', async () => {
+        await h.resolver.generateOutput(ctx(), 'nb-1', 'audio_script', 'fokus', undefined as any, 'long');
+        expect(h.studioService.generateStudioOutput).toHaveBeenCalledWith(
+            'nb-1', 'audio_script', 'fokus', undefined, { audioLength: 'long' },
+        );
     });
 
     it('playgroundTest maps optional fields', async () => {

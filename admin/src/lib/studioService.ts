@@ -80,10 +80,15 @@ export type StudioOutputType =
     | 'report'
     | 'mind_map'
     | 'quiz'
+    | 'flashcards'
     | 'faq'
     | 'audio_script'
     | 'brief'
-    | 'data_table';
+    | 'data_table'
+    | 'study_guide'
+    | 'briefing_doc'
+    | 'timeline'
+    | 'blog_post';
 
 export interface StudioOutput {
     id: string;
@@ -525,15 +530,16 @@ export const studioService = {
     async generateOutput(
         notebookId: string,
         outputType: StudioOutputType,
-        options?: { query?: string; sourceIds?: string[] },
+        options?: { query?: string; sourceIds?: string[]; audioLength?: "short" | "default" | "long" },
     ): Promise<StudioOutput> {
         const data = await graphqlRequest(`
-            mutation($notebookId: String!, $outputType: String!, $query: String, $sourceIds: [String!]) {
+            mutation($notebookId: String!, $outputType: String!, $query: String, $sourceIds: [String!], $audioLength: String) {
                 studioGenerateOutput(
                     notebookId: $notebookId
                     outputType: $outputType
                     query: $query
                     sourceIds: $sourceIds
+                    audioLength: $audioLength
                 )
             }
         `, {
@@ -541,6 +547,7 @@ export const studioService = {
             outputType,
             query: options?.query ?? null,
             sourceIds: options?.sourceIds?.length ? options.sourceIds : null,
+            audioLength: options?.audioLength ?? null,
         });
         return data.studioGenerateOutput;
     },

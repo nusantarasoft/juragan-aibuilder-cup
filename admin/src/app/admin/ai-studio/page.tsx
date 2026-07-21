@@ -675,6 +675,7 @@ export default function AIStudioPage() {
                                                     sourcesReady={sourceStats.anyIndexed}
                                                     selectedSourceIds={selectedSourceIds}
                                                     onNoteSaved={() => setNotesRefresh((n) => n + 1)}
+                                                    onAskNode={(q) => void handleChatSend(q)}
                                                 />
                                             ) : (
                                                 <NotesPanel

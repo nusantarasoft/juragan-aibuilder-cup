@@ -159,16 +159,91 @@ describe('StudioOutputService', () => {
             expect(r.title).toBe('FAQ — Toko');
         });
 
+        it('flashcards: judul & prompt minta JSON cards', async () => {
+            const { svc } = buildService();
+            let seen = '';
+            const r = await svc.generateFlashcards('nb1', 'Toko', async (p) => {
+                seen = p;
+                return '{"cards":[]}';
+            });
+            expect(r.title).toBe('Flashcards — Toko');
+            expect(seen).toContain('"cards"');
+        });
+
         it('audio script', async () => {
             const { svc } = buildService();
             const r = await svc.generateAudioScript('nb1', 'Toko', async () => 'A');
             expect(r.title).toBe('Audio Script — Toko');
         });
 
+        it('audio script: durasi long & fokus masuk ke prompt', async () => {
+            const { svc } = buildService();
+            let seen = '';
+            await svc.generateAudioScript('nb1', 'Toko', async (p) => {
+                seen = p;
+                return 'A';
+            }, undefined, { length: 'long', focus: 'tren penjualan' });
+            expect(seen).toContain('~10 menit');
+            expect(seen).toContain('tren penjualan');
+        });
+
+        it('audio script: durasi short', async () => {
+            const { svc } = buildService();
+            let seen = '';
+            await svc.generateAudioScript('nb1', 'Toko', async (p) => {
+                seen = p;
+                return 'A';
+            }, undefined, { length: 'short' });
+            expect(seen).toContain('~3 menit');
+        });
+
         it('data table', async () => {
             const { svc } = buildService();
             const r = await svc.generateDataTable('nb1', 'Toko', 'harga', async () => 'D');
             expect(r.title).toBe('Data Table — Toko');
+        });
+    });
+
+    describe('generateReportPreset', () => {
+        it('study guide: judul berlabel & prompt memuat instruksi study guide', async () => {
+            const { svc } = buildService();
+            let seenPrompt = '';
+            const r = await svc.generateReportPreset('nb1', 'Toko', 'study_guide', async (p) => {
+                seenPrompt = p;
+                return '# SG';
+            });
+            expect(r.title).toBe('Study Guide — Toko');
+            expect(r.content).toBe('# SG');
+            expect(seenPrompt).toContain('PANDUAN BELAJAR');
+            expect(seenPrompt).toContain('## Sumber');
+        });
+
+        it('briefing/timeline/blog: label judul benar', async () => {
+            const { svc } = buildService();
+            expect((await svc.generateReportPreset('nb1', 'T', 'briefing_doc', async () => 'x')).title)
+                .toBe('Briefing Doc — T');
+            expect((await svc.generateReportPreset('nb1', 'T', 'timeline', async () => 'x')).title)
+                .toBe('Timeline — T');
+            expect((await svc.generateReportPreset('nb1', 'T', 'blog_post', async () => 'x')).title)
+                .toBe('Blog Post — T');
+        });
+
+        it('konten kosong → fallback berlabel', async () => {
+            const { svc } = buildService({ retrieval: { fileContext: '', dbContext: '' } });
+            const r = await svc.generateReportPreset('nb1', 'Toko', 'timeline', async () => '');
+            expect(r.content).toBe('# Timeline\n\n(Tidak ada konten)');
+        });
+
+        it('meneruskan sourceIds ke retrieval', async () => {
+            const { svc, contextService } = buildService();
+            await svc.generateReportPreset('nb1', 'Toko', 'blog_post', async () => 'x', ['s1', 's2']);
+            expect(contextService.retrieveContext).toHaveBeenCalledWith(
+                'nb1',
+                expect.stringContaining('Toko'),
+                undefined,
+                undefined,
+                { sourceIds: ['s1', 's2'] },
+            );
         });
     });
 

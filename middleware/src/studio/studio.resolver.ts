@@ -278,13 +278,19 @@ export class StudioResolver {
         @Args('outputType', { type: () => String }) outputType: string,
         @Args('query', { type: () => String, nullable: true }) query: string,
         @Args('sourceIds', { type: () => [String], nullable: true }) sourceIds: string[],
+        @Args('audioLength', { type: () => String, nullable: true }) audioLength: string,
     ) {
         await this.studioService.assertNotebookOwner(notebookId, this.requireUserId(context));
+        const validLength =
+            audioLength === 'short' || audioLength === 'default' || audioLength === 'long'
+                ? audioLength
+                : undefined;
         return this.studioService.generateStudioOutput(
             notebookId,
             outputType as any,
             query ?? undefined,
             sourceIds?.length ? sourceIds : undefined,
+            validLength ? { audioLength: validLength } : undefined,
         );
     }
 

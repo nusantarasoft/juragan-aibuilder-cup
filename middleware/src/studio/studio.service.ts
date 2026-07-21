@@ -899,6 +899,7 @@ export class StudioService {
         outputType: StudioOutputType,
         query?: string,
         sourceIds?: string[],
+        options?: { audioLength?: 'short' | 'default' | 'long' },
     ): Promise<any> {
         const notebook = await this.getNotebook(notebookId);
         const gen = (prompt: string) => this.studioGenerateText(prompt);
@@ -920,13 +921,36 @@ export class StudioService {
                 result = await this.outputService.generateFaq(notebookId, notebook.name, gen, sourceIds);
                 break;
             case 'audio_script':
-                result = await this.outputService.generateAudioScript(notebookId, notebook.name, gen, sourceIds);
+                result = await this.outputService.generateAudioScript(notebookId, notebook.name, gen, sourceIds, {
+                    length: options?.audioLength,
+                    focus: query,
+                });
                 break;
             case 'data_table':
                 result = await this.outputService.generateDataTable(
                     notebookId,
                     notebook.name,
                     query || 'Data terstruktur dari sumber',
+                    gen,
+                    sourceIds,
+                );
+                break;
+            case 'flashcards':
+                result = await this.outputService.generateFlashcards(
+                    notebookId,
+                    notebook.name,
+                    gen,
+                    sourceIds,
+                );
+                break;
+            case 'study_guide':
+            case 'briefing_doc':
+            case 'timeline':
+            case 'blog_post':
+                result = await this.outputService.generateReportPreset(
+                    notebookId,
+                    notebook.name,
+                    outputType,
                     gen,
                     sourceIds,
                 );
@@ -943,6 +967,7 @@ export class StudioService {
         return this.outputService.saveOutput(notebookId, outputType, result.title, result.content, {
             query: query ?? null,
             sourceIds: sourceIds ?? null,
+            audioLength: options?.audioLength ?? null,
         });
     }
 
