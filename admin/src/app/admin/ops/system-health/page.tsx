@@ -73,7 +73,7 @@ export default function SystemHealthPage() {
         try {
             let url: string;
             if (service.endpoint === '/graphql') {
-                url = 'http://localhost:4001/graphql';
+                url = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4001/graphql';
             } else if (service.endpoint === '/') {
                 url = 'http://localhost:3003/';
             } else {

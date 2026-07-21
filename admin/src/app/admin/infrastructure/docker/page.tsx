@@ -21,7 +21,7 @@ interface ContainerInfo {
     restarts: number; created: string;
 }
 
-const GRAPHQL_URL = process.env.NEXT_PUBLIC_MIDDLEWARE_URL || 'http://localhost:4001/graphql';
+const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || process.env.NEXT_PUBLIC_MIDDLEWARE_URL || 'http://localhost:4001/graphql';
 
 async function gql<T>(query: string, variables?: any): Promise<T> {
     try {

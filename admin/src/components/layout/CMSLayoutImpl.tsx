@@ -375,7 +375,7 @@ export default function CMSLayoutImpl({
     });
 
     // Starrring logic
-    const GRAPHQL_URL = "http://127.0.0.1:4001/graphql";
+    const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || "http://127.0.0.1:4001/graphql";
 
     const fetchStars = React.useCallback(async () => {
         try {
