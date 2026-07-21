@@ -186,6 +186,26 @@ export class StudioContextService {
         }
     }
 
+    /** Instruction line for the requested answer language (empty = follow the question). */
+    languageRule(language?: string): string {
+        switch ((language || '').toLowerCase()) {
+            case 'id':
+                return 'Jawab dalam Bahasa Indonesia.';
+            case 'en':
+                return 'Answer in English.';
+            case 'jv':
+                return 'Wangsulana nganggo Basa Jawa.';
+            case 'ms':
+                return 'Jawab dalam Bahasa Melayu.';
+            case 'ar':
+                return 'أجب باللغة العربية.';
+            case 'zh':
+                return '用中文回答。';
+            default:
+                return '';
+        }
+    }
+
     private buildGroundedPrompt(params: {
         notebookName: string;
         audience: 'admin' | 'customer';
@@ -194,8 +214,9 @@ export class StudioContextService {
         chatInstruction?: string;
         conversationLines: string[];
         retrieval: RetrievalResult;
+        language?: string;
     }): string {
-        const { notebookName, audience, question, instruction, chatInstruction, conversationLines, retrieval } =
+        const { notebookName, audience, question, instruction, chatInstruction, conversationLines, retrieval, language } =
             params;
         const hasFile = retrieval.fileContext.length > 0;
         const hasDb = retrieval.dbContext.length > 0;
@@ -215,6 +236,10 @@ export class StudioContextService {
             hasDb
                 ? 'Gunakan juga data database operasional di bawah untuk pertanyaan status/order/analitik.'
                 : '',
+            hasFile
+                ? 'Bila memakai informasi dari sumber, sertakan sitasi inline dalam format [n] sesuai nomor [Sumber n].'
+                : '',
+            this.languageRule(language),
             'Gunakan markdown. Kutip nama file bila relevan.',
         ].filter(Boolean);
 
@@ -242,6 +267,7 @@ export class StudioContextService {
         chatInstruction?: string;
         conversationLines: string[];
         retrieval: RetrievalResult;
+        language?: string;
     }): Promise<string> {
         const answer = await this.generateText(this.buildGroundedPrompt(params));
         return answer || 'Maaf, saya tidak dapat menghasilkan jawaban saat ini.';
@@ -260,6 +286,7 @@ export class StudioContextService {
             chatInstruction?: string;
             conversationLines: string[];
             retrieval: RetrievalResult;
+            language?: string;
         },
         onDelta: (text: string) => void,
     ): Promise<string> {

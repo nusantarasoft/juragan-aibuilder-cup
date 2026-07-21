@@ -83,6 +83,7 @@ export type StudioOutputType =
     | 'flashcards'
     | 'faq'
     | 'audio_script'
+    | 'video_overview'
     | 'brief'
     | 'data_table'
     | 'study_guide'
@@ -215,15 +216,16 @@ export const studioService = {
 
     async updateNotebook(
         notebookId: string,
-        patch: { name?: string; description?: string; chatInstruction?: string },
+        patch: { name?: string; description?: string; chatInstruction?: string; icon?: string },
     ): Promise<StudioNotebook> {
         const data = await graphqlRequest(`
-            mutation($notebookId: String!, $name: String, $description: String, $chatInstruction: String) {
+            mutation($notebookId: String!, $name: String, $description: String, $chatInstruction: String, $icon: String) {
                 updateStudioNotebook(
                     notebookId: $notebookId
                     name: $name
                     description: $description
                     chatInstruction: $chatInstruction
+                    icon: $icon
                 )
             }
         `, {
@@ -231,6 +233,7 @@ export const studioService = {
             name: patch.name ?? null,
             description: patch.description ?? null,
             chatInstruction: patch.chatInstruction ?? null,
+            icon: patch.icon ?? null,
         });
         return data.updateStudioNotebook;
     },
@@ -288,6 +291,60 @@ export const studioService = {
         return data.importStudioUrl;
     },
 
+    async addTextSource(notebookId: string, title: string, content: string): Promise<StudioSource> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!, $title: String!, $content: String!) {
+                studioAddTextSource(notebookId: $notebookId, title: $title, content: $content)
+            }
+        `, { notebookId, title, content });
+        return data.studioAddTextSource;
+    },
+
+    async createShareLink(notebookId: string): Promise<{ token: string; isShared: boolean }> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!) {
+                studioCreateShareLink(notebookId: $notebookId)
+            }
+        `, { notebookId });
+        return data.studioCreateShareLink;
+    },
+
+    async revokeShareLink(notebookId: string): Promise<boolean> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!) {
+                studioRevokeShareLink(notebookId: $notebookId)
+            }
+        `, { notebookId });
+        return data.studioRevokeShareLink;
+    },
+
+    async synthesizeAudio(
+        notebookId: string,
+        outputId: string,
+        language?: string,
+    ): Promise<{ url: string; cached: boolean }> {
+        const data = await graphqlRequest(`
+            mutation($notebookId: String!, $outputId: String!, $language: String) {
+                studioSynthesizeAudio(notebookId: $notebookId, outputId: $outputId, language: $language)
+            }
+        `, { notebookId, outputId, language: language ?? null });
+        return data.studioSynthesizeAudio;
+    },
+
+    /** Public (unauthenticated) fetch of a shared notebook by token. */
+    async getSharedNotebook(token: string): Promise<{
+        notebook: { id: string; name: string; description?: string; icon?: string; created_at: string; updated_at: string };
+        sources: { id: string; filename: string; file_type?: string; parse_status: string }[];
+        outputs: StudioOutput[];
+    }> {
+        const url = `${GRAPHQL_URL.replace("/graphql", "")}/studio/shared/${encodeURIComponent(token)}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+            throw new Error(res.status === 404 ? "Notebook tidak ditemukan atau tidak dibagikan" : `Gagal memuat (${res.status})`);
+        }
+        return res.json();
+    },
+
     // ── Chat ─────────────────────────────────
 
     async chat(
@@ -295,16 +352,17 @@ export const studioService = {
         question: string,
         conversationId?: string,
         userId?: string,
-        options?: { sourceIds?: string[] },
+        options?: { sourceIds?: string[]; language?: string },
     ): Promise<ChatResponse> {
         const data = await graphqlRequest(`
-            mutation($notebookId: String!, $question: String!, $conversationId: String, $userId: String, $sourceIds: [String!]) {
+            mutation($notebookId: String!, $question: String!, $conversationId: String, $userId: String, $sourceIds: [String!], $language: String) {
                 studioChat(
                     notebookId: $notebookId
                     question: $question
                     conversationId: $conversationId
                     userId: $userId
                     sourceIds: $sourceIds
+                    language: $language
                 )
             }
         `, {
@@ -313,6 +371,7 @@ export const studioService = {
             conversationId,
             userId,
             sourceIds: options?.sourceIds?.length ? options.sourceIds : null,
+            language: options?.language ?? null,
         });
         return data.studioChat;
     },
@@ -332,7 +391,7 @@ export const studioService = {
             onDelta?: (text: string) => void;
             onDone?: (data: ChatResponse) => void;
         },
-        options?: { conversationId?: string; userId?: string; sourceIds?: string[]; signal?: AbortSignal },
+        options?: { conversationId?: string; userId?: string; sourceIds?: string[]; language?: string; signal?: AbortSignal },
     ): Promise<void> {
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         const token = getStoredToken();
@@ -347,6 +406,7 @@ export const studioService = {
                 question,
                 conversationId: options?.conversationId,
                 sourceIds: options?.sourceIds?.length ? options.sourceIds : undefined,
+                language: options?.language ?? undefined,
             }),
             signal: options?.signal,
         });
@@ -530,16 +590,17 @@ export const studioService = {
     async generateOutput(
         notebookId: string,
         outputType: StudioOutputType,
-        options?: { query?: string; sourceIds?: string[]; audioLength?: "short" | "default" | "long" },
+        options?: { query?: string; sourceIds?: string[]; audioLength?: "short" | "default" | "long"; language?: string },
     ): Promise<StudioOutput> {
         const data = await graphqlRequest(`
-            mutation($notebookId: String!, $outputType: String!, $query: String, $sourceIds: [String!], $audioLength: String) {
+            mutation($notebookId: String!, $outputType: String!, $query: String, $sourceIds: [String!], $audioLength: String, $language: String) {
                 studioGenerateOutput(
                     notebookId: $notebookId
                     outputType: $outputType
                     query: $query
                     sourceIds: $sourceIds
                     audioLength: $audioLength
+                    language: $language
                 )
             }
         `, {
@@ -548,6 +609,7 @@ export const studioService = {
             query: options?.query ?? null,
             sourceIds: options?.sourceIds?.length ? options.sourceIds : null,
             audioLength: options?.audioLength ?? null,
+            language: options?.language ?? null,
         });
         return data.studioGenerateOutput;
     },

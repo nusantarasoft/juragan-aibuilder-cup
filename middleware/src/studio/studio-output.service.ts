@@ -13,6 +13,7 @@ export type StudioOutputType =
     | 'flashcards'
     | 'faq'
     | 'audio_script'
+    | 'video_overview'
     | 'brief'
     | 'data_table'
     | StudioReportStyle;
@@ -205,6 +206,28 @@ export class StudioOutputService {
         ].join('\n');
         const content = await generateText(prompt);
         return { title: `Flashcards — ${notebookName}`, content };
+    }
+
+    async generateVideoOverview(
+        notebookId: string,
+        notebookName: string,
+        generateText: (prompt: string) => Promise<string>,
+        sourceIds?: string[],
+    ): Promise<{ title: string; content: string }> {
+        const { fileContext } = await this.buildRetrievalContext(
+            notebookId,
+            `Ikhtisar visual bertahap (slide) untuk ${notebookName}`,
+            sourceIds,
+        );
+        const prompt = [
+            `Buat VIDEO OVERVIEW (slide bernarasi) dari sumber notebook "${notebookName}".`,
+            'Kembalikan HANYA JSON valid (tanpa markdown fences). Bentuk persis:',
+            '{"title":"...","slides":[{"heading":"judul slide","bullets":["poin 1","poin 2"],"narration":"kalimat narasi yang dibacakan untuk slide ini"}]}',
+            '6-10 slide. heading singkat, 2-4 bullet ringkas, narration 1-3 kalimat naratif yang mengalir. Hanya dari sumber.',
+            fileContext ? `## Sumber\n${fileContext}` : '(Tidak ada sumber)',
+        ].join('\n');
+        const content = await generateText(prompt);
+        return { title: `Video Overview — ${notebookName}`, content };
     }
 
     async generateFaq(

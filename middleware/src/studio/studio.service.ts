@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomBytes } from 'crypto';
 import * as Minio from 'minio';
 import { SupabaseService } from '../supabase/supabase.service';
 import { AiRouterService } from '../ai/ai-router.service';
@@ -21,6 +22,16 @@ import {
 } from './query-understanding';
 import { assertNoSupabaseError, normalizeOptionalUuid, resolveUserIdForDb } from './studio-supabase.util';
 import { resolveSourceStorage } from './studio-source-storage.util';
+import {
+    detectImportKind,
+    extractYoutubeCaptionUrl,
+    googleDocsExportUrl,
+    htmlToText,
+    importFilename,
+    parseYoutubeCaptionXml,
+    youtubeVideoId,
+} from './studio-import.util';
+import { chunkForTts, cleanForTts, stripSpeakerLabels, ttsLanguageCode } from './studio-tts.util';
 
 /**
  * Studio AI business logic — orchestrates notebooks, sources, and conversations.
@@ -205,13 +216,14 @@ export class StudioService {
 
     async updateNotebook(
         notebookId: string,
-        patch: { name?: string; description?: string; chat_instruction?: string },
+        patch: { name?: string; description?: string; chat_instruction?: string; icon?: string },
     ): Promise<any> {
         const notebook = await this.getNotebook(notebookId);
         const config = this.dbContextService.parseConfig(notebook.context_config);
         const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
         if (patch.name?.trim()) updates.name = patch.name.trim();
         if (patch.description !== undefined) updates.description = patch.description;
+        if (patch.icon?.trim()) updates.icon = patch.icon.trim();
         if (patch.chat_instruction !== undefined) {
             updates.context_config = { ...config, chat_instruction: patch.chat_instruction };
         }
@@ -234,6 +246,167 @@ export class StudioService {
 
         assertNoSupabaseError(error, 'Failed to delete notebook');
         return true;
+    }
+
+    // ── Sharing (public view-only link) ──────────────────────────────
+
+    /**
+     * Enable public view-only sharing: assigns an unguessable token (reused if it
+     * already exists) and flips is_shared. Returns { token, isShared }.
+     */
+    async createShareLink(notebookId: string): Promise<{ token: string; isShared: boolean }> {
+        const notebook = await this.getNotebook(notebookId);
+        const token: string =
+            notebook.share_token || randomBytes(24).toString('base64url');
+        const { error } = await this.supabaseService.getAdminClient()
+            .from('studio_notebooks')
+            .update({ share_token: token, is_shared: true, shared_at: new Date().toISOString() })
+            .eq('id', notebookId);
+        assertNoSupabaseError(error, 'Failed to create share link');
+        return { token, isShared: true };
+    }
+
+    /** Disable public sharing (keeps the token cleared so old links stop working). */
+    async revokeShareLink(notebookId: string): Promise<boolean> {
+        const { error } = await this.supabaseService.getAdminClient()
+            .from('studio_notebooks')
+            .update({ share_token: null, is_shared: false, shared_at: null })
+            .eq('id', notebookId);
+        assertNoSupabaseError(error, 'Failed to revoke share link');
+        return true;
+    }
+
+    /**
+     * Public, unauthenticated read of a shared notebook by token. Returns a
+     * read-only projection (notebook meta + sources list + generated outputs).
+     * Throws NotFoundException when the token is invalid or sharing is disabled.
+     */
+    async getSharedNotebook(token: string): Promise<any> {
+        const trimmed = (token || '').trim();
+        if (!trimmed) throw new NotFoundException('Shared notebook not found');
+        const admin = this.supabaseService.getAdminClient();
+        const { data: notebook, error } = await admin
+            .from('studio_notebooks')
+            .select('id, name, description, icon, is_shared, share_token, created_at, updated_at')
+            .eq('share_token', trimmed)
+            .eq('is_shared', true)
+            .single();
+        if (error || !notebook) throw new NotFoundException('Shared notebook not found');
+
+        const { data: sources } = await admin
+            .from('studio_notebook_sources')
+            .select('id, filename, file_type, parse_status')
+            .eq('notebook_id', notebook.id)
+            .order('created_at', { ascending: true });
+
+        const { data: outputs } = await admin
+            .from('studio_outputs')
+            .select('id, output_type, title, content, metadata, created_at')
+            .eq('notebook_id', notebook.id)
+            .order('created_at', { ascending: false });
+
+        return {
+            notebook: {
+                id: notebook.id,
+                name: notebook.name,
+                description: notebook.description,
+                icon: notebook.icon,
+                created_at: notebook.created_at,
+                updated_at: notebook.updated_at,
+            },
+            sources: sources || [],
+            outputs: outputs || [],
+        };
+    }
+
+    // ── Audio synthesis (Audio Overview → MP3) ───────────────────────
+
+    /**
+     * Synthesize an audio_script output into a real MP3 using Google Cloud
+     * Text-to-Speech (REST, API-key auth — reuses the configured google_api_key).
+     * Uploads the file to object storage and records a presigned URL on the
+     * output metadata. Throws BadRequestException when TTS is not configured or
+     * the API rejects the request.
+     */
+    async synthesizeAudioForOutput(
+        notebookId: string,
+        outputId: string,
+        language?: string,
+    ): Promise<{ url: string; cached: boolean }> {
+        const output = await this.outputService.getOutput(outputId);
+        if (output.notebook_id !== notebookId) {
+            throw new NotFoundException('Output not found');
+        }
+
+        // Return the cached URL if we already synthesized and it is still valid.
+        const existingKey: string | undefined = output.metadata?.audio_s3_key;
+        if (existingKey) {
+            try {
+                const url = await this.minioClient.presignedGetObject(this.bucket, existingKey, 7 * 24 * 3600);
+                return { url, cached: true };
+            } catch {
+                /* re-synthesize below */
+            }
+        }
+
+        const settings = await this.aiSettings.getRawSettings();
+        const apiKey = settings.google_api_key?.trim();
+        if (!apiKey) {
+            throw new BadRequestException(
+                'Text-to-Speech belum dikonfigurasi. Tambahkan Google API key (dengan Cloud Text-to-Speech API aktif) di pengaturan AI.',
+            );
+        }
+
+        const scriptSource = stripSpeakerLabels(String(output.content ?? ''));
+        const script = cleanForTts(scriptSource);
+        const chunks = chunkForTts(script);
+        if (chunks.length === 0) {
+            throw new BadRequestException('Naskah audio kosong.');
+        }
+
+        const languageCode = ttsLanguageCode(language);
+        const buffers: Buffer[] = [];
+        for (const chunk of chunks) {
+            const res = await fetch(
+                `https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(apiKey)}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        input: { text: chunk },
+                        voice: { languageCode, ssmlGender: 'NEUTRAL' },
+                        audioConfig: { audioEncoding: 'MP3' },
+                    }),
+                },
+            );
+            if (!res.ok) {
+                const detail = await res.text().catch(() => '');
+                throw new BadRequestException(
+                    `Sintesis suara gagal (${res.status}). ${detail.slice(0, 200)}`,
+                );
+            }
+            const json = (await res.json()) as { audioContent?: string };
+            if (!json.audioContent) {
+                throw new BadRequestException('Respons TTS tidak berisi audio.');
+            }
+            buffers.push(Buffer.from(json.audioContent, 'base64'));
+        }
+
+        const mp3 = Buffer.concat(buffers);
+        const s3Key = `studio/${notebookId}/audio/${outputId}.mp3`;
+        await this.minioClient.putObject(this.bucket, s3Key, mp3, mp3.length, {
+            'Content-Type': 'audio/mpeg',
+        });
+
+        await this.supabaseService.getAdminClient()
+            .from('studio_outputs')
+            .update({
+                metadata: { ...(output.metadata ?? {}), audio_s3_key: s3Key, audio_bytes: mp3.length },
+            })
+            .eq('id', outputId);
+
+        const url = await this.minioClient.presignedGetObject(this.bucket, s3Key, 7 * 24 * 3600);
+        return { url, cached: false };
     }
 
     // ── Sources ──────────────────────────────────────────────────────
@@ -359,6 +532,48 @@ export class StudioService {
         return true;
     }
 
+    /** Fetch a URL as text with a hard timeout. Throws BadRequestException on failure. */
+    private async fetchTextWithTimeout(url: string, timeoutMs = 20000): Promise<string> {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            const res = await fetch(url, {
+                headers: { 'User-Agent': 'NusantaraSoft-AI-Studio/1.0' },
+                signal: controller.signal,
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.text();
+        } catch (e: any) {
+            throw new BadRequestException(`Failed to fetch URL: ${e?.message ?? e}`);
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
+
+    /** Import a YouTube video transcript (captions) as a text source. */
+    private async importYoutube(notebookId: string, url: string): Promise<any> {
+        const videoId = youtubeVideoId(url);
+        if (!videoId) throw new BadRequestException('Invalid YouTube URL');
+        const watchHtml = await this.fetchTextWithTimeout(
+            `https://www.youtube.com/watch?v=${videoId}`,
+        );
+        const captionUrl = extractYoutubeCaptionUrl(watchHtml);
+        if (!captionUrl) {
+            throw new BadRequestException(
+                'Video ini tidak memiliki transkrip/caption yang bisa diimpor.',
+            );
+        }
+        const captionXml = await this.fetchTextWithTimeout(captionUrl);
+        const transcript = parseYoutubeCaptionXml(captionXml);
+        if (transcript.length < 50) {
+            throw new BadRequestException('Transkrip video terlalu pendek untuk diimpor.');
+        }
+        const titleMatch = /<title>([^<]*)<\/title>/i.exec(watchHtml);
+        const title = titleMatch ? titleMatch[1].replace(/ - YouTube$/, '').trim() : `youtube_${videoId}`;
+        const body = `Sumber: YouTube (${url})\nJudul: ${title}\n\n${transcript}`.slice(0, 500_000);
+        return this.saveTextSource(notebookId, importFilename(title), body);
+    }
+
     async importUrl(notebookId: string, url: string): Promise<any> {
         const trimmed = url?.trim();
         if (!trimmed) throw new BadRequestException('URL is required');
@@ -372,39 +587,51 @@ export class StudioService {
             throw new BadRequestException('Only http/https URLs are supported');
         }
 
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 20000);
-        let html: string;
-        try {
-            const res = await fetch(trimmed, {
-                headers: { 'User-Agent': 'NusantaraSoft-AI-Studio/1.0' },
-                signal: controller.signal,
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            html = await res.text();
-        } catch (e: any) {
-            throw new BadRequestException(`Failed to fetch URL: ${e?.message ?? e}`);
-        } finally {
-            clearTimeout(timeout);
+        const kind = detectImportKind(trimmed);
+        if (kind === 'youtube') {
+            return this.importYoutube(notebookId, trimmed);
         }
 
-        const text = html
-            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
-            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
-            .replace(/<[^>]+>/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim()
-            .slice(0, 500_000);
+        // Google Docs/Slides: fetch the plain-text export of the shared document.
+        const fetchUrl = (kind === 'google_doc' || kind === 'google_slides')
+            ? (googleDocsExportUrl(trimmed) ?? trimmed)
+            : trimmed;
+        const usesGoogleExport = fetchUrl !== trimmed;
+
+        const raw = await this.fetchTextWithTimeout(fetchUrl);
+        const text = (usesGoogleExport ? raw.replace(/\s+\n/g, '\n').trim() : htmlToText(raw)).slice(0, 500_000);
 
         if (text.length < 50) {
             throw new BadRequestException('Could not extract enough text from URL');
         }
 
-        const filename = `${parsed.hostname.replace(/\W+/g, '_')}_${Date.now()}.txt`;
+        return this.saveTextSource(notebookId, importFilename(parsed.hostname), text);
+    }
+
+    /**
+     * Persist arbitrary plain text as a Studio source (used by paste-text and
+     * URL/transcript importers). Runs through the same upload + ingest pipeline.
+     */
+    async addTextSource(notebookId: string, title: string, content: string): Promise<any> {
+        const body = (content ?? '').trim();
+        if (body.length < 20) {
+            throw new BadRequestException('Teks terlalu pendek (minimal 20 karakter).');
+        }
+        const label = (title ?? '').trim() || 'Catatan teks';
+        return this.saveTextSource(notebookId, importFilename(label), body.slice(0, 500_000), label);
+    }
+
+    /** Shared helper: turn a string into a text/plain source upload. */
+    private saveTextSource(
+        notebookId: string,
+        filename: string,
+        text: string,
+        displayName?: string,
+    ): Promise<any> {
         const buffer = Buffer.from(text, 'utf8');
         return this.uploadSource(notebookId, {
             buffer,
-            originalname: filename,
+            originalname: displayName ? `${displayName}.txt` : filename,
             mimetype: 'text/plain',
             size: buffer.length,
         });
@@ -500,6 +727,7 @@ export class StudioService {
             instruction?: string;
             queryUnderstanding?: QueryUnderstandingResult;
             sourceIds?: string[];
+            language?: string;
         },
     ): Promise<{ answer: string; references: { content: string; docName: string; score: number; chunkId?: string }[]; rawChunks: any[] }> {
         const notebook = await this.getNotebook(notebookId);
@@ -544,6 +772,7 @@ export class StudioService {
             chatInstruction: config.chat_instruction,
             conversationLines,
             retrieval,
+            language: options?.language,
         });
 
         return {
@@ -575,7 +804,7 @@ export class StudioService {
         question: string,
         conversationId?: string,
         userId?: string,
-        options?: { sourceIds?: string[] },
+        options?: { sourceIds?: string[]; language?: string },
     ): Promise<any> {
         const notebook = await this.getNotebook(notebookId);
 
@@ -613,7 +842,7 @@ export class StudioService {
             notebookId,
             conversation.id,
             question,
-            { queryUnderstanding: qu, sourceIds: options?.sourceIds },
+            { queryUnderstanding: qu, sourceIds: options?.sourceIds, language: options?.language },
         );
         await this.appendStudioMessage(conversation.id, 'assistant', answer, rawChunks);
 
@@ -645,7 +874,7 @@ export class StudioService {
         question: string,
         conversationId: string | undefined,
         userId: string | undefined,
-        options: { sourceIds?: string[] } | undefined,
+        options: { sourceIds?: string[]; language?: string } | undefined,
         emit: (event: 'meta' | 'delta' | 'done', data: Record<string, unknown>) => void,
     ): Promise<void> {
         const notebook = await this.getNotebook(notebookId);
@@ -703,6 +932,7 @@ export class StudioService {
                     (l) => `${l.role === 'assistant' ? 'Assistant' : 'User'}: ${l.content}`,
                 ),
                 retrieval,
+                language: options?.language,
             },
             (text) => emit('delta', { text }),
         );
@@ -899,15 +1129,21 @@ export class StudioService {
         outputType: StudioOutputType,
         query?: string,
         sourceIds?: string[],
-        options?: { audioLength?: 'short' | 'default' | 'long' },
+        options?: { audioLength?: 'short' | 'default' | 'long'; language?: string },
     ): Promise<any> {
         const notebook = await this.getNotebook(notebookId);
-        const gen = (prompt: string) => this.studioGenerateText(prompt);
+        const langRule = this.contextService.languageRule(options?.language);
+        const gen = (prompt: string) =>
+            this.studioGenerateText(langRule ? `${langRule}\n\n${prompt}` : prompt);
 
         let result: { title: string; content: string };
         switch (outputType) {
             case 'report': {
-                const content = await this.generateReport(notebookId, query || `Analisis lengkap ${notebook.name}`);
+                const content = await this.generateReport(
+                    notebookId,
+                    query || `Analisis lengkap ${notebook.name}`,
+                    options?.language,
+                );
                 result = { title: `Report — ${notebook.name}`, content };
                 break;
             }
@@ -943,6 +1179,14 @@ export class StudioService {
                     sourceIds,
                 );
                 break;
+            case 'video_overview':
+                result = await this.outputService.generateVideoOverview(
+                    notebookId,
+                    notebook.name,
+                    gen,
+                    sourceIds,
+                );
+                break;
             case 'study_guide':
             case 'briefing_doc':
             case 'timeline':
@@ -971,7 +1215,7 @@ export class StudioService {
         });
     }
 
-    async generateReport(notebookId: string, query: string): Promise<string> {
+    async generateReport(notebookId: string, query: string, language?: string): Promise<string> {
         const notebook = await this.getNotebook(notebookId);
         const qu = await this.understandUserQuery(query);
         const config = this.dbContextService.parseConfig(notebook.context_config);
@@ -982,7 +1226,9 @@ export class StudioService {
             config,
         );
 
+        const langRule = this.contextService.languageRule(language);
         const reportPrompt = [
+            langRule,
             `You are an executive analyst for notebook "${notebook.name}".`,
             'Create a comprehensive executive report using ONLY the evidence below.',
             '',

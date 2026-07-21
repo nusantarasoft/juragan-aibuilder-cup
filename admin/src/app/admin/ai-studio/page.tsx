@@ -43,6 +43,7 @@ import {
     MenuUnfoldOutlined,
     PlusOutlined,
     DeleteOutlined,
+    EditOutlined,
     BookOutlined,
     CloudUploadOutlined,
     CheckCircleFilled,
@@ -52,6 +53,7 @@ import {
     AppstoreAddOutlined,
     ApartmentOutlined,
     SettingOutlined,
+    ShareAltOutlined,
 } from "@ant-design/icons";
 import SourcesPanel from "./SourcesPanel";
 import StudioOutputsPanel from "./StudioOutputsPanel";
@@ -108,6 +110,14 @@ export default function AIStudioPage() {
     const [newNotebookName, setNewNotebookName] = useState("");
     const [newNotebookDesc, setNewNotebookDesc] = useState("");
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editName, setEditName] = useState("");
+    const [editDesc, setEditDesc] = useState("");
+    const [editIcon, setEditIcon] = useState("📓");
+    const [savingEdit, setSavingEdit] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [shareToken, setShareToken] = useState<string | null>(null);
+    const [shareLoading, setShareLoading] = useState(false);
 
     // ── Source State ──
     const [sources, setSources] = useState<StudioSource[]>([]);
@@ -138,6 +148,9 @@ export default function AIStudioPage() {
         initGuidedFromPublished,
         restartGuidedSession,
         sendMessage,
+        regenerateLast,
+        language: chatLanguage,
+        setLanguage: setChatLanguage,
         setChatMode,
         setGuidedFlow,
         switchToFreeChat,
@@ -340,6 +353,78 @@ export default function AIStudioPage() {
         }
     };
 
+    const openEditNotebook = () => {
+        if (!activeNotebook) return;
+        setEditName(activeNotebook.name);
+        setEditDesc(activeNotebook.description ?? "");
+        setEditIcon(activeNotebook.icon || "📓");
+        setShowEditModal(true);
+    };
+
+    const handleUpdateNotebook = async () => {
+        if (!activeNotebook || !editName.trim()) return;
+        setSavingEdit(true);
+        try {
+            const updated = await studioService.updateNotebook(activeNotebook.id, {
+                name: editName.trim(),
+                description: editDesc,
+                icon: editIcon,
+            });
+            setActiveNotebook(updated);
+            setNotebooks((prev) => prev.map((n) => (n.id === updated.id ? { ...n, ...updated } : n)));
+            message.success("Notebook diperbarui");
+            setShowEditModal(false);
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Gagal memperbarui notebook");
+        } finally {
+            setSavingEdit(false);
+        }
+    };
+
+    const shareUrl =
+        shareToken && typeof window !== "undefined"
+            ? `${window.location.origin}/shared/studio/${shareToken}`
+            : "";
+
+    const openShareModal = async () => {
+        if (!activeNotebook) return;
+        setShowShareModal(true);
+        setShareLoading(true);
+        try {
+            const res = await studioService.createShareLink(activeNotebook.id);
+            setShareToken(res.token);
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Gagal membuat tautan berbagi");
+        } finally {
+            setShareLoading(false);
+        }
+    };
+
+    const handleRevokeShare = async () => {
+        if (!activeNotebook) return;
+        setShareLoading(true);
+        try {
+            await studioService.revokeShareLink(activeNotebook.id);
+            setShareToken(null);
+            message.success("Berbagi dinonaktifkan");
+            setShowShareModal(false);
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Gagal menonaktifkan berbagi");
+        } finally {
+            setShareLoading(false);
+        }
+    };
+
+    const handleCopyShareLink = async () => {
+        if (!shareUrl) return;
+        try {
+            await navigator.clipboard?.writeText(shareUrl);
+            message.success("Tautan disalin");
+        } catch {
+            message.error("Gagal menyalin tautan");
+        }
+    };
+
     const handleDeleteNotebook = async (notebookId: string) => {
         try {
             await studioService.deleteNotebook(notebookId);
@@ -448,9 +533,24 @@ export default function AIStudioPage() {
 
     const handleImportUrl = async (url: string) => {
         if (!activeNotebook) return;
-        await studioService.importUrl(activeNotebook.id, url);
-        message.success("URL diimport — indeksasi dimulai");
-        await loadSourceStatus(activeNotebook.id);
+        try {
+            await studioService.importUrl(activeNotebook.id, url);
+            message.success("URL diimport — indeksasi dimulai");
+            await loadSourceStatus(activeNotebook.id);
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Gagal import URL");
+        }
+    };
+
+    const handleAddText = async (title: string, content: string) => {
+        if (!activeNotebook) return;
+        try {
+            await studioService.addTextSource(activeNotebook.id, title, content);
+            message.success("Teks ditambahkan — indeksasi dimulai");
+            await loadSourceStatus(activeNotebook.id);
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Gagal menambah teks");
+        }
     };
 
     const handleSaveChatToNote = async (content: string) => {
@@ -542,6 +642,16 @@ export default function AIStudioPage() {
                             Notebook
                         </Button>
                         {activeNotebook && (
+                            <AnimatedTooltip content="Edit notebook">
+                                <Button icon={<EditOutlined />} size="small" onClick={openEditNotebook} />
+                            </AnimatedTooltip>
+                        )}
+                        {activeNotebook && (
+                            <AnimatedTooltip content="Bagikan notebook">
+                                <Button icon={<ShareAltOutlined />} size="small" onClick={() => void openShareModal()} />
+                            </AnimatedTooltip>
+                        )}
+                        {activeNotebook && (
                             <Popconfirm title="Hapus notebook?" onConfirm={() => void handleDeleteNotebook(activeNotebook.id)}>
                                 <Button danger icon={<DeleteOutlined />} size="small" />
                             </Popconfirm>
@@ -579,6 +689,7 @@ export default function AIStudioPage() {
                                             onOpenMedia={() => void openMediaModal()}
                                             onUpload={handleUploadFile}
                                             onImportUrl={handleImportUrl}
+                                            onAddText={handleAddText}
                                             onRemove={(id) => void handleRemoveSource(id)}
                                             onReindex={(id) => void handleReindexSource(id)}
                                             onConfigureChat={() => setConfigureChatOpen(true)}
@@ -626,6 +737,9 @@ export default function AIStudioPage() {
                                     onResumeConversation={(id) => void resumeConversation(id)}
                                     onCitationClick={(chunkId, docName, score) => setChunkPreview({ chunkId, docName, score })}
                                     onSaveToNote={(content) => void handleSaveChatToNote(content)}
+                                    onRegenerate={() => void regenerateLast()}
+                                    language={chatLanguage}
+                                    onSetLanguage={setChatLanguage}
                                 />
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-full gap-4 opacity-80 p-6">
@@ -725,6 +839,106 @@ export default function AIStudioPage() {
                             value={newNotebookDesc}
                             onChange={e => setNewNotebookDesc(e.target.value)}
                             placeholder="What is this notebook about?"
+                        />
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Share Notebook Modal */}
+            <Modal
+                title={<span><ShareAltOutlined style={{ color: themeColor, marginRight: 8 }} />Bagikan Notebook</span>}
+                open={showShareModal}
+                onCancel={() => setShowShareModal(false)}
+                footer={[
+                    <Button key="revoke" danger loading={shareLoading} onClick={() => void handleRevokeShare()}>
+                        Nonaktifkan berbagi
+                    </Button>,
+                    <Button key="close" onClick={() => setShowShareModal(false)}>Tutup</Button>,
+                ]}
+                centered
+            >
+                <div className="py-2 space-y-3">
+                    <Text type="secondary" className="text-xs block">
+                        Siapa pun dengan tautan ini dapat melihat notebook (hanya-baca): output, daftar sumber,
+                        tanpa bisa mengubah apa pun. Nonaktifkan kapan saja untuk mematikan tautan.
+                    </Text>
+                    <Space.Compact style={{ width: "100%" }}>
+                        <Input readOnly value={shareLoading ? "Membuat tautan…" : shareUrl} />
+                        <Button
+                            type="primary"
+                            icon={<DownloadOutlined />}
+                            disabled={!shareUrl || shareLoading}
+                            onClick={() => void handleCopyShareLink()}
+                            style={{ backgroundColor: themeColor, borderColor: themeColor }}
+                        >
+                            Salin
+                        </Button>
+                    </Space.Compact>
+                    {shareUrl && (
+                        <a href={shareUrl} target="_blank" rel="noreferrer" className="text-xs" style={{ color: themeColor }}>
+                            Buka pratinjau publik →
+                        </a>
+                    )}
+                </div>
+            </Modal>
+
+            {/* Edit Notebook Modal */}
+            <Modal
+                title={<span><EditOutlined style={{ color: themeColor, marginRight: 8 }} />Edit Notebook</span>}
+                open={showEditModal}
+                onCancel={() => setShowEditModal(false)}
+                onOk={handleUpdateNotebook}
+                confirmLoading={savingEdit}
+                okText="Simpan"
+                okButtonProps={{ style: { backgroundColor: themeColor }, disabled: !editName.trim() }}
+                centered
+            >
+                <div className="py-4 space-y-4">
+                    <div>
+                        <Text strong className="text-xs block mb-1.5">Ikon</Text>
+                        <Row gutter={[8, 8]} align="middle">
+                            <Col>
+                                <Input
+                                    value={editIcon}
+                                    onChange={(e) => setEditIcon(e.target.value.slice(0, 4))}
+                                    style={{ width: 64, textAlign: "center", fontSize: 20 }}
+                                    maxLength={4}
+                                />
+                            </Col>
+                            <Col flex="auto">
+                                <Space size={4} wrap>
+                                    {["📓", "📕", "📗", "📘", "📙", "🧠", "💡", "📊", "🛒", "🍽️", "🏪", "🚀"].map((emo) => (
+                                        <Button
+                                            key={emo}
+                                            size="small"
+                                            type={editIcon === emo ? "primary" : "default"}
+                                            style={editIcon === emo ? { backgroundColor: themeColor, borderColor: themeColor } : undefined}
+                                            onClick={() => setEditIcon(emo)}
+                                        >
+                                            {emo}
+                                        </Button>
+                                    ))}
+                                </Space>
+                            </Col>
+                        </Row>
+                    </div>
+                    <div>
+                        <Text strong className="text-xs block mb-1.5">Nama Notebook</Text>
+                        <Input
+                            size="large"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            placeholder="Nama notebook"
+                            onPressEnter={handleUpdateNotebook}
+                        />
+                    </div>
+                    <div>
+                        <Text strong className="text-xs block mb-1.5">Deskripsi (opsional)</Text>
+                        <TextArea
+                            rows={3}
+                            value={editDesc}
+                            onChange={(e) => setEditDesc(e.target.value)}
+                            placeholder="Tentang notebook ini?"
                         />
                     </div>
                 </div>

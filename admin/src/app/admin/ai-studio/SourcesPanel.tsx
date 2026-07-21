@@ -24,6 +24,7 @@ import {
     CloudUploadOutlined,
     DeleteOutlined,
     ExclamationCircleOutlined,
+    FileTextOutlined,
     LinkOutlined,
     SettingOutlined,
     SyncOutlined,
@@ -51,6 +52,7 @@ type Props = {
     onOpenMedia: () => void;
     onUpload: UploadProps["customRequest"];
     onImportUrl: (url: string) => Promise<void>;
+    onAddText: (title: string, content: string) => Promise<void>;
     onRemove: (sourceId: string) => void;
     onReindex: (sourceId: string) => void;
     onConfigureChat: () => void;
@@ -67,6 +69,7 @@ export default function SourcesPanel({
     onOpenMedia,
     onUpload,
     onImportUrl,
+    onAddText,
     onRemove,
     onReindex,
     onConfigureChat,
@@ -74,6 +77,10 @@ export default function SourcesPanel({
     const [urlModalOpen, setUrlModalOpen] = useState(false);
     const [urlInput, setUrlInput] = useState("");
     const [importing, setImporting] = useState(false);
+    const [textModalOpen, setTextModalOpen] = useState(false);
+    const [textTitle, setTextTitle] = useState("");
+    const [textBody, setTextBody] = useState("");
+    const [savingText, setSavingText] = useState(false);
 
     const formatBytes = (bytes: number) => {
         if (bytes === 0) return "0 B";
@@ -108,6 +115,19 @@ export default function SourcesPanel({
             setUrlModalOpen(false);
         } finally {
             setImporting(false);
+        }
+    };
+
+    const handleAddText = async () => {
+        if (textBody.trim().length < 20) return;
+        setSavingText(true);
+        try {
+            await onAddText(textTitle.trim() || "Catatan teks", textBody.trim());
+            setTextTitle("");
+            setTextBody("");
+            setTextModalOpen(false);
+        } finally {
+            setSavingText(false);
         }
     };
 
@@ -176,8 +196,11 @@ export default function SourcesPanel({
                     <Tooltip title="Configure chat">
                         <Button type="text" size="small" icon={<SettingOutlined />} onClick={onConfigureChat} />
                     </Tooltip>
-                    <Tooltip title="Import URL">
+                    <Tooltip title="Import URL / YouTube / Google Docs">
                         <Button type="text" size="small" icon={<LinkOutlined />} onClick={() => setUrlModalOpen(true)} />
+                    </Tooltip>
+                    <Tooltip title="Tempel teks">
+                        <Button type="text" size="small" icon={<FileTextOutlined />} onClick={() => setTextModalOpen(true)} />
                     </Tooltip>
                     <Tooltip title="Media Library">
                         <Button type="text" size="small" icon={<AppstoreAddOutlined />} onClick={onOpenMedia} />
@@ -256,13 +279,40 @@ export default function SourcesPanel({
                 okText="Import"
             >
                 <Input
-                    placeholder="https://..."
+                    placeholder="https://... / youtu.be/... / docs.google.com/..."
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
                     onPressEnter={() => void handleImportUrl()}
                 />
                 <Text type="secondary" className="text-[11px] block mt-2">
-                    Halaman web akan diambil, teks diekstrak, lalu diindeks seperti file upload.
+                    Mendukung halaman web, video YouTube (transkrip/caption), dan Google Docs/Slides
+                    yang dibagikan publik. Teks diekstrak lalu diindeks seperti file upload.
+                </Text>
+            </Modal>
+
+            <Modal
+                title="Tempel teks sebagai sumber"
+                open={textModalOpen}
+                onCancel={() => setTextModalOpen(false)}
+                onOk={() => void handleAddText()}
+                confirmLoading={savingText}
+                okText="Tambah sumber"
+                okButtonProps={{ disabled: textBody.trim().length < 20 }}
+            >
+                <Input
+                    placeholder="Judul (opsional)"
+                    value={textTitle}
+                    onChange={(e) => setTextTitle(e.target.value)}
+                    className="mb-2"
+                />
+                <Input.TextArea
+                    placeholder="Tempel teks di sini (minimal 20 karakter)…"
+                    value={textBody}
+                    onChange={(e) => setTextBody(e.target.value)}
+                    autoSize={{ minRows: 6, maxRows: 14 }}
+                />
+                <Text type="secondary" className="text-[11px] block mt-2">
+                    Teks akan disimpan sebagai file .txt dan diindeks untuk RAG.
                 </Text>
             </Modal>
         </div>

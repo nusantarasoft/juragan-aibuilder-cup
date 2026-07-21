@@ -136,13 +136,33 @@ export class StudioResolver {
         @Args('name', { type: () => String, nullable: true }) name: string,
         @Args('description', { type: () => String, nullable: true }) description: string,
         @Args('chatInstruction', { type: () => String, nullable: true }) chatInstruction: string,
+        @Args('icon', { type: () => String, nullable: true }) icon: string,
     ) {
         await this.studioService.assertNotebookOwner(notebookId, this.requireUserId(context));
         return this.studioService.updateNotebook(notebookId, {
             name: name ?? undefined,
             description: description ?? undefined,
             chat_instruction: chatInstruction ?? undefined,
+            icon: icon ?? undefined,
         });
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'studioCreateShareLink' })
+    async createShareLink(
+        @Context() context: StudioAuthContext,
+        @Args('notebookId', { type: () => String }) notebookId: string,
+    ) {
+        await this.studioService.assertNotebookOwner(notebookId, this.requireUserId(context));
+        return this.studioService.createShareLink(notebookId);
+    }
+
+    @Mutation(() => Boolean, { name: 'studioRevokeShareLink' })
+    async revokeShareLink(
+        @Context() context: StudioAuthContext,
+        @Args('notebookId', { type: () => String }) notebookId: string,
+    ) {
+        await this.studioService.assertNotebookOwner(notebookId, this.requireUserId(context));
+        return this.studioService.revokeShareLink(notebookId);
     }
 
     // ── Sources ──────────────────────────────────────────────────────
@@ -186,6 +206,17 @@ export class StudioResolver {
         return this.studioService.importUrl(notebookId, url);
     }
 
+    @Mutation(() => GraphQLJSONObject, { name: 'studioAddTextSource' })
+    async addTextSource(
+        @Context() context: StudioAuthContext,
+        @Args('notebookId', { type: () => String }) notebookId: string,
+        @Args('title', { type: () => String }) title: string,
+        @Args('content', { type: () => String }) content: string,
+    ) {
+        await this.studioService.assertNotebookOwner(notebookId, this.requireUserId(context));
+        return this.studioService.addTextSource(notebookId, title, content);
+    }
+
     // ── Chat ─────────────────────────────────────────────────────────
 
     @Mutation(() => GraphQLJSONObject, { name: 'studioChat' })
@@ -197,6 +228,7 @@ export class StudioResolver {
         // Accepted for backward-compat but ignored — the user is the token user.
         @Args('userId', { type: () => String, nullable: true }) _userId: string,
         @Args('sourceIds', { type: () => [String], nullable: true }) sourceIds: string[],
+        @Args('language', { type: () => String, nullable: true }) language: string,
     ) {
         const userId = this.requireUserId(context);
         await this.studioService.assertNotebookOwner(notebookId, userId);
@@ -205,6 +237,7 @@ export class StudioResolver {
         }
         return this.studioService.chat(notebookId, question, conversationId, userId, {
             sourceIds: sourceIds?.length ? sourceIds : undefined,
+            language: language ?? undefined,
         });
     }
 
@@ -279,19 +312,35 @@ export class StudioResolver {
         @Args('query', { type: () => String, nullable: true }) query: string,
         @Args('sourceIds', { type: () => [String], nullable: true }) sourceIds: string[],
         @Args('audioLength', { type: () => String, nullable: true }) audioLength: string,
+        @Args('language', { type: () => String, nullable: true }) language: string,
     ) {
         await this.studioService.assertNotebookOwner(notebookId, this.requireUserId(context));
         const validLength =
             audioLength === 'short' || audioLength === 'default' || audioLength === 'long'
                 ? audioLength
                 : undefined;
+        const genOptions: { audioLength?: 'short' | 'default' | 'long'; language?: string } | undefined =
+            validLength || language
+                ? { audioLength: validLength, language: language || undefined }
+                : undefined;
         return this.studioService.generateStudioOutput(
             notebookId,
             outputType as any,
             query ?? undefined,
             sourceIds?.length ? sourceIds : undefined,
-            validLength ? { audioLength: validLength } : undefined,
+            genOptions,
         );
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'studioSynthesizeAudio' })
+    async synthesizeAudio(
+        @Context() context: StudioAuthContext,
+        @Args('notebookId', { type: () => String }) notebookId: string,
+        @Args('outputId', { type: () => String }) outputId: string,
+        @Args('language', { type: () => String, nullable: true }) language: string,
+    ) {
+        await this.studioService.assertNotebookOwner(notebookId, this.requireUserId(context));
+        return this.studioService.synthesizeAudioForOutput(notebookId, outputId, language ?? undefined);
     }
 
     // ── Notes ────────────────────────────────────────────────────────

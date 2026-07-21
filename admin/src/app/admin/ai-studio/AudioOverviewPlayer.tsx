@@ -3,25 +3,58 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Select, Slider, Space, Tag, Typography } from "antd";
 import {
+    DownloadOutlined,
     PauseOutlined,
     CaretRightOutlined,
     StepForwardOutlined,
     StopOutlined,
 } from "@ant-design/icons";
 import { parseAudioScript, speakerOrder, type DialogueSegment } from "./audioScript";
+import { studioService } from "@/lib/studioService";
+import { useAppMessage } from "@/hooks/useAppMessage";
 
 const { Text } = Typography;
 
-type Props = { script: string; themeColor: string };
+type Props = {
+    script: string;
+    themeColor: string;
+    /** When provided, enables server-side MP3 synthesis + download. */
+    notebookId?: string;
+    outputId?: string;
+    language?: string;
+};
 
 /**
  * Audio Overview player. Reads a two-host podcast script aloud using the browser
  * Web Speech API (SpeechSynthesis) — no API key required, works offline. Speakers
  * are mapped to distinct voices (Indonesian preferred) so it feels like a duet.
  */
-export default function AudioOverviewPlayer({ script, themeColor }: Props) {
+export default function AudioOverviewPlayer({ script, themeColor, notebookId, outputId, language }: Props) {
+    const message = useAppMessage();
     const segments = useMemo(() => parseAudioScript(script), [script]);
     const speakers = useMemo(() => speakerOrder(segments), [segments]);
+    const [downloading, setDownloading] = useState(false);
+
+    const handleDownloadMp3 = async () => {
+        if (!notebookId || !outputId) return;
+        setDownloading(true);
+        try {
+            const { url } = await studioService.synthesizeAudio(notebookId, outputId, language);
+            const a = document.createElement("a");
+            a.href = url;
+            a.target = "_blank";
+            a.rel = "noreferrer";
+            a.download = "audio-overview.mp3";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            message.success("Audio MP3 siap diunduh");
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Gagal membuat MP3");
+        } finally {
+            setDownloading(false);
+        }
+    };
 
     const supported =
         typeof window !== "undefined" && "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
@@ -189,6 +222,18 @@ export default function AudioOverviewPlayer({ script, themeColor }: Props) {
                 <Text className="text-[11px] text-gray-400 ml-1">
                     {current >= 0 ? `Segmen ${current + 1}/${segments.length}` : `${segments.length} segmen`}
                 </Text>
+                {notebookId && outputId && (
+                    <Button
+                        size="small"
+                        className="ml-auto"
+                        icon={<DownloadOutlined />}
+                        loading={downloading}
+                        onClick={() => void handleDownloadMp3()}
+                        title="Sintesis & unduh MP3 (server)"
+                    >
+                        MP3
+                    </Button>
+                )}
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mb-2">

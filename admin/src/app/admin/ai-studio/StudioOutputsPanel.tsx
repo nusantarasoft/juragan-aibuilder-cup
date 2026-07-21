@@ -6,12 +6,14 @@ import {
     Card,
     Col,
     Drawer,
+    Dropdown,
     Empty,
     Input,
     List,
     Modal,
     Row,
     Segmented,
+    Select,
     Space,
     Spin,
     Tag,
@@ -19,19 +21,25 @@ import {
 } from "antd";
 import {
     AudioOutlined,
+    CopyOutlined,
     DeleteOutlined,
+    DownloadOutlined,
     EditOutlined,
+    ExportOutlined,
     FieldTimeOutlined,
     FileAddOutlined,
+    FileMarkdownOutlined,
     FileTextOutlined,
     FundProjectionScreenOutlined,
     IdcardOutlined,
     NodeIndexOutlined,
+    PrinterOutlined,
     ProfileOutlined,
     QuestionCircleOutlined,
     ReadOutlined,
     TableOutlined,
     ThunderboltOutlined,
+    VideoCameraOutlined,
 } from "@ant-design/icons";
 import ReactMarkdown from "react-markdown";
 import {
@@ -42,8 +50,10 @@ import {
 import { useAppMessage } from "@/hooks/useAppMessage";
 import MindMapView from "./MindMapView";
 import AudioOverviewPlayer from "./AudioOverviewPlayer";
+import VideoOverviewPlayer from "./VideoOverviewPlayer";
 import QuizView from "./QuizView";
 import FlashcardsView from "./FlashcardsView";
+import { copyText, downloadMarkdown, printAsPdf } from "./outputExport";
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -70,6 +80,7 @@ const TILE_GROUPS: { group: string; tiles: Tile[] }[] = [
             { type: "quiz", label: "Quiz", desc: "Kuis interaktif dinilai", icon: <QuestionCircleOutlined /> },
             { type: "flashcards", label: "Flashcards", desc: "Kartu belajar bolak-balik", icon: <IdcardOutlined /> },
             { type: "audio_script", label: "Audio Overview", desc: "Naskah + pemutar audio", icon: <AudioOutlined /> },
+            { type: "video_overview", label: "Video Overview", desc: "Slide bernarasi otomatis", icon: <VideoCameraOutlined /> },
             { type: "data_table", label: "Data Table", desc: "Tabel terstruktur", icon: <TableOutlined /> },
         ],
     },
@@ -88,6 +99,7 @@ const TYPE_LABEL: Record<string, string> = {
     briefing_doc: "Briefing Doc",
     timeline: "Timeline",
     blog_post: "Blog Post",
+    video_overview: "Video Overview",
 };
 
 type Props = {
@@ -120,9 +132,11 @@ export default function StudioOutputsPanel({
     const [audioModal, setAudioModal] = useState(false);
     const [audioFocus, setAudioFocus] = useState("");
     const [audioLength, setAudioLength] = useState<"short" | "default" | "long">("default");
+    const [outputLanguage, setOutputLanguage] = useState<string>("id");
 
     const isMindMap = viewOutput?.output_type === "mind_map";
     const isAudioScript = viewOutput?.output_type === "audio_script";
+    const isVideoOverview = viewOutput?.output_type === "video_overview";
     const isQuiz = viewOutput?.output_type === "quiz";
     const isFlashcards = viewOutput?.output_type === "flashcards";
 
@@ -159,6 +173,7 @@ export default function StudioOutputsPanel({
                 query,
                 sourceIds: selectedSourceIds?.length ? selectedSourceIds : undefined,
                 audioLength: opts?.audioLength,
+                language: outputLanguage,
             });
             message.success(`${out.title} dibuat`);
             await loadOutputs();
@@ -169,6 +184,21 @@ export default function StudioOutputsPanel({
             setGenerating(null);
             setReportModal(false);
             setAudioModal(false);
+        }
+    };
+
+    const handleExport = async (key: string, output: StudioOutput) => {
+        try {
+            if (key === "copy") {
+                await copyText(output.content);
+                message.success("Konten disalin");
+            } else if (key === "md") {
+                downloadMarkdown(output.title, output.content);
+            } else if (key === "pdf") {
+                printAsPdf(output.title, output.content);
+            }
+        } catch (e: unknown) {
+            message.error(e instanceof Error ? e.message : "Gagal mengekspor");
         }
     };
 
@@ -210,8 +240,28 @@ export default function StudioOutputsPanel({
     return (
         <div className="flex flex-col h-full">
             <div className="px-3 py-2 border-b border-[rgba(var(--theme-color-rgb,139,92,246),0.12)]">
-                <Title level={5} className="!mb-0 !text-sm">Studio</Title>
-                <Text type="secondary" className="text-[10px]">Generate artefak dari sumber {notebookName}</Text>
+                <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                        <Title level={5} className="!mb-0 !text-sm">Studio</Title>
+                        <Text type="secondary" className="text-[10px]">Generate artefak dari sumber {notebookName}</Text>
+                    </div>
+                    <Select
+                        size="small"
+                        value={outputLanguage}
+                        onChange={setOutputLanguage}
+                        title="Bahasa output"
+                        style={{ minWidth: 96 }}
+                        popupMatchSelectWidth={false}
+                        options={[
+                            { value: "id", label: "Indonesia" },
+                            { value: "en", label: "English" },
+                            { value: "jv", label: "Jawa" },
+                            { value: "ms", label: "Melayu" },
+                            { value: "ar", label: "العربية" },
+                            { value: "zh", label: "中文" },
+                        ]}
+                    />
+                </div>
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
@@ -300,21 +350,38 @@ export default function StudioOutputsPanel({
                     setViewOutput(null);
                     setMindMapRaw(false);
                 }}
-                width={isMindMap ? 760 : 480}
+                width={isMindMap || isVideoOverview ? 760 : 480}
                 extra={
                     viewOutput ? (
                         <Space>
-                            {(isMindMap || isQuiz || isFlashcards) && (
+                            {(isMindMap || isQuiz || isFlashcards || isVideoOverview) && (
                                 <Button size="small" onClick={() => setMindMapRaw((v) => !v)}>
                                     {mindMapRaw
                                         ? isMindMap
                                             ? "Lihat diagram"
                                             : isQuiz
                                               ? "Mode kuis"
-                                              : "Mode kartu"
+                                              : isFlashcards
+                                                ? "Mode kartu"
+                                                : "Mode video"
                                         : "Lihat teks"}
                                 </Button>
                             )}
+                            <Dropdown
+                                trigger={["click"]}
+                                menu={{
+                                    onClick: ({ key }) => void handleExport(key, viewOutput),
+                                    items: [
+                                        { key: "copy", icon: <CopyOutlined />, label: "Salin teks" },
+                                        { key: "md", icon: <FileMarkdownOutlined />, label: "Unduh .md" },
+                                        { key: "pdf", icon: <PrinterOutlined />, label: "Cetak / PDF" },
+                                    ],
+                                }}
+                            >
+                                <Button size="small" icon={<ExportOutlined />}>
+                                    Ekspor <DownloadOutlined />
+                                </Button>
+                            </Dropdown>
                             <Button
                                 size="small"
                                 icon={<FileAddOutlined />}
@@ -344,10 +411,18 @@ export default function StudioOutputsPanel({
                         <QuizView content={viewOutput.content} themeColor={themeColor} />
                     ) : isFlashcards && !mindMapRaw ? (
                         <FlashcardsView content={viewOutput.content} themeColor={themeColor} />
+                    ) : isVideoOverview && !mindMapRaw ? (
+                        <VideoOverviewPlayer content={viewOutput.content} themeColor={themeColor} />
                     ) : (
                         <>
                             {isAudioScript && (
-                                <AudioOverviewPlayer script={viewOutput.content} themeColor={themeColor} />
+                                <AudioOverviewPlayer
+                                    script={viewOutput.content}
+                                    themeColor={themeColor}
+                                    notebookId={notebookId ?? undefined}
+                                    outputId={viewOutput.id}
+                                    language={outputLanguage}
+                                />
                             )}
                             <div className="prose prose-sm dark:prose-invert max-w-none">
                                 <ReactMarkdown>{viewOutput.content}</ReactMarkdown>

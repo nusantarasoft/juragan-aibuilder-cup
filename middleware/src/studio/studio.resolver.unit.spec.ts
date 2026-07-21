@@ -32,6 +32,10 @@ function build() {
         getSourceStatus: vi.fn().mockResolvedValue([{ id: 'src-1' }]),
         removeSource: vi.fn().mockResolvedValue(true),
         importUrl: vi.fn().mockResolvedValue({ id: 'src-url' }),
+        addTextSource: vi.fn().mockResolvedValue({ id: 'src-text' }),
+        createShareLink: vi.fn().mockResolvedValue({ token: 'tok', isShared: true }),
+        revokeShareLink: vi.fn().mockResolvedValue(true),
+        synthesizeAudioForOutput: vi.fn().mockResolvedValue({ url: 'http://x/a.mp3', cached: false }),
         chat: vi.fn().mockResolvedValue({ conversationId: 'c-1', answer: 'hi' }),
         getConversation: vi.fn().mockResolvedValue({ id: 'c-1' }),
         getConversations: vi.fn().mockResolvedValue([{ id: 'c-1' }]),
@@ -182,16 +186,16 @@ describe('StudioResolver — notebooks', () => {
     });
 
     it('updateNotebook maps nullable fields to undefined', async () => {
-        await h.resolver.updateNotebook(ctx(), 'nb-1', null as any, null as any, null as any);
+        await h.resolver.updateNotebook(ctx(), 'nb-1', null as any, null as any, null as any, null as any);
         expect(h.studioService.updateNotebook).toHaveBeenCalledWith('nb-1', {
-            name: undefined, description: undefined, chat_instruction: undefined,
+            name: undefined, description: undefined, chat_instruction: undefined, icon: undefined,
         });
     });
 
     it('updateNotebook passes provided fields', async () => {
-        await h.resolver.updateNotebook(ctx(), 'nb-1', 'N', 'D', 'CI');
+        await h.resolver.updateNotebook(ctx(), 'nb-1', 'N', 'D', 'CI', '🚀');
         expect(h.studioService.updateNotebook).toHaveBeenCalledWith('nb-1', {
-            name: 'N', description: 'D', chat_instruction: 'CI',
+            name: 'N', description: 'D', chat_instruction: 'CI', icon: '🚀',
         });
     });
 
@@ -222,6 +226,32 @@ describe('StudioResolver — sources', () => {
         expect(h.studioService.removeSource).toHaveBeenCalledWith('nb-1', 'src-1');
     });
 
+    it('synthesizeAudio checks ownership and forwards args', async () => {
+        const res = await h.resolver.synthesizeAudio(ctx(USER_ID), 'nb-1', 'o-1', 'en');
+        expect(h.studioService.assertNotebookOwner).toHaveBeenCalledWith('nb-1', USER_ID);
+        expect(h.studioService.synthesizeAudioForOutput).toHaveBeenCalledWith('nb-1', 'o-1', 'en');
+        expect(res).toEqual({ url: 'http://x/a.mp3', cached: false });
+    });
+
+    it('createShareLink checks ownership and forwards', async () => {
+        const res = await h.resolver.createShareLink(ctx(USER_ID), 'nb-1');
+        expect(h.studioService.assertNotebookOwner).toHaveBeenCalledWith('nb-1', USER_ID);
+        expect(h.studioService.createShareLink).toHaveBeenCalledWith('nb-1');
+        expect(res).toEqual({ token: 'tok', isShared: true });
+    });
+
+    it('revokeShareLink checks ownership and forwards', async () => {
+        await h.resolver.revokeShareLink(ctx(USER_ID), 'nb-1');
+        expect(h.studioService.assertNotebookOwner).toHaveBeenCalledWith('nb-1', USER_ID);
+        expect(h.studioService.revokeShareLink).toHaveBeenCalledWith('nb-1');
+    });
+
+    it('addTextSource checks ownership and forwards args', async () => {
+        await h.resolver.addTextSource(ctx(USER_ID), 'nb-1', 'Judul', 'isi teks panjang');
+        expect(h.studioService.assertNotebookOwner).toHaveBeenCalledWith('nb-1', USER_ID);
+        expect(h.studioService.addTextSource).toHaveBeenCalledWith('nb-1', 'Judul', 'isi teks panjang');
+    });
+
     it('importUrl checks ownership', async () => {
         await h.resolver.importUrl(ctx(), 'nb-1', 'http://x');
         expect(h.studioService.importUrl).toHaveBeenCalledWith('nb-1', 'http://x');
@@ -233,19 +263,21 @@ describe('StudioResolver — chat', () => {
     beforeEach(() => { h = build(); });
 
     it('chat without conversationId uses token id and no conversation check', async () => {
-        await h.resolver.chat(ctx(USER_ID), 'nb-1', 'q?', undefined as any, OTHER_ID, undefined as any);
+        await h.resolver.chat(ctx(USER_ID), 'nb-1', 'q?', undefined as any, OTHER_ID, undefined as any, null as any);
         expect(h.studioService.assertNotebookOwner).toHaveBeenCalledWith('nb-1', USER_ID);
         expect(h.studioService.assertConversationOwner).not.toHaveBeenCalled();
         expect(h.studioService.chat).toHaveBeenCalledWith('nb-1', 'q?', undefined, USER_ID, {
             sourceIds: undefined,
+            language: undefined,
         });
     });
 
     it('chat with conversationId + sourceIds checks conversation ownership', async () => {
-        await h.resolver.chat(ctx(USER_ID), 'nb-1', 'q?', 'c-1', OTHER_ID, ['s1', 's2']);
+        await h.resolver.chat(ctx(USER_ID), 'nb-1', 'q?', 'c-1', OTHER_ID, ['s1', 's2'], 'en');
         expect(h.studioService.assertConversationOwner).toHaveBeenCalledWith('c-1', USER_ID);
         expect(h.studioService.chat).toHaveBeenCalledWith('nb-1', 'q?', 'c-1', USER_ID, {
             sourceIds: ['s1', 's2'],
+            language: 'en',
         });
     });
 
@@ -297,19 +329,26 @@ describe('StudioResolver — generate', () => {
     });
 
     it('generateOutput with sourceIds', async () => {
-        await h.resolver.generateOutput(ctx(), 'nb-1', 'report', 'q', ['s1'], null as any);
+        await h.resolver.generateOutput(ctx(), 'nb-1', 'report', 'q', ['s1'], null as any, null as any);
         expect(h.studioService.generateStudioOutput).toHaveBeenCalledWith('nb-1', 'report', 'q', ['s1'], undefined);
     });
 
     it('generateOutput without query/sourceIds', async () => {
-        await h.resolver.generateOutput(ctx(), 'nb-1', 'quiz', null as any, undefined as any, null as any);
+        await h.resolver.generateOutput(ctx(), 'nb-1', 'quiz', null as any, undefined as any, null as any, null as any);
         expect(h.studioService.generateStudioOutput).toHaveBeenCalledWith('nb-1', 'quiz', undefined, undefined, undefined);
     });
 
     it('generateOutput forwards valid audioLength option', async () => {
-        await h.resolver.generateOutput(ctx(), 'nb-1', 'audio_script', 'fokus', undefined as any, 'long');
+        await h.resolver.generateOutput(ctx(), 'nb-1', 'audio_script', 'fokus', undefined as any, 'long', null as any);
         expect(h.studioService.generateStudioOutput).toHaveBeenCalledWith(
-            'nb-1', 'audio_script', 'fokus', undefined, { audioLength: 'long' },
+            'nb-1', 'audio_script', 'fokus', undefined, { audioLength: 'long', language: undefined },
+        );
+    });
+
+    it('generateOutput forwards language option', async () => {
+        await h.resolver.generateOutput(ctx(), 'nb-1', 'quiz', null as any, undefined as any, null as any, 'en');
+        expect(h.studioService.generateStudioOutput).toHaveBeenCalledWith(
+            'nb-1', 'quiz', undefined, undefined, { audioLength: undefined, language: 'en' },
         );
     });
 

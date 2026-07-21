@@ -16,6 +16,7 @@ type ChatStreamBody = {
     question?: string;
     conversationId?: string;
     sourceIds?: string[];
+    language?: string;
 };
 
 /**
@@ -80,7 +81,7 @@ export class StudioChatController {
                 question,
                 body.conversationId,
                 userId,
-                { sourceIds: body.sourceIds },
+                { sourceIds: body.sourceIds, language: body.language },
                 emit,
             );
         } catch (err) {

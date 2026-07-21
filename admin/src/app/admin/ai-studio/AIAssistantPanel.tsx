@@ -7,16 +7,21 @@ import {
     Dropdown,
     Input,
     Segmented,
+    Select,
     Space,
     Spin,
     Tag,
+    Tooltip,
     Typography,
 } from "antd";
 import {
     CheckCircleFilled,
+    CheckOutlined,
+    CopyOutlined,
     FileAddOutlined,
     HistoryOutlined,
     LoadingOutlined,
+    RedoOutlined,
     RobotOutlined,
     SendOutlined,
 } from "@ant-design/icons";
@@ -27,6 +32,86 @@ import type { StudioChatMessage, StudioChatMode } from "./useStudioChat";
 import type { SourceStats } from "./studioSourceStatus";
 
 const { Text } = Typography;
+
+export const CHAT_LANGUAGES: { value: string; label: string }[] = [
+    { value: "id", label: "Indonesia" },
+    { value: "en", label: "English" },
+    { value: "jv", label: "Jawa" },
+    { value: "ms", label: "Melayu" },
+    { value: "ar", label: "العربية" },
+    { value: "zh", label: "中文" },
+];
+
+type CitationRef = NonNullable<StudioChatMessage["references"]>[number];
+
+/**
+ * Renders assistant markdown, turning inline `[n]` markers into clickable
+ * citation pills that jump to the n-th reference. Falls back to plain markdown
+ * when there are no references to link against.
+ */
+function MessageContent({
+    content,
+    references,
+    onCitationClick,
+}: {
+    content: string;
+    references?: CitationRef[];
+    onCitationClick?: (chunkId: string, docName: string, score: number) => void;
+}) {
+    const hasRefs = !!references && references.length > 0;
+    // Rewrite [n] → markdown link to a synthetic anchor so ReactMarkdown keeps
+    // surrounding formatting intact; the custom <a> renderer handles the click.
+    const source = hasRefs
+        ? content.replace(/\[(\d{1,2})\]/g, (m, n) => {
+              const idx = Number(n);
+              return idx >= 1 && idx <= references!.length ? `[${n}](#studio-cite-${n})` : m;
+          })
+        : content;
+
+    return (
+        <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:m-0">
+            <ReactMarkdown
+                components={{
+                    a: ({ href, children, ...rest }) => {
+                        const match = /^#studio-cite-(\d+)$/.exec(href || "");
+                        if (match && references) {
+                            const idx = Number(match[1]) - 1;
+                            const ref = references[idx];
+                            const clickable = !!(ref?.chunkId && onCitationClick);
+                            return (
+                                <sup
+                                    role={clickable ? "button" : undefined}
+                                    tabIndex={clickable ? 0 : undefined}
+                                    title={ref?.docName}
+                                    onClick={() => {
+                                        if (clickable) onCitationClick!(ref.chunkId!, ref.docName, ref.score);
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (clickable && (e.key === "Enter" || e.key === " ")) {
+                                            onCitationClick!(ref.chunkId!, ref.docName, ref.score);
+                                        }
+                                    }}
+                                    className={`inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 mx-0.5 rounded-full text-[9px] font-semibold align-super bg-[color:var(--theme-color)]/15 text-[color:var(--theme-color)] ${
+                                        clickable ? "cursor-pointer hover:bg-[color:var(--theme-color)]/30" : ""
+                                    }`}
+                                >
+                                    {match[1]}
+                                </sup>
+                            );
+                        }
+                        return (
+                            <a href={href} target="_blank" rel="noreferrer" {...rest}>
+                                {children}
+                            </a>
+                        );
+                    },
+                }}
+            >
+                {source}
+            </ReactMarkdown>
+        </div>
+    );
+}
 
 type Props = {
     themeColor: string;
@@ -52,6 +137,9 @@ type Props = {
     onResumeConversation: (id: string) => void;
     onCitationClick?: (chunkId: string, docName: string, score: number) => void;
     onSaveToNote?: (content: string) => void;
+    onRegenerate?: () => void;
+    language?: string;
+    onSetLanguage?: (lang: string) => void;
 };
 
 export default function AIAssistantPanel({
@@ -78,10 +166,31 @@ export default function AIAssistantPanel({
     onResumeConversation,
     onCitationClick,
     onSaveToNote,
+    onRegenerate,
+    language = "id",
+    onSetLanguage,
 }: Props) {
     const [chatInput, setChatInput] = useState("");
     const [showReferences, setShowReferences] = useState<number | null>(null);
+    const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const handleCopy = async (idx: number, text: string) => {
+        try {
+            await navigator.clipboard?.writeText(text);
+            setCopiedIdx(idx);
+            setTimeout(() => setCopiedIdx((c) => (c === idx ? null : c)), 1500);
+        } catch {
+            /* clipboard unavailable */
+        }
+    };
+
+    const lastAssistantIdx = (() => {
+        for (let i = chatHistory.length - 1; i >= 0; i--) {
+            if (chatHistory[i].role === "assistant") return i;
+        }
+        return -1;
+    })();
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -157,6 +266,18 @@ export default function AIAssistantPanel({
                         Riwayat
                     </Button>
                 </Dropdown>
+                {onSetLanguage && (
+                    <Tooltip title="Bahasa jawaban">
+                        <Select
+                            size="small"
+                            value={language}
+                            onChange={onSetLanguage}
+                            options={CHAT_LANGUAGES}
+                            style={{ minWidth: 104 }}
+                            popupMatchSelectWidth={false}
+                        />
+                    </Tooltip>
+                )}
                 {(conversationId || (chatMode === "guided" && guidedFlow)) && (
                     <Button type="link" size="small" className="text-[10px] ml-auto p-0" onClick={onNewChat}>
                         Chat baru
@@ -274,9 +395,17 @@ export default function AIAssistantPanel({
                                     boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
                                 }}
                             >
-                                <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:m-0">
-                                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                                </div>
+                                {msg.role === "assistant" ? (
+                                    <MessageContent
+                                        content={msg.content}
+                                        references={msg.references}
+                                        onCitationClick={onCitationClick}
+                                    />
+                                ) : (
+                                    <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:m-0">
+                                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                    </div>
+                                )}
                             </div>
                             {msg.references && msg.references.length > 0 && (
                                 <div className="mt-1.5">
@@ -345,16 +474,47 @@ export default function AIAssistantPanel({
                                     </AnimatePresence>
                                 </div>
                             )}
-                            {msg.role === "assistant" && msg.content.trim() && onSaveToNote && (
-                                <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<FileAddOutlined />}
-                                    className="text-[10px] text-gray-400 p-0 h-auto mt-1"
-                                    onClick={() => onSaveToNote(msg.content)}
-                                >
-                                    Simpan ke Notes
-                                </Button>
+                            {msg.role === "assistant" && msg.content.trim() && (
+                                <Space size={2} className="mt-1">
+                                    <Tooltip title={copiedIdx === i ? "Tersalin" : "Salin"}>
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            icon={
+                                                copiedIdx === i ? (
+                                                    <CheckOutlined style={{ color: "#52c41a" }} />
+                                                ) : (
+                                                    <CopyOutlined />
+                                                )
+                                            }
+                                            className="text-[10px] text-gray-400 p-0 h-auto px-1"
+                                            onClick={() => handleCopy(i, msg.content)}
+                                        />
+                                    </Tooltip>
+                                    {chatMode === "free" && onRegenerate && i === lastAssistantIdx && (
+                                        <Tooltip title="Buat ulang jawaban">
+                                            <Button
+                                                type="text"
+                                                size="small"
+                                                icon={<RedoOutlined />}
+                                                className="text-[10px] text-gray-400 p-0 h-auto px-1"
+                                                disabled={isChatting}
+                                                onClick={onRegenerate}
+                                            />
+                                        </Tooltip>
+                                    )}
+                                    {onSaveToNote && (
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            icon={<FileAddOutlined />}
+                                            className="text-[10px] text-gray-400 p-0 h-auto px-1"
+                                            onClick={() => onSaveToNote(msg.content)}
+                                        >
+                                            Simpan ke Notes
+                                        </Button>
+                                    )}
+                                </Space>
                             )}
                         </div>
                     </div>
