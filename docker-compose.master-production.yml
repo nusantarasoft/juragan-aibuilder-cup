@@ -1,0 +1,703 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# docker-compose.master-production.yml  —  GO-LIVE stack for server 31.97.66.39
+#
+# Self-contained (do NOT combine with docker-compose.yml). Run with:
+#   docker compose -f docker-compose.master-production.yml --env-file .env.master-production up -d --build
+#
+# Isolation guarantees (server already runs other apps):
+#   - Only 4 host ports published: 8090 (nginx), 3013 (admin), 3011 (waha), 9010 (minio S3)
+#   - All other services are internal-only (no host port)
+#   - Dedicated bridge network `nsoft3-net`
+#   - All container names prefixed `nsoft3-` to avoid name clashes
+# ═══════════════════════════════════════════════════════════════════════════
+name: nsoft3-prod
+
+x-public-ip: &public_ip "31.97.66.39"
+
+services:
+  # ─── Core: MinIO (S3) ────────────────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: nsoft3-minio
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 2g }
+        reservations: { memory: 512m }
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_DOMAIN=storage
+      - MINIO_REGION_NAME=us-east-1
+      - MINIO_REGION=us-east-1
+      - MINIO_API_CORS_ALLOW_ORIGIN=*
+    networks: [nsoft3-net]
+    ports:
+      - "9010:9000"   # S3 API (browser media access)
+    command: server --console-address ":9001" /data/disk{1...4}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://minio:9000/minio/health/live"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - minio-data:/data
+
+  minio-createbucket:
+    image: minio/mc:latest
+    container_name: nsoft3-minio-createbucket
+    networks: [nsoft3-net]
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c " /usr/bin/mc alias set supa-minio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; /usr/bin/mc mb --ignore-existing supa-minio/${S3_BUCKET}; /usr/bin/mc anonymous set public supa-minio/${S3_BUCKET}; /usr/bin/mc version enable supa-minio/${S3_BUCKET}; exit 0; "
+
+  # ─── Core: Postgres ──────────────────────────────────────────────────────
+  postgres:
+    image: supabase/postgres:15.8.1.085
+    container_name: nsoft3-postgres
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 4g }
+        reservations: { memory: 1g }
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: ${POSTGRES_PORT}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: ${JWT_EXPIRY}
+    networks: [nsoft3-net]
+    volumes:
+      - ./supabase/migrations:/docker-entrypoint-initdb.d/migrations:ro
+      - postgres-data:/var/lib/postgresql/data:Z
+      - db-config:/etc/postgresql-custom
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal"]
+
+  # ─── Supabase backend ────────────────────────────────────────────────────
+  studio:
+    container_name: nsoft3-supabase-studio
+    image: supabase/studio:2026.04.27-sha-5f60601
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 1g }
+        reservations: { memory: 256m }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://studio:3000/api/platform/profile').then((r) => {if (r.status !== 200) throw new Error(r.status)})"]
+      timeout: 10s
+      interval: 5s
+      retries: 3
+    depends_on:
+      analytics:
+        condition: service_healthy
+      meta:
+        condition: service_healthy
+    networks: [nsoft3-net]
+    environment:
+      HOSTNAME: "::"
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PG_META_CRYPTO_KEY: ${PG_META_CRYPTO_KEY}
+      DEFAULT_ORGANIZATION_NAME: ${STUDIO_DEFAULT_ORGANIZATION}
+      DEFAULT_PROJECT_NAME: ${STUDIO_DEFAULT_PROJECT}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      AUTH_JWT_SECRET: ${JWT_SECRET}
+      LOGFLARE_API_KEY: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
+      LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
+      LOGFLARE_PRIVATE_ACCESS_TOKEN: ${LOGFLARE_PRIVATE_ACCESS_TOKEN}
+      LOGFLARE_URL: http://analytics:4000
+      NEXT_PUBLIC_ENABLE_LOGS: "true"
+      NEXT_ANALYTICS_BACKEND_PROVIDER: postgres
+
+  kong:
+    container_name: nsoft3-supabase-kong
+    image: kong/kong:3.9.1
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 1g }
+        reservations: { memory: 256m }
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
+      - ./volumes/api/kong-entrypoint.sh:/home/kong/kong-entrypoint.sh:ro,z
+    depends_on:
+      analytics:
+        condition: service_healthy
+    networks: [nsoft3-net]
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /usr/local/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_DNS_NOT_FOUND_TTL: 1
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth,request-termination,ip-restriction,post-function
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      KONG_PROXY_ACCESS_LOG: /dev/stdout combined
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
+    entrypoint: /home/kong/kong-entrypoint.sh
+
+  auth:
+    container_name: nsoft3-supabase-auth
+    image: supabase/gotrue:v2.186.0
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 512m }
+        reservations: { memory: 128m }
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      analytics:
+        condition: service_healthy
+    networks: [nsoft3-net]
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      GOTRUE_SITE_URL: ${SITE_URL}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS}
+      GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: ${JWT_EXPIRY}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP}
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: ${ENABLE_ANONYMOUS_USERS}
+      GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
+      GOTRUE_SMTP_HOST: ${SMTP_HOST}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT}
+      GOTRUE_SMTP_USER: ${SMTP_USER}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME}
+      GOTRUE_MAILER_URLPATHS_INVITE: ${MAILER_URLPATHS_INVITE}
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: ${MAILER_URLPATHS_CONFIRMATION}
+      GOTRUE_MAILER_URLPATHS_RECOVERY: ${MAILER_URLPATHS_RECOVERY}
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: ${MAILER_URLPATHS_EMAIL_CHANGE}
+      GOTRUE_EXTERNAL_PHONE_ENABLED: ${ENABLE_PHONE_SIGNUP}
+      GOTRUE_SMS_AUTOCONFIRM: ${ENABLE_PHONE_AUTOCONFIRM}
+
+  rest:
+    container_name: nsoft3-supabase-rest
+    image: postgrest/postgrest:v14.8
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 512m }
+        reservations: { memory: 128m }
+    depends_on:
+      postgres:
+        condition: service_healthy
+      analytics:
+        condition: service_healthy
+    networks: [nsoft3-net]
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS}
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY}
+      PGRST_DB_CHANNEL_ENABLED: "true"
+      PGRST_DB_CHANNEL: pgrst
+    command: ["postgrest"]
+
+  realtime:
+    container_name: nsoft3-realtime
+    image: supabase/realtime:v2.76.5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 512m }
+        reservations: { memory: 128m }
+    depends_on:
+      postgres:
+        condition: service_healthy
+      analytics:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sSfL --head -o /dev/null -H \"Authorization: Bearer ${ANON_KEY}\" http://localhost:4000/api/tenants/realtime-dev/health"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    environment:
+      PORT: 4000
+      DB_HOST: ${POSTGRES_HOST}
+      DB_PORT: ${POSTGRES_PORT}
+      DB_USER: supabase_admin
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
+      DB_ENC_KEY: supabaserealtime
+      API_JWT_SECRET: ${JWT_SECRET}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      ERL_AFLAGS: -proto_dist inet_tcp
+      DNS_NODES: "''"
+      RLIMIT_NOFILE: "10000"
+      APP_NAME: realtime
+      SEED_SELF_HOST: "true"
+      RUN_JANITOR: "true"
+    networks: [nsoft3-net]
+
+  storage:
+    container_name: nsoft3-supabase-storage
+    image: supabase/storage-api:v1.48.26
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 1g }
+        reservations: { memory: 256m }
+    volumes:
+      - supabase-storage:/var/lib/storage
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:5000/status', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rest:
+        condition: service_started
+      imgproxy:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    environment:
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      POSTGREST_URL: http://rest:3000
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: s3
+      GLOBAL_S3_BUCKET: ${S3_BUCKET}
+      GLOBAL_S3_ENDPOINT: http://minio:9000
+      GLOBAL_S3_PROTOCOL: http
+      GLOBAL_S3_FORCE_PATH_STYLE: "true"
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_DEFAULT_REGION: stub
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      REGION: stub
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://imgproxy:5001
+    networks: [nsoft3-net]
+
+  imgproxy:
+    container_name: nsoft3-supabase-imgproxy
+    image: darthsim/imgproxy:v3.30.1
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 1g }
+        reservations: { memory: 256m }
+    volumes:
+      - supabase-storage:/var/lib/storage
+    healthcheck:
+      test: ["CMD", "imgproxy", "health"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    environment:
+      IMGPROXY_BIND: ":5001"
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+      IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_ENABLE_WEBP_DETECTION: ${IMGPROXY_ENABLE_WEBP_DETECTION}
+    networks: [nsoft3-net]
+
+  meta:
+    container_name: nsoft3-supabase-meta
+    image: supabase/postgres-meta:v0.96.3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 512m }
+        reservations: { memory: 128m }
+    depends_on:
+      postgres:
+        condition: service_healthy
+      analytics:
+        condition: service_healthy
+    networks: [nsoft3-net]
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: ${POSTGRES_HOST}
+      PG_META_DB_PORT: ${POSTGRES_PORT}
+      PG_META_DB_NAME: ${POSTGRES_DB}
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      CRYPTO_KEY: ${PG_META_CRYPTO_KEY}
+
+  functions:
+    container_name: nsoft3-supabase-edge-functions
+    image: supabase/edge-runtime:v1.71.2
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 512m }
+        reservations: { memory: 128m }
+    volumes:
+      - ./volumes/functions:/home/deno/functions:Z
+    depends_on:
+      analytics:
+        condition: service_healthy
+    networks: [nsoft3-net]
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT}"
+    command: ["start", "--main-service", "/home/deno/functions/main"]
+
+  analytics:
+    container_name: nsoft3-supabase-analytics
+    image: supabase/logflare:1.36.1
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 1g }
+        reservations: { memory: 256m }
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:4000/health"]
+      timeout: 5s
+      interval: 5s
+      retries: 10
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [nsoft3-net]
+    environment:
+      LOGFLARE_NODE_HOST: 127.0.0.1
+      DB_USERNAME: supabase_admin
+      DB_DATABASE: _supabase
+      DB_HOSTNAME: ${POSTGRES_HOST}
+      DB_PORT: ${POSTGRES_PORT}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_SCHEMA: _analytics
+      LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
+      LOGFLARE_PRIVATE_ACCESS_TOKEN: ${LOGFLARE_PRIVATE_ACCESS_TOKEN}
+      LOGFLARE_SINGLE_TENANT: "true"
+      LOGFLARE_SUPABASE_MODE: "true"
+      POSTGRES_BACKEND_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/_supabase
+      POSTGRES_BACKEND_SCHEMA: _analytics
+      LOGFLARE_FEATURE_FLAG_OVERRIDE: multibackend=true
+
+  vector:
+    container_name: nsoft3-supabase-vector
+    image: timberio/vector:0.53.0-alpine
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 256m }
+        reservations: { memory: 64m }
+    volumes:
+      - ./volumes/logs/vector.yml:/etc/vector/vector.yml:ro,z
+      - ${DOCKER_SOCKET_LOCATION}:/var/run/docker.sock:ro,z
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://vector:9001/health"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    environment:
+      LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
+    command: ["--config", "/etc/vector/vector.yml"]
+    security_opt:
+      - "label=disable"
+    networks: [nsoft3-net]
+
+  supavisor:
+    container_name: nsoft3-supabase-pooler
+    image: supabase/supavisor:2.7.4
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 512m }
+        reservations: { memory: 128m }
+    volumes:
+      - ./volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro,z
+    healthcheck:
+      test: ["CMD", "curl", "-sSfL", "--head", "-o", "/dev/null", "http://127.0.0.1:4000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
+      analytics:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_URL: ecto://supabase_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/_supabase
+      CLUSTER_POSTGRES: "true"
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      VAULT_ENC_KEY: ${VAULT_ENC_KEY}
+      API_JWT_SECRET: ${JWT_SECRET}
+      METRICS_JWT_SECRET: ${JWT_SECRET}
+      REGION: local
+      ERL_AFLAGS: -proto_dist inet_tcp
+      POOLER_TENANT_ID: ${POOLER_TENANT_ID}
+      POOLER_DEFAULT_POOL_SIZE: ${POOLER_DEFAULT_POOL_SIZE}
+      POOLER_MAX_CLIENT_CONN: ${POOLER_MAX_CLIENT_CONN}
+      POOLER_POOL_MODE: transaction
+      DB_POOL_SIZE: ${POOLER_DB_POOL_SIZE}
+    command: ["/bin/sh", "-c", "/app/bin/migrate && /app/bin/supavisor eval \"$$(cat /etc/pooler/pooler.exs)\" && /app/bin/server"]
+    networks: [nsoft3-net]
+
+  # ─── Apps ────────────────────────────────────────────────────────────────
+  middleware:
+    build:
+      context: ./middleware
+      dockerfile: Dockerfile
+    image: nsoft3/middleware:master-production
+    container_name: nsoft3-middleware
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    deploy:
+      resources:
+        limits: { memory: 1g }
+        reservations: { memory: 256m }
+    environment:
+      - NODE_ENV=production
+      - PORT=4001
+      - SUPABASE_URL=http://kong:8000
+      - SUPABASE_ANON_KEY=${ANON_KEY}
+      - SUPABASE_SERVICE_KEY=${SERVICE_ROLE_KEY}
+      - GOOGLE_APPLICATION_CREDENTIALS=/gcp/key.json
+      - S3_ENDPOINT=http://minio:9000
+      - S3_PUBLIC_ENDPOINT=http://31.97.66.39:9010
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - S3_REGION=us-east-1
+      - S3_BUCKET=${S3_BUCKET}
+      - LABELSTUDIO_URL=http://labelstudio:8080
+      - LABELSTUDIO_API_TOKEN=${LABELSTUDIO_API_TOKEN}
+      - LABELSTUDIO_PROJECT_ID=${LABELSTUDIO_PROJECT_ID}
+      - LABELSTUDIO_WEBHOOK_SECRET=${LABELSTUDIO_WEBHOOK_SECRET:-}
+      - WAHA_BASE_URL=http://waha:3000
+      - WAHA_API_KEY=${WAHA_API_KEY:-}
+      - WAHA_SESSION=${WAHA_SESSION:-default}
+      - WAHA_WEBHOOK_HMAC_KEY=${WAHA_WEBHOOK_HMAC_KEY:-}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_SENDER_NAME=${SMTP_SENDER_NAME:-Nusantarasoft}
+    networks: [nsoft3-net]
+    depends_on:
+      - kong
+      - minio
+      - waha
+    volumes:
+      - ./volumes/google-credentials.json:/gcp/key.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:4001/graphql', (r) => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_GRAPHQL_URL: http://31.97.66.39:8090/graphql
+        NEXT_PUBLIC_SUPABASE_URL: http://31.97.66.39:8090/supabase
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+        NEXT_PUBLIC_S3_ENDPOINT: http://31.97.66.39:9010
+        NEXT_PUBLIC_S3_BUCKET: ${S3_BUCKET}
+        NEXT_PUBLIC_WAHA_DASHBOARD_URL: http://31.97.66.39:3011/dashboard
+    image: nsoft3/admin:master-production
+    container_name: nsoft3-admin
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    deploy:
+      resources:
+        limits: { memory: 1g }
+        reservations: { memory: 256m }
+    ports:
+      - "3013:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_GRAPHQL_URL=http://31.97.66.39:8090/graphql
+      - GRAPHQL_API_URL=http://middleware:4001/graphql
+      - NEXT_PUBLIC_SUPABASE_URL=http://31.97.66.39:8090/supabase
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
+      - NEXT_PUBLIC_S3_ENDPOINT=http://31.97.66.39:9010
+      - NEXT_PUBLIC_S3_BUCKET=${S3_BUCKET}
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - S3_REGION=us-east-1
+      - NEXT_PUBLIC_WAHA_DASHBOARD_URL=http://31.97.66.39:3011/dashboard
+    networks: [nsoft3-net]
+    depends_on:
+      - middleware
+      - minio
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000', (r) => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  landing-page:
+    build:
+      context: ./landing-page
+      dockerfile: Dockerfile
+    image: nsoft3/landing-page:master-production
+    container_name: nsoft3-landing-page
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    deploy:
+      resources:
+        limits: { memory: 512m }
+        reservations: { memory: 128m }
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_CMS_API_URL=http://31.97.66.39:3013
+      - NEXT_PUBLIC_SUPABASE_URL=http://31.97.66.39:8090/supabase
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
+    networks: [nsoft3-net]
+    depends_on:
+      - middleware
+      - kong
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  waha:
+    image: ${WAHA_IMAGE:-devlikeapro/waha:latest}
+    container_name: nsoft3-waha
+    restart: unless-stopped
+    shm_size: "2gb"
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    deploy:
+      resources:
+        limits: { memory: 2g }
+        reservations: { memory: 512m }
+    ports:
+      - "3011:3000"
+    environment:
+      - WHATSAPP_HOOK_URL=${WHATSAPP_HOOK_URL:-http://middleware:4001/api/studio/whatsapp/webhook}
+      - WHATSAPP_HOOK_EVENTS=message,message.any
+      - WHATSAPP_HOOK_HMAC_KEY=${WAHA_WEBHOOK_HMAC_KEY:-}
+      - WAHA_API_KEY=${WAHA_API_KEY:-}
+      - WAHA_API_KEY_PLAIN=${WAHA_API_KEY_PLAIN:-${WAHA_API_KEY:-}}
+      - WAHA_API_KEY_EXCLUDE_PATH=health
+      - WAHA_DASHBOARD_USERNAME=${WAHA_DASHBOARD_USERNAME:-admin}
+      - WAHA_DASHBOARD_PASSWORD=${WAHA_DASHBOARD_PASSWORD:-}
+      - WHATSAPP_SWAGGER_USERNAME=${WHATSAPP_SWAGGER_USERNAME:-admin}
+      - WHATSAPP_SWAGGER_PASSWORD=${WHATSAPP_SWAGGER_PASSWORD:-}
+      - WAHA_BASE_URL=http://waha:3000
+      - WHATSAPP_DEFAULT_SESSION=${WAHA_SESSION:-default}
+      - WHATSAPP_DEFAULT_ENGINE=${WAHA_DEFAULT_ENGINE:-WEBJS}
+      - WAHA_SESSION_ENGINE_INFO_TIMEOUT=15000
+      - WHATSAPP_RESTART_ALL_SESSIONS=True
+    volumes:
+      - waha-sessions:/app/.sessions
+      - ./scripts/waha-patch-lid-id.js:/patches/waha-patch-lid-id.js:ro
+      - ./scripts/waha-entrypoint.sh:/patches/waha-entrypoint.sh:ro
+    command: ["/bin/sh", "/patches/waha-entrypoint.sh"]
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks: [nsoft3-net]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --header=\"X-Api-Key: $$WAHA_API_KEY\" -O - http://127.0.0.1:3000/api/version || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
+
+  # ─── Reverse proxy (single public entrypoint) ────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nsoft3-nginx
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+    deploy:
+      resources:
+        limits: { memory: 256m }
+        reservations: { memory: 64m }
+    ports:
+      - "8090:80"
+    volumes:
+      - ./volumes/nginx/nginx.master-production.conf:/etc/nginx/nginx.conf:ro
+    networks: [nsoft3-net]
+    depends_on:
+      - landing-page
+      - middleware
+      - kong
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+networks:
+  nsoft3-net:
+    name: nsoft3-net
+    driver: bridge
+
+volumes:
+  minio-data:
+  postgres-data:
+  supabase-storage:
+  db-config:
+  waha-sessions:

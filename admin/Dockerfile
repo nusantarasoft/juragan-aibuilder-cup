@@ -19,12 +19,22 @@ COPY . .
 # Disable telemetry during build
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build-time env vars for Next.js (baked at build time)
-# Admin uses GraphQL middleware - using localhost for browser access
-ENV NEXT_PUBLIC_GRAPHQL_URL=http://127.0.0.1:4001/graphql
-# Supabase vars kept for backward compatibility (deprecated)
-ENV NEXT_PUBLIC_SUPABASE_URL=http://kong:8000
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc1MjE1MjE4LCJleHAiOjIxNDU5MTY4MDB9.6q7QrCyLzEJ-m2Mw8Y29BNR_tF3fKAfbXhdcc4HKxhE
+# Build-time env vars for Next.js (NEXT_PUBLIC_* are baked into the client bundle).
+# Provide via --build-arg / compose build.args for production (point to the public host).
+# Defaults keep local-dev behaviour when no build args are passed.
+ARG NEXT_PUBLIC_GRAPHQL_URL=http://127.0.0.1:4001/graphql
+ARG NEXT_PUBLIC_SUPABASE_URL=http://kong:8000
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc1MjE1MjE4LCJleHAiOjIxNDU5MTY4MDB9.6q7QrCyLzEJ-m2Mw8Y29BNR_tF3fKAfbXhdcc4HKxhE
+ARG NEXT_PUBLIC_S3_ENDPOINT=http://127.0.0.1:9000
+ARG NEXT_PUBLIC_S3_BUCKET=cms-media
+ARG NEXT_PUBLIC_WAHA_DASHBOARD_URL=http://127.0.0.1:3011/dashboard
+
+ENV NEXT_PUBLIC_GRAPHQL_URL=${NEXT_PUBLIC_GRAPHQL_URL}
+ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+ENV NEXT_PUBLIC_S3_ENDPOINT=${NEXT_PUBLIC_S3_ENDPOINT}
+ENV NEXT_PUBLIC_S3_BUCKET=${NEXT_PUBLIC_S3_BUCKET}
+ENV NEXT_PUBLIC_WAHA_DASHBOARD_URL=${NEXT_PUBLIC_WAHA_DASHBOARD_URL}
 
 
 # Build the application (increase heap for 126+ page compilation)
