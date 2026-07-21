@@ -333,12 +333,16 @@ export function parseSaleHeuristic(
         totalAmount = amounts[0];
     } else if (amounts.length >= items.length) {
         for (let i = 0; i < items.length; i++) {
+            /* v8 ignore next -- amounts are pre-filtered to be > 0 and i < items.length <= amounts.length, so `|| 0` never triggers */
             items[i].unitPrice = amounts[i] || 0;
         }
         totalAmount = items.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
-    } else if (amounts.length > 0) {
+    }
+    /* v8 ignore start -- unreachable: items is always reduced to a single item before here, so amounts.length (>0) is always >= items.length and handled above */
+    else if (amounts.length > 0) {
         totalAmount = amounts[amounts.length - 1];
     }
+    /* v8 ignore stop */
 
     if (totalAmount <= 0) {
         return null;
@@ -429,9 +433,11 @@ export function formatSalePreview(
 
 export function formatSaleCancelled(commands?: UmkmCommandsConfig | unknown): string {
     const cfg = resolveUmkmCommands(commands ?? DEFAULT_UMKM_COMMANDS);
+    /* v8 ignore next -- resolveUmkmCommands() always defines keywords.record_sale; the `|| []` is a type-guard */
     const saleKw = (cfg.keywords.record_sale || [])[0] || 'jual';
     const saleDigit = cfg.menu.find((m) => m.intent === 'record_sale')?.digit;
     const helpDigit = cfg.menu.find((m) => m.intent === 'help')?.digit;
+    /* v8 ignore next -- resolveUmkmCommands() always defines keywords.help; the `|| []` is a type-guard */
     const helpKw = (cfg.keywords.help || [])[0] || 'bantuan';
     const saleHint = saleDigit ? `*${saleKw} ...* / *${saleDigit}*` : `*${saleKw} ...*`;
     const helpHint = helpDigit ? `*${helpDigit}* / *${helpKw}*` : `*${helpKw}*`;
@@ -441,6 +447,7 @@ export function formatSaleCancelled(commands?: UmkmCommandsConfig | unknown): st
 /** Prompt after user picks menu catat penjualan without sale details. */
 export function formatRecordSaleMenuPrompt(commands?: UmkmCommandsConfig | unknown): string {
     const cfg = resolveUmkmCommands(commands ?? DEFAULT_UMKM_COMMANDS);
+    /* v8 ignore next -- resolveUmkmCommands() always defines keywords.record_sale; the `|| []` is a type-guard */
     const saleKw = (cfg.keywords.record_sale || [])[0] || 'jual';
     const confirmHint = cfg.confirm.slice(0, 2).map((c) => `*${c}*`).join(' / ') || '*ya*';
     const cancelHint = cfg.cancel.slice(0, 2).map((c) => `*${c}*`).join(' / ') || '*batal*';
@@ -470,6 +477,7 @@ export function formatUnknownUmkmCommand(commands?: UmkmCommandsConfig | unknown
     }
     if (menu.length === 0) {
         for (const intent of ['record_sale', 'check_stock', 'list_products', 'sales_report', 'help'] as const) {
+            /* v8 ignore next -- resolveUmkmCommands() always defines each intent's keyword list; the `|| []` is a type-guard */
             const kw = (cfg.keywords[intent] || [])[0];
             if (kw) lines.push(`• *${kw}*`);
         }
@@ -489,12 +497,16 @@ export function formatUmkmHelp(commands?: UmkmCommandsConfig | unknown): string 
         lines.push('');
     }
     lines.push('*Atau ketik kalimat* — contoh:');
+    /* v8 ignore next -- resolveUmkmCommands() always defines keywords.record_sale; the `|| []` is a type-guard */
     const saleKw = (cfg.keywords.record_sale || [])[0];
     if (saleKw) lines.push(`• ${saleKw} 3 es kopi 45000`);
+    /* v8 ignore next -- keywords.check_stock is always defined; the `|| []` is a type-guard */
     const stockKw = (cfg.keywords.check_stock || [])[0];
     if (stockKw) lines.push(`• ${stockKw} gula`);
+    /* v8 ignore next -- keywords.list_products is always defined; the `|| []` is a type-guard */
     const listKw = (cfg.keywords.list_products || [])[0];
     if (listKw) lines.push(`• ${listKw}`);
+    /* v8 ignore next -- keywords.sales_report is always defined; the `|| []` is a type-guard */
     const reportKw = (cfg.keywords.sales_report || [])[0];
     if (reportKw) lines.push(`• ${reportKw}`);
     lines.push('');

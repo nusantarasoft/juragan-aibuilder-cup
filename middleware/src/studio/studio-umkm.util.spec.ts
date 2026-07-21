@@ -7,19 +7,26 @@ import {
     detectUmkmConfirmReply,
     detectUmkmIntent,
     detectUmkmMenuDigit,
+    extractRupiahAmounts,
     extractStockProductQuery,
     formatDailyReportWa,
     formatRecordSaleMenuPrompt,
+    formatSaleCancelled,
     formatSaleConfirmation,
     formatSalePreview,
     formatUmkmHelp,
     formatUnknownUmkmCommand,
     generateWaOrderNumber,
+    isUmkmMenuOnly,
+    looksLikeSaleMessage,
+    looksLikeUmkmDirectDataQuery,
+    looksLikeUmkmOpenQuestion,
     parseRupiahToken,
     parseSaleHeuristic,
     parseSaleJsonFromLlm,
     toAidlcIntent,
 } from './studio-umkm.util';
+import type { UmkmCommandsConfig } from './studio-umkm-commands';
 import { resolveUmkmListenTarget } from './guide-flow.interpreter';
 
 describe('studio-umkm.util', () => {
@@ -143,6 +150,286 @@ describe('studio-umkm.util', () => {
     it('generates unique WA order numbers', () => {
         const a = generateWaOrderNumber(new Date('2026-06-09T10:00:00Z'));
         expect(a).toMatch(/^WA-20260609-/);
+    });
+});
+
+// Empty arrays mean "disabled" in resolveUmkmCommands, so these configs exercise fallbacks.
+const cfgNoMenu: Partial<UmkmCommandsConfig> = { menu: [] };
+const cfgNoMenuNoSaleKw: Partial<UmkmCommandsConfig> = {
+    menu: [],
+    keywords: { record_sale: [] } as any,
+};
+const cfgEmpty: Partial<UmkmCommandsConfig> = {
+    menu: [],
+    keywords: {
+        record_sale: [],
+        help: [],
+        check_stock: [],
+        list_products: [],
+        sales_report: [],
+    } as any,
+    confirm: [],
+    cancel: [],
+};
+
+describe('studio-umkm.util — extra coverage', () => {
+    it('isUmkmMenuOnly detects single digits only', () => {
+        expect(isUmkmMenuOnly('3')).toBe(true);
+        expect(isUmkmMenuOnly('12')).toBe(false);
+        expect(isUmkmMenuOnly('halo')).toBe(false);
+    });
+
+    it('detectUmkmMenuDigit handles whitespace-only and unmapped digits', () => {
+        expect(detectUmkmMenuDigit('   \n  ')).toBeNull();
+        expect(detectUmkmMenuDigit('9')).toBeNull(); // 9 not in default menu
+    });
+
+    it('toAidlcIntent maps every intent group', () => {
+        expect(toAidlcIntent('add_stock')).toBe('cek_stok');
+        expect(toAidlcIntent('report_hub')).toBe('laporan');
+        expect(toAidlcIntent('list_products')).toBe('tanya_umum');
+        expect(toAidlcIntent('ask')).toBe('tanya_umum');
+        expect(toAidlcIntent('help')).toBe('tanya_umum');
+        expect(toAidlcIntent('menu_hub')).toBe('tanya_umum');
+        expect(toAidlcIntent('purchase_hub')).toBe('lainnya');
+    });
+
+    it('detectUmkmConfirmReply returns null for punctuation-only text', () => {
+        expect(detectUmkmConfirmReply('...')).toBeNull();
+    });
+
+    it('detectUmkmIntent returns unknown for blank text', () => {
+        expect(detectUmkmIntent('   ')).toBe('unknown');
+    });
+
+    it('extractStockProductQuery rejects too-short or stopword queries', () => {
+        expect(extractStockProductQuery('cek stok')).toBeNull();
+        expect(extractStockProductQuery('stok ada')).toBeNull();
+    });
+
+    it('looksLikeUmkmOpenQuestion covers all trigger branches', () => {
+        expect(looksLikeUmkmOpenQuestion('kecil')).toBe(false); // too short
+        expect(looksLikeUmkmOpenQuestion('tips jualan biar rame')).toBe(true); // tips
+        expect(looksLikeUmkmOpenQuestion('cara naikkan penjualan')).toBe(true); // cara naikkan
+        expect(looksLikeUmkmOpenQuestion('mau meningkatkan omzet toko saya')).toBe(true); // verb+omzet
+        expect(looksLikeUmkmOpenQuestion('barang biasa saja disini')).toBe(false); // no trigger
+    });
+
+    it('looksLikeUmkmDirectDataQuery covers branches', () => {
+        expect(looksLikeUmkmDirectDataQuery('')).toBe(false);
+        expect(looksLikeUmkmDirectDataQuery('berapa total penjualan')).toBe(true);
+        expect(looksLikeUmkmDirectDataQuery('omzet toko')).toBe(true); // leading omzet
+        expect(looksLikeUmkmDirectDataQuery('jual kopi enak')).toBe(false);
+    });
+
+    it('looksLikeSaleMessage detects record_sale phrasing', () => {
+        expect(looksLikeSaleMessage('jual 2 kopi')).toBe(true);
+        expect(looksLikeSaleMessage('halo apa kabar')).toBe(false);
+    });
+});
+
+describe('parseRupiahToken — edge cases', () => {
+    it('returns null for empty/zero/non-numeric', () => {
+        expect(parseRupiahToken('rp')).toBeNull();
+        expect(parseRupiahToken('0')).toBeNull();
+        expect(parseRupiahToken('abc')).toBeNull();
+    });
+    it('returns null for malformed jt/rb tokens', () => {
+        expect(parseRupiahToken('.jt')).toBeNull();
+        expect(parseRupiahToken('.rb')).toBeNull();
+    });
+    it('parses decimal thousands and ribu', () => {
+        expect(parseRupiahToken('15.000')).toBe(15000);
+        expect(parseRupiahToken('2,5rb')).toBe(2500);
+    });
+});
+
+describe('extractRupiahAmounts', () => {
+    it('extracts suffixed and plain amounts, de-duplicated', () => {
+        const amounts = extractRupiahAmounts('total 500rb dan 45000 juga rp 45000');
+        expect(amounts).toContain(500000);
+        expect(amounts).toContain(45000);
+        expect(new Set(amounts).size).toBe(amounts.length);
+    });
+});
+
+describe('parseSaleHeuristic — branches', () => {
+    it('returns null for empty or non-sale text', () => {
+        expect(parseSaleHeuristic('')).toBeNull();
+        expect(parseSaleHeuristic('halo apa kabar')).toBeNull();
+    });
+
+    it('returns null when a sale has no resolvable amount', () => {
+        expect(parseSaleHeuristic('jual 2 kopi')).toBeNull();
+    });
+
+    it('captures customer + payment and single explicit total', () => {
+        const s = parseSaleHeuristic('jual 3 es kopi 45000 tunai pelanggan: Budi');
+        expect(s?.paymentMethod).toBe('tunai');
+        expect(s?.customerName).toBe('Budi');
+        expect(s?.totalAmount).toBe(45000);
+    });
+
+    it('picks the longest-named item when the first is longest', () => {
+        // "order" is a record_sale keyword (not caught by the jual|jualan|catat pattern), and
+        // "tunai" separates the two items so both survive into the primary-item reducer.
+        const s = parseSaleHeuristic('order 2 nasi goreng spesial tunai 3 teh 90000');
+        expect(s?.items).toHaveLength(1);
+        expect(s?.items[0].name).toMatch(/nasi goreng/i);
+    });
+
+    it('picks the longest-named item when a later one is longest', () => {
+        const s = parseSaleHeuristic('jual 2 teh 3 nasi goreng spesial 90000');
+        expect(s?.items).toHaveLength(1);
+        expect(s?.items[0].name).toMatch(/nasi goreng/i);
+    });
+
+    it('skips zero-quantity items (returns null when nothing left)', () => {
+        expect(parseSaleHeuristic('jual 0 kopi 5000')).toBeNull();
+    });
+
+    it('returns null when explicit total parses to 0', () => {
+        expect(parseSaleHeuristic('jual 2 kopi total 0')).toBeNull();
+    });
+
+    it('uses name-only fallback when qty is absent', () => {
+        const s = parseSaleHeuristic('jual kopi 20000');
+        expect(s?.items[0].quantity).toBe(1);
+        expect(s?.totalAmount).toBe(20000);
+    });
+
+    it('distributes multiple amounts across an item', () => {
+        const s = parseSaleHeuristic('jual 2 kopi rp 15000 rp 20000');
+        expect(s?.items[0].unitPrice).toBe(15000);
+        expect(s?.totalAmount).toBe(30000);
+    });
+
+    it('handles a tiny explicit total that rounds unit price to 0', () => {
+        const s = parseSaleHeuristic('jual 3 kopi total 1');
+        expect(s?.totalAmount).toBe(1);
+        expect(s?.items[0].unitPrice).toBe(0);
+    });
+
+    it('truncates long messages into notes', () => {
+        const long = 'jual 1 kopi 15000 ' + 'x'.repeat(220);
+        const s = parseSaleHeuristic(long);
+        expect(s?.notes?.length).toBe(200);
+    });
+});
+
+describe('parseSaleJsonFromLlm — branches', () => {
+    it('parses raw (non-fenced) JSON and recomputes total from items', () => {
+        const parsed = parseSaleJsonFromLlm(
+            '{"items":[{"name":"Teh","quantity":2,"unitPrice":5000}]}',
+        );
+        expect(parsed?.totalAmount).toBe(10000);
+    });
+
+    it('returns null when there are no braces', () => {
+        expect(parseSaleJsonFromLlm('tidak ada json')).toBeNull();
+    });
+
+    it('returns null for malformed JSON', () => {
+        expect(parseSaleJsonFromLlm('{ items: [ }')).toBeNull();
+    });
+
+    it('returns null when items are empty or total non-positive', () => {
+        expect(parseSaleJsonFromLlm('{"items":[],"totalAmount":0}')).toBeNull();
+        expect(parseSaleJsonFromLlm('{"items":[{"name":""}],"totalAmount":0}')).toBeNull();
+    });
+
+    it('returns null when the items key is missing entirely', () => {
+        expect(parseSaleJsonFromLlm('{"totalAmount":100}')).toBeNull();
+    });
+
+    it('applies defaults and derives per-item price when unitPrice is 0', () => {
+        const parsed = parseSaleJsonFromLlm(
+            '{"items":[{"name":"Nasi"}],"totalAmount":12000,"customerName":"Ani","paymentMethod":"qris","notes":"catatan"}',
+        );
+        expect(parsed?.items[0].quantity).toBe(1);
+        expect(parsed?.items[0].unitPrice).toBe(12000);
+        expect(parsed?.customerName).toBe('Ani');
+        expect(parsed?.paymentMethod).toBe('qris');
+        expect(parsed?.notes).toBe('catatan');
+    });
+
+    it('omits optional fields when absent', () => {
+        const parsed = parseSaleJsonFromLlm(
+            '{"items":[{"name":"Roti","quantity":1,"unitPrice":8000}],"totalAmount":8000}',
+        );
+        expect(parsed?.customerName).toBeUndefined();
+        expect(parsed?.paymentMethod).toBeUndefined();
+        expect(parsed?.notes).toBeUndefined();
+    });
+});
+
+describe('format functions — fallback branches via empty configs', () => {
+    it('formatSaleConfirmation without items or payment', () => {
+        const msg = formatSaleConfirmation({ orderNumber: 'X', totalAmount: 0, items: [] });
+        expect(msg).not.toContain('Item:');
+        expect(msg).not.toContain('Pembayaran');
+    });
+
+    it('formatSalePreview without items but with payment + customer (empty config hints)', () => {
+        const msg = formatSalePreview(
+            { totalAmount: 1000, items: [], paymentMethod: 'tunai', customerName: 'Sri' },
+            cfgEmpty,
+        );
+        expect(msg).toContain('*ya*');
+        expect(msg).toContain('*batal*');
+        expect(msg).toContain('Pembayaran: tunai');
+        expect(msg).toContain('Pelanggan: Sri');
+        expect(msg).not.toContain('Item:');
+    });
+
+    it('formatSaleCancelled with and without menu digits', () => {
+        expect(formatSaleCancelled()).toContain('dibatalkan'); // default: digits present
+        const noMenu = formatSaleCancelled(cfgNoMenu); // digits absent
+        expect(noMenu).toContain('dibatalkan');
+        const empty = formatSaleCancelled(cfgEmpty); // keyword fallbacks 'jual'/'bantuan'
+        expect(empty).toContain('jual');
+        expect(empty).toContain('bantuan');
+    });
+
+    it('formatRecordSaleMenuPrompt with empty config falls back to defaults', () => {
+        const msg = formatRecordSaleMenuPrompt(cfgEmpty);
+        expect(msg).toContain('jual');
+        expect(msg).toContain('*ya*');
+        expect(msg).toContain('*batal*');
+        expect(msg).not.toContain('kembali ke menu'); // no help digit
+    });
+
+    it('formatUnknownUmkmCommand with empty menu lists keyword hints', () => {
+        const withKw = formatUnknownUmkmCommand(cfgNoMenu); // menu empty, default keywords present
+        expect(withKw).toContain('•');
+        const noKw = formatUnknownUmkmCommand(cfgNoMenuNoSaleKw); // some keyword lists empty
+        expect(noKw).toContain('belum dikenali');
+    });
+
+    it('formatUmkmHelp with empty menu + empty keyword lists', () => {
+        const msg = formatUmkmHelp(cfgEmpty);
+        expect(msg).toContain('Asisten Penjualan');
+        expect(msg).toContain('*ya*');
+        expect(msg).toContain('*batal*');
+    });
+
+    it('formatDailyReportWa with empty top products but recent orders', () => {
+        const msg = formatDailyReportWa({
+            salesDate: '2026-07-01',
+            orderCount: 2,
+            paidOrderCount: 1,
+            revenueGross: 50000,
+            revenuePaid: 25000,
+            topProducts: [],
+            recentOrders: [
+                { orderNumber: 'A1', customerName: 'Doni', totalAmount: 25000, createdAt: 'now' },
+                { orderNumber: 'A2', customerName: null, totalAmount: 25000, createdAt: 'now' },
+            ],
+        });
+        expect(msg).toContain('Order terbaru');
+        expect(msg).toContain('Doni');
+        expect(msg).toContain('Pelanggan'); // null customer -> 'Pelanggan'
+        expect(msg).not.toContain('terlaris');
     });
 });
 
