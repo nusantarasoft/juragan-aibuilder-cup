@@ -1,5 +1,5 @@
 <#
-  deploy.ps1 - merge master → master-production, push, git-pull on the server,
+  deploy.ps1 - merge master into master-production, push, git-pull on the server,
   then (re)deploy the stack.
 
   Run from the repo root on the Windows dev machine:
@@ -68,7 +68,7 @@ function Mask-GitUrl([string]$url) {
 }
 
 if (-not $SkipMerge) {
-  Write-Host "==> [1/3] merge master → $branch" -ForegroundColor Cyan
+  Write-Host "==> [1/3] merge master -> $branch" -ForegroundColor Cyan
 
   $dirty = git status --porcelain
   if ($dirty) {
@@ -96,7 +96,7 @@ if (-not $SkipMerge) {
 
   if (-not $SkipPush) {
     git remote get-url origin 2>$null | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "No origin remote — cannot push $branch." }
+    if ($LASTEXITCODE -ne 0) { throw "No origin remote - cannot push $branch." }
     Write-Host "    pushing $branch to origin"
     git push -u origin $branch
     if ($LASTEXITCODE -ne 0) { throw "git push origin $branch failed." }
@@ -129,13 +129,12 @@ $header = (
   "export REMOTE_DIR='$remoteDir'`n" +
   "export DEPLOY_GIT_URL='$urlEscaped'`n`n"
 )
-$footer = @'
-
-CUR=$(git -C '__REMOTE_DIR__' rev-parse --abbrev-ref HEAD)
-test "$CUR" = '__BRANCH__' || { echo "ERROR: server on $CUR, expected __BRANCH__" >&2; exit 1; }
-echo "server branch OK: $CUR @ $(git -C '__REMOTE_DIR__' rev-parse --short HEAD)"
-'@
-$footer = $footer.Replace('__REMOTE_DIR__', $remoteDir).Replace('__BRANCH__', $branch) -replace "`r`n", "`n"
+$footer = (
+  "`n" +
+  "CUR=`$(git -C '$remoteDir' rev-parse --abbrev-ref HEAD)`n" +
+  "test `"`$CUR`" = '$branch' || { echo `"ERROR: server on `$CUR, expected $branch`" >&2; exit 1; }`n" +
+  "echo `"server branch OK: `$CUR at `$(git -C '$remoteDir' rev-parse --short HEAD)`"`n"
+)
 $remoteScript = $header + $pullBody + $footer
 
 $pullFile = Join-Path $env:TEMP "nsoft3-pull-on-server.sh"
