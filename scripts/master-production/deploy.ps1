@@ -30,10 +30,18 @@ param(
   [switch]$SkipPush
 )
 
-$ErrorActionPreference = "Stop"
-
+$ErrorActionPreference = "Continue"
+# Prefer explicit exit-code checks for git/python; stderr progress must not abort.
 foreach ($v in "SSH_HOST","SSH_USER","SSH_PASS") {
   if (-not [Environment]::GetEnvironmentVariable($v)) { throw "Env var $v is required" }
+}
+
+function Invoke-Git {
+  param([Parameter(ValueFromRemainingArguments = $true)][string[]]$GitArgs)
+  & git @GitArgs
+  if ($LASTEXITCODE -ne 0) {
+    throw ("git " + ($GitArgs -join " ") + " failed with exit $LASTEXITCODE")
+  }
 }
 
 $repo       = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
@@ -75,13 +83,12 @@ if (-not $SkipMerge) {
     throw "Working tree is dirty. Commit or stash changes before deploy, or pass -SkipMerge."
   }
 
-  git fetch origin master $branch 2>$null | Out-Null
+  Invoke-Git fetch origin master $branch
 
   $current = (git rev-parse --abbrev-ref HEAD).Trim()
   if ($current -ne $branch) {
     Write-Host "    checking out $branch (was on $current)"
-    git checkout $branch
-    if ($LASTEXITCODE -ne 0) { throw "git checkout $branch failed" }
+    Invoke-Git checkout $branch
   }
 
   $mergeSource = "master"
@@ -89,8 +96,9 @@ if (-not $SkipMerge) {
   if ($LASTEXITCODE -eq 0) { $mergeSource = "origin/master" }
 
   Write-Host "    merging $mergeSource into $branch"
-  git merge $mergeSource --no-edit
-  if ($LASTEXITCODE -ne 0) {
+  try {
+    Invoke-Git merge $mergeSource --no-edit
+  } catch {
     throw "Merge from $mergeSource failed (resolve conflicts, then re-run deploy)."
   }
 
@@ -98,8 +106,7 @@ if (-not $SkipMerge) {
     git remote get-url origin 2>$null | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "No origin remote - cannot push $branch." }
     Write-Host "    pushing $branch to origin"
-    git push -u origin $branch
-    if ($LASTEXITCODE -ne 0) { throw "git push origin $branch failed." }
+    Invoke-Git push -u origin $branch
   } else {
     Write-Warning "-SkipPush: server pull will not include unpushed local commits."
   }
@@ -111,8 +118,7 @@ if (-not $SkipMerge) {
       throw "On branch '$current' with -SkipMerge; checkout $branch first or pass -SkipPush."
     }
     Write-Host "    pushing current $branch to origin"
-    git push origin $branch
-    if ($LASTEXITCODE -ne 0) { throw "git push origin $branch failed." }
+    Invoke-Git push origin $branch
   }
 }
 
