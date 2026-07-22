@@ -231,22 +231,44 @@ describe('StudioDbContextService', () => {
     });
 
     describe('fetchSupabaseContext', () => {
-        it('default views, catalog + rows', async () => {
-            // queue: catalog hint, then sales_today rows, sales_summary rows, etc.
+        it('tanpa supabase_views → kosong (jangan default sales diam-diam)', async () => {
+            const { svc } = build([]);
+            const out = await svc.fetchSupabaseContext(
+                { brief_summary: 'ringkas' },
+                qu({ main_intent: 'penjualan', rewritten_query: 'penjualan hari ini' }),
+            );
+            expect(out).toBe('');
+        });
+
+        it('default sales views via parseConfig, catalog + rows', async () => {
+            // queue: matching view rows first, then catalog hint
             const { svc } = build([
-                { data: [{ object_name: 'v_studio_sales_today', description: 'd' }], error: null },
                 { data: [{ total: 5 }], error: null },
                 { data: [{ total: 9 }], error: null },
+                { data: [{ object_name: 'v_studio_sales_today', description: 'd' }], error: null },
             ]);
             const out = await svc.fetchSupabaseContext(
-                {},
+                { ...DEFAULT_STUDIO_SALES_CONTEXT },
                 qu({ main_intent: 'penjualan', rewritten_query: 'penjualan hari ini' }),
             );
             expect(out).toContain('Katalog data');
             expect(out).toContain('Supabase:');
         });
+
+        it('katalog saja tanpa rows → kosong', async () => {
+            const { svc } = build([
+                { data: [], error: null },
+                { data: [], error: null },
+            ]);
+            const out = await svc.fetchSupabaseContext(
+                { ...DEFAULT_STUDIO_SALES_CONTEXT },
+                qu({ main_intent: 'penjualan', rewritten_query: 'penjualan hari ini' }),
+            );
+            expect(out).toBe('');
+        });
+
         it('skip unsafe identifier & view yang tidak relevan', async () => {
-            const { svc } = build([{ data: [], error: null }]);
+            const { svc } = build([]);
             const out = await svc.fetchSupabaseContext(
                 { supabase_views: ['bad-view', 'v_studio_cs_customers'] },
                 qu({ main_intent: 'cuaca', rewritten_query: 'cuaca' }),
@@ -255,8 +277,8 @@ describe('StudioDbContextService', () => {
         });
         it('rewritten_query kosong → pakai normalized_text', async () => {
             const { svc } = build([
-                { data: [], error: null },
                 { data: [{ x: 1 }], error: null },
+                { data: [], error: null },
             ]);
             const out = await svc.fetchSupabaseContext(
                 { supabase_views: ['v_studio_sales_summary'] },
@@ -288,7 +310,6 @@ describe('StudioDbContextService', () => {
 
         it('query view melempar → warn, lanjut', async () => {
             const { svc } = build([
-                { data: [], error: null },
                 { data: null, error: { code: 'XX', message: 'boom' } },
             ]);
             const out = await svc.fetchSupabaseContext(

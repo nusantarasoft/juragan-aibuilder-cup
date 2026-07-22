@@ -24,7 +24,7 @@ export type RetrievalResult = {
     chunks: StudioChunkHit[];
     fileContext: string;
     dbContext: string;
-    references: { content: string; docName: string; score: number }[];
+    references: { content: string; docName: string; score: number; chunkId?: string }[];
     rawChunks: { chunkId: string; sourceId: string; filename: string; score: number }[];
     documentRetrievalStatus: DocumentRetrievalStatus;
 };
@@ -117,24 +117,16 @@ export class StudioContextService {
             return filterBySources(mapRows(data || [])).slice(0, limit);
         };
 
-        let chunks = await search(0.42);
+        // Floor tuned so weak local embeddings (e.g. Ollama nomic) do not treat
+        // off-topic Indonesian questions as matches (~0.48–0.52) while in-domain
+        // hits typically stay ≥0.65.
+        let chunks = await search(0.58);
         if (chunks.length === 0) {
-            let countQuery = this.admin()
-                .from('studio_source_chunks')
-                .select('id', { count: 'exact', head: true })
-                .eq('notebook_id', notebookId);
-            if (sourceIds?.length) {
-                countQuery = countQuery.in('source_id', sourceIds);
-            }
-            const { count } = await countQuery;
-            const total = count ?? 0;
-            if (total > 0 && total <= Math.max(limit, 12)) {
-                chunks = await search(0);
-                if (chunks.length > 0) {
-                    this.logger.debug(
-                        `Semantic search fallback (threshold 0) for notebook ${notebookId}: ${chunks.length} chunk(s)`,
-                    );
-                }
+            chunks = await search(0.55);
+            if (chunks.length > 0) {
+                this.logger.debug(
+                    `Semantic search soft-fallback (threshold 0.55) for notebook ${notebookId}: ${chunks.length} chunk(s)`,
+                );
             }
         }
 
@@ -217,25 +209,68 @@ export class StudioContextService {
         return { chunks, fileContext, dbContext, references, rawChunks, documentRetrievalStatus };
     }
 
+    private resolveDocumentStatus(retrieval: RetrievalResult): DocumentRetrievalStatus {
+        const hasFile = retrieval.fileContext.length > 0;
+        return retrieval.documentRetrievalStatus ?? (hasFile ? 'matched' : 'not_indexed');
+    }
+
+    /**
+     * Deterministic NotebookLM-style replies when there is nothing to ground on
+     * (avoids LLM hallucination for empty selection / no match / not indexed).
+     * Returns null when the LLM should still run (matched sources, or DB context available).
+     */
+    private cannedGroundedAnswer(
+        retrieval: RetrievalResult,
+        language?: string,
+    ): string | null {
+        const hasFile = retrieval.fileContext.length > 0;
+        const hasDb = retrieval.dbContext.length > 0;
+        if (hasFile || hasDb) return null;
+
+        const status = this.resolveDocumentStatus(retrieval);
+        const en = (language || '').toLowerCase() === 'en';
+
+        switch (status) {
+            case 'no_sources_selected':
+                return en
+                    ? 'Select at least one source in the Sources panel before asking about document content. I only answer from the sources you select.'
+                    : 'Centang minimal satu sumber di panel Sources sebelum bertanya tentang isi dokumen. Saya hanya menjawab berdasarkan sumber yang dipilih.';
+            case 'no_relevant_chunks':
+                return en
+                    ? 'I could not find relevant passages in the selected sources for this question. Try rephrasing, or pick different sources.'
+                    : 'Saya tidak menemukan cuplikan yang relevan di sumber yang dipilih untuk pertanyaan ini. Coba ubah pertanyaan, atau pilih sumber lain.';
+            case 'not_indexed':
+                return en
+                    ? 'Sources in this notebook are not ready yet (still indexing). Wait for indexing to finish or use Reindex, then ask again.'
+                    : 'Sumber di notebook ini belum siap (masih mengindeks). Tunggu indexing selesai atau gunakan Reindex, lalu tanya lagi.';
+            default:
+                return null;
+        }
+    }
+
     private fileContextRule(
         status: DocumentRetrievalStatus,
         hasDb: boolean,
     ): string {
         switch (status) {
             case 'matched':
-                return 'Jawab pertanyaan HANYA berdasarkan cuplikan dokumen sumber di bawah. Jika tidak ada di sumber, katakan dengan jujur.';
+                return [
+                    'Jawab HANYA dari cuplikan dokumen sumber di bawah.',
+                    'Jika fakta tidak ada di cuplikan, katakan dengan jelas bahwa itu tidak ditemukan di sumber — jangan mengarang dan jangan mengisi dari pengetahuan umum.',
+                    'Jika pertanyaan di luar topik cuplikan: TOLAK singkat (1–2 kalimat), jangan merangkum isi sumber, dan tawarkan bertanya tentang topik yang ada di sumber.',
+                ].join(' ');
             case 'no_relevant_chunks':
                 return hasDb
-                    ? 'Tidak ditemukan cuplikan dokumen yang relevan untuk pertanyaan ini. Jawab dari data database operasional jika tersedia; jangan mengarang dari dokumen.'
-                    : 'Tidak ditemukan cuplikan dokumen yang relevan untuk pertanyaan ini. Katakan dengan jujur bahwa informasi tidak ada di sumber notebook; jangan mengarang.';
+                    ? 'Tidak ada cuplikan dokumen yang relevan. Jawab HANYA dari data database operasional di bawah bila cocok; jangan mengarang dari dokumen atau pengetahuan umum.'
+                    : 'Tidak ada cuplikan dokumen yang relevan. Katakan jujur bahwa informasi tidak ada di sumber; jangan mengarang.';
             case 'no_sources_selected':
                 return hasDb
-                    ? 'Pengguna tidak mencentang sumber dokumen. Jawab dari data database operasional jika tersedia; jangan mengarang dari dokumen yang tidak dipilih.'
-                    : 'Pengguna tidak mencentang sumber di panel Sources. Minta mereka mencentang minimal satu sumber sebelum bertanya tentang isi dokumen; jangan mengarang.';
+                    ? 'Tidak ada sumber dokumen yang dicentang. Jawab HANYA dari data database operasional bila cocok; jangan mengarang isi dokumen.'
+                    : 'Tidak ada sumber yang dicentang di panel Sources. Minta pengguna mencentang minimal satu sumber; jangan mengarang.';
             case 'not_indexed':
                 return hasDb
-                    ? 'Belum ada dokumen terindeks di notebook ini. Gunakan data database operasional untuk pertanyaan status/order/analitik jika tersedia.'
-                    : 'Belum ada dokumen terindeks di notebook ini. Minta pengguna menunggu indexing selesai atau menambahkan sumber; jangan mengarang jawaban faktual.';
+                    ? 'Belum ada dokumen terindeks. Gunakan data database operasional untuk pertanyaan status/order/analitik jika tersedia; jangan mengarang fakta dokumen.'
+                    : 'Belum ada dokumen terindeks. Minta menunggu indexing atau Reindex; jangan mengarang jawaban faktual.';
         }
     }
 
@@ -273,27 +308,34 @@ export class StudioContextService {
             params;
         const hasFile = retrieval.fileContext.length > 0;
         const hasDb = retrieval.dbContext.length > 0;
-        const docStatus =
-            retrieval.documentRetrievalStatus ?? (hasFile ? 'matched' : 'not_indexed');
+        const docStatus = this.resolveDocumentStatus(retrieval);
 
         const roleLine =
             audience === 'customer'
-                ? 'Anda adalah asisten layanan pelanggan yang ramah dan profesional.'
-                : 'Anda adalah asisten admin internal yang tepat dan faktual.';
+                ? 'Anda adalah asisten riset notebook (gaya NotebookLM) untuk pelanggan: ramah, ringkas, dan hanya mengandalkan sumber yang diberikan.'
+                : 'Anda adalah asisten riset notebook (gaya NotebookLM) untuk admin: tepat, ringkas, dan hanya mengandalkan sumber yang diberikan.';
+
+        const styleRules = [
+            'Gaya jawaban: langsung ke inti, paragraf pendek atau bullet; jangan pembuka basah ("Baik, saya akan menjawab…").',
+            'Susun jawaban seperti NotebookLM: ringkas → poin kunci → detail singkat bila perlu.',
+            hasFile
+                ? 'Setiap klaim faktual dari dokumen wajib ada sitasi inline [n] yang cocok dengan nomor [Sumber n]. Contoh: …pencatatan kas [1].'
+                : '',
+            hasFile ? 'Boleh menyebut nama file sekali di awal bila membantu, lalu andalkan [n].' : '',
+            'Jangan mengarang angka, nama, atau fakta yang tidak ada di cuplikan/data.',
+            'Gunakan markdown sederhana (heading/bullet) bila memperjelas.',
+        ].filter(Boolean);
 
         const rules = [
             roleLine,
-            `Basis pengetahuan notebook: "${notebookName}".`,
+            `Notebook: "${notebookName}".`,
             chatInstruction?.trim() ? `Instruksi notebook: ${chatInstruction.trim()}` : '',
             this.fileContextRule(docStatus, hasDb),
             hasDb
-                ? 'Gunakan juga data database operasional di bawah untuk pertanyaan status/order/analitik.'
+                ? 'Jika ada data database operasional di bawah, gunakan hanya untuk pertanyaan status/order/analitik operasional.'
                 : '',
-            hasFile
-                ? 'Bila memakai informasi dari sumber, sertakan sitasi inline dalam format [n] sesuai nomor [Sumber n].'
-                : '',
+            ...styleRules,
             this.languageRule(language),
-            'Gunakan markdown. Kutip nama file bila relevan.',
         ].filter(Boolean);
 
         return [
@@ -312,6 +354,18 @@ export class StudioContextService {
         ].join('\n');
     }
 
+    /**
+     * Ensure NotebookLM-style inline citations when the model forgot [n]
+     * but we do have retrieved references.
+     */
+    private ensureInlineCitations(answer: string, retrieval: RetrievalResult): string {
+        const refs = retrieval.references ?? [];
+        if (!answer?.trim() || refs.length === 0) return answer;
+        if (/\[\d+\]/.test(answer)) return answer;
+        const markers = refs.map((_, i) => `[${i + 1}]`).join('');
+        return `${answer.trim()} ${markers}`;
+    }
+
     async generateGroundedAnswer(params: {
         notebookName: string;
         audience: 'admin' | 'customer';
@@ -322,8 +376,11 @@ export class StudioContextService {
         retrieval: RetrievalResult;
         language?: string;
     }): Promise<string> {
+        const canned = this.cannedGroundedAnswer(params.retrieval, params.language);
+        if (canned) return canned;
         const answer = await this.generateText(this.buildGroundedPrompt(params));
-        return answer || 'Maaf, saya tidak dapat menghasilkan jawaban saat ini.';
+        const finalAnswer = answer || 'Maaf, saya tidak dapat menghasilkan jawaban saat ini.';
+        return this.ensureInlineCitations(finalAnswer, params.retrieval);
     }
 
     /**
@@ -343,8 +400,19 @@ export class StudioContextService {
         },
         onDelta: (text: string) => void,
     ): Promise<string> {
+        const canned = this.cannedGroundedAnswer(params.retrieval, params.language);
+        if (canned) {
+            onDelta(canned);
+            return canned;
+        }
         const answer = await this.generateTextStream(this.buildGroundedPrompt(params), onDelta);
-        return answer || 'Maaf, saya tidak dapat menghasilkan jawaban saat ini.';
+        const finalAnswer = answer || 'Maaf, saya tidak dapat menghasilkan jawaban saat ini.';
+        const withCite = this.ensureInlineCitations(finalAnswer, params.retrieval);
+        // If we had to append citations after the stream, emit the suffix once.
+        if (withCite !== finalAnswer) {
+            onDelta(withCite.slice(finalAnswer.length));
+        }
+        return withCite;
     }
 
     async getChunkById(chunkId: string): Promise<{

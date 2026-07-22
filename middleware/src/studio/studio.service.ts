@@ -772,13 +772,14 @@ export class StudioService {
         if (error || !conversation) throw new NotFoundException('Conversation not found');
 
         const qu = options?.queryUnderstanding ?? (await this.understandUserQuery(question));
-        const searchQuery = qu.rewritten_query?.trim() || question;
         const config = this.dbContextService.parseConfig(notebook.context_config);
         const audience = (notebook.audience === 'customer' ? 'customer' : 'admin') as 'admin' | 'customer';
 
+        // Document retrieval uses the original question so rewrite cannot pull
+        // off-topic asks toward notebook vocabulary (false-positive chunks).
         const retrieval = await this.contextService.retrieveContext(
             notebookId,
-            searchQuery,
+            question,
             qu,
             config,
             { sourceIds: options?.sourceIds },
@@ -795,12 +796,13 @@ export class StudioService {
             .map((m: any) => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.content}`);
 
         const resolvedInstruction = options?.instruction?.trim() || undefined;
+        // Answer from the user's original wording; rewritten query is retrieval-only.
         const answer = await this.contextService.generateGroundedAnswer({
             notebookName: notebook.name,
             audience,
             question: resolvedInstruction
-                ? `${resolvedInstruction}\n\nPertanyaan: ${searchQuery}`
-                : searchQuery,
+                ? `${resolvedInstruction}\n\nPertanyaan: ${question}`
+                : question,
             instruction: resolvedInstruction,
             chatInstruction: config.chat_instruction,
             conversationLines,
@@ -941,13 +943,14 @@ export class StudioService {
 
         const conversationLines = await this.getRecentConversationLines(conversation.id, 12);
         const qu = await this.understandUserQuery(question, { conversationLines });
-        const searchQuery = qu.rewritten_query?.trim() || question;
         const config = this.dbContextService.parseConfig(notebook.context_config);
         const audience = (notebook.audience === 'customer' ? 'customer' : 'admin') as 'admin' | 'customer';
 
+        // Document retrieval uses the original question so rewrite cannot pull
+        // off-topic asks toward notebook vocabulary (false-positive chunks).
         const retrieval = await this.contextService.retrieveContext(
             notebookId,
-            searchQuery,
+            question,
             qu,
             config,
             { sourceIds: options?.sourceIds },
@@ -955,11 +958,12 @@ export class StudioService {
 
         emit('meta', { conversationId: conversation.id, references: retrieval.references });
 
+        // Answer from the user's original wording.
         const answer = await this.contextService.generateGroundedAnswerStream(
             {
                 notebookName: notebook.name,
                 audience,
-                question: searchQuery,
+                question,
                 chatInstruction: config.chat_instruction,
                 conversationLines: conversationLines.map(
                     (l) => `${l.role === 'assistant' ? 'Assistant' : 'User'}: ${l.content}`,
@@ -1258,7 +1262,7 @@ export class StudioService {
         const config = this.dbContextService.parseConfig(notebook.context_config);
         const retrieval = await this.contextService.retrieveContext(
             notebookId,
-            qu.rewritten_query || query,
+            query,
             qu,
             config,
         );

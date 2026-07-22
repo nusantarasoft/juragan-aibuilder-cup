@@ -166,15 +166,17 @@ describe('StudioContextService', () => {
             expect(await svc.semanticSearchNotebook('nb1', 'q', 8, ['s1'])).toEqual([]);
         });
 
-        it('rpc missing p_source_ids tanpa sourceIds → tidak retry, log error', async () => {
+        it('rpc missing p_source_ids tanpa sourceIds → soft-fallback juga gagal, log error', async () => {
             const { svc, admin } = build({
                 admin: {
-                    rpc: [{ data: null, error: { message: 'p_source_ids' } }],
-                    count: [{ count: 0, error: null }],
+                    rpc: [
+                        { data: null, error: { message: 'p_source_ids' } },
+                        { data: null, error: { message: 'p_source_ids' } },
+                    ],
                 },
             });
             expect(await svc.semanticSearchNotebook('nb1', 'q')).toEqual([]);
-            expect(admin.rpc).toHaveBeenCalledTimes(1);
+            expect(admin.rpc).toHaveBeenCalledTimes(2);
             expect(svc['logger'].error).toHaveBeenCalled();
         });
 
@@ -190,14 +192,13 @@ describe('StudioContextService', () => {
             expect(await svc.semanticSearchNotebook('nb1', 'q', 8, ['s1'])).toEqual([]);
         });
 
-        it('rpc missing (42883) → warn & [], lalu fallback threshold 0 berhasil', async () => {
+        it('rpc missing (42883) → warn & [], soft-fallback 0.55 berhasil', async () => {
             const { svc } = build({
                 admin: {
                     rpc: [
                         { data: null, error: { code: '42883' } },
                         { data: [row(3)], error: null },
                     ],
-                    count: [{ count: 5, error: null }],
                 },
             });
             const hits = await svc.semanticSearchNotebook('nb1', 'q');
@@ -206,11 +207,13 @@ describe('StudioContextService', () => {
             expect(svc['logger'].debug).toHaveBeenCalled();
         });
 
-        it('rpc error lain → logger.error & []', async () => {
+        it('rpc error lain → logger.error & soft-fallback kosong → []', async () => {
             const { svc } = build({
                 admin: {
-                    rpc: [{ data: null, error: { code: 'X', message: 'oops' } }],
-                    count: [{ count: 0, error: null }],
+                    rpc: [
+                        { data: null, error: { code: 'X', message: 'oops' } },
+                        { data: [], error: null },
+                    ],
                 },
             });
             const hits = await svc.semanticSearchNotebook('nb1', 'q');
@@ -218,48 +221,26 @@ describe('StudioContextService', () => {
             expect(svc['logger'].error).toHaveBeenCalled();
         });
 
-        it('fallback: count null (?? 0) → tidak search ulang', async () => {
-            const { svc } = build({
-                admin: {
-                    rpc: [{ data: [], error: null }],
-                    count: [{ count: null, error: null }],
-                },
-            });
-            expect(await svc.semanticSearchNotebook('nb1', 'q')).toEqual([]);
-        });
-
-        it('fallback: total terlalu besar → tidak search ulang', async () => {
-            const { svc } = build({
-                admin: {
-                    rpc: [{ data: [], error: null }],
-                    count: [{ count: 100, error: null }],
-                },
-            });
-            expect(await svc.semanticSearchNotebook('nb1', 'q')).toEqual([]);
-        });
-
-        it('fallback: search(0) tetap kosong → tanpa debug', async () => {
+        it('soft-fallback 0.55 tetap kosong → tanpa debug', async () => {
             const { svc } = build({
                 admin: {
                     rpc: [
                         { data: [], error: null },
                         { data: [], error: null },
                     ],
-                    count: [{ count: 5, error: null }],
                 },
             });
             expect(await svc.semanticSearchNotebook('nb1', 'q')).toEqual([]);
             expect(svc['logger'].debug).not.toHaveBeenCalled();
         });
 
-        it('fallback threshold 0 juga untuk subset sourceIds', async () => {
+        it('soft-fallback 0.55 mengisi hasil saat threshold ketat kosong', async () => {
             const { svc, admin } = build({
                 admin: {
                     rpc: [
                         { data: [], error: null },
                         { data: [row(1)], error: null },
                     ],
-                    count: [{ count: 3, error: null }],
                 },
             });
             const hits = await svc.semanticSearchNotebook('nb1', 'q', 8, ['s1']);
@@ -352,14 +333,17 @@ describe('StudioContextService', () => {
             });
             expect(out).toBe('ANSWER');
             const prompt = aiRouter.generateText.mock.calls[0][0] as string;
-            expect(prompt).toContain('layanan pelanggan');
+            expect(prompt).toContain('NotebookLM');
+            expect(prompt).toContain('pelanggan');
             expect(prompt).toContain('Instruksi notebook: ramah');
             expect(prompt).toContain('Instruksi tambahan');
             expect(prompt).toContain('U: hi');
+            expect(prompt).toContain('sitasi inline [n]');
+            expect(prompt).toContain('jangan pembuka basah');
         });
 
-        it('audience admin, no_relevant_chunks tanpa db, tanpa file, tanpa percakapan → fallback answer', async () => {
-            const { svc } = build({ answer: '' });
+        it('no_relevant_chunks tanpa db → jawaban canned (tanpa LLM)', async () => {
+            const { svc, aiRouter } = build({ answer: '' });
             const out = await svc.generateGroundedAnswer({
                 notebookName: 'NB',
                 audience: 'admin',
@@ -372,7 +356,8 @@ describe('StudioContextService', () => {
                     documentRetrievalStatus: 'no_relevant_chunks',
                 },
             });
-            expect(out).toBe('Maaf, saya tidak dapat menghasilkan jawaban saat ini.');
+            expect(out).toContain('tidak menemukan cuplikan yang relevan');
+            expect(aiRouter.generateText).not.toHaveBeenCalled();
         });
 
         it('no_relevant_chunks dengan db', async () => {
@@ -400,7 +385,7 @@ describe('StudioContextService', () => {
             expect(withDb.aiRouter.generateText.mock.calls[0][0]).toContain('Belum ada dokumen terindeks');
 
             const noDb = build();
-            await noDb.svc.generateGroundedAnswer({
+            const out = await noDb.svc.generateGroundedAnswer({
                 notebookName: 'NB',
                 audience: 'admin',
                 question: 'q',
@@ -412,7 +397,8 @@ describe('StudioContextService', () => {
                     documentRetrievalStatus: 'not_indexed',
                 },
             });
-            expect(noDb.aiRouter.generateText.mock.calls[0][0]).toContain('menunggu indexing');
+            expect(out).toContain('belum siap');
+            expect(noDb.aiRouter.generateText).not.toHaveBeenCalled();
         });
 
         it('no_sources_selected dengan db dan tanpa db', async () => {
@@ -428,10 +414,10 @@ describe('StudioContextService', () => {
                     documentRetrievalStatus: 'no_sources_selected',
                 },
             });
-            expect(withDb.aiRouter.generateText.mock.calls[0][0]).toContain('tidak mencentang sumber');
+            expect(withDb.aiRouter.generateText.mock.calls[0][0]).toContain('Tidak ada sumber dokumen yang dicentang');
 
             const noDb = build();
-            await noDb.svc.generateGroundedAnswer({
+            const out = await noDb.svc.generateGroundedAnswer({
                 notebookName: 'NB',
                 audience: 'admin',
                 question: 'q',
@@ -443,7 +429,27 @@ describe('StudioContextService', () => {
                     documentRetrievalStatus: 'no_sources_selected',
                 },
             });
-            expect(noDb.aiRouter.generateText.mock.calls[0][0]).toContain('panel Sources');
+            expect(out).toContain('Centang minimal satu sumber');
+            expect(noDb.aiRouter.generateText).not.toHaveBeenCalled();
+        });
+
+        it('canned no_sources_selected menghormati language=en', async () => {
+            const { svc, aiRouter } = build();
+            const out = await svc.generateGroundedAnswer({
+                notebookName: 'NB',
+                audience: 'admin',
+                question: 'q',
+                conversationLines: [],
+                language: 'en',
+                retrieval: {
+                    ...baseRetrieval,
+                    fileContext: '',
+                    dbContext: '',
+                    documentRetrievalStatus: 'no_sources_selected',
+                },
+            });
+            expect(out).toContain('Select at least one source');
+            expect(aiRouter.generateText).not.toHaveBeenCalled();
         });
 
         it('status undefined → derive dari hasFile (matched)', async () => {
@@ -455,12 +461,12 @@ describe('StudioContextService', () => {
                 conversationLines: [],
                 retrieval: { ...baseRetrieval, documentRetrievalStatus: undefined as any },
             });
-            expect(aiRouter.generateText.mock.calls[0][0]).toContain('HANYA berdasarkan cuplikan');
+            expect(aiRouter.generateText.mock.calls[0][0]).toContain('Jawab HANYA dari cuplikan');
         });
 
-        it('status undefined + tanpa file → derive not_indexed', async () => {
+        it('status undefined + tanpa file → derive not_indexed (canned)', async () => {
             const { svc, aiRouter } = build();
-            await svc.generateGroundedAnswer({
+            const out = await svc.generateGroundedAnswer({
                 notebookName: 'NB',
                 audience: 'admin',
                 question: 'q',
@@ -472,7 +478,8 @@ describe('StudioContextService', () => {
                     documentRetrievalStatus: undefined as any,
                 },
             });
-            expect(aiRouter.generateText.mock.calls[0][0]).toContain('Belum ada dokumen terindeks');
+            expect(out).toContain('belum siap');
+            expect(aiRouter.generateText).not.toHaveBeenCalled();
         });
     });
 
@@ -663,7 +670,7 @@ describe('StudioContextService', () => {
                     chunks: [],
                     fileContext: '[Sumber 1: a.pdf]\nisi',
                     dbContext: '',
-                    references: [],
+                    references: [{ content: 'isi', docName: 'a.pdf', score: 0.9, chunkId: 'c1' }],
                     rawChunks: [],
                     documentRetrievalStatus: 'matched',
                 },
@@ -672,6 +679,29 @@ describe('StudioContextService', () => {
             const prompt = (aiRouter.generateText as any).mock.calls[0][0] as string;
             expect(prompt).toContain('Answer in English');
             expect(prompt).toContain('[n]');
+        });
+
+        it('menambahkan sitasi [n] bila model lupa', async () => {
+            const { svc } = build({ answer: 'Produk harus relevan.' });
+            const out = await svc.generateGroundedAnswer({
+                notebookName: 'NB',
+                audience: 'admin',
+                question: 'apa?',
+                conversationLines: [],
+                retrieval: {
+                    chunks: [],
+                    fileContext: '[Sumber 1: a.txt]\nisi',
+                    dbContext: '',
+                    references: [
+                        { content: 'isi', docName: 'a.txt', score: 0.9, chunkId: 'c1' },
+                        { content: 'isi2', docName: 'a.txt', score: 0.8, chunkId: 'c2' },
+                    ],
+                    rawChunks: [],
+                    documentRetrievalStatus: 'matched',
+                },
+            });
+            expect(out).toContain('Produk harus relevan.');
+            expect(out).toMatch(/\[1\]\[2\]/);
         });
     });
 
@@ -692,17 +722,43 @@ describe('StudioContextService', () => {
                     conversationLines: [],
                     retrieval: {
                         chunks: [],
-                        fileContext: '',
+                        fileContext: '[Sumber 1: a.txt]\nisi',
                         dbContext: '',
                         references: [],
                         rawChunks: [],
-                        documentRetrievalStatus: 'not_indexed',
+                        documentRetrievalStatus: 'matched',
                     },
                 },
                 (t) => deltas.push(t),
             );
             expect(answer).toBe('Hello');
             expect(deltas).toEqual(['Hel', 'lo']);
+        });
+
+        it('canned no_sources_selected di-stream tanpa LLM', async () => {
+            const { svc, aiRouter } = build();
+            (aiRouter as any).generateTextStream = vi.fn(async () => '');
+            const deltas: string[] = [];
+            const answer = await svc.generateGroundedAnswerStream(
+                {
+                    notebookName: 'NB',
+                    audience: 'admin',
+                    question: 'q',
+                    conversationLines: [],
+                    retrieval: {
+                        chunks: [],
+                        fileContext: '',
+                        dbContext: '',
+                        references: [],
+                        rawChunks: [],
+                        documentRetrievalStatus: 'no_sources_selected',
+                    },
+                },
+                (t) => deltas.push(t),
+            );
+            expect(answer).toContain('Centang minimal satu sumber');
+            expect(deltas.join('')).toContain('Centang minimal satu sumber');
+            expect((aiRouter as any).generateTextStream).not.toHaveBeenCalled();
         });
 
         it('jawaban kosong → fallback pesan error', async () => {
@@ -716,11 +772,11 @@ describe('StudioContextService', () => {
                     conversationLines: [],
                     retrieval: {
                         chunks: [],
-                        fileContext: '',
+                        fileContext: '[Sumber 1: a.txt]\nisi',
                         dbContext: '',
                         references: [],
                         rawChunks: [],
-                        documentRetrievalStatus: 'not_indexed',
+                        documentRetrievalStatus: 'matched',
                     },
                 },
                 () => undefined,

@@ -89,18 +89,15 @@ export class StudioDbContextService {
         config: StudioContextConfig,
         qu: QueryUnderstandingResult,
     ): Promise<string> {
-        const views = config.supabase_views?.length
-            ? config.supabase_views
-            : DEFAULT_STUDIO_SALES_CONTEXT.supabase_views!;
+        // Only notebooks that explicitly configure views (or empty config resolved
+        // via parseConfig → DEFAULT_STUDIO_SALES_CONTEXT) get DB rows. Brief-only
+        // notebooks must not silently pull sales catalog into every chat.
+        const views = config.supabase_views;
+        if (!views?.length) return '';
 
         const intent = (qu.main_intent || '').toLowerCase();
         const query = qu.rewritten_query || qu.normalized_text || '';
-        const blocks: string[] = [];
-
-        const catalogHint = await this.fetchCatalogHint(views);
-        if (catalogHint) {
-            blocks.push(catalogHint);
-        }
+        const rowBlocks: string[] = [];
 
         for (const view of views) {
             if (!this.isSafeIdentifier(view)) continue;
@@ -108,14 +105,19 @@ export class StudioDbContextService {
             try {
                 const rows = await this.queryAllowlistedView(view, intent, query);
                 if (rows.length > 0) {
-                    blocks.push(`### Supabase: ${view}\n${JSON.stringify(rows, null, 2)}`);
+                    rowBlocks.push(`### Supabase: ${view}\n${JSON.stringify(rows, null, 2)}`);
                 }
             } catch (e: any) {
                 this.logger.warn(`Supabase view ${view}: ${e?.message}`);
             }
         }
 
-        return blocks.join('\n\n');
+        // Catalog-only is not actionable evidence — returning it alone made the chat
+        // skip grounded refuse and let the LLM invent facts.
+        if (rowBlocks.length === 0) return '';
+
+        const catalogHint = await this.fetchCatalogHint(views);
+        return [catalogHint, ...rowBlocks].filter(Boolean).join('\n\n');
     }
 
     /**
