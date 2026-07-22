@@ -89,6 +89,7 @@ describe('StudioService notebooks', () => {
             description: 'desc',
             user_id: USER_ID,
             audience: 'admin',
+            icon: '📓',
             context_config: DEFAULT_STUDIO_SALES_CONTEXT,
         });
         expect(notebook.id).toBe('nb-1');

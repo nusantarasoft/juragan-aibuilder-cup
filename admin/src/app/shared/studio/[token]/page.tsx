@@ -6,6 +6,7 @@ import { Alert, Card, Collapse, Empty, Spin, Tag, Typography } from "antd";
 import { FileTextOutlined } from "@ant-design/icons";
 import ReactMarkdown from "react-markdown";
 import { studioService, type StudioOutput } from "@/lib/studioService";
+import { normalizeNotebookIcon } from "@/app/admin/ai-studio/notebookIcon";
 import MindMapView from "@/app/admin/ai-studio/MindMapView";
 import QuizView from "@/app/admin/ai-studio/QuizView";
 import FlashcardsView from "@/app/admin/ai-studio/FlashcardsView";
@@ -108,7 +109,7 @@ export default function SharedStudioPage() {
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
             <div className="max-w-4xl mx-auto px-4 py-8">
                 <div className="flex items-center gap-3 mb-1">
-                    <span style={{ fontSize: 34 }}>{notebook.icon || "📓"}</span>
+                    <span style={{ fontSize: 34 }}>{normalizeNotebookIcon(notebook.icon)}</span>
                     <Title level={2} className="!mb-0">
                         {notebook.name}
                     </Title>

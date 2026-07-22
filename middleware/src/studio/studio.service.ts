@@ -33,6 +33,16 @@ import {
 } from './studio-import.util';
 import { chunkForTts, cleanForTts, stripSpeakerLabels, ttsLanguageCode } from './studio-tts.util';
 
+const DEFAULT_NOTEBOOK_ICON = '📓';
+
+/** Reject corrupted emoji placeholders like "????" that come from bad DB encoding. */
+function normalizeNotebookIcon(value?: string | null): string {
+    const trimmed = typeof value === 'string' ? value.trim() : '';
+    if (!trimmed) return DEFAULT_NOTEBOOK_ICON;
+    if (/^[?\uFFFD]+$/u.test(trimmed)) return DEFAULT_NOTEBOOK_ICON;
+    return trimmed;
+}
+
 /**
  * Studio AI business logic — orchestrates notebooks, sources, and conversations.
  * Bridges Supabase (metadata), MinIO (storage), and internal LLM (chat/report).
@@ -182,6 +192,7 @@ export class StudioService {
                 description,
                 user_id: ownerId,
                 audience,
+                icon: DEFAULT_NOTEBOOK_ICON,
                 context_config: contextConfig ?? DEFAULT_STUDIO_SALES_CONTEXT,
             })
             .select()
@@ -189,7 +200,7 @@ export class StudioService {
 
         assertNoSupabaseError(error, 'Failed to create notebook');
         this.logger.log(`Created notebook "${name}"`);
-        return data;
+        return data ? { ...data, icon: normalizeNotebookIcon(data.icon) } : data;
     }
 
     async getNotebooks(userId: string): Promise<any[]> {
@@ -200,7 +211,10 @@ export class StudioService {
             .order('updated_at', { ascending: false });
 
         assertNoSupabaseError(error, 'Failed to list notebooks');
-        return data || [];
+        return (data || []).map((row: any) => ({
+            ...row,
+            icon: normalizeNotebookIcon(row.icon),
+        }));
     }
 
     async getNotebook(notebookId: string): Promise<any> {
@@ -211,7 +225,7 @@ export class StudioService {
             .single();
 
         if (error || !data) throw new NotFoundException('Notebook not found');
-        return data;
+        return { ...data, icon: normalizeNotebookIcon(data.icon) };
     }
 
     async updateNotebook(
@@ -223,7 +237,7 @@ export class StudioService {
         const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
         if (patch.name?.trim()) updates.name = patch.name.trim();
         if (patch.description !== undefined) updates.description = patch.description;
-        if (patch.icon?.trim()) updates.icon = patch.icon.trim();
+        if (patch.icon?.trim()) updates.icon = normalizeNotebookIcon(patch.icon);
         if (patch.chat_instruction !== undefined) {
             updates.context_config = { ...config, chat_instruction: patch.chat_instruction };
         }
@@ -234,7 +248,7 @@ export class StudioService {
             .select()
             .single();
         assertNoSupabaseError(error, 'Failed to update notebook');
-        return data;
+        return data ? { ...data, icon: normalizeNotebookIcon(data.icon) } : data;
     }
 
     async deleteNotebook(notebookId: string): Promise<boolean> {
@@ -310,7 +324,7 @@ export class StudioService {
                 id: notebook.id,
                 name: notebook.name,
                 description: notebook.description,
-                icon: notebook.icon,
+                icon: normalizeNotebookIcon(notebook.icon),
                 created_at: notebook.created_at,
                 updated_at: notebook.updated_at,
             },

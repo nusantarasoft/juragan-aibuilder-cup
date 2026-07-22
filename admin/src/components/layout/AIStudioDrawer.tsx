@@ -17,6 +17,7 @@ import ReactMarkdown from 'react-markdown';
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { useAuth } from "@/context/AuthContext";
 import { useStudioUserId } from "@/app/admin/ai-studio/useStudioUserId";
+import { normalizeNotebookIcon } from "@/app/admin/ai-studio/notebookIcon";
 import { AnimatePresence, motion } from "framer-motion";
 import {
     getSourceProgressPercent,
@@ -300,7 +301,7 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
                                                     background: activeNotebook?.id === nb.id ? `${themeColor}14` : 'transparent',
                                                     border: activeNotebook?.id === nb.id ? `1px solid ${themeColor}33` : '1px solid transparent',
                                                 }}>
-                                                <span style={{ fontSize: 14 }}>{nb.icon || '📓'}</span>
+                                                <span style={{ fontSize: 14 }}>{normalizeNotebookIcon(nb.icon)}</span>
                                                 <div style={{ flex: 1, minWidth: 0 }}>
                                                     <Text ellipsis style={{ fontSize: 11, fontWeight: 500, display: 'block', color: textColor }}>{nb.name}</Text>
                                                     <Text style={{ fontSize: 9, color: textMuted }}>{nb.source_count || 0} sources</Text>

@@ -58,6 +58,7 @@ import {
 import SourcesPanel from "./SourcesPanel";
 import StudioOutputsPanel from "./StudioOutputsPanel";
 import NotesPanel from "./NotesPanel";
+import { normalizeNotebookIcon } from "./notebookIcon";
 import ConfigureChatModal from "./ConfigureChatModal";
 import ChunkPreviewDrawer from "./ChunkPreviewDrawer";
 import {
@@ -357,7 +358,7 @@ export default function AIStudioPage() {
         if (!activeNotebook) return;
         setEditName(activeNotebook.name);
         setEditDesc(activeNotebook.description ?? "");
-        setEditIcon(activeNotebook.icon || "📓");
+        setEditIcon(normalizeNotebookIcon(activeNotebook.icon));
         setShowEditModal(true);
     };
 
@@ -368,7 +369,7 @@ export default function AIStudioPage() {
             const updated = await studioService.updateNotebook(activeNotebook.id, {
                 name: editName.trim(),
                 description: editDesc,
-                icon: editIcon,
+                icon: normalizeNotebookIcon(editIcon),
             });
             setActiveNotebook(updated);
             setNotebooks((prev) => prev.map((n) => (n.id === updated.id ? { ...n, ...updated } : n)));
@@ -600,7 +601,7 @@ export default function AIStudioPage() {
 
     const notebookOptions = notebooks.map((nb) => ({
         value: nb.id,
-        label: `${nb.icon || "📓"} ${nb.name}`,
+        label: `${normalizeNotebookIcon(nb.icon)} ${nb.name}`,
     }));
 
     return (
