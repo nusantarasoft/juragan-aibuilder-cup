@@ -276,6 +276,16 @@ export class StudioResolver {
         return this.studioService.getChunk(chunkId);
     }
 
+    @Query(() => GraphQLJSONObject, { name: 'studioSourceDetail', nullable: true })
+    async getSourceDetail(
+        @Context() context: StudioAuthContext,
+        @Args('notebookId', { type: () => String }) notebookId: string,
+        @Args('sourceId', { type: () => String }) sourceId: string,
+    ) {
+        await this.studioService.assertNotebookOwner(notebookId, this.requireUserId(context));
+        return this.studioService.getSourceDetail(notebookId, sourceId);
+    }
+
     @Mutation(() => GraphQLJSONObject, { name: 'studioGenerateBrief' })
     async generateBrief(
         @Context() context: StudioAuthContext,

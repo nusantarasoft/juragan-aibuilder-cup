@@ -377,4 +377,55 @@ export class StudioContextService {
             notebook_id: chunk.notebook_id,
         };
     }
+
+    /**
+     * Source detail for the Sources panel (NotebookLM-style browse).
+     * Returns source metadata + ordered chunk previews (content truncated).
+     */
+    async getSourceDetail(
+        notebookId: string,
+        sourceId: string,
+        options?: { limit?: number; offset?: number },
+    ): Promise<{
+        source: Record<string, unknown>;
+        chunks: { id: string; chunk_index: number; content: string }[];
+        totalChunks: number;
+    } | null> {
+        const limit = Math.min(Math.max(options?.limit ?? 50, 1), 200);
+        const offset = Math.max(options?.offset ?? 0, 0);
+
+        const { data: source, error } = await this.admin()
+            .from('studio_notebook_sources')
+            .select('*')
+            .eq('id', sourceId)
+            .eq('notebook_id', notebookId)
+            .single();
+        if (error || !source) return null;
+
+        const { count } = await this.admin()
+            .from('studio_source_chunks')
+            .select('id', { count: 'exact', head: true })
+            .eq('source_id', sourceId)
+            .eq('notebook_id', notebookId);
+
+        const { data: rows } = await this.admin()
+            .from('studio_source_chunks')
+            .select('id, chunk_index, content')
+            .eq('source_id', sourceId)
+            .eq('notebook_id', notebookId)
+            .order('chunk_index', { ascending: true })
+            .range(offset, offset + limit - 1);
+
+        const chunks = (rows ?? []).map((r: any) => ({
+            id: r.id as string,
+            chunk_index: r.chunk_index as number,
+            content: String(r.content ?? '').slice(0, 800),
+        }));
+
+        return {
+            source,
+            chunks,
+            totalChunks: count ?? chunks.length,
+        };
+    }
 }

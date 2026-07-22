@@ -123,6 +123,12 @@ export interface StudioChunk {
     notebook_id: string;
 }
 
+export interface StudioSourceDetail {
+    source: StudioSource;
+    chunks: { id: string; chunk_index: number; content: string }[];
+    totalChunks: number;
+}
+
 export interface StudioGuideFlow {
     id: string;
     notebook_id: string;
@@ -558,6 +564,15 @@ export const studioService = {
             }
         `, { chunkId });
         return data.studioChunk;
+    },
+
+    async getSourceDetail(notebookId: string, sourceId: string): Promise<StudioSourceDetail | null> {
+        const data = await graphqlRequest(`
+            query($notebookId: String!, $sourceId: String!) {
+                studioSourceDetail(notebookId: $notebookId, sourceId: $sourceId)
+            }
+        `, { notebookId, sourceId });
+        return data.studioSourceDetail ?? null;
     },
 
     async generateBrief(notebookId: string, force = false): Promise<{ summary: string; cached: boolean; outputId?: string }> {

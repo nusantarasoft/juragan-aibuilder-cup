@@ -24,10 +24,12 @@ import { assertNoSupabaseError, normalizeOptionalUuid, resolveUserIdForDb } from
 import { resolveSourceStorage } from './studio-source-storage.util';
 import {
     detectImportKind,
+    extractHtmlTitle,
     extractYoutubeCaptionUrl,
     googleDocsExportUrl,
     htmlToText,
     importFilename,
+    isBlockedImportHost,
     parseYoutubeCaptionXml,
     youtubeVideoId,
 } from './studio-import.util';
@@ -593,8 +595,8 @@ export class StudioService {
         if (transcript.length < 50) {
             throw new BadRequestException('Transkrip video terlalu pendek untuk diimpor.');
         }
-        const titleMatch = /<title>([^<]*)<\/title>/i.exec(watchHtml);
-        const title = titleMatch ? titleMatch[1].replace(/ - YouTube$/, '').trim() : `youtube_${videoId}`;
+        const title = extractHtmlTitle(watchHtml, `youtube_${videoId}`).replace(/ - YouTube$/i, '').trim()
+            || `youtube_${videoId}`;
         const body = `Sumber: YouTube (${url})\nJudul: ${title}\n\n${transcript}`.slice(0, 500_000);
         return this.saveTextSource(notebookId, importFilename(title), body);
     }
@@ -610,6 +612,9 @@ export class StudioService {
         }
         if (!['http:', 'https:'].includes(parsed.protocol)) {
             throw new BadRequestException('Only http/https URLs are supported');
+        }
+        if (isBlockedImportHost(trimmed)) {
+            throw new BadRequestException('URL host is not allowed');
         }
 
         const kind = detectImportKind(trimmed);
@@ -630,7 +635,10 @@ export class StudioService {
             throw new BadRequestException('Could not extract enough text from URL');
         }
 
-        return this.saveTextSource(notebookId, importFilename(parsed.hostname), text);
+        const label = usesGoogleExport
+            ? parsed.pathname
+            : extractHtmlTitle(raw, parsed.hostname);
+        return this.saveTextSource(notebookId, importFilename(label), text);
     }
 
     /**
@@ -1015,6 +1023,10 @@ export class StudioService {
         const chunk = await this.contextService.getChunkById(chunkId);
         if (!chunk) throw new NotFoundException('Chunk not found');
         return chunk;
+    }
+
+    async getSourceDetail(notebookId: string, sourceId: string): Promise<any> {
+        return this.contextService.getSourceDetail(notebookId, sourceId);
     }
 
     async generateBrief(notebookId: string, force = false): Promise<{ summary: string; cached: boolean; outputId?: string }> {

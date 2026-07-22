@@ -21,7 +21,17 @@ function makeAdmin(opts: {
                 select: () => chain,
                 eq: () => chain,
                 in: () => chain,
-                single: () =>
+                order: () => chain,
+                range: () => {
+                    if (!countQueue.length) {
+                        return Promise.resolve({ data: [], error: null });
+                    }
+                    const next = countQueue.shift();
+                    if (next && Object.prototype.hasOwnProperty.call(next, 'data')) {
+                        return Promise.resolve({ data: next.data, error: next.error ?? null });
+                    }
+                    return Promise.resolve({ data: [], error: null });
+                },                single: () =>
                     Promise.resolve(
                         singleQueue.length ? singleQueue.shift() : { data: null, error: null },
                     ),
@@ -516,6 +526,103 @@ describe('StudioContextService', () => {
             });
             const r = await svc.getChunkById('c1');
             expect(r?.filename).toBe('Dokumen');
+        });
+    });
+
+    describe('getSourceDetail', () => {
+        it('null saat source tidak ada', async () => {
+            const { svc } = build({
+                admin: { single: [{ data: null, error: { message: 'x' } }] },
+            });
+            expect(await svc.getSourceDetail('nb1', 's1')).toBeNull();
+        });
+
+        it('mengembalikan source + chunks terurut (content dipotong 800)', async () => {
+            const long = 'Z'.repeat(900);
+            const { svc } = build({
+                admin: {
+                    single: [
+                        {
+                            data: {
+                                id: 's1',
+                                filename: 'a.pdf',
+                                notebook_id: 'nb1',
+                                parse_status: 'ready',
+                            },
+                            error: null,
+                        },
+                    ],
+                    count: [
+                        { count: 2, error: null },
+                        {
+                            data: [
+                                { id: 'c1', chunk_index: 0, content: long },
+                                { id: 'c2', chunk_index: 1, content: 'short' },
+                            ],
+                            error: null,
+                        },
+                    ],
+                },
+            });
+            const r = await svc.getSourceDetail('nb1', 's1');
+            expect(r?.source).toMatchObject({ id: 's1', filename: 'a.pdf' });
+            expect(r?.totalChunks).toBe(2);
+            expect(r?.chunks).toHaveLength(2);
+            expect(r?.chunks[0].content).toHaveLength(800);
+            expect(r?.chunks[1].content).toBe('short');
+        });
+
+        it('rows kosong → totalChunks dari count, chunks []', async () => {
+            const { svc } = build({
+                admin: {
+                    single: [{ data: { id: 's1', filename: 'x.txt' }, error: null }],
+                    count: [
+                        { count: 0, error: null },
+                        { data: null, error: null },
+                    ],
+                },
+            });
+            const r = await svc.getSourceDetail('nb1', 's1');
+            expect(r?.totalChunks).toBe(0);
+            expect(r?.chunks).toEqual([]);
+        });
+
+        it('content null + count null → fallback length & string kosong', async () => {
+            const { svc } = build({
+                admin: {
+                    single: [{ data: { id: 's1', filename: 'x.txt' }, error: null }],
+                    count: [
+                        { count: null, error: null },
+                        { data: [{ id: 'c1', chunk_index: 0, content: null }], error: null },
+                    ],
+                },
+            });
+            const r = await svc.getSourceDetail('nb1', 's1');
+            expect(r?.totalChunks).toBe(1);
+            expect(r?.chunks[0].content).toBe('');
+        });
+
+        it('menghormati limit/offset (ter-clamp) dan rows undefined', async () => {
+            const { svc, admin } = build({
+                admin: {
+                    single: [{ data: { id: 's1', filename: 'x.txt' }, error: null }],
+                    count: [{ count: 5, error: null }, { error: null }],
+                },
+            });
+            const r = await svc.getSourceDetail('nb1', 's1', { limit: 0, offset: -3 });
+            expect(r?.chunks).toEqual([]);
+            expect(r?.totalChunks).toBe(5);
+
+            // oversized limit clamped via range end
+            admin.from = makeAdmin({
+                single: [{ data: { id: 's1', filename: 'x.txt' }, error: null }],
+                count: [
+                    { count: 1, error: null },
+                    { data: [{ id: 'c1', chunk_index: 0, content: 'ok' }], error: null },
+                ],
+            }).from;
+            const r2 = await svc.getSourceDetail('nb1', 's1', { limit: 999, offset: 0 });
+            expect(r2?.chunks[0].content).toBe('ok');
         });
     });
 

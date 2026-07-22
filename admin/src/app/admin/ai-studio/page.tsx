@@ -61,6 +61,7 @@ import NotesPanel from "./NotesPanel";
 import { normalizeNotebookIcon } from "./notebookIcon";
 import ConfigureChatModal from "./ConfigureChatModal";
 import ChunkPreviewDrawer from "./ChunkPreviewDrawer";
+import SourceDetailDrawer from "./SourceDetailDrawer";
 import {
     indexedSourceIds,
     selectAllSourceIds,
@@ -133,6 +134,7 @@ export default function AIStudioPage() {
     const [configureChatOpen, setConfigureChatOpen] = useState(false);
     const [savingChatConfig, setSavingChatConfig] = useState(false);
     const [chunkPreview, setChunkPreview] = useState<{ chunkId: string; docName: string; score: number } | null>(null);
+    const [sourceDetailId, setSourceDetailId] = useState<string | null>(null);
     const [rightTab, setRightTab] = useState<"studio" | "notes">("studio");
     const [notesRefresh, setNotesRefresh] = useState(0);
     const briefGeneratedRef = useRef<Set<string>>(new Set());
@@ -700,6 +702,7 @@ export default function AIStudioPage() {
                                             onRemove={(id) => void handleRemoveSource(id)}
                                             onReindex={(id) => void handleReindexSource(id)}
                                             onConfigureChat={() => setConfigureChatOpen(true)}
+                                            onOpenSource={(id) => setSourceDetailId(id)}
                                         />
                                     ) : (
                                         <div className="flex flex-col items-center justify-center h-full p-4 gap-4">
@@ -1013,6 +1016,16 @@ export default function AIStudioPage() {
                 docName={chunkPreview?.docName}
                 score={chunkPreview?.score}
                 onClose={() => setChunkPreview(null)}
+            />
+
+            <SourceDetailDrawer
+                notebookId={activeNotebook?.id ?? null}
+                sourceId={sourceDetailId}
+                themeColor={themeColor}
+                onClose={() => setSourceDetailId(null)}
+                onOpenChunk={(chunkId, docName) => {
+                    setChunkPreview({ chunkId, docName, score: 0 });
+                }}
             />
         </CMSLayout>
     );

@@ -8,6 +8,7 @@ import {
     Empty,
     Input,
     Modal,
+    Popconfirm,
     Progress,
     Space,
     Spin,
@@ -56,6 +57,7 @@ type Props = {
     onRemove: (sourceId: string) => void;
     onReindex: (sourceId: string) => void;
     onConfigureChat: () => void;
+    onOpenSource?: (sourceId: string) => void;
 };
 
 export default function SourcesPanel({
@@ -73,6 +75,7 @@ export default function SourcesPanel({
     onRemove,
     onReindex,
     onConfigureChat,
+    onOpenSource,
 }: Props) {
     const [urlModalOpen, setUrlModalOpen] = useState(false);
     const [urlInput, setUrlInput] = useState("");
@@ -221,7 +224,19 @@ export default function SourcesPanel({
                 ) : sources.length === 0 ? (
                     <Empty
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
-                        description={<span className="text-[11px] text-gray-400">Belum ada sumber</span>}
+                        description={
+                            <div className="text-center">
+                                <span className="text-[11px] text-gray-400 block mb-2">Belum ada sumber</span>
+                                <Space size={4} wrap className="justify-center">
+                                    <Upload customRequest={onUpload} showUploadList={false} multiple>
+                                        <Button size="small" icon={<CloudUploadOutlined />}>Upload</Button>
+                                    </Upload>
+                                    <Button size="small" icon={<LinkOutlined />} onClick={() => setUrlModalOpen(true)}>URL</Button>
+                                    <Button size="small" icon={<FileTextOutlined />} onClick={() => setTextModalOpen(true)}>Teks</Button>
+                                    <Button size="small" icon={<AppstoreAddOutlined />} onClick={onOpenMedia}>Media</Button>
+                                </Space>
+                            </div>
+                        }
                         className="my-6"
                     />
                 ) : (
@@ -241,7 +256,11 @@ export default function SourcesPanel({
                                         onChange={(e) => onToggleSource(source.id, e.target.checked)}
                                         className="mt-0.5"
                                     />
-                                    <div className="min-w-0 flex-1">
+                                    <button
+                                        type="button"
+                                        className="min-w-0 flex-1 text-left bg-transparent border-0 p-0 cursor-pointer"
+                                        onClick={() => onOpenSource?.(source.id)}
+                                    >
                                         <div className="flex items-center gap-1.5">
                                             {getStatusIcon(source.parse_status)}
                                             <Text className="text-[12px] truncate flex-1">{source.filename}</Text>
@@ -250,6 +269,11 @@ export default function SourcesPanel({
                                             <Text className="text-[10px] text-gray-400">{formatBytes(source.file_size)}</Text>
                                             <Tag color={color} className="text-[9px] m-0 px-1">{label}</Tag>
                                         </div>
+                                        {source.parse_status === "error" && source.parse_error ? (
+                                            <Text type="danger" className="text-[10px] block mt-0.5 line-clamp-2">
+                                                {source.parse_error}
+                                            </Text>
+                                        ) : null}
                                         {isSourceInProgress(source) && (
                                             <Progress
                                                 percent={getSourceProgressPercent(source)}
@@ -258,10 +282,17 @@ export default function SourcesPanel({
                                                 className="mt-1 !mb-0"
                                             />
                                         )}
-                                    </div>
+                                    </button>
                                     <Space size={0} className="opacity-0 group-hover:opacity-100">
                                         <Button type="text" size="small" icon={<SyncOutlined />} onClick={() => onReindex(source.id)} />
-                                        <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => onRemove(source.id)} />
+                                        <Popconfirm
+                                            title="Hapus sumber ini?"
+                                            okText="Hapus"
+                                            cancelText="Batal"
+                                            onConfirm={() => onRemove(source.id)}
+                                        >
+                                            <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+                                        </Popconfirm>
                                     </Space>
                                 </div>
                             </Tooltip>

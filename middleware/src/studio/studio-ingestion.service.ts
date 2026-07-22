@@ -6,6 +6,7 @@ import { RagService } from '../rag/rag.service';
 import { chunkText } from './studio-chunk.util';
 import { resolveSourceStorage } from './studio-source-storage.util';
 import { assertNoSupabaseError } from './studio-supabase.util';
+import { isWeakExtractedText } from './studio-weak-text.util';
 
 type IngestStage = 'queued' | 'extracting' | 'chunking' | 'embedding' | 'done' | 'error';
 
@@ -61,16 +62,6 @@ export class StudioIngestionService {
             .from('studio_notebook_sources')
             .update({ ...patch, updated_at: new Date() })
             .eq('id', sourceId);
-    }
-
-    private isWeakExtractedText(text: string, filename: string): boolean {
-        const t = text.trim();
-        /* v8 ignore next -- callers guard with `!text.trim()` before calling, so empty text never reaches here */
-        if (!t) return true;
-        if (t.length < 40) return true;
-        const placeholder = new RegExp(`^Document:\\s*${filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i');
-        if (placeholder.test(t)) return true;
-        return false;
     }
 
     /** Parse, chunk, and embed a notebook source (async-safe; logs errors on source row). */
@@ -141,7 +132,7 @@ export class StudioIngestionService {
                 throw new Error('No extractable text from source');
             }
 
-            if (this.isWeakExtractedText(text, source.filename)) {
+            if (isWeakExtractedText(text, source.filename)) {
                 throw new Error(
                     'Ekstraksi teks gagal (hanya placeholder). Untuk PPTX/PDF pastikan GOOGLE_API_KEY aktif, lalu Reindex.',
                 );

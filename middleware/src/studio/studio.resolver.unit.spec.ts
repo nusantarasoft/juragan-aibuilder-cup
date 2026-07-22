@@ -41,6 +41,7 @@ function build() {
         getConversations: vi.fn().mockResolvedValue([{ id: 'c-1' }]),
         generateReport: vi.fn().mockResolvedValue('# report'),
         getChunk: vi.fn().mockResolvedValue({ id: 'ch-1' }),
+        getSourceDetail: vi.fn().mockResolvedValue({ source: { id: 's1' }, chunks: [], totalChunks: 0 }),
         generateBrief: vi.fn().mockResolvedValue({ summary: 's', cached: false }),
         listOutputs: vi.fn().mockResolvedValue([{ id: 'o-1' }]),
         deleteOutput: vi.fn().mockResolvedValue(true),
@@ -305,6 +306,12 @@ describe('StudioResolver — generate', () => {
     it('getChunk delegates (no notebook context)', async () => {
         await h.resolver.getChunk('ch-1');
         expect(h.studioService.getChunk).toHaveBeenCalledWith('ch-1');
+    });
+
+    it('getSourceDetail checks ownership and delegates', async () => {
+        await h.resolver.getSourceDetail(ctx(), 'nb-1', 's-1');
+        expect(h.studioService.assertNotebookOwner).toHaveBeenCalledWith('nb-1', USER_ID);
+        expect(h.studioService.getSourceDetail).toHaveBeenCalledWith('nb-1', 's-1');
     });
 
     it('generateBrief with force true', async () => {
