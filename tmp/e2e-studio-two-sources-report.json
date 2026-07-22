@@ -1,0 +1,59 @@
+{
+  "ok": true,
+  "notebookId": "ca9ba8f7-9064-4cd5-af7b-ad857d001e4c",
+  "sourceIds": [
+    "fbbf538f-9926-46de-8050-e1e41a84faaa",
+    "2124ca80-ce4c-4c61-b582-47cdefb9ea79"
+  ],
+  "sources": [
+    {
+      "id": "fbbf538f-9926-46de-8050-e1e41a84faaa",
+      "filename": "umkm-tumbuh-berkembang.txt",
+      "status": "done",
+      "chunks": 3
+    },
+    {
+      "id": "2124ca80-ce4c-4c61-b582-47cdefb9ea79",
+      "filename": "umkm-go-global-2025.pdf",
+      "status": "done",
+      "chunks": 2
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "P0_signin",
+      "status": "PASS",
+      "detail": "admin@nusantarasoft.local"
+    },
+    {
+      "id": "P1_txt_exists",
+      "status": "PASS",
+      "detail": "umkm-tumbuh-berkembang.txt chunks=3 status=done"
+    },
+    {
+      "id": "P2_upload_pdf",
+      "status": "PASS",
+      "detail": "umkm-go-global-2025.pdf id=2124ca80-ce4c-4c61-b582-47cdefb9ea79"
+    },
+    {
+      "id": "P3_both_indexed",
+      "status": "PASS",
+      "detail": "txt=3 pdf=2 totalSources=2"
+    },
+    {
+      "id": "P4_txt_fact",
+      "status": "PASS",
+      "detail": "refs=3 docs=umkm-tumbuh-berkembang.txt | * Pada umkm-tumbuh-berkembang.txt, fondasi usaha yang sehat terdefinisikan sebagai produk atau jasa yang menyelesaikan masalah pelanggan, harga yang wajar, dan pencatatan keuangan sederhana [1]. * Tanpa pencatatan kas masuk dan kas keluar, pemilik sulit tahu apakah usaha benar-benar untung."
+    },
+    {
+      "id": "P5_pdf_fact",
+      "status": "PASS",
+      "detail": "refs=5 docs=umkm-go-global-2025.pdf|umkm-tumbuh-berkembang.txt | * Target ekspor awal UMKM Go Global 2025: 15 persen dari omzet tahunan dalam 18 bulan. * Margin marketplace minimum: ≥ 25 persen setelah biaya iklan, ongkir, dan potongan platform. [1][2][3][4][5]"
+    },
+    {
+      "id": "P6_combined_context",
+      "status": "PASS",
+      "detail": "docs=umkm-go-global-2025.pdf|umkm-tumbuh-berkembang.txt hasTxt=true hasPdf=true refs=5 | * **Fondasi tumbuh**: Fondasi usaha yang sehat dari Panduan Tumbuh dan Berkembang Bisnis UMKM [2] * **Syarat ekspor**: Target ekspor awal 15 persen dari omzet tahunan dalam 18 bulan dari Checklist Operasional UMKM Go Global 2025 [1]"
+    }
+  ]
+}
