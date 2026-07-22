@@ -56,7 +56,12 @@ for f in $(ls -1 "$HOSTDIR" | grep -E '\.sql$' | grep -v -E '^99900001' | sort);
   id="supabase/migrations/$f"
   is_done "$id" && continue
   printf '   apply %-58s ' "$f"
-  if docker exec "$PG" psql -U "$U" -d "$DB" -v ON_ERROR_STOP=1 -q -f "$CONTDIR/$f" >/tmp/mig.out 2>&1; then
+  # Prefer host file via stdin — container bind mounts can lag after git pull
+  # until postgres is recreated. Fall back to in-container path if needed.
+  if docker exec -i "$PG" psql -U "$U" -d "$DB" -v ON_ERROR_STOP=1 -q < "$HOSTDIR/$f" >/tmp/mig.out 2>&1; then
+    mark "$id"; echo ok
+  elif docker exec "$PG" test -f "$CONTDIR/$f" && \
+       docker exec "$PG" psql -U "$U" -d "$DB" -v ON_ERROR_STOP=1 -q -f "$CONTDIR/$f" >/tmp/mig.out 2>&1; then
     mark "$id"; echo ok
   else echo FAILED; tail -c 400 /tmp/mig.out | tr '\n' ' '; echo; fails="$fails $f"; fi
 done
@@ -67,7 +72,10 @@ if [ "$WITH_SEEDS" = "1" ]; then
     id="supabase/migrations/$f"
     is_done "$id" && continue
     printf '   apply %-58s ' "$f"
-    if docker exec "$PG" psql -U "$U" -d "$DB" -v ON_ERROR_STOP=1 -q -f "$CONTDIR/$f" >/tmp/mig.out 2>&1; then
+    if docker exec -i "$PG" psql -U "$U" -d "$DB" -v ON_ERROR_STOP=1 -q < "$HOSTDIR/$f" >/tmp/mig.out 2>&1; then
+      mark "$id"; echo ok
+    elif docker exec "$PG" test -f "$CONTDIR/$f" && \
+         docker exec "$PG" psql -U "$U" -d "$DB" -v ON_ERROR_STOP=1 -q -f "$CONTDIR/$f" >/tmp/mig.out 2>&1; then
       mark "$id"; echo ok
     else echo FAILED; tail -c 400 /tmp/mig.out | tr '\n' ' '; echo; fails="$fails $f"; fi
   done
