@@ -17,6 +17,16 @@ USER = os.environ.get("SSH_USER", "root")
 PWD = os.environ["SSH_PASS"]
 
 
+def _safe_write(stream, text: str) -> None:
+    """Write text even when the Windows console is cp1252."""
+    try:
+        stream.write(text)
+    except UnicodeEncodeError:
+        enc = getattr(stream, "encoding", None) or "utf-8"
+        stream.buffer.write(text.encode(enc, errors="replace"))
+    stream.flush()
+
+
 def connect():
     c = paramiko.SSHClient()
     c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -36,11 +46,11 @@ def run(cmd, script=False):
     else:
         stdin, stdout, stderr = c.exec_command(cmd, timeout=int(os.environ.get("SSH_TIMEOUT", "3600")))
     for line in iter(stdout.readline, ""):
-        sys.stdout.write(line); sys.stdout.flush()
+        _safe_write(sys.stdout, line)
     err = stderr.read().decode(errors="replace")
     code = stdout.channel.recv_exit_status()
     if err.strip():
-        sys.stderr.write("\n--- STDERR ---\n" + err)
+        _safe_write(sys.stderr, "\n--- STDERR ---\n" + err)
     c.close()
     sys.exit(code)
 

@@ -657,18 +657,29 @@ See: [Platform Services Guide](docs/platform-services-guide.md)
 
 ## 🚀 Production Deployment
 
-For deploying to Ubuntu VPS with nusantarasoft.com domain:
+### Go-live (server `31.97.66.39`, branch `master-production`)
+
+Isolated stack (`nsoft3-*` only — does not disturb Portainer / pustaka / andromedia / other host apps).
+
+```powershell
+# From repo root on Windows (set secrets in env — do not commit them)
+$env:SSH_HOST="31.97.66.39"; $env:SSH_USER="root"; $env:SSH_PASS="********"
+$env:GITHUB_TOKEN="ghp_********"   # or DEPLOY_GIT_URL=git@github.com:spygunpro/nusantarasoft-3.git
+powershell -ExecutionPolicy Bypass -File scripts/master-production/deploy.ps1
+```
+
+Full runbook (ports, isolation, troubleshooting, AI instructions):
+[`docs/deploy-master-production.md`](docs/deploy-master-production.md)
+
+### Legacy / domain-based compose overlay
+
+For deploying with `docker-compose.production.yml` (nusantarasoft.com style):
 
 ```bash
-# Use production config
 docker compose -f docker-compose.yml -f docker-compose.production.yml up -d
 ```
 
-See [`docs/email-deployment.md`](docs/email-deployment.md) for complete guide including:
-- DNS configuration (MX, SPF, DKIM, DMARC)
-- SSL/TLS setup
-- DKIM key generation
-- Troubleshooting
+See [`docs/email-deployment.md`](docs/email-deployment.md) for email/DNS/SSL notes when applicable.
 
 ---
 

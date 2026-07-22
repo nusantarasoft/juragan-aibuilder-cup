@@ -152,7 +152,8 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "==> [3/3] running redeploy.sh on server (build + up)" -ForegroundColor Cyan
 $env:SSH_TIMEOUT = "3600"
-$redeployCmd = 'cd {0} && test "$(git rev-parse --abbrev-ref HEAD)" = {1} && bash scripts/master-production/redeploy.sh' -f $remoteDir, $branch
+# Keep the remote command simple (no nested $(...) quoting across PowerShell/SSH).
+$redeployCmd = "cd $remoteDir && bash scripts/master-production/redeploy.sh"
 python $ssh run $redeployCmd
 if ($LASTEXITCODE -ne 0) { throw "redeploy.sh failed." }
 

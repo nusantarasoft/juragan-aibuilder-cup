@@ -1,0 +1,38 @@
+---
+description: Deploy go-live nusantarasoft-3 via master-production (isolated nsoft3 stack on 31.97.66.39). Use when user asks to deploy production, master-production, go-live, or redeploy server.
+alwaysApply: false
+globs: scripts/master-production/**/*,docker-compose.master-production.yml,docs/deploy-master-production.md,.env.master-production.example
+---
+
+# Deploy master-production
+
+Full runbook: [docs/deploy-master-production.md](docs/deploy-master-production.md)
+
+## Hard rules
+
+- Go-live branch is **`master-production`** only (merge from `master` first via `deploy.ps1`).
+- Touch **only** compose project `nsoft3-prod` / containers `nsoft3-*`. Never stop/restart Portainer, pustaka, andromedia, ipustah, beapi, or other host apps unless the user explicitly asks.
+- Published ports only: `8090`, `3013`, `3011`, `9010`.
+- Secrets (`SSH_PASS`, `GITHUB_TOKEN`, `.env.master-production`) stay in env / gitignored files — never commit, never echo full secrets in chat.
+
+## Command (from repo root, Windows)
+
+```powershell
+$env:SSH_HOST="31.97.66.39"
+$env:SSH_USER="root"
+$env:SSH_PASS="********"
+$env:GITHUB_TOKEN="ghp_********"   # or DEPLOY_GIT_URL=git@github.com:spygunpro/nusantarasoft-3.git
+$env:PYTHONIOENCODING="utf-8"
+powershell -ExecutionPolicy Bypass -File scripts/master-production/deploy.ps1
+```
+
+- After merge/push already done: add `-SkipMerge -SkipPush`.
+- Server path: `/opt/nusantarasoft-3`.
+- Redeploy ends with `docker restart nsoft3-nginx` to avoid stale upstream 502.
+
+## Verify
+
+- `http://31.97.66.39:3013` (admin)
+- `http://31.97.66.39:8090` (landing/nginx)
+- GraphQL `POST /graphql` on `:8090` returns 200
+- `docker ps` shows non-nsoft3 apps still Up

@@ -69,6 +69,10 @@ POSTGRES_DB="$DB" PG_CONTAINER="$PG" bash "$DIR/scripts/master-production/apply-
 echo "==> [7/7] bring the whole stack up"
 docker compose -f "$CF" --env-file "$EF" up -d
 
+# Nginx resolves upstream IPs at start; recreate of app containers can leave stale IPs (502).
+echo "==> reload nsoft3-nginx DNS for app upstreams"
+docker restart nsoft3-nginx >/dev/null
+
 echo
 echo "==> done. current status:"
 docker ps -a --filter name=nsoft3 --format '{{.Names}} | {{.Status}}' | sort
