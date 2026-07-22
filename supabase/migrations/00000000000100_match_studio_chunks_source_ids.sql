@@ -1,5 +1,9 @@
 -- Scope match_studio_chunks to optional source id list (NotebookLM source checkboxes).
 -- p_source_ids NULL = all sources in notebook; empty array = no rows; otherwise ANY().
+-- Drop prior 4-arg overload so PostgREST/Postgres can resolve a single signature.
+
+DROP FUNCTION IF EXISTS public.match_studio_chunks(vector, uuid, double precision, integer);
+DROP FUNCTION IF EXISTS public.match_studio_chunks(vector(768), uuid, double precision, integer);
 
 CREATE OR REPLACE FUNCTION public.match_studio_chunks(
     query_embedding vector(768),

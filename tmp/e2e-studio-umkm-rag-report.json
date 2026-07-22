@@ -1,0 +1,111 @@
+{
+  "ok": false,
+  "scenarios": [
+    {
+      "id": "P0_signin",
+      "status": "PASS",
+      "detail": "admin@nusantarasoft.local"
+    },
+    {
+      "id": "P1_create_notebook",
+      "status": "PASS",
+      "detail": "UMKM Tumbuh & Berkembang"
+    },
+    {
+      "id": "P2_upload_txt",
+      "status": "PASS",
+      "detail": "umkm-tumbuh-berkembang.txt"
+    },
+    {
+      "id": "P3_index_ready",
+      "status": "PASS",
+      "detail": "chunks=3 status=done"
+    },
+    {
+      "id": "P4_rag_fondasi",
+      "status": "PASS",
+      "detail": {
+        "answer": "Fondasi utama yang diperlukan untuk mendukung pertumbuhan UMKM adalah: 1. Fondasi usaha yang sehat, yaitu produk atau jasa yang menyelesaikan masalah pelanggan, harga yang wajar, dan pencatatan keuangan sederhana. 2. Kenali pelanggan dan pa",
+        "refs": 3
+      }
+    },
+    {
+      "id": "P5_rag_indikator",
+      "status": "PASS",
+      "detail": {
+        "answer": "Baik, saya akan menjawab pertanyaan-pertanyaan berdasarkan cuplikan dokumen sumber dan data database operasional. **1. Sebutkan indikator yang harus dipantau untuk mengukur pertumbuhan UMKM.** Berdasarkan cuplikan dokumen sumber [Sumber 1: ",
+        "refs": 3
+      }
+    },
+    {
+      "id": "P6_rag_digital",
+      "status": "PASS",
+      "detail": {
+        "answer": "Berdasarkan cuplikan dokumen sumber [Sumber 1: umkm-tumbuh-berkembang.txt], digitalisasi pemasaran menjadi salah satu strategi penting untuk UMKM. Menurut dokumen, gunakan kanal digital yang relevan seperti WhatsApp Business, marketplace, m",
+        "refs": 3
+      }
+    },
+    {
+      "id": "P7_rag_kas",
+      "status": "PASS",
+      "detail": {
+        "answer": "Modal kerja dan buffer kas adalah dua konsep penting yang perlu dipahami oleh pemilik UMKM (Usaha Mikro, Kecil, dan Menengah) agar dapat mencapai kemandirian keuangan dan stabilitas operasional. **Modal Kerja:** Modal kerja adalah jumlah ua",
+        "refs": 3
+      }
+    },
+    {
+      "id": "N1_out_of_domain",
+      "status": "PASS",
+      "detail": {
+        "answer": "Berikut adalah beberapa pertanyaan yang dapat saya jawab berdasarkan cuplikan dokumen sumber dan data database: * Bagaimana cara mengelola arus kas dan modal kerja UMKM? + Berdasarkan [Sumber 1: umkm-tumbuh-berkembang.txt (relevansi 60%)] [",
+        "refs": 3
+      }
+    },
+    {
+      "id": "N2_no_sources_selected",
+      "status": "FAIL",
+      "detail": {
+        "answer": "Ringkasan dari dokumen \"UMKM Tumbuh & Berkembang\" adalah sebagai berikut: ### Definisi UMKM - UMKM (Usaha Mikro, Kecil, dan Menengah) adalah jenis usaha yang memiliki ukuran yang relatif kecil dibandingkan dengan perusahaan besar. ### Perki"
+      }
+    },
+    {
+      "id": "N3_invalid_source_ids",
+      "status": "PASS",
+      "detail": {
+        "answer": "Pertanyaan pengguna: Berapa banyak modal yang dibutuhkan oleh perusahaan UMKM untuk beroperasi? Jawabannya tergantung pada jenis industri dan ukuran perusahaan. Namun, secara umum, modal kerja UMKM dapat dibagi menjadi beberapa kategori: 1.",
+        "refs": 0
+      }
+    },
+    {
+      "id": "N4_empty_question",
+      "status": "PASS",
+      "detail": {
+        "answer": "Baik, saya akan membantu Anda dengan pertanyaan tersebut. Tidak ada cuplikan dokumen yang relevan untuk pertanyaan ini, sehingga saya hanya dapat memberikan jawaban berdasarkan data database operasional yang tersedia. Berikut beberapa perta"
+      }
+    },
+    {
+      "id": "N5_foreign_notebook",
+      "status": "PASS",
+      "detail": {
+        "error": "Notebook not found"
+      }
+    }
+  ],
+  "gql": "http://127.0.0.1:4001/graphql",
+  "userEmail": "admin@nusantarasoft.local",
+  "notebookId": "ca9ba8f7-9064-4cd5-af7b-ad857d001e4c",
+  "sourceId": "fbbf538f-9926-46de-8050-e1e41a84faaa",
+  "chunkCount": 3,
+  "sourceStatuses": [
+    {
+      "filename": "umkm-tumbuh-berkembang.txt",
+      "status": "done",
+      "chunks": 3
+    }
+  ],
+  "summary": {
+    "pass": 12,
+    "fail": 1,
+    "total": 13
+  }
+}
