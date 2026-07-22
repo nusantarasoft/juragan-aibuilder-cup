@@ -202,6 +202,31 @@ describe('StudioOutputService', () => {
             const r = await svc.generateDataTable('nb1', 'Toko', 'harga', async () => 'D');
             expect(r.title).toBe('Data Table — Toko');
         });
+
+        it('video overview: judul & prompt minta JSON slides', async () => {
+            const { svc } = buildService();
+            let seen = '';
+            const r = await svc.generateVideoOverview('nb1', 'Toko', async (p) => {
+                seen = p;
+                return '{"title":"T","slides":[]}';
+            });
+            expect(r.title).toBe('Video Overview — Toko');
+            expect(seen).toContain('VIDEO OVERVIEW');
+            expect(seen).toContain('"slides"');
+            expect(seen).toContain('narration');
+        });
+
+        it('video overview: meneruskan sourceIds', async () => {
+            const { svc, contextService } = buildService();
+            await svc.generateVideoOverview('nb1', 'Toko', async () => '{}', ['s1']);
+            expect(contextService.retrieveContext).toHaveBeenCalledWith(
+                'nb1',
+                expect.stringContaining('Toko'),
+                undefined,
+                undefined,
+                { sourceIds: ['s1'] },
+            );
+        });
     });
 
     describe('generateReportPreset', () => {

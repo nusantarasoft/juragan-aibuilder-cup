@@ -30,6 +30,7 @@ import ReactMarkdown from "react-markdown";
 import type { StudioGuideFlow, StudioSource } from "@/lib/studioService";
 import type { StudioChatMessage, StudioChatMode } from "./useStudioChat";
 import type { SourceStats } from "./studioSourceStatus";
+import { rewriteInlineCitations, citationIndexFromHref } from "./chatActions";
 
 const { Text } = Typography;
 
@@ -59,23 +60,15 @@ function MessageContent({
     onCitationClick?: (chunkId: string, docName: string, score: number) => void;
 }) {
     const hasRefs = !!references && references.length > 0;
-    // Rewrite [n] → markdown link to a synthetic anchor so ReactMarkdown keeps
-    // surrounding formatting intact; the custom <a> renderer handles the click.
-    const source = hasRefs
-        ? content.replace(/\[(\d{1,2})\]/g, (m, n) => {
-              const idx = Number(n);
-              return idx >= 1 && idx <= references!.length ? `[${n}](#studio-cite-${n})` : m;
-          })
-        : content;
+    const source = hasRefs ? rewriteInlineCitations(content, references) : content;
 
     return (
         <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:m-0">
             <ReactMarkdown
                 components={{
                     a: ({ href, children, ...rest }) => {
-                        const match = /^#studio-cite-(\d+)$/.exec(href || "");
-                        if (match && references) {
-                            const idx = Number(match[1]) - 1;
+                        const idx = citationIndexFromHref(href);
+                        if (idx !== null && references) {
                             const ref = references[idx];
                             const clickable = !!(ref?.chunkId && onCitationClick);
                             return (
@@ -95,7 +88,7 @@ function MessageContent({
                                         clickable ? "cursor-pointer hover:bg-[color:var(--theme-color)]/30" : ""
                                     }`}
                                 >
-                                    {match[1]}
+                                    {String(idx + 1)}
                                 </sup>
                             );
                         }

@@ -269,4 +269,87 @@ describe.skipIf(!RUN)('Studio GraphQL integration (live middleware)', () => {
         expect(data.studioChat.conversationId).toBeTruthy();
         expect(data.studioChat.answer.length).toBeGreaterThan(0);
     }, 60_000);
+
+    it('studioAddTextSource rejects short text', async () => {
+        const notebookId = process.env.STUDIO_INTEGRATION_NOTEBOOK_ID?.trim();
+        if (!notebookId) return;
+
+        await expect(
+            gqlRequest(`
+                mutation($notebookId: String!, $title: String!, $content: String!) {
+                    studioAddTextSource(notebookId: $notebookId, title: $title, content: $content)
+                }
+            `, { notebookId, title: 'Pendek', content: 'abc' }),
+        ).rejects.toThrow();
+    });
+
+    it('updateStudioNotebook accepts icon', async () => {
+        const notebookId = process.env.STUDIO_INTEGRATION_NOTEBOOK_ID?.trim();
+        if (!notebookId) return;
+
+        const data = await gqlRequest<{ updateStudioNotebook: { id: string; icon?: string } }>(`
+            mutation($notebookId: String!, $icon: String) {
+                updateStudioNotebook(notebookId: $notebookId, icon: $icon)
+            }
+        `, { notebookId, icon: '🚀' });
+
+        expect(data.updateStudioNotebook.id).toBe(notebookId);
+        expect(data.updateStudioNotebook.icon).toBe('🚀');
+    });
+
+    it('share link create + revoke round-trip for signed-in owner', async () => {
+        if (!isAuthIntegrationEnabled()) return;
+
+        const creds = authIntegrationCredentials();
+        const signedIn = await authGqlRequest<{ signIn: { user: { id: string } } }>(
+            SIGN_IN_MUTATION,
+            creds,
+        );
+        const userId = signedIn.signIn.user.id;
+
+        const created = await gqlRequest<{ createStudioNotebook: { id: string } }>(`
+            mutation($name: String!, $userId: String!) {
+                createStudioNotebook(name: $name, userId: $userId)
+            }
+        `, { name: `Share NB ${Date.now()}`, userId });
+        const notebookId = created.createStudioNotebook.id;
+
+        const shared = await gqlRequest<{ studioCreateShareLink: { token: string; isShared: boolean } }>(`
+            mutation($notebookId: String!) {
+                studioCreateShareLink(notebookId: $notebookId)
+            }
+        `, { notebookId });
+        expect(shared.studioCreateShareLink.isShared).toBe(true);
+        expect(shared.studioCreateShareLink.token.length).toBeGreaterThan(8);
+
+        const revoked = await gqlRequest<{ studioRevokeShareLink: boolean }>(`
+            mutation($notebookId: String!) {
+                studioRevokeShareLink(notebookId: $notebookId)
+            }
+        `, { notebookId });
+        expect(revoked.studioRevokeShareLink).toBe(true);
+
+        await gqlRequest(`
+            mutation($notebookId: String!) {
+                deleteStudioNotebook(notebookId: $notebookId)
+            }
+        `, { notebookId });
+    });
+
+    it('studioChat accepts language argument without error', async () => {
+        const notebookId = process.env.STUDIO_INTEGRATION_NOTEBOOK_ID?.trim();
+        if (!notebookId) return;
+
+        const data = await gqlRequest<{ studioChat: { conversationId: string; answer: string } }>(`
+            mutation($notebookId: String!, $question: String!, $language: String) {
+                studioChat(notebookId: $notebookId, question: $question, language: $language)
+            }
+        `, {
+            notebookId,
+            question: 'Ringkas singkat isi notebook ini.',
+            language: 'en',
+        });
+        expect(data.studioChat.conversationId).toBeTruthy();
+        expect(data.studioChat.answer.length).toBeGreaterThan(0);
+    }, 60_000);
 });

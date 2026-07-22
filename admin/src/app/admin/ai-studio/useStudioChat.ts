@@ -11,6 +11,7 @@ import {
     type StudioSource,
 } from "@/lib/studioService";
 import { useAppMessage } from "@/hooks/useAppMessage";
+import { dropTrailingAssistants, findLastUserContent } from "./chatActions";
 
 export interface StudioChatMessage {
     role: "user" | "assistant";
@@ -328,20 +329,9 @@ export function useStudioChat(
     /** Re-run the last user question (free mode only), replacing the last answer. */
     const regenerateLast = useCallback(async () => {
         if (chatMode !== "free" || isChatting) return;
-        let lastUser: string | null = null;
-        for (let i = chatHistory.length - 1; i >= 0; i--) {
-            if (chatHistory[i].role === "user") {
-                lastUser = chatHistory[i].content;
-                break;
-            }
-        }
+        const lastUser = findLastUserContent(chatHistory);
         if (!lastUser) return;
-        // Drop trailing assistant answers so the fresh one replaces them.
-        setChatHistory((prev) => {
-            const copy = [...prev];
-            while (copy.length && copy[copy.length - 1].role === "assistant") copy.pop();
-            return copy;
-        });
+        setChatHistory((prev) => dropTrailingAssistants(prev));
         await runFreeChat(lastUser, false);
     }, [chatMode, isChatting, chatHistory, runFreeChat]);
 

@@ -396,4 +396,107 @@ describe('StudioContextService', () => {
             expect(r?.filename).toBe('Dokumen');
         });
     });
+
+    describe('languageRule', () => {
+        it('mengembalikan instruksi bahasa yang dikenal', () => {
+            const { svc } = build();
+            expect(svc.languageRule('id')).toContain('Bahasa Indonesia');
+            expect(svc.languageRule('en')).toContain('English');
+            expect(svc.languageRule('jv')).toContain('Basa Jawa');
+            expect(svc.languageRule('ms')).toContain('Bahasa Melayu');
+            expect(svc.languageRule('ar')).toBeTruthy();
+            expect(svc.languageRule('zh')).toBeTruthy();
+        });
+
+        it('kosong/unknown → string kosong', () => {
+            const { svc } = build();
+            expect(svc.languageRule()).toBe('');
+            expect(svc.languageRule('')).toBe('');
+            expect(svc.languageRule('xx')).toBe('');
+        });
+
+        it('case-insensitive', () => {
+            const { svc } = build();
+            expect(svc.languageRule('EN')).toContain('English');
+            expect(svc.languageRule('Id')).toContain('Bahasa Indonesia');
+        });
+    });
+
+    describe('generateGroundedAnswer + language', () => {
+        it('menyertakan languageRule di prompt', async () => {
+            const { svc, aiRouter } = build({ answer: 'Hi' });
+            await svc.generateGroundedAnswer({
+                notebookName: 'NB',
+                audience: 'admin',
+                question: 'What?',
+                conversationLines: [],
+                retrieval: {
+                    chunks: [],
+                    fileContext: '[Sumber 1: a.pdf]\nisi',
+                    dbContext: '',
+                    references: [],
+                    rawChunks: [],
+                    documentRetrievalStatus: 'matched',
+                },
+                language: 'en',
+            });
+            const prompt = (aiRouter.generateText as any).mock.calls[0][0] as string;
+            expect(prompt).toContain('Answer in English');
+            expect(prompt).toContain('[n]');
+        });
+    });
+
+    describe('generateGroundedAnswerStream', () => {
+        it('meneruskan delta dan mengembalikan jawaban penuh', async () => {
+            const { svc, aiRouter } = build();
+            (aiRouter as any).generateTextStream = vi.fn(async (_p: string, onDelta: (t: string) => void) => {
+                onDelta('Hel');
+                onDelta('lo');
+                return 'Hello';
+            });
+            const deltas: string[] = [];
+            const answer = await svc.generateGroundedAnswerStream(
+                {
+                    notebookName: 'NB',
+                    audience: 'admin',
+                    question: 'q',
+                    conversationLines: [],
+                    retrieval: {
+                        chunks: [],
+                        fileContext: '',
+                        dbContext: '',
+                        references: [],
+                        rawChunks: [],
+                        documentRetrievalStatus: 'not_indexed',
+                    },
+                },
+                (t) => deltas.push(t),
+            );
+            expect(answer).toBe('Hello');
+            expect(deltas).toEqual(['Hel', 'lo']);
+        });
+
+        it('jawaban kosong → fallback pesan error', async () => {
+            const { svc, aiRouter } = build();
+            (aiRouter as any).generateTextStream = vi.fn(async () => '');
+            const answer = await svc.generateGroundedAnswerStream(
+                {
+                    notebookName: 'NB',
+                    audience: 'admin',
+                    question: 'q',
+                    conversationLines: [],
+                    retrieval: {
+                        chunks: [],
+                        fileContext: '',
+                        dbContext: '',
+                        references: [],
+                        rawChunks: [],
+                        documentRetrievalStatus: 'not_indexed',
+                    },
+                },
+                () => undefined,
+            );
+            expect(answer).toContain('tidak dapat menghasilkan jawaban');
+        });
+    });
 });
