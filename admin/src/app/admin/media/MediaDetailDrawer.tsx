@@ -100,7 +100,7 @@ export default function MediaDetailDrawer({ visible, onClose, media, onRefresh }
         <Drawer
             title={media.filename}
             placement="right"
-            width={500}
+            size={500}
             onClose={onClose}
             open={visible}
         >

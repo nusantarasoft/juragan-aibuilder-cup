@@ -828,7 +828,7 @@ export default function Bms3dView({ isDark, editMode = false, activeLayer = 'All
                     {/* Top Toolbar */}
                     <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
                         <Card size="small" style={{ ...glassStyle, borderRadius: 12, padding: '0 4px' }} bodyStyle={{ padding: '6px 8px' }}>
-                            <Space split={<Divider type="vertical" style={{ margin: '0 4px' }} />}>
+                            <Space split={<Divider orientation="vertical" style={{ margin: '0 4px' }} />}>
                                 {/* Hide UI */}
                                 <Button size="small" type="text" icon={uiVisible ? <EyeInvisibleOutlined /> : <EyeOutlined />} onClick={() => setUiVisible(!uiVisible)}>
                                     {uiVisible ? 'Hide UI' : 'Show UI'}

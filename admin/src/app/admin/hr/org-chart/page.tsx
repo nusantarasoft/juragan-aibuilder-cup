@@ -424,7 +424,7 @@ export default function OrgChartPage() {
       </motion.div>
 
       {/* ── Employee Detail Drawer ── */}
-      <Drawer title="Employee Details" open={!!drawerEmp} onClose={() => setDrawerEmp(null)} width={380}>
+      <Drawer title="Employee Details" open={!!drawerEmp} onClose={() => setDrawerEmp(null)} size={380}>
         {drawerEmp && (() => {
           const emp = drawerEmp;
           const st = statusDot[emp.status || ''] || statusDot.active;

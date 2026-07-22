@@ -166,7 +166,7 @@ export default function CampaignsPage() {
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Campaign" : "New Campaign"} entityName="campaign" steps={formSteps} fields={CAMPAIGN_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["#f59e0b", "#ea580c"]} editMode={!!editing} />
 
-            <Drawer title={`Campaign: ${selected?.name || ''}`} open={detailOpen} onClose={() => setDetailOpen(false)} width={650}>
+            <Drawer title={`Campaign: ${selected?.name || ''}`} open={detailOpen} onClose={() => setDetailOpen(false)} size={650}>
                 {selected && (<Tabs defaultActiveKey="details" items={[
                     { key: "details", label: "Details", children: (<Descriptions column={1} bordered size="small">
                         <Descriptions.Item label="Type"><Text style={{ textTransform: 'capitalize' }}>{selected.type || '—'}</Text></Descriptions.Item>

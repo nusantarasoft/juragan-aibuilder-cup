@@ -41,9 +41,9 @@ const DashedDividerDemo = () => (
 const VerticalDividerDemo = () => (
     <div>
         <Text>Link 1</Text>
-        <Divider type="vertical" />
+        <Divider orientation="vertical" />
         <Text>Link 2</Text>
-        <Divider type="vertical" />
+        <Divider orientation="vertical" />
         <Text>Link 3</Text>
     </div>
 );
@@ -87,8 +87,8 @@ export const dividerData: AntdComponentData = {
             description: "Text in the divider",
             demo: <TextDividerDemo />,
             code: `<Divider>Center Text</Divider>
-<Divider orientation="left">Left Text</Divider>
-<Divider orientation="right">Right</Divider>`,
+<Divider titlePlacement="start">Left Text</Divider>
+<Divider titlePlacement="end">Right</Divider>`,
         },
         {
             id: "dashed",
@@ -103,7 +103,7 @@ export const dividerData: AntdComponentData = {
             description: "Vertical separator",
             demo: <VerticalDividerDemo />,
             code: `<Text>Link 1</Text>
-<Divider type="vertical" />
+<Divider orientation="vertical" />
 <Text>Link 2</Text>`,
         },
         {
@@ -122,8 +122,8 @@ export const dividerData: AntdComponentData = {
         },
     ],
     apiProps: [
-        { name: "type", type: "'horizontal' | 'vertical'", description: "Divider direction", default: "horizontal" },
-        { name: "orientation", type: "'left' | 'right' | 'center'", description: "Text position" },
+        { name: "orientation", type: "'horizontal' | 'vertical'", description: "Divider direction", default: "horizontal" },
+        { name: "titlePlacement", type: "'start' | 'end' | 'center'", description: "Text position", default: "center" },
         { name: "dashed", type: "boolean", description: "Dashed style" },
         { name: "plain", type: "boolean", description: "Plain style text" },
         { name: "children", type: "ReactNode", description: "Content inside divider" },

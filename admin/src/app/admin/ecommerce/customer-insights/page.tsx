@@ -462,7 +462,7 @@ export default function CustomerInsightsPage() {
         </div>
 
         {/* Customer Detail Drawer */}
-        <Drawer open={!!drawerCustomer} onClose={() => setDrawerCustomer(null)} width={480}
+        <Drawer open={!!drawerCustomer} onClose={() => setDrawerCustomer(null)} size={480}
             title={<Text strong style={{ fontSize: 16 }}>{drawerCustomer?.name}</Text>}>
             {drawerCustomer && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

@@ -448,7 +448,7 @@ export default function IntegrationHubPage() {
             title={selected ? <Space><div style={{ width: 32, height: 32, borderRadius: 8, background: `${CAT_COLORS[selected.category] || '#6b7280'}14`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>{CAT_ICONS[selected.category] || '⚙️'}</div><div><Text strong>{selected.name}</Text><br /><Text type="secondary" style={{ fontSize: 10, textTransform: 'capitalize' }}>{selected.category}</Text></div></Space> : 'Configure'}
             open={drawerOpen}
             onClose={() => setDrawerOpen(false)}
-            width={420}
+            size={420}
         >
             {selected && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

@@ -5996,7 +5996,7 @@ export default function Construction3DPage() {
             </div>
           </div>
 
-          <Divider type="vertical" style={{ height: 24, margin: 0 }} />
+          <Divider orientation="vertical" style={{ height: 24, margin: 0 }} />
 
           {/* Data Mode */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -6018,7 +6018,7 @@ export default function Construction3DPage() {
           {/* Project Selector (only in live mode) */}
           {dataMode === "live" && (
             <>
-              <Divider type="vertical" style={{ height: 24, margin: 0 }} />
+              <Divider orientation="vertical" style={{ height: 24, margin: 0 }} />
               <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 200 }}>
                 <AntText type="secondary" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
                   Project
@@ -7265,7 +7265,7 @@ export default function Construction3DPage() {
             title={<span><CalculatorOutlined style={{ marginRight: 8 }} />Bill of Quantities & Cost Estimate</span>}
             open={showBoqDrawer}
             onClose={() => setShowBoqDrawer(false)}
-            width={480}
+            size={480}
             placement="right"
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -8756,7 +8756,7 @@ export default function Construction3DPage() {
           }
           open={showConfigPanel}
           onClose={() => setShowConfigPanel(false)}
-          width={340}
+          size={340}
           styles={{
             body: { padding: "16px 20px" },
             header: {

@@ -270,7 +270,7 @@ export default function PackagesPage() {
 
             {/* Detail Drawer */}
             <Drawer title={`Package: ${selected?.name || ''}`} open={drawerOpen} onClose={() => setDrawerOpen(false)}
-                width={520} styles={{ body: { padding: 16 } }}>
+                size={520} styles={{ body: { padding: 16 } }}>
                 {selected && (
                     <div className="space-y-4">
                         <Card size="small" style={{ borderRadius: 10 }}>

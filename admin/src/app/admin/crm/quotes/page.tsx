@@ -149,7 +149,7 @@ export default function QuotesPage() {
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Quote" : "New Quote"} entityName="quote" steps={formSteps} fields={QUOTE_FIELDS} width={600} onBatchCreate={handleBatchCreate} gradient={["#0ea5e9", "#6366f1"]} editMode={!!editing} />
 
-            <Drawer title="Quote Details" open={detailOpen} onClose={() => setDetailOpen(false)} width={500}>
+            <Drawer title="Quote Details" open={detailOpen} onClose={() => setDetailOpen(false)} size={500}>
                 {selected && (<Descriptions column={1} bordered size="small">
                     <Descriptions.Item label="Quote #"><Text code>{selected.quoteNumber}</Text></Descriptions.Item>
                     <Descriptions.Item label="Name">{selected.name}</Descriptions.Item>

@@ -301,7 +301,7 @@ export default function PayrollPage() {
             </motion.div>
 
             {/* Slip Drawer */}
-            <Drawer title={`Salary Slips — ${selectedRun?.name || selectedRun?.period || ''}`} open={slipDrawer} onClose={() => setSlipDrawer(false)} width={700}
+            <Drawer title={`Salary Slips — ${selectedRun?.name || selectedRun?.period || ''}`} open={slipDrawer} onClose={() => setSlipDrawer(false)} size={700}
                 styles={{ body: { padding: 16 } }}>
                 {selectedRun && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

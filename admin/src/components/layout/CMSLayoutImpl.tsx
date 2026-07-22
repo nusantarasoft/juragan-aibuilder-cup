@@ -462,7 +462,7 @@ export default function CMSLayoutImpl({
     // Sidebar Actions Component (Language, Notification, Theme) - for outer ProLayout actionsRender
     const SidebarActions = () => (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-around", gap: 12 }}>
-            <Divider type="vertical" style={{ height: 16, background: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)', margin: 0 }} />
+            <Divider orientation="vertical" style={{ height: 16, background: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)', margin: 0 }} />
             <LanguageSwitcher isDark={darkMode} />
             <NotificationBell />
             <Dropdown

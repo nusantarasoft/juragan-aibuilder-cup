@@ -1051,7 +1051,7 @@ export default function ProjectsPage() {
             {/* â”€â”€ Detail Drawer â”€â”€ */}
             <Drawer
                 title="Project Details"
-                width={600}
+                size={600}
                 open={!!viewingProject}
                 onClose={() => setViewingProject(null)}
                 extra={

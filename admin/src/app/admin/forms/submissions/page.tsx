@@ -185,7 +185,7 @@ export default function FormSubmissionsPage() {
                     <Table<Submission> dataSource={data.filter(d => !search || d.templateName?.toLowerCase().includes(search.toLowerCase()))} columns={columns} rowKey="id" loading={loading} pagination={{ pageSize: 15 }} size="middle" />
                 </Card>
 
-                <Drawer title={detail?.templateName || 'Submission'} open={detailOpen} onClose={() => { setDetailOpen(false); setDetail(null); setScores([]); }} width={640}
+                <Drawer title={detail?.templateName || 'Submission'} open={detailOpen} onClose={() => { setDetailOpen(false); setDetail(null); setScores([]); }} size={640}
                     extra={detail?.status === 'submitted' ? (
                         <Space>
                             <Button icon={<TrophyOutlined />} onClick={() => handleCalcScore(detail!.id)}>Calculate Score</Button>

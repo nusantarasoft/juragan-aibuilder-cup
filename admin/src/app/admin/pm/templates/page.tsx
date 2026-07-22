@@ -797,7 +797,7 @@ export default function ProjectTemplatesPage() {
       <Drawer
         title={<Space>{previewTemplate?.icon}<span style={{ fontWeight: 700 }}>{previewTemplate?.name}</span></Space>}
         open={!!previewTemplate} onClose={() => setPreviewTemplate(null)}
-        width={520}
+        size={520}
         footer={
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <Button onClick={() => setPreviewTemplate(null)}>Close</Button>

@@ -382,7 +382,7 @@ export default function BookingsPage() {
                 </Card>
 
                 {/* Passenger Drawer */}
-                <Drawer title={`Passengers â€” ${selectedBooking?.bookingCode}`} open={!!selectedBooking} onClose={() => setSelectedBooking(null)} width={520}>
+                <Drawer title={`Passengers â€” ${selectedBooking?.bookingCode}`} open={!!selectedBooking} onClose={() => setSelectedBooking(null)} size={520}>
                     {selectedBooking && (
                         <div>
                             <div style={{ marginBottom: 16, padding: 12, background: isDark ? 'rgba(255,255,255,0.04)' : '#f8f9fa', borderRadius: 8 }}>

@@ -217,7 +217,7 @@ export default function RunsPage() {
 
             {/* Steps Execution Drawer */}
             <Drawer title={<Space><RocketOutlined /> Run Steps — {selectedRun?.name}</Space>}
-                open={drawerOpen} onClose={() => setDrawerOpen(false)} width={520}
+                open={drawerOpen} onClose={() => setDrawerOpen(false)} size={520}
                 extra={<Tag color={STATUS_COLORS[selectedRun?.status]}>{selectedRun?.status?.replace('_', ' ')}</Tag>}
             >
                 <Card size="small" style={{ marginBottom: 16 }}>

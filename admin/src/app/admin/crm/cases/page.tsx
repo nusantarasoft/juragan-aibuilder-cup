@@ -247,7 +247,7 @@ export default function CasesPage() {
                 <TextArea rows={4} value={resolution} onChange={e => setResolution(e.target.value)} placeholder="Describe how the issue was resolved..." />
             </Modal>
 
-            <Drawer title="Case Details" open={detailOpen} onClose={() => setDetailOpen(false)} width={500}>
+            <Drawer title="Case Details" open={detailOpen} onClose={() => setDetailOpen(false)} size={500}>
                 {selected && (
                     <Descriptions column={1} bordered size="small">
                         <Descriptions.Item label="Case #"><Text code>{selected.caseNumber}</Text></Descriptions.Item>

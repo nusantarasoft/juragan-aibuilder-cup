@@ -343,7 +343,7 @@ export default function AccountsPage() {
                 editMode={!!editing}
             />
 
-            <Drawer title="Account Details" open={detailOpen} onClose={() => setDetailOpen(false)} width={500}>
+            <Drawer title="Account Details" open={detailOpen} onClose={() => setDetailOpen(false)} size={500}>
                 {selected && (
                     <Descriptions column={1} bordered size="small">
                         <Descriptions.Item label="Name">{selected.name}</Descriptions.Item>

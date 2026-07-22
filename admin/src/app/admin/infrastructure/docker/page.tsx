@@ -188,7 +188,7 @@ export default function DockerHealthPage() {
             </motion.div>
 
             {/* Log Drawer */}
-            <Drawer title={`Container Logs — ${logTarget?.name || ''}`} open={logDrawer} onClose={() => setLogDrawer(false)} width={700} extra={<Button size="small" onClick={() => logTarget && handleViewLogs(logTarget)} icon={<ReloadOutlined />}>Refresh</Button>}>
+            <Drawer title={`Container Logs — ${logTarget?.name || ''}`} open={logDrawer} onClose={() => setLogDrawer(false)} size={700} extra={<Button size="small" onClick={() => logTarget && handleViewLogs(logTarget)} icon={<ReloadOutlined />}>Refresh</Button>}>
                 {logLoading ? <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div> : (
                     <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', monospace", fontSize: 11, lineHeight: 1.7, background: '#0d1117', color: '#c9d1d9', padding: 16, borderRadius: 8, maxHeight: 'calc(100vh - 180px)', overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                         {logLines.length === 0 ? <Text style={{ color: '#8b949e' }}>No logs available</Text> : logLines.map((line, i) => (

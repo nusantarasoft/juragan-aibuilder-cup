@@ -1198,7 +1198,7 @@ function PageBuilderContent() {
                 placement="right"
                 onClose={() => setSeoDrawerOpen(false)}
                 open={seoDrawerOpen}
-                width={400}
+                size={400}
                 styles={{ header: { background: 'var(--theme-color, #7c3aed)', color: 'white' } }}
             >
                 <div className="flex flex-col gap-6">

@@ -180,7 +180,7 @@ export default function IndividualsPage() {
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Individual" : "Add Individual"} entityName="individual" steps={formSteps} fields={INDIVIDUAL_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["var(--theme-color, #8b5cf6)", "var(--theme-accent, #a855f7)"]} editMode={!!editing} />
 
-            <Drawer title="Individual Details" open={detailOpen} onClose={() => setDetailOpen(false)} width={500}>
+            <Drawer title="Individual Details" open={detailOpen} onClose={() => setDetailOpen(false)} size={500}>
                 {selected && (<Descriptions column={1} bordered size="small">
                     <Descriptions.Item label="Name">{selected.salutation ? `${selected.salutation} ` : ''}{selected.firstName} {selected.lastName}</Descriptions.Item>
                     <Descriptions.Item label="Job Title">{selected.jobTitle || '—'}</Descriptions.Item>

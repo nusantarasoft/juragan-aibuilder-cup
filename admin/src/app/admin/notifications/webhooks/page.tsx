@@ -102,7 +102,7 @@ export default function WebhooksPage() {
                     <Form.Item name="events" label="Events" rules={[{ required: true }]}><Select mode="multiple" placeholder="Select events" options={EVENT_OPTIONS} /></Form.Item>
                 </Form>
             </Modal>
-            <Drawer title={`Logs — ${selectedWh?.name || ''}`} open={logDrawer} onClose={() => setLogDrawer(false)} width={500}>
+            <Drawer title={`Logs — ${selectedWh?.name || ''}`} open={logDrawer} onClose={() => setLogDrawer(false)} size={500}>
                 <Table dataSource={selectedWh ? logs.filter(l => l.webhookId === selectedWh.id) : []} rowKey="id" size="small" pagination={{ pageSize: 20 }} columns={[
                     { title: 'Event', dataIndex: 'event', render: (v: string) => <Tag style={{ fontSize: 10 }}>{v}</Tag> },
                     { title: 'Status', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'success' ? 'green' : 'red'} style={{ fontSize: 10, borderRadius: 10 }}>{v}</Tag> },

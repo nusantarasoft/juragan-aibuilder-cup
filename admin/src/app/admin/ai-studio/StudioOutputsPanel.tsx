@@ -350,7 +350,7 @@ export default function StudioOutputsPanel({
                     setViewOutput(null);
                     setMindMapRaw(false);
                 }}
-                width={isMindMap || isVideoOverview ? 760 : 480}
+                size={isMindMap || isVideoOverview ? 760 : 480}
                 extra={
                     viewOutput ? (
                         <Space>

@@ -461,7 +461,7 @@ export default function Dcim3DView() {
                 placement="right"
                 onClose={() => { setDrawerVisible(false); setSelectedRackId(null); }}
                 open={drawerVisible}
-                width={450}
+                size={450}
                 styles={{ body: { paddingBottom: 80 } }}
                 extra={
                     (selectedRack || selectedCrac || selectedPdu)?.status !== 'normal' && 
@@ -592,7 +592,7 @@ export default function Dcim3DView() {
                 placement="right"
                 onClose={() => setSelectedServerId(null)}
                 open={serverModalVisible}
-                width={600}
+                size={600}
                 zIndex={2000}
             >
                 {selectedServer && (
@@ -654,7 +654,7 @@ export default function Dcim3DView() {
             <Drawer
                 title="Geographic Location"
                 placement="bottom"
-                height={500}
+                size={500}
                 onClose={() => setLocationModalVisible(false)}
                 open={locationModalVisible}
             >

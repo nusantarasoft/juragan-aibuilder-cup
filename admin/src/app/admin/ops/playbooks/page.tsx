@@ -288,7 +288,7 @@ export default function PlaybooksPage() {
 
             {/* Steps Drawer */}
             <Drawer title={<Space><OrderedListOutlined /> Steps — {selectedPb?.name}</Space>}
-                open={stepsDrawerOpen} onClose={() => setStepsDrawerOpen(false)} width={520}
+                open={stepsDrawerOpen} onClose={() => setStepsDrawerOpen(false)} size={520}
                 extra={<Button type="primary" size="small" icon={<PlusOutlined />}
                     onClick={() => { setEditingStep(null); stepForm.resetFields(); stepForm.setFieldsValue({ stepOrder: steps.length + 1 }); setStepModalOpen(true); }}>Add Step</Button>}
             >

@@ -576,14 +576,14 @@ const MediaPreviewContent = ({
                                     <Tooltip title="Rotate Right">
                                         <Button size="small" icon={<RedoOutlined />} onClick={() => setRotation(r => r + 90)} />
                                     </Tooltip>
-                                    <Divider type="vertical" />
+                                    <Divider orientation="vertical" />
                                     <Tooltip title="Flip Horizontal">
                                         <Button size="small" icon={<ColumnWidthOutlined />} onClick={() => setScaleX(s => s * -1)} />
                                     </Tooltip>
                                     <Tooltip title="Flip Vertical">
                                         <Button size="small" icon={<ColumnHeightOutlined />} onClick={() => setScaleY(s => s * -1)} />
                                     </Tooltip>
-                                    <Divider type="vertical" />
+                                    <Divider orientation="vertical" />
                                     <Tooltip title="Crop Mode">
                                         <Button size="small" icon={<ScissorOutlined />} />
                                     </Tooltip>

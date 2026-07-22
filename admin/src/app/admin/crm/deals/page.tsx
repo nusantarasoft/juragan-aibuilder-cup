@@ -191,7 +191,7 @@ export default function DealsPage() {
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Deal" : "New Deal"} entityName="deal" steps={formSteps} fields={DEAL_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["#f59e0b", "#ef4444"]} editMode={!!editing} />
 
-            <Drawer title={`Deal: ${selected?.name || ''}`} open={detailOpen} onClose={() => setDetailOpen(false)} width={600} extra={selected?.stage === 'closed_won' && <Button type="primary" icon={<ProjectOutlined />} onClick={() => router.push(`/admin/pm/projects?createFromDeal=${selected.id}&dealName=${encodeURIComponent(selected.name)}`)}>Create Delivery Project</Button>}>
+            <Drawer title={`Deal: ${selected?.name || ''}`} open={detailOpen} onClose={() => setDetailOpen(false)} size={600} extra={selected?.stage === 'closed_won' && <Button type="primary" icon={<ProjectOutlined />} onClick={() => router.push(`/admin/pm/projects?createFromDeal=${selected.id}&dealName=${encodeURIComponent(selected.name)}`)}>Create Delivery Project</Button>}>
                 {selected && (<Tabs defaultActiveKey="details" items={[
                     { key: "details", label: "Details", children: (<Descriptions column={1} bordered size="small">
                         <Descriptions.Item label="Amount"><Text strong>{formatAmount(selected.amount)}</Text></Descriptions.Item>

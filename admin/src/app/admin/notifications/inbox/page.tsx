@@ -234,7 +234,7 @@ export default function InboxPage() {
                         const label = key.split('|||')[1];
                         return (
                             <div key={key}>
-                                <Divider orientation={"left" as any} style={{ margin: '8px 0', fontSize: 12, color: '#94a3b8' }}>
+                                <Divider titlePlacement="start" style={{ margin: '8px 0', fontSize: 12, color: '#94a3b8' }}>
                                     {label}
                                 </Divider>
                                 <List

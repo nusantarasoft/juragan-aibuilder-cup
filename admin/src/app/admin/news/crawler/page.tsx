@@ -87,7 +87,7 @@ export default function WebCrawlerPage() {
                 </Form>
             </Modal>
 
-            <Drawer title="Crawl History" open={!!historyDrawer} onClose={() => setHistoryDrawer(null)} width={420}>
+            <Drawer title="Crawl History" open={!!historyDrawer} onClose={() => setHistoryDrawer(null)} size={420}>
                 {historyLoading ? <Spin /> : history.length === 0 ? <Empty description="No crawl history" /> :
                     <List size="small" dataSource={history} renderItem={(h, i) => (
                         <motion.div key={h.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}>

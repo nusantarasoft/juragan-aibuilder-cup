@@ -318,7 +318,7 @@ export default function ReturnsPage() {
             </div>
 
             <Drawer title={`Return ${selected?.returnNumber || ''}`} open={drawerOpen} onClose={() => setDrawerOpen(false)}
-                width={520} styles={{ body: { padding: 16 } }}>
+                size={520} styles={{ body: { padding: 16 } }}>
                 {selected && (
                     <div className="space-y-4">
                         <Card size="small" style={{ borderRadius: 10 }}>

@@ -130,7 +130,7 @@ export default function ProductsPage() {
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Product" : "Add Product"} entityName="product" steps={formSteps} fields={PRODUCT_FIELDS} width={600} onBatchCreate={handleBatchCreate} gradient={["#ec4899", "#f43f5e"]} editMode={!!editing} />
 
-            <Drawer title="Product Details" open={detailOpen} onClose={() => setDetailOpen(false)} width={450}>
+            <Drawer title="Product Details" open={detailOpen} onClose={() => setDetailOpen(false)} size={450}>
                 {selected && (<Descriptions column={1} bordered size="small">
                     <Descriptions.Item label="Name">{selected.name}</Descriptions.Item>
                     <Descriptions.Item label="Code">{selected.code || '—'}</Descriptions.Item>

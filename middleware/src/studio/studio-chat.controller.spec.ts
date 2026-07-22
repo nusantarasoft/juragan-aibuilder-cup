@@ -73,11 +73,18 @@ describe('StudioChatController', () => {
 
     it('menjalankan chatStream dan emit SSE meta/delta/done', async () => {
         studioService.chatStream.mockImplementationOnce(
-            async (_nb, _q, _c, _u, _opts, emit) => {
+            (async (
+                _nb: string,
+                _q: string,
+                _c: string | undefined,
+                _u: string | undefined,
+                _opts: unknown,
+                emit: (event: 'meta' | 'delta' | 'done', data: Record<string, unknown>) => void,
+            ) => {
                 emit('meta', { conversationId: 'c-1' });
                 emit('delta', { text: 'Hel' });
                 emit('done', { conversationId: 'c-1', answer: 'Hello' });
-            },
+            }) as any,
         );
         const res = mockRes();
         await ctrl.stream(

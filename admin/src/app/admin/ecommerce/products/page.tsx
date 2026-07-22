@@ -698,7 +698,7 @@ export default function ProductsPage() {
                 title={null}
                 open={!!detailDrawer}
                 onClose={() => setDetailDrawer(null)}
-                width={480}
+                size={480}
                 styles={{ body: { padding: 0 } }}
             >
                 {detailDrawer && (() => {

@@ -143,7 +143,7 @@ export default function ChartOfAccountsPage() {
             </Card>
 
             {/* Create/Edit Drawer */}
-            <Drawer title={editing ? `Edit: ${editing.accountCode} - ${editing.name}` : 'New Account'} open={drawerOpen} onClose={() => setDrawerOpen(false)} width={480}
+            <Drawer title={editing ? `Edit: ${editing.accountCode} - ${editing.name}` : 'New Account'} open={drawerOpen} onClose={() => setDrawerOpen(false)} size={480}
                 extra={<Space><Button onClick={() => setDrawerOpen(false)}>Cancel</Button><Button type="primary" onClick={handleSave}>Save</Button></Space>}>
                 <Form form={form} layout="vertical" autoComplete="off">
                     <Form.Item name="accountCode" label="Account Code" rules={[{ required: true }]}>

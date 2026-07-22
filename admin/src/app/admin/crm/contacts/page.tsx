@@ -321,7 +321,7 @@ export default function ContactsPage() {
                 editMode={!!editing}
             />
 
-            <Drawer title="Contact Details" open={detailOpen} onClose={() => setDetailOpen(false)} width={500}>
+            <Drawer title="Contact Details" open={detailOpen} onClose={() => setDetailOpen(false)} size={500}>
                 {selected && (
                     <Descriptions column={1} bordered size="small">
                         <Descriptions.Item label="Person">{selected.individualFirstName} {selected.individualLastName}</Descriptions.Item>

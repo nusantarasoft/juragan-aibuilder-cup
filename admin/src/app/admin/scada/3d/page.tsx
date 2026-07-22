@@ -128,10 +128,10 @@ export default function ScadaUnified() {
             <div style={{ height: 28, background: '#1e1e1e', borderBottom: `1px solid ${borderColor}`, display: 'flex', alignItems: 'center', padding: '0 12px', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
                     <Button type="text" size="small" icon={<ArrowLeftOutlined />} onClick={() => router.push('/admin/scada')} style={{ color: '#aaa', padding: 0 }} />
-                    <Divider type="vertical" style={{ borderColor: '#333' }} />
+                    <Divider orientation="vertical" style={{ borderColor: '#333' }} />
                     <WindowsOutlined style={{ color: accentColor, marginRight: 4 }} />
                     <Text style={{ fontSize: 12, color: '#fff', fontWeight: 600 }}>Nusantarasoft Engine 5</Text>
-                    <Divider type="vertical" style={{ borderColor: '#333' }} />
+                    <Divider orientation="vertical" style={{ borderColor: '#333' }} />
                     <Text style={{ fontSize: 12, cursor: 'pointer', color: '#ccc' }} className="menu-item">File</Text>
                     <Text style={{ fontSize: 12, cursor: 'pointer', color: '#ccc' }} className="menu-item">Edit</Text>
                     <Text style={{ fontSize: 12, cursor: 'pointer', color: '#ccc' }} className="menu-item">Window</Text>
@@ -312,12 +312,12 @@ export default function ScadaUnified() {
 
             {/* Status Bar / Output Log footer */}
             <div style={{ height: 24, background: headerBg, borderTop: `1px solid ${borderColor}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 12px', fontSize: 11, color: '#888' }}>
-                <Space split={<Divider type="vertical" style={{ margin: '0 4px', borderColor: '#444' }} />}>
+                <Space split={<Divider orientation="vertical" style={{ margin: '0 4px', borderColor: '#444' }} />}>
                     <span>Grid Snap: <strong style={{ color: '#ccc' }}>{snapToGrid ? 'ON' : 'OFF'}</strong></span>
                     <span>Transform: <strong style={{ color: '#ccc' }}>{sceneEditMode ? transformMode.toUpperCase() : 'VIEW'}</strong></span>
                     <span>Objects: <strong style={{ color: '#ccc' }}>{elements3d.length}</strong></span>
                 </Space>
-                <Space split={<Divider type="vertical" style={{ margin: '0 4px', borderColor: '#444' }} />}>
+                <Space split={<Divider orientation="vertical" style={{ margin: '0 4px', borderColor: '#444' }} />}>
                     <span>Selected: <strong style={{ color: selected3dId ? accentColor : '#ccc' }}>{selected3dId || 'None'}</strong></span>
                     <span>Simulation: <strong style={{ color: animateFlow ? '#52c41a' : '#888' }}>{animateFlow ? 'RUNNING' : 'STOPPED'}</strong></span>
                 </Space>

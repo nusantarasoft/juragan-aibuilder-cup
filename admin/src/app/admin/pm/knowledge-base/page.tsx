@@ -618,7 +618,7 @@ export default function KnowledgeBasePage() {
             {/* ── Detail Drawer ── */}
             <Drawer
                 title={<Space><BulbOutlined style={{ color: '#f59e0b' }} /><span>{editing ? 'Edit Lesson' : 'Lesson Details'}</span></Space>}
-                width={600} open={!!viewingLesson}
+                size={600} open={!!viewingLesson}
                 onClose={() => { setViewingLesson(null); setEditing(false); }}
                 extra={
                     <Space>

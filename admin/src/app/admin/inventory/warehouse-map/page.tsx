@@ -3154,7 +3154,7 @@ export default function WarehouseMapPage() {
                 placement="right"
                 onClose={() => setViewingObjectId(null)}
                 open={!!viewingObjectId}
-                width={360}
+                size={360}
                 styles={{
                     header: { background: t.cardBg, borderBottom: `1px solid ${t.panelBorder}`, padding: '16px 20px' },
                     body: { background: t.viewportBg, padding: 20 },

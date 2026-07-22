@@ -451,7 +451,7 @@ function FormBuilderContent() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Space>
                                 <Button icon={<ArrowLeftOutlined />} onClick={() => router.push('/admin/forms/templates')} type="text">Templates</Button>
-                                <Divider type="vertical" />
+                                <Divider orientation="vertical" />
                                 <Tag color={template?.status === 'published' ? 'green' : 'blue'}>{template?.status?.toUpperCase()}</Tag>
                                 <Tag color="purple">{template?.category}</Tag>
                                 <Text type="secondary" style={{ fontSize: 12 }}>v{template?.version} · {fields.length} fields</Text>
@@ -460,7 +460,7 @@ function FormBuilderContent() {
                             <Space>
                                 <Tooltip title="Undo"><Button icon={<UndoOutlined />} type="text" onClick={undo} disabled={historyIndex <= 0} /></Tooltip>
                                 <Tooltip title="Redo"><Button icon={<RedoOutlined />} type="text" onClick={redo} disabled={historyIndex >= history.length - 1} /></Tooltip>
-                                <Divider type="vertical" />
+                                <Divider orientation="vertical" />
                                 <Tooltip title={previewMode === 'desktop' ? 'Switch to Mobile' : 'Switch to Desktop'}>
                                     <Button icon={previewMode === 'desktop' ? <MobileOutlined /> : <DesktopOutlined />} type="text"
                                         onClick={() => setPreviewMode(previewMode === 'desktop' ? 'mobile' : 'desktop')} />
@@ -469,7 +469,7 @@ function FormBuilderContent() {
                                     <Button icon={showFieldPalette ? <CompressOutlined /> : <ExpandOutlined />} type="text"
                                         onClick={() => setShowFieldPalette(!showFieldPalette)} />
                                 </Tooltip>
-                                <Divider type="vertical" />
+                                <Divider orientation="vertical" />
                                 <Button icon={<SaveOutlined />} onClick={handleSave} loading={saving} disabled={!hasChanges}>Save</Button>
                                 <Button icon={<RocketOutlined />} type="primary" onClick={handlePublish}
                                     style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}cc)`, border: 'none', borderRadius: 8 }}>

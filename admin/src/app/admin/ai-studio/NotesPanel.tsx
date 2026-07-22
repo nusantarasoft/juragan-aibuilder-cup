@@ -199,7 +199,7 @@ export default function NotesPanel({ themeColor, notebookId, refreshSignal, onSo
                 title={editing?.id ? "Edit catatan" : "Catatan baru"}
                 open={!!editing}
                 onClose={closeEditor}
-                width={480}
+                size={480}
                 extra={
                     editing?.id ? (
                         <Space>

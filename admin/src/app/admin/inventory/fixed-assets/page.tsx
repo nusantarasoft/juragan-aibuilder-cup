@@ -569,7 +569,7 @@ export default function FixedAssetsPage() {
 
             {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Detail Drawer Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
             <Drawer title={selectedAsset?.assetName || 'Asset Detail'} open={drawerOpen}
-                onClose={() => setDrawerOpen(false)} width={520}
+                onClose={() => setDrawerOpen(false)} size={520}
                 extra={selectedAsset && (
                     <Space>
                         <Button icon={<EditOutlined />} onClick={() => { setDrawerOpen(false); openEdit(selectedAsset); }}>Edit</Button>

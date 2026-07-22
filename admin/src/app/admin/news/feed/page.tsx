@@ -80,7 +80,7 @@ export default function NewsFeedPage() {
                 </Card>
             </motion.div>
 
-            <Drawer title={selected?.title} open={!!selected} onClose={() => setSelected(null)} width={520}>
+            <Drawer title={selected?.title} open={!!selected} onClose={() => setSelected(null)} size={520}>
                 {selected && (<div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <Space><Tag color={sentColors[selected.sentimentLabel]}>{selected.sentimentLabel}</Tag><Text type="secondary">{selected.author}</Text><Text type="secondary">{selected.publishedAt ? dayjs(selected.publishedAt).format('DD MMM YYYY') : ''}</Text></Space>
                     {selected.summary && <Card size="small" style={{ background: '#f8fafc' }}><Paragraph style={{ fontSize: 13 }}>{selected.summary}</Paragraph></Card>}

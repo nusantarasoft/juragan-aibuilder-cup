@@ -256,7 +256,7 @@ export default function ReportTemplatesPage() {
             {/* Detail Drawer */}
             <Drawer
                 title={detail?.name || 'Template Detail'}
-                open={!!detail} onClose={() => setDetail(null)} width={500}
+                open={!!detail} onClose={() => setDetail(null)} size={500}
                 extra={
                     <Space>
                         <Button icon={<CopyOutlined />} onClick={() => { if (detail) handleDuplicate(detail); }}>Duplicate</Button>

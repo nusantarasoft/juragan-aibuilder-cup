@@ -568,7 +568,7 @@ export default function ProcurementPage() {
                 title={detailDrawer ? `${detailDrawer.type.toUpperCase()} Details` : ""}
                 open={!!detailDrawer}
                 onClose={() => setDetailDrawer(null)}
-                width={520}
+                size={520}
             >
                 {detailDrawer?.type === "supplier" && (
                     <Descriptions bordered column={1} size="small">

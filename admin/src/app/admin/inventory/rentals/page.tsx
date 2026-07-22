@@ -384,7 +384,7 @@ export default function RentalsPage() {
                 </Card>
 
                 {/* Contract Detail Drawer */}
-                <Drawer title={`Contract Detail â€” ${detailContract?.contractCode}`} open={!!detailContract} onClose={() => setDetailContract(null)} width={560}>
+                <Drawer title={`Contract Detail â€” ${detailContract?.contractCode}`} open={!!detailContract} onClose={() => setDetailContract(null)} size={560}>
                     {detailContract && (
                         <Descriptions column={1} bordered size="small">
                             <Descriptions.Item label="Contract Code"><Tag style={{ fontFamily: 'monospace' }}>{detailContract.contractCode}</Tag></Descriptions.Item>

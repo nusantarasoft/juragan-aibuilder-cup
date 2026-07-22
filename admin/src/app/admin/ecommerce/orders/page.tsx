@@ -310,7 +310,7 @@ export default function OrdersPage() {
 
             {/* Order Detail Drawer */}
             <Drawer title={`Order ${selectedOrder?.orderNumber || ''}`} open={drawerOpen} onClose={() => setDrawerOpen(false)}
-                width={560} styles={{ body: { padding: 16 } }}>
+                size={560} styles={{ body: { padding: 16 } }}>
                 {selectedOrder && (
                     <div className="space-y-4">
                         <Card size="small" style={{ borderRadius: 10 }}>

@@ -576,7 +576,7 @@ export default function UmkmStudioPage() {
                         <Switch />
                     </Form.Item>
 
-                    <Divider orientation="left" plain>
+                    <Divider titlePlacement="start" plain>
                         Perintah WhatsApp
                     </Divider>
                     <Paragraph type="secondary" style={{ fontSize: 12, marginTop: -8 }}>

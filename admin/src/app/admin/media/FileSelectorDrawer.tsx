@@ -64,7 +64,7 @@ export default function FileSelectorDrawer({ visible, onClose, selectedIds, onSe
     return (
         <Drawer
             title="Select Source Files"
-            width={400} // Nested drawer width
+            size={400} // Nested drawer width
             onClose={onClose}
             open={visible}
             extra={

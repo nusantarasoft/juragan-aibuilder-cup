@@ -53,7 +53,7 @@ const WrapSpaceDemo = () => (
 
 // Demo 5: Space with Split
 const SplitSpaceDemo = () => (
-    <Space split={<Divider type="vertical" />}>
+    <Space split={<Divider orientation="vertical" />}>
         <Text>Link 1</Text>
         <Text>Link 2</Text>
         <Text>Link 3</Text>
@@ -129,7 +129,7 @@ export const spaceData: AntdComponentData = {
             title: "Space with Split",
             description: "Separator between items",
             demo: <SplitSpaceDemo />,
-            code: `<Space split={<Divider type="vertical" />}>
+            code: `<Space split={<Divider orientation="vertical" />}>
   <Text>Link 1</Text>
   <Text>Link 2</Text>
 </Space>`,

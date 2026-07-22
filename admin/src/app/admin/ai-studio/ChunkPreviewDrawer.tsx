@@ -35,7 +35,7 @@ export default function ChunkPreviewDrawer({ chunkId, docName, score, onClose }:
             title={docName ?? chunk?.filename ?? "Cuplikan sumber"}
             open={!!chunkId}
             onClose={onClose}
-            width={420}
+            size={420}
         >
             {loading ? (
                 <div className="flex justify-center py-8"><Spin /></div>

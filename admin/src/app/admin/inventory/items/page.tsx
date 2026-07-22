@@ -1138,7 +1138,7 @@ function ItemMasterContent() {
                 title={null}
                 open={!!detailDrawer}
                 onClose={() => setDetailDrawer(null)}
-                width={520}
+                size={520}
                 styles={{ body: { padding: 0 } }}
             >
                 {detailDrawer && (() => {

@@ -173,7 +173,7 @@ export default function JournalEntriesPage() {
             </Card>
 
             {/* â”€â”€â”€ Create Journal Drawer â”€â”€â”€ */}
-            <Drawer title="New Journal Entry" open={createOpen} onClose={() => setCreateOpen(false)} width={800}
+            <Drawer title="New Journal Entry" open={createOpen} onClose={() => setCreateOpen(false)} size={800}
                 extra={<Space><Button onClick={() => setCreateOpen(false)}>Cancel</Button><Button type="primary" onClick={handleCreate} disabled={!isBalanced}>Save</Button></Space>}>
 
                 <Form form={form} layout="vertical" autoComplete="off">
@@ -227,7 +227,7 @@ export default function JournalEntriesPage() {
             </Drawer>
 
             {/* â”€â”€â”€ Detail Drawer â”€â”€â”€ */}
-            <Drawer title={selectedJournal ? `Journal: ${selectedJournal.journalNumber}` : 'Journal Detail'} open={detailOpen} onClose={() => setDetailOpen(false)} width={700}>
+            <Drawer title={selectedJournal ? `Journal: ${selectedJournal.journalNumber}` : 'Journal Detail'} open={detailOpen} onClose={() => setDetailOpen(false)} size={700}>
                 {selectedJournal && (
                     <>
                         <Row gutter={[16, 12]}>

@@ -400,7 +400,7 @@ export default function ScheduledReportsPage() {
 
             {/* ═══ 5. Schedule Detail Drawer ═══ */}
             <Drawer title={drawerSchedule?.name || 'Schedule Details'}
-                open={!!drawerSchedule} onClose={() => setDrawerSchedule(null)} width={420}
+                open={!!drawerSchedule} onClose={() => setDrawerSchedule(null)} size={420}
                 extra={
                     <Space>
                         <Button size="small" icon={<EditOutlined />} onClick={() => {

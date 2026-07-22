@@ -151,7 +151,7 @@ export default function ActivitiesPage() {
 
             <SteppedFormModal open={isModalOpen} onCancel={() => { setIsModalOpen(false); setEditing(null); form.resetFields(); }} onSubmit={handleSave} form={form} title={editing ? "Edit Activity" : "Log Activity"} entityName="activity" steps={formSteps} fields={ACTIVITY_FIELDS} width={700} onBatchCreate={handleBatchCreate} gradient={["#10b981", "#059669"]} editMode={!!editing} />
 
-            <Drawer title="Activity Details" open={detailOpen} onClose={() => setDetailOpen(false)} width={500}>
+            <Drawer title="Activity Details" open={detailOpen} onClose={() => setDetailOpen(false)} size={500}>
                 {selected && (<Descriptions column={1} bordered size="small">
                     <Descriptions.Item label="Type"><Tag color={getTypeConfig(selected.activityType)?.color}>{getTypeConfig(selected.activityType)?.label}</Tag></Descriptions.Item>
                     <Descriptions.Item label="Subject">{selected.subject}</Descriptions.Item>

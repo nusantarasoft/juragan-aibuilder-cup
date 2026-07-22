@@ -424,7 +424,7 @@ export default function FormTemplatesPage() {
 
                 {/* Detail Drawer */}
                 <Drawer title={detailRecord?.name || 'Template Details'} open={detailOpen} onClose={() => { setDetailOpen(false); setDetailRecord(null); setDetailFields([]); }}
-                    width={600} extra={
+                    size={600} extra={
                         <Space>
                             {detailRecord?.status === 'draft' && <Button type="primary" size="small" icon={<RocketOutlined />} onClick={() => { handlePublish(detailRecord!.id); setDetailOpen(false); }}>Publish</Button>}
                             <Button size="small" icon={<EditOutlined />} onClick={() => { if (detailRecord) { setEditRecord(detailRecord); form.setFieldsValue({ name: detailRecord.name, description: detailRecord.description, category: detailRecord.category, tags: detailRecord.tags }); setModalOpen(true); setDetailOpen(false); } }}>Edit</Button>
