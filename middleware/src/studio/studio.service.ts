@@ -536,6 +536,7 @@ export class StudioService {
     }
 
     async removeSource(notebookId: string, sourceId: string): Promise<boolean> {
+        const notebook = await this.getNotebook(notebookId);
         const { error } = await this.supabaseService.getAdminClient()
             .from('studio_notebook_sources')
             .delete()
@@ -543,6 +544,16 @@ export class StudioService {
             .eq('notebook_id', notebookId);
 
         assertNoSupabaseError(error, 'Failed to remove source');
+
+        const nextCount = Math.max(0, (notebook.source_count || 0) - 1);
+        await this.supabaseService.getAdminClient()
+            .from('studio_notebooks')
+            .update({
+                source_count: nextCount,
+                updated_at: new Date(),
+            })
+            .eq('id', notebookId);
+
         return true;
     }
 

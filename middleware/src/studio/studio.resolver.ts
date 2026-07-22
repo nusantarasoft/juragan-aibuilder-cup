@@ -236,7 +236,7 @@ export class StudioResolver {
             await this.studioService.assertConversationOwner(conversationId, userId);
         }
         return this.studioService.chat(notebookId, question, conversationId, userId, {
-            sourceIds: sourceIds?.length ? sourceIds : undefined,
+            sourceIds: sourceIds == null ? undefined : sourceIds,
             language: language ?? undefined,
         });
     }
@@ -327,7 +327,7 @@ export class StudioResolver {
             notebookId,
             outputType as any,
             query ?? undefined,
-            sourceIds?.length ? sourceIds : undefined,
+            sourceIds == null ? undefined : sourceIds,
             genOptions,
         );
     }

@@ -302,3 +302,99 @@ describe('StudioService.addMediaAsSource', () => {
         );
     });
 });
+
+describe('StudioService.removeSource', () => {
+    it('deletes source and decrements source_count (floor 0)', async () => {
+        const notebookId = '11111111-1111-4111-8111-111111111111';
+        const sourceId = '22222222-2222-4222-8222-222222222222';
+        const deleteEq = vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+        });
+        const updateEq = vi.fn().mockResolvedValue({ error: null });
+        const update = vi.fn().mockReturnValue({ eq: updateEq });
+        const notebookSingle = vi.fn().mockResolvedValue({
+            data: { id: notebookId, source_count: 2, studio_notebook_sources: [] },
+            error: null,
+        });
+        const from = vi.fn((table: string) => {
+            if (table === 'studio_notebooks') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({ single: notebookSingle }),
+                    }),
+                    update,
+                };
+            }
+            if (table === 'studio_notebook_sources') {
+                return { delete: vi.fn().mockReturnValue({ eq: deleteEq }) };
+            }
+            throw new Error(`Unexpected table: ${table}`);
+        });
+        const configMock = {
+            get: (key: string) => {
+                if (key === 'S3_ENDPOINT') return 'http://127.0.0.1:9000';
+                if (key === 'S3_BUCKET') return 'cms-media';
+                return undefined;
+            },
+        } as unknown as ConfigService;
+        const service = new StudioService(
+            configMock,
+            { getAdminClient: () => ({ from }) } as unknown as SupabaseService,
+            {} as any,
+            {} as any,
+            { ingestSource: vi.fn() } as any,
+            {} as any,
+            {} as any,
+            {} as any,
+        );
+
+        await expect(service.removeSource(notebookId, sourceId)).resolves.toBe(true);
+        expect(update).toHaveBeenCalledWith(
+            expect.objectContaining({ source_count: 1 }),
+        );
+    });
+
+    it('floors source_count at 0', async () => {
+        const notebookId = '11111111-1111-4111-8111-111111111111';
+        const sourceId = '22222222-2222-4222-8222-222222222222';
+        const deleteEq = vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+        });
+        const updateEq = vi.fn().mockResolvedValue({ error: null });
+        const update = vi.fn().mockReturnValue({ eq: updateEq });
+        const notebookSingle = vi.fn().mockResolvedValue({
+            data: { id: notebookId, source_count: 0, studio_notebook_sources: [] },
+            error: null,
+        });
+        const from = vi.fn((table: string) => {
+            if (table === 'studio_notebooks') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({ single: notebookSingle }),
+                    }),
+                    update,
+                };
+            }
+            if (table === 'studio_notebook_sources') {
+                return { delete: vi.fn().mockReturnValue({ eq: deleteEq }) };
+            }
+            throw new Error(`Unexpected table: ${table}`);
+        });
+        const service = new StudioService(
+            {
+                get: (key: string) =>
+                    key === 'S3_ENDPOINT' ? 'http://127.0.0.1:9000' : key === 'S3_BUCKET' ? 'cms-media' : undefined,
+            } as unknown as ConfigService,
+            { getAdminClient: () => ({ from }) } as unknown as SupabaseService,
+            {} as any,
+            {} as any,
+            { ingestSource: vi.fn() } as any,
+            {} as any,
+            {} as any,
+            {} as any,
+        );
+
+        await expect(service.removeSource(notebookId, sourceId)).resolves.toBe(true);
+        expect(update).toHaveBeenCalledWith(expect.objectContaining({ source_count: 0 }));
+    });
+});

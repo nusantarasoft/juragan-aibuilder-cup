@@ -171,7 +171,7 @@ export default function StudioOutputsPanel({
         try {
             const out = await studioService.generateOutput(notebookId, type, {
                 query,
-                sourceIds: selectedSourceIds?.length ? selectedSourceIds : undefined,
+                sourceIds: selectedSourceIds ?? [],
                 audioLength: opts?.audioLength,
                 language: outputLanguage,
             });

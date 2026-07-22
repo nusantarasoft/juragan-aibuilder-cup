@@ -20,6 +20,7 @@ function makeAdmin(opts: {
             const chain: any = {
                 select: () => chain,
                 eq: () => chain,
+                in: () => chain,
                 single: () =>
                     Promise.resolve(
                         singleQueue.length ? singleQueue.shift() : { data: null, error: null },
@@ -87,13 +88,23 @@ describe('StudioContextService', () => {
             expect(await svc.semanticSearchNotebook('nb1', 'q')).toEqual([]);
         });
 
+        it('sourceIds [] → [] tanpa embed (none selected)', async () => {
+            const { svc, ragService } = build();
+            expect(await svc.semanticSearchNotebook('nb1', 'q', 8, [])).toEqual([]);
+            expect(ragService.embedText).not.toHaveBeenCalled();
+        });
+
         it('rpc sukses → memetakan baris (tanpa sourceIds)', async () => {
-            const { svc } = build({
+            const { svc, admin } = build({
                 admin: { rpc: [{ data: [row(1), row(2)], error: null }] },
             });
             const hits = await svc.semanticSearchNotebook('nb1', 'q');
             expect(hits).toHaveLength(2);
             expect(hits[0]).toMatchObject({ chunkId: 'c1', sourceId: 's1', score: 0.9 });
+            expect(admin.rpc).toHaveBeenCalledWith(
+                'match_studio_chunks',
+                expect.not.objectContaining({ p_source_ids: expect.anything() }),
+            );
         });
 
         it('rpc sukses tapi data null → []', async () => {
@@ -106,12 +117,67 @@ describe('StudioContextService', () => {
             expect(await svc.semanticSearchNotebook('nb1', 'q')).toEqual([]);
         });
 
-        it('rpc sukses dengan sourceIds → tidak ada fallback', async () => {
-            const { svc } = build({
+        it('rpc dengan sourceIds mengirim p_source_ids', async () => {
+            const { svc, admin } = build({
                 admin: { rpc: [{ data: [row(1)], error: null }] },
             });
             const hits = await svc.semanticSearchNotebook('nb1', 'q', 8, ['s1']);
             expect(hits).toHaveLength(1);
+            expect(admin.rpc).toHaveBeenCalledWith(
+                'match_studio_chunks',
+                expect.objectContaining({ p_source_ids: ['s1'], match_count: 24 }),
+            );
+        });
+
+        it('rpc missing p_source_ids → retry tanpa param lalu post-filter', async () => {
+            const { svc, admin } = build({
+                admin: {
+                    rpc: [
+                        { data: null, error: { message: 'Could not find the function match_studio_chunks(...p_source_ids)' } },
+                        { data: [row(1), row(2)], error: null },
+                    ],
+                },
+            });
+            const hits = await svc.semanticSearchNotebook('nb1', 'q', 8, ['s1']);
+            expect(hits).toHaveLength(1);
+            expect(hits[0].sourceId).toBe('s1');
+            expect(admin.rpc).toHaveBeenCalledTimes(2);
+        });
+
+        it('rpc missing p_source_ids → retry data null → []', async () => {
+            const { svc } = build({
+                admin: {
+                    rpc: [
+                        { data: null, error: { message: 'p_source_ids' } },
+                        { data: null, error: null },
+                    ],
+                },
+            });
+            expect(await svc.semanticSearchNotebook('nb1', 'q', 8, ['s1'])).toEqual([]);
+        });
+
+        it('rpc missing p_source_ids tanpa sourceIds → tidak retry, log error', async () => {
+            const { svc, admin } = build({
+                admin: {
+                    rpc: [{ data: null, error: { message: 'p_source_ids' } }],
+                    count: [{ count: 0, error: null }],
+                },
+            });
+            expect(await svc.semanticSearchNotebook('nb1', 'q')).toEqual([]);
+            expect(admin.rpc).toHaveBeenCalledTimes(1);
+            expect(svc['logger'].error).toHaveBeenCalled();
+        });
+
+        it('rpc missing p_source_ids dan retry gagal → []', async () => {
+            const { svc } = build({
+                admin: {
+                    rpc: [
+                        { data: null, error: { code: 'PGRST202', message: 'p_source_ids' } },
+                        { data: null, error: { code: 'X', message: 'boom' } },
+                    ],
+                },
+            });
+            expect(await svc.semanticSearchNotebook('nb1', 'q', 8, ['s1'])).toEqual([]);
         });
 
         it('rpc missing (42883) → warn & [], lalu fallback threshold 0 berhasil', async () => {
@@ -176,11 +242,20 @@ describe('StudioContextService', () => {
             expect(svc['logger'].debug).not.toHaveBeenCalled();
         });
 
-        it('fallback dilewati saat sourceIds ada', async () => {
-            const { svc } = build({
-                admin: { rpc: [{ data: [], error: null }] },
+        it('fallback threshold 0 juga untuk subset sourceIds', async () => {
+            const { svc, admin } = build({
+                admin: {
+                    rpc: [
+                        { data: [], error: null },
+                        { data: [row(1)], error: null },
+                    ],
+                    count: [{ count: 3, error: null }],
+                },
             });
-            expect(await svc.semanticSearchNotebook('nb1', 'q', 8, ['s1'])).toEqual([]);
+            const hits = await svc.semanticSearchNotebook('nb1', 'q', 8, ['s1']);
+            expect(hits).toHaveLength(1);
+            expect(admin.rpc).toHaveBeenCalledTimes(2);
+            expect(svc['logger'].debug).toHaveBeenCalled();
         });
     });
 
@@ -225,6 +300,22 @@ describe('StudioContextService', () => {
             vi.spyOn(svc, 'semanticSearchNotebook').mockResolvedValue([]);
             const r = await svc.retrieveContext('nb1', 'q');
             expect(r.documentRetrievalStatus).toBe('not_indexed');
+        });
+
+        it('sourceIds [] → no_sources_selected tanpa search', async () => {
+            const { svc } = build();
+            const spy = vi.spyOn(svc, 'semanticSearchNotebook');
+            const r = await svc.retrieveContext('nb1', 'q', undefined, undefined, { sourceIds: [] });
+            expect(r.documentRetrievalStatus).toBe('no_sources_selected');
+            expect(r.chunks).toEqual([]);
+            expect(spy).not.toHaveBeenCalled();
+        });
+
+        it('subset sourceIds tanpa hit memakai count scoped', async () => {
+            const { svc } = build({ admin: { count: [{ count: 2, error: null }] } });
+            vi.spyOn(svc, 'semanticSearchNotebook').mockResolvedValue([]);
+            const r = await svc.retrieveContext('nb1', 'q', undefined, undefined, { sourceIds: ['s1'] });
+            expect(r.documentRetrievalStatus).toBe('no_relevant_chunks');
         });
     });
 
@@ -312,6 +403,37 @@ describe('StudioContextService', () => {
                 },
             });
             expect(noDb.aiRouter.generateText.mock.calls[0][0]).toContain('menunggu indexing');
+        });
+
+        it('no_sources_selected dengan db dan tanpa db', async () => {
+            const withDb = build();
+            await withDb.svc.generateGroundedAnswer({
+                notebookName: 'NB',
+                audience: 'admin',
+                question: 'q',
+                conversationLines: [],
+                retrieval: {
+                    ...baseRetrieval,
+                    fileContext: '',
+                    documentRetrievalStatus: 'no_sources_selected',
+                },
+            });
+            expect(withDb.aiRouter.generateText.mock.calls[0][0]).toContain('tidak mencentang sumber');
+
+            const noDb = build();
+            await noDb.svc.generateGroundedAnswer({
+                notebookName: 'NB',
+                audience: 'admin',
+                question: 'q',
+                conversationLines: [],
+                retrieval: {
+                    ...baseRetrieval,
+                    fileContext: '',
+                    dbContext: '',
+                    documentRetrievalStatus: 'no_sources_selected',
+                },
+            });
+            expect(noDb.aiRouter.generateText.mock.calls[0][0]).toContain('panel Sources');
         });
 
         it('status undefined → derive dari hasFile (matched)', async () => {

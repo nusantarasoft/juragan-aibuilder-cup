@@ -149,7 +149,7 @@ export default function SourcesPanel({
                         disabled={indexedIds.length === 0}
                     >
                         <Text className="text-[10px] text-gray-500">
-                            {selectedSourceIds.length || indexedIds.length}/{indexedIds.length} dipakai chat
+                            {selectedSourceIds.length}/{indexedIds.length} dipakai chat
                         </Text>
                     </Checkbox>
                     {sourceStats.allIndexed ? (

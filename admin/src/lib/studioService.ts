@@ -370,7 +370,7 @@ export const studioService = {
             question,
             conversationId,
             userId,
-            sourceIds: options?.sourceIds?.length ? options.sourceIds : null,
+            sourceIds: options?.sourceIds === undefined ? null : options.sourceIds,
             language: options?.language ?? null,
         });
         return data.studioChat;
@@ -405,7 +405,7 @@ export const studioService = {
                 notebookId,
                 question,
                 conversationId: options?.conversationId,
-                sourceIds: options?.sourceIds?.length ? options.sourceIds : undefined,
+                sourceIds: options?.sourceIds === undefined ? undefined : options.sourceIds,
                 language: options?.language ?? undefined,
             }),
             signal: options?.signal,
@@ -607,7 +607,7 @@ export const studioService = {
             notebookId,
             outputType,
             query: options?.query ?? null,
-            sourceIds: options?.sourceIds?.length ? options.sourceIds : null,
+            sourceIds: options?.sourceIds === undefined ? null : options.sourceIds,
             audioLength: options?.audioLength ?? null,
             language: options?.language ?? null,
         });

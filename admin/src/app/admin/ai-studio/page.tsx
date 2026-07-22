@@ -129,6 +129,7 @@ export default function AIStudioPage() {
     const [addingMedia, setAddingMedia] = useState<Set<string>>(new Set());
     const [publishedGuideFlow, setPublishedGuideFlow] = useState<StudioGuideFlow | null>(null);
     const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
+    const previouslyIndexedIdsRef = useRef<string[]>([]);
     const [configureChatOpen, setConfigureChatOpen] = useState(false);
     const [savingChatConfig, setSavingChatConfig] = useState(false);
     const [chunkPreview, setChunkPreview] = useState<{ chunkId: string; docName: string; score: number } | null>(null);
@@ -213,6 +214,7 @@ export default function AIStudioPage() {
         setGuidedFlow(null);
         setPublishedGuideFlow(null);
         setSelectedSourceIds([]);
+        previouslyIndexedIdsRef.current = [];
         await loadSourceStatus(notebook.id, true);
         try {
             const published = await studioService.getPublishedGuideFlow(notebook.id);
@@ -258,7 +260,11 @@ export default function AIStudioPage() {
             setSources(list);
 
             const indexedIds = indexedSourceIds(list);
-            setSelectedSourceIds((prev) => syncSelectedSourceIds(prev, indexedIds));
+            setSelectedSourceIds((prev) => {
+                const next = syncSelectedSourceIds(prev, indexedIds, previouslyIndexedIdsRef.current);
+                previouslyIndexedIdsRef.current = indexedIds;
+                return next;
+            });
 
             const notebookId = pollNotebookIdRef.current;
             const stillIndexing = list.some(isSourceInProgress);

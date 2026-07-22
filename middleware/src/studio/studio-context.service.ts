@@ -4,7 +4,7 @@ import { RagService } from '../rag/rag.service';
 import { AiRouterService } from '../ai/ai-router.service';
 import { StudioDbContextService, type StudioContextConfig } from './studio-db-context.service';
 import type { QueryUnderstandingResult } from './query-understanding';
-import { filterChunksBySourceIds } from './studio-source-filter.util';
+import { filterChunksBySourceIds, isEmptySourceSelection } from './studio-source-filter.util';
 
 export type StudioChunkHit = {
     chunkId: string;
@@ -14,7 +14,11 @@ export type StudioChunkHit = {
     score: number;
 };
 
-export type DocumentRetrievalStatus = 'matched' | 'no_relevant_chunks' | 'not_indexed';
+export type DocumentRetrievalStatus =
+    | 'matched'
+    | 'no_relevant_chunks'
+    | 'not_indexed'
+    | 'no_sources_selected';
 
 export type RetrievalResult = {
     chunks: StudioChunkHit[];
@@ -54,6 +58,9 @@ export class StudioContextService {
         limit = 8,
         sourceIds?: string[],
     ): Promise<StudioChunkHit[]> {
+        // Explicit empty selection = no retrieval (NotebookLM: unchecked sources).
+        if (isEmptySourceSelection(sourceIds)) return [];
+
         const embedding = await this.ragService.embedText(query);
         if (!embedding) return [];
 
@@ -70,13 +77,36 @@ export class StudioContextService {
             }));
 
         const search = async (threshold: number) => {
-            const { data, error } = await this.admin().rpc('match_studio_chunks', {
+            const rpcArgs: Record<string, unknown> = {
                 query_embedding: embedding,
                 p_notebook_id: notebookId,
                 match_threshold: threshold,
-                match_count: sourceIds?.length ? Math.max(limit, 16) : limit,
-            });
+                match_count: sourceIds?.length ? Math.max(limit, 24) : limit,
+            };
+            if (sourceIds?.length) {
+                rpcArgs.p_source_ids = sourceIds;
+            }
+
+            const { data, error } = await this.admin().rpc('match_studio_chunks', rpcArgs);
             if (error) {
+                // Older DBs without p_source_ids: retry without it, then post-filter.
+                const missingParam =
+                    error.message?.includes('p_source_ids') ||
+                    error.code === 'PGRST202' ||
+                    error.code === '42883';
+                if (missingParam && sourceIds?.length) {
+                    const retry = await this.admin().rpc('match_studio_chunks', {
+                        query_embedding: embedding,
+                        p_notebook_id: notebookId,
+                        match_threshold: threshold,
+                        match_count: Math.max(limit, 24),
+                    });
+                    if (retry.error) {
+                        this.logger.error('match_studio_chunks failed', retry.error);
+                        return [] as StudioChunkHit[];
+                    }
+                    return filterBySources(mapRows(retry.data || [])).slice(0, limit);
+                }
                 if (error.code === '42883' || error.message?.includes('match_studio_chunks')) {
                     this.logger.warn('match_studio_chunks RPC missing — apply middleware/sql/studio_source_chunks.sql');
                 } else {
@@ -88,11 +118,15 @@ export class StudioContextService {
         };
 
         let chunks = await search(0.42);
-        if (chunks.length === 0 && !sourceIds?.length) {
-            const { count } = await this.admin()
+        if (chunks.length === 0) {
+            let countQuery = this.admin()
                 .from('studio_source_chunks')
                 .select('id', { count: 'exact', head: true })
                 .eq('notebook_id', notebookId);
+            if (sourceIds?.length) {
+                countQuery = countQuery.in('source_id', sourceIds);
+            }
+            const { count } = await countQuery;
             const total = count ?? 0;
             if (total > 0 && total <= Math.max(limit, 12)) {
                 chunks = await search(0);
@@ -114,6 +148,17 @@ export class StudioContextService {
         config?: StudioContextConfig,
         options?: { sourceIds?: string[] },
     ): Promise<RetrievalResult> {
+        if (isEmptySourceSelection(options?.sourceIds)) {
+            return {
+                chunks: [],
+                fileContext: '',
+                dbContext: '',
+                references: [],
+                rawChunks: [],
+                documentRetrievalStatus: 'no_sources_selected',
+            };
+        }
+
         const chunks = await this.semanticSearchNotebook(
             notebookId,
             query,
@@ -123,10 +168,14 @@ export class StudioContextService {
 
         let documentRetrievalStatus: DocumentRetrievalStatus = 'matched';
         if (chunks.length === 0) {
-            const { count, error } = await this.admin()
+            let countQuery = this.admin()
                 .from('studio_source_chunks')
                 .select('id', { count: 'exact', head: true })
                 .eq('notebook_id', notebookId);
+            if (options?.sourceIds?.length) {
+                countQuery = countQuery.in('source_id', options.sourceIds);
+            }
+            const { count, error } = await countQuery;
             if (error) {
                 this.logger.warn(`chunk count check failed for notebook ${notebookId}: ${error.message}`);
                 documentRetrievalStatus = 'not_indexed';
@@ -179,6 +228,10 @@ export class StudioContextService {
                 return hasDb
                     ? 'Tidak ditemukan cuplikan dokumen yang relevan untuk pertanyaan ini. Jawab dari data database operasional jika tersedia; jangan mengarang dari dokumen.'
                     : 'Tidak ditemukan cuplikan dokumen yang relevan untuk pertanyaan ini. Katakan dengan jujur bahwa informasi tidak ada di sumber notebook; jangan mengarang.';
+            case 'no_sources_selected':
+                return hasDb
+                    ? 'Pengguna tidak mencentang sumber dokumen. Jawab dari data database operasional jika tersedia; jangan mengarang dari dokumen yang tidak dipilih.'
+                    : 'Pengguna tidak mencentang sumber di panel Sources. Minta mereka mencentang minimal satu sumber sebelum bertanya tentang isi dokumen; jangan mengarang.';
             case 'not_indexed':
                 return hasDb
                     ? 'Belum ada dokumen terindeks di notebook ini. Gunakan data database operasional untuk pertanyaan status/order/analitik jika tersedia.'

@@ -189,7 +189,8 @@ export function useStudioChat(
     const runFreeChat = useCallback(
         async (text: string, appendUser: boolean) => {
             if (!notebookId || !text.trim()) return;
-            const sourceIds = selectedSourceIds.length > 0 ? selectedSourceIds : undefined;
+            const sourceIds = selectedSourceIds;
+            // Always pass the array (including []) so empty means "no sources", not "all".
             if (appendUser) {
                 setChatHistory((prev) => [
                     ...prev,
