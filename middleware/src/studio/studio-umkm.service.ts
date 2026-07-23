@@ -42,7 +42,6 @@ import {
     detectUmkmMenuDigit,
     extractStockProductQuery,
     formatDailyReportWa,
-    formatRecordSaleMenuPrompt,
     formatSaleCancelled,
     formatUmkmHelp,
     generateWaOrderNumber,
@@ -73,6 +72,22 @@ import {
     type UmkmSaleItemResolved,
     type UmkmStockRow,
 } from './studio-umkm-product.util';
+import {
+    appendConfirmRiskToPreview,
+    applySaleSlotReply,
+    assessReadQueryClarity,
+    assessSaleConfirmRisk,
+    assessSaleSlots,
+    emptySaleDraft,
+    isExplicitAllStockQuery,
+    nextSaleSlotQuestion,
+    parseSaleDraftHeuristic,
+    resolveReportPeriodReply,
+    resolveStockScopeReply,
+    saleDraftFromParsed,
+    saleDraftToParsed,
+    type SaleDraft,
+} from './studio-umkm-confirm.util';
 import { assertNoSupabaseError } from './studio-supabase.util';
 
 const DEFAULT_TENANT = 'default';
@@ -101,7 +116,10 @@ type UmkmWizard =
     | { kind: 'report_hub'; createdAt: number }
     | { kind: 'await_add_product'; createdAt: number }
     | { kind: 'await_add_stock'; createdAt: number }
-    | { kind: 'await_purchase'; createdAt: number };
+    | { kind: 'await_purchase'; createdAt: number }
+    | { kind: 'await_sale_slots'; draft: SaleDraft; createdAt: number }
+    | { kind: 'await_stock_scope'; createdAt: number }
+    | { kind: 'await_report_period'; createdAt: number };
 
 export const DEFAULT_STUDIO_UMKM_CONTEXT: StudioContextConfig = {
     umkm_mode: true,
@@ -400,13 +418,9 @@ export class StudioUmkmService {
             return formatSaleCancelled(commands);
         }
 
-        // Active submenu / wizard takes priority over new intents (except cancel)
-        if (confirm === 'cancel') {
-            this.clearWizard(tenantId, phone, conversationId);
-        } else {
-            const wizardReply = await this.continueWizard(text, tenantId, phone, conversationId, config);
-            if (wizardReply !== undefined) return wizardReply;
-        }
+        // Active submenu / wizard takes priority (including batal → clear + reply)
+        const wizardReply = await this.continueWizard(text, tenantId, phone, conversationId, config);
+        if (wizardReply !== undefined) return wizardReply;
 
         const feedback = detectUmkmFeedback(text);
         if (feedback) {
@@ -464,8 +478,18 @@ export class StudioUmkmService {
             case 'check_stock': {
                 // check_stock legacy: if looks like query show stock; else add-stock flow
                 if (intent === 'check_stock' || /cek\s+stok|berapa\s+stok|sisa\s+stok/i.test(text)) {
+                    const clarity = assessReadQueryClarity('stock', text);
+                    if (clarity.needsSoftConfirm && !isExplicitAllStockQuery(text)) {
+                        this.setWizard(
+                            tenantId,
+                            { kind: 'await_stock_scope', createdAt: Date.now() },
+                            phone,
+                            conversationId,
+                        );
+                        return clarity.question;
+                    }
                     const q = extractStockProductQuery(text);
-                    if (q || /cek\s+stok|berapa\s+stok/i.test(text)) {
+                    if (q || isExplicitAllStockQuery(text) || /cek\s+stok|berapa\s+stok/i.test(text)) {
                         this.clearWizard(tenantId, phone, conversationId);
                         return this.buildStockCheckMessage(text, tenantId);
                     }
@@ -485,6 +509,16 @@ export class StudioUmkmService {
                 return this.recordSaleFromText(text, tenantId, phone, config, { conversationId });
             case 'sales_report': {
                 this.clearWizard(tenantId, phone, conversationId);
+                const clarity = assessReadQueryClarity('report', text);
+                if (clarity.needsSoftConfirm) {
+                    this.setWizard(
+                        tenantId,
+                        { kind: 'await_report_period', createdAt: Date.now() },
+                        phone,
+                        conversationId,
+                    );
+                    return clarity.question;
+                }
                 const period = detectReportPeriod(text) || 'today';
                 return this.buildCombinedReportMessage(tenantId, period);
             }
@@ -600,6 +634,7 @@ export class StudioUmkmService {
 
     /**
      * Parse + catalog match → preview (does not write DB). Used by guided flow + direct mode.
+     * Incomplete sales return need_slots so the chat can ask natural follow-ups (no digit menu).
      */
     async prepareSaleFromText(
         text: string,
@@ -608,29 +643,65 @@ export class StudioUmkmService {
         config?: StudioContextConfig,
     ): Promise<
         | { kind: 'preview'; message: string; pending: PendingUmkmSale }
+        | { kind: 'need_slots'; message: string; draft: SaleDraft }
         | { kind: 'error'; message: string }
     > {
         const commands = this.resolveCommands(config);
         if (isUmkmMenuOnly(text) && detectUmkmIntent(text, commands) === 'record_sale') {
-            return { kind: 'error', message: formatRecordSaleMenuPrompt(commands) };
+            const draft = emptySaleDraft();
+            const slots = assessSaleSlots(draft);
+            return {
+                kind: 'need_slots',
+                draft,
+                message: [
+                    'Siap catat penjualan.',
+                    nextSaleSlotQuestion(slots, draft),
+                ].join('\n'),
+            };
         }
 
         const parsed = await this.parseSaleMessage(text, commands);
-        if (!parsed) {
+        const draft =
+            (parsed ? saleDraftFromParsed(parsed) : null) ||
+            parseSaleDraftHeuristic(text, commands);
+
+        if (!draft) {
             return {
                 kind: 'error',
                 message: [
                     'Maaf, saya belum bisa memahami detail penjualannya.',
                     '',
-                    'Contoh format:',
-                    `• ${(commands.keywords.record_sale || [])[0] || 'jual'} 3 es kopi 45000`,
-                    `• ${(commands.keywords.record_sale || [])[0] || 'catat'} 2 tas total 500rb tunai`,
+                    'Coba kirim seperti: *jual 3 es kopi 45000*',
+                    'Atau ketik *jual* lalu jawab pertanyaan saya satu per satu.',
                     '',
-                    `Ketik *${(commands.keywords.list_products || [])[0] || 'daftar barang'}* untuk lihat produk, atau *${(commands.keywords.help || [])[0] || 'bantuan'}* untuk menu.`,
+                    `Ketik *${(commands.keywords.list_products || [])[0] || 'daftar barang'}* untuk lihat produk, atau *batal* untuk batal.`,
                 ].join('\n'),
             };
         }
 
+        const slots = assessSaleSlots(draft);
+        if (!slots.ok) {
+            return {
+                kind: 'need_slots',
+                draft,
+                message: nextSaleSlotQuestion(slots, draft),
+            };
+        }
+
+        return this.previewFromSaleDraft(saleDraftToParsed(draft), tenantId, phone, config);
+    }
+
+    /** Build confirm preview from a complete sale draft. */
+    private async previewFromSaleDraft(
+        parsed: ParsedUmkmSale,
+        tenantId: string,
+        phone?: string,
+        config?: StudioContextConfig,
+    ): Promise<
+        | { kind: 'preview'; message: string; pending: PendingUmkmSale }
+        | { kind: 'error'; message: string }
+    > {
+        const commands = this.resolveCommands(config);
         const products = await this.fetchActiveProducts(tenantId);
         const resolved = resolveSaleItemsAgainstCatalog(parsed.items, products);
         const requireMatch = config?.umkm_require_catalog_match === true;
@@ -666,10 +737,9 @@ export class StudioUmkmService {
             createdAt: Date.now(),
         };
 
-        return {
-            kind: 'preview',
-            pending,
-            message: formatSalePreviewWithCatalog(
+        const risk = assessSaleConfirmRisk(resolved);
+        const preview = appendConfirmRiskToPreview(
+            formatSalePreviewWithCatalog(
                 {
                     totalAmount: saleForSave.totalAmount,
                     items: resolved,
@@ -681,6 +751,13 @@ export class StudioUmkmService {
                     cancel: commands.cancel[0] || 'batal',
                 },
             ),
+            risk,
+        );
+
+        return {
+            kind: 'preview',
+            pending,
+            message: preview,
         };
     }
 
@@ -712,6 +789,15 @@ export class StudioUmkmService {
     ): Promise<string> {
         const prepared = await this.prepareSaleFromText(text, tenantId, phone, config);
         if (prepared.kind === 'error') return prepared.message;
+        if (prepared.kind === 'need_slots') {
+            this.setWizard(
+                tenantId,
+                { kind: 'await_sale_slots', draft: prepared.draft, createdAt: Date.now() },
+                phone,
+                options?.conversationId,
+            );
+            return prepared.message;
+        }
         const pendingId = await this.persistPendingSaleToDb(tenantId, prepared.pending, {
             conversationId: options?.conversationId,
             phone,
@@ -1018,9 +1104,16 @@ export class StudioUmkmService {
         const t = text.trim();
         const commands = this.resolveCommands(config);
 
-        // Escape hatch: batal / cancel exits any wizard back to main menu
+        // Escape hatch: batal / cancel exits any wizard
         if (detectUmkmConfirmReply(t, commands) === 'cancel') {
             this.clearWizard(tenantId, phone, conversationId);
+            const conversational =
+                wizard.kind === 'await_sale_slots' ||
+                wizard.kind === 'await_stock_scope' ||
+                wizard.kind === 'await_report_period';
+            if (conversational) {
+                return '❌ Dibatalkan. Ketik *jual ...*, *cek stok ...*, atau *laporan ...* kapan saja.';
+            }
             return `❌ Dibatalkan.\n\n${formatUmkmHelp(commands)}`;
         }
 
@@ -1088,6 +1181,7 @@ export class StudioUmkmService {
         }
 
         // Input wizards: bare menu digit exits so top-level menu can run
+        // (except sale slot-fill — digits are qty/harga answers)
         const isInputWizard =
             wizard.kind === 'await_add_product' ||
             wizard.kind === 'await_add_stock' ||
@@ -1095,6 +1189,64 @@ export class StudioUmkmService {
         if (isInputWizard && detectUmkmMenuDigit(t, commands)) {
             this.clearWizard(tenantId, phone, conversationId);
             return undefined;
+        }
+
+        if (wizard.kind === 'await_sale_slots') {
+            const merged = applySaleSlotReply(wizard.draft, t, commands);
+            const slots = assessSaleSlots(merged);
+            if (!slots.ok) {
+                this.setWizard(
+                    tenantId,
+                    { kind: 'await_sale_slots', draft: merged, createdAt: Date.now() },
+                    phone,
+                    conversationId,
+                );
+                return nextSaleSlotQuestion(slots, merged);
+            }
+            this.clearWizard(tenantId, phone, conversationId);
+            const prepared = await this.previewFromSaleDraft(
+                saleDraftToParsed(merged),
+                tenantId,
+                phone,
+                config,
+            );
+            if (prepared.kind === 'error') return prepared.message;
+            const pendingId = await this.persistPendingSaleToDb(tenantId, prepared.pending, {
+                conversationId,
+                phone,
+            });
+            if (pendingId) prepared.pending.pendingId = pendingId;
+            this.setPendingSale(tenantId, prepared.pending, phone);
+            return prepared.message;
+        }
+
+        if (wizard.kind === 'await_stock_scope') {
+            const scope = resolveStockScopeReply(t);
+            if (!scope) {
+                return [
+                    'Belum jelas.',
+                    'Balas *semua* atau kirim *nama barang* (contoh: *kopi*).',
+                    'Ketik *batal* untuk batal.',
+                ].join('\n');
+            }
+            this.clearWizard(tenantId, phone, conversationId);
+            if (scope.kind === 'all') {
+                return this.buildStockCheckMessage('cek stok semua', tenantId);
+            }
+            return this.buildStockCheckMessage(`cek stok ${scope.query}`, tenantId);
+        }
+
+        if (wizard.kind === 'await_report_period') {
+            const period = resolveReportPeriodReply(t);
+            if (!period) {
+                return [
+                    'Periode belum jelas.',
+                    'Balas *hari ini*, *minggu ini*, atau *bulan ini*.',
+                    'Ketik *batal* untuk batal.',
+                ].join('\n');
+            }
+            this.clearWizard(tenantId, phone, conversationId);
+            return this.buildCombinedReportMessage(tenantId, period);
         }
 
         if (wizard.kind === 'await_add_product') {
@@ -1112,6 +1264,21 @@ export class StudioUmkmService {
     /** Clear stuck wizard (e.g. after failed add-product). */
     clearWizardPublic(tenantId: string, phone?: string, conversationId?: string) {
         this.clearWizard(tenantId, phone, conversationId);
+    }
+
+    /** Stage multi-turn sale slot fill (guided / external callers). */
+    startSaleSlotFill(
+        tenantId: string,
+        draft: SaleDraft,
+        phone?: string,
+        conversationId?: string,
+    ) {
+        this.setWizard(
+            tenantId,
+            { kind: 'await_sale_slots', draft, createdAt: Date.now() },
+            phone,
+            conversationId,
+        );
     }
 
     async beginOrRunAddProduct(

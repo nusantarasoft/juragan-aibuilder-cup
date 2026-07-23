@@ -835,6 +835,14 @@ export class GuideFlowService {
                                     if (pendingId) prepared.pending.pendingId = pendingId;
                                     ctx.pendingUmkmSale = prepared.pending;
                                     content = prepared.message;
+                                } else if (prepared.kind === 'need_slots') {
+                                    this.umkmService.startSaleSlotFill(
+                                        tenantId,
+                                        prepared.draft,
+                                        undefined,
+                                        conversation.id,
+                                    );
+                                    content = prepared.message;
                                 } else {
                                     content = prepared.message;
                                 }

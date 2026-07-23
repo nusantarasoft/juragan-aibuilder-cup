@@ -346,11 +346,11 @@ describe('Perintah 5 — Tambah penjualan', () => {
         expect(detectUmkmIntent('catat penjualan', cmds)).toBe('record_sale');
     });
 
-    it('POSITIF digit 5 saja → prompt format (bukan crash)', async () => {
+    it('POSITIF digit 5 saja → mulai tanya slot natural (bukan crash)', async () => {
         const { svc } = makeUmkmService();
         const prepared = await svc.prepareSaleFromText('5', 't', undefined, cfg);
-        expect(prepared.kind).toBe('error');
-        expect(prepared.message).toMatch(/Kirim detail|jual/i);
+        expect(prepared.kind).toBe('need_slots');
+        expect(prepared.message).toMatch(/Barang apa|Siap catat/i);
         expect(formatRecordSaleMenuPrompt(cmds)).toMatch(/jual|batal|0/i);
     });
 
@@ -374,7 +374,7 @@ describe('Perintah 5 — Tambah penjualan', () => {
         const { svc } = makeUmkmService();
         const prepared = await svc.prepareSaleFromText('asdfgh', 't', undefined, cfg);
         expect(prepared.kind).toBe('error');
-        expect(prepared.message).toMatch(/memahami|Contoh|bantuan|daftar/i);
+        expect(prepared.message).toMatch(/memahami|Contoh|bantuan|daftar|jual/i);
     });
 
     it('NEGATIF kosong / hanya spasi', async () => {

@@ -102,15 +102,21 @@ export function makeUmkmService(opts?: MakeUmkmServiceOpts) {
             limit: vi.fn().mockReturnThis(),
             gte: vi.fn().mockReturnThis(),
             lte: vi.fn().mockReturnThis(),
+            gt: vi.fn().mockReturnThis(),
+            in: vi.fn().mockReturnThis(),
             insert: vi.fn().mockReturnThis(),
+            update: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({ data: { id: 'x1' }, error: null }),
             then: (resolve: (v: unknown) => unknown) => resolve({ data, error: null }),
         };
         // keep chain returning same thenable
-        for (const k of ['select', 'eq', 'order', 'limit', 'gte', 'lte', 'insert']) {
+        for (const k of ['select', 'eq', 'order', 'limit', 'gte', 'lte', 'gt', 'in', 'insert', 'update']) {
             b[k] = vi.fn().mockReturnValue(b);
         }
-        b.single = vi.fn().mockResolvedValue({ data: { id: 'x1' }, error: null });
+        b.single = vi.fn().mockResolvedValue({
+            data: { id: 'x1', order_number: 'WA-TEST-1', total_amount: 18000 },
+            error: null,
+        });
         return b;
     };
 
