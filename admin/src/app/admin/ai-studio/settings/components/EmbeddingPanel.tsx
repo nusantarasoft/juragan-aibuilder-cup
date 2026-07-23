@@ -49,11 +49,21 @@ export default function EmbeddingPanel({ activeProvider }: Props) {
                 </Text>
 
                 {(embeddingProvider === "auto" || embeddingProvider === "google_ai" || embeddingProvider === "vertex") && (
-                    <ModelSelect
-                        name="google_embedding_model"
-                        label="Google Embedding Model"
-                        embeddingProvider="google"
-                    />
+                    <>
+                        {embeddingProvider === "vertex" && (
+                            <Alert
+                                type="info"
+                                showIcon
+                                style={{ marginBottom: 16 }}
+                                message="Vertex embedding memakai Project ID / Service Account dari panel Google (Settings & Models)."
+                            />
+                        )}
+                        <ModelSelect
+                            name="google_embedding_model"
+                            label="Google Embedding Model"
+                            embeddingProvider="google"
+                        />
+                    </>
                 )}
 
                 {(embeddingProvider === "openai" || embeddingProvider === "auto") && (

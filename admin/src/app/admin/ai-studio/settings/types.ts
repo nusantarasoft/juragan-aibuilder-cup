@@ -8,6 +8,7 @@ export interface StudioSettings {
     anthropic_max_tokens?: number;
     anthropic_api_key_configured: boolean;
     google_api_key_configured: boolean;
+    google_service_account_configured?: boolean;
     google_project_id?: string;
     google_location: string;
     google_model: string;
@@ -50,10 +51,12 @@ export interface AiConnectionTestResult {
 export type StudioSettingsFormValues = StudioSettings & {
     anthropic_api_key?: string;
     google_api_key?: string;
+    google_service_account_json?: string;
     openai_api_key?: string;
     groq_api_key?: string;
     clear_anthropic_api_key?: boolean;
     clear_google_api_key?: boolean;
+    clear_google_service_account_json?: boolean;
     clear_openai_api_key?: boolean;
     clear_groq_api_key?: boolean;
 };

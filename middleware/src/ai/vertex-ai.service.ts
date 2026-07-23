@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AiSettingsService } from './ai-settings.service';
+import { getVertexAccessToken } from './google-vertex-auth.util';
 import type { PlaygroundResult } from './openai-ai.service';
 
 @Injectable()
@@ -51,10 +52,10 @@ export class VertexAiService {
         }
 
         try {
-            const { GoogleAuth } = await import('google-auth-library');
-            const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
-            const client = await auth.getClient();
-            const accessToken = await client.getAccessToken();
+            const accessToken = await getVertexAccessToken({
+                serviceAccountJson: config.serviceAccountJson,
+                projectId,
+            });
 
             const location = config.location;
             const model = config.model;
@@ -68,7 +69,7 @@ export class VertexAiService {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${accessToken?.token}`,
+                    'Authorization': `Bearer ${accessToken}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
@@ -139,10 +140,10 @@ export class VertexAiService {
                 return this.emitFallback(prompt, onDelta);
             }
 
-            const { GoogleAuth } = await import('google-auth-library');
-            const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
-            const client = await auth.getClient();
-            const accessToken = await client.getAccessToken();
+            const accessToken = await getVertexAccessToken({
+                serviceAccountJson: config.serviceAccountJson,
+                projectId,
+            });
             const location = config.location;
             const model = config.model;
             const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:streamGenerateContent?alt=sse`;
@@ -150,7 +151,7 @@ export class VertexAiService {
             const res = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    Authorization: `Bearer ${accessToken?.token}`,
+                    Authorization: `Bearer ${accessToken}`,
                     'Content-Type': 'application/json',
                 },
                 body,
@@ -648,10 +649,10 @@ export class VertexAiService {
         }
 
         try {
-            const { GoogleAuth } = await import('google-auth-library');
-            const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
-            const client = await auth.getClient();
-            const accessToken = await client.getAccessToken();
+            const accessToken = await getVertexAccessToken({
+                serviceAccountJson: config.serviceAccountJson,
+                projectId,
+            });
             const location = config.location;
             const model = config.model;
             const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
@@ -659,7 +660,7 @@ export class VertexAiService {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    Authorization: `Bearer ${accessToken?.token}`,
+                    Authorization: `Bearer ${accessToken}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(buildBody()),

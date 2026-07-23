@@ -15,6 +15,7 @@ import {
     normalizeLlmProvider,
     type StudioSettingsPublic,
 } from './ai-settings.types';
+import { parseGoogleServiceAccountJson } from './google-vertex-auth.util';
 
 const CACHE_TTL_MS = 30_000;
 
@@ -179,9 +180,14 @@ export class AiSettingsService {
 
     async getGoogleConfig(tenantId?: string) {
         const s = await this.getRawSettings(tenantId);
+        const serviceAccountJson = s.google_service_account_json?.trim() || undefined;
+        const fromSa = serviceAccountJson
+            ? parseGoogleServiceAccountJson(serviceAccountJson)?.project_id?.trim()
+            : undefined;
         return {
             apiKey: s.google_api_key?.trim() || undefined,
-            projectId: s.google_project_id?.trim() || undefined,
+            serviceAccountJson,
+            projectId: s.google_project_id?.trim() || fromSa || undefined,
             location: s.google_location?.trim() || DEFAULT_STUDIO_SETTINGS.google_location,
             model: s.google_model?.trim() || DEFAULT_STUDIO_SETTINGS.google_model,
             embeddingModel: s.google_embedding_model?.trim() || DEFAULT_STUDIO_SETTINGS.google_embedding_model!,
@@ -253,11 +259,18 @@ export class AiSettingsService {
             case 'google': {
                 const hasKey = !!settings.google_api_key?.trim();
                 const hasProject = !!settings.google_project_id?.trim();
+                const hasSa = !!settings.google_service_account_json?.trim();
+                const saProject = hasSa
+                    ? parseGoogleServiceAccountJson(settings.google_service_account_json)?.project_id
+                    : undefined;
+                const ready = hasKey || hasProject || !!saProject || hasSa;
                 return {
                     provider,
-                    configured: hasKey || hasProject,
+                    configured: ready,
                     model: settings.google_model || DEFAULT_STUDIO_SETTINGS.google_model,
-                    message: hasKey || hasProject ? undefined : 'Google API key or Vertex project ID required',
+                    message: ready
+                        ? undefined
+                        : 'Google API key, Vertex project ID, or service account JSON required',
                 };
             }
             case 'openai':

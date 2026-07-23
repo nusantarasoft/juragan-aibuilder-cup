@@ -8,6 +8,7 @@ import { AiRouterService } from '../ai/ai-router.service';
 import type { AiInlineData } from '../ai/ai-settings.types';
 import { OpenAiService } from '../ai/openai-ai.service';
 import { OllamaAiService } from '../ai/ollama-ai.service';
+import { getVertexAccessToken } from '../ai/google-vertex-auth.util';
 
 @Injectable()
 export class RagService implements OnModuleInit {
@@ -572,14 +573,11 @@ Answer:`;
         }
 
         try {
-            // Use GoogleAuth to get access token
-            const { GoogleAuth } = await import('google-auth-library');
-            const auth = new GoogleAuth({
-                scopes: 'https://www.googleapis.com/auth/cloud-platform'
+            const accessToken = await getVertexAccessToken({
+                serviceAccountJson: config.serviceAccountJson,
+                projectId,
             });
-            const client = await auth.getClient();
-            const accessToken = await client.getAccessToken();
-            this.logger.log(`[EMBED-DEBUG] Got Access Token: ${accessToken.token ? 'Yes' : 'No'}`);
+            this.logger.log(`[EMBED-DEBUG] Got Access Token: ${accessToken ? 'Yes' : 'No'}`);
 
             const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/multimodalembedding@001:predict`;
 
@@ -595,7 +593,7 @@ Answer:`;
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${accessToken.token}`,
+                    'Authorization': `Bearer ${accessToken}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({

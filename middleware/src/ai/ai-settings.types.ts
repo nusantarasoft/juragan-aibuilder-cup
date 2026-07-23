@@ -1,3 +1,8 @@
+import {
+    assertGoogleServiceAccountJson,
+    parseGoogleServiceAccountJson,
+} from './google-vertex-auth.util';
+
 export const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000';
 
 export type LlmProvider = 'anthropic' | 'google' | 'openai' | 'ollama' | 'groq';
@@ -12,6 +17,8 @@ export interface StudioSettingsRow {
     anthropic_model: string;
     anthropic_max_tokens?: number;
     google_api_key?: string | null;
+    /** GCP service account JSON for Vertex (optional; falls back to ADC). */
+    google_service_account_json?: string | null;
     google_project_id?: string | null;
     google_location: string;
     google_model: string;
@@ -31,10 +38,15 @@ export interface StudioSettingsRow {
 
 export interface StudioSettingsPublic extends Omit<
     StudioSettingsRow,
-    'anthropic_api_key' | 'google_api_key' | 'openai_api_key' | 'groq_api_key'
+    | 'anthropic_api_key'
+    | 'google_api_key'
+    | 'google_service_account_json'
+    | 'openai_api_key'
+    | 'groq_api_key'
 > {
     anthropic_api_key_configured: boolean;
     google_api_key_configured: boolean;
+    google_service_account_configured: boolean;
     openai_api_key_configured: boolean;
     groq_api_key_configured: boolean;
 }
@@ -80,7 +92,13 @@ export const DEFAULT_STUDIO_SETTINGS: StudioSettingsRow = {
     waha_dashboard_url: 'http://127.0.0.1:3010/dashboard',
 };
 
-const SECRET_FIELDS = ['anthropic_api_key', 'google_api_key', 'openai_api_key', 'groq_api_key'] as const;
+const SECRET_FIELDS = [
+    'anthropic_api_key',
+    'google_api_key',
+    'google_service_account_json',
+    'openai_api_key',
+    'groq_api_key',
+] as const;
 
 export const STUDIO_SETTINGS_DB_FIELDS = [
     'default_llm_provider',
@@ -89,6 +107,7 @@ export const STUDIO_SETTINGS_DB_FIELDS = [
     'anthropic_model',
     'anthropic_max_tokens',
     'google_api_key',
+    'google_service_account_json',
     'google_project_id',
     'google_location',
     'google_model',
@@ -109,19 +128,28 @@ export type StudioSettingsUpdatePayload = Partial<
 > & {
     clear_anthropic_api_key?: boolean;
     clear_google_api_key?: boolean;
+    clear_google_service_account_json?: boolean;
     clear_openai_api_key?: boolean;
     clear_groq_api_key?: boolean;
 };
 
 export function maskSettingsForClient(row: StudioSettingsRow | null): StudioSettingsPublic {
     const base = { ...DEFAULT_STUDIO_SETTINGS, ...(row || {}) };
-    const { anthropic_api_key, google_api_key, openai_api_key, groq_api_key, ...rest } = base;
+    const {
+        anthropic_api_key,
+        google_api_key,
+        google_service_account_json,
+        openai_api_key,
+        groq_api_key,
+        ...rest
+    } = base;
     return {
         ...rest,
         default_llm_provider: normalizeLlmProvider(rest.default_llm_provider),
         default_embedding_provider: normalizeEmbeddingProvider(rest.default_embedding_provider),
         anthropic_api_key_configured: !!anthropic_api_key?.trim(),
         google_api_key_configured: !!google_api_key?.trim(),
+        google_service_account_configured: !!google_service_account_json?.trim(),
         openai_api_key_configured: !!openai_api_key?.trim(),
         groq_api_key_configured: !!groq_api_key?.trim(),
     };
@@ -167,7 +195,11 @@ export function mergeSettingsUpdate(
         if (val === undefined || val === null || (typeof val === 'string' && !val.trim())) {
             delete merged[field];
         } else if (typeof val === 'string' && val.trim()) {
-            merged[field] = val.trim();
+            if (field === 'google_service_account_json') {
+                merged[field] = assertGoogleServiceAccountJson(val);
+            } else {
+                merged[field] = val.trim();
+            }
         }
     }
     if (payload.clear_anthropic_api_key) {
@@ -175,6 +207,9 @@ export function mergeSettingsUpdate(
     }
     if (payload.clear_google_api_key) {
         merged.google_api_key = null;
+    }
+    if (payload.clear_google_service_account_json) {
+        merged.google_service_account_json = null;
     }
     if (payload.clear_openai_api_key) {
         merged.openai_api_key = null;

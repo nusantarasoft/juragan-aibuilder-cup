@@ -207,6 +207,7 @@ export default function AiStudioSettingsPage() {
                     </Form.Item>
                     <Form.Item name="anthropic_api_key_configured" hidden><input type="hidden" /></Form.Item>
                     <Form.Item name="google_api_key_configured" hidden><input type="hidden" /></Form.Item>
+                    <Form.Item name="google_service_account_configured" hidden><input type="hidden" /></Form.Item>
                     <Form.Item name="openai_api_key_configured" hidden><input type="hidden" /></Form.Item>
                     <Form.Item name="groq_api_key_configured" hidden><input type="hidden" /></Form.Item>
 

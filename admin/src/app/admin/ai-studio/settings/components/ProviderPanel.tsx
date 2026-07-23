@@ -5,6 +5,7 @@ import { Card, Col, Form, Input, InputNumber, Row, Typography } from "antd";
 import ApiKeyField from "./ApiKeyField";
 import ModelSelect from "./ModelSelect";
 import ConnectionTestButton from "./ConnectionTestButton";
+import VertexServiceAccountField from "./VertexServiceAccountField";
 import type { LlmProvider } from "../types";
 import { PROVIDER_LABELS } from "../types";
 
@@ -19,6 +20,7 @@ type Props = {
 export default function ProviderPanel({ provider, isActive = true, configured }: Props) {
     const anthropicKeyConfigured = Form.useWatch("anthropic_api_key_configured");
     const googleKeyConfigured = Form.useWatch("google_api_key_configured");
+    const googleSaConfigured = Form.useWatch("google_service_account_configured");
     const openaiKeyConfigured = Form.useWatch("openai_api_key_configured");
     const groqKeyConfigured = Form.useWatch("groq_api_key_configured");
 
@@ -57,6 +59,9 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
                             clearFieldName="clear_google_api_key"
                             placeholder="AIzaSy..."
                         />
+                    </Col>
+                    <Col span={24}>
+                        <VertexServiceAccountField configured={!!googleSaConfigured} />
                     </Col>
                     <Col xs={24} md={12}>
                         <Form.Item name="google_project_id" label="Vertex Project ID" preserve>

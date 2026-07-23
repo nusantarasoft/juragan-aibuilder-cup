@@ -8,6 +8,7 @@ const DB_FIELDS = [
     "anthropic_model",
     "anthropic_max_tokens",
     "google_api_key",
+    "google_service_account_json",
     "google_project_id",
     "google_location",
     "google_model",
@@ -34,6 +35,7 @@ export function buildSavePayload(values: StudioSettingsFormValues): Record<strin
 
     if (values.clear_anthropic_api_key) payload.clear_anthropic_api_key = true;
     if (values.clear_google_api_key) payload.clear_google_api_key = true;
+    if (values.clear_google_service_account_json) payload.clear_google_service_account_json = true;
     if (values.clear_openai_api_key) payload.clear_openai_api_key = true;
     if (values.clear_groq_api_key) payload.clear_groq_api_key = true;
 
@@ -71,9 +73,11 @@ export function validateActiveProvider(
             if (
                 !values.google_api_key_configured &&
                 !values.google_api_key?.trim() &&
-                !values.google_project_id?.trim()
+                !values.google_project_id?.trim() &&
+                !values.google_service_account_configured &&
+                !values.google_service_account_json?.trim()
             ) {
-                return "Google API key atau Vertex Project ID wajib untuk provider aktif.";
+                return "Google API key, Vertex Project ID, atau Service Account JSON wajib untuk provider aktif.";
             }
             if (!values.google_model?.trim()) return "Google model wajib diisi.";
             return null;
