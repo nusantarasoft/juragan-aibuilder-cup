@@ -163,7 +163,7 @@ export function formatSaleConfirmationWithCatalog(order: {
     }
     lines.push('');
     lines.push('Ketik *laporan* atau *daftar barang* untuk menu lain.');
-    lines.push('Beri nilai layanan? Ketik *1–5*, *puas*, atau *kurang*.');
+    lines.push('Beri nilai layanan? Ketik *nilai 4*, *puas*, atau *kurang*.');
     return lines.join('\n');
 }
 

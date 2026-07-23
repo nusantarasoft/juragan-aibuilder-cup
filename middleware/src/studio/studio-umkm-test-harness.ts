@@ -130,6 +130,9 @@ export function makeUmkmService(opts?: MakeUmkmServiceOpts) {
                 if (table === 'studio_umkm_purchases') return asThenable(purchases);
                 if (table === 'studio_umkm_purchase_items') return asThenable([]);
                 if (table === 'ecom_orders') return asThenable(orders);
+                if (table === 'studio_umkm_pending_sales') return asThenable([]);
+                if (table === 'studio_umkm_pending_purchases') return asThenable([]);
+                if (table === 'studio_umkm_session_wizards') return asThenable([]);
                 return asThenable([]);
             },
         }),

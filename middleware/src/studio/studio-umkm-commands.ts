@@ -344,52 +344,59 @@ export function formatMenuHubPrompt(): string {
     return [
         '🍽️ *Menu toko*',
         '',
-        '*1* Daftar menu',
-        '*2* Tambah menu',
-        '*3* Tambah stok menu',
+        '• *daftar* — lihat menu',
+        '• *tambah menu* — menu baru',
+        '• *tambah stok* — stok masuk',
         '',
-        'Balas *1* / *2* / *3*, atau ketik *batal* untuk kembali.',
+        'Boleh juga balas *1* / *2* / *3*. Ketik *batal* untuk kembali.',
     ].join('\n');
 }
 
 export function formatMenuHubUnknownChoice(): string {
-    return ['Pilihan tidak dikenali. Pakai *1*, *2*, atau *3*.', '', formatMenuHubPrompt()].join('\n');
+    return [
+        'Pilihan tidak dikenali. Coba ketik *daftar*, *tambah menu*, atau *tambah stok*.',
+        '',
+        formatMenuHubPrompt(),
+    ].join('\n');
 }
 
 export function formatPurchaseHubPrompt(): string {
     return [
         '🛒 *Belanja*',
         '',
-        '*1* Daftar semua belanja',
-        '*2* Belanja bulan ini',
-        '*3* Tambah belanja',
+        '• *daftar* — semua belanja',
+        '• *bulan ini* — belanja bulan ini',
+        '• *tambah belanja* — catat belanja baru',
         '',
-        'Balas *1* / *2* / *3*, atau ketik *batal* untuk kembali.',
+        'Boleh juga balas *1* / *2* / *3*. Ketik *batal* untuk kembali.',
     ].join('\n');
 }
 
 export function formatPurchaseHubUnknownChoice(): string {
-    return ['Pilihan tidak dikenali. Pakai *1*, *2*, atau *3*.', '', formatPurchaseHubPrompt()].join(
-        '\n',
-    );
+    return [
+        'Pilihan tidak dikenali. Coba ketik *daftar*, *bulan ini*, atau *tambah belanja*.',
+        '',
+        formatPurchaseHubPrompt(),
+    ].join('\n');
 }
 
 export function formatReportHubPrompt(): string {
     return [
         '📊 *Laporan*',
         '',
-        '*1* Hari ini',
-        '*2* Minggu ini',
-        '*3* Bulan ini',
-        '*4* Semua',
+        '• *hari ini* — ringkas hari ini',
+        '• *minggu ini* — minggu berjalan',
+        '• *bulan ini* — bulan berjalan',
+        '• *semua* — seluruh periode',
         '',
-        'Balas *1*–*4* — total *penjualan* + *belanja*.',
-        'Atau ketik *batal* untuk menu utama.',
+        'Boleh juga balas *1*–*4*. Ketik *batal* untuk kembali.',
     ].join('\n');
 }
 
 export function formatReportHubUnknownChoice(): string {
-    return ['Pilihan tidak dikenali. Pakai *1*, *2*, *3*, atau *4*.', '', formatReportHubPrompt()].join(
-        '\n',
-    );
+    return [
+        'Pilihan tidak dikenali. Balas *hari ini*, *minggu ini*, *bulan ini*, atau *semua*.',
+        '',
+        formatReportHubPrompt(),
+    ].join('\n');
 }

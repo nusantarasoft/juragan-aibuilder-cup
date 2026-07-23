@@ -124,12 +124,16 @@ describe('sale draft helpers', () => {
             items: [{ name: 'Bakso', quantity: 0, unitPrice: 0 }],
             totalAmount: 0,
         });
-        expect(nextSaleSlotQuestion(assessSaleSlots(withName), withName)).toMatch(/jumlah \*Bakso\*/i);
+        const q2 = nextSaleSlotQuestion(assessSaleSlots(withName), withName);
+        expect(q2).toMatch(/Oke — \*Bakso\*/i);
+        expect(q2).toMatch(/jumlah \*Bakso\*/i);
         const needPrice = saleDraftFromParsed({
             items: [{ name: 'Bakso', quantity: 2, unitPrice: 0 }],
             totalAmount: 0,
         });
-        expect(nextSaleSlotQuestion(assessSaleSlots(needPrice), needPrice)).toMatch(/Harga \*Bakso\*/i);
+        const q3 = nextSaleSlotQuestion(assessSaleSlots(needPrice), needPrice);
+        expect(q3).toMatch(/Oke — \*2x Bakso\*/i);
+        expect(q3).toMatch(/Harga \*Bakso\*/i);
     });
 });
 

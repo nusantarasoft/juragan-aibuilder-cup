@@ -833,6 +833,12 @@ export class GuideFlowService {
                                         { conversationId: conversation.id },
                                     );
                                     if (pendingId) prepared.pending.pendingId = pendingId;
+                                    this.umkmService.setPendingSale(
+                                        tenantId,
+                                        prepared.pending,
+                                        undefined,
+                                        conversation.id,
+                                    );
                                     ctx.pendingUmkmSale = prepared.pending;
                                     content = prepared.message;
                                 } else if (prepared.kind === 'need_slots') {
@@ -888,13 +894,23 @@ export class GuideFlowService {
                             break;
                         }
                         case 'sales_report':
-                            content = await this.umkmService.buildCombinedReportMessage(tenantId, 'today');
+                            content = await this.umkmService.handleSalesReportIntent(
+                                raw,
+                                tenantId,
+                                undefined,
+                                conversation.id,
+                            );
                             break;
                         case 'list_products':
                             content = await this.umkmService.buildProductListMessage(tenantId);
                             break;
                         case 'check_stock':
-                            content = await this.umkmService.buildStockCheckMessage(raw, tenantId);
+                            content = await this.umkmService.handleCheckStockIntent(
+                                raw,
+                                tenantId,
+                                undefined,
+                                conversation.id,
+                            );
                             break;
                         case 'menu_hub':
                             content = this.umkmService.openMenuHub(tenantId, undefined, conversation.id);

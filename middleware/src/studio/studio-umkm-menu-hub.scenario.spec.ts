@@ -148,7 +148,7 @@ describe('Entry: user buka menu 2', () => {
         expect(p).toMatch(/\*1\*/);
         expect(p).toMatch(/\*2\*/);
         expect(p).toMatch(/\*3\*/);
-        expect(p).toMatch(/Daftar menu/i);
+        expect(p).toMatch(/daftar|lihat menu/i);
         expect(p).toMatch(/Tambah menu/i);
         expect(p).toMatch(/stok/i);
         expect(p).toMatch(/batal/i);

@@ -25,21 +25,46 @@ export class StudioUmkmCronService {
         return this.supabaseService.getAdminClient();
     }
 
-    /** Expire stale pending sales hourly. */
+    /** Expire stale pending sales, purchases, and wizards hourly. */
     @Cron('15 * * * *', { name: 'studio-umkm-expire-pending' })
     async expirePendingSales(): Promise<void> {
+        const now = new Date().toISOString();
         try {
-            const { error, count } = await this.admin()
-                .from('studio_umkm_pending_sales')
-                .update({ status: 'expired', updated_at: new Date().toISOString() })
-                .eq('status', 'pending')
-                .lt('expires_at', new Date().toISOString());
-            if (error) {
-                this.logger.warn(`expirePendingSales: ${error.message}`);
-                return;
-            }
-            if (count && count > 0) {
-                this.logger.log(`Expired ${count} UMKM pending sale(s)`);
+            const tables: Array<{ table: string; statusCol: string; active: string; label: string }> =
+                [
+                    {
+                        table: 'studio_umkm_pending_sales',
+                        statusCol: 'status',
+                        active: 'pending',
+                        label: 'sale',
+                    },
+                    {
+                        table: 'studio_umkm_pending_purchases',
+                        statusCol: 'status',
+                        active: 'pending',
+                        label: 'purchase',
+                    },
+                    {
+                        table: 'studio_umkm_session_wizards',
+                        statusCol: 'status',
+                        active: 'active',
+                        label: 'wizard',
+                    },
+                ];
+            for (const t of tables) {
+                const expiredStatus = t.table.includes('wizard') ? 'expired' : 'expired';
+                const { error, count } = await this.admin()
+                    .from(t.table)
+                    .update({ [t.statusCol]: expiredStatus, updated_at: now })
+                    .eq(t.statusCol, t.active)
+                    .lt('expires_at', now);
+                if (error) {
+                    this.logger.warn(`expirePending ${t.label}: ${error.message}`);
+                    continue;
+                }
+                if (count && count > 0) {
+                    this.logger.log(`Expired ${count} UMKM pending ${t.label}(s)`);
+                }
             }
         } catch (e: any) {
             this.logger.warn(`expirePendingSales error: ${e?.message}`);

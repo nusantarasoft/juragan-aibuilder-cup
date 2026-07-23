@@ -88,6 +88,12 @@ import {
     saleDraftToParsed,
     type SaleDraft,
 } from './studio-umkm-confirm.util';
+import {
+    deserializeWizard,
+    isConversationalWizard,
+    serializeWizardPayload,
+    type UmkmWizard,
+} from './studio-umkm-durable.util';
 import { assertNoSupabaseError } from './studio-supabase.util';
 
 const DEFAULT_TENANT = 'default';
@@ -110,16 +116,7 @@ export type PendingUmkmPurchase = {
     pendingId?: string;
 };
 
-type UmkmWizard =
-    | { kind: 'menu_hub'; createdAt: number }
-    | { kind: 'purchase_hub'; createdAt: number }
-    | { kind: 'report_hub'; createdAt: number }
-    | { kind: 'await_add_product'; createdAt: number }
-    | { kind: 'await_add_stock'; createdAt: number }
-    | { kind: 'await_purchase'; createdAt: number }
-    | { kind: 'await_sale_slots'; draft: SaleDraft; createdAt: number }
-    | { kind: 'await_stock_scope'; createdAt: number }
-    | { kind: 'await_report_period'; createdAt: number };
+export type { UmkmWizard };
 
 export const DEFAULT_STUDIO_UMKM_CONTEXT: StudioContextConfig = {
     umkm_mode: true,
@@ -153,20 +150,128 @@ export class StudioUmkmService {
 
     private setWizard(tenantId: string, wizard: UmkmWizard, phone?: string, conversationId?: string) {
         this.wizardByChat.set(this.chatKey(tenantId, phone, conversationId), wizard);
+        void this.persistWizardToDb(tenantId, wizard, phone, conversationId);
     }
 
     private clearWizard(tenantId: string, phone?: string, conversationId?: string) {
         this.wizardByChat.delete(this.chatKey(tenantId, phone, conversationId));
+        void this.clearWizardInDb(tenantId, phone, conversationId);
     }
 
     private getWizard(tenantId: string, phone?: string, conversationId?: string): UmkmWizard | null {
         const w = this.wizardByChat.get(this.chatKey(tenantId, phone, conversationId));
         if (!w) return null;
         if (Date.now() - w.createdAt > PENDING_TTL_MS) {
-            this.clearWizard(tenantId, phone, conversationId);
+            this.wizardByChat.delete(this.chatKey(tenantId, phone, conversationId));
+            void this.clearWizardInDb(tenantId, phone, conversationId, 'expired');
             return null;
         }
         return w;
+    }
+
+    /** Memory first, then durable wizard row. */
+    async resolveWizard(
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+    ): Promise<UmkmWizard | null> {
+        const mem = this.getWizard(tenantId, phone, conversationId);
+        if (mem) return mem;
+        return this.loadWizardFromDb(tenantId, phone, conversationId);
+    }
+
+    async loadWizardFromDb(
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+    ): Promise<UmkmWizard | null> {
+        try {
+            let q = this.admin()
+                .from('studio_umkm_session_wizards')
+                .select('id, kind, payload, created_at, tenant_id, phone')
+                .eq('status', 'active')
+                .gt('expires_at', new Date().toISOString())
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            if (conversationId) {
+                q = q.eq('conversation_id', conversationId);
+            } else if (phone) {
+                q = q.eq('tenant_id', tenantId).eq('phone', phone);
+            } else {
+                return null;
+            }
+
+            const { data: rows, error } = await q;
+            if (error) {
+                this.logger.warn(`loadWizardFromDb: ${error.message}`);
+                return null;
+            }
+            const data = Array.isArray(rows) ? rows[0] : rows;
+            if (!data) return null;
+            const createdAt = new Date(data.created_at).getTime();
+            if (Date.now() - createdAt > PENDING_TTL_MS) {
+                await this.clearWizardInDb(tenantId, phone, conversationId, 'expired');
+                return null;
+            }
+            const wizard = deserializeWizard(String(data.kind), data.payload, createdAt);
+            if (!wizard) return null;
+            this.wizardByChat.set(this.chatKey(tenantId, phone, conversationId), wizard);
+            return wizard;
+        } catch (e: any) {
+            this.logger.warn(`loadWizardFromDb error: ${e?.message}`);
+            return null;
+        }
+    }
+
+    async persistWizardToDb(
+        tenantId: string,
+        wizard: UmkmWizard,
+        phone?: string,
+        conversationId?: string,
+    ): Promise<void> {
+        const expiresAt = new Date(wizard.createdAt + PENDING_TTL_MS).toISOString();
+        try {
+            await this.clearWizardInDb(tenantId, phone, conversationId, 'cleared');
+            const { error } = await this.admin().from('studio_umkm_session_wizards').insert({
+                tenant_id: tenantId,
+                conversation_id: conversationId ?? null,
+                phone: phone ?? null,
+                kind: wizard.kind,
+                payload: serializeWizardPayload(wizard),
+                status: 'active',
+                expires_at: expiresAt,
+            });
+            if (error) this.logger.warn(`persistWizardToDb: ${error.message}`);
+        } catch (e: any) {
+            this.logger.warn(`persistWizardToDb error: ${e?.message}`);
+        }
+    }
+
+    async clearWizardInDb(
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+        status: 'cleared' | 'expired' = 'cleared',
+    ): Promise<void> {
+        try {
+            let q = this.admin()
+                .from('studio_umkm_session_wizards')
+                .update({ status, updated_at: new Date().toISOString() })
+                .eq('tenant_id', tenantId)
+                .eq('status', 'active');
+            if (conversationId) {
+                q = q.eq('conversation_id', conversationId);
+            } else if (phone) {
+                q = q.eq('phone', phone);
+            } else {
+                return;
+            }
+            const { error } = await q;
+            if (error) this.logger.warn(`clearWizardInDb: ${error.message}`);
+        } catch (e: any) {
+            this.logger.warn(`clearWizardInDb error: ${e?.message}`);
+        }
     }
 
     isUmkmMode(config: StudioContextConfig): boolean {
@@ -213,8 +318,8 @@ export class StudioUmkmService {
         }
     }
 
-    private pendingKey(tenantId: string, phone?: string): string {
-        return `${tenantId}:${phone || 'anon'}`;
+    private pendingKey(tenantId: string, phone?: string, conversationId?: string): string {
+        return this.chatKey(tenantId, phone, conversationId);
     }
 
     private pruneExpiredPending(key: string): PendingUmkmSale | undefined {
@@ -227,16 +332,25 @@ export class StudioUmkmService {
         return pending;
     }
 
-    getPendingSale(tenantId: string, phone?: string): PendingUmkmSale | undefined {
-        return this.pruneExpiredPending(this.pendingKey(tenantId, phone));
+    getPendingSale(
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+    ): PendingUmkmSale | undefined {
+        return this.pruneExpiredPending(this.pendingKey(tenantId, phone, conversationId));
     }
 
-    setPendingSale(tenantId: string, pending: PendingUmkmSale, phone?: string): void {
-        this.pendingByChat.set(this.pendingKey(tenantId, phone), pending);
+    setPendingSale(
+        tenantId: string,
+        pending: PendingUmkmSale,
+        phone?: string,
+        conversationId?: string,
+    ): void {
+        this.pendingByChat.set(this.pendingKey(tenantId, phone, conversationId), pending);
     }
 
-    clearPendingSale(tenantId: string, phone?: string): void {
-        this.pendingByChat.delete(this.pendingKey(tenantId, phone));
+    clearPendingSale(tenantId: string, phone?: string, conversationId?: string): void {
+        this.pendingByChat.delete(this.pendingKey(tenantId, phone, conversationId));
     }
 
     isPendingSaleFresh(pending: PendingUmkmSale | null | undefined): pending is PendingUmkmSale {
@@ -252,7 +366,7 @@ export class StudioUmkmService {
         memoryPending?: PendingUmkmSale | null;
     }): Promise<PendingUmkmSale | undefined> {
         if (this.isPendingSaleFresh(opts.memoryPending)) return opts.memoryPending;
-        const mem = this.getPendingSale(opts.tenantId, opts.phone);
+        const mem = this.getPendingSale(opts.tenantId, opts.phone, opts.conversationId);
         if (mem) return mem;
         return this.loadPendingSaleFromDb(opts.tenantId, opts.phone, opts.conversationId);
     }
@@ -302,7 +416,7 @@ export class StudioUmkmService {
                 pendingId: String(data.id),
             };
             const tid = data.tenant_id ? String(data.tenant_id) : tenantId;
-            this.setPendingSale(tid, pending, pending.phone);
+            this.setPendingSale(tid, pending, pending.phone, conversationId);
             return pending;
         } catch (e: any) {
             this.logger.warn(`loadPendingSaleFromDb error: ${e?.message}`);
@@ -397,23 +511,28 @@ export class StudioUmkmService {
         });
         const confirm = detectUmkmConfirmReply(text, commands);
 
-        const pendingPurchase = this.getPendingPurchase(tenantId, phone, conversationId);
+        const pendingPurchase = await this.resolvePendingPurchase({
+            tenantId,
+            phone,
+            conversationId,
+        });
         if (pendingPurchase && confirm === 'confirm') {
-            this.clearPendingPurchase(tenantId, phone, conversationId);
-            return this.commitPendingPurchase(pendingPurchase, tenantId);
+            const msg = await this.commitPendingPurchase(pendingPurchase, tenantId);
+            this.clearPendingPurchase(tenantId, phone, conversationId, 'committed');
+            return msg;
         }
         if (pendingPurchase && confirm === 'cancel') {
-            this.clearPendingPurchase(tenantId, phone, conversationId);
+            this.clearPendingPurchase(tenantId, phone, conversationId, 'cancelled');
             return '❌ Belanja dibatalkan.';
         }
 
         if (pending && confirm === 'confirm') {
-            this.clearPendingSale(tenantId, phone);
+            this.clearPendingSale(tenantId, phone, conversationId);
             this.clearWizard(tenantId, phone, conversationId);
             return this.commitPendingSale(pending, tenantId);
         }
         if (pending && confirm === 'cancel') {
-            this.clearPendingSale(tenantId, phone);
+            this.clearPendingSale(tenantId, phone, conversationId);
             await this.markPendingSaleStatus(pending.pendingId, 'cancelled');
             return formatSaleCancelled(commands);
         }
@@ -476,23 +595,8 @@ export class StudioUmkmService {
                 return this.beginOrRunAddProduct(text, tenantId, phone, conversationId);
             case 'add_stock':
             case 'check_stock': {
-                // check_stock legacy: if looks like query show stock; else add-stock flow
                 if (intent === 'check_stock' || /cek\s+stok|berapa\s+stok|sisa\s+stok/i.test(text)) {
-                    const clarity = assessReadQueryClarity('stock', text);
-                    if (clarity.needsSoftConfirm && !isExplicitAllStockQuery(text)) {
-                        this.setWizard(
-                            tenantId,
-                            { kind: 'await_stock_scope', createdAt: Date.now() },
-                            phone,
-                            conversationId,
-                        );
-                        return clarity.question;
-                    }
-                    const q = extractStockProductQuery(text);
-                    if (q || isExplicitAllStockQuery(text) || /cek\s+stok|berapa\s+stok/i.test(text)) {
-                        this.clearWizard(tenantId, phone, conversationId);
-                        return this.buildStockCheckMessage(text, tenantId);
-                    }
+                    return this.handleCheckStockIntent(text, tenantId, phone, conversationId);
                 }
                 return this.beginOrRunAddStock(text, tenantId, phone, conversationId);
             }
@@ -507,21 +611,8 @@ export class StudioUmkmService {
             case 'record_sale':
                 this.clearWizard(tenantId, phone, conversationId);
                 return this.recordSaleFromText(text, tenantId, phone, config, { conversationId });
-            case 'sales_report': {
-                this.clearWizard(tenantId, phone, conversationId);
-                const clarity = assessReadQueryClarity('report', text);
-                if (clarity.needsSoftConfirm) {
-                    this.setWizard(
-                        tenantId,
-                        { kind: 'await_report_period', createdAt: Date.now() },
-                        phone,
-                        conversationId,
-                    );
-                    return clarity.question;
-                }
-                const period = detectReportPeriod(text) || 'today';
-                return this.buildCombinedReportMessage(tenantId, period);
-            }
+            case 'sales_report':
+                return this.handleSalesReportIntent(text, tenantId, phone, conversationId);
             case 'help':
                 this.clearWizard(tenantId, phone, conversationId);
                 return formatUmkmHelp(commands);
@@ -630,6 +721,53 @@ export class StudioUmkmService {
         const query = extractStockProductQuery(text);
         const rows = await this.fetchStockRows(tenantId, query);
         return formatStockCheckWa(rows, { query });
+    }
+
+    /**
+     * Shared stock intent for direct WA + guided flow (soft-confirm then NL follow-up).
+     */
+    async handleCheckStockIntent(
+        text: string,
+        tenantId = DEFAULT_TENANT,
+        phone?: string,
+        conversationId?: string,
+    ): Promise<string> {
+        const clarity = assessReadQueryClarity('stock', text);
+        if (clarity.needsSoftConfirm && !isExplicitAllStockQuery(text)) {
+            this.setWizard(
+                tenantId,
+                { kind: 'await_stock_scope', createdAt: Date.now() },
+                phone,
+                conversationId,
+            );
+            return clarity.question!;
+        }
+        this.clearWizard(tenantId, phone, conversationId);
+        return this.buildStockCheckMessage(text, tenantId);
+    }
+
+    /**
+     * Shared report intent for direct WA + guided flow (soft-confirm period then build).
+     */
+    async handleSalesReportIntent(
+        text: string,
+        tenantId = DEFAULT_TENANT,
+        phone?: string,
+        conversationId?: string,
+    ): Promise<string> {
+        this.clearWizard(tenantId, phone, conversationId);
+        const clarity = assessReadQueryClarity('report', text);
+        if (clarity.needsSoftConfirm) {
+            this.setWizard(
+                tenantId,
+                { kind: 'await_report_period', createdAt: Date.now() },
+                phone,
+                conversationId,
+            );
+            return clarity.question!;
+        }
+        const period = detectReportPeriod(text) || 'today';
+        return this.buildCombinedReportMessage(tenantId, period);
     }
 
     /**
@@ -772,12 +910,21 @@ export class StudioUmkmService {
         }
         const order = await this.saveSale(tenantId, pending.sale, pending.phone, pending.resolved);
         await this.markPendingSaleStatus(pendingId, 'committed');
-        return formatSaleConfirmationWithCatalog({
+        let msg = formatSaleConfirmationWithCatalog({
             orderNumber: order.orderNumber,
             totalAmount: order.totalAmount,
             items: pending.resolved,
             paymentMethod: pending.sale.paymentMethod,
         });
+        if (order.stockWarnings?.length) {
+            msg += [
+                '',
+                '⚠️ Penjualan tersimpan, tapi stok belum terpotong untuk:',
+                ...order.stockWarnings.map((n) => `• ${n}`),
+                'Cek *cek stok [nama]* atau potong manual via *tambah stok*.',
+            ].join('\n');
+        }
+        return msg;
     }
 
     async recordSaleFromText(
@@ -790,6 +937,7 @@ export class StudioUmkmService {
         const prepared = await this.prepareSaleFromText(text, tenantId, phone, config);
         if (prepared.kind === 'error') return prepared.message;
         if (prepared.kind === 'need_slots') {
+            this.clearPendingPurchasePublic(tenantId, phone, options?.conversationId);
             this.setWizard(
                 tenantId,
                 { kind: 'await_sale_slots', draft: prepared.draft, createdAt: Date.now() },
@@ -798,12 +946,13 @@ export class StudioUmkmService {
             );
             return prepared.message;
         }
+        this.clearPendingPurchasePublic(tenantId, phone, options?.conversationId);
         const pendingId = await this.persistPendingSaleToDb(tenantId, prepared.pending, {
             conversationId: options?.conversationId,
             phone,
         });
         if (pendingId) prepared.pending.pendingId = pendingId;
-        this.setPendingSale(tenantId, prepared.pending, phone);
+        this.setPendingSale(tenantId, prepared.pending, phone, options?.conversationId);
         return prepared.message;
     }
 
@@ -851,7 +1000,12 @@ export class StudioUmkmService {
         sale: ParsedUmkmSale,
         phone?: string,
         resolvedItems?: UmkmSaleItemResolved[],
-    ): Promise<{ orderNumber: string; totalAmount: number; orderId: string }> {
+    ): Promise<{
+        orderNumber: string;
+        totalAmount: number;
+        orderId: string;
+        stockWarnings: string[];
+    }> {
         const orderNumber = generateWaOrderNumber();
         const subtotal = sale.totalAmount;
         const isPaid = sale.paymentMethod
@@ -902,13 +1056,19 @@ export class StudioUmkmService {
             }
         }
 
-        await this.deductStockForSale(tenantId, order.id, orderNumber, resolvedItems);
+        const stockWarnings = await this.deductStockForSale(
+            tenantId,
+            order.id,
+            orderNumber,
+            resolvedItems,
+        );
 
         this.logger.log(`UMKM sale recorded: ${orderNumber} tenant=${tenantId} total=${subtotal}`);
         return {
             orderId: order.id,
             orderNumber: order.order_number,
             totalAmount: Number(order.total_amount),
+            stockWarnings,
         };
     }
 
@@ -918,8 +1078,9 @@ export class StudioUmkmService {
         orderId: string,
         orderNumber: string,
         resolvedItems?: UmkmSaleItemResolved[],
-    ): Promise<void> {
-        if (!resolvedItems?.length) return;
+    ): Promise<string[]> {
+        const failed: string[] = [];
+        if (!resolvedItems?.length) return failed;
         for (const item of resolvedItems) {
             if (!item.itemId || !item.catalogMatched) continue;
             try {
@@ -937,8 +1098,10 @@ export class StudioUmkmService {
                 this.logger.warn(
                     `Stock deduct failed for ${item.name} order=${orderNumber}: ${e?.message}`,
                 );
+                failed.push(item.name);
             }
         }
+        return failed;
     }
 
     async logFeedback(
@@ -1068,18 +1231,31 @@ export class StudioUmkmService {
         const p = this.pendingPurchaseByChat.get(this.chatKey(tenantId, phone, conversationId));
         if (!p) return null;
         if (Date.now() - p.createdAt > PENDING_TTL_MS) {
-            this.clearPendingPurchase(tenantId, phone, conversationId);
+            this.pendingPurchaseByChat.delete(this.chatKey(tenantId, phone, conversationId));
+            void this.clearPendingPurchasesInDb(tenantId, phone, conversationId, 'expired');
             return null;
         }
         return p;
     }
 
     clearPendingPurchasePublic(tenantId: string, phone?: string, conversationId?: string) {
-        this.clearPendingPurchase(tenantId, phone, conversationId);
+        this.clearPendingPurchase(tenantId, phone, conversationId, 'cancelled');
     }
 
-    private clearPendingPurchase(tenantId: string, phone?: string, conversationId?: string) {
-        this.pendingPurchaseByChat.delete(this.chatKey(tenantId, phone, conversationId));
+    private clearPendingPurchase(
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+        status: 'cancelled' | 'committed' | 'expired' = 'cancelled',
+    ) {
+        const key = this.chatKey(tenantId, phone, conversationId);
+        const existing = this.pendingPurchaseByChat.get(key);
+        this.pendingPurchaseByChat.delete(key);
+        if (existing?.pendingId) {
+            void this.markPendingPurchaseStatus(existing.pendingId, status);
+        } else {
+            void this.clearPendingPurchasesInDb(tenantId, phone, conversationId, status);
+        }
     }
 
     private setPendingPurchase(
@@ -1089,6 +1265,158 @@ export class StudioUmkmService {
         conversationId?: string,
     ) {
         this.pendingPurchaseByChat.set(this.chatKey(tenantId, phone, conversationId), pending);
+        void this.persistPendingPurchaseToDb(tenantId, pending, { phone, conversationId }).then(
+            (id) => {
+                if (id) pending.pendingId = id;
+            },
+        );
+    }
+
+    async resolvePendingPurchase(opts: {
+        tenantId: string;
+        phone?: string;
+        conversationId?: string;
+    }): Promise<PendingUmkmPurchase | undefined> {
+        const mem = this.getPendingPurchase(opts.tenantId, opts.phone, opts.conversationId);
+        if (mem) return mem;
+        return this.loadPendingPurchaseFromDb(opts.tenantId, opts.phone, opts.conversationId);
+    }
+
+    async loadPendingPurchaseFromDb(
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+    ): Promise<PendingUmkmPurchase | undefined> {
+        try {
+            let q = this.admin()
+                .from('studio_umkm_pending_purchases')
+                .select('id, payload, expires_at, created_at, tenant_id, phone')
+                .eq('status', 'pending')
+                .gt('expires_at', new Date().toISOString())
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            if (conversationId) {
+                q = q.eq('conversation_id', conversationId);
+            } else if (phone) {
+                q = q.eq('tenant_id', tenantId).eq('phone', phone);
+            } else {
+                return undefined;
+            }
+
+            const { data: rows, error } = await q;
+            if (error) {
+                this.logger.warn(`loadPendingPurchaseFromDb: ${error.message}`);
+                return undefined;
+            }
+            const data = Array.isArray(rows) ? rows[0] : rows;
+            if (!data) return undefined;
+            const payload = data.payload as {
+                purchase?: PendingUmkmPurchase['purchase'];
+                resolved?: PendingUmkmPurchase['resolved'];
+                phone?: string;
+            };
+            if (!payload?.purchase || !payload?.resolved) return undefined;
+            const pending: PendingUmkmPurchase = {
+                purchase: payload.purchase,
+                resolved: payload.resolved,
+                phone: payload.phone ?? phone ?? (data.phone ? String(data.phone) : undefined),
+                createdAt: new Date(data.created_at).getTime(),
+                pendingId: String(data.id),
+            };
+            this.pendingPurchaseByChat.set(
+                this.chatKey(tenantId, pending.phone, conversationId),
+                pending,
+            );
+            return pending;
+        } catch (e: any) {
+            this.logger.warn(`loadPendingPurchaseFromDb error: ${e?.message}`);
+            return undefined;
+        }
+    }
+
+    async persistPendingPurchaseToDb(
+        tenantId: string,
+        pending: PendingUmkmPurchase,
+        opts?: { conversationId?: string; phone?: string },
+    ): Promise<string | undefined> {
+        const expiresAt = new Date(pending.createdAt + PENDING_TTL_MS).toISOString();
+        const phone = opts?.phone ?? pending.phone ?? null;
+        const conversationId = opts?.conversationId ?? null;
+        try {
+            await this.clearPendingPurchasesInDb(
+                tenantId,
+                phone || undefined,
+                conversationId || undefined,
+                'expired',
+            );
+            const { data, error } = await this.admin()
+                .from('studio_umkm_pending_purchases')
+                .insert({
+                    tenant_id: tenantId,
+                    conversation_id: conversationId,
+                    phone,
+                    payload: {
+                        purchase: pending.purchase,
+                        resolved: pending.resolved,
+                        phone: pending.phone,
+                    },
+                    status: 'pending',
+                    expires_at: expiresAt,
+                })
+                .select('id')
+                .single();
+            if (error) {
+                this.logger.warn(`persistPendingPurchaseToDb: ${error.message}`);
+                return undefined;
+            }
+            return data?.id ? String(data.id) : undefined;
+        } catch (e: any) {
+            this.logger.warn(`persistPendingPurchaseToDb error: ${e?.message}`);
+            return undefined;
+        }
+    }
+
+    async markPendingPurchaseStatus(
+        pendingId: string | undefined,
+        status: 'committed' | 'cancelled' | 'expired',
+    ): Promise<void> {
+        if (!pendingId) return;
+        try {
+            const { error } = await this.admin()
+                .from('studio_umkm_pending_purchases')
+                .update({ status, updated_at: new Date().toISOString() })
+                .eq('id', pendingId);
+            if (error) this.logger.warn(`markPendingPurchaseStatus: ${error.message}`);
+        } catch (e: any) {
+            this.logger.warn(`markPendingPurchaseStatus error: ${e?.message}`);
+        }
+    }
+
+    async clearPendingPurchasesInDb(
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+        status: 'cancelled' | 'committed' | 'expired' = 'cancelled',
+    ): Promise<void> {
+        try {
+            let q = this.admin()
+                .from('studio_umkm_pending_purchases')
+                .update({ status, updated_at: new Date().toISOString() })
+                .eq('tenant_id', tenantId)
+                .eq('status', 'pending');
+            if (conversationId) {
+                q = q.eq('conversation_id', conversationId);
+            } else if (phone) {
+                q = q.eq('phone', phone);
+            } else {
+                return;
+            }
+            const { error } = await q;
+            if (error) this.logger.warn(`clearPendingPurchasesInDb: ${error.message}`);
+        } catch (e: any) {
+            this.logger.warn(`clearPendingPurchasesInDb error: ${e?.message}`);
+        }
     }
 
     /** Continue active submenu/wizard; undefined = no wizard / re-route to top-level intent. */
@@ -1099,7 +1427,7 @@ export class StudioUmkmService {
         conversationId?: string,
         config?: StudioContextConfig,
     ): Promise<string | undefined> {
-        const wizard = this.getWizard(tenantId, phone, conversationId);
+        const wizard = await this.resolveWizard(tenantId, phone, conversationId);
         if (!wizard) return undefined;
         const t = text.trim();
         const commands = this.resolveCommands(config);
@@ -1107,59 +1435,70 @@ export class StudioUmkmService {
         // Escape hatch: batal / cancel exits any wizard
         if (detectUmkmConfirmReply(t, commands) === 'cancel') {
             this.clearWizard(tenantId, phone, conversationId);
-            const conversational =
-                wizard.kind === 'await_sale_slots' ||
-                wizard.kind === 'await_stock_scope' ||
-                wizard.kind === 'await_report_period';
-            if (conversational) {
+            if (isConversationalWizard(wizard.kind)) {
                 return '❌ Dibatalkan. Ketik *jual ...*, *cek stok ...*, atau *laporan ...* kapan saja.';
             }
             return `❌ Dibatalkan.\n\n${formatUmkmHelp(commands)}`;
         }
 
         if (wizard.kind === 'menu_hub') {
-            if (t === '1') {
+            const choice =
+                t === '1' || /^(daftar(\s+(menu|barang|produk))?|lihat\s+menu)$/i.test(t)
+                    ? '1'
+                    : t === '2' || /^(tambah\s+(menu|barang|produk)|menu\s+baru)$/i.test(t)
+                      ? '2'
+                      : t === '3' || /^(tambah\s+stok|stok\s+masuk)$/i.test(t)
+                        ? '3'
+                        : null;
+            if (choice === '1') {
                 this.clearWizard(tenantId, phone, conversationId);
                 return this.buildProductListMessage(tenantId);
             }
-            if (t === '2') {
+            if (choice === '2') {
                 this.setWizard(tenantId, { kind: 'await_add_product', createdAt: Date.now() }, phone, conversationId);
                 return [
-                    'Kirim: *nama menu* [harga]',
-                    'Contoh: *mie ayam 15000* atau *bakso modal 10000 18000*',
+                    'Kirim nama menu dan harga — contoh: *mie ayam 15000*',
+                    'Atau *bakso modal 10000 18000*',
                     '',
-                    'Ketik *batal* untuk kembali ke menu.',
+                    'Ketik *batal* untuk kembali.',
                 ].join('\n');
             }
-            if (t === '3') {
+            if (choice === '3') {
                 this.setWizard(tenantId, { kind: 'await_add_stock', createdAt: Date.now() }, phone, conversationId);
                 return [
-                    'Kirim: *nama menu* *qty*',
-                    'Contoh: *mie ayam 10*',
+                    'Kirim nama menu dan jumlah — contoh: *mie ayam 10*',
                     '',
-                    'Ketik *batal* untuk kembali ke menu.',
+                    'Ketik *batal* untuk kembali.',
                 ].join('\n');
             }
             return formatMenuHubUnknownChoice();
         }
 
         if (wizard.kind === 'purchase_hub') {
-            if (t === '1') {
+            const choice =
+                t === '1' || /^(daftar(\s+belanja)?|semua)$/i.test(t)
+                    ? '1'
+                    : t === '2' || /^(bulan(\s+ini)?|belanja\s+bulan)$/i.test(t)
+                      ? '2'
+                      : t === '3' || /^(tambah(\s+belanja)?|catat\s+belanja|belanja)$/i.test(t)
+                        ? '3'
+                        : null;
+            if (choice === '1') {
                 this.clearWizard(tenantId, phone, conversationId);
                 return this.buildPurchaseListMessage(tenantId, 'all');
             }
-            if (t === '2') {
+            if (choice === '2') {
                 this.clearWizard(tenantId, phone, conversationId);
                 return this.buildPurchaseListMessage(tenantId, 'month');
             }
-            if (t === '3') {
+            if (choice === '3') {
                 this.setWizard(tenantId, { kind: 'await_purchase', createdAt: Date.now() }, phone, conversationId);
                 return [
-                    'Kirim detail belanja:',
+                    'Kirim detail belanja, contoh:',
                     '• *belanja 10 mie ayam @5000*',
-                    '• *belanja 2026-07-18 5 bakso 3000, 2 es teh 2000*',
+                    '• *belanja 5 bakso 3000*',
                     '',
-                    'Ketik *batal* untuk kembali ke menu.',
+                    'Ketik *batal* untuk kembali.',
                 ].join('\n');
             }
             return formatPurchaseHubUnknownChoice();
@@ -1172,7 +1511,7 @@ export class StudioUmkmService {
                 '3': 'month',
                 '4': 'all',
             };
-            const period = map[t] || detectReportPeriod(t);
+            const period = map[t] || detectReportPeriod(t) || resolveReportPeriodReply(t);
             if (period) {
                 this.clearWizard(tenantId, phone, conversationId);
                 return this.buildCombinedReportMessage(tenantId, period);
@@ -1216,7 +1555,7 @@ export class StudioUmkmService {
                 phone,
             });
             if (pendingId) prepared.pending.pendingId = pendingId;
-            this.setPendingSale(tenantId, prepared.pending, phone);
+            this.setPendingSale(tenantId, prepared.pending, phone, conversationId);
             return prepared.message;
         }
 
@@ -1422,6 +1761,7 @@ export class StudioUmkmService {
             phone,
             createdAt: Date.now(),
         };
+        this.clearPendingSale(tenantId, phone, conversationId);
         this.setPendingPurchase(tenantId, pending, phone, conversationId);
         this.clearWizard(tenantId, phone, conversationId);
 

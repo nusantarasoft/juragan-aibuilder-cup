@@ -154,30 +154,36 @@ export function primaryMissingSlot(missing: SaleSlotId[]): SaleSlotId | null {
     return null;
 }
 
-/** One natural-language question at a time — no digit menu. */
+/** One natural-language question at a time — no digit menu. Ack filled slots (human feel). */
 export function nextSaleSlotQuestion(assessment: SaleSlotAssessment, draft: SaleDraft): string {
     const slot = primaryMissingSlot(assessment.missing) || 'items';
     const name = draft.items.find((i) => String(i.name || '').trim())?.name?.trim();
+    const qty = draft.items.find((i) => Number(i.quantity) > 0)?.quantity;
     const cancel = 'Ketik *batal* kalau mau batalkan.';
+    const ack =
+        name && qty
+            ? `Oke — *${qty}x ${name}*.`
+            : name
+              ? `Oke — *${name}*.`
+              : null;
+
+    let ask: string;
     if (slot === 'items' || slot === 'name') {
-        return [
-            'Barang apa yang dijual?',
-            'Balas nama barangnya saja — contoh: *mie ayam* atau *2 bakso*.',
-            cancel,
-        ].join('\n');
-    }
-    if (slot === 'quantity') {
-        return [
+        ask = ['Barang apa yang dijual?', 'Balas nama barangnya saja — contoh: *mie ayam* atau *2 bakso*.'].join(
+            '\n',
+        );
+    } else if (slot === 'quantity') {
+        ask = [
             `Berapa jumlah${name ? ` *${name}*` : ''}?`,
             'Balas angkanya saja — contoh: *2* atau *3*.',
-            cancel,
+        ].join('\n');
+    } else {
+        ask = [
+            `Harga${name ? ` *${name}*` : ''} berapa (atau total)?`,
+            'Balas angkanya saja — contoh: *15000* atau *total 30000*.',
         ].join('\n');
     }
-    return [
-        `Harga${name ? ` *${name}*` : ''} berapa (atau total)?`,
-        'Balas angkanya saja — contoh: *15000* atau *total 30000*.',
-        cancel,
-    ].join('\n');
+    return [ack, ask, cancel].filter(Boolean).join('\n');
 }
 
 /**
