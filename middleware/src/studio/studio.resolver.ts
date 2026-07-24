@@ -669,4 +669,30 @@ export class StudioResolver {
         }
         return row;
     }
+
+    /**
+     * Simulasi chat WA tanpa WAHA — pipeline sama dengan webhook inbound
+     * (guided / handleMessage / RAG sesuai config UMKM).
+     */
+    @Mutation(() => GraphQLJSONObject, { name: 'studioWhatsAppSimChat' })
+    async studioWhatsAppSimChat(
+        @Context() context: StudioAuthContext,
+        @Args('tenantId', { type: () => String }) tenantId: string,
+        @Args('message', { type: () => String }) message: string,
+        @Args('phone', { type: () => String, nullable: true }) phone?: string,
+    ) {
+        this.requireUserId(context);
+        const config = await this.studioWhatsAppService.getConfig(tenantId);
+        if (config?.notebook_id) {
+            await this.studioService.assertNotebookOwner(
+                config.notebook_id,
+                this.requireUserId(context),
+            );
+        }
+        return this.studioWhatsAppService.simulateInboundMessage({
+            tenantId,
+            message,
+            phone: phone || undefined,
+        });
+    }
 }

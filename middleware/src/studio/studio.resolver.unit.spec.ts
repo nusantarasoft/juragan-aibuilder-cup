@@ -63,7 +63,7 @@ function build() {
         createAndPublishUmkmFlow: vi.fn().mockResolvedValue({ id: 'f-umkm' }),
     };
     const whatsAppService = {
-        getConfig: vi.fn().mockResolvedValue({ id: 'wa-1' }),
+        getConfig: vi.fn().mockResolvedValue({ id: 'wa-1', notebook_id: 'nb-1' }),
         listConfigs: vi.fn().mockResolvedValue([{ id: 'wa-1' }]),
         getSecurityMeta: vi.fn().mockResolvedValue({ meta: true }),
         getWahaSessionStatus: vi.fn().mockResolvedValue({ status: 'WORKING' }),
@@ -73,6 +73,13 @@ function build() {
         startWahaSession: vi.fn().mockResolvedValue({ ok: true }),
         logoutWahaSession: vi.fn().mockResolvedValue({ ok: true }),
         updateConfig: vi.fn().mockResolvedValue({ id: 'wa-1', enabled: true }),
+        simulateInboundMessage: vi.fn().mockResolvedValue({
+            answer: 'ok sim',
+            conversationId: 'c-sim',
+            path: 'umkm',
+            phone: '6280000000001',
+            chatId: 'sim:t1:6280000000001',
+        }),
     };
     const umkmService = {
         setupUmkmNotebook: vi.fn().mockResolvedValue({ setup: true }),
@@ -577,5 +584,17 @@ describe('StudioResolver — whatsapp/umkm', () => {
         );
         expect(h.umkmService.setupUmkmNotebook).toHaveBeenCalledWith('nb-1', 't1');
         expect(h.guideFlowService.createAndPublishUmkmFlow).not.toHaveBeenCalled();
+    });
+
+    it('studioWhatsAppSimChat checks ownership then simulates', async () => {
+        const res = await h.resolver.studioWhatsAppSimChat(ctx(), 't1', 'jual 2 bakso', '62812');
+        expect(h.whatsAppService.getConfig).toHaveBeenCalledWith('t1');
+        expect(h.studioService.assertNotebookOwner).toHaveBeenCalledWith('nb-1', USER_ID);
+        expect(h.whatsAppService.simulateInboundMessage).toHaveBeenCalledWith({
+            tenantId: 't1',
+            message: 'jual 2 bakso',
+            phone: '62812',
+        });
+        expect(res.answer).toBe('ok sim');
     });
 });

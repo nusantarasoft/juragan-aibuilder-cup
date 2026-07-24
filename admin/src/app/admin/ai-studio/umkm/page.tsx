@@ -26,6 +26,7 @@ import {
     WhatsAppOutlined,
     SettingOutlined,
     UnorderedListOutlined,
+    MessageOutlined,
     DeleteOutlined,
 } from '@ant-design/icons';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
@@ -41,6 +42,7 @@ import {
 } from '@/lib/studioService';
 import { useAuth } from '@/context/AuthContext';
 import { useStudioUserId } from '../useStudioUserId';
+import WhatsAppSimChatDrawer from './WhatsAppSimChatDrawer';
 
 const { Text, Paragraph } = Typography;
 const glass = {
@@ -148,6 +150,7 @@ export default function UmkmStudioPage() {
     const [notebooks, setNotebooks] = useState<StudioNotebook[]>([]);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editing, setEditing] = useState<StudioWhatsAppConfig | null>(null);
+    const [simTarget, setSimTarget] = useState<StudioWhatsAppConfig | null>(null);
     const [saving, setSaving] = useState(false);
     const [settingUp, setSettingUp] = useState(false);
     const [form] = Form.useForm();
@@ -393,6 +396,14 @@ export default function UmkmStudioPage() {
                     >
                         Setup UMKM
                     </Button>
+                    <Button
+                        size="small"
+                        icon={<MessageOutlined />}
+                        onClick={() => setSimTarget(row)}
+                        disabled={!row.enabled || !row.notebook_id}
+                    >
+                        Simulasi chat
+                    </Button>
                     <Link href={`/admin/ai-studio/ai-gateway?tenant=${encodeURIComponent(row.tenant_id)}`}>
                         <Button size="small" icon={<WhatsAppOutlined />}>
                             WA
@@ -463,7 +474,8 @@ export default function UmkmStudioPage() {
                                 <strong>Setup UMKM</strong> — aktifkan flow penjualan
                             </li>
                             <li>
-                                Pemilik kirim WA ke nomor admin memakai angka menu atau keyword yang Anda set
+                                Pemilik kirim WA ke nomor admin memakai angka menu atau keyword yang Anda set —
+                                atau uji dulu lewat tombol <strong>Simulasi chat</strong> (tanpa WAHA)
                             </li>
                             <li>Isi <strong>Katalog</strong> per tenant</li>
                         </ol>
@@ -698,6 +710,12 @@ export default function UmkmStudioPage() {
                     </Form.Item>
                 </Form>
             </Drawer>
+
+            <WhatsAppSimChatDrawer
+                open={!!simTarget}
+                config={simTarget}
+                onClose={() => setSimTarget(null)}
+            />
         </CMSLayout>
     );
 }

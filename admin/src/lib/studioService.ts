@@ -943,6 +943,30 @@ export const studioService = {
         return data.updateStudioWhatsAppConfig;
     },
 
+    /** Simulasi inbound WA tanpa WAHA (pipeline sama webhook). */
+    async whatsAppSimChat(params: {
+        tenantId: string;
+        message: string;
+        phone?: string;
+    }): Promise<{
+        answer: string;
+        conversationId: string;
+        path: string;
+        phone: string;
+        chatId: string;
+    }> {
+        const data = await graphqlRequest(`
+            mutation($tenantId: String!, $message: String!, $phone: String) {
+                studioWhatsAppSimChat(tenantId: $tenantId, message: $message, phone: $phone)
+            }
+        `, {
+            tenantId: params.tenantId,
+            message: params.message,
+            phone: params.phone ?? null,
+        });
+        return data.studioWhatsAppSimChat;
+    },
+
     // ── Settings ──────────────────────────────────────────────
 
     async getSettings(tenantId?: string): Promise<any> {

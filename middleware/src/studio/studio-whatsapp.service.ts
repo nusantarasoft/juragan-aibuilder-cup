@@ -371,26 +371,110 @@ export class StudioWhatsAppService {
             `WA inbound inbox=${wahaSession} tenant=${tenantId} sender=${phone}`,
         );
 
-        if (!this.rateLimiter.tryConsume(`${tenantId}:${phone}`)) {
-            this.logger.warn(`WhatsApp rate limit exceeded for tenant=${tenantId} phone=${phone}`);
-            await this.sendReplyChunks(chatId, RATE_LIMIT_MESSAGE, wahaSession);
-            return;
-        }
-
         const question = stripWhatsAppMediaAnnotations(
             await this.buildQuestionFromPayload(payload, wahaSession),
         );
         if (!question.trim()) return;
 
+        const result = await this.processInboundCore({
+            config,
+            phone,
+            chatId,
+            question,
+            displayName: String(payload.notifyName || payload.pushName || ''),
+            feedbackProvider: 'waha',
+            enforceRateLimit: true,
+        });
+
+        await this.sendReplyChunks(chatId, result.answer, wahaSession);
+    }
+
+    /**
+     * Admin simulator: same decision tree as real WA inbound (guided / handleMessage / RAG),
+     * without sending via WAHA. Session chatId is `sim:{tenant}:{phone}` so it won't clash with live WA.
+     */
+    async simulateInboundMessage(params: {
+        tenantId: string;
+        message: string;
+        phone?: string;
+        displayName?: string;
+    }): Promise<{
+        answer: string;
+        conversationId: string;
+        path: 'guided' | 'umkm' | 'rag' | 'feedback';
+        phone: string;
+        chatId: string;
+    }> {
+        const tenantId = String(params.tenantId || '').trim();
+        if (!tenantId) throw new BadRequestException('tenantId required');
+
+        const message = stripWhatsAppMediaAnnotations(String(params.message || '').trim());
+        if (!message) throw new BadRequestException('message required');
+
+        const config = await this.getConfig(tenantId);
+        if (!config?.enabled || !config.notebook_id) {
+            throw new BadRequestException(
+                'UMKM belum aktif / belum punya notebook. Setup UMKM dulu sebelum simulasi chat.',
+            );
+        }
+
+        const phone = normalizePhoneDigits(params.phone || '6280000000001');
+        if (phone.length < 8) throw new BadRequestException('phone tidak valid');
+
+        const chatId = `sim:${tenantId}:${phone}`;
+        return this.processInboundCore({
+            config,
+            phone,
+            chatId,
+            question: message,
+            displayName: params.displayName || 'Simulator WA',
+            feedbackProvider: 'whatsapp_sim',
+            enforceRateLimit: false,
+        });
+    }
+
+    /**
+     * Shared WA inbound pipeline (webhook + simulator).
+     */
+    private async processInboundCore(opts: {
+        config: StudioWhatsAppConfigRow;
+        phone: string;
+        chatId: string;
+        question: string;
+        displayName: string;
+        feedbackProvider: string;
+        enforceRateLimit: boolean;
+    }): Promise<{
+        answer: string;
+        conversationId: string;
+        path: 'guided' | 'umkm' | 'rag' | 'feedback';
+        phone: string;
+        chatId: string;
+    }> {
+        const { config, phone, chatId, question, displayName, feedbackProvider, enforceRateLimit } =
+            opts;
+        const tenantId = config.tenant_id;
+
+        if (enforceRateLimit && !this.rateLimiter.tryConsume(`${tenantId}:${phone}`)) {
+            this.logger.warn(`WhatsApp rate limit exceeded for tenant=${tenantId} phone=${phone}`);
+            return {
+                answer: RATE_LIMIT_MESSAGE,
+                conversationId: '',
+                path: 'umkm',
+                phone,
+                chatId,
+            };
+        }
+
         const { conversationId } = await this.resolveSession(
             tenantId,
             chatId,
             phone,
-            config.notebook_id,
-            String(payload.notifyName || payload.pushName || ''),
+            config.notebook_id!,
+            displayName,
         );
 
-        const notebook = await this.studioService.getNotebook(config.notebook_id);
+        const notebook = await this.studioService.getNotebook(config.notebook_id!);
         const notebookCfg = this.dbContextService.parseConfig(notebook.context_config);
         const dataTenantId = this.umkmService.resolveTenantId(notebookCfg);
         if (dataTenantId !== tenantId) {
@@ -400,7 +484,6 @@ export class StudioWhatsAppService {
         }
         const umkmMode = this.umkmService.isUmkmMode(notebookCfg);
 
-        // Feedback (AIDLC Operate) — after pending ya/batal so "ok" still confirms sales
         const feedback = detectUmkmFeedback(question);
         if (feedback && umkmMode) {
             const pending = await this.umkmService.resolvePendingSale({
@@ -413,23 +496,31 @@ export class StudioWhatsAppService {
                 await this.umkmService.logFeedback(tenantId, feedback, {
                     phone,
                     conversationId,
-                    metadata: { provider: 'waha' },
+                    metadata: { provider: feedbackProvider },
                 });
-                await this.sendReplyChunks(chatId, formatFeedbackThanks(feedback), wahaSession);
-                return;
+                return {
+                    answer: formatFeedbackThanks(feedback),
+                    conversationId,
+                    path: 'feedback',
+                    phone,
+                    chatId,
+                };
             }
         }
 
         let answer: string;
+        let path: 'guided' | 'umkm' | 'rag' = 'rag';
         if (config.use_guided_flow) {
+            path = 'guided';
             answer = await this.runGuidedTurn(
-                config.notebook_id,
+                config.notebook_id!,
                 question,
                 conversationId,
                 chatId,
                 tenantId,
             );
         } else if (umkmMode) {
+            path = 'umkm';
             const umkmAnswer = await this.umkmService.handleMessage(
                 question,
                 tenantId,
@@ -440,8 +531,9 @@ export class StudioWhatsAppService {
             if (umkmAnswer) {
                 answer = umkmAnswer;
             } else {
+                path = 'rag';
                 const result = await this.studioService.chat(
-                    config.notebook_id,
+                    config.notebook_id!,
                     question,
                     conversationId,
                     undefined,
@@ -450,7 +542,7 @@ export class StudioWhatsAppService {
             }
         } else {
             const result = await this.studioService.chat(
-                config.notebook_id,
+                config.notebook_id!,
                 question,
                 conversationId,
                 undefined,
@@ -458,7 +550,7 @@ export class StudioWhatsAppService {
             answer = result.answer || '';
         }
 
-        await this.sendReplyChunks(chatId, answer, wahaSession);
+        return { answer, conversationId, path, phone, chatId };
     }
 
     private extractPhone(chatId: string): string {
@@ -521,12 +613,18 @@ export class StudioWhatsAppService {
             return { conversationId: existing.conversation_id };
         }
 
+        const isSim = chatId.startsWith('sim:');
         const { data: conv, error } = await this.admin()
             .from('studio_conversations')
             .insert({
                 notebook_id: notebookId,
                 user_id: null,
-                title: displayName ? `WA: ${displayName}` : `WA: ${phone}`,
+                title: isSim
+                    ? `Sim WA: ${displayName || phone}`
+                    : displayName
+                      ? `WA: ${displayName}`
+                      : `WA: ${phone}`,
+                // CHECK constraint: only 'web' | 'whatsapp' — sim distinguished via external_chat_id `sim:…`
                 channel: 'whatsapp',
                 external_chat_id: chatId,
             })
