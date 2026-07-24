@@ -309,11 +309,13 @@ describe('Alur tambah menu (2→2→…)', () => {
     );
 
     it.each(['batal', 'cancel', 'tidak'])(
-        'POSITIF escape %s dari await_add_product → help',
+        'POSITIF escape %s dari await_add_product → cancel singkat (conversational)',
         async (word) => {
             const reply = await svc.continueWizard(word, tenant, undefined, conv, cfg);
             expect(reply).toMatch(/Dibatalkan/i);
-            expect(reply).toMatch(/\*1\*|\*2\*/);
+            // Conversational: jangan dump full digit menu
+            expect(reply).toMatch(/jual|cek stok|laporan/i);
+            expect(reply).not.toMatch(/\*1\* Tanya/);
         },
     );
 

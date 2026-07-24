@@ -237,6 +237,26 @@ export function parseSaleDraftHeuristic(
         }
     }
 
+    // Same patterns can double-match ("jual 3 es teh") — keep one line
+    if (items.length > 1) {
+        const seen = new Set<string>();
+        const unique = items.filter((it) => {
+            const key = `${it.quantity}:${it.name.toLowerCase()}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+        items.length = 0;
+        items.push(...unique);
+        if (items.length > 1) {
+            const primary = items.reduce((best, it) =>
+                it.name.length >= best.name.length ? it : best,
+            );
+            items.length = 0;
+            items.push(primary);
+        }
+    }
+
     if (items.length === 0) {
         const nameOnly = raw.match(
             /(?:jual|jualan|catat|order)\s+([a-zA-Z\u00C0-\u024F][\w\u00C0-\u024F\s\-]{2,50})/i,

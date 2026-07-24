@@ -32,6 +32,23 @@ describe('studio-umkm-durable.util', () => {
 
     it('conversational wizard kinds', () => {
         expect(isConversationalWizard('await_sale_slots')).toBe(true);
+        expect(isConversationalWizard('await_add_product')).toBe(true);
+        expect(isConversationalWizard('await_purchase')).toBe(true);
         expect(isConversationalWizard('menu_hub')).toBe(false);
+    });
+
+    it('round-trips add-product draft (name awaiting price)', () => {
+        const w = {
+            kind: 'await_add_product' as const,
+            createdAt: 300,
+            draft: { name: 'Bakso', costPrice: 10000 },
+        };
+        const payload = serializeWizardPayload(w);
+        expect(payload.draft).toEqual(w.draft);
+        expect(deserializeWizard('await_add_product', payload, 300)).toEqual(w);
+        expect(deserializeWizard('await_add_product', {}, 300)).toEqual({
+            kind: 'await_add_product',
+            createdAt: 300,
+        });
     });
 });

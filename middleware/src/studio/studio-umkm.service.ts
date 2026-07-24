@@ -67,6 +67,7 @@ import {
     formatSaleConfirmationWithCatalog,
     formatSalePreviewWithCatalog,
     formatStockCheckWa,
+    enrichSaleDraftFromCatalog,
     resolveSaleItemsAgainstCatalog,
     type UmkmCatalogProduct,
     type UmkmSaleItemResolved,
@@ -88,6 +89,16 @@ import {
     saleDraftToParsed,
     type SaleDraft,
 } from './studio-umkm-confirm.util';
+import {
+    applyPurchaseSlotReply,
+    assessPurchaseSlots,
+    emptyPurchaseDraft,
+    nextPurchaseSlotQuestion,
+    parsePurchaseDraftHeuristic,
+    purchaseDraftFromParsed,
+    purchaseDraftToParsed,
+    type PurchaseDraft,
+} from './studio-umkm-purchase-slots.util';
 import {
     deserializeWizard,
     isConversationalWizard,
@@ -817,16 +828,19 @@ export class StudioUmkmService {
             };
         }
 
-        const slots = assessSaleSlots(draft);
+        // Seller-first: isi harga dari katalog sebelum minta slot harga
+        const products = await this.fetchActiveProducts(tenantId);
+        const enriched = enrichSaleDraftFromCatalog(draft, products);
+        const slots = assessSaleSlots(enriched);
         if (!slots.ok) {
             return {
                 kind: 'need_slots',
-                draft,
-                message: nextSaleSlotQuestion(slots, draft),
+                draft: enriched,
+                message: nextSaleSlotQuestion(slots, enriched),
             };
         }
 
-        return this.previewFromSaleDraft(saleDraftToParsed(draft), tenantId, phone, config);
+        return this.previewFromSaleDraft(saleDraftToParsed(enriched), tenantId, phone, config);
     }
 
     /** Build confirm preview from a complete sale draft. */
@@ -1492,13 +1506,18 @@ export class StudioUmkmService {
                 return this.buildPurchaseListMessage(tenantId, 'month');
             }
             if (choice === '3') {
-                this.setWizard(tenantId, { kind: 'await_purchase', createdAt: Date.now() }, phone, conversationId);
+                this.setWizard(
+                    tenantId,
+                    { kind: 'await_purchase', createdAt: Date.now(), draft: emptyPurchaseDraft() },
+                    phone,
+                    conversationId,
+                );
                 return [
-                    'Kirim detail belanja, contoh:',
-                    '• *belanja 10 mie ayam @5000*',
-                    '• *belanja 5 bakso 3000*',
-                    '',
-                    'Ketik *batal* untuk kembali.',
+                    'Siap catat belanja.',
+                    nextPurchaseSlotQuestion(
+                        assessPurchaseSlots(emptyPurchaseDraft()),
+                        emptyPurchaseDraft(),
+                    ),
                 ].join('\n');
             }
             return formatPurchaseHubUnknownChoice();
@@ -1520,11 +1539,9 @@ export class StudioUmkmService {
         }
 
         // Input wizards: bare menu digit exits so top-level menu can run
-        // (except sale slot-fill — digits are qty/harga answers)
+        // (except sale/purchase slot-fill — digits are qty/harga answers)
         const isInputWizard =
-            wizard.kind === 'await_add_product' ||
-            wizard.kind === 'await_add_stock' ||
-            wizard.kind === 'await_purchase';
+            wizard.kind === 'await_add_product' || wizard.kind === 'await_add_stock';
         if (isInputWizard && detectUmkmMenuDigit(t, commands)) {
             this.clearWizard(tenantId, phone, conversationId);
             return undefined;
@@ -1532,19 +1549,21 @@ export class StudioUmkmService {
 
         if (wizard.kind === 'await_sale_slots') {
             const merged = applySaleSlotReply(wizard.draft, t, commands);
-            const slots = assessSaleSlots(merged);
+            const products = await this.fetchActiveProducts(tenantId);
+            const enriched = enrichSaleDraftFromCatalog(merged, products);
+            const slots = assessSaleSlots(enriched);
             if (!slots.ok) {
                 this.setWizard(
                     tenantId,
-                    { kind: 'await_sale_slots', draft: merged, createdAt: Date.now() },
+                    { kind: 'await_sale_slots', draft: enriched, createdAt: Date.now() },
                     phone,
                     conversationId,
                 );
-                return nextSaleSlotQuestion(slots, merged);
+                return nextSaleSlotQuestion(slots, enriched);
             }
             this.clearWizard(tenantId, phone, conversationId);
             const prepared = await this.previewFromSaleDraft(
-                saleDraftToParsed(merged),
+                saleDraftToParsed(enriched),
                 tenantId,
                 phone,
                 config,
@@ -1627,13 +1646,55 @@ export class StudioUmkmService {
         conversationId?: string,
         fromWizard = false,
     ): Promise<string> {
-        const parsed = parseAddProductMessage(text);
+        const wizard = this.getWizard(tenantId, phone, conversationId);
+        const pendingDraft =
+            wizard?.kind === 'await_add_product' ? wizard.draft : undefined;
+
+        let parsed = parseAddProductMessage(text);
+
+        // Seller-first: balas harga saja setelah nama sudah diisi
+        if (pendingDraft?.name && (!parsed || parsed.sellingPrice <= 0)) {
+            const combined = parseAddProductMessage(`${pendingDraft.name} ${text.trim()}`);
+            if (combined && combined.sellingPrice > 0) {
+                parsed = {
+                    ...combined,
+                    costPrice: combined.costPrice ?? pendingDraft.costPrice,
+                };
+            }
+        }
+
         if (!parsed) {
             if (!fromWizard) {
-                this.setWizard(tenantId, { kind: 'await_add_product', createdAt: Date.now() }, phone, conversationId);
+                this.setWizard(
+                    tenantId,
+                    { kind: 'await_add_product', createdAt: Date.now() },
+                    phone,
+                    conversationId,
+                );
             }
             return explainAddProductParseFailure(text);
         }
+
+        // Jangan simpan menu harga 0 — tanya harga dulu
+        if (parsed.sellingPrice <= 0) {
+            this.setWizard(
+                tenantId,
+                {
+                    kind: 'await_add_product',
+                    createdAt: Date.now(),
+                    draft: { name: parsed.name, costPrice: parsed.costPrice },
+                },
+                phone,
+                conversationId,
+            );
+            return [
+                `Oke — *${parsed.name}*.`,
+                'Harga jual berapa?',
+                'Balas angkanya saja — contoh: *18000* atau *18rb*.',
+                'Ketik *batal* untuk batal.',
+            ].join('\n');
+        }
+
         try {
             const item = await this.inventoryService.createItem(tenantId, {
                 name: parsed.name,
@@ -1725,25 +1786,70 @@ export class StudioUmkmService {
         _config?: StudioContextConfig,
         fromWizard = false,
     ): Promise<string> {
-        const parsed = parsePurchaseHeuristic(text);
-        if (!parsed) {
-            if (!fromWizard && !/^tambah\s+belanja|^belanja$/i.test(text.trim())) {
-                // bare "tambah belanja" / menu digit path
+        const wizard = this.getWizard(tenantId, phone, conversationId);
+        const existingDraft =
+            wizard?.kind === 'await_purchase' && wizard.draft ? wizard.draft : null;
+
+        const complete = parsePurchaseHeuristic(text);
+        let draft: PurchaseDraft;
+
+        if (complete && assessPurchaseSlots(complete).ok) {
+            draft = purchaseDraftFromParsed(complete);
+        } else if (existingDraft && fromWizard) {
+            draft = applyPurchaseSlotReply(existingDraft, text);
+        } else {
+            const loose = parsePurchaseDraftHeuristic(text);
+            if (loose) {
+                draft = loose;
+            } else if (/^(tambah\s+belanja|catat\s+belanja|belanja)\s*$/i.test(text.trim())) {
+                draft = emptyPurchaseDraft();
+            } else if (!fromWizard) {
+                this.setWizard(
+                    tenantId,
+                    { kind: 'await_purchase', createdAt: Date.now(), draft: emptyPurchaseDraft() },
+                    phone,
+                    conversationId,
+                );
+                return [
+                    'Siap catat belanja.',
+                    nextPurchaseSlotQuestion(
+                        assessPurchaseSlots(emptyPurchaseDraft()),
+                        emptyPurchaseDraft(),
+                    ),
+                ].join('\n');
+            } else {
+                draft = existingDraft || emptyPurchaseDraft();
+                draft = applyPurchaseSlotReply(draft, text);
             }
-            if (!fromWizard) {
-                this.setWizard(tenantId, { kind: 'await_purchase', createdAt: Date.now() }, phone, conversationId);
-            }
-            return [
-                'Belum bisa saya baca sebagai belanja.',
-                '',
-                'Kirim detail, contoh:',
-                '• *10 mie ayam @5000*',
-                '• *belanja 2026-07-18 5 bakso 3000*',
-                '',
-                'Ketik *batal* atau *0* untuk kembali ke menu.',
-            ].join('\n');
         }
 
+        const slots = assessPurchaseSlots(draft);
+        if (!slots.ok) {
+            this.setWizard(
+                tenantId,
+                { kind: 'await_purchase', draft, createdAt: Date.now() },
+                phone,
+                conversationId,
+            );
+            const q = nextPurchaseSlotQuestion(slots, draft);
+            if (
+                !fromWizard &&
+                /^(tambah\s+belanja|catat\s+belanja|belanja)\s*$/i.test(text.trim())
+            ) {
+                return ['Siap catat belanja.', q].join('\n');
+            }
+            return q;
+        }
+
+        return this.previewPurchase(purchaseDraftToParsed(draft), tenantId, phone, conversationId);
+    }
+
+    private async previewPurchase(
+        parsed: ParsedUmkmPurchase,
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+    ): Promise<string> {
         const products = await this.fetchActiveProducts(tenantId);
         const resolved = parsed.items.map((it) => {
             const match = findBestProductMatch(it.name, products, 40);
@@ -1756,7 +1862,10 @@ export class StudioUmkmService {
             };
         });
         const pending: PendingUmkmPurchase = {
-            purchase: { ...parsed, totalCost: resolved.reduce((s, r) => s + r.quantity * r.unitCost, 0) },
+            purchase: {
+                ...parsed,
+                totalCost: resolved.reduce((s, r) => s + r.quantity * r.unitCost, 0),
+            },
             resolved,
             phone,
             createdAt: Date.now(),

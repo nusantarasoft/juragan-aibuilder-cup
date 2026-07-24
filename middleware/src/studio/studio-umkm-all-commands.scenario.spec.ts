@@ -268,14 +268,17 @@ describe('Perintah 3 — Belanja (purchase_hub)', () => {
         svc.openPurchaseHub('t', undefined, 'c');
         await svc.continueWizard('3', 't', undefined, 'c', cfg);
         const tip = await svc.continueWizard('asdf', 't', undefined, 'c', cfg);
-        expect(tip).toMatch(/belanja|batal/i);
+        expect(tip).toMatch(/jumlah|Berapa|Oke|batal/i);
     });
 
-    it('POSITIF escape digit dari await_purchase', async () => {
+    it('POSITIF escape batal dari await_purchase (digit qty tidak keluar wizard)', async () => {
         const { svc } = makeUmkmService();
         svc.openPurchaseHub('t', undefined, 'c');
         await svc.continueWizard('3', 't', undefined, 'c', cfg);
-        expect(await svc.continueWizard('0', 't', undefined, 'c', cfg)).toBeUndefined();
+        // qty answer stays in wizard
+        const mid = await svc.continueWizard('mie ayam', 't', undefined, 'c', cfg);
+        expect(mid).toMatch(/jumlah|Berapa/i);
+        expect(await svc.continueWizard('batal', 't', undefined, 'c', cfg)).toMatch(/Dibatalkan/i);
     });
 
     it('POSITIF konfirmasi ya menyimpan; batal membatalkan', async () => {

@@ -90,6 +90,29 @@ export function resolveSaleItemsAgainstCatalog(
     });
 }
 
+/**
+ * Seller-first: fill missing unit prices from catalog before slot-ask / preview.
+ * Does not override an explicit unit price from the user.
+ */
+export function enrichSaleDraftFromCatalog<
+    T extends {
+        items: { name: string; quantity: number; unitPrice: number }[];
+        totalAmount: number;
+    },
+>(draft: T, products: UmkmCatalogProduct[]): T {
+    if (!draft.items?.length || !products.length) return draft;
+    const resolved = resolveSaleItemsAgainstCatalog(draft.items, products);
+    const items = resolved.map((r) => ({
+        name: r.name,
+        quantity: r.quantity,
+        unitPrice: r.unitPrice,
+    }));
+    const lineSum = items.reduce((s, i) => s + i.quantity * Math.max(0, i.unitPrice), 0);
+    const totalAmount =
+        Number(draft.totalAmount) > 0 ? Number(draft.totalAmount) : lineSum > 0 ? lineSum : 0;
+    return { ...draft, items, totalAmount };
+}
+
 export function formatProductListWa(
     products: UmkmCatalogProduct[],
     opts?: { maxItems?: number },
@@ -185,9 +208,9 @@ export function formatSalePreviewWithCatalog(
         for (const it of sale.items) {
             const tag = it.catalogMatched ? '' : ' _(belum di katalog)_';
             const sku = it.itemSku ? ` [${it.itemSku}]` : '';
-            lines.push(
-                `• ${it.quantity}x ${it.name}${sku} — ${formatIdrShort(it.quantity * it.unitPrice)}${tag}`,
-            );
+            const unit = formatIdrShort(it.unitPrice);
+            const line = formatIdrShort(it.quantity * it.unitPrice);
+            lines.push(`• ${it.quantity}x ${it.name}${sku} @ ${unit} = ${line}${tag}`);
         }
     }
     lines.push(`Total: *${formatIdrShort(sale.totalAmount)}*`);

@@ -29,22 +29,19 @@ describe('TESTER × multi-turn jual (tanpa nomor menu)', () => {
         expect(r.message).not.toMatch(/\*5\*/);
     });
 
-    it('jual 2 bakso (tanpa harga) → tanya harga natural', async () => {
+    it('jual 2 bakso (tanpa harga) → pakai harga katalog, preview langsung', async () => {
         const { svc } = makeUmkmService();
         const r = await svc.handleMessage('jual 2 bakso', 't', '6281', cfg, {
             conversationId: 'c-slot-1',
         });
-        expect(r).toMatch(/Harga|berapa|total/i);
+        expect(r).toMatch(/Konfirmasi|ya|batal/i);
+        expect(r).toMatch(/Bakso|bakso/i);
+        expect(r).toMatch(/36\.000|36000/);
+        expect(r).not.toMatch(/Harga.*berapa/i);
         expect(r).not.toMatch(/\*[123456]\*/);
-
-        const r2 = await svc.handleMessage('18000', 't', '6281', cfg, {
-            conversationId: 'c-slot-1',
-        });
-        expect(r2).toMatch(/Konfirmasi|ya|batal/i);
-        expect(r2).toMatch(/Bakso|bakso/i);
     });
 
-    it('jual saja → tanya barang → qty → harga → preview → ya', async () => {
+    it('jual saja → tanya barang → qty → preview (harga dari katalog)', async () => {
         const { svc } = makeUmkmService();
         const a = await svc.handleMessage('jual', 't', '6282', cfg, { conversationId: 'c-slot-2' });
         expect(a).toMatch(/Barang apa/i);
@@ -53,10 +50,9 @@ describe('TESTER × multi-turn jual (tanpa nomor menu)', () => {
         expect(b).toMatch(/jumlah|Berapa/i);
 
         const c = await svc.handleMessage('3', 't', '6282', cfg, { conversationId: 'c-slot-2' });
-        expect(c).toMatch(/Harga|berapa/i);
-
-        const d = await svc.handleMessage('5000', 't', '6282', cfg, { conversationId: 'c-slot-2' });
-        expect(d).toMatch(/Konfirmasi|ya|batal/i);
+        expect(c).toMatch(/Konfirmasi|ya|batal/i);
+        expect(c).toMatch(/15\.000|15000/);
+        expect(c).not.toMatch(/Harga.*berapa/i);
 
         const e = await svc.handleMessage('ya', 't', '6282', cfg, { conversationId: 'c-slot-2' });
         expect(e).toMatch(/tercatat|WA-/i);
