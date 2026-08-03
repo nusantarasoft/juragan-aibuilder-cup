@@ -696,6 +696,40 @@ services:
       retries: 5
       start_period: 45s
 
+  # Hermes Agent sidecar (smoke test; does NOT replace WAHA / UMKM WhatsApp yet)
+  # Docs: docs/hermes-local.md — https://hermes-agent.nousresearch.com/docs/user-guide/docker
+  hermes:
+    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:latest}
+    container_name: hermes
+    restart: unless-stopped
+    command: gateway run
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+          cpus: "2.0"
+        reservations:
+          memory: 512m
+    ports:
+      # Host ports offset from Hermes Desktop defaults (8642/9119); bind IPv4 localhost
+      - "127.0.0.1:${HERMES_GATEWAY_PORT:-8652}:8642"
+      - "127.0.0.1:${HERMES_DASHBOARD_PORT:-9129}:9119"
+    environment:
+      - HERMES_DASHBOARD=1
+      # Optional: forward host .env keys; otherwise run `docker compose run --rm -it hermes setup`
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+    volumes:
+      - ./volumes/hermes:/opt/data
+    networks:
+      - management-network
+
   # ═══════════════════════════════════════════════════════════════════════════
   landing-page:
     build:
