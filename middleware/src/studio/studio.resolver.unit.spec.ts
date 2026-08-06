@@ -547,6 +547,21 @@ describe('StudioResolver — whatsapp/umkm', () => {
         await expect(h.resolver.studioUmkmCommandsDefaults()).resolves.toBe(DEFAULT_UMKM_COMMANDS);
     });
 
+    it('studioPreviewUmkmIntent maps check_stock via draft commands', async () => {
+        const res = await h.resolver.studioPreviewUmkmIntent(
+            ctx(),
+            'cek stok gula',
+            DEFAULT_UMKM_COMMANDS as unknown as Record<string, unknown>,
+        );
+        expect(res).toEqual({ intent: 'check_stock', confirm: null });
+    });
+
+    it('studioPreviewUmkmIntent returns unknown for blank text', async () => {
+        const res = await h.resolver.studioPreviewUmkmIntent(ctx(), '   ', null as any);
+        expect(res.intent).toBe('unknown');
+        expect(res.confirm).toBeNull();
+    });
+
     it('updateStudioWhatsAppConfig without notebookId skips ownership + setup', async () => {
         await h.resolver.updateStudioWhatsAppConfig(
             ctx(), '  ', null as any, true, null as any, undefined as any, undefined as any, undefined as any, undefined as any,

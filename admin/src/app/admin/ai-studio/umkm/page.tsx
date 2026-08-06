@@ -60,6 +60,7 @@ const INTENT_OPTIONS: { value: UmkmCommandIntent; label: string }[] = [
     { value: 'list_products', label: 'Daftar menu' },
     { value: 'add_product', label: 'Tambah menu' },
     { value: 'add_stock', label: 'Tambah stok' },
+    { value: 'check_stock', label: 'Cek stok' },
     { value: 'purchase_hub', label: 'Hub Belanja' },
     { value: 'list_purchases', label: 'Daftar belanja' },
     { value: 'record_purchase', label: 'Tambah belanja' },
@@ -76,6 +77,7 @@ const KEYWORD_INTENTS: UmkmCommandIntent[] = [
     'list_products',
     'add_product',
     'add_stock',
+    'check_stock',
     'purchase_hub',
     'list_purchases',
     'record_purchase',
@@ -85,6 +87,10 @@ const KEYWORD_INTENTS: UmkmCommandIntent[] = [
     'sales_report',
     'help',
 ];
+
+const INTENT_LABEL: Record<string, string> = Object.fromEntries(
+    INTENT_OPTIONS.map((o) => [o.value, o.label]),
+);
 
 function slugifyTenant(input: string): string {
     return input
@@ -121,6 +127,7 @@ function emptyCommands(): UmkmCommandsConfig {
             list_products: [],
             add_product: [],
             add_stock: [],
+            check_stock: [],
             purchase_hub: [],
             list_purchases: [],
             record_purchase: [],
@@ -151,12 +158,18 @@ export default function UmkmStudioPage() {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editing, setEditing] = useState<StudioWhatsAppConfig | null>(null);
     const [simTarget, setSimTarget] = useState<StudioWhatsAppConfig | null>(null);
+    const [simInitialMessage, setSimInitialMessage] = useState<string | undefined>(undefined);
     const [saving, setSaving] = useState(false);
     const [settingUp, setSettingUp] = useState(false);
     const [form] = Form.useForm();
     const [wahaDashboard, setWahaDashboard] = useState(DEFAULT_WAHA_DASHBOARD);
     const [commands, setCommands] = useState<UmkmCommandsConfig>(emptyCommands());
     const [defaults, setDefaults] = useState<UmkmCommandsConfig | null>(null);
+    const [previewSample, setPreviewSample] = useState('');
+    const [previewIntent, setPreviewIntent] = useState<string | null>(null);
+    const [previewConfirm, setPreviewConfirm] = useState<'confirm' | 'cancel' | null>(null);
+    const [previewing, setPreviewing] = useState(false);
+    const [commandsDirty, setCommandsDirty] = useState(false);
 
     useEffect(() => {
         studioService.getSettings().then((s) => {
@@ -203,6 +216,7 @@ export default function UmkmStudioPage() {
                     list_products: [...(fromNb.keywords?.list_products || [])],
                     add_product: [...(fromNb.keywords?.add_product || [])],
                     add_stock: [...(fromNb.keywords?.add_stock || [])],
+                    check_stock: [...(fromNb.keywords?.check_stock || [])],
                     purchase_hub: [...(fromNb.keywords?.purchase_hub || [])],
                     list_purchases: [...(fromNb.keywords?.list_purchases || [])],
                     record_purchase: [...(fromNb.keywords?.record_purchase || [])],
@@ -231,6 +245,10 @@ export default function UmkmStudioPage() {
             createNewNotebook: true,
         });
         setCommands(defaults ? structuredClone(defaults) : emptyCommands());
+        setCommandsDirty(false);
+        setPreviewSample('');
+        setPreviewIntent(null);
+        setPreviewConfirm(null);
         setDrawerOpen(true);
     };
 
@@ -247,6 +265,10 @@ export default function UmkmStudioPage() {
             createNewNotebook: false,
         });
         loadCommandsForNotebook(row.notebook_id);
+        setCommandsDirty(false);
+        setPreviewSample('');
+        setPreviewIntent(null);
+        setPreviewConfirm(null);
         setDrawerOpen(true);
     };
 
@@ -262,7 +284,7 @@ export default function UmkmStudioPage() {
         }
     };
 
-    const handleSave = async () => {
+    const handleSave = async (opts?: { openSimWith?: string }): Promise<boolean> => {
         const values = await form.validateFields();
         setSaving(true);
         try {
@@ -288,8 +310,10 @@ export default function UmkmStudioPage() {
                 throw new Error('Minimal satu nomor pemilik toko');
             }
 
+            const tenantId = values.tenantId as string;
+
             await studioService.updateWhatsAppConfig({
-                tenantId: values.tenantId,
+                tenantId,
                 notebookId,
                 enabled: values.enabled,
                 useGuidedFlow: values.useGuidedFlow,
@@ -302,14 +326,62 @@ export default function UmkmStudioPage() {
             await studioService.updateUmkmCommands(notebookId, commands, values.useGuidedFlow !== false);
 
             message.success(editing ? 'UMKM diperbarui' : 'UMKM baru ditambahkan');
+            setCommandsDirty(false);
             setDrawerOpen(false);
             await load();
+
+            if (opts?.openSimWith?.trim()) {
+                const list = await studioService.listWhatsAppConfigs();
+                const row = list.find((c) => c.tenant_id === tenantId) ?? null;
+                if (row?.enabled && row.notebook_id) {
+                    setSimInitialMessage(opts.openSimWith.trim());
+                    setSimTarget(row);
+                } else {
+                    message.warning('Simpan OK, tapi Simulasi butuh WA aktif + notebook');
+                }
+            }
+            return true;
         } catch (e: unknown) {
             const err = e as { message?: string };
             message.error(err.message || 'Gagal menyimpan');
+            return false;
         } finally {
             setSaving(false);
         }
+    };
+
+    const runPreview = async () => {
+        const sample = previewSample.trim();
+        if (!sample) {
+            setPreviewIntent('unknown');
+            setPreviewConfirm(null);
+            return;
+        }
+        setPreviewing(true);
+        try {
+            const res = await studioService.previewUmkmIntent(sample, commands);
+            setPreviewIntent(res.intent);
+            setPreviewConfirm(res.confirm);
+        } catch (e: unknown) {
+            const err = e as { message?: string };
+            message.error(err.message || 'Gagal preview intent');
+            setPreviewIntent(null);
+            setPreviewConfirm(null);
+        } finally {
+            setPreviewing(false);
+        }
+    };
+
+    const handleTryInSim = async () => {
+        const sample = previewSample.trim();
+        if (!sample) {
+            message.warning('Isi contoh pesan dulu');
+            return;
+        }
+        if (commandsDirty) {
+            message.info('Menyimpan dulu supaya Simulasi memakai perintah terbaru…');
+        }
+        await handleSave({ openSimWith: sample });
     };
 
     const handleSetupUmkm = async (row: StudioWhatsAppConfig) => {
@@ -331,12 +403,22 @@ export default function UmkmStudioPage() {
     };
 
     const updateMenuRow = (index: number, patch: Partial<UmkmMenuCommand>) => {
+        setCommandsDirty(true);
         setCommands((prev) => {
             const menu = [...prev.menu];
             menu[index] = { ...menu[index], ...patch };
             return { ...prev, menu };
         });
     };
+
+    const previewLabel = (() => {
+        if (previewConfirm) {
+            return previewConfirm === 'confirm' ? 'Konfirmasi (ya)' : 'Batal';
+        }
+        if (!previewIntent) return null;
+        if (previewIntent === 'unknown') return 'Tidak cocok / unknown';
+        return INTENT_LABEL[previewIntent] || previewIntent;
+    })();
 
     const columns = [
         {
@@ -399,7 +481,10 @@ export default function UmkmStudioPage() {
                     <Button
                         size="small"
                         icon={<MessageOutlined />}
-                        onClick={() => setSimTarget(row)}
+                        onClick={() => {
+                            setSimInitialMessage(undefined);
+                            setSimTarget(row);
+                        }}
                         disabled={!row.enabled || !row.notebook_id}
                     >
                         Simulasi chat
@@ -500,7 +585,7 @@ export default function UmkmStudioPage() {
                 open={drawerOpen}
                 onClose={() => setDrawerOpen(false)}
                 extra={
-                    <Button type="primary" loading={saving} onClick={handleSave}>
+                    <Button type="primary" loading={saving} onClick={() => void handleSave()}>
                         Simpan
                     </Button>
                 }
@@ -600,23 +685,26 @@ export default function UmkmStudioPage() {
                         <Button
                             size="small"
                             icon={<PlusOutlined />}
-                            onClick={() =>
+                            onClick={() => {
+                                setCommandsDirty(true);
                                 setCommands((prev) => ({
                                     ...prev,
                                     menu: [
                                         ...prev.menu,
                                         { digit: '', intent: 'help', label: 'Baru' },
                                     ],
-                                }))
-                            }
+                                }));
+                            }}
                         >
                             Tambah menu
                         </Button>
                         <Button
                             size="small"
                             onClick={() => {
-                                if (defaults) setCommands(structuredClone(defaults));
-                                else message.warning('Default belum termuat');
+                                if (defaults) {
+                                    setCommands(structuredClone(defaults));
+                                    setCommandsDirty(true);
+                                } else message.warning('Default belum termuat');
                             }}
                         >
                             Reset ke default
@@ -652,12 +740,13 @@ export default function UmkmStudioPage() {
                                 danger
                                 size="small"
                                 icon={<DeleteOutlined />}
-                                onClick={() =>
+                                onClick={() => {
+                                    setCommandsDirty(true);
                                     setCommands((prev) => ({
                                         ...prev,
                                         menu: prev.menu.filter((_, i) => i !== index),
-                                    }))
-                                }
+                                    }));
+                                }}
                             />
                         </Space>
                     ))}
@@ -674,12 +763,13 @@ export default function UmkmStudioPage() {
                                 placeholder="Ketik lalu Enter"
                                 tokenSeparators={[',']}
                                 open={false}
-                                onChange={(tags: string[]) =>
+                                onChange={(tags: string[]) => {
+                                    setCommandsDirty(true);
                                     setCommands((prev) => ({
                                         ...prev,
                                         keywords: { ...prev.keywords, [intent]: tags },
-                                    }))
-                                }
+                                    }));
+                                }}
                             />
                         </Form.Item>
                     ))}
@@ -691,9 +781,10 @@ export default function UmkmStudioPage() {
                             placeholder="ya, oke, 1"
                             tokenSeparators={[',']}
                             open={false}
-                            onChange={(tags: string[]) =>
-                                setCommands((prev) => ({ ...prev, confirm: tags }))
-                            }
+                            onChange={(tags: string[]) => {
+                                setCommandsDirty(true);
+                                setCommands((prev) => ({ ...prev, confirm: tags }));
+                            }}
                         />
                     </Form.Item>
                     <Form.Item label="Batal (batal / 0 / …)" style={{ marginBottom: 10 }}>
@@ -703,18 +794,71 @@ export default function UmkmStudioPage() {
                             placeholder="batal, 0"
                             tokenSeparators={[',']}
                             open={false}
-                            onChange={(tags: string[]) =>
-                                setCommands((prev) => ({ ...prev, cancel: tags }))
-                            }
+                            onChange={(tags: string[]) => {
+                                setCommandsDirty(true);
+                                setCommands((prev) => ({ ...prev, cancel: tags }));
+                            }}
                         />
                     </Form.Item>
+
+                    <Divider titlePlacement="start" plain>
+                        Preview perintah
+                    </Divider>
+                    <Paragraph type="secondary" style={{ fontSize: 12, marginTop: -8 }}>
+                        Ketik contoh pesan (atau digit menu) terhadap perintah di atas — prediksi intent
+                        memakai matcher yang sama dengan WhatsApp.
+                    </Paragraph>
+                    <Space.Compact style={{ width: '100%', marginBottom: 8 }}>
+                        <Input
+                            value={previewSample}
+                            placeholder="contoh: cek stok gula / 5 / jual 2 mie"
+                            onChange={(e) => {
+                                setPreviewSample(e.target.value);
+                                setPreviewIntent(null);
+                                setPreviewConfirm(null);
+                            }}
+                            onPressEnter={() => void runPreview()}
+                        />
+                        <Button loading={previewing} onClick={() => void runPreview()}>
+                            Cek intent
+                        </Button>
+                    </Space.Compact>
+                    {previewLabel != null && (
+                        <Paragraph style={{ marginBottom: 8 }}>
+                            Intent:{' '}
+                            <Tag color={previewIntent === 'unknown' && !previewConfirm ? 'default' : 'green'}>
+                                {previewLabel}
+                            </Tag>
+                            {previewIntent && previewIntent !== 'unknown' && !previewConfirm ? (
+                                <Text type="secondary" style={{ fontSize: 11 }}>
+                                    ({previewIntent})
+                                </Text>
+                            ) : null}
+                        </Paragraph>
+                    )}
+                    <Button
+                        icon={<MessageOutlined />}
+                        loading={saving}
+                        disabled={!previewSample.trim()}
+                        onClick={() => void handleTryInSim()}
+                    >
+                        Coba di Simulasi
+                    </Button>
+                    <Paragraph type="secondary" style={{ fontSize: 11, marginTop: 6 }}>
+                        Menyimpan dulu (Simulasi memakai perintah tersimpan), lalu membuka chat dengan
+                        pesan sudah terisi — kirim manual.
+                    </Paragraph>
                 </Form>
             </Drawer>
 
             <WhatsAppSimChatDrawer
                 open={!!simTarget}
                 config={simTarget}
-                onClose={() => setSimTarget(null)}
+                initialMessage={simInitialMessage}
+                onClose={() => {
+                    setSimTarget(null);
+                    setSimInitialMessage(undefined);
+                }}
             />
         </CMSLayout>
     );

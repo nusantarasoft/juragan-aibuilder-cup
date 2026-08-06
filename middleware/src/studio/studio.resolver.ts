@@ -6,6 +6,7 @@ import { StudioWhatsAppService } from './studio-whatsapp.service';
 import { StudioUmkmService } from './studio-umkm.service';
 import { GraphQLJSONObject } from 'graphql-type-json';
 import { DEFAULT_UMKM_COMMANDS } from './studio-umkm-commands';
+import { detectUmkmConfirmReply, detectUmkmIntent } from './studio-umkm.util';
 import { GqlAuthGuard } from '../auth/gql-auth.guard';
 
 /** Shape of the GraphQL context after GqlAuthGuard populates req.user. */
@@ -630,6 +631,23 @@ export class StudioResolver {
     @Query(() => GraphQLJSONObject, { name: 'studioUmkmCommandsDefaults' })
     async studioUmkmCommandsDefaults() {
         return DEFAULT_UMKM_COMMANDS;
+    }
+
+    /**
+     * Preview intent mapping for draft umkm_commands (no DB write).
+     * Uses the same detectUmkmIntent matcher as inbound WhatsApp.
+     */
+    @Query(() => GraphQLJSONObject, { name: 'studioPreviewUmkmIntent' })
+    async studioPreviewUmkmIntent(
+        @Context() context: StudioAuthContext,
+        @Args('text', { type: () => String }) text: string,
+        @Args('commands', { type: () => GraphQLJSONObject, nullable: true })
+        commands?: Record<string, unknown>,
+    ) {
+        this.requireUserId(context);
+        const intent = detectUmkmIntent(text, commands);
+        const confirm = detectUmkmConfirmReply(text, commands);
+        return { intent, confirm };
     }
 
     @Mutation(() => GraphQLJSONObject, { name: 'updateStudioWhatsAppConfig' })
