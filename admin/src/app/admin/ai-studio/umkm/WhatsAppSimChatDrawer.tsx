@@ -21,15 +21,23 @@ type Props = {
     open: boolean;
     onClose: () => void;
     config: StudioWhatsAppConfig | null;
+    /** Prefill composer when opening from command preview (no auto-send). */
+    initialMessage?: string;
 };
 
-export default function WhatsAppSimChatDrawer({ open, onClose, config }: Props) {
+export default function WhatsAppSimChatDrawer({
+    open,
+    onClose,
+    config,
+    initialMessage,
+}: Props) {
     const [phone, setPhone] = useState('6280000000001');
     const [input, setInput] = useState('');
     const [sending, setSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [lines, setLines] = useState<ChatLine[]>([]);
     const bottomRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<any>(null);
 
     useEffect(() => {
         if (open) {
@@ -38,13 +46,34 @@ export default function WhatsAppSimChatDrawer({ open, onClose, config }: Props) 
         }
     }, [open, lines.length]);
 
+    useEffect(() => {
+        if (!open) return;
+        if (initialMessage == null) return;
+        setInput(initialMessage);
+        // Focus composer so Send is one click away (no auto-send).
+        const t = window.setTimeout(() => {
+            inputRef.current?.focus?.();
+        }, 50);
+        return () => window.clearTimeout(t);
+    }, [open, initialMessage]);
+
     const tenantId = config?.tenant_id || '';
     const label = config?.label || tenantId;
 
-    const resetChat = () => {
+    const resetChat = async () => {
         setLines([]);
         setError(null);
         setInput('');
+        if (!tenantId) return;
+        try {
+            await studioService.whatsAppSimReset({
+                tenantId,
+                phone: phone.trim() || undefined,
+            });
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : 'Gagal reset sesi';
+            setError(msg);
+        }
     };
 
     const send = async () => {
@@ -121,7 +150,7 @@ export default function WhatsAppSimChatDrawer({ open, onClose, config }: Props) 
                         ) : (
                             <Tag>handleMessage langsung</Tag>
                         )}
-                        — sama seperti WA live untuk tenant ini.
+                        — sama seperti WA live. Reset membersihkan chat + sesi wizard.
                     </span>
                 }
             />
@@ -199,6 +228,7 @@ export default function WhatsAppSimChatDrawer({ open, onClose, config }: Props) 
 
             <Space.Compact style={{ width: '100%' }}>
                 <Input
+                    ref={inputRef}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Ketik seperti di WhatsApp…"

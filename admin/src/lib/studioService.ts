@@ -818,6 +818,22 @@ export const studioService = {
         return data.studioUmkmCommandsDefaults;
     },
 
+    /** Preview intent for draft commands (same matcher as inbound WA). */
+    async previewUmkmIntent(
+        text: string,
+        commands?: UmkmCommandsConfig | null,
+    ): Promise<{ intent: string; confirm: 'confirm' | 'cancel' | null }> {
+        const data = await graphqlRequest(
+            `
+            query($text: String!, $commands: JSONObject) {
+                studioPreviewUmkmIntent(text: $text, commands: $commands)
+            }
+        `,
+            { text, commands: commands ?? null },
+        );
+        return data.studioPreviewUmkmIntent;
+    },
+
     async updateUmkmCommands(
         notebookId: string,
         commands: UmkmCommandsConfig,
@@ -965,6 +981,22 @@ export const studioService = {
             phone: params.phone ?? null,
         });
         return data.studioWhatsAppSimChat;
+    },
+
+    /** Clear sticky Sim session (wizard / pending / conversation) for a phone. */
+    async whatsAppSimReset(params: {
+        tenantId: string;
+        phone?: string;
+    }): Promise<{ ok: boolean; phone: string; chatId: string }> {
+        const data = await graphqlRequest(`
+            mutation($tenantId: String!, $phone: String) {
+                studioWhatsAppSimReset(tenantId: $tenantId, phone: $phone)
+            }
+        `, {
+            tenantId: params.tenantId,
+            phone: params.phone ?? null,
+        });
+        return data.studioWhatsAppSimReset;
     },
 
     // ── Settings ──────────────────────────────────────────────

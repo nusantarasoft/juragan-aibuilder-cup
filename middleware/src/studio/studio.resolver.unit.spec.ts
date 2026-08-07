@@ -80,6 +80,11 @@ function build() {
             phone: '6280000000001',
             chatId: 'sim:t1:6280000000001',
         }),
+        resetSimSession: vi.fn().mockResolvedValue({
+            ok: true,
+            phone: '6280000000001',
+            chatId: 'sim:t1:6280000000001',
+        }),
     };
     const umkmService = {
         setupUmkmNotebook: vi.fn().mockResolvedValue({ setup: true }),
@@ -547,6 +552,21 @@ describe('StudioResolver — whatsapp/umkm', () => {
         await expect(h.resolver.studioUmkmCommandsDefaults()).resolves.toBe(DEFAULT_UMKM_COMMANDS);
     });
 
+    it('studioPreviewUmkmIntent maps check_stock via draft commands', async () => {
+        const res = await h.resolver.studioPreviewUmkmIntent(
+            ctx(),
+            'cek stok gula',
+            DEFAULT_UMKM_COMMANDS as unknown as Record<string, unknown>,
+        );
+        expect(res).toEqual({ intent: 'check_stock', confirm: null });
+    });
+
+    it('studioPreviewUmkmIntent returns unknown for blank text', async () => {
+        const res = await h.resolver.studioPreviewUmkmIntent(ctx(), '   ', null as any);
+        expect(res.intent).toBe('unknown');
+        expect(res.confirm).toBeNull();
+    });
+
     it('updateStudioWhatsAppConfig without notebookId skips ownership + setup', async () => {
         await h.resolver.updateStudioWhatsAppConfig(
             ctx(), '  ', null as any, true, null as any, undefined as any, undefined as any, undefined as any, undefined as any,
@@ -596,5 +616,16 @@ describe('StudioResolver — whatsapp/umkm', () => {
             phone: '62812',
         });
         expect(res.answer).toBe('ok sim');
+    });
+
+    it('studioWhatsAppSimReset checks ownership then resets session', async () => {
+        const res = await h.resolver.studioWhatsAppSimReset(ctx(), 't1', '62812');
+        expect(h.whatsAppService.getConfig).toHaveBeenCalledWith('t1');
+        expect(h.studioService.assertNotebookOwner).toHaveBeenCalledWith('nb-1', USER_ID);
+        expect(h.whatsAppService.resetSimSession).toHaveBeenCalledWith({
+            tenantId: 't1',
+            phone: '62812',
+        });
+        expect(res.ok).toBe(true);
     });
 });

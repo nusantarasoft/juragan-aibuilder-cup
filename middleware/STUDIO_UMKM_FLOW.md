@@ -23,40 +23,56 @@ Dokumen terkait:
 
 ## 2. Alur bisnis (sudut pandang UMKM)
 
+Default menu digit (`umkm_commands.menu`) — dapat diubah di Admin → UMKM:
+
+| Digit | Intent | Label default |
+|-------|--------|---------------|
+| 0 | `help` | Bantuan |
+| 1 | `ask` | Tanya |
+| 2 | `menu_hub` | Menu (daftar / tambah / stok) |
+| 3 | `purchase_hub` | Belanja |
+| 4 | `list_sales` | Daftar penjualan |
+| 5 | `record_sale` | Tambah penjualan |
+| 6 | `report_hub` | Laporan |
+
+Keyword bebas (contoh): `cek stok` → `check_stock`, `jual …` → `record_sale`, `laporan` → `sales_report`.
+
 ```mermaid
 flowchart TD
     U[UMKM buka WhatsApp]
     U --> M1[Kirim pesan ke nomor bisnis]
     M1 --> W{Jenis pesan?}
 
-    W -->|1 / jual / catat / order| R[Preview penjualan]
-    W -->|2 / cek stok| S[Lihat stok ledger]
-    W -->|3 / daftar barang| K[Katalog produk]
-    W -->|4 / laporan / rekap / omzet| L[Lihat laporan hari ini]
-    W -->|5 / 0 / bantuan / menu| H[Terima panduan format]
-    W -->|bye| X[Penutup]
+    W -->|5 / jual / catat| R[Preview penjualan]
+    W -->|cek stok / stok| S[Lihat stok]
+    W -->|2 / daftar menu| K[Hub atau katalog]
+    W -->|3 / belanja| B[Hub atau catat belanja]
+    W -->|6 / laporan / omzet| L[Laporan]
+    W -->|0 / bantuan| H[Panduan + menu]
+    W -->|1 / tanya| A[Tanya RAG]
 
     R --> P{User: ya/1 atau batal/0?}
-    P -->|ya / 1| RC[Commit: nomor order + total]
+    P -->|ya / 1| RC[Commit order]
     P -->|batal / 0| CX[Draft dibatalkan]
-    L --> LR[Ringkasan: order, omzet, produk terlaris]
 
     H --> M1
     S --> M1
     K --> M1
+    B --> M1
+    A --> M1
     RC --> M1
     CX --> M1
-    LR --> M1
+    L --> M1
 ```
 
 ### Contoh percakapan
 
 ```
-UMKM  → 5
-Bot   → Menu angka 1–5 + contoh format
+UMKM  → 0
+Bot   → Menu angka 0–6 + contoh format
 
-UMKM  → 1
-Bot   → Prompt: kirim detail jual ...
+UMKM  → 5
+Bot   → Prompt / alur tambah penjualan
 
 UMKM  → jual 3 es kopi 45000 tunai
 Bot   → 📋 Konfirmasi penjualan … Ketik ya / 1 atau batal / 0
@@ -64,12 +80,20 @@ Bot   → 📋 Konfirmasi penjualan … Ketik ya / 1 atau batal / 0
 UMKM  → 1
 Bot   → ✅ Penjualan tercatat! No. order WA-... Total Rp 45.000
 
-UMKM  → 2
-Bot   → 📦 Stok tersedia …
+UMKM  → cek stok gula
+Bot   → 📦 Cek Stok …
 
-UMKM  → 4
-Bot   → 📊 Order hari ini: 1, Omzet: Rp 45.000, ...
+UMKM  → 6
+Bot   → Hub laporan / ringkasan omzet
 ```
+
+### Verifikasi perintah di Admin (preview + Sim)
+
+Di **Admin → UMKM Penjualan WA → Edit**:
+
+1. Atur digit menu / keyword (termasuk **Cek stok**).
+2. **Preview perintah** — ketik contoh teks → **Cek intent** memanggil GraphQL `studioPreviewUmkmIntent` (matcher sama `detectUmkmIntent` di middleware).
+3. **Coba di Simulasi** — Simpan dulu, lalu buka Simulasi chat dengan composer terisi (kirim manual). Pipeline sama inbound WA tanpa WAHA.
 
 ---
 
@@ -82,9 +106,10 @@ flowchart LR
     A3[Buat / pilih notebook]
     A4[studioSetupUmkmNotebook]
     A5[Config WhatsApp: notebook + allowlist + guided flow]
-    A6[Uji dari HP]
+    A6[Preview intent + Simulasi chat di Admin]
+    A7[Uji dari HP]
 
-    A1 --> A2 --> A3 --> A4 --> A5 --> A6
+    A1 --> A2 --> A3 --> A4 --> A5 --> A6 --> A7
 ```
 
 | Step | Apa yang terjadi | Output |
@@ -94,7 +119,8 @@ flowchart LR
 | 3 | Notebook AI Studio | UUID notebook |
 | 4 | `studioSetupUmkmNotebook` | `umkm_mode: true` + flow **UMKM Penjualan WA** published |
 | 5 | `updateStudioWhatsAppConfig` | `enabled`, `allowlist_phones`, `use_guided_flow: true` |
-| 6 | Kirim `bantuan` dari HP | Welcome UMKM + menu |
+| 6 | Admin: Preview intent + **Simulasi chat** (opsional) | Konfirmasi mapping perintah tanpa WAHA |
+| 7 | Kirim `bantuan` / `0` dari HP | Welcome UMKM + menu |
 
 ---
 
@@ -168,14 +194,14 @@ stateDiagram-v2
     start --> welcome: auto
     welcome --> listen_intent: pesan sambutan
 
-    listen_intent --> help: keyword bantuan/help/menu atau 0/5/9
+    listen_intent --> help: keyword bantuan/help atau digit 0
     listen_intent --> do_confirm: ya / 1 (saat ada pending)
     listen_intent --> do_cancel: batal / 0 (saat ada pending)
-    listen_intent --> do_list: 3 / daftar/katalog
-    listen_intent --> do_stock: 2 / cek stok
-    listen_intent --> do_report: 4 / keyword laporan/rekap/omzet
-    listen_intent --> do_record: 1 / regex jual/catat/order
-    listen_intent --> do_ask: default / tanya_umum
+    listen_intent --> do_list: daftar menu / list produk
+    listen_intent --> do_stock: cek stok / stok
+    listen_intent --> do_report: laporan/rekap/omzet atau hub 6
+    listen_intent --> do_record: digit 5 / regex jual/catat/order
+    listen_intent --> do_ask: digit 1 / default / tanya_umum
     listen_intent --> goodbye: keyword bye
 
     help --> listen_intent: action umkm_help

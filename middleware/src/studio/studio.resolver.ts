@@ -6,6 +6,7 @@ import { StudioWhatsAppService } from './studio-whatsapp.service';
 import { StudioUmkmService } from './studio-umkm.service';
 import { GraphQLJSONObject } from 'graphql-type-json';
 import { DEFAULT_UMKM_COMMANDS } from './studio-umkm-commands';
+import { detectUmkmConfirmReply, detectUmkmIntent } from './studio-umkm.util';
 import { GqlAuthGuard } from '../auth/gql-auth.guard';
 
 /** Shape of the GraphQL context after GqlAuthGuard populates req.user. */
@@ -632,6 +633,23 @@ export class StudioResolver {
         return DEFAULT_UMKM_COMMANDS;
     }
 
+    /**
+     * Preview intent mapping for draft umkm_commands (no DB write).
+     * Uses the same detectUmkmIntent matcher as inbound WhatsApp.
+     */
+    @Query(() => GraphQLJSONObject, { name: 'studioPreviewUmkmIntent' })
+    async studioPreviewUmkmIntent(
+        @Context() context: StudioAuthContext,
+        @Args('text', { type: () => String }) text: string,
+        @Args('commands', { type: () => GraphQLJSONObject, nullable: true })
+        commands?: Record<string, unknown>,
+    ) {
+        this.requireUserId(context);
+        const intent = detectUmkmIntent(text, commands);
+        const confirm = detectUmkmConfirmReply(text, commands);
+        return { intent, confirm };
+    }
+
     @Mutation(() => GraphQLJSONObject, { name: 'updateStudioWhatsAppConfig' })
     async updateStudioWhatsAppConfig(
         @Context() context: StudioAuthContext,
@@ -692,6 +710,27 @@ export class StudioResolver {
         return this.studioWhatsAppService.simulateInboundMessage({
             tenantId,
             message,
+            phone: phone || undefined,
+        });
+    }
+
+    /** Clear Sim chat sticky state (wizard / pending / sim session) for a phone. */
+    @Mutation(() => GraphQLJSONObject, { name: 'studioWhatsAppSimReset' })
+    async studioWhatsAppSimReset(
+        @Context() context: StudioAuthContext,
+        @Args('tenantId', { type: () => String }) tenantId: string,
+        @Args('phone', { type: () => String, nullable: true }) phone?: string,
+    ) {
+        this.requireUserId(context);
+        const config = await this.studioWhatsAppService.getConfig(tenantId);
+        if (config?.notebook_id) {
+            await this.studioService.assertNotebookOwner(
+                config.notebook_id,
+                this.requireUserId(context),
+            );
+        }
+        return this.studioWhatsAppService.resetSimSession({
+            tenantId,
             phone: phone || undefined,
         });
     }
