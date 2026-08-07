@@ -1,0 +1,25 @@
+{
+  "date": "2026-08-07",
+  "url": "http://localhost:3003/admin/ai-studio/umkm",
+  "healthScore": 88,
+  "baselineHealthScore": 78,
+  "tier": "standard",
+  "branch": "development-akbar",
+  "commit": "bc441ee",
+  "issues": [
+    { "id": "ISSUE-001", "title": "Nama toko empty on Edit vs table fallback", "severity": "medium", "category": "ux", "status": "verified" },
+    { "id": "ISSUE-002", "title": "Disabled Simulasi without tooltip", "severity": "medium", "category": "accessibility", "status": "verified" },
+    { "id": "ISSUE-003", "title": "Validation from Try/Save missing toast", "severity": "medium", "category": "functional", "status": "verified" },
+    { "id": "ISSUE-004", "title": "antd static message App warning", "severity": "low", "category": "console", "status": "deferred" }
+  ],
+  "categoryScores": {
+    "console": 70,
+    "links": 100,
+    "visual": 92,
+    "functional": 92,
+    "ux": 90,
+    "performance": 90,
+    "content": 95,
+    "accessibility": 85
+  }
+}
