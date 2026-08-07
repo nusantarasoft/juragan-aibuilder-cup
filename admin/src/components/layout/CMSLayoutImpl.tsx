@@ -230,6 +230,22 @@ interface CMSLayoutProps {
     breadcrumb?: { title: string; path?: string }[];
 }
 
+/** Product casing for AI Studio routes (and a few common CMS segments). */
+const BREADCRUMB_LABELS: Record<string, string> = {
+    "ai-studio": "AI Studio",
+    umkm: "UMKM",
+    "ai-gateway": "WhatsApp & WAHA",
+    "waha-setup": "Setup WAHA",
+    "web-crawler": "Web Crawler",
+    "agent-builder": "Agent Builder",
+    "knowledge-graph": "Knowledge Graph",
+    "label-studio": "Label Studio",
+    "guide-flows": "Guide Flows",
+    settings: "Settings",
+    playground: "Playground",
+    advanced: "Advanced",
+};
+
 // Generate breadcrumb items from pathname
 function generateBreadcrumb(pathname: string): { title: string; path?: string }[] {
     const segments = pathname.split("/").filter(Boolean);
@@ -241,7 +257,9 @@ function generateBreadcrumb(pathname: string): { title: string; path?: string }[
     segments.forEach((segment) => {
         if (segment === "admin") return;
         currentPath += `/${segment}`;
-        const title = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ");
+        const title =
+            BREADCRUMB_LABELS[segment] ??
+            segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ");
         items.push({ title, path: `/admin${currentPath}` });
     });
 
