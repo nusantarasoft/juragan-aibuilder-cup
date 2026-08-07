@@ -84,9 +84,7 @@ import AIAssistantPanel from "./AIAssistantPanel";
 import { useAuth } from "@/context/AuthContext";
 import { useStudioUserId } from "./useStudioUserId";
 import ReactMarkdown from 'react-markdown';
-import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { AuroraText } from "@/components/magicui/aurora-text";
 import { TooltipWrapper as AnimatedTooltip } from '@/components/mvpblocks/AnimatedTooltip';
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -614,17 +612,8 @@ export default function AIStudioPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>AI Studio</AuroraText>}
-            subTitle={
-                <DecryptedText
-                    text="Sources · Chat · Studio — notebook knowledge base ala NotebookLM"
-                    animateOn="view"
-                    revealDirection="center"
-                    speed={40}
-                    maxIterations={15}
-                    sequential={true}
-                />
-            }
+            title="AI Studio"
+            subTitle="Sources · Chat · Studio — notebook knowledge base ala NotebookLM"
         >
             <div className="flex flex-col gap-3 h-full">
                 {/* Header: notebook dropdown + actions */}
@@ -754,10 +743,10 @@ export default function AIStudioPage() {
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-full gap-4 opacity-80 p-6">
                                     <Title level={4} className="!mb-0">
-                                        <AuroraText colors={[themeColor, `${themeColor}cc`]}>Welcome to AI Studio</AuroraText>
+                                        Pilih atau buat notebook
                                     </Title>
                                     <Text className="text-gray-400 text-sm text-center max-w-md">
-                                        Tambahkan sumber, chat di tengah, generate artefak di panel Studio — layout seperti NotebookLM.
+                                        Tambahkan sumber, chat di tengah, lalu generate artefak di panel Studio.
                                     </Text>
                                 </div>
                             )}

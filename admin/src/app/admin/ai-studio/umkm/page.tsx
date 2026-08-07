@@ -30,9 +30,6 @@ import {
     MessageOutlined,
     DeleteOutlined,
 } from '@ant-design/icons';
-import { usePreferencesStore } from '@/store/usePreferencesStore';
-import { AuroraText } from '@/components/magicui/aurora-text';
-import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     studioService,
     StudioNotebook,
@@ -149,7 +146,6 @@ function commandsFromNotebook(nb: StudioNotebook | undefined): UmkmCommandsConfi
 }
 
 export default function UmkmStudioPage() {
-    const { themeColor } = usePreferencesStore();
     const { loading: authLoading } = useAuth();
     const userId = useStudioUserId();
 
@@ -531,21 +527,8 @@ export default function UmkmStudioPage() {
 
     return (
         <CMSLayout
-            title={
-                <AuroraText colors={[themeColor, '#25d366', '#f59e0b']}>
-                    UMKM Penjualan WA
-                </AuroraText>
-            }
-            subTitle={
-                <DecryptedText
-                    text="Satu nomor WA admin — tiap UMKM boleh punya beberapa nomor pemilik toko"
-                    animateOn="view"
-                    revealDirection="center"
-                    speed={40}
-                    maxIterations={12}
-                    sequential
-                />
-            }
+            title="UMKM Penjualan WA"
+            subTitle="Satu nomor WA admin — tiap UMKM boleh punya beberapa nomor pemilik toko"
             extra={[
                 <Button key="add" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                     Tambah UMKM

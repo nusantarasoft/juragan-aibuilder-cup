@@ -33,8 +33,6 @@ import {
     LogoutOutlined,
 } from '@ant-design/icons';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
-import { AuroraText } from '@/components/magicui/aurora-text';
-import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     studioService,
     StudioNotebook,
@@ -270,21 +268,8 @@ function WhatsAppGatewayPageContent() {
 
     return (
         <CMSLayout
-            title={
-                <AuroraText colors={[themeColor, '#25d366', '#8b5cf6']}>
-                    WhatsApp & WAHA
-                </AuroraText>
-            }
-            subTitle={
-                <DecryptedText
-                    text="Hubungkan AI Studio ke WhatsApp — Pair WAHA dan Konfigurasi AI Bot"
-                    animateOn="view"
-                    revealDirection="center"
-                    speed={40}
-                    maxIterations={15}
-                    sequential
-                />
-            }
+            title="WhatsApp & WAHA"
+            subTitle="Hubungkan AI Studio ke WhatsApp — pair WAHA dan konfigurasi bot"
             extra={[
                 pairedButStuck && (
                     <Button key="sync" loading={syncing} onClick={handleSync} type="primary">
