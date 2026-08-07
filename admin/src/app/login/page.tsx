@@ -1,23 +1,37 @@
 "use client";
 
-import React, { useState } from "react";
-import { Form, Input, Button, Card, Typography, Alert, Space, Divider } from "antd";
+import React, { useEffect, useMemo, useState } from "react";
+import { Form, Input, Button, Card, Typography, Alert, Space, Divider, Spin } from "antd";
 import { UserOutlined, LockOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { safeAdminPath } from "@/lib/safeAdminPath";
 
 const { Title, Text } = Typography;
 
-export default function LoginPage() {
+function LoginForm() {
     const router = useRouter();
-    const { signIn, verifyTwoFactor } = useAuth();
-    const [loading, setLoading] = useState(false);
+    const searchParams = useSearchParams();
+    const { signIn, verifyTwoFactor, sessionStatus, loading } = useAuth();
+    const [formLoading, setFormLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showTwoFactor, setShowTwoFactor] = useState(false);
     const [twoFactorCode, setTwoFactorCode] = useState("");
 
+    const nextPath = useMemo(
+        () => safeAdminPath(searchParams.get("next")),
+        [searchParams],
+    );
+
+    // D6 / D15: bounce or restore only when me succeeded (authenticated)
+    useEffect(() => {
+        if (sessionStatus === "authenticated") {
+            router.replace(nextPath);
+        }
+    }, [sessionStatus, nextPath, router]);
+
     const onFinish = async (values: { email: string; password: string }) => {
-        setLoading(true);
+        setFormLoading(true);
         setError(null);
 
         const result = await signIn(values.email, values.password);
@@ -27,14 +41,14 @@ export default function LoginPage() {
         } else if (result.requiresTwoFactor) {
             setShowTwoFactor(true);
         } else {
-            router.push("/admin/dashboard");
+            router.replace(nextPath);
         }
 
-        setLoading(false);
+        setFormLoading(false);
     };
 
     const onVerifyTwoFactor = async () => {
-        setLoading(true);
+        setFormLoading(true);
         setError(null);
 
         const result = await verifyTwoFactor(twoFactorCode);
@@ -42,11 +56,32 @@ export default function LoginPage() {
         if (result.error) {
             setError(result.error);
         } else {
-            router.push("/admin/dashboard");
+            router.replace(nextPath);
         }
 
-        setLoading(false);
+        setFormLoading(false);
     };
+
+    if (loading || sessionStatus === "authenticated") {
+        return (
+            <div
+                style={{
+                    minHeight: "100vh",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexDirection: "column",
+                    gap: 12,
+                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                }}
+            >
+                <Spin size="large" />
+                <Text style={{ color: "#fff" }}>
+                    {sessionStatus === "authenticated" ? "Mengalihkan…" : "Memeriksa sesi…"}
+                </Text>
+            </div>
+        );
+    }
 
     return (
         <div
@@ -127,7 +162,7 @@ export default function LoginPage() {
                             <Button
                                 type="primary"
                                 htmlType="submit"
-                                loading={loading}
+                                loading={formLoading}
                                 block
                             >
                                 Sign In
@@ -153,7 +188,7 @@ export default function LoginPage() {
                         <Button
                             type="primary"
                             onClick={onVerifyTwoFactor}
-                            loading={loading}
+                            loading={formLoading}
                             block
                             disabled={twoFactorCode.length !== 6}
                         >
@@ -180,5 +215,26 @@ export default function LoginPage() {
                 </Text>
             </Card>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <React.Suspense
+            fallback={
+                <div
+                    style={{
+                        minHeight: "100vh",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                    }}
+                >
+                    <Spin size="large" />
+                </div>
+            }
+        >
+            <LoginForm />
+        </React.Suspense>
     );
 }
