@@ -18,6 +18,7 @@ import {
     Switch,
     Table,
     Tag,
+    Tooltip,
     Typography,
 } from 'antd';
 import {
@@ -256,7 +257,8 @@ export default function UmkmStudioPage() {
         setEditing(row);
         form.setFieldsValue({
             tenantId: row.tenant_id,
-            label: row.label ?? '',
+            // Match table display: fall back to tenant_id when label is empty
+            label: row.label || row.tenant_id || '',
             wahaSession: row.waha_session ?? '',
             ownerPhones: collectConfigOwnerPhones(row),
             notebookId: row.notebook_id ?? undefined,
@@ -285,9 +287,9 @@ export default function UmkmStudioPage() {
     };
 
     const handleSave = async (opts?: { openSimWith?: string }): Promise<boolean> => {
-        const values = await form.validateFields();
-        setSaving(true);
         try {
+            const values = await form.validateFields();
+            setSaving(true);
             let notebookId = values.notebookId as string | undefined;
 
             if (!editing && values.createNewNotebook) {
@@ -342,8 +344,19 @@ export default function UmkmStudioPage() {
             }
             return true;
         } catch (e: unknown) {
-            const err = e as { message?: string };
-            message.error(err.message || 'Gagal menyimpan');
+            const err = e as {
+                message?: string;
+                errorFields?: { errors?: string[]; name?: (string | number)[] }[];
+            };
+            if (err.errorFields?.length) {
+                const first = err.errorFields[0]?.errors?.[0] || 'Lengkapi field wajib dulu';
+                message.error(first);
+                form.scrollToField(err.errorFields[0]?.name?.[0] as string, {
+                    block: 'center',
+                });
+            } else {
+                message.error(err.message || 'Gagal menyimpan');
+            }
             return false;
         } finally {
             setSaving(false);
@@ -478,17 +491,27 @@ export default function UmkmStudioPage() {
                     >
                         Setup UMKM
                     </Button>
-                    <Button
-                        size="small"
-                        icon={<MessageOutlined />}
-                        onClick={() => {
-                            setSimInitialMessage(undefined);
-                            setSimTarget(row);
-                        }}
-                        disabled={!row.enabled || !row.notebook_id}
+                    <Tooltip
+                        title={
+                            !row.enabled || !row.notebook_id
+                                ? 'Aktifkan WhatsApp dan set notebook dulu'
+                                : undefined
+                        }
                     >
-                        Simulasi chat
-                    </Button>
+                        <span style={{ display: 'inline-block' }}>
+                            <Button
+                                size="small"
+                                icon={<MessageOutlined />}
+                                onClick={() => {
+                                    setSimInitialMessage(undefined);
+                                    setSimTarget(row);
+                                }}
+                                disabled={!row.enabled || !row.notebook_id}
+                            >
+                                Simulasi chat
+                            </Button>
+                        </span>
+                    </Tooltip>
                     <Link href={`/admin/ai-studio/ai-gateway?tenant=${encodeURIComponent(row.tenant_id)}`}>
                         <Button size="small" icon={<WhatsAppOutlined />}>
                             WA
