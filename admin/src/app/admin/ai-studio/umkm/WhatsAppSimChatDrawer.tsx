@@ -60,10 +60,20 @@ export default function WhatsAppSimChatDrawer({
     const tenantId = config?.tenant_id || '';
     const label = config?.label || tenantId;
 
-    const resetChat = () => {
+    const resetChat = async () => {
         setLines([]);
         setError(null);
         setInput('');
+        if (!tenantId) return;
+        try {
+            await studioService.whatsAppSimReset({
+                tenantId,
+                phone: phone.trim() || undefined,
+            });
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : 'Gagal reset sesi';
+            setError(msg);
+        }
     };
 
     const send = async () => {
@@ -140,7 +150,7 @@ export default function WhatsAppSimChatDrawer({
                         ) : (
                             <Tag>handleMessage langsung</Tag>
                         )}
-                        — sama seperti WA live untuk tenant ini.
+                        — sama seperti WA live. Reset membersihkan chat + sesi wizard.
                     </span>
                 }
             />

@@ -983,6 +983,22 @@ export const studioService = {
         return data.studioWhatsAppSimChat;
     },
 
+    /** Clear sticky Sim session (wizard / pending / conversation) for a phone. */
+    async whatsAppSimReset(params: {
+        tenantId: string;
+        phone?: string;
+    }): Promise<{ ok: boolean; phone: string; chatId: string }> {
+        const data = await graphqlRequest(`
+            mutation($tenantId: String!, $phone: String) {
+                studioWhatsAppSimReset(tenantId: $tenantId, phone: $phone)
+            }
+        `, {
+            tenantId: params.tenantId,
+            phone: params.phone ?? null,
+        });
+        return data.studioWhatsAppSimReset;
+    },
+
     // ── Settings ──────────────────────────────────────────────
 
     async getSettings(tenantId?: string): Promise<any> {

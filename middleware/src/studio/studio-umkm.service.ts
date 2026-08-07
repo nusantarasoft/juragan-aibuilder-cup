@@ -1624,6 +1624,49 @@ export class StudioUmkmService {
         this.clearWizard(tenantId, phone, conversationId);
     }
 
+    /**
+     * Wipe in-flight UMKM state for a chat (wizard + pending sale/purchase).
+     * Used by admin Sim Reset so UI clear also drops sticky multi-turn state.
+     */
+    resetSessionState(tenantId: string, phone?: string, conversationId?: string): void {
+        const tid = String(tenantId || '').trim();
+        if (!tid) return;
+        const memPending = this.getPendingSale(tid, phone, conversationId);
+        this.clearPendingSale(tid, phone, conversationId);
+        if (memPending?.pendingId) {
+            void this.markPendingSaleStatus(memPending.pendingId, 'cancelled');
+        } else {
+            void this.expirePendingSalesInDb(tid, phone, conversationId);
+        }
+        this.clearPendingPurchase(tid, phone, conversationId, 'cancelled');
+        this.clearWizard(tid, phone, conversationId);
+    }
+
+    private async expirePendingSalesInDb(
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+    ): Promise<void> {
+        try {
+            let q = this.admin()
+                .from('studio_umkm_pending_sales')
+                .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+                .eq('tenant_id', tenantId)
+                .eq('status', 'pending');
+            if (conversationId) {
+                q = q.eq('conversation_id', conversationId);
+            } else if (phone) {
+                q = q.eq('phone', phone);
+            } else {
+                return;
+            }
+            const { error } = await q;
+            if (error) this.logger.warn(`expirePendingSalesInDb: ${error.message}`);
+        } catch (e: any) {
+            this.logger.warn(`expirePendingSalesInDb error: ${e?.message}`);
+        }
+    }
+
     /** Stage multi-turn sale slot fill (guided / external callers). */
     startSaleSlotFill(
         tenantId: string,

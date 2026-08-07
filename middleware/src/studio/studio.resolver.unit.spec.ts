@@ -80,6 +80,11 @@ function build() {
             phone: '6280000000001',
             chatId: 'sim:t1:6280000000001',
         }),
+        resetSimSession: vi.fn().mockResolvedValue({
+            ok: true,
+            phone: '6280000000001',
+            chatId: 'sim:t1:6280000000001',
+        }),
     };
     const umkmService = {
         setupUmkmNotebook: vi.fn().mockResolvedValue({ setup: true }),
@@ -611,5 +616,16 @@ describe('StudioResolver — whatsapp/umkm', () => {
             phone: '62812',
         });
         expect(res.answer).toBe('ok sim');
+    });
+
+    it('studioWhatsAppSimReset checks ownership then resets session', async () => {
+        const res = await h.resolver.studioWhatsAppSimReset(ctx(), 't1', '62812');
+        expect(h.whatsAppService.getConfig).toHaveBeenCalledWith('t1');
+        expect(h.studioService.assertNotebookOwner).toHaveBeenCalledWith('nb-1', USER_ID);
+        expect(h.whatsAppService.resetSimSession).toHaveBeenCalledWith({
+            tenantId: 't1',
+            phone: '62812',
+        });
+        expect(res.ok).toBe(true);
     });
 });

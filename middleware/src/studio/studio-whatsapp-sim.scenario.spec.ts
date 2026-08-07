@@ -90,11 +90,12 @@ function makeSim(opts?: SimOpts) {
                     return b;
                 }
                 if (table === 'studio_whatsapp_sessions') {
-                    const state: { chatId?: string } = {};
+                    const state: { chatId?: string; tenantId?: string } = {};
                     const b: any = {
                         select: vi.fn().mockReturnThis(),
                         eq: vi.fn((col: string, val: string) => {
                             if (col === 'chat_id') state.chatId = val;
+                            if (col === 'tenant_id') state.tenantId = val;
                             return b;
                         }),
                         maybeSingle: vi.fn(async () => {
@@ -112,6 +113,20 @@ function makeSim(opts?: SimOpts) {
                             eq: vi.fn().mockReturnValue({
                                 eq: vi.fn().mockResolvedValue({ data: null, error: null }),
                             }),
+                        }),
+                        delete: vi.fn(() => {
+                            const del: any = {
+                                eq: vi.fn((col: string, val: string) => {
+                                    if (col === 'chat_id') state.chatId = val;
+                                    if (col === 'tenant_id') state.tenantId = val;
+                                    return del;
+                                }),
+                                then: (resolve: (v: unknown) => unknown) => {
+                                    if (state.chatId) sessions.delete(state.chatId);
+                                    return Promise.resolve(resolve({ data: null, error: null }));
+                                },
+                            };
+                            return del;
                         }),
                     };
                     return b;
@@ -573,5 +588,24 @@ describe('PO — simulasi WA: apple-to-apple & isolasi', () => {
         const b1 = await chat('jual', '6281111000002');
         expect(b1.conversationId).not.toBe(a1.conversationId);
         expect(b1.chatId).toContain('6281111000002');
+    });
+
+    it('A4: resetSimSession clears sticky sale wizard so next command is top-level', async () => {
+        const { wa, chat, sessions } = makeSim();
+        const phone = '6281111000099';
+        const start = await chat('5', phone);
+        expect(start.answer).toMatch(/Barang apa yang dijual|Siap catat penjualan/i);
+
+        const stuck = await chat('cek stok', phone);
+        expect(stuck.answer).toMatch(/Harga|berapa|Oke —/i);
+
+        const reset = await wa.resetSimSession({ tenantId: TENANT, phone });
+        expect(reset.ok).toBe(true);
+        expect(reset.chatId).toBe(`sim:${TENANT}:${phone}`);
+        expect(sessions.has(reset.chatId)).toBe(false);
+
+        const after = await chat('cek stok', phone);
+        expect(after.answer).toMatch(/Cek stok yang mana|Cek Stok|stok/i);
+        expect(after.answer).not.toMatch(/Harga .* berapa/i);
     });
 });

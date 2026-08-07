@@ -713,4 +713,25 @@ export class StudioResolver {
             phone: phone || undefined,
         });
     }
+
+    /** Clear Sim chat sticky state (wizard / pending / sim session) for a phone. */
+    @Mutation(() => GraphQLJSONObject, { name: 'studioWhatsAppSimReset' })
+    async studioWhatsAppSimReset(
+        @Context() context: StudioAuthContext,
+        @Args('tenantId', { type: () => String }) tenantId: string,
+        @Args('phone', { type: () => String, nullable: true }) phone?: string,
+    ) {
+        this.requireUserId(context);
+        const config = await this.studioWhatsAppService.getConfig(tenantId);
+        if (config?.notebook_id) {
+            await this.studioService.assertNotebookOwner(
+                config.notebook_id,
+                this.requireUserId(context),
+            );
+        }
+        return this.studioWhatsAppService.resetSimSession({
+            tenantId,
+            phone: phone || undefined,
+        });
+    }
 }

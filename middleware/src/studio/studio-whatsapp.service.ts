@@ -434,6 +434,46 @@ export class StudioWhatsAppService {
     }
 
     /**
+     * Admin Sim Reset: clear sticky UMKM wizard/pending state and drop the sim WA session row
+     * so the next message starts a fresh conversation (UI clear alone is not enough).
+     */
+    async resetSimSession(params: {
+        tenantId: string;
+        phone?: string;
+    }): Promise<{ ok: true; phone: string; chatId: string }> {
+        const tenantId = String(params.tenantId || '').trim();
+        if (!tenantId) throw new BadRequestException('tenantId required');
+
+        const phone = normalizePhoneDigits(params.phone || '6280000000001');
+        if (phone.length < 8) throw new BadRequestException('phone tidak valid');
+
+        const chatId = `sim:${tenantId}:${phone}`;
+
+        const { data: existing } = await this.admin()
+            .from('studio_whatsapp_sessions')
+            .select('conversation_id')
+            .eq('tenant_id', tenantId)
+            .eq('chat_id', chatId)
+            .maybeSingle();
+
+        const conversationId =
+            existing?.conversation_id != null ? String(existing.conversation_id) : undefined;
+
+        this.umkmService.resetSessionState(tenantId, phone, conversationId);
+
+        const { error } = await this.admin()
+            .from('studio_whatsapp_sessions')
+            .delete()
+            .eq('tenant_id', tenantId)
+            .eq('chat_id', chatId);
+        if (error) {
+            this.logger.warn(`resetSimSession delete session: ${error.message}`);
+        }
+
+        return { ok: true, phone, chatId };
+    }
+
+    /**
      * Shared WA inbound pipeline (webhook + simulator).
      */
     private async processInboundCore(opts: {
