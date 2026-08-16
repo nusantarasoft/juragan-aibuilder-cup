@@ -5,13 +5,14 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { WahaClientService } from '../waha/waha-client.service';
 import { StudioService } from './studio.service';
 import { GuideFlowService } from './guide-flow.service';
-import { StudioDbContextService } from './studio-db-context.service';
+import { StudioDbContextService, getUmkmCommandsFromConfig } from './studio-db-context.service';
 import { StudioUmkmService } from './studio-umkm.service';
+import { StudioUmkmAgenticAskService } from './studio-umkm-agentic-ask.service';
 import {
     detectUmkmFeedback,
     formatFeedbackThanks,
 } from './studio-umkm-feedback.util';
-import { detectUmkmConfirmReply } from './studio-umkm.util';
+import { detectUmkmConfirmReply, detectUmkmIntent } from './studio-umkm.util';
 import { assertNoSupabaseError } from './studio-supabase.util';
 import {
     collectUmkmOwnerPhones,
@@ -32,6 +33,7 @@ const RATE_LIMIT_MESSAGE =
     'Terlalu banyak pesan dalam waktu singkat. Mohon tunggu sebentar sebelum mengirim lagi.';
 const UNREGISTERED_SENDER_MESSAGE =
     'Nomor Anda belum terdaftar sebagai pemilik UMKM. Hubungi admin untuk mendaftarkan nomor HP Anda.';
+export const UMKM_INBOUND_APOLOGY = 'Sistem sibuk, ketik ulang.';
 
 export type StudioWhatsAppConfigRow = {
     tenant_id: string;
@@ -58,6 +60,7 @@ export class StudioWhatsAppService {
         private readonly guideFlowService: GuideFlowService,
         private readonly dbContextService: StudioDbContextService,
         private readonly umkmService: StudioUmkmService,
+        private readonly agenticAskService: StudioUmkmAgenticAskService,
     ) {
         this.rateLimiter = new StudioWhatsAppRateLimiter(this.getRateLimitPerMinute());
     }
@@ -550,28 +553,64 @@ export class StudioWhatsAppService {
 
         let answer: string;
         let path: 'guided' | 'umkm' | 'rag' = 'rag';
-        if (config.use_guided_flow) {
-            path = 'guided';
-            answer = await this.runGuidedTurn(
-                config.notebook_id!,
-                question,
-                conversationId,
-                chatId,
-                tenantId,
-            );
-        } else if (umkmMode) {
-            path = 'umkm';
-            const umkmAnswer = await this.umkmService.handleMessage(
-                question,
-                tenantId,
-                phone,
-                { ...notebookCfg, tenant_id: tenantId },
-                { conversationId },
-            );
-            if (umkmAnswer) {
-                answer = umkmAnswer;
+        try {
+            if (umkmMode) {
+                path = 'umkm';
+                const umkmAnswer = await this.umkmService.handleMessage(
+                    question,
+                    tenantId,
+                    phone,
+                    { ...notebookCfg, tenant_id: tenantId },
+                    { conversationId },
+                );
+                if (umkmAnswer) {
+                    answer = umkmAnswer;
+                } else {
+                    const commands = getUmkmCommandsFromConfig({
+                        ...notebookCfg,
+                        tenant_id: tenantId,
+                    });
+                    if (detectUmkmIntent(question, commands) === 'ask') {
+                        const lines = await this.studioService.getRecentConversationLines(
+                            conversationId,
+                            12,
+                        );
+                        const agentic = await this.agenticAskService.answer(
+                            {
+                                question,
+                                notebookId: config.notebook_id!,
+                                conversationId,
+                                tenantId,
+                                notebookName: notebook?.name,
+                                conversationLines: lines.map(
+                                    (l) =>
+                                        `${l.role === 'assistant' ? 'Assistant' : 'User'}: ${l.content}`,
+                                ),
+                            },
+                            { ...notebookCfg, tenant_id: tenantId },
+                        );
+                        answer = agentic.answer || '';
+                    } else {
+                        path = 'rag';
+                        const result = await this.studioService.chat(
+                            config.notebook_id!,
+                            question,
+                            conversationId,
+                            undefined,
+                        );
+                        answer = result.answer || '';
+                    }
+                }
+            } else if (config.use_guided_flow) {
+                path = 'guided';
+                answer = await this.runGuidedTurn(
+                    config.notebook_id!,
+                    question,
+                    conversationId,
+                    chatId,
+                    tenantId,
+                );
             } else {
-                path = 'rag';
                 const result = await this.studioService.chat(
                     config.notebook_id!,
                     question,
@@ -580,16 +619,15 @@ export class StudioWhatsAppService {
                 );
                 answer = result.answer || '';
             }
-        } else {
-            const result = await this.studioService.chat(
-                config.notebook_id!,
-                question,
-                conversationId,
-                undefined,
+        } catch (e: any) {
+            this.logger.error(
+                `WA inbound failed tenant=${tenantId} sender=${phone}: ${e?.message}`,
+                e?.stack,
             );
-            answer = result.answer || '';
+            answer = UMKM_INBOUND_APOLOGY;
         }
 
+        this.logger.log(`WA inbound path=${path} tenant=${tenantId} sender=${phone}`);
         return { answer, conversationId, path, phone, chatId };
     }
 

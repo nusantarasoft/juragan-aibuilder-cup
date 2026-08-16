@@ -7,6 +7,7 @@ import {
     detectUmkmConfirmReply,
     detectUmkmIntent,
     detectUmkmMenuDigit,
+    isUmkmGreetingOnly,
     extractRupiahAmounts,
     extractStockProductQuery,
     formatDailyReportWa,
@@ -49,6 +50,10 @@ describe('studio-umkm.util', () => {
         expect(detectUmkmIntent('stok kopi berapa')).toBe('check_stock');
         expect(detectUmkmIntent('bantuan')).toBe('help');
         expect(detectUmkmIntent('halo')).toBe('unknown');
+        expect(isUmkmGreetingOnly('halo')).toBe(true);
+        expect(isUmkmGreetingOnly('selamat pagi')).toBe(true);
+        expect(isUmkmGreetingOnly('halo jual 1 bakso')).toBe(false);
+        expect(isUmkmGreetingOnly('1')).toBe(false);
         expect(detectUmkmMenuDigit('2\n[User mengirim media yang tidak dapat diunduh]')).toBe(
             'menu_hub',
         );

@@ -145,11 +145,7 @@ export default function WhatsAppSimChatDrawer({
                 message={
                     <span style={{ fontSize: 12 }}>
                         Mode config:{' '}
-                        {config?.use_guided_flow ? (
-                            <Tag color="blue">guided flow</Tag>
-                        ) : (
-                            <Tag>handleMessage langsung</Tag>
-                        )}
+                        <Tag>handleMessage langsung</Tag>
                         — sama seperti WA live. Reset membersihkan chat + sesi wizard.
                     </span>
                 }

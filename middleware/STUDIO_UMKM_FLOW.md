@@ -105,7 +105,7 @@ flowchart LR
     A2[Pair WAHA QR]
     A3[Buat / pilih notebook]
     A4[studioSetupUmkmNotebook]
-    A5[Config WhatsApp: notebook + allowlist + guided flow]
+    A5[Config WhatsApp: notebook + allowlist, use_guided_flow false]
     A6[Preview intent + Simulasi chat di Admin]
     A7[Uji dari HP]
 
@@ -117,8 +117,8 @@ flowchart LR
 | 1 | Jalankan SQL schema & view | Tabel `ecom_orders`, view `v_studio_sales_today` |
 | 2 | Pair WAHA | Session `WORKING`, nomor bisnis aktif |
 | 3 | Notebook AI Studio | UUID notebook |
-| 4 | `studioSetupUmkmNotebook` | `umkm_mode: true` + flow **UMKM Penjualan WA** published |
-| 5 | `updateStudioWhatsAppConfig` | `enabled`, `allowlist_phones`, `use_guided_flow: true` |
+| 4 | `studioSetupUmkmNotebook` | `umkm_mode: true` (default **tidak** publish Guide Flow) |
+| 5 | `updateStudioWhatsAppConfig` | `enabled`, `allowlist_phones`, `use_guided_flow: false` |
 | 6 | Admin: Preview intent + **Simulasi chat** (opsional) | Konfirmasi mapping perintah tanpa WAHA |
 | 7 | Kirim `bantuan` / `0` dari HP | Welcome UMKM + menu |
 
@@ -144,7 +144,11 @@ sequenceDiagram
     MW->>MW: cek allowlist + rate limit
     MW->>DB: resolveSession(chat_id → conversation_id)
 
-    alt use_guided_flow = true
+    alt umkm_mode = true
+        MW->>UK: handleMessage()
+        UK->>DB: WRITE atau READ
+        Note over MW: tanya/null ask → Agentic Ask; null lain → RAG
+    else use_guided_flow = true (bukan UMKM)
         MW->>GF: runGuidedTurn()
         GF->>GF: cek guide_flow_id vs published flow
         alt flow mismatch / belum bound
@@ -153,9 +157,6 @@ sequenceDiagram
         GF->>UK: action node (record_sale / sales_report / umkm_help)
         UK->>DB: INSERT order atau SELECT views
         UK-->>GF: teks balasan
-    else umkm_mode tanpa guided flow
-        MW->>UK: handleMessage() intent routing
-        UK->>DB: WRITE atau READ
     else mode generik
         MW->>MW: StudioService.chat() RAG
     end
@@ -173,8 +174,9 @@ handleWebhook()
   ├─ allowlist + rate limit
   ├─ resolveSession(chat_id)
   └─ routing jawaban:
-       ├─ use_guided_flow=true     → runGuidedTurn()      ← disarankan UMKM
-       ├─ umkm_mode && !guided     → StudioUmkmService
+       ├─ umkm_mode=true           → handleMessage()      ← produk UMKM
+       │     (tanya → Agentic Ask; null lain → RAG)
+       ├─ else use_guided_flow     → runGuidedTurn()      ← notebook generik / Gateway
        └─ lainnya                  → StudioService.chat()
 ```
 
@@ -326,6 +328,8 @@ flowchart TD
 
 Setiap `chat_id` WA dipetakan ke satu baris di `studio_whatsapp_sessions` → `studio_conversations`.
 
+Graf di bawah **hanya** untuk notebook `umkm_mode=false` (AI Gateway / Guide Flow). Notebook UMKM tidak masuk cabang ini — inbound selalu `handleMessage()`.
+
 ```mermaid
 flowchart TD
     IN[Pesan masuk dari chat_id] --> EX{Ada session?}
@@ -408,10 +412,9 @@ erDiagram
 
 | `umkm_mode` | `use_guided_flow` | Perilaku |
 |-------------|-------------------|----------|
-| `true` | `true` | **Disarankan** — welcome + routing listen + action nodes |
-| `true` | `false` | Intent langsung (`handleMessage`), tanpa welcome otomatis |
-| `false` | `true` | Guide flow generik (RAG), bukan UMKM |
-| `false` | `false` | Chat RAG bebas |
+| `true` | * | UMKM branch first (`handleMessage()`); RAG hanya jika return null |
+| `false` | `true` | Guide Flow (notebook generik / Gateway) |
+| `false` | `false` | Chat RAG |
 
 ---
 

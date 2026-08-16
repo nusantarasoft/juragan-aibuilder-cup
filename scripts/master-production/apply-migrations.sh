@@ -14,6 +14,9 @@
 #
 # Seeds (99900001*) are demo data and are intentionally skipped. Apply them
 # manually if wanted:  bash scripts/master-production/apply-migrations.sh --seeds
+#
+# 00000000000103_studio_umkm_unguided.sql is skipped unless APPLY_AFTER_UP=1
+# (must run after new middleware is Up). redeploy.sh sets that after `up -d`.
 # ═══════════════════════════════════════════════════════════════════════════
 set -uo pipefail
 
@@ -55,6 +58,11 @@ fails=""
 for f in $(ls -1 "$HOSTDIR" | grep -E '\.sql$' | grep -v -E '^99900001' | sort); do
   id="supabase/migrations/$f"
   is_done "$id" && continue
+  # 103 must wait until new middleware is Up (old router is use_guided_flow-first).
+  if [ "$f" = "00000000000103_studio_umkm_unguided.sql" ] && [ "${APPLY_AFTER_UP:-}" != "1" ]; then
+    echo "   skip $f (APPLY_AFTER_UP!=1 — after middleware Up)"
+    continue
+  fi
   printf '   apply %-58s ' "$f"
   # Prefer host file via stdin — container bind mounts can lag after git pull
   # until postgres is recreated. Fall back to in-container path if needed.

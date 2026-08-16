@@ -606,7 +606,7 @@ export class StudioResolver {
         await this.studioService.assertNotebookOwner(notebookId, this.requireUserId(context));
         const setup = await this.studioUmkmService.setupUmkmNotebook(notebookId, tenantId);
         let flow = null;
-        if (publishGuideFlow !== false) {
+        if (publishGuideFlow === true) {
             flow = await this.guideFlowService.createAndPublishUmkmFlow(notebookId);
         }
         return { ...setup, flow };
@@ -622,7 +622,7 @@ export class StudioResolver {
         await this.studioService.assertNotebookOwner(notebookId, this.requireUserId(context));
         const result = await this.studioUmkmService.updateUmkmCommands(notebookId, commands);
         let flow = null;
-        if (republishGuideFlow !== false) {
+        if (republishGuideFlow === true) {
             flow = await this.guideFlowService.createAndPublishUmkmFlow(notebookId);
         }
         return { ...result, flow };
@@ -678,13 +678,6 @@ export class StudioResolver {
             },
             resolvedTenant,
         );
-        if (notebookId && resolvedTenant) {
-            await this.studioUmkmService.setupUmkmNotebook(notebookId, resolvedTenant);
-            // Ensure AIDLC guide flow exists when UMKM WA config is enabled
-            if (enabled && useGuidedFlow !== false) {
-                await this.guideFlowService.createAndPublishUmkmFlow(notebookId);
-            }
-        }
         return row;
     }
 

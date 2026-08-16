@@ -2,7 +2,7 @@
 
 > **Alur & diagram flow:** lihat [STUDIO_UMKM_FLOW.md](./STUDIO_UMKM_FLOW.md) (alur bisnis, guide flow, sesi WA, sub-alur catat/laporan).
 >
-> Acuan metodologi: **AIDLC** (AI Development Life Cycle) — guided-flow pipeline: pahami pesan → routing intent → preview konfirmasi → commit → evaluasi.
+> Acuan metodologi: **AIDLC** (AI Development Life Cycle) — pipeline UMKM: pahami pesan → routing intent (`handleMessage`) → preview konfirmasi → commit → evaluasi.
 
 Modul ini mengubah AI Studio menjadi **asisten penjualan UMKM** lewat WhatsApp:
 
@@ -16,8 +16,13 @@ Modul ini mengubah AI Studio menjadi **asisten penjualan UMKM** lewat WhatsApp:
 UMKM (WhatsApp)
     → WAHA webhook
     → StudioWhatsAppService
-        ├─ use_guided_flow=true  → GuideFlow (UMKM Penjualan WA) → action nodes
-        └─ umkm_mode (tanpa guided flow) → StudioUmkmService.handleMessage()
+        ├─ umkm_mode=true  → StudioUmkmService.handleMessage()  ← produk UMKM
+        │     ├─ greeting → welcome cheat-sheet
+        │     ├─ jual/stok/laporan → handler
+        │     ├─ tanya/1 → Agentic Ask (di router, bukan di handleMessage)
+        │     └─ null selain ask → RAG
+        ├─ else use_guided_flow=true  → GuideFlow (notebook generik / AI Gateway)
+        └─ else → StudioService.chat() RAG
     → staging percakapan (pending sale) → konfirmasi
     → ecom_orders (WRITE) / inv_stock_ledger (READ) / v_studio_sales_* (READ)
     → balasan WhatsApp
@@ -128,11 +133,11 @@ mutation {
   )
 }
 
-# 2. Aktifkan mode UMKM + publish guide flow
+# 2. Aktifkan mode UMKM (jangan publish Guide Flow)
 mutation {
   studioSetupUmkmNotebook(
     notebookId: "NOTEBOOK_UUID"
-    publishGuideFlow: true
+    publishGuideFlow: false
   )
 }
 
@@ -142,7 +147,7 @@ mutation {
     notebookId: "NOTEBOOK_UUID"
     enabled: true
     allowlistPhones: ["6281234567890"]
-    useGuidedFlow: true
+    useGuidedFlow: false
   )
 }
 ```
@@ -153,34 +158,39 @@ Lihat `middleware/sql/studio_umkm_setup.sql`.
 
 ### 6. Uji di WhatsApp
 
-Kirim ke nomor bisnis yang ter-pair:
+Kirim ke nomor bisnis yang ter-pair. Menu default (`DEFAULT_UMKM_COMMANDS`):
 
 | Pesan | Hasil yang diharapkan |
 |-------|-----------------------|
-| `5` / `bantuan` / `menu` | Menu angka + contoh format |
-| `1` | Prompt catat penjualan (minta detail `jual ...`) |
-| `jual 3 es kopi 45000` | Preview konfirmasi (belum ke DB) |
-| `ya` / `1` (saat ada preview) | Order tersimpan + nomor `WA-...` |
-| `batal` / `0` (saat ada preview) | Draft dibatalkan |
-| `2` / `cek stok kopi` | Qty available dari ledger |
-| `3` / `daftar barang` | Katalog `inv_items` aktif |
-| `4` / `laporan hari ini` | Ringkasan omzet + produk terlaris |
+| `halo` / `0` / `bantuan` | Welcome cheat-sheet + menu 0–6 |
+| `1` / `tanya` | Agentic Ask (bukan RAG dokumen saja) |
+| `2` | Hub Menu (daftar / tambah menu / tambah stok) |
+| `3` | Hub Belanja |
+| `4` | Daftar penjualan |
+| `5` / `jual 3 es kopi 45000` | Mulai jual / preview konfirmasi (belum ke DB) |
+| `ya` (saat ada preview) | Order tersimpan + nomor `WA-...` |
+| `batal` (saat ada preview) | Draft dibatalkan |
+| `cek stok kopi` | Qty available dari ledger |
+| `6` / `laporan hari ini` | Ringkasan omzet |
 | `berapa penjualan hari ini` | Sama (laporan) |
-| `catat 2 tas total 500rb tunai` lalu `ya` | Order lunas |
 
-### Menu angka (gaya CS)
+**Cutover:** setelah deploy, digit sisa dari menu Guide Flow lama **bukan** no-op. `3` membuka **Belanja**, bukan “daftar barang”. Reset Sim / ketik `0` sebelum pesan pertama.
 
-Balas **satu digit** kapan saja (bisa digabung dengan kalimat):
+### Menu angka (DEFAULT_UMKM_COMMANDS)
+
+Balas **satu digit**:
 
 | Angka | Aksi |
 |-------|------|
-| `1` | Catat penjualan → lalu kirim detail `jual ...` |
-| `2` | Cek stok (semua / lanjut `cek stok [nama]`) |
-| `3` | Daftar barang |
-| `4` | Laporan hari ini |
-| `5` / `0` / `9` | Bantuan / menu |
+| `1` | Tanya (Agentic Ask) |
+| `2` | Hub Menu |
+| `3` | Hub Belanja |
+| `4` | Daftar penjualan |
+| `5` | Tambah penjualan |
+| `6` | Hub Laporan |
+| `0` | Bantuan |
 
-Saat ada preview penjualan: `1` = konfirmasi simpan, `0` = batalkan (setara `ya` / `batal`).
+Saat ada preview penjualan: `ya` / `ok` = konfirmasi, `batal` = batalkan.
 
 ## Menu WhatsApp (default baru)
 
@@ -221,14 +231,14 @@ mutation {
       confirm: ["ya", "ok", "1"]
       cancel: ["batal", "0"]
     }
-    republishGuideFlow: true
+    republishGuideFlow: false
   )
 }
 ```
 
 - **Tambah/hapus** item di `menu` atau array keyword = perintah berubah.
 - Intent aksi tetap: `record_sale` | `check_stock` | `list_products` | `sales_report` | `help`.
-- Saat simpan dengan `republishGuideFlow: true`, guide flow **UMKM Penjualan WA** digenerate ulang dari config yang sama.
+- Saat simpan, **jangan** `republishGuideFlow: true` di produksi UMKM — inbound memakai `handleMessage()`, bukan graph XState.
 - Setup UMKM men-seed default jika `umkm_commands` belum ada (tidak menimpa custom).
 - Query default: `studioUmkmCommandsDefaults`.
 
@@ -281,6 +291,8 @@ Data disimpan ke `ecom_orders` dengan `source=api`, `status=completed`.
 
 Flow bawaan: **UMKM Penjualan WA** (`defaultUmkmGuideFlowDefinition(commands)`).
 
+Produk UMKM **tidak** memakai flow ini. Graph tetap ada untuk notebook generik / hatch GraphQL `publishGuideFlow: true` (bukan path admin UMKM).
+
 Welcome + transisi `listen_intent` digenerate dari `context_config.umkm_commands` saat `createAndPublishUmkmFlow`.
 
 Node `action`:
@@ -295,17 +307,17 @@ Node `action`:
 | `list_products` | Daftar barang dari `inv_items` |
 | `umkm_help` | Tampilkan menu bantuan |
 
-Aktifkan dengan `useGuidedFlow: true` di config WhatsApp.
+Jangan aktifkan dengan `useGuidedFlow: true` untuk notebook `umkm_mode`. Produk UMKM adalah `handleMessage()` (router umkm-first). Guide Flow tetap untuk notebook generik di AI Gateway.
 
-> Notebook yang sudah publish flow lama perlu **re-publish** template UMKM agar node `confirm_sale` / `check_stock` aktif. Mode `umkm_mode` tanpa guided flow sudah mendukung konfirmasi via memory per nomor.
+> Notebook yang sudah publish flow lama **UMKM Penjualan WA** dibiarkan (orphan). Routing `umkm_mode` membuatnya tidak terpanggil. Mode `umkm_mode` tanpa guided flow mendukung konfirmasi via pending sale per nomor.
 
 ## Mode operasi
 
 | `umkm_mode` | `use_guided_flow` | Perilaku |
 |-------------|-------------------|----------|
-| `true` | `true` | Guide flow UMKM (disarankan) |
-| `true` | `false` | Intent langsung via `StudioUmkmService` (+ pending in-memory) |
-| `false` | * | Chat RAG generik (bukan UMKM) |
+| `true` | * | UMKM branch first (`handleMessage()`); RAG hanya jika return null (tanya → Agentic Ask) |
+| `false` | `true` | Guide Flow (notebook generik / AI Gateway) |
+| `false` | `false` | Chat RAG |
 
 `umkm_mode` diset lewat `studio_notebooks.context_config`:
 

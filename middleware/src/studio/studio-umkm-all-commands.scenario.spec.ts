@@ -159,6 +159,16 @@ describe('Perintah 1 — Tanya (ask)', () => {
         expect(r).toBeNull();
     });
 
+    it('POSITIF greeting-only → welcome; halo jual tetap penjualan', async () => {
+        const { svc } = makeUmkmService();
+        const hi = await svc.handleMessage('halo', 't', undefined, cfg, { conversationId: 'c-hi' });
+        expect(hi).toMatch(/Halo!|asisten toko|\*Menu\*/i);
+        const sale = await svc.handleMessage('halo jual 1 bakso', 't', undefined, cfg, {
+            conversationId: 'c-hi-sale',
+        });
+        expect(sale).toMatch(/Konfirmasi|Bakso/i);
+    });
+
     it('POSITIF planner tanya stok memakai get_stock', async () => {
         const { planAgenticAskTools } = await import('./studio-umkm-agentic-ask.planner');
         const p = planAgenticAskTools('stok bakso berapa');

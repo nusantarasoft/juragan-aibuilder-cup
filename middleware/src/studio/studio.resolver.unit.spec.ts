@@ -521,10 +521,16 @@ describe('StudioResolver — whatsapp/umkm', () => {
         expect(h.whatsAppService.logoutWahaSession).toHaveBeenCalledWith(undefined);
     });
 
-    it('setupUmkmNotebook publishes flow by default', async () => {
+    it('setupUmkmNotebook skips flow by default', async () => {
         const res = await h.resolver.setupUmkmNotebook(ctx(), 'nb-1', 't1', undefined as any);
         expect(h.studioService.assertNotebookOwner).toHaveBeenCalledWith('nb-1', USER_ID);
         expect(h.umkmService.setupUmkmNotebook).toHaveBeenCalledWith('nb-1', 't1');
+        expect(h.guideFlowService.createAndPublishUmkmFlow).not.toHaveBeenCalled();
+        expect(res.flow).toBeNull();
+    });
+
+    it('setupUmkmNotebook publishes flow when publishGuideFlow=true', async () => {
+        const res = await h.resolver.setupUmkmNotebook(ctx(), 'nb-1', 't1', true);
         expect(h.guideFlowService.createAndPublishUmkmFlow).toHaveBeenCalledWith('nb-1');
         expect(res.flow).toEqual({ id: 'f-umkm' });
     });
@@ -535,9 +541,15 @@ describe('StudioResolver — whatsapp/umkm', () => {
         expect(res.flow).toBeNull();
     });
 
-    it('updateStudioUmkmCommands republishes by default', async () => {
+    it('updateStudioUmkmCommands skips republish by default', async () => {
         const res = await h.resolver.updateStudioUmkmCommands(ctx(), 'nb-1', { a: 1 }, undefined);
         expect(h.umkmService.updateUmkmCommands).toHaveBeenCalledWith('nb-1', { a: 1 });
+        expect(h.guideFlowService.createAndPublishUmkmFlow).not.toHaveBeenCalled();
+        expect(res.flow).toBeNull();
+    });
+
+    it('updateStudioUmkmCommands republishes when republishGuideFlow=true', async () => {
+        const res = await h.resolver.updateStudioUmkmCommands(ctx(), 'nb-1', { a: 1 }, true);
         expect(h.guideFlowService.createAndPublishUmkmFlow).toHaveBeenCalledWith('nb-1');
         expect(res.flow).toEqual({ id: 'f-umkm' });
     });
@@ -582,7 +594,7 @@ describe('StudioResolver — whatsapp/umkm', () => {
         expect(h.umkmService.setupUmkmNotebook).not.toHaveBeenCalled();
     });
 
-    it('updateStudioWhatsAppConfig with notebookId + tenant sets up and publishes flow', async () => {
+    it('updateStudioWhatsAppConfig with notebookId + tenant writes config only', async () => {
         await h.resolver.updateStudioWhatsAppConfig(
             ctx(), 't1', 'nb-1', true, ['62812'], true, 'sess', '62800', 'Toko',
         );
@@ -594,15 +606,15 @@ describe('StudioResolver — whatsapp/umkm', () => {
             },
             't1',
         );
-        expect(h.umkmService.setupUmkmNotebook).toHaveBeenCalledWith('nb-1', 't1');
-        expect(h.guideFlowService.createAndPublishUmkmFlow).toHaveBeenCalledWith('nb-1');
+        expect(h.umkmService.setupUmkmNotebook).not.toHaveBeenCalled();
+        expect(h.guideFlowService.createAndPublishUmkmFlow).not.toHaveBeenCalled();
     });
 
-    it('updateStudioWhatsAppConfig with notebookId but disabled skips umkm flow publish', async () => {
+    it('updateStudioWhatsAppConfig with notebookId but disabled still skips umkm setup/publish', async () => {
         await h.resolver.updateStudioWhatsAppConfig(
             ctx(), 't1', 'nb-1', false, undefined as any, false, undefined as any, undefined as any, undefined as any,
         );
-        expect(h.umkmService.setupUmkmNotebook).toHaveBeenCalledWith('nb-1', 't1');
+        expect(h.umkmService.setupUmkmNotebook).not.toHaveBeenCalled();
         expect(h.guideFlowService.createAndPublishUmkmFlow).not.toHaveBeenCalled();
     });
 

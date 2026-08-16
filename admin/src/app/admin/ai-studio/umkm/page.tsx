@@ -236,7 +236,7 @@ export default function UmkmStudioPage() {
         form.resetFields();
         form.setFieldsValue({
             enabled: true,
-            useGuidedFlow: true,
+            useGuidedFlow: false,
             wahaSession: 'default',
             ownerPhones: [],
             createNewNotebook: true,
@@ -310,18 +310,19 @@ export default function UmkmStudioPage() {
 
             const tenantId = values.tenantId as string;
 
+            await studioService.setupUmkmNotebook(notebookId, tenantId, false);
             await studioService.updateWhatsAppConfig({
                 tenantId,
                 notebookId,
                 enabled: values.enabled,
-                useGuidedFlow: values.useGuidedFlow,
+                useGuidedFlow: false,
                 allowlistPhones: ownerPhones,
                 wahaSession: 'default',
                 businessPhone: ownerPhones[0],
                 label: values.label || null,
             });
 
-            await studioService.updateUmkmCommands(notebookId, commands, values.useGuidedFlow !== false);
+            await studioService.updateUmkmCommands(notebookId, commands, false);
 
             message.success(editing ? 'UMKM diperbarui' : 'UMKM baru ditambahkan');
             setCommandsDirty(false);
@@ -400,7 +401,7 @@ export default function UmkmStudioPage() {
         }
         setSettingUp(true);
         try {
-            await studioService.setupUmkmNotebook(row.notebook_id, row.tenant_id, true);
+            await studioService.setupUmkmNotebook(row.notebook_id, row.tenant_id, false);
             message.success(`Mode UMKM aktif untuk ${row.label || row.tenant_id}`);
             await load();
         } catch (e: unknown) {
@@ -467,7 +468,6 @@ export default function UmkmStudioPage() {
                     <Tag color={row.enabled ? 'success' : 'default'}>
                         {row.enabled ? 'WA aktif' : 'WA off'}
                     </Tag>
-                    {row.use_guided_flow ? <Tag color="blue">Guided flow</Tag> : null}
                 </Space>
             ),
         },
@@ -562,7 +562,7 @@ export default function UmkmStudioPage() {
                                 <strong>Tambah UMKM</strong> — daftarkan nomor HP pemilik + atur perintah WA
                             </li>
                             <li>
-                                <strong>Setup UMKM</strong> — aktifkan flow penjualan
+                                <strong>Setup UMKM</strong> — aktifkan mode UMKM
                             </li>
                             <li>
                                 Pemilik kirim WA ke nomor admin memakai angka menu atau keyword yang Anda set —
@@ -673,9 +673,6 @@ export default function UmkmStudioPage() {
                     </Form.Item>
 
                     <Form.Item name="enabled" label="Aktifkan WhatsApp" valuePropName="checked">
-                        <Switch />
-                    </Form.Item>
-                    <Form.Item name="useGuidedFlow" label="Gunakan guided flow UMKM" valuePropName="checked">
                         <Switch />
                     </Form.Item>
 

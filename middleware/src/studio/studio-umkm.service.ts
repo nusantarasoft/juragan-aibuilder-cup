@@ -15,6 +15,7 @@ import {
     formatPurchaseHubUnknownChoice,
     formatReportHubPrompt,
     formatReportHubUnknownChoice,
+    formatWelcomeFromCommands,
     sanitizeUmkmCommandsInput,
     type UmkmCommandsConfig,
 } from './studio-umkm-commands';
@@ -39,6 +40,7 @@ import {
 import {
     detectUmkmConfirmReply,
     detectUmkmIntent,
+    isUmkmGreetingOnly,
     detectUmkmMenuDigit,
     extractStockProductQuery,
     formatDailyReportWa,
@@ -556,6 +558,10 @@ export class StudioUmkmService {
         if (feedback) {
             await this.logFeedback(tenantId, feedback, { phone, conversationId });
             return formatFeedbackThanks(feedback);
+        }
+
+        if (isUmkmGreetingOnly(text)) {
+            return formatWelcomeFromCommands(commands);
         }
 
         let intent = detectUmkmIntent(text, commands);

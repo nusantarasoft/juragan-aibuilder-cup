@@ -799,7 +799,7 @@ export const studioService = {
     async setupUmkmNotebook(
         notebookId: string,
         tenantId?: string,
-        publishGuideFlow = true,
+        publishGuideFlow = false,
     ): Promise<StudioUmkmSetupResult> {
         const data = await graphqlRequest(`
             mutation($notebookId: String!, $tenantId: String, $publishGuideFlow: Boolean) {
@@ -837,7 +837,7 @@ export const studioService = {
     async updateUmkmCommands(
         notebookId: string,
         commands: UmkmCommandsConfig,
-        republishGuideFlow = true,
+        republishGuideFlow = false,
     ): Promise<{ notebookId: string; commands: UmkmCommandsConfig }> {
         const data = await graphqlRequest(`
             mutation($notebookId: String!, $commands: JSONObject!, $republishGuideFlow: Boolean) {

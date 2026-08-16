@@ -198,6 +198,21 @@ export function detectUmkmIntent(
     return 'unknown';
 }
 
+/** Greeting-only inbound (no sale/menu payload) — send welcome cheat-sheet before QU. */
+export function isUmkmGreetingOnly(text: string): boolean {
+    const t = text
+        .trim()
+        .toLowerCase()
+        .replace(/[!.,?…]+$/g, '')
+        .trim();
+    if (!t) return false;
+    if (isUmkmMenuOnly(text)) return false;
+    if (looksLikeSaleMessage(text)) return false;
+    return /^(halo|hai|hi|hello|hei|hey|selamat\s+(pagi|siang|sore|malam)|assalamu['']?alaikum|assalamualaikum|permisi|ping)(\s+(kak|bos|min|admin|semua))?$/.test(
+        t,
+    );
+}
+
 /** True if text looks like a sale message (for heuristic parser gate). */
 export function looksLikeSaleMessage(
     text: string,

@@ -73,6 +73,11 @@ docker compose -f "$CF" --env-file "$EF" up -d
 echo "==> reload nsoft3-nginx DNS for app upstreams"
 docker restart nsoft3-nginx >/dev/null
 
+# 103 flips UMKM WhatsApp labels off Guide Flow. Must run after new middleware
+# is serving (step 6 skipped it). Idempotent once tracked in schema_migrations.
+echo "==> apply post-up migrations (103 UMKM unguided labels)"
+POSTGRES_DB="$DB" PG_CONTAINER="$PG" APPLY_AFTER_UP=1 bash "$DIR/scripts/master-production/apply-migrations.sh"
+
 echo
 echo "==> done. current status:"
 docker ps -a --filter name=nsoft3 --format '{{.Names}} | {{.Status}}' | sort
