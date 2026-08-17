@@ -46,34 +46,40 @@ export type MakeUmkmServiceOpts = {
 };
 
 export function makeUmkmService(opts?: MakeUmkmServiceOpts) {
-    const products = opts?.products ?? TEST_CATALOG;
+    const products = [...(opts?.products ?? TEST_CATALOG)];
     const purchases = opts?.purchases ?? [];
     const orders = opts?.orders ?? [];
 
     const createItem = vi.fn(
         async (_tenant: string, input: { name: string; sellingPrice: number; costPrice?: number }) => {
             if (opts?.createItemError) throw opts.createItemError;
-            return {
+            const row = {
+                id: `p-new-${products.length + 1}`,
                 name: input.name,
-                sku: 'SKU-NEW',
-                selling_price: input.sellingPrice,
+                sku: `SKU-NEW-${products.length + 1}`,
+                sellingPrice: input.sellingPrice,
+            };
+            products.push(row);
+            return {
+                name: row.name,
+                sku: row.sku,
+                selling_price: row.sellingPrice,
             };
         },
     );
     const createStockMovement = vi.fn(async () => ({ id: 'mov-1' }));
 
+    const invRows = () =>
+        products.map((p) => ({
+            id: p.id,
+            name: p.name,
+            sku: p.sku,
+            selling_price: p.sellingPrice,
+        }));
     const invChain: any = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockResolvedValue({
-            data: products.map((p) => ({
-                id: p.id,
-                name: p.name,
-                sku: p.sku,
-                selling_price: p.sellingPrice,
-            })),
-            error: null,
-        }),
+        order: vi.fn().mockImplementation(async () => ({ data: invRows(), error: null })),
     };
 
     const purchaseChain: any = {

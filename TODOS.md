@@ -46,7 +46,7 @@
 
 **Why:** After cousin-sale S5, only two phrases ignore the stamp. “Speak like a cousin” is still false for omzet/stok/daftar on old notebooks.
 
-**Context:** CEO 2026-08-17 cousin-sale HOLD D1 C deferred, D11 A. Parent plan `2026-08-17-umkm-intake-admin.md`. Start from `matchUmkmIntakeJob` after S5 ships; cleaner after union-merge (D10). Live /qa 2026-08-17: `omzet hari ini berapa ya` logged `umkm_intake=help` (not sales_report) on stamped notebook.
+**Context:** CEO 2026-08-17 cousin-sale HOLD D1 C deferred, D11 A. Parent plan `2026-08-17-umkm-intake-admin.md`. Start from `matchUmkmIntakeJob` after S5 ships; cleaner after union-merge (D10). First live /qa 2026-08-17 S9 `omzet hari ini berapa ya` looked like help (noisy capture). Retest after `45d681a`: same phrase returned Laporan (Rp 37.500). C17 `berapa yang beli hari ini?` still help, not sale.
 
 **Effort:** L
 **Priority:** P3
@@ -70,11 +70,12 @@
 
 **Why:** /qa 2026-08-17 wrote two `ecom_orders` (2x and 3x indomie) but 0 purchases. Reply capture mixed cron reports; inbound rate limit fired twice. Ground truth is logs+DB, not the first fromMe body.
 
-**Context:** Report `.gstack/qa-reports/qa-report-umkm-wa-live-2026-08-17.md` and cycle `.gstack/qa-reports/qa-report-umkm-cycle-2026-08-17.md`. Cycle C1–C10 passed with 9s gaps. C11 `ya` during modal slot renamed the item; C12–C17 swallowed by `await_purchase`. Local fix pending deploy; then retest C11 (`beli` → `belanja` → angka → `ya`) plus laporan/omzet.
+**Context:** Report `.gstack/qa-reports/qa-report-umkm-wa-live-2026-08-17.md` and cycle `.gstack/qa-reports/qa-report-umkm-cycle-2026-08-17.md`. Cycle C1–C10 passed with 9s gaps. C11 `ya` during modal slot renamed the item; C12–C17 swallowed by `await_purchase`. **Fixed by /qa on master, 2026-08-17** (`45d681a` deployed). Retest `.gstack/qa-reports/qa-report-umkm-c11-retest-2026-08-17.md`: `beli 5` → `belanja` → `2500` → `ya` wrote `BL-20260817-6025`; cek stok sisa 28; omzet/laporan/daftar live.
 
 **Effort:** S
 **Priority:** P2
 **Depends on:** none
+**Status:** done 2026-08-17
 
 ### Native WhatsApp confirm buttons
 

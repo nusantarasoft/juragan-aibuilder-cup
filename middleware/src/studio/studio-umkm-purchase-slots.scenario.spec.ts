@@ -137,6 +137,48 @@ describe('PO — belanja slot-fill E2E', () => {
         expect(c).toMatch(/bakso/i);
     });
 
+    it('beli 5 + belanja + 2500 + ya commits purchase (not *5x ya*)', async () => {
+        // Live C11 retest 2026-08-17 after 45d681a
+        const { svc } = makeUmkmService();
+        await svc.handleMessage('beli 5 bakso', 't', '7005', cfg, { conversationId: 'ps5' });
+        await svc.handleMessage('belanja', 't', '7005', cfg, { conversationId: 'ps5' });
+        const preview = await svc.handleMessage('2500', 't', '7005', cfg, { conversationId: 'ps5' });
+        expect(preview).toMatch(/Konfirmasi belanja/i);
+        expect(preview).toMatch(/2\.500|2500/);
+        expect(preview).toMatch(/12\.500|12500/);
+        const done = await svc.handleMessage('ya', 't', '7005', cfg, { conversationId: 'ps5' });
+        expect(done).toMatch(/tercatat|BL-/i);
+        expect(done).not.toMatch(/\*5x ya\*/i);
+    });
+
+    it('purchase slot yields to laporan and omzet instead of eating them as item names', async () => {
+        const { svc } = makeUmkmService({
+            orders: [
+                {
+                    order_number: 'WA-1',
+                    total_amount: 8000,
+                    created_at: new Date().toISOString(),
+                    customer_name: 'WA',
+                },
+            ],
+        });
+        await svc.handleMessage('beli 5 bakso', 't', '7006', cfg, { conversationId: 'ps6' });
+        await svc.handleMessage('belanja', 't', '7006', cfg, { conversationId: 'ps6' });
+        const laporan = await svc.handleMessage('laporan hari ini', 't', '7006', cfg, {
+            conversationId: 'ps6',
+        });
+        expect(laporan).toMatch(/Laporan/i);
+        expect(laporan).not.toMatch(/Harga modal \*laporan/i);
+
+        await svc.handleMessage('beli 5 bakso', 't', '7007', cfg, { conversationId: 'ps7' });
+        await svc.handleMessage('belanja', 't', '7007', cfg, { conversationId: 'ps7' });
+        const omzet = await svc.handleMessage('omzet hari ini berapa ya', 't', '7007', cfg, {
+            conversationId: 'ps7',
+        });
+        expect(omzet).toMatch(/Laporan|omzet|Penjualan/i);
+        expect(omzet).not.toMatch(/Harga modal \*omzet/i);
+    });
+
     it('purchase slot yields to cek stok instead of eating it as item name', async () => {
         // Regression: ISSUE-C12 — Found by /qa on 2026-08-17
         const { svc } = makeUmkmService();
