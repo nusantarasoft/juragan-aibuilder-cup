@@ -2,13 +2,31 @@
  * Shared test harness for UMKM WA wizard / intent scenario tests.
  */
 import { vi } from 'vitest';
-import { StudioUmkmService } from './studio-umkm.service';
+import type { StudioContextConfig } from './studio-db-context.service';
+import { DEFAULT_UMKM_COMMANDS } from './studio-umkm-commands';
+import { DEFAULT_STUDIO_UMKM_CONTEXT, StudioUmkmService } from './studio-umkm.service';
+import { STALE_RECORD_SALE } from './studio-umkm-stale-sale.fixture';
+
+export { STALE_RECORD_SALE } from './studio-umkm-stale-sale.fixture';
 
 export const TEST_CATALOG = [
     { id: 'p1', name: 'Mie Ayam', sku: 'MA-01', sellingPrice: 15000 },
     { id: 'p2', name: 'Bakso', sku: 'BK-01', sellingPrice: 18000 },
     { id: 'p3', name: 'Es Teh', sku: 'ET-01', sellingPrice: 5000 },
 ];
+
+export function staleUmkmContext(): StudioContextConfig {
+    return {
+        ...DEFAULT_STUDIO_UMKM_CONTEXT,
+        umkm_commands: {
+            ...DEFAULT_UMKM_COMMANDS,
+            keywords: {
+                ...DEFAULT_UMKM_COMMANDS.keywords,
+                record_sale: [...STALE_RECORD_SALE],
+            },
+        },
+    };
+}
 
 export type MakeUmkmServiceOpts = {
     products?: typeof TEST_CATALOG;

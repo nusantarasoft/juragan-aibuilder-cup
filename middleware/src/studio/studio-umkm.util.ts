@@ -665,6 +665,7 @@ export function parseSaleJsonFromLlm(raw: string): ParsedUmkmSale | null {
 export type UmkmIntakeMatch =
     | { kind: 'none' }
     | { kind: 'empty_sale' }
+    | { kind: 'sale'; originalText: string }
     | { kind: 'mixed'; candidates: UmkmIntakeJobCandidate[]; originalText: string };
 
 const INTAKE_JOB_VERBS = new Set([
@@ -732,9 +733,27 @@ function intakeHasJobVerb(text: string): boolean {
     );
 }
 
+const COUSIN_SALE_PHRASE_RE = /\b(?:ada\s+yang\s+beli|tadi\s+beli)\b/i;
+
+/** Strip cousin-sale phrases, then drop leftover INTAKE_FILLER tokens (e.g. tadi). */
+export function leftoverAfterCousinSale(text: string): string {
+    const stripped = text
+        .replace(/\bada\s+yang\s+beli\b/gi, ' ')
+        .replace(/\btadi\s+beli\b/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (!stripped) return '';
+    return stripped
+        .split(/[^a-zA-Z0-9\u00C0-\u024F]+/)
+        .filter(Boolean)
+        .filter((tok) => !INTAKE_FILLER.has(tok.toLowerCase()))
+        .join(' ');
+}
+
 /**
  * Muddy-job matcher (D4.1). Runs after ask/help override, before detectUmkmIntent.
  * Does not guess: mixed jobs return candidates for await_job_clarification.
+ * Rule 1 cousin-sale ignores notebook `record_sale` keywords (stamped lists).
  */
 export function matchUmkmIntakeJob(text: string): UmkmIntakeMatch {
     const originalText = text.trim();
@@ -745,9 +764,9 @@ export function matchUmkmIntakeJob(text: string): UmkmIntakeMatch {
         return { kind: 'empty_sale' };
     }
 
-    // 1. Customer-sale phrases → record_sale only (detectUmkmIntent). Never mixed.
-    if (/\b((ada\s+yang\s+beli)|(yang\s+beli)|(tadi\s+beli))\b/i.test(originalText)) {
-        return { kind: 'none' };
+    // 1. Customer-sale phrases → forced sale. Never mixed. Bare "yang beli" is not this rule.
+    if (COUSIN_SALE_PHRASE_RE.test(originalText)) {
+        return { kind: 'sale', originalText };
     }
 
     // 2. belanja → purchase only.
@@ -849,7 +868,9 @@ export function isUmkmIntakeClearJob(
     text: string,
     commands?: UmkmCommandsConfig | unknown,
 ): boolean {
-    if (matchUmkmIntakeJob(text).kind === 'mixed') return false;
+    const match = matchUmkmIntakeJob(text);
+    if (match.kind === 'mixed') return false;
+    if (match.kind === 'sale') return true;
     return detectUmkmIntent(text, commands) !== 'unknown';
 }
 

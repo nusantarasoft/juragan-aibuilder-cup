@@ -18,7 +18,9 @@ UMKM (WhatsApp)
     → StudioWhatsAppService
         ├─ umkm_mode=true  → StudioUmkmService.handleMessage()  ← produk UMKM
         │     ├─ greeting → welcome cheat-sheet
+        │     ├─ help / ask → bantuan / Agentic Ask (sebelum matcher)
         │     ├─ mixed job → await_job_clarification (bukan tebak)
+        │     ├─ cousin-sale (`ada yang beli` / `tadi beli`) → record_sale (abaikan stamp keyword)
         │     ├─ jual/stok/laporan → handler / slot wizard
         │     ├─ tanya/1 → null → Agentic Ask (di router)
         │     └─ unknown → bantuan (string, tidak pernah RAG)
@@ -45,11 +47,13 @@ Intent internal ↔ label AIDLC:
 
 | File | Peran |
 |------|-------|
-| `studio-umkm.util.ts` | Intent, matcher intake (D4.1), parsing rupiah, format WA |
+| `studio-umkm.util.ts` | Intent, matcher intake (D4.1 + cousin-sale), parsing rupiah, format WA |
 | `studio-umkm.service.ts` | Preview/commit sale, stok, laporan, setup notebook |
 | `guide-flow.definition.ts` | `defaultUmkmGuideFlowDefinition()` + node `action` |
 | `guide-flow.service.ts` | Eksekusi `record_sale`, `confirm_sale`, `check_stock`, … |
 | `studio-whatsapp.service.ts` | Routing UMKM saat `umkm_mode` |
+
+Matcher `kind: sale` (`ada yang beli` / `tadi beli`) memaksa catat penjualan dan **mengabaikan** stamp `umkm_commands.keywords.record_sale`. Help/ask tetap dijalankan sebelum matcher. Bare `yang beli` bukan cousin-sale.
 
 ## Setup aplikasi (step by step)
 

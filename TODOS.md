@@ -28,6 +28,30 @@
 
 ## UMKM
 
+### Union-merge default UMKM command keywords
+
+**What:** Make `resolveUmkmCommands` union DEFAULT keyword lists into notebook `umkm_commands` (add, never replace). Empty array must not delete default phrases.
+
+**Why:** Stamped notebooks freeze an old `record_sale` list. Live S5 (`tadi ada yang beli …`) failed while CI used DEFAULT. Cousin-sale PR hardcodes two phrases; the next DEFAULT addition will miss production the same way.
+
+**Context:** CEO 2026-08-17 cousin-sale HOLD (D1 A, D10 A). `resolveUmkmCommands` in `middleware/src/studio/studio-umkm-commands.ts` treats a present keyword array as a full replace. Do not open an LLM-router. Do not fold this into the S5 matcher PR.
+
+**Effort:** M
+**Priority:** P2
+**Depends on:** Cousin-sale S5 PR shipped
+
+### Intake owns all clear UMKM jobs (not notebook stamp)
+
+**What:** Matcher/heuristics (not stamped `umkm_commands`) decide clear jobs: sale, purchase, stock, omzet, list. Notebook keywords are additive aliases only. Not an LLM-router. Mixed `beli` stays clarify.
+
+**Why:** After cousin-sale S5, only two phrases ignore the stamp. “Speak like a cousin” is still false for omzet/stok/daftar on old notebooks.
+
+**Context:** CEO 2026-08-17 cousin-sale HOLD D1 C deferred, D11 A. Parent plan `2026-08-17-umkm-intake-admin.md`. Start from `matchUmkmIntakeJob` after S5 ships; cleaner after union-merge (D10).
+
+**Effort:** L
+**Priority:** P3
+**Depends on:** Cousin-sale S5 PR; better after union-merge default keywords
+
 ### Native WhatsApp confirm buttons
 
 **What:** Interactive confirm/cancel buttons (or list messages) on pending sale instead of parsing `ya` / `batal`.

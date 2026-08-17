@@ -52,6 +52,7 @@ import {
     generateWaOrderNumber,
     isUmkmIntakeClearJob,
     isUmkmMenuOnly,
+    leftoverAfterCousinSale,
     matchUmkmIntakeJob,
     normalizeUmkmQtyFirst,
     parsePendingQtyCorrection,
@@ -677,6 +678,33 @@ export class StudioUmkmService {
                 wizardKind: 'await_job_clarification',
             });
             return formatJobClarificationPrompt(intake.candidates);
+        }
+
+        if (intake.kind === 'sale') {
+            const leftover = leftoverAfterCousinSale(intake.originalText);
+            const flags = {
+                conversationId,
+                allowFollowUp: true,
+                skipLlm: true,
+            };
+            this.logIntake('sale');
+            if (!leftover) {
+                this.clearPendingSale(tenantId, phone, conversationId);
+                if (pending?.pendingId) {
+                    void this.markPendingSaleStatus(pending.pendingId, 'cancelled');
+                } else {
+                    void this.expirePendingSalesInDb(tenantId, phone, conversationId);
+                }
+                this.clearPendingPurchasePublic(tenantId, phone, conversationId);
+                return this.recordSaleFromText('jual', tenantId, phone, config, flags);
+            }
+            return this.recordSaleFromText(
+                normalizeUmkmQtyFirst(leftover),
+                tenantId,
+                phone,
+                config,
+                flags,
+            );
         }
 
         this.logger.debug(`UMKM intent=${intent} aidlc=${toAidlcIntent(intent)}`);

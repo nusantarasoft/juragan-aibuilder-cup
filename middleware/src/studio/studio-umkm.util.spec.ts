@@ -30,12 +30,15 @@ import {
     stripUmkmJobVerbs,
     toAidlcIntent,
     matchUmkmIntakeJob,
+    leftoverAfterCousinSale,
     normalizeUmkmQtyFirst,
     formatJobClarificationPrompt,
     formatPendingStickyHint,
     isUmkmIntakeClearJob,
 } from './studio-umkm.util';
 import type { UmkmCommandsConfig } from './studio-umkm-commands';
+import { resolveUmkmCommands } from './studio-umkm-commands';
+import { STALE_RECORD_SALE } from './studio-umkm-stale-sale.fixture';
 import { resolveUmkmListenTarget } from './guide-flow.interpreter';
 
 describe('studio-umkm.util', () => {
@@ -509,14 +512,34 @@ describe('matchUmkmIntakeJob (D4.1)', () => {
         });
     });
 
-    it('does not clarify customer-sale, belanja, price, hostile singles', () => {
-        expect(matchUmkmIntakeJob('tadi ada yang beli 2 indomie goreng').kind).toBe('none');
+    it('does not clarify belanja, price, hostile singles', () => {
         expect(matchUmkmIntakeJob('belanja 10 indomie').kind).toBe('none');
         expect(matchUmkmIntakeJob('kopi 15000').kind).toBe('none');
         expect(matchUmkmIntakeJob('2').kind).toBe('none');
         expect(matchUmkmIntakeJob('indomie').kind).toBe('none');
         expect(matchUmkmIntakeJob('pembelian 10').kind).toBe('none');
         expect(matchUmkmIntakeJob('pembelian 10 indomie').kind).toBe('none');
+    });
+
+    it('cousin-sale phrases are kind sale; questions with yang beli are not', () => {
+        expect(matchUmkmIntakeJob('tadi ada yang beli 2 indomie goreng')).toEqual({
+            kind: 'sale',
+            originalText: 'tadi ada yang beli 2 indomie goreng',
+        });
+        expect(matchUmkmIntakeJob('ada yang beli').kind).toBe('sale');
+        expect(matchUmkmIntakeJob('tadi beli 2 indomie').kind).toBe('sale');
+        expect(matchUmkmIntakeJob('berapa yang beli hari ini?').kind).toBe('none');
+        expect(matchUmkmIntakeJob('siapa yang beli indomie?').kind).toBe('none');
+    });
+
+    it('leftoverAfterCousinSale strips phrase and filler (tadi)', () => {
+        expect(leftoverAfterCousinSale('tadi ada yang beli 2 indomie goreng')).toBe(
+            '2 indomie goreng',
+        );
+        expect(leftoverAfterCousinSale('tadi ada yang beli indomie 2')).toBe('indomie 2');
+        expect(leftoverAfterCousinSale('tadi ada yang beli')).toBe('');
+        expect(leftoverAfterCousinSale('ada yang beli')).toBe('');
+        expect(leftoverAfterCousinSale('tadi beli 2 indomie')).toBe('2 indomie');
     });
 
     it('bare catat/jual is empty sale, not mixed', () => {
@@ -566,5 +589,11 @@ describe('matchUmkmIntakeJob (D4.1)', () => {
         expect(isUmkmIntakeClearJob('cek stok')).toBe(true);
         expect(isUmkmIntakeClearJob('indomie 2')).toBe(false);
         expect(isUmkmIntakeClearJob('jual 2 indomie')).toBe(true);
+        const stale = resolveUmkmCommands({ keywords: { record_sale: [...STALE_RECORD_SALE] } });
+        expect(STALE_RECORD_SALE).not.toContain('ada yang beli');
+        expect(STALE_RECORD_SALE).not.toContain('tadi beli');
+        expect(STALE_RECORD_SALE).not.toContain('yang beli');
+        expect(detectUmkmIntent('tadi ada yang beli 2 indomie goreng', stale)).toBe('unknown');
+        expect(isUmkmIntakeClearJob('tadi ada yang beli 2 indomie goreng', stale)).toBe(true);
     });
 });
