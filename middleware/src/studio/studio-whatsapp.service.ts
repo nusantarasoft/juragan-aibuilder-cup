@@ -12,7 +12,7 @@ import {
     detectUmkmFeedback,
     formatFeedbackThanks,
 } from './studio-umkm-feedback.util';
-import { detectUmkmConfirmReply, detectUmkmIntent, formatUnknownUmkmCommand } from './studio-umkm.util';
+import { detectUmkmConfirmReply, detectUmkmIntent, formatUmkmHelp, formatUnknownUmkmCommand } from './studio-umkm.util';
 import { assertNoSupabaseError } from './studio-supabase.util';
 import {
     collectUmkmOwnerPhones,
@@ -589,16 +589,12 @@ export class StudioWhatsAppService {
                             },
                             { ...notebookCfg, tenant_id: tenantId },
                         );
-                        answer = agentic.answer || '';
+                        answer = agentic.answer || formatUmkmHelp(commands);
                     } else {
-                        path = 'rag';
-                        const result = await this.studioService.chat(
-                            config.notebook_id!,
-                            question,
-                            conversationId,
-                            undefined,
+                        this.logger.warn(
+                            `UMKM handleMessage returned null for non-ask intent tenant=${tenantId}`,
                         );
-                        answer = result.answer || '';
+                        answer = UMKM_INBOUND_APOLOGY;
                     }
                 }
             } else if (config.use_guided_flow) {

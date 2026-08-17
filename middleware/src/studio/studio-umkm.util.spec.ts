@@ -26,7 +26,14 @@ import {
     parseRupiahToken,
     parseSaleHeuristic,
     parseSaleJsonFromLlm,
+    resumeJobClarification,
+    stripUmkmJobVerbs,
     toAidlcIntent,
+    matchUmkmIntakeJob,
+    normalizeUmkmQtyFirst,
+    formatJobClarificationPrompt,
+    formatPendingStickyHint,
+    isUmkmIntakeClearJob,
 } from './studio-umkm.util';
 import type { UmkmCommandsConfig } from './studio-umkm-commands';
 import { resolveUmkmListenTarget } from './guide-flow.interpreter';
@@ -474,4 +481,90 @@ describe('defaultUmkmGuideFlowDefinition', () => {
         expect(resolveUmkmListenTarget(listen, 'ya', { hasPendingSale: true })).toBe('do_confirm');
         expect(resolveUmkmListenTarget(listen, 'batal', { hasPendingSale: true })).toBe('do_cancel');
         expect(def.nodes.some((n) => n.id === 'do_ask' && n.type === 'rag')).toBe(true);    });
+});
+
+describe('matchUmkmIntakeJob (D4.1)', () => {
+    it('clarifies muddy qty+name as sale vs add_stock', () => {
+        expect(matchUmkmIntakeJob('indomie 2')).toEqual({
+            kind: 'mixed',
+            candidates: ['sale', 'add_stock'],
+            originalText: 'indomie 2',
+        });
+        expect(matchUmkmIntakeJob('mie ayam 2 porsi').kind).toBe('mixed');
+    });
+
+    it('clarifies beli+qty+name as sale vs purchase', () => {
+        expect(matchUmkmIntakeJob('beli 10 indomie')).toEqual({
+            kind: 'mixed',
+            candidates: ['sale', 'purchase'],
+            originalText: 'beli 10 indomie',
+        });
+    });
+
+    it('clarifies stock+sale verbs without qty as sale vs check_stock', () => {
+        expect(matchUmkmIntakeJob('stok atau jual indomie')).toEqual({
+            kind: 'mixed',
+            candidates: ['sale', 'check_stock'],
+            originalText: 'stok atau jual indomie',
+        });
+    });
+
+    it('does not clarify customer-sale, belanja, price, hostile singles', () => {
+        expect(matchUmkmIntakeJob('tadi ada yang beli 2 indomie goreng').kind).toBe('none');
+        expect(matchUmkmIntakeJob('belanja 10 indomie').kind).toBe('none');
+        expect(matchUmkmIntakeJob('kopi 15000').kind).toBe('none');
+        expect(matchUmkmIntakeJob('2').kind).toBe('none');
+        expect(matchUmkmIntakeJob('indomie').kind).toBe('none');
+        expect(matchUmkmIntakeJob('pembelian 10').kind).toBe('none');
+        expect(matchUmkmIntakeJob('pembelian 10 indomie').kind).toBe('none');
+    });
+
+    it('bare catat/jual is empty sale, not mixed', () => {
+        expect(matchUmkmIntakeJob('catat')).toEqual({ kind: 'empty_sale' });
+        expect(matchUmkmIntakeJob('jual')).toEqual({ kind: 'empty_sale' });
+    });
+
+    it('resumeJobClarification maps aliases and skips matcher', () => {
+        expect(resumeJobClarification('jual', ['sale', 'add_stock'])).toEqual({
+            action: 'forced',
+            intent: 'sale',
+        });
+        expect(resumeJobClarification('tambah stok', ['sale', 'add_stock'])).toEqual({
+            action: 'forced',
+            intent: 'add_stock',
+        });
+        expect(resumeJobClarification('belanja', ['sale', 'purchase'])).toEqual({
+            action: 'forced',
+            intent: 'purchase',
+        });
+        expect(resumeJobClarification('cek stok', ['sale', 'check_stock'])).toEqual({
+            action: 'forced',
+            intent: 'check_stock',
+        });
+        expect(resumeJobClarification('stok', ['sale', 'check_stock'])).toEqual({
+            action: 'forced',
+            intent: 'check_stock',
+        });
+        expect(resumeJobClarification('stok', ['sale', 'add_stock']).action).toBe('none');
+        expect(resumeJobClarification('ya', ['sale', 'add_stock']).action).toBe('none');
+    });
+
+    it('qty-first normalize + strip verbs', () => {
+        expect(normalizeUmkmQtyFirst('indomie 2')).toBe('2 indomie');
+        expect(normalizeUmkmQtyFirst('2 indomie')).toBe('2 indomie');
+        expect(stripUmkmJobVerbs('beli 10 indomie')).toBe('10 indomie');
+    });
+
+    it('clarify copy lists accepted aliases; pending hint has no kirim ulang jual', () => {
+        const prompt = formatJobClarificationPrompt(['sale', 'add_stock']);
+        expect(prompt).toMatch(/jual/);
+        expect(prompt).toMatch(/tambah stok/);
+        expect(prompt).not.toMatch(/cek stok/);
+        const hint = formatPendingStickyHint('sale');
+        expect(hint).not.toMatch(/kirim ulang/);
+        expect(hint).toMatch(/batal/);
+        expect(isUmkmIntakeClearJob('cek stok')).toBe(true);
+        expect(isUmkmIntakeClearJob('indomie 2')).toBe(false);
+        expect(isUmkmIntakeClearJob('jual 2 indomie')).toBe(true);
+    });
 });

@@ -44,17 +44,26 @@ import {
     detectUmkmMenuDigit,
     extractStockProductQuery,
     formatDailyReportWa,
+    formatJobClarificationPrompt,
+    formatPendingStickyHint,
     formatSaleCancelled,
     formatUmkmHelp,
     formatUnknownUmkmCommand,
     generateWaOrderNumber,
+    isUmkmIntakeClearJob,
     isUmkmMenuOnly,
+    matchUmkmIntakeJob,
+    normalizeUmkmQtyFirst,
     parsePendingQtyCorrection,
     parseSaleHeuristic,
     parseSaleJsonFromLlm,
+    resumeJobClarification,
+    stripUmkmJobVerbs,
     toAidlcIntent,
+    UMKM_CLARIFY_EXPIRED_COPY,
     type ParsedUmkmSale,
     type UmkmDailyReport,
+    type UmkmIntakeJobCandidate,
     type UmkmIntent,
 } from './studio-umkm.util';
 import {
@@ -106,6 +115,7 @@ import {
 import {
     deserializeWizard,
     isConversationalWizard,
+    isKnownWizardKind,
     serializeWizardPayload,
     type UmkmWizard,
 } from './studio-umkm-durable.util';
@@ -113,6 +123,12 @@ import { assertNoSupabaseError } from './studio-supabase.util';
 
 const DEFAULT_TENANT = 'default';
 const PENDING_TTL_MS = 15 * 60 * 1000;
+
+type WizardResolve =
+    | { status: 'ok'; wizard: UmkmWizard }
+    | { status: 'none' }
+    | { status: 'expired'; kind: string }
+    | { status: 'unknown_kind' };
 
 export type PendingUmkmSale = {
     sale: ParsedUmkmSale;
@@ -173,15 +189,35 @@ export class StudioUmkmService {
         void this.clearWizardInDb(tenantId, phone, conversationId);
     }
 
-    private getWizard(tenantId: string, phone?: string, conversationId?: string): UmkmWizard | null {
-        const w = this.wizardByChat.get(this.chatKey(tenantId, phone, conversationId));
+    private logIntake(
+        event: 'mixed' | 'sale' | 'ask' | 'help' | 'sticky' | 'expired',
+        extra?: { candidates?: UmkmIntakeJobCandidate[]; wizardKind?: string },
+    ) {
+        const candidates = extra?.candidates?.length ? extra.candidates.join(',') : '-';
+        const wizardKind = extra?.wizardKind || '-';
+        this.logger.log(`umkm_intake=${event} candidates=${candidates} wizardKind=${wizardKind}`);
+    }
+
+    private expireMemoryWizard(
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+    ): { expired: true; kind: string } | { wizard: UmkmWizard } | null {
+        const key = this.chatKey(tenantId, phone, conversationId);
+        const w = this.wizardByChat.get(key);
         if (!w) return null;
         if (Date.now() - w.createdAt > PENDING_TTL_MS) {
-            this.wizardByChat.delete(this.chatKey(tenantId, phone, conversationId));
+            this.wizardByChat.delete(key);
             void this.clearWizardInDb(tenantId, phone, conversationId, 'expired');
-            return null;
+            this.logIntake('expired', { wizardKind: w.kind });
+            return { expired: true, kind: w.kind };
         }
-        return w;
+        return { wizard: w };
+    }
+
+    private getWizard(tenantId: string, phone?: string, conversationId?: string): UmkmWizard | null {
+        const peeked = this.expireMemoryWizard(tenantId, phone, conversationId);
+        return peeked && 'wizard' in peeked ? peeked.wizard : null;
     }
 
     /** Memory first, then durable wizard row. */
@@ -190,9 +226,19 @@ export class StudioUmkmService {
         phone?: string,
         conversationId?: string,
     ): Promise<UmkmWizard | null> {
-        const mem = this.getWizard(tenantId, phone, conversationId);
-        if (mem) return mem;
-        return this.loadWizardFromDb(tenantId, phone, conversationId);
+        const detailed = await this.resolveWizardDetailed(tenantId, phone, conversationId);
+        return detailed.status === 'ok' ? detailed.wizard : null;
+    }
+
+    private async resolveWizardDetailed(
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+    ): Promise<WizardResolve> {
+        const mem = this.expireMemoryWizard(tenantId, phone, conversationId);
+        if (mem && 'expired' in mem) return { status: 'expired', kind: mem.kind };
+        if (mem && 'wizard' in mem) return { status: 'ok', wizard: mem.wizard };
+        return this.loadWizardFromDbDetailed(tenantId, phone, conversationId);
     }
 
     async loadWizardFromDb(
@@ -200,12 +246,20 @@ export class StudioUmkmService {
         phone?: string,
         conversationId?: string,
     ): Promise<UmkmWizard | null> {
+        const detailed = await this.loadWizardFromDbDetailed(tenantId, phone, conversationId);
+        return detailed.status === 'ok' ? detailed.wizard : null;
+    }
+
+    private async loadWizardFromDbDetailed(
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+    ): Promise<WizardResolve> {
         try {
             let q = this.admin()
                 .from('studio_umkm_session_wizards')
-                .select('id, kind, payload, created_at, tenant_id, phone')
+                .select('id, kind, payload, created_at, tenant_id, phone, expires_at')
                 .eq('status', 'active')
-                .gt('expires_at', new Date().toISOString())
                 .order('created_at', { ascending: false })
                 .limit(1);
 
@@ -214,28 +268,41 @@ export class StudioUmkmService {
             } else if (phone) {
                 q = q.eq('tenant_id', tenantId).eq('phone', phone);
             } else {
-                return null;
+                return { status: 'none' };
             }
 
             const { data: rows, error } = await q;
             if (error) {
                 this.logger.warn(`loadWizardFromDb: ${error.message}`);
-                return null;
+                return { status: 'none' };
             }
             const data = Array.isArray(rows) ? rows[0] : rows;
-            if (!data) return null;
+            if (!data) return { status: 'none' };
             const createdAt = new Date(data.created_at).getTime();
-            if (Date.now() - createdAt > PENDING_TTL_MS) {
+            const expiresAt = data.expires_at ? new Date(data.expires_at).getTime() : NaN;
+            const expired =
+                (Number.isFinite(expiresAt) && expiresAt <= Date.now()) ||
+                Date.now() - createdAt > PENDING_TTL_MS;
+            const kindStr = String(data.kind);
+            if (expired) {
+                this.logIntake('expired', { wizardKind: kindStr });
                 await this.clearWizardInDb(tenantId, phone, conversationId, 'expired');
-                return null;
+                return { status: 'expired', kind: kindStr };
             }
-            const wizard = deserializeWizard(String(data.kind), data.payload, createdAt);
-            if (!wizard) return null;
+            if (!isKnownWizardKind(kindStr)) {
+                await this.clearWizardInDb(tenantId, phone, conversationId, 'cleared');
+                return { status: 'unknown_kind' };
+            }
+            const wizard = deserializeWizard(kindStr, data.payload, createdAt);
+            if (!wizard) {
+                await this.clearWizardInDb(tenantId, phone, conversationId, 'cleared');
+                return { status: 'unknown_kind' };
+            }
             this.wizardByChat.set(this.chatKey(tenantId, phone, conversationId), wizard);
-            return wizard;
+            return { status: 'ok', wizard };
         } catch (e: any) {
             this.logger.warn(`loadWizardFromDb error: ${e?.message}`);
-            return null;
+            return { status: 'none' };
         }
     }
 
@@ -508,7 +575,7 @@ export class StudioUmkmService {
 
     /**
      * Handle UMKM message when not using guided flow.
-     * Returns null when intent is unknown (caller should fall back to generic chat).
+     * Returns null only for ask (router → agentic). Unknown returns help string.
      */
     async handleMessage(
         text: string,
@@ -558,9 +625,16 @@ export class StudioUmkmService {
             }
         }
 
-        // Active submenu / wizard takes priority (including batal → clear + reply)
-        const wizardReply = await this.continueWizard(text, tenantId, phone, conversationId, config);
-        if (wizardReply !== undefined) return wizardReply;
+        const hasPendingMoney = !!(pending || pendingPurchase);
+        if (hasPendingMoney && !isUmkmIntakeClearJob(text, commands)) {
+            this.logIntake('sticky', { wizardKind: pending ? 'pending_sale' : 'pending_purchase' });
+            return formatPendingStickyHint(pending ? 'sale' : 'purchase', commands);
+        }
+
+        if (!hasPendingMoney) {
+            const wizardReply = await this.continueWizard(text, tenantId, phone, conversationId, config);
+            if (wizardReply !== undefined) return wizardReply;
+        }
 
         const feedback = detectUmkmFeedback(text);
         if (feedback) {
@@ -572,41 +646,41 @@ export class StudioUmkmService {
             return formatWelcomeFromCommands(commands);
         }
 
-        let intent = detectUmkmIntent(text, commands);
-        if (intent === 'unknown' || intent === 'help') {
-            const qu = await this.understandUmkmQuery(text, {
-                conversationLines: options?.conversationLines,
+        const intent = detectUmkmIntent(text, commands);
+        if (intent === 'help') {
+            this.clearWizard(tenantId, phone, conversationId);
+            this.logIntake('help');
+            return formatUmkmHelp(commands);
+        }
+        if (intent === 'ask') {
+            this.clearWizard(tenantId, phone, conversationId);
+            this.logIntake('ask');
+            return null;
+        }
+
+        const intake = matchUmkmIntakeJob(text);
+        if (intake.kind === 'mixed') {
+            this.setWizard(
+                tenantId,
+                {
+                    kind: 'await_job_clarification',
+                    createdAt: Date.now(),
+                    originalText: intake.originalText,
+                    candidates: intake.candidates,
+                    retryCount: 0,
+                },
+                phone,
+                conversationId,
+            );
+            this.logIntake('mixed', {
+                candidates: intake.candidates,
+                wizardKind: 'await_job_clarification',
             });
-            if (qu.needs_clarification && qu.clarification_question) {
-                return qu.clarification_question;
-            }
-            const mapped = toAidlcIntent(intent);
-            // Prefer LLM intent when keyword was unknown; keep help if user asked help.
-            if (intent === 'unknown') {
-                intent =
-                    qu.intent === 'catat_transaksi'
-                        ? 'record_sale'
-                        : qu.intent === 'cek_stok'
-                          ? 'check_stock'
-                          : qu.intent === 'laporan'
-                            ? 'sales_report'
-                            : qu.intent === 'tanya_umum'
-                              ? 'ask'
-                              : 'unknown';
-                this.logger.debug(
-                    `UMKM QU intent=${qu.intent} conf=${qu.confidence_score} (keyword was unknown)`,
-                );
-            } else if (mapped === 'tanya_umum' && intent === 'help') {
-                // keep help
-            }
-            void mapped;
+            return formatJobClarificationPrompt(intake.candidates);
         }
 
         this.logger.debug(`UMKM intent=${intent} aidlc=${toAidlcIntent(intent)}`);
         switch (intent) {
-            case 'ask':
-                this.clearWizard(tenantId, phone, conversationId);
-                return null; // RAG / guided do_ask
             case 'menu_hub':
                 return this.openMenuHub(tenantId, phone, conversationId);
             case 'purchase_hub':
@@ -635,22 +709,12 @@ export class StudioUmkmService {
                 return this.buildSalesListMessage(tenantId, detectReportPeriod(text) || 'today');
             case 'record_sale':
                 this.clearWizard(tenantId, phone, conversationId);
+                this.logIntake('sale');
                 return this.recordSaleFromText(text, tenantId, phone, config, { conversationId });
             case 'sales_report':
                 return this.handleSalesReportIntent(text, tenantId, phone, conversationId);
-            case 'help':
-                this.clearWizard(tenantId, phone, conversationId);
-                return formatUmkmHelp(commands);
             default:
-                if (pending) {
-                    const confirmHint = commands.confirm[0] || 'ya';
-                    const cancelHint = commands.cancel[0] || 'batal';
-                    return [
-                        'Masih ada draft penjualan menunggu konfirmasi.',
-                        `Ketik *${confirmHint}* untuk simpan, *${cancelHint}* untuk batalkan.`,
-                        'Kalau jumlahnya salah, ketik *salah, maksudnya 2* — atau kirim ulang *jual ...*.',
-                    ].join('\n');
-                }
+                this.logIntake('help');
                 return formatUnknownUmkmCommand(commands);
         }
     }
@@ -804,6 +868,7 @@ export class StudioUmkmService {
         tenantId = DEFAULT_TENANT,
         phone?: string,
         config?: StudioContextConfig,
+        options?: { allowFollowUp?: boolean; skipLlm?: boolean },
     ): Promise<
         | { kind: 'preview'; message: string; pending: PendingUmkmSale }
         | { kind: 'need_slots'; message: string; draft: SaleDraft }
@@ -823,10 +888,10 @@ export class StudioUmkmService {
             };
         }
 
-        const parsed = await this.parseSaleMessage(text, commands);
+        const parsed = await this.parseSaleMessage(text, commands, { skipLlm: options?.skipLlm });
         const draft =
             (parsed ? saleDraftFromParsed(parsed) : null) ||
-            parseSaleDraftHeuristic(text, commands);
+            parseSaleDraftHeuristic(text, commands, { allowFollowUp: options?.allowFollowUp });
 
         if (!draft) {
             return {
@@ -960,9 +1025,12 @@ export class StudioUmkmService {
         tenantId = DEFAULT_TENANT,
         phone?: string,
         config?: StudioContextConfig,
-        options?: { conversationId?: string },
+        options?: { conversationId?: string; allowFollowUp?: boolean; skipLlm?: boolean },
     ): Promise<string> {
-        const prepared = await this.prepareSaleFromText(text, tenantId, phone, config);
+        const prepared = await this.prepareSaleFromText(text, tenantId, phone, config, {
+            allowFollowUp: options?.allowFollowUp,
+            skipLlm: options?.skipLlm,
+        });
         if (prepared.kind === 'error') return prepared.message;
         if (prepared.kind === 'need_slots') {
             this.clearPendingPurchasePublic(tenantId, phone, options?.conversationId);
@@ -1022,12 +1090,15 @@ export class StudioUmkmService {
     async parseSaleMessage(
         text: string,
         commands?: UmkmCommandsConfig | unknown,
+        options?: { skipLlm?: boolean },
     ): Promise<ParsedUmkmSale | null> {
         // Avoid LLM hallucination on CS menu digits (e.g. "1")
         if (isUmkmMenuOnly(text)) return null;
 
         const heuristic = parseSaleHeuristic(text, commands);
         if (heuristic) return heuristic;
+
+        if (options?.skipLlm) return null;
 
         const llm = await this.parseSaleWithLlm(text);
         if (llm) return llm;
@@ -1490,10 +1561,20 @@ export class StudioUmkmService {
         conversationId?: string,
         config?: StudioContextConfig,
     ): Promise<string | undefined> {
-        const wizard = await this.resolveWizard(tenantId, phone, conversationId);
-        if (!wizard) return undefined;
-        const t = text.trim();
+        const resolved = await this.resolveWizardDetailed(tenantId, phone, conversationId);
         const commands = this.resolveCommands(config);
+        if (resolved.status === 'expired') {
+            if (resolved.kind === 'await_job_clarification') {
+                return UMKM_CLARIFY_EXPIRED_COPY;
+            }
+            return undefined;
+        }
+        if (resolved.status === 'unknown_kind') {
+            return formatUmkmHelp(commands);
+        }
+        if (resolved.status !== 'ok') return undefined;
+        const wizard = resolved.wizard;
+        const t = text.trim();
 
         // Escape hatch: batal / cancel exits any wizard
         if (detectUmkmConfirmReply(t, commands) === 'cancel') {
@@ -1502,6 +1583,10 @@ export class StudioUmkmService {
                 return '❌ Dibatalkan. Ketik *jual ...*, *cek stok ...*, atau *laporan ...* kapan saja.';
             }
             return `❌ Dibatalkan.\n\n${formatUmkmHelp(commands)}`;
+        }
+
+        if (wizard.kind === 'await_job_clarification') {
+            return this.continueJobClarification(wizard, t, tenantId, phone, conversationId, config);
         }
 
         if (wizard.kind === 'menu_hub') {
@@ -1665,7 +1750,81 @@ export class StudioUmkmService {
         if (wizard.kind === 'await_purchase') {
             return this.beginOrRunPurchase(text, tenantId, phone, conversationId, config, true);
         }
-        return undefined;
+        this.clearWizard(tenantId, phone, conversationId);
+        return formatUnknownUmkmCommand(commands);
+    }
+
+    private async continueJobClarification(
+        wizard: Extract<UmkmWizard, { kind: 'await_job_clarification' }>,
+        text: string,
+        tenantId: string,
+        phone: string | undefined,
+        conversationId: string | undefined,
+        config?: StudioContextConfig,
+    ): Promise<string> {
+        const commands = this.resolveCommands(config);
+        if (detectUmkmConfirmReply(text, commands) === 'confirm') {
+            return formatJobClarificationPrompt(wizard.candidates);
+        }
+        const resume = resumeJobClarification(text, wizard.candidates);
+        if (resume.action === 'forced') {
+            this.clearWizard(tenantId, phone, conversationId);
+            return this.runForcedIntakeJob(
+                resume.intent,
+                wizard.originalText,
+                tenantId,
+                phone,
+                conversationId,
+                config,
+            );
+        }
+        if (wizard.retryCount >= 1) {
+            this.clearWizard(tenantId, phone, conversationId);
+            this.logIntake('help', { wizardKind: 'await_job_clarification' });
+            return formatUmkmHelp(commands);
+        }
+        this.setWizard(
+            tenantId,
+            {
+                kind: 'await_job_clarification',
+                createdAt: Date.now(),
+                originalText: wizard.originalText,
+                candidates: wizard.candidates,
+                retryCount: 1,
+            },
+            phone,
+            conversationId,
+        );
+        return formatJobClarificationPrompt(wizard.candidates);
+    }
+
+    private async runForcedIntakeJob(
+        intent: UmkmIntakeJobCandidate,
+        originalText: string,
+        tenantId: string,
+        phone: string | undefined,
+        conversationId: string | undefined,
+        config?: StudioContextConfig,
+    ): Promise<string> {
+        const stripped = stripUmkmJobVerbs(originalText);
+        if (intent === 'sale') {
+            const qtyFirst = normalizeUmkmQtyFirst(stripped);
+            this.logIntake('sale', { wizardKind: 'await_job_clarification' });
+            return this.recordSaleFromText(qtyFirst, tenantId, phone, config, {
+                conversationId,
+                allowFollowUp: true,
+                skipLlm: true,
+            });
+        }
+        if (intent === 'add_stock') {
+            return this.beginOrRunAddStock(stripped || originalText, tenantId, phone, conversationId, false, {
+                skipMenuHub: true,
+            });
+        }
+        if (intent === 'purchase') {
+            return this.beginOrRunPurchase(stripped || originalText, tenantId, phone, conversationId, config);
+        }
+        return this.handleCheckStockIntent(`cek stok ${stripped}`.trim(), tenantId, phone, conversationId);
     }
 
     /** Clear stuck wizard (e.g. after failed add-product). */
@@ -1819,6 +1978,7 @@ export class StudioUmkmService {
         phone?: string,
         conversationId?: string,
         fromWizard = false,
+        options?: { skipMenuHub?: boolean },
     ): Promise<string> {
         const parsed = parseAddStockMessage(text);
         if (!parsed || !Number.isFinite(parsed.quantity) || parsed.quantity <= 0) {
@@ -1844,11 +2004,17 @@ export class StudioUmkmService {
                 referenceType: 'umkm_stock_in',
                 notes: `WA tambah stok ${parsed.quantity}x ${match.name}`,
             });
-            this.setWizard(tenantId, { kind: 'menu_hub', createdAt: Date.now() }, phone, conversationId);
+            if (options?.skipMenuHub) {
+                this.clearWizard(tenantId, phone, conversationId);
+            } else {
+                this.setWizard(tenantId, { kind: 'menu_hub', createdAt: Date.now() }, phone, conversationId);
+            }
             return [
                 `✅ Stok *${match.name}* +${parsed.quantity}`,
                 '',
-                'Mau *tambah stok lagi*, *tambah menu*, atau *daftar barang*?',
+                options?.skipMenuHub
+                    ? 'Mau *tambah stok* lagi, *jual*, atau *daftar barang*?'
+                    : 'Mau *tambah stok lagi*, *tambah menu*, atau *daftar barang*?',
             ].join('\n');
         } catch (e: any) {
             this.logger.warn(`add stock failed: ${e?.message}`);

@@ -418,7 +418,7 @@ describe('PO — simulasi WA: validasi & path core', () => {
         expect(r.answer).toMatch(/tercatat|WA-/i);
     });
 
-    it('V13: RAG/chat answer kosong → string kosong (umkm ask + non-umkm)', async () => {
+    it('V13: agentic kosong → bantuan UMKM, bukan RAG', async () => {
         const a = makeSim();
         a.agenticAnswer.mockResolvedValueOnce({
             answer: '',
@@ -427,7 +427,7 @@ describe('PO — simulasi WA: validasi & path core', () => {
         });
         const r1 = await a.chat('tanya');
         expect(r1.path).toBe('umkm');
-        expect(r1.answer).toBe('');
+        expect(r1.answer).toMatch(/Bisa\. Mau catat|jual 2 indomie/i);
         expect(a.studioChat).not.toHaveBeenCalled();
         expect(a.agenticAnswer).toHaveBeenCalled();
 
@@ -436,6 +436,14 @@ describe('PO — simulasi WA: validasi & path core', () => {
         const r2 = await b.chat('halo');
         expect(r2.path).toBe('rag');
         expect(r2.answer).toBe('');
+    });
+
+    it('UMKM unknown never falls through to RAG', async () => {
+        const { chat, studioChat } = makeSim();
+        const r = await chat('asdfghxyz123');
+        expect(r.path).toBe('umkm');
+        expect(r.answer).toMatch(/Belum kebaca/i);
+        expect(studioChat).not.toHaveBeenCalled();
     });
 
     it('V14: guided empty replies → "..." ; flowEnded restart', async () => {

@@ -10,6 +10,9 @@ import {
     type UmkmCommandsConfig,
     type UmkmCommandMatcher,
 } from './studio-umkm-commands';
+import type { UmkmIntakeJobCandidate } from './studio-umkm-durable.util';
+
+export type { UmkmIntakeJobCandidate };
 
 export type UmkmIntent = UmkmCommandIntent | 'unknown' | 'check_stock';
 
@@ -658,3 +661,219 @@ export function parseSaleJsonFromLlm(raw: string): ParsedUmkmSale | null {
         return null;
     }
 }
+
+export type UmkmIntakeMatch =
+    | { kind: 'none' }
+    | { kind: 'empty_sale' }
+    | { kind: 'mixed'; candidates: UmkmIntakeJobCandidate[]; originalText: string };
+
+const INTAKE_JOB_VERBS = new Set([
+    'jual',
+    'jualan',
+    'catat',
+    'order',
+    'beli',
+    'belanja',
+    'stok',
+    'stock',
+    'tambah',
+    'cek',
+    'restok',
+    'restock',
+    'penjualan',
+    'pembelian',
+]);
+
+const INTAKE_FILLER = new Set([
+    'ya',
+    'batal',
+    'rb',
+    'jt',
+    'ribu',
+    'juta',
+    'atau',
+    'dan',
+    'yang',
+    'ada',
+    'tadi',
+    'dong',
+    'sih',
+    'nih',
+    'porsi',
+]);
+
+function intakeTokens(text: string): string[] {
+    return text
+        .toLowerCase()
+        .split(/[^a-zA-Z0-9\u00C0-\u024F]+/)
+        .filter(Boolean);
+}
+
+function intakeProductLikeTokens(text: string): string[] {
+    return intakeTokens(text).filter((tok) => {
+        if (/^\d+$/.test(tok)) return false;
+        if (INTAKE_FILLER.has(tok) || INTAKE_JOB_VERBS.has(tok)) return false;
+        return tok.length >= 2;
+    });
+}
+
+function intakeHasQty1to999(text: string): boolean {
+    return /\b([1-9]\d{0,2})\b/.test(text);
+}
+
+function intakeHasPriceShape(text: string): boolean {
+    if (/\b\d+[.,]?\d*\s*(rb|ribu|jt|juta)\b/i.test(text)) return true;
+    return /\b\d{4,}\b/.test(text);
+}
+
+function intakeHasJobVerb(text: string): boolean {
+    return /\b(jual|jualan|catat|order|beli|belanja|stok|stock|tambah|cek|restok|restock|pembelian|penjualan)\b/i.test(
+        text,
+    );
+}
+
+/**
+ * Muddy-job matcher (D4.1). Runs after ask/help override, before detectUmkmIntent.
+ * Does not guess: mixed jobs return candidates for await_job_clarification.
+ */
+export function matchUmkmIntakeJob(text: string): UmkmIntakeMatch {
+    const originalText = text.trim();
+    if (!originalText) return { kind: 'none' };
+
+    // 6. Bare catat/jual → empty sale slots, not mixed.
+    if (/^(catat|jual|jualan)\s*$/i.test(originalText)) {
+        return { kind: 'empty_sale' };
+    }
+
+    // 1. Customer-sale phrases → record_sale only (detectUmkmIntent). Never mixed.
+    if (/\b((ada\s+yang\s+beli)|(yang\s+beli)|(tadi\s+beli))\b/i.test(originalText)) {
+        return { kind: 'none' };
+    }
+
+    // 2. belanja → purchase only.
+    if (/\bbelanja\b/i.test(originalText)) {
+        return { kind: 'none' };
+    }
+
+    const products = intakeProductLikeTokens(originalText);
+    const hasQty = intakeHasQty1to999(originalText);
+
+    // 3. Token beli (not pembelian) + qty + name → sale vs purchase.
+    if (/\bbeli\b/i.test(originalText) && hasQty && products.length >= 1) {
+        return { kind: 'mixed', candidates: ['sale', 'purchase'], originalText };
+    }
+
+    // 4. Qty 1–999 + product, no job verb, not price-shaped → sale vs add_stock.
+    if (
+        !intakeHasJobVerb(originalText) &&
+        !intakeHasPriceShape(originalText) &&
+        hasQty &&
+        products.length >= 1
+    ) {
+        return { kind: 'mixed', candidates: ['sale', 'add_stock'], originalText };
+    }
+
+    // 5. Stock verb AND sale verb, no qty → sale vs check_stock.
+    const hasSaleVerb = /\b(jual|jualan|catat|order)\b/i.test(originalText);
+    const hasStockVerb =
+        /\b(stok|stock|restok|restock)\b/i.test(originalText) || /cek\s+stok/i.test(originalText);
+    if (hasSaleVerb && hasStockVerb && !hasQty) {
+        return { kind: 'mixed', candidates: ['sale', 'check_stock'], originalText };
+    }
+
+    return { kind: 'none' };
+}
+
+/** Map a clarify-turn alias to a forced job. Does not re-run the matcher. */
+export function resumeJobClarification(
+    text: string,
+    candidates: UmkmIntakeJobCandidate[],
+): { action: 'forced'; intent: UmkmIntakeJobCandidate } | { action: 'none' } {
+    const t = text.trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!t) return { action: 'none' };
+    const has = (c: UmkmIntakeJobCandidate) => candidates.includes(c);
+
+    if (has('add_stock') && /^(tambah\s+stok|stok\s+masuk)\b/.test(t)) {
+        return { action: 'forced', intent: 'add_stock' };
+    }
+    if (has('check_stock') && /^(cek\s+stok|cek)\b/.test(t)) {
+        return { action: 'forced', intent: 'check_stock' };
+    }
+    if (has('purchase') && /^belanja\b/.test(t)) {
+        return { action: 'forced', intent: 'purchase' };
+    }
+    if (has('sale') && /^(jual|penjualan|catat)\b/.test(t)) {
+        return { action: 'forced', intent: 'sale' };
+    }
+    if (has('check_stock') && !has('add_stock') && /^stok\b/.test(t)) {
+        return { action: 'forced', intent: 'check_stock' };
+    }
+    return { action: 'none' };
+}
+
+export function formatJobClarificationPrompt(candidates: UmkmIntakeJobCandidate[]): string {
+    const lines = ['Belum kebaca mau apa. Maksudnya:', ''];
+    if (candidates.includes('sale')) lines.push('• *jual* — catat penjualan');
+    if (candidates.includes('add_stock')) lines.push('• *tambah stok*');
+    if (candidates.includes('check_stock')) lines.push('• *cek stok*');
+    if (candidates.includes('purchase')) lines.push('• *belanja*');
+    lines.push('', 'Balas salah satu, atau *batal*.');
+    return lines.join('\n');
+}
+
+export function stripUmkmJobVerbs(text: string): string {
+    return text
+        .replace(
+            /\b(beli|jual|jualan|belanja|stok|stock|catat|order|tambah|cek|restok|restock|atau|penjualan|pembelian)\b/gi,
+            ' ',
+        )
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+/** `indomie 2` → `2 indomie` so allowFollowUp sale parse keeps qty. */
+export function normalizeUmkmQtyFirst(text: string): string {
+    const t = text.trim();
+    if (!t) return t;
+    if (/^\d{1,3}\s+\S/.test(t)) return t;
+    const m = t.match(/^(.+?)\s+(\d{1,3})$/);
+    if (m) {
+        const qty = parseInt(m[2], 10);
+        if (qty >= 1 && qty <= 999) return `${qty} ${m[1].trim()}`;
+    }
+    return t;
+}
+
+/** True when this turn should leave a pending sale/purchase (narrow sticky). */
+export function isUmkmIntakeClearJob(
+    text: string,
+    commands?: UmkmCommandsConfig | unknown,
+): boolean {
+    if (matchUmkmIntakeJob(text).kind === 'mixed') return false;
+    return detectUmkmIntent(text, commands) !== 'unknown';
+}
+
+export function formatPendingStickyHint(
+    kind: 'sale' | 'purchase',
+    commands?: UmkmCommandsConfig | unknown,
+): string {
+    const cfg = resolveUmkmCommands(commands ?? DEFAULT_UMKM_COMMANDS);
+    const confirmHint = cfg.confirm[0] || 'ya';
+    const cancelHint = cfg.cancel[0] || 'batal';
+    if (kind === 'purchase') {
+        return [
+            'Masih ada draft belanja menunggu konfirmasi.',
+            `Ketik *${confirmHint}* untuk simpan, *${cancelHint}* untuk batalkan.`,
+            `Untuk job lain, ketik *${cancelHint}* dulu.`,
+        ].join('\n');
+    }
+    return [
+        'Masih ada draft penjualan menunggu konfirmasi.',
+        `Ketik *${confirmHint}* untuk simpan, *${cancelHint}* untuk batalkan.`,
+        'Kalau jumlahnya salah, ketik *salah, maksudnya 2*.',
+        `Untuk job lain, ketik *${cancelHint}* dulu.`,
+    ].join('\n');
+}
+
+export const UMKM_CLARIFY_EXPIRED_COPY =
+    'Sesi sebelumnya sudah lewat. Ketik ulang barang dan jumlah, contoh *indomie 2*.';

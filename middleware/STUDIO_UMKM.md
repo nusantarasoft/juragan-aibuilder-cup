@@ -18,9 +18,12 @@ UMKM (WhatsApp)
     → StudioWhatsAppService
         ├─ umkm_mode=true  → StudioUmkmService.handleMessage()  ← produk UMKM
         │     ├─ greeting → welcome cheat-sheet
-        │     ├─ jual/stok/laporan → handler
-        │     ├─ tanya/1 → Agentic Ask (di router, bukan di handleMessage)
-        │     └─ null selain ask → RAG
+        │     ├─ mixed job → await_job_clarification (bukan tebak)
+        │     ├─ jual/stok/laporan → handler / slot wizard
+        │     ├─ tanya/1 → null → Agentic Ask (di router)
+        │     └─ unknown → bantuan (string, tidak pernah RAG)
+        ├─ else use_guided_flow=true  → Guide Flow (notebook generik / AI Gateway)
+        └─ else → StudioService.chat() RAG
         ├─ else use_guided_flow=true  → GuideFlow (notebook generik / AI Gateway)
         └─ else → StudioService.chat() RAG
     → staging percakapan (pending sale) → konfirmasi
@@ -42,7 +45,7 @@ Intent internal ↔ label AIDLC:
 
 | File | Peran |
 |------|-------|
-| `studio-umkm.util.ts` | Intent, parsing rupiah, format WA, alias AIDLC |
+| `studio-umkm.util.ts` | Intent, matcher intake (D4.1), parsing rupiah, format WA |
 | `studio-umkm.service.ts` | Preview/commit sale, stok, laporan, setup notebook |
 | `guide-flow.definition.ts` | `defaultUmkmGuideFlowDefinition()` + node `action` |
 | `guide-flow.service.ts` | Eksekusi `record_sale`, `confirm_sale`, `check_stock`, … |
@@ -315,7 +318,7 @@ Jangan aktifkan dengan `useGuidedFlow: true` untuk notebook `umkm_mode`. Produk 
 
 | `umkm_mode` | `use_guided_flow` | Perilaku |
 |-------------|-------------------|----------|
-| `true` | * | UMKM branch first (`handleMessage()`); RAG hanya jika return null (tanya → Agentic Ask) |
+| `true` | * | UMKM branch (`handleMessage()`); null hanya ask → Agentic Ask; unknown = bantuan |
 | `false` | `true` | Guide Flow (notebook generik / AI Gateway) |
 | `false` | `false` | Chat RAG |
 

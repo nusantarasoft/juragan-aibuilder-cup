@@ -34,35 +34,35 @@
 
 **Why:** Text confirm is easy to mistype; native buttons are the WhatsApp-native confirm UX.
 
-**Context:** CEO 2026-08-16 SELECTIVE EXPANSION deferred (D4.1). Dual confirm stacks (Guide Flow vs durable pending sale) must stay on the durable `handleMessage` path after the kill-guide-flow PR. Start from WAHA send-message button payload + `detectUmkmConfirmReply`.
+**Context:** CEO 2026-08-17 intake plan D4.2 (was Aug 16 D4.1). Dual confirm stacks (Guide Flow vs durable pending sale) must stay on the durable `handleMessage` path. Start from WAHA send-message button payload + `detectUmkmConfirmReply`.
 
 **Effort:** M
 **Priority:** P2
-**Depends on:** UMKM always uses `StudioUmkmService` (this CEO plan)
+**Depends on:** Intake admin PR shipped
 
-### Ambiguous-intent clarification
+### Last-item memory (“satu lagi”)
 
-**What:** When intent is muddy, ask “maksudnya catat penjualan atau cek stok?” instead of guessing or falling through to RAG.
+**What:** Repeat the last recorded sale item/qty as a one-tap “satu lagi” without retyping the product.
 
-**Why:** Free-text owners will send mixed messages; a wrong commit is worse than one clarifying turn.
+**Why:** Delight for kasir; stale-state risk if the last item is from an old session.
 
-**Context:** CEO 2026-08-16 D4.2 deferred. `understandUmkmQuery` already has `needs_clarification`. Wire it as the default unknown path after agentic-ask for `ask` ships.
+**Context:** CEO 2026-08-17 intake plan D4.3 deferred. Attach to the same pending-sale slot loop after muddy-intent ships.
 
-**Effort:** M
-**Priority:** P2
-**Depends on:** Agentic tanya on `handleMessage` ask path (OV1)
+**Effort:** S
+**Priority:** P3
+**Depends on:** Intake admin PR shipped
 
-### Natural sale correction
+### Tutup toko daily recap
 
-**What:** Understand “bukan 3, 2 saja” and patch the pending sale without cancel+retype.
+**What:** “Tutup toko” sends a daily omzet/stok recap instead of requiring `laporan` / digit 6.
 
-**Why:** Correction is how people actually talk; cancel+retype is the remaining rigidity after killing Guide Flow.
+**Why:** Closing ritual is how owners talk; the report job already exists if they ask.
 
-**Context:** CEO 2026-08-16 D4.3 deferred. Pending sale lives in durable session / `studio_umkm_pending_sales`.
+**Context:** CEO 2026-08-17 intake plan D4.4 deferred.
 
-**Effort:** M
-**Priority:** P2
-**Depends on:** Kill-guide-flow PR shipped
+**Effort:** S
+**Priority:** P3
+**Depends on:** Intake admin PR shipped
 
 ### Voice note / foto nota as sale input
 
@@ -101,3 +101,15 @@
 **Depends on:** Kill-guide-flow PR
 
 ## Completed
+
+### Natural sale correction
+
+**What:** Understand “salah, maksudnya 2” and patch the pending sale without cancel+retype.
+
+**Shipped:** `653f1c3` (qty revise on pending sale). CEO 2026-08-16 D4.3 / intake baseline.
+
+### Ambiguous-intent clarification (intake D4.1)
+
+**What:** When the job is muddy (`indomie 2`, `beli 10 x`), ask jual vs tambah stok / belanja instead of guessing or falling through to RAG.
+
+**Shipped:** intake admin PR. CEO 2026-08-17 D4.1 (Aug 16 D4.2). Deterministic matcher + `await_job_clarification`; unknown never RAG.

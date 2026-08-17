@@ -49,7 +49,7 @@ flowchart TD
     W -->|3 / belanja| B[Hub atau catat belanja]
     W -->|6 / laporan / omzet| L[Laporan]
     W -->|0 / bantuan| H[Panduan + menu]
-    W -->|1 / tanya| A[Tanya RAG]
+    W -->|1 / tanya| A[Tanya / Agentic Ask]
 
     R --> P{User: ya/1 atau batal/0?}
     P -->|ya / 1| RC[Commit order]
@@ -147,7 +147,7 @@ sequenceDiagram
     alt umkm_mode = true
         MW->>UK: handleMessage()
         UK->>DB: WRITE atau READ
-        Note over MW: tanya/null ask → Agentic Ask; null lain → RAG
+        Note over MW: tanya/null ask → Agentic Ask; unknown → bantuan UMKM (bukan RAG)
     else use_guided_flow = true (bukan UMKM)
         MW->>GF: runGuidedTurn()
         GF->>GF: cek guide_flow_id vs published flow
@@ -175,7 +175,7 @@ handleWebhook()
   ├─ resolveSession(chat_id)
   └─ routing jawaban:
        ├─ umkm_mode=true           → handleMessage()      ← produk UMKM
-       │     (tanya → Agentic Ask; null lain → RAG)
+       │     (tanya → Agentic Ask; unknown → bantuan; tidak pernah RAG)
        ├─ else use_guided_flow     → runGuidedTurn()      ← notebook generik / Gateway
        └─ lainnya                  → StudioService.chat()
 ```
@@ -231,9 +231,9 @@ stateDiagram-v2
 | 6 | `cek stok` / `stok` | `do_stock` |
 | 7 | `laporan`, `rekap`, `omzet` | `do_report` |
 | 8 | regex `jual`, `jualan`, `catat`, `order`, `transaksi` | `do_record` |
-| 9 | **default** / `tanya_umum` (via QU) | `do_ask` (RAG) |
+| 9 | **default** / `tanya_umum` | `do_ask` (engine RAG — **tidak** dipakai saat `umkm_mode`) |
 
-> **Catatan:** Pesan bebas masuk `do_ask` (RAG). Query Understanding AIDLC dipakai bila jalur default/ambigu untuk remap intent atau minta klarifikasi. Commit hanya setelah `ya`.
+> **UMKM live (`umkm_mode`):** graph ini tidak dijalankan. Matcher D4.1 → `await_job_clarification` untuk job campur; unknown → bantuan string; tanya → Agentic Ask. Query Understanding **tidak** remap unknown→sale. Commit hanya setelah `ya`.
 
 ### Node `action` — eksekusi
 
@@ -412,7 +412,7 @@ erDiagram
 
 | `umkm_mode` | `use_guided_flow` | Perilaku |
 |-------------|-------------------|----------|
-| `true` | * | UMKM branch first (`handleMessage()`); RAG hanya jika return null |
+| `true` | * | UMKM branch (`handleMessage()`); null hanya ask → Agentic Ask; unknown = bantuan |
 | `false` | `true` | Guide Flow (notebook generik / Gateway) |
 | `false` | `false` | Chat RAG |
 
