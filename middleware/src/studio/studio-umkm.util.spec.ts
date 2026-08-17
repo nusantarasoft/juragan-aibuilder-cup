@@ -114,6 +114,11 @@ describe('studio-umkm.util', () => {
     it('extracts stock product query', () => {
         expect(extractStockProductQuery('cek stok gula')).toBe('gula');
         expect(extractStockProductQuery('stok indomie goreng masih berapa?')).toMatch(/indomie goreng/i);
+        expect(
+            extractStockProductQuery(
+                'kalau stok teh pucuk cyc mau habis, mending restock berapa?',
+            ),
+        ).toMatch(/^teh pucuk cyc$/i);
     });
 
     it('formats unknown command hint', () => {

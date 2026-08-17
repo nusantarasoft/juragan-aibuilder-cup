@@ -92,6 +92,20 @@ export class StudioUmkmAgenticAskService {
         }
 
         const q = (question || '').toLowerCase();
+        const restockLike = /\b(restock|restok|mending|mau\s+habis)\b/i.test(q);
+        if (restockLike) {
+            const stock = ok.find((r) => r.name === 'get_stock');
+            const lines = [
+                'Soal restock, cek sisa dulu:',
+                '',
+                stock?.content || 'Stok item itu belum ketemu di etalase.',
+                '',
+                'Kalau mau isi ulang: ketik *tambah stok [nama] [jumlah]* atau *belanja [jumlah] [nama] @harga*.',
+                'Mau hitung yang laku? Ketik *daftar penjualan* atau *laporan hari ini*.',
+            ];
+            return lines.join('\n');
+        }
+
         const adviceLike =
             /\b(bagaimana|gimana|tips|saran|strategi|rekomendasi|menaikkan|meningkatkan|tingkatkan|naikkan)\b/i.test(
                 q,

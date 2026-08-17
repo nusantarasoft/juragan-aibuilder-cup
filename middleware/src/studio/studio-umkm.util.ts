@@ -133,6 +133,8 @@ export function extractStockProductQuery(text: string): string | null {
         if (!m?.[1]) continue;
         const q = m[1]
             .replace(/\b(berapa|ya|dong|kah|sih|aja|sekarang|masih|dulu|nih)\b/gi, '')
+            .replace(/[,?!].*$/, '')
+            .replace(/\b(mau\s+habis|mending|restock|restok|sebaiknya|lebih\s+baik).*$/i, '')
             .trim();
         if (q.length >= 2 && !/^(berapa|ada|semua|all)$/i.test(q)) return q;
     }

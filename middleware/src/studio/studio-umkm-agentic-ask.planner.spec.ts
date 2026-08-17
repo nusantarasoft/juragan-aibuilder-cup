@@ -123,6 +123,15 @@ describe('planAgenticAskTools', () => {
         expect(stock).toBeDefined();
         expect(stock?.productQuery).toBeUndefined();
     });
+
+    it('restock advice keeps get_stock with a clean product name', () => {
+        const p = planAgenticAskTools(
+            'kalau stok teh pucuk cyc mau habis, mending restock berapa?',
+        );
+        const stock = p.tools.find((t) => t.name === 'get_stock');
+        expect(stock?.productQuery).toMatch(/^teh pucuk cyc$/i);
+        expect(stock?.productQuery).not.toMatch(/mending|restock|habis/i);
+    });
 });
 
 describe('isAgenticAskToolName', () => {

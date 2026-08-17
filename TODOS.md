@@ -48,6 +48,8 @@
 
 **Context:** CEO 2026-08-17 cousin-sale HOLD D1 C deferred, D11 A. Parent plan `2026-08-17-umkm-intake-admin.md`. Start from `matchUmkmIntakeJob` after S5 ships; cleaner after union-merge (D10). First live /qa 2026-08-17 S9 `omzet hari ini berapa ya` looked like help (noisy capture). Retest after `45d681a`: same phrase returned Laporan. C17 `berapa yang beli hari ini?` is hardcoded `sales_report` (not jual, not help), same stamp-ignore pattern as cousin-sale — not full union-merge.
 
+Production `studio_settings` is empty: default provider Google / `gemini-2.5-flash`, but no API key or Vertex SA. Agentic ask restock therefore uses fallback copy (not a live Gemini answer) until Admin → AI Studio Settings is filled.
+
 **Effort:** L
 **Priority:** P3
 **Depends on:** Cousin-sale S5 PR; better after union-merge default keywords
