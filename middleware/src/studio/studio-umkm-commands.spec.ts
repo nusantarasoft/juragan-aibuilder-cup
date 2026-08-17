@@ -222,6 +222,12 @@ describe('studio-umkm-ops', () => {
         const p = parseAddProductMessage('tambah menu mie ayam 15000');
         expect(p?.name).toMatch(/mie ayam/i);
         expect(p?.sellingPrice).toBe(15000);
+        const named = parseAddProductMessage(
+            'tambah barang indomie goreng harga jual 3500 modal 3000',
+        );
+        expect(named?.name.toLowerCase()).toBe('indomie goreng');
+        expect(named?.sellingPrice).toBe(3500);
+        expect(named?.costPrice).toBe(3000);
     });
 
     it('parses add stock', () => {

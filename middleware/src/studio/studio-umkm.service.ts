@@ -46,8 +46,10 @@ import {
     formatDailyReportWa,
     formatSaleCancelled,
     formatUmkmHelp,
+    formatUnknownUmkmCommand,
     generateWaOrderNumber,
     isUmkmMenuOnly,
+    parsePendingQtyCorrection,
     parseSaleHeuristic,
     parseSaleJsonFromLlm,
     toAidlcIntent,
@@ -549,6 +551,12 @@ export class StudioUmkmService {
             await this.markPendingSaleStatus(pending.pendingId, 'cancelled');
             return formatSaleCancelled(commands);
         }
+        if (pending) {
+            const qtyFix = parsePendingQtyCorrection(text);
+            if (qtyFix != null) {
+                return this.revisePendingSaleQty(pending, qtyFix, tenantId, phone, conversationId, commands);
+            }
+        }
 
         // Active submenu / wizard takes priority (including batal → clear + reply)
         const wizardReply = await this.continueWizard(text, tenantId, phone, conversationId, config);
@@ -583,7 +591,7 @@ export class StudioUmkmService {
                           : qu.intent === 'laporan'
                             ? 'sales_report'
                             : qu.intent === 'tanya_umum'
-                              ? 'unknown'
+                              ? 'ask'
                               : 'unknown';
                 this.logger.debug(
                     `UMKM QU intent=${qu.intent} conf=${qu.confidence_score} (keyword was unknown)`,
@@ -637,13 +645,13 @@ export class StudioUmkmService {
                 if (pending) {
                     const confirmHint = commands.confirm[0] || 'ya';
                     const cancelHint = commands.cancel[0] || 'batal';
-                    const saleKw = (commands.keywords.record_sale || [])[0] || 'jual';
                     return [
                         'Masih ada draft penjualan menunggu konfirmasi.',
-                        `Ketik *${confirmHint}* untuk simpan, *${cancelHint}* untuk batalkan, atau kirim ulang *${saleKw} ...*.`,
+                        `Ketik *${confirmHint}* untuk simpan, *${cancelHint}* untuk batalkan.`,
+                        'Kalau jumlahnya salah, ketik *salah, maksudnya 2* — atau kirim ulang *jual ...*.',
                     ].join('\n');
                 }
-                return null;
+                return formatUnknownUmkmCommand(commands);
         }
     }
 
@@ -974,6 +982,41 @@ export class StudioUmkmService {
         if (pendingId) prepared.pending.pendingId = pendingId;
         this.setPendingSale(tenantId, prepared.pending, phone, options?.conversationId);
         return prepared.message;
+    }
+
+    async revisePendingSaleQty(
+        pending: PendingUmkmSale,
+        qty: number,
+        tenantId: string,
+        phone?: string,
+        conversationId?: string,
+        commands?: UmkmCommandsConfig,
+    ): Promise<string> {
+        const resolved = pending.resolved.map((it, i) =>
+            i === 0 || pending.resolved.length === 1 ? { ...it, quantity: qty } : it,
+        );
+        const saleItems = pending.sale.items.map((it, i) =>
+            i === 0 || pending.sale.items.length === 1 ? { ...it, quantity: qty } : it,
+        );
+        const totalAmount = resolved.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
+        const next: PendingUmkmSale = {
+            ...pending,
+            sale: { ...pending.sale, items: saleItems, totalAmount },
+            resolved,
+            createdAt: Date.now(),
+        };
+        const pendingId = await this.persistPendingSaleToDb(tenantId, next, { conversationId, phone });
+        if (pendingId) next.pendingId = pendingId;
+        this.setPendingSale(tenantId, next, phone, conversationId);
+        return formatSalePreviewWithCatalog(
+            {
+                totalAmount,
+                items: resolved,
+                paymentMethod: next.sale.paymentMethod,
+                customerName: next.sale.customerName,
+            },
+            { confirm: commands?.confirm?.[0], cancel: commands?.cancel?.[0] },
+        );
     }
 
     async parseSaleMessage(
@@ -1755,15 +1798,10 @@ export class StudioUmkmService {
             this.setWizard(tenantId, { kind: 'menu_hub', createdAt: Date.now() }, phone, conversationId);
             return [
                 '✅ *Menu ditambahkan*',
-                `• ${item.name}${item.sku ? ` [${item.sku}]` : ''}`,
+                `• ${item.name}`,
                 `• Harga jual: ${formatIdrShort(Number(item.selling_price || 0))}`,
                 '',
-                'Posisi Anda: *Menu toko*',
-                '*1* Lihat daftar menu',
-                '*2* Tambah menu lagi',
-                '*3* Tambah stok',
-                '',
-                'Atau ketik *batal* / *0* untuk menu utama.',
+                'Mau *tambah menu lagi*, *tambah stok*, atau *daftar barang*?',
             ].join('\n');
         } catch (e: any) {
             this.logger.warn(`add product failed: ${e?.message}`);
@@ -1810,12 +1848,7 @@ export class StudioUmkmService {
             return [
                 `✅ Stok *${match.name}* +${parsed.quantity}`,
                 '',
-                'Posisi Anda: *Menu toko*',
-                '*1* Lihat daftar menu',
-                '*2* Tambah menu',
-                '*3* Tambah stok lagi',
-                '',
-                'Atau ketik *batal* / *0* untuk menu utama.',
+                'Mau *tambah stok lagi*, *tambah menu*, atau *daftar barang*?',
             ].join('\n');
         } catch (e: any) {
             this.logger.warn(`add stock failed: ${e?.message}`);
@@ -2103,7 +2136,7 @@ export class StudioUmkmService {
             `Total belanja: *${formatIdrShort(purchaseTotal)}*`,
             `Selisih: *${formatIdrShort(margin)}*`,
             '',
-            'Ketik *6* untuk laporan periode lain, atau *0* untuk menu utama.',
+            'Mau lihat *minggu ini* atau *bulan ini*? Ketik *laporan minggu ini* / *laporan bulan ini*.',
         ].join('\n');
     }
 

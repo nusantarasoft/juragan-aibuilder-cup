@@ -123,15 +123,15 @@ export function formatProductListWa(
             '📦 *Daftar Barang*',
             '',
             'Belum ada produk terdaftar di katalog.',
-            'Barang tetap bisa dicatat dengan nama bebas, mis. jual 2 kopi 30000',
+            'Daftarin dulu: *tambah barang indomie goreng harga 3500*',
+            'Atau catat jualan pakai nama bebas, mis. *jual 2 kopi 30000*',
         ].join('\n');
     }
     const lines = ['📦 *Daftar Barang*', ''];
     for (const p of products.slice(0, max)) {
         const price =
             p.sellingPrice > 0 ? ` — ${formatIdrShort(p.sellingPrice)}` : '';
-        const sku = p.sku ? ` (${p.sku})` : '';
-        lines.push(`• ${p.name}${sku}${price}`);
+        lines.push(`• ${p.name}${price}`);
     }
     if (products.length > max) {
         lines.push(`… dan ${products.length - max} produk lainnya`);
@@ -175,9 +175,8 @@ export function formatSaleConfirmationWithCatalog(order: {
         lines.push('Item:');
         for (const it of order.items) {
             const tag = it.catalogMatched ? '' : ' _(belum di katalog)_';
-            const sku = it.itemSku ? ` [${it.itemSku}]` : '';
             lines.push(
-                `• ${it.quantity}x ${it.name}${sku} — ${formatIdrShort(it.quantity * it.unitPrice)}${tag}`,
+                `• ${it.quantity}x ${it.name} — ${formatIdrShort(it.quantity * it.unitPrice)}${tag}`,
             );
         }
     }
@@ -207,10 +206,9 @@ export function formatSalePreviewWithCatalog(
         lines.push('Item:');
         for (const it of sale.items) {
             const tag = it.catalogMatched ? '' : ' _(belum di katalog)_';
-            const sku = it.itemSku ? ` [${it.itemSku}]` : '';
             const unit = formatIdrShort(it.unitPrice);
             const line = formatIdrShort(it.quantity * it.unitPrice);
-            lines.push(`• ${it.quantity}x ${it.name}${sku} @ ${unit} = ${line}${tag}`);
+            lines.push(`• ${it.quantity}x ${it.name} @ ${unit} = ${line}${tag}`);
         }
     }
     lines.push(`Total: *${formatIdrShort(sale.totalAmount)}*`);
@@ -248,8 +246,7 @@ export function formatStockCheckWa(
     const lines = ['📦 *Cek Stok*', ''];
     if (q) lines.push(`Pencarian: *${q}*`, '');
     for (const r of rows.slice(0, max)) {
-        const sku = r.sku ? ` [${r.sku}]` : '';
-        lines.push(`• ${r.name}${sku} — tersedia *${formatQty(r.available)}* (on hand ${formatQty(r.onHand)})`);
+        lines.push(`• ${r.name} — sisa *${formatQty(r.available)}*`);
     }
     if (rows.length > max) {
         lines.push(`… dan ${rows.length - max} item lainnya`);

@@ -256,8 +256,7 @@ describe('Alur tambah menu (2→2→…)', () => {
     it('POSITIF wizard: simpan menu → sukses & kembali ke Menu toko', async () => {
         const reply = await svc.continueWizard('mie ayam bakso 16000', tenant, undefined, conv, cfg);
         expect(reply).toMatch(/Menu ditambahkan/i);
-        expect(reply).toMatch(/Posisi Anda: \*Menu toko\*/i);
-        expect(reply).toMatch(/Tambah menu lagi/i);
+        expect(reply).toMatch(/tambah menu lagi/i);
         expect(createItem).toHaveBeenCalled();
         // masih di hub: 2 = tambah lagi
         const again = await svc.continueWizard('2', tenant, undefined, conv, cfg);
@@ -356,7 +355,7 @@ describe('Alur tambah stok (2→3→…)', () => {
     it('POSITIF wizard: stok produk dikenal → sukses & kembali ke Menu toko', async () => {
         const reply = await svc.continueWizard('mie ayam 10', tenant, undefined, conv, cfg);
         expect(reply).toMatch(/Stok.*Mie Ayam|\+10/i);
-        expect(reply).toMatch(/Posisi Anda: \*Menu toko\*/i);
+        expect(reply).toMatch(/tambah stok lagi|daftar barang/i);
         expect(createStockMovement).toHaveBeenCalled();
         const again = await svc.continueWizard('3', tenant, undefined, conv, cfg);
         expect(again).toMatch(/qty|jumlah|nama menu|batal/i);
@@ -446,7 +445,7 @@ describe('Conversasi end-to-end (simulasi user WA)', () => {
         await svc.continueWizard('2', t, undefined, c, cfg);
         const saved = await svc.continueWizard('gado gado 12000', t, undefined, c, cfg);
         expect(saved).toMatch(/ditambahkan/i);
-        expect(saved).toMatch(/Posisi Anda/i);
+        expect(saved).toMatch(/tambah menu lagi/i);
         expect(await svc.continueWizard('2', t, undefined, c, cfg)).toMatch(/nama menu/i);
     });
 
@@ -458,7 +457,7 @@ describe('Conversasi end-to-end (simulasi user WA)', () => {
         await svc.continueWizard('3', t, undefined, c, cfg);
         const stock = await svc.continueWizard('es teh 20', t, undefined, c, cfg);
         expect(stock).toMatch(/\+20|Stok/i);
-        expect(stock).toMatch(/Posisi Anda/i);
+        expect(stock).toMatch(/tambah stok lagi|daftar barang/i);
     });
 
     it('N: stuck recovery — salah berkali-kali lalu batal', async () => {

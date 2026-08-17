@@ -22,6 +22,7 @@ import {
     looksLikeSaleMessage,
     looksLikeUmkmDirectDataQuery,
     looksLikeUmkmOpenQuestion,
+    parsePendingQtyCorrection,
     parseRupiahToken,
     parseSaleHeuristic,
     parseSaleJsonFromLlm,
@@ -54,6 +55,12 @@ describe('studio-umkm.util', () => {
         expect(isUmkmGreetingOnly('selamat pagi')).toBe(true);
         expect(isUmkmGreetingOnly('halo jual 1 bakso')).toBe(false);
         expect(isUmkmGreetingOnly('1')).toBe(false);
+        expect(isUmkmGreetingOnly('pagi, baru buka toko nih')).toBe(true);
+        expect(detectUmkmIntent('bantuan dong, mau catat jualan')).toBe('help');
+        expect(detectUmkmIntent('tadi ada yang beli 2 indomie goreng')).toBe('record_sale');
+        expect(detectUmkmIntent('kalau stok indomie mau habis, mending restock berapa?')).toBe(
+            'ask',
+        );
         expect(detectUmkmMenuDigit('2\n[User mengirim media yang tidak dapat diunduh]')).toBe(
             'menu_hub',
         );
@@ -90,11 +97,11 @@ describe('studio-umkm.util', () => {
 
     it('extracts stock product query', () => {
         expect(extractStockProductQuery('cek stok gula')).toBe('gula');
-        expect(extractStockProductQuery('stok kopi berapa')).toMatch(/kopi/i);
+        expect(extractStockProductQuery('stok indomie goreng masih berapa?')).toMatch(/indomie goreng/i);
     });
 
     it('formats unknown command hint', () => {
-        expect(formatUnknownUmkmCommand()).toContain('belum dikenali');
+        expect(formatUnknownUmkmCommand()).toMatch(/Belum kebaca|jual 2 indomie/i);
         expect(formatUnknownUmkmCommand()).toMatch(/\*1\*/);
     });
 
@@ -218,6 +225,12 @@ describe('studio-umkm.util — extra coverage', () => {
         expect(looksLikeUmkmOpenQuestion('cara naikkan penjualan')).toBe(true); // cara naikkan
         expect(looksLikeUmkmOpenQuestion('mau meningkatkan omzet toko saya')).toBe(true); // verb+omzet
         expect(looksLikeUmkmOpenQuestion('barang biasa saja disini')).toBe(false); // no trigger
+        expect(looksLikeUmkmOpenQuestion('kalau stok mau habis mending restock berapa')).toBe(true);
+        expect(looksLikeUmkmDirectDataQuery('kalau stok mau habis mending restock berapa')).toBe(
+            false,
+        );
+        expect(parsePendingQtyCorrection('salah deh, maksudnya 2')).toBe(2);
+        expect(parsePendingQtyCorrection('ya simpan')).toBeNull();
     });
 
     it('looksLikeUmkmDirectDataQuery covers branches', () => {
@@ -408,12 +421,12 @@ describe('format functions — fallback branches via empty configs', () => {
         const withKw = formatUnknownUmkmCommand(cfgNoMenu); // menu empty, default keywords present
         expect(withKw).toContain('•');
         const noKw = formatUnknownUmkmCommand(cfgNoMenuNoSaleKw); // some keyword lists empty
-        expect(noKw).toContain('belum dikenali');
+        expect(noKw).toMatch(/Belum kebaca|jual 2 indomie/i);
     });
 
     it('formatUmkmHelp with empty menu + empty keyword lists', () => {
         const msg = formatUmkmHelp(cfgEmpty);
-        expect(msg).toContain('Asisten Penjualan');
+        expect(msg).toContain('jual 2 indomie');
         expect(msg).toContain('*ya*');
         expect(msg).toContain('*batal*');
     });

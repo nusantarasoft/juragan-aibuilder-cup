@@ -106,7 +106,7 @@ describe('Perintah 0 — Bantuan', () => {
 
     it('POSITIF unknown command arahkan ke menu', () => {
         const msg = formatUnknownUmkmCommand(cmds);
-        expect(msg).toMatch(/belum dikenali|Perintah/i);
+        expect(msg).toMatch(/Belum kebaca|jual 2 indomie|Perintah/i);
         expect(msg).toMatch(/\*0\*|\*5\*|\d/);
     });
 });
@@ -201,7 +201,7 @@ describe('Perintah 2 — Menu toko (smoke + posisi)', () => {
         await svc.continueWizard('2', 't', undefined, 'c', cfg);
         const ok = await svc.continueWizard('cireng 8000', 't', undefined, 'c', cfg);
         expect(ok).toMatch(/ditambahkan/i);
-        expect(ok).toMatch(/Posisi Anda/i);
+        expect(ok).toMatch(/tambah menu lagi/i);
         expect(ok).toMatch(/Tambah menu lagi/i);
     });
 });

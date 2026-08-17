@@ -50,7 +50,7 @@ describe('studio-umkm-product.util', () => {
     it('formats product list for WA', () => {
         const text = formatProductListWa(catalog);
         expect(text).toContain('Es Kopi');
-        expect(text).toContain('KOPI-001');
+        expect(text).not.toContain('KOPI-001');
     });
 
     it('formats blocked message when catalog required', () => {
@@ -170,7 +170,8 @@ describe('formatSaleConfirmationWithCatalog — success path', () => {
         });
         expect(msg).toContain('tercatat');
         expect(msg).toContain('INV-1');
-        expect(msg).toContain('[KOPI-001]');
+        expect(msg).toContain('Es Kopi');
+        expect(msg).not.toContain('[KOPI-001]');
         expect(msg).toContain('belum di katalog');
         expect(msg).toContain('Pembayaran: tunai');
     });

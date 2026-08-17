@@ -12,7 +12,7 @@ import {
     detectUmkmFeedback,
     formatFeedbackThanks,
 } from './studio-umkm-feedback.util';
-import { detectUmkmConfirmReply, detectUmkmIntent } from './studio-umkm.util';
+import { detectUmkmConfirmReply, detectUmkmIntent, formatUnknownUmkmCommand } from './studio-umkm.util';
 import { assertNoSupabaseError } from './studio-supabase.util';
 import {
     collectUmkmOwnerPhones,
@@ -625,6 +625,16 @@ export class StudioWhatsAppService {
                 e?.stack,
             );
             answer = UMKM_INBOUND_APOLOGY;
+        }
+
+        if (
+            umkmMode &&
+            /masih mengindeks|Sumber di notebook ini belum siap/i.test(answer || '')
+        ) {
+            answer = formatUnknownUmkmCommand(
+                getUmkmCommandsFromConfig({ ...notebookCfg, tenant_id: tenantId }),
+            );
+            path = 'umkm';
         }
 
         this.logger.log(`WA inbound path=${path} tenant=${tenantId} sender=${phone}`);

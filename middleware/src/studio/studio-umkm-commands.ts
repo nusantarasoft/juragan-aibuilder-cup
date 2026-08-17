@@ -91,6 +91,9 @@ export const DEFAULT_UMKM_COMMANDS: UmkmCommandsConfig = {
             'order',
             'transaksi',
             'terjual',
+            'ada yang beli',
+            'yang beli',
+            'tadi beli',
         ],
         report_hub: ['menu laporan'],
         sales_report: [
@@ -332,11 +335,16 @@ export function uniqueMenuForDisplay(commands: UmkmCommandsConfig): UmkmMenuComm
 
 export function formatWelcomeFromCommands(commands: UmkmCommandsConfig): string {
     const menu = uniqueMenuForDisplay(commands);
-    const lines = ['Halo! Saya asisten toko UMKM Anda.', '', '*Menu* — balas angka:'];
+    const lines = [
+        'Halo! Siap bantu catat jualan.',
+        '',
+        'Ketik seperti biasa, contoh *jual 2 indomie* atau *stok indomie*.',
+        '',
+        '*Menu* — kalau mau balas angka:',
+    ];
     for (const m of menu) {
         lines.push(`*${m.digit}* ${m.label}`);
     }
-    lines.push('', 'Atau ketik perintah bebas, mis. *jual ...*, *tambah belanja*, *laporan*.');
     return lines.join('\n');
 }
 

@@ -129,7 +129,7 @@ export function extractStockProductQuery(text: string): string | null {
         const m = t.match(re);
         if (!m?.[1]) continue;
         const q = m[1]
-            .replace(/\b(berapa|ya|dong|kah|sih|aja|sekarang)\b/gi, '')
+            .replace(/\b(berapa|ya|dong|kah|sih|aja|sekarang|masih|dulu|nih)\b/gi, '')
             .trim();
         if (q.length >= 2 && !/^(berapa|ada|semua|all)$/i.test(q)) return q;
     }
@@ -144,7 +144,9 @@ export function looksLikeUmkmOpenQuestion(text: string): boolean {
     const t = text.trim();
     if (!t || t.length < 8) return false;
     if (
-        /\b(bagaimana|gimana|tips|saran|rekomendasi|strategi|ide|kenapa|mengapa)\b/i.test(t)
+        /\b(bagaimana|gimana|tips|saran|rekomendasi|strategi|ide|kenapa|mengapa|mending|sebaiknya|lebih baik)\b/i.test(
+            t,
+        )
     ) {
         return true;
     }
@@ -165,6 +167,9 @@ export function looksLikeUmkmOpenQuestion(text: string): boolean {
 export function looksLikeUmkmDirectDataQuery(text: string): boolean {
     const t = text.trim();
     if (!t) return false;
+    // Advice dressed as a question ("mending restock berapa") is not a data lookup.
+    if (/\b(mending|sebaiknya|lebih baik)\b/i.test(t)) return false;
+    if (/\bkalau\b/i.test(t) && /\b(habis|restock|restok|mending)\b/i.test(t)) return false;
     if (
         /\b(berapa|lihat|tampilkan|cek|show|total|hari\s+ini|minggu\s+ini|bulan\s+ini|rekap|laporan)\b/i.test(
             t,
@@ -185,6 +190,9 @@ export function detectUmkmIntent(
     const m = matcherFrom(commands);
     const menu = detectUmkmMenuDigit(t, m.commands);
     if (menu) return menu;
+
+    // "bantuan dong, mau catat jualan" is help, not a sale of "jualan".
+    if (/^(bantuan|help|panduan)\b/i.test(t)) return 'help';
 
     // Advice Q before keyword scan: "cara menaikkan omzet" must not hit sales_report.
     if (looksLikeUmkmOpenQuestion(t) && !looksLikeUmkmDirectDataQuery(t)) {
@@ -208,9 +216,34 @@ export function isUmkmGreetingOnly(text: string): boolean {
     if (!t) return false;
     if (isUmkmMenuOnly(text)) return false;
     if (looksLikeSaleMessage(text)) return false;
-    return /^(halo|hai|hi|hello|hei|hey|selamat\s+(pagi|siang|sore|malam)|assalamu['']?alaikum|assalamualaikum|permisi|ping)(\s+(kak|bos|min|admin|semua))?$/.test(
+    if (
+        /^(halo|hai|hi|hello|hei|hey|selamat\s+(pagi|siang|sore|malam)|assalamu['']?alaikum|assalamualaikum|permisi|ping)(\s+(kak|bos|min|admin|semua))?$/.test(
+            t,
+        )
+    ) {
+        return true;
+    }
+    // Shop-open small talk: "pagi, baru buka toko nih"
+    const openShop = /\b(buka toko|baru buka|selamat\s+(pagi|siang|sore|malam)|^(pagi|siang|sore|malam)\b)/i.test(
         t,
     );
+    const operational =
+        /\b(jual|jualan|catat|stok|belanja|tambah|omzet|omset|daftar|bantuan|beli|laporan|harga|order)\b/i.test(
+            t,
+        );
+    return openShop && !operational && t.length < 80;
+}
+
+/** Qty correction while a sale preview is waiting: "salah, maksudnya 2". */
+export function parsePendingQtyCorrection(text: string): number | null {
+    const t = text.trim().toLowerCase();
+    if (!t) return null;
+    if (!/\b(salah|maksudnya|maksud|harusnya|bukan|typo|koreksi)\b/.test(t)) return null;
+    const m = t.match(/\b(\d{1,4})\b/);
+    if (!m) return null;
+    const n = parseInt(m[1], 10);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return n;
 }
 
 /** True if text looks like a sale message (for heuristic parser gate). */
@@ -486,7 +519,11 @@ export function formatRecordSaleMenuPrompt(commands?: UmkmCommandsConfig | unkno
 export function formatUnknownUmkmCommand(commands?: UmkmCommandsConfig | unknown): string {
     const cfg = resolveUmkmCommands(commands ?? DEFAULT_UMKM_COMMANDS);
     const menu = uniqueMenuForDisplay(cfg);
-    const lines = ['🤔 Perintah belum dikenali.', '', 'Balas angka menu, atau ketik perintah:'];
+    const lines = [
+        'Belum kebaca. Ketik aja seperti biasa, contoh *jual 2 indomie* atau *stok indomie*.',
+        '',
+        'Atau balas angka:',
+    ];
     for (const m of menu) {
         lines.push(`*${m.digit}* ${m.label}`);
     }
@@ -503,9 +540,14 @@ export function formatUnknownUmkmCommand(commands?: UmkmCommandsConfig | unknown
 export function formatUmkmHelp(commands?: UmkmCommandsConfig | unknown): string {
     const cfg = resolveUmkmCommands(commands ?? DEFAULT_UMKM_COMMANDS);
     const menu = uniqueMenuForDisplay(cfg);
-    const lines = ['📒 *Asisten Penjualan UMKM*', ''];
+    const lines = [
+        'Bisa. Mau catat jualan, cek stok, belanja, atau tanya — ketik seperti biasa.',
+        '',
+        'Contoh: *jual 2 indomie* · *stok indomie* · *omzet hari ini*',
+        '',
+    ];
     if (menu.length) {
-        lines.push('*Menu* — balas angka:');
+        lines.push('*Menu* — kalau mau balas angka:');
         for (const m of menu) {
             lines.push(`*${m.digit}* ${m.label}`);
         }

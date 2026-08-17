@@ -140,8 +140,10 @@ export function parseAddProductMessage(text: string): ParsedAddProduct | null {
         /^[\d.,\s]+$/.test(n) ||
         /^(?:rp\.?\s*)?[\d.,]+(?:\s*rb)?$/i.test(n);
 
-    // Trailing price: "mie ayam 15000" / "es teh @5000" / "bakso harga 18rb"
-    const priceMatch = withoutCost.match(/(?:@|harga|rp\.?\s*)?\s*([\d][\d.,]*(?:\s*rb)?)\s*$/i);
+    // Trailing price: "mie ayam 15000" / "es teh @5000" / "bakso harga jual 18rb"
+    const priceMatch = withoutCost.match(
+        /(?:@|harga(?:\s+jual)?|rp\.?\s*)?\s*([\d][\d.,]*(?:\s*rb)?)\s*$/i,
+    );
     if (priceMatch && priceMatch.index != null && priceMatch.index > 0) {
         const before = withoutCost.slice(0, priceMatch.index).trim();
         if (!isWeakName(before)) {
@@ -159,7 +161,10 @@ export function parseAddProductMessage(text: string): ParsedAddProduct | null {
         }
     }
 
-    name = name.replace(/[,\-–]+$/, '').trim();
+    name = name
+        .replace(/\s*(?:harga\s+jual|harga|jual)\s*$/i, '')
+        .replace(/[,\-–]+$/, '')
+        .trim();
     if (isWeakName(name)) return null;
     if (sellingPrice <= 0) {
         sellingPrice = 0;
