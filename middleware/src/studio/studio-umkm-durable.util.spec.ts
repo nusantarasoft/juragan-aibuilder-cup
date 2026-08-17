@@ -3,6 +3,7 @@ import {
     deserializeWizard,
     isConversationalWizard,
     serializeWizardPayload,
+    type UmkmWizard,
 } from './studio-umkm-durable.util';
 
 describe('studio-umkm-durable.util', () => {
@@ -39,11 +40,11 @@ describe('studio-umkm-durable.util', () => {
     });
 
     it('round-trips await_job_clarification payload (originalText + candidates)', () => {
-        const w = {
-            kind: 'await_job_clarification' as const,
+        const w: UmkmWizard = {
+            kind: 'await_job_clarification',
             createdAt: 400,
             originalText: 'indomie 2',
-            candidates: ['sale', 'add_stock'] as const,
+            candidates: ['sale', 'add_stock'],
             retryCount: 1,
         };
         const payload = serializeWizardPayload(w);
