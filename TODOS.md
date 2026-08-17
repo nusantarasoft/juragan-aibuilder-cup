@@ -46,7 +46,7 @@
 
 **Why:** After cousin-sale S5, only two phrases ignore the stamp. “Speak like a cousin” is still false for omzet/stok/daftar on old notebooks.
 
-**Context:** CEO 2026-08-17 cousin-sale HOLD D1 C deferred, D11 A. Parent plan `2026-08-17-umkm-intake-admin.md`. Start from `matchUmkmIntakeJob` after S5 ships; cleaner after union-merge (D10). First live /qa 2026-08-17 S9 `omzet hari ini berapa ya` looked like help (noisy capture). Retest after `45d681a`: same phrase returned Laporan (Rp 37.500). C17 `berapa yang beli hari ini?` still help, not sale.
+**Context:** CEO 2026-08-17 cousin-sale HOLD D1 C deferred, D11 A. Parent plan `2026-08-17-umkm-intake-admin.md`. Start from `matchUmkmIntakeJob` after S5 ships; cleaner after union-merge (D10). First live /qa 2026-08-17 S9 `omzet hari ini berapa ya` looked like help (noisy capture). Retest after `45d681a`: same phrase returned Laporan. C17 `berapa yang beli hari ini?` is hardcoded `sales_report` (not jual, not help), same stamp-ignore pattern as cousin-sale — not full union-merge.
 
 **Effort:** L
 **Priority:** P3
@@ -58,11 +58,12 @@
 
 **Why:** Etalase and matching show a fake product named after a slot prompt. Kasir can pick the wrong line.
 
-**Context:** Found by /qa live WA 2026-08-17 on tenant `umkm-warung-klontong-bahagia`. Leftover from ISSUE-003 (harga jual swallowed into the name). Data fix, not matcher.
+**Context:** Found by /qa live WA 2026-08-17 on tenant `umkm-warung-klontong-bahagia`. Leftover from ISSUE-003 (harga jual swallowed into the name). Data fix, not matcher. **Fixed by /qa on master, 2026-08-17:** `PHY-000001` set `status=inactive`. Active etalase is `indomie goreng` PHY-000002 + `teh pucuk cyc` PHY-000003.
 
 **Effort:** S
 **Priority:** P3
 **Depends on:** none
+**Status:** done 2026-08-17
 
 ### Live WA isolated retest (spacing + cron)
 

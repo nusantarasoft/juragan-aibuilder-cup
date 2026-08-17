@@ -88,6 +88,7 @@ describe('PO — satu siklus warung (menu → stok → jual → belanja → lapo
         expect(daftar).toMatch(/penjualan|WA-|Total/i);
 
         const falseSale = await turn('berapa yang beli hari ini?');
+        expect(falseSale).toMatch(/Laporan|penjualan|omzet|Rp/i);
         expect(falseSale).not.toMatch(/Konfirmasi penjualan/i);
     });
 });

@@ -235,6 +235,7 @@ describe('UMKM intake — cousin-sale S5 (stale record_sale stamp)', () => {
         const siapa = await svc.handleMessage('siapa yang beli indomie?', 't', '6281', staleCfg, {
             conversationId: 's5-7b',
         });
+        expect(berapa).toMatch(/Laporan|penjualan|omzet|Rp/i);
         expect(berapa).not.toMatch(/Konfirmasi penjualan/i);
         expect(siapa).not.toMatch(/Konfirmasi penjualan/i);
     });

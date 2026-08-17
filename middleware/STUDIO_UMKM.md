@@ -53,7 +53,7 @@ Intent internal ↔ label AIDLC:
 | `guide-flow.service.ts` | Eksekusi `record_sale`, `confirm_sale`, `check_stock`, … |
 | `studio-whatsapp.service.ts` | Routing UMKM saat `umkm_mode` |
 
-Matcher `kind: sale` (`ada yang beli` / `tadi beli`) memaksa catat penjualan dan **mengabaikan** stamp `umkm_commands.keywords.record_sale`. Help/ask tetap dijalankan sebelum matcher. Bare `yang beli` bukan cousin-sale.
+Matcher `kind: sale` (`ada yang beli` / `tadi beli`) memaksa catat penjualan dan **mengabaikan** stamp `umkm_commands.keywords.record_sale`. Help/ask tetap dijalankan sebelum matcher. Bare `yang beli` bukan cousin-sale. `berapa yang beli …` adalah **laporan** (`sales_report`), bukan jual dan bukan help — juga mengabaikan stamp.
 
 ## Setup aplikasi (step by step)
 

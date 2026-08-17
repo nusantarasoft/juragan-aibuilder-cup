@@ -50,6 +50,12 @@ describe('studio-umkm.util', () => {
         expect(detectUmkmIntent('ringkasan')).toBe('sales_report');
         expect(detectUmkmIntent('berapa omzet')).toBe('sales_report');
         expect(detectUmkmIntent('omzet hari ini')).toBe('sales_report');
+        expect(detectUmkmIntent('berapa yang beli hari ini?')).toBe('sales_report');
+        expect(
+            detectUmkmIntent('berapa yang beli hari ini?', {
+                keywords: { record_sale: [...STALE_RECORD_SALE], sales_report: ['laporan'] },
+            }),
+        ).toBe('sales_report');
         expect(
             detectUmkmIntent('Bagaimana cara menaikkan omzet usaha saya hingga 20%'),
         ).toBe('ask');

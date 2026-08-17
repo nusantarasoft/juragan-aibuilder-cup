@@ -202,6 +202,12 @@ export function detectUmkmIntent(
         return 'ask';
     }
 
+    // "berapa yang beli hari ini?" is a report. Must win over record_sale keyword "yang beli"
+    // and over stamped notebooks that omit sales_report phrases (same idea as cousin-sale).
+    if (/\bberapa\s+yang\s+beli\b/i.test(t)) {
+        return 'sales_report';
+    }
+
     for (const intent of UMKM_INTENT_DETECT_ORDER) {
         const re = m.intentRegex.get(intent);
         if (re?.test(t)) return intent;
