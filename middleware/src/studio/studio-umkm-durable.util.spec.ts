@@ -34,6 +34,7 @@ describe('studio-umkm-durable.util', () => {
     it('conversational wizard kinds', () => {
         expect(isConversationalWizard('await_sale_slots')).toBe(true);
         expect(isConversationalWizard('await_add_product')).toBe(true);
+        expect(isConversationalWizard('await_add_stock')).toBe(true);
         expect(isConversationalWizard('await_purchase')).toBe(true);
         expect(isConversationalWizard('await_job_clarification')).toBe(true);
         expect(isConversationalWizard('menu_hub')).toBe(false);

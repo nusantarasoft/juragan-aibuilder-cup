@@ -145,6 +145,7 @@ export function isConversationalWizard(kind: UmkmWizard['kind']): boolean {
         kind === 'await_stock_scope' ||
         kind === 'await_report_period' ||
         kind === 'await_add_product' ||
+        kind === 'await_add_stock' ||
         kind === 'await_purchase' ||
         kind === 'await_job_clarification'
     );

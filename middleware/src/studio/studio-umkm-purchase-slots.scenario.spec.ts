@@ -76,6 +76,21 @@ describe('purchase slots util', () => {
         const payload = serializeWizardPayload(w);
         expect(deserializeWizard('await_purchase', payload, 1)).toEqual(w);
     });
+
+    it('ya does not become a product named ya while waiting for modal', () => {
+        // Regression: ISSUE-C11 — Found by /qa on 2026-08-17
+        // Report: .gstack/qa-reports/qa-report-umkm-cycle-2026-08-17.md
+        let d = purchaseDraftFromParsed({
+            items: [{ name: 'teh pucuk cyc', quantity: 5, unitCost: 0 }],
+            totalCost: 0,
+            purchaseDate: '2026-08-17',
+        });
+        d = applyPurchaseSlotReply(d, 'ya');
+        expect(d.items[0].name).toMatch(/teh pucuk cyc/i);
+        expect(d.items[0].quantity).toBe(5);
+        expect(d.items[0].unitCost).toBe(0);
+        expect(assessPurchaseSlots(d).ok).toBe(false);
+    });
 });
 
 describe('PO — belanja slot-fill E2E', () => {
@@ -105,5 +120,32 @@ describe('PO — belanja slot-fill E2E', () => {
         });
         expect(r).toMatch(/Konfirmasi belanja/i);
         expect(r).toMatch(/50\.000|50000/);
+    });
+
+    it('beli 5 + belanja then ya keeps asking modal, does not rename item to ya', async () => {
+        // Regression: ISSUE-C11 — Found by /qa on 2026-08-17
+        // Report: .gstack/qa-reports/qa-report-umkm-cycle-2026-08-17.md
+        const { svc } = makeUmkmService();
+        const a = await svc.handleMessage('beli 5 bakso', 't', '7003', cfg, { conversationId: 'ps3' });
+        expect(a).toMatch(/jual|belanja/i);
+        const b = await svc.handleMessage('belanja', 't', '7003', cfg, { conversationId: 'ps3' });
+        expect(b).toMatch(/modal|harga/i);
+        expect(b).toMatch(/bakso/i);
+        const c = await svc.handleMessage('ya', 't', '7003', cfg, { conversationId: 'ps3' });
+        expect(c).toMatch(/modal|harga/i);
+        expect(c).not.toMatch(/\*5x ya\*/i);
+        expect(c).toMatch(/bakso/i);
+    });
+
+    it('purchase slot yields to cek stok instead of eating it as item name', async () => {
+        // Regression: ISSUE-C12 — Found by /qa on 2026-08-17
+        const { svc } = makeUmkmService();
+        await svc.handleMessage('beli 5 bakso', 't', '7004', cfg, { conversationId: 'ps4' });
+        await svc.handleMessage('belanja', 't', '7004', cfg, { conversationId: 'ps4' });
+        const stock = await svc.handleMessage('cek stok bakso', 't', '7004', cfg, {
+            conversationId: 'ps4',
+        });
+        expect(stock).toMatch(/Cek Stok|Bakso|stok/i);
+        expect(stock).not.toMatch(/Harga modal \*cek stok/i);
     });
 });

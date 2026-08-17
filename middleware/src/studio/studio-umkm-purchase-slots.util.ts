@@ -8,7 +8,7 @@ import {
     toIsoDate,
     type ParsedUmkmPurchase,
 } from './studio-umkm-ops.util';
-import { extractRupiahAmounts, parseRupiahToken } from './studio-umkm.util';
+import { detectUmkmConfirmReply, extractRupiahAmounts, parseRupiahToken } from './studio-umkm.util';
 
 export type PurchaseSlotId = 'items' | 'name' | 'quantity' | 'unit_cost';
 
@@ -278,6 +278,10 @@ function ensurePurchaseItem(draft: PurchaseDraft): PurchaseDraft {
 export function applyPurchaseSlotReply(draft: PurchaseDraft, text: string): PurchaseDraft {
     const t = text.trim();
     if (!t) return purchaseDraftFromParsed(draft);
+    // "ya" is confirm of a preview, not a product named ya / not a modal price.
+    if (detectUmkmConfirmReply(t) === 'confirm') {
+        return purchaseDraftFromParsed(draft);
+    }
 
     const complete = parsePurchaseHeuristic(t);
     if (complete && assessPurchaseSlots(complete).ok) {

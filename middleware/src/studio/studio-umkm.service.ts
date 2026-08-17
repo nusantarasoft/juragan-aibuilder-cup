@@ -1613,6 +1613,19 @@ export class StudioUmkmService {
             return `❌ Dibatalkan.\n\n${formatUmkmHelp(commands)}`;
         }
 
+        // Slot wizards must not swallow cek stok / laporan / daftar as the next "nama barang".
+        // Bare numbers stay in-slot (qty / harga modal). Clarify wizard keeps jual/belanja.
+        const inSlotWizard =
+            (isConversationalWizard(wizard.kind) && wizard.kind !== 'await_job_clarification') ||
+            wizard.kind === 'menu_hub' ||
+            wizard.kind === 'purchase_hub' ||
+            wizard.kind === 'report_hub';
+        const bareSlotNumber = /^\d+([.,]\d+)?(\s*(?:rb|ribu|pcs|porsi|buah|x))?$/i.test(t);
+        if (inSlotWizard && !bareSlotNumber && isUmkmIntakeClearJob(t, commands)) {
+            this.clearWizard(tenantId, phone, conversationId);
+            return undefined;
+        }
+
         if (wizard.kind === 'await_job_clarification') {
             return this.continueJobClarification(wizard, t, tenantId, phone, conversationId, config);
         }

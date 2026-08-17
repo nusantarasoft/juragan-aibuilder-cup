@@ -46,11 +46,35 @@
 
 **Why:** After cousin-sale S5, only two phrases ignore the stamp. “Speak like a cousin” is still false for omzet/stok/daftar on old notebooks.
 
-**Context:** CEO 2026-08-17 cousin-sale HOLD D1 C deferred, D11 A. Parent plan `2026-08-17-umkm-intake-admin.md`. Start from `matchUmkmIntakeJob` after S5 ships; cleaner after union-merge (D10).
+**Context:** CEO 2026-08-17 cousin-sale HOLD D1 C deferred, D11 A. Parent plan `2026-08-17-umkm-intake-admin.md`. Start from `matchUmkmIntakeJob` after S5 ships; cleaner after union-merge (D10). Live /qa 2026-08-17: `omzet hari ini berapa ya` logged `umkm_intake=help` (not sales_report) on stamped notebook.
 
 **Effort:** L
 **Priority:** P3
 **Depends on:** Cousin-sale S5 PR; better after union-merge default keywords
+
+### Dirty catalog SKU from earlier QA
+
+**What:** Production item `indomie goreng harga jual` (PHY-000001) sits beside `indomie goreng` (PHY-000002). Rename or archive the leftover SKU.
+
+**Why:** Etalase and matching show a fake product named after a slot prompt. Kasir can pick the wrong line.
+
+**Context:** Found by /qa live WA 2026-08-17 on tenant `umkm-warung-klontong-bahagia`. Leftover from ISSUE-003 (harga jual swallowed into the name). Data fix, not matcher.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** none
+
+### Live WA isolated retest (spacing + cron)
+
+**What:** Re-run purchase (`beli 5 …` → belanja → ya), empty cousin-sale slots, `cek stok`, and `daftar barang` with ≥8s between turns. Ignore WAHA messages that start with `Laporan harian otomatis`.
+
+**Why:** /qa 2026-08-17 wrote two `ecom_orders` (2x and 3x indomie) but 0 purchases. Reply capture mixed cron reports; inbound rate limit fired twice. Ground truth is logs+DB, not the first fromMe body.
+
+**Context:** Report `.gstack/qa-reports/qa-report-umkm-wa-live-2026-08-17.md` and cycle `.gstack/qa-reports/qa-report-umkm-cycle-2026-08-17.md`. Cycle C1–C10 passed with 9s gaps. C11 `ya` during modal slot renamed the item; C12–C17 swallowed by `await_purchase`. Local fix pending deploy; then retest C11 (`beli` → `belanja` → angka → `ya`) plus laporan/omzet.
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** none
 
 ### Native WhatsApp confirm buttons
 
