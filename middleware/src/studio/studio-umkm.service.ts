@@ -646,6 +646,12 @@ export class StudioUmkmService {
             const wizardReply = await this.continueWizard(text, tenantId, phone, conversationId, config);
             if (wizardReply !== undefined) return wizardReply;
         }
+        if (confirm === 'cancel') {
+            return 'Tidak ada yang dibatalkan. Ketik seperti biasa, contoh *jual 2 indomie*.';
+        }
+        if (confirm === 'confirm') {
+            return 'Tidak ada preview untuk disimpan. Ketik seperti biasa, contoh *jual 2 indomie*.';
+        }
 
         const feedback = detectUmkmFeedback(text);
         if (feedback) {

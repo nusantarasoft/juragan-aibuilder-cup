@@ -123,6 +123,32 @@ describe('studio-umkm.util', () => {
             }),
         ).toBe('confirm');
         expect(extractUmkmButtonReply({ body: 'Ya, simpan' })).toBe('confirm');
+        expect(extractUmkmButtonReply({ body: 'Batal' })).toBe('cancel');
+        expect(
+            extractUmkmButtonReply({
+                _data: {
+                    Info: { MediaType: 'list_response' },
+                    Message: {
+                        listResponseMessage: {
+                            title: 'Ya, simpan',
+                            singleSelectReply: { selectedRowID: 'umkm_ya' },
+                        },
+                    },
+                },
+            }),
+        ).toBe('confirm');
+        expect(
+            extractUmkmButtonReply({
+                _data: {
+                    Message: {
+                        listResponseMessage: {
+                            title: 'Batal',
+                            singleSelectReply: { selectedRowID: 'umkm_batal' },
+                        },
+                    },
+                },
+            }),
+        ).toBe('cancel');
         expect(extractUmkmButtonReply({ body: 'jual 2 kopi' })).toBeNull();
         expect(canonicalUmkmConfirmText('confirm')).toBe('ya');
         expect(canonicalUmkmConfirmText('cancel')).toBe('batal');

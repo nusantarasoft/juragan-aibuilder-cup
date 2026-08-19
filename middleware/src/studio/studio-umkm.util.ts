@@ -132,16 +132,65 @@ export function umkmConfirmButtons(): { id: string; text: string }[] {
     ];
 }
 
-function nestedRecord(value: unknown): Record<string, unknown> | null {
-    return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+function collectInteractiveChoiceIds(value: unknown, depth = 0, out: string[] = []): string[] {
+    if (depth > 8 || value == null) return out;
+    if (Array.isArray(value)) {
+        for (const item of value) collectInteractiveChoiceIds(item, depth + 1, out);
+        return out;
+    }
+    if (typeof value !== 'object') return out;
+    const rec = value as Record<string, unknown>;
+    for (const key of [
+        'selectedRowID',
+        'selectedRowId',
+        'selectedButtonId',
+        'selectedId',
+        'rowId',
+        'buttonId',
+    ]) {
+        const s = String(rec[key] ?? '').trim();
+        if (s) out.push(s);
+    }
+    for (const key of [
+        'reply',
+        'buttonReply',
+        'listResponse',
+        'singleSelectReply',
+        'listResponseMessage',
+        'Message',
+        '_data',
+        'message',
+    ]) {
+        if (key in rec) collectInteractiveChoiceIds(rec[key], depth + 1, out);
+    }
+    return out;
 }
 
-function firstNonEmptyString(values: unknown[]): string {
-    for (const v of values) {
-        const s = String(v ?? '').trim();
-        if (s) return s;
+function collectInteractiveTitles(value: unknown, depth = 0, out: string[] = []): string[] {
+    if (depth > 8 || value == null) return out;
+    if (Array.isArray(value)) {
+        for (const item of value) collectInteractiveTitles(item, depth + 1, out);
+        return out;
     }
-    return '';
+    if (typeof value !== 'object') return out;
+    const rec = value as Record<string, unknown>;
+    for (const key of ['title', 'text', 'displayText', 'description']) {
+        const s = String(rec[key] ?? '').trim();
+        if (s) out.push(s);
+    }
+    for (const key of [
+        'reply',
+        'buttonReply',
+        'listResponse',
+        'singleSelectReply',
+        'listResponseMessage',
+        'Message',
+        '_data',
+        'message',
+    ]) {
+        if (key in rec) collectInteractiveTitles(rec[key], depth + 1, out);
+    }
+    return out;
 }
 
 /**
@@ -151,33 +200,18 @@ function firstNonEmptyString(values: unknown[]): string {
 export function extractUmkmButtonReply(
     payload: Record<string, unknown>,
 ): 'confirm' | 'cancel' | null {
-    const reply = nestedRecord(payload.reply);
-    const buttonReply = nestedRecord(payload.buttonReply);
-    const listResponse = nestedRecord(payload.listResponse);
-    const single = nestedRecord(listResponse?.singleSelectReply);
-    const data = nestedRecord(payload._data);
-    const id = firstNonEmptyString([
-        payload.selectedButtonId,
-        payload.selectedRowId,
-        payload.buttonId,
-        reply?.id,
-        reply?.selectedButtonId,
-        buttonReply?.id,
-        single?.selectedRowId,
-        data?.selectedButtonId,
-        data?.selectedId,
-    ]);
-    if (id === UMKM_WA_CONFIRM_BUTTON_ID) return 'confirm';
-    if (id === UMKM_WA_CANCEL_BUTTON_ID) return 'cancel';
+    const ids = collectInteractiveChoiceIds(payload);
+    if (ids.includes(UMKM_WA_CONFIRM_BUTTON_ID)) return 'confirm';
+    if (ids.includes(UMKM_WA_CANCEL_BUTTON_ID)) return 'cancel';
 
-    const title = firstNonEmptyString([
-        payload.body,
-        reply?.title,
-        reply?.text,
-        buttonReply?.text,
-        buttonReply?.title,
-    ]);
-    if (/^ya,?\s*simpan$/i.test(title)) return 'confirm';
+    const titles = [
+        String(payload.body ?? '').trim(),
+        ...collectInteractiveTitles(payload),
+    ];
+    for (const title of titles) {
+        if (/^ya,?\s*simpan$/i.test(title)) return 'confirm';
+        if (/^batal$/i.test(title)) return 'cancel';
+    }
     return null;
 }
 
