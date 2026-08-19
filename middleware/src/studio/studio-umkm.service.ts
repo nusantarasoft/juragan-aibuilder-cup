@@ -191,7 +191,17 @@ export class StudioUmkmService {
     }
 
     private logIntake(
-        event: 'mixed' | 'sale' | 'ask' | 'help' | 'sticky' | 'expired',
+        event:
+            | 'mixed'
+            | 'sale'
+            | 'ask'
+            | 'help'
+            | 'sticky'
+            | 'expired'
+            | 'purchase'
+            | 'stock'
+            | 'report'
+            | 'list',
         extra?: { candidates?: UmkmIntakeJobCandidate[]; wizardKind?: string },
     ) {
         const candidates = extra?.candidates?.length ? extra.candidates.join(',') : '-';
@@ -705,6 +715,29 @@ export class StudioUmkmService {
                 config,
                 flags,
             );
+        }
+
+        if (intake.kind === 'purchase') {
+            this.logIntake('purchase');
+            return this.beginOrRunPurchase(text, tenantId, phone, conversationId, config);
+        }
+        if (intake.kind === 'check_stock') {
+            this.logIntake('stock');
+            return this.handleCheckStockIntent(text, tenantId, phone, conversationId);
+        }
+        if (intake.kind === 'sales_report') {
+            this.logIntake('report');
+            return this.handleSalesReportIntent(text, tenantId, phone, conversationId);
+        }
+        if (intake.kind === 'list_products') {
+            this.logIntake('list');
+            this.clearWizard(tenantId, phone, conversationId);
+            return this.buildProductListMessage(tenantId);
+        }
+        if (intake.kind === 'list_sales') {
+            this.logIntake('list');
+            this.clearWizard(tenantId, phone, conversationId);
+            return this.buildSalesListMessage(tenantId, detectReportPeriod(text) || 'today');
         }
 
         this.logger.debug(`UMKM intent=${intent} aidlc=${toAidlcIntent(intent)}`);

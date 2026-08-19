@@ -54,6 +54,7 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 **Effort:** L
 **Priority:** P3
 **Depends on:** Cousin-sale S5 PR; better after union-merge default keywords
+**Status:** done 2026-08-19 — matcher owns clear omzet/stok/daftar/belanja (+ cousin extras); mixed `beli` stays clarify; stamp aliases remain additive via union-merge.
 
 ### Dirty catalog SKU from earlier QA
 
@@ -61,7 +62,7 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 
 **Why:** Etalase and matching show a fake product named after a slot prompt. Kasir can pick the wrong line.
 
-**Context:** Found by /qa live WA 2026-08-17 on tenant `umkm-warung-klontong-bahagia`. Leftover from ISSUE-003 (harga jual swallowed into the name). Data fix, not matcher. **Fixed by /qa on master, 2026-08-17:** `PHY-000001` set `status=inactive`. Active etalase is `indomie goreng` PHY-000002 + `teh pucuk cyc` PHY-000003.
+**Context:** Found by /qa live WA 2026-08-17 on tenant `umkm-warung-klontong-bahagia`. Leftover from ISSUE-003 (harga jual swallowed into the name). Data fix, not matcher. **Fixed by /qa on master, 2026-08-17:** `PHY-000001` set `status=inactive`. Active etalase is `indomie goreng` PHY-000002 + `teh pucuk groq` PHY-000004 (`teh pucuk cyc` PHY-000003 archived 2026-08-19 as duplicate test SKU).
 
 **Effort:** S
 **Priority:** P3

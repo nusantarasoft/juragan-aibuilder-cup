@@ -3,6 +3,7 @@
 import {
     buildUmkmCommandMatcher,
     DEFAULT_UMKM_COMMANDS,
+    keywordsToRegex,
     resolveUmkmCommands,
     uniqueMenuForDisplay,
     UMKM_INTENT_DETECT_ORDER,
@@ -125,6 +126,9 @@ export function extractStockProductQuery(text: string): string | null {
         /(?:cek\s+)?stok\s+(?:berapa\s+)?(.+?)(?:\s+berapa)?$/i,
         /berapa\s+stok\s+(.+)$/i,
         /sisa\s+(?:stok|barang)\s+(.+)$/i,
+        /sisa\s+(.+)$/i,
+        /masih\s+ada(?:\s+berapa)?\s+(.+)$/i,
+        /ada\s+stok\s+(.+)$/i,
         /stock\s+(.+)$/i,
         /tambah\s+stok\s+(.+)$/i,
     ];
@@ -674,6 +678,11 @@ export type UmkmIntakeMatch =
     | { kind: 'none' }
     | { kind: 'empty_sale' }
     | { kind: 'sale'; originalText: string }
+    | { kind: 'purchase'; originalText: string }
+    | { kind: 'check_stock'; originalText: string }
+    | { kind: 'sales_report'; originalText: string }
+    | { kind: 'list_products'; originalText: string }
+    | { kind: 'list_sales'; originalText: string }
     | { kind: 'mixed'; candidates: UmkmIntakeJobCandidate[]; originalText: string };
 
 const INTAKE_JOB_VERBS = new Set([
@@ -758,10 +767,57 @@ export function leftoverAfterCousinSale(text: string): string {
         .join(' ');
 }
 
+const COUSIN_LIST_RE = /\b(?:barang\s+apa\s+aja|ada\s+barang\s+apa|etalase)\b/i;
+const COUSIN_STOCK_RE = /\b(?:masih\s+ada(?:\s+berapa)?|ada\s+stok)\b/i;
+
+function defaultKeywordRe(intent: UmkmCommandIntent): RegExp | null {
+    return keywordsToRegex(DEFAULT_UMKM_COMMANDS.keywords[intent] || []);
+}
+
+/**
+ * Clear jobs owned by the matcher (DEFAULT phrases + a few cousin extras).
+ * Notebook stamp cannot hide these. Mixed/cousin-sale rules must run first.
+ * `tambah stok` stays add_stock via detectUmkmIntent (not check_stock).
+ */
+function matchCoreClearJob(originalText: string): UmkmIntakeMatch {
+    if (/\bberapa\s+yang\s+beli\b/i.test(originalText)) {
+        return { kind: 'sales_report', originalText };
+    }
+    if (defaultKeywordRe('sales_report')?.test(originalText)) {
+        return { kind: 'sales_report', originalText };
+    }
+    if (COUSIN_LIST_RE.test(originalText) || defaultKeywordRe('list_products')?.test(originalText)) {
+        return { kind: 'list_products', originalText };
+    }
+    if (defaultKeywordRe('list_sales')?.test(originalText)) {
+        return { kind: 'list_sales', originalText };
+    }
+    if (
+        defaultKeywordRe('add_stock')?.test(originalText) ||
+        defaultKeywordRe('list_purchases')?.test(originalText)
+    ) {
+        return { kind: 'none' };
+    }
+    if (defaultKeywordRe('check_stock')?.test(originalText) || COUSIN_STOCK_RE.test(originalText)) {
+        return { kind: 'check_stock', originalText };
+    }
+    if (/\bsisa\b/i.test(originalText) && !/\b(omzet|omset|laporan)\b/i.test(originalText)) {
+        const products = intakeProductLikeTokens(originalText);
+        if (products.length >= 1 || /\b(stok|stock|barang)\b/i.test(originalText)) {
+            return { kind: 'check_stock', originalText };
+        }
+    }
+    if (defaultKeywordRe('record_purchase')?.test(originalText)) {
+        return { kind: 'purchase', originalText };
+    }
+    return { kind: 'none' };
+}
+
 /**
  * Muddy-job matcher (D4.1). Runs after ask/help override, before detectUmkmIntent.
  * Does not guess: mixed jobs return candidates for await_job_clarification.
  * Rule 1 cousin-sale ignores notebook `record_sale` keywords (stamped lists).
+ * After mixed rules, DEFAULT omzet/stok/daftar/belanja (plus cousin extras) are matcher-owned.
  */
 export function matchUmkmIntakeJob(text: string): UmkmIntakeMatch {
     const originalText = text.trim();
@@ -775,11 +831,6 @@ export function matchUmkmIntakeJob(text: string): UmkmIntakeMatch {
     // 1. Customer-sale phrases → forced sale. Never mixed. Bare "yang beli" is not this rule.
     if (COUSIN_SALE_PHRASE_RE.test(originalText)) {
         return { kind: 'sale', originalText };
-    }
-
-    // 2. belanja → purchase only.
-    if (/\bbelanja\b/i.test(originalText)) {
-        return { kind: 'none' };
     }
 
     const products = intakeProductLikeTokens(originalText);
@@ -808,7 +859,7 @@ export function matchUmkmIntakeJob(text: string): UmkmIntakeMatch {
         return { kind: 'mixed', candidates: ['sale', 'check_stock'], originalText };
     }
 
-    return { kind: 'none' };
+    return matchCoreClearJob(originalText);
 }
 
 /** Map a clarify-turn alias to a forced job. Does not re-run the matcher. */
@@ -878,7 +929,16 @@ export function isUmkmIntakeClearJob(
 ): boolean {
     const match = matchUmkmIntakeJob(text);
     if (match.kind === 'mixed') return false;
-    if (match.kind === 'sale') return true;
+    if (
+        match.kind === 'sale' ||
+        match.kind === 'purchase' ||
+        match.kind === 'check_stock' ||
+        match.kind === 'sales_report' ||
+        match.kind === 'list_products' ||
+        match.kind === 'list_sales'
+    ) {
+        return true;
+    }
     return detectUmkmIntent(text, commands) !== 'unknown';
 }
 

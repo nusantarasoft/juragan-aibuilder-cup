@@ -20,7 +20,8 @@ UMKM (WhatsApp)
         │     ├─ greeting → welcome cheat-sheet
         │     ├─ help / ask → bantuan / Agentic Ask (sebelum matcher)
         │     ├─ mixed job → await_job_clarification (bukan tebak)
-        │     ├─ cousin-sale (`ada yang beli` / `tadi beli`) → record_sale (matcher; stamp keyword di-union ke default)
+        │                  ├─ cousin-sale (`ada yang beli` / `tadi beli`) → record_sale
+        │     ├─ omzet / stok / daftar / belanja jelas → matcher (bukan stamp)
         │     ├─ jual/stok/laporan → handler / slot wizard
         │     ├─ tanya/1 → null → Agentic Ask (di router)
         │     └─ unknown → bantuan (string, tidak pernah RAG)
@@ -53,7 +54,7 @@ Intent internal ↔ label AIDLC:
 | `guide-flow.service.ts` | Eksekusi `record_sale`, `confirm_sale`, `check_stock`, … |
 | `studio-whatsapp.service.ts` | Routing UMKM saat `umkm_mode` |
 
-Matcher `kind: sale` (`ada yang beli` / `tadi beli`) memaksa catat penjualan. Stamp `keywords` di-**union** ke DEFAULT (array kosong tidak menghapus frasa default). Matcher cousin-sale tetap ada sebagai jaring pengaman. Help/ask tetap dijalankan sebelum matcher. Bare `yang beli` bukan cousin-sale. `berapa yang beli …` adalah **laporan** (`sales_report`), bukan jual dan bukan help.
+Matcher `kind: sale` (`ada yang beli` / `tadi beli`) memaksa catat penjualan. Matcher juga **punya job jelas** omzet / cek stok / daftar / belanja (frasa DEFAULT + ekstra sepupu seperti `barang apa aja`, `etalase`, `sisa [barang]`, `masih ada berapa`) — stamp notebook tidak bisa menyembunyikannya. Keyword stamp tetap **union** ke DEFAULT sebagai alias tambahan. Help/ask tetap dijalankan sebelum matcher. Bare `yang beli` bukan cousin-sale. `berapa yang beli …` adalah **laporan** (`sales_report`), bukan jual dan bukan help. Mixed `beli` tetap klarifikasi.
 
 ## Setup aplikasi (step by step)
 

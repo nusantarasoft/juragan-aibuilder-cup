@@ -118,6 +118,8 @@ describe('studio-umkm.util', () => {
 
     it('extracts stock product query', () => {
         expect(extractStockProductQuery('cek stok gula')).toBe('gula');
+        expect(extractStockProductQuery('sisa bakso')).toMatch(/^bakso$/i);
+        expect(extractStockProductQuery('masih ada berapa teh pucuk')).toMatch(/teh pucuk/i);
         expect(extractStockProductQuery('stok indomie goreng masih berapa?')).toMatch(/indomie goreng/i);
         expect(
             extractStockProductQuery(
@@ -528,8 +530,11 @@ describe('matchUmkmIntakeJob (D4.1)', () => {
         });
     });
 
-    it('does not clarify belanja, price, hostile singles', () => {
-        expect(matchUmkmIntakeJob('belanja 10 indomie').kind).toBe('none');
+    it('does not clarify price, hostile singles, or pembelian', () => {
+        expect(matchUmkmIntakeJob('belanja 10 indomie')).toEqual({
+            kind: 'purchase',
+            originalText: 'belanja 10 indomie',
+        });
         expect(matchUmkmIntakeJob('kopi 15000').kind).toBe('none');
         expect(matchUmkmIntakeJob('2').kind).toBe('none');
         expect(matchUmkmIntakeJob('indomie').kind).toBe('none');
@@ -537,14 +542,14 @@ describe('matchUmkmIntakeJob (D4.1)', () => {
         expect(matchUmkmIntakeJob('pembelian 10 indomie').kind).toBe('none');
     });
 
-    it('cousin-sale phrases are kind sale; questions with yang beli are not', () => {
+    it('cousin-sale phrases are kind sale; berapa yang beli is a report', () => {
         expect(matchUmkmIntakeJob('tadi ada yang beli 2 indomie goreng')).toEqual({
             kind: 'sale',
             originalText: 'tadi ada yang beli 2 indomie goreng',
         });
         expect(matchUmkmIntakeJob('ada yang beli').kind).toBe('sale');
         expect(matchUmkmIntakeJob('tadi beli 2 indomie').kind).toBe('sale');
-        expect(matchUmkmIntakeJob('berapa yang beli hari ini?').kind).toBe('none');
+        expect(matchUmkmIntakeJob('berapa yang beli hari ini?').kind).toBe('sales_report');
         expect(matchUmkmIntakeJob('siapa yang beli indomie?').kind).toBe('none');
     });
 
@@ -556,6 +561,20 @@ describe('matchUmkmIntakeJob (D4.1)', () => {
         expect(leftoverAfterCousinSale('tadi ada yang beli')).toBe('');
         expect(leftoverAfterCousinSale('ada yang beli')).toBe('');
         expect(leftoverAfterCousinSale('tadi beli 2 indomie')).toBe('2 indomie');
+    });
+
+    it('owns clear omzet / stok / daftar / belanja without the notebook stamp', () => {
+        expect(matchUmkmIntakeJob('omzet hari ini berapa ya').kind).toBe('sales_report');
+        expect(matchUmkmIntakeJob('cek stok bakso').kind).toBe('check_stock');
+        expect(matchUmkmIntakeJob('sisa teh pucuk groq').kind).toBe('check_stock');
+        expect(matchUmkmIntakeJob('masih ada berapa teh pucuk').kind).toBe('check_stock');
+        expect(matchUmkmIntakeJob('daftar barang').kind).toBe('list_products');
+        expect(matchUmkmIntakeJob('barang apa aja').kind).toBe('list_products');
+        expect(matchUmkmIntakeJob('etalase').kind).toBe('list_products');
+        expect(matchUmkmIntakeJob('daftar penjualan').kind).toBe('list_sales');
+        expect(matchUmkmIntakeJob('tambah stok bakso').kind).toBe('none');
+        expect(matchUmkmIntakeJob('daftar belanja').kind).toBe('none');
+        expect(matchUmkmIntakeJob('beli 5 bakso').kind).toBe('mixed');
     });
 
     it('bare catat/jual is empty sale, not mixed', () => {

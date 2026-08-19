@@ -312,4 +312,15 @@ describe('UMKM intake — union-merge DEFAULT keywords onto stale stamp', () => 
         expect(mixed).toMatch(/jual|belanja/i);
         expect(mixed).not.toMatch(/Konfirmasi penjualan/i);
     });
+
+    it('cousin extras for list/stok work even when the stamp omits them', async () => {
+        const turn = async (text: string, conv: string) => {
+            const { svc } = makeUmkmService({ products: catalog });
+            return svc.handleMessage(text, 't', `62${conv}`, shortStamp, { conversationId: conv });
+        };
+        expect(await turn('barang apa aja', 'c1')).toMatch(/Daftar Barang|Indomie|Mie|Bakso/i);
+        expect(await turn('etalase', 'c2')).toMatch(/Daftar Barang|Indomie|Mie|Bakso/i);
+        expect(await turn('sisa bakso', 'c3')).toMatch(/Bakso|Cek Stok|sisa/i);
+        expect(await turn('masih ada berapa bakso', 'c4')).toMatch(/Bakso|Cek Stok|sisa/i);
+    });
 });
