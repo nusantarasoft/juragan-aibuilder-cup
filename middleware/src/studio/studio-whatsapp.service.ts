@@ -814,14 +814,13 @@ export class StudioWhatsAppService {
             return;
         }
         if (isUmkmMoneyConfirmPreview(text)) {
-            const buttons = await this.wahaClient.sendButtons(
-                chatId,
-                text,
-                umkmConfirmButtons(),
-                session,
-            );
+            const choices = umkmConfirmButtons();
+            const buttons = await this.wahaClient.sendButtons(chatId, text, choices, session);
             if (buttons.success) return;
-            this.logger.warn(`WA confirm buttons unavailable, sending text: ${buttons.error}`);
+            this.logger.warn(`WA confirm buttons unavailable: ${buttons.error}`);
+            const list = await this.wahaClient.sendList(chatId, text, choices, session);
+            if (list.success) return;
+            this.logger.warn(`WA confirm list unavailable, sending text: ${list.error}`);
         }
         for (let i = 0; i < text.length; i += WA_CHUNK) {
             const chunk = text.slice(i, i + WA_CHUNK);

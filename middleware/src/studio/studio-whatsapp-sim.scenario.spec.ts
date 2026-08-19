@@ -192,6 +192,7 @@ function makeSim(opts?: SimOpts) {
         {
             sendText: wahaSend,
             sendButtons: vi.fn(async () => ({ success: false })),
+            sendList: vi.fn(async () => ({ success: false })),
             defaultSession: 'default',
             phoneToChatId: (p: string) => `${p}@c.us`,
             downloadMedia: vi.fn(async () => null),

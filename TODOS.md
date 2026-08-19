@@ -93,7 +93,7 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 **Effort:** M
 **Priority:** P2
 **Depends on:** Intake admin PR shipped
-**Status:** done 2026-08-19 — WAHA `sendButtons` on sale/purchase preview; tap id `umkm_ya`/`umkm_batal` maps to `ya`/`batal`; text confirm still works; sendText fallback if buttons fail.
+**Status:** done 2026-08-19 — try `sendButtons`, then GOWS/NOWEB `sendList` (Ya, simpan / Batal); tap ids map to `ya`/`batal`; text fallback. WEBJS Core returns 501 for buttons.
 
 ### Last-item memory (“satu lagi”)
 

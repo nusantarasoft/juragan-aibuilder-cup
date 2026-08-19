@@ -57,8 +57,8 @@ export class WahaClientService {
     }
 
     /**
-     * Reply buttons under a sale/purchase preview. Falls back to caller sendText if WAHA
-     * rejects the endpoint (Core vs Plus, or engine without buttons).
+     * Reply buttons under a sale/purchase preview. WEBJS Core returns 501; caller
+     * should try sendList (GOWS/NOWEB) then sendText.
      */
     async sendButtons(
         chatId: string,
@@ -70,7 +70,7 @@ export class WahaClientService {
             session: session || this.defaultSession,
             chatId,
             body,
-            buttons: buttons.map((b) => ({ id: b.id, text: b.text })),
+            buttons: buttons.map((b) => ({ type: 'reply', id: b.id, text: b.text })),
         };
         const urls = [`${this.baseUrl}/api/sendButtons`, `${this.baseUrl}/api/send/buttons`];
         let lastErr = 'sendButtons failed';
@@ -90,6 +90,50 @@ export class WahaClientService {
         }
         this.logger.warn(`sendButtons failed: ${lastErr}`);
         return { success: false, error: lastErr };
+    }
+
+    /**
+     * Interactive list (GOWS / NOWEB). Same confirm ids as buttons; inbound uses selectedRowId.
+     */
+    async sendList(
+        chatId: string,
+        body: string,
+        rows: { id: string; text: string }[],
+        session?: string,
+    ): Promise<WahaSendResult> {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/sendList`, {
+                method: 'POST',
+                headers: this.headers(),
+                body: JSON.stringify({
+                    session: session || this.defaultSession,
+                    chatId,
+                    message: {
+                        title: 'Konfirmasi',
+                        description: body.slice(0, 900),
+                        footer: 'Atau ketik ya / batal',
+                        button: 'Pilih',
+                        sections: [
+                            {
+                                title: 'Simpan?',
+                                rows: rows.map((r) => ({
+                                    title: r.text,
+                                    rowId: r.id,
+                                })),
+                            },
+                        ],
+                    },
+                }),
+            });
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(`${response.status}: ${err}`);
+            }
+            return { success: true };
+        } catch (e: any) {
+            this.logger.warn(`sendList failed: ${e?.message}`);
+            return { success: false, error: e?.message };
+        }
     }
 
     async sendImage(
