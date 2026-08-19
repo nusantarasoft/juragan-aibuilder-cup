@@ -27,7 +27,8 @@ describe('WahaClientService.sendButtons', () => {
         ]);
         expect(res.success).toBe(true);
         expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(String(fetchMock.mock.calls[0][0])).toContain('/api/sendButtons');
+        const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(url).toContain('/api/sendButtons');
     });
 
     it('tries /api/send/buttons after 404 then succeeds', async () => {
