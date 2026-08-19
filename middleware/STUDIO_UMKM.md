@@ -20,7 +20,7 @@ UMKM (WhatsApp)
         │     ├─ greeting → welcome cheat-sheet
         │     ├─ help / ask → bantuan / Agentic Ask (sebelum matcher)
         │     ├─ mixed job → await_job_clarification (bukan tebak)
-        │     ├─ cousin-sale (`ada yang beli` / `tadi beli`) → record_sale (abaikan stamp keyword)
+        │     ├─ cousin-sale (`ada yang beli` / `tadi beli`) → record_sale (matcher; stamp keyword di-union ke default)
         │     ├─ jual/stok/laporan → handler / slot wizard
         │     ├─ tanya/1 → null → Agentic Ask (di router)
         │     └─ unknown → bantuan (string, tidak pernah RAG)
@@ -53,7 +53,7 @@ Intent internal ↔ label AIDLC:
 | `guide-flow.service.ts` | Eksekusi `record_sale`, `confirm_sale`, `check_stock`, … |
 | `studio-whatsapp.service.ts` | Routing UMKM saat `umkm_mode` |
 
-Matcher `kind: sale` (`ada yang beli` / `tadi beli`) memaksa catat penjualan dan **mengabaikan** stamp `umkm_commands.keywords.record_sale`. Help/ask tetap dijalankan sebelum matcher. Bare `yang beli` bukan cousin-sale. `berapa yang beli …` adalah **laporan** (`sales_report`), bukan jual dan bukan help — juga mengabaikan stamp.
+Matcher `kind: sale` (`ada yang beli` / `tadi beli`) memaksa catat penjualan. Stamp `keywords` di-**union** ke DEFAULT (array kosong tidak menghapus frasa default). Matcher cousin-sale tetap ada sebagai jaring pengaman. Help/ask tetap dijalankan sebelum matcher. Bare `yang beli` bukan cousin-sale. `berapa yang beli …` adalah **laporan** (`sales_report`), bukan jual dan bukan help.
 
 ## Setup aplikasi (step by step)
 
@@ -243,7 +243,8 @@ mutation {
 }
 ```
 
-- **Tambah/hapus** item di `menu` atau array keyword = perintah berubah.
+- Stamp `keywords` di notebook **digabung** dengan default (tambah alias, tidak menimpa). Array kosong tidak menghapus frasa default. `menu` / `confirm` / `cancel` tetap replace jika diisi.
+- **Tambah** alias di array keyword notebook; menghapus frasa default tidak bisa lewat stamp kosong — ganti lewat default kode atau alias tambahan.
 - Intent aksi tetap: `record_sale` | `check_stock` | `list_products` | `sales_report` | `help`.
 - Saat simpan, **jangan** `republishGuideFlow: true` di produksi UMKM — inbound memakai `handleMessage()`, bukan graph XState.
 - Setup UMKM men-seed default jika `umkm_commands` belum ada (tidak menimpa custom).

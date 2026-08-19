@@ -58,23 +58,28 @@ describe('studio-umkm-commands', () => {
         expect(m.intentRegex.get('record_sale')?.test('berapa penjualan hari ini')).toBe(false);
     });
 
-    it('migrates legacy check_stock keywords into add_stock', () => {
+    it('unions default keywords into a stamped list (empty does not wipe)', () => {
         const cfg = resolveUmkmCommands({
             keywords: { check_stock: ['cek stok lama'], add_stock: [] },
         });
-        expect(cfg.keywords.add_stock).toEqual(['cek stok lama']);
+        expect(cfg.keywords.add_stock).toEqual(DEFAULT_UMKM_COMMANDS.keywords.add_stock);
+        expect(cfg.keywords.check_stock).toContain('cek stok lama');
+        expect(cfg.keywords.check_stock).toContain('cek stok');
     });
 
-    it('does not migrate check_stock when add_stock already has keywords', () => {
+    it('keeps custom aliases on top of defaults', () => {
         const cfg = resolveUmkmCommands({
-            keywords: { check_stock: ['cek stok'], add_stock: ['restok'] },
+            keywords: { add_stock: ['restok gudang'], check_stock: ['cek stok'] },
         });
-        expect(cfg.keywords.add_stock).toEqual(['restok']);
+        expect(cfg.keywords.add_stock).toContain('restok');
+        expect(cfg.keywords.add_stock).toContain('restok gudang');
+        expect(cfg.keywords.check_stock).toContain('cek stok');
     });
 
-    it('skips regex for intents with no keywords in the matcher', () => {
+    it('keeps default ask keywords when the stamp sends an empty list', () => {
         const matcher = buildUmkmCommandMatcher(resolveUmkmCommands({ keywords: { ask: [] } }));
-        expect(matcher.intentRegex.has('ask')).toBe(false);
+        expect(matcher.intentRegex.has('ask')).toBe(true);
+        expect(matcher.intentRegex.get('ask')?.test('tanya dong')).toBe(true);
         expect(matcher.intentRegex.has('record_sale')).toBe(true);
     });
 
@@ -121,8 +126,10 @@ describe('studio-umkm-commands', () => {
                 help: ['Bantuan', 'bantuan', '', '   ', null as any, undefined as any, 'panduan'],
             },
         });
-        expect(cfg.keywords.ask).toEqual([]);
-        expect(cfg.keywords.help).toEqual(['bantuan', 'panduan']);
+        expect(cfg.keywords.ask).toEqual(DEFAULT_UMKM_COMMANDS.keywords.ask);
+        expect(cfg.keywords.help).toContain('bantuan');
+        expect(cfg.keywords.help).toContain('panduan');
+        expect(cfg.keywords.help).toContain('help');
     });
 
     it('normalizes menus: non-array yields empty', () => {
@@ -152,10 +159,11 @@ describe('studio-umkm-commands', () => {
         expect(byDigit['9'].label).toBe('help'); // blank label -> intent
     });
 
-    it('keeps default keywords when a user list is omitted (undefined)', () => {
-        const cfg = resolveUmkmCommands({ keywords: { ask: ['tanya dong'] } });
+    it('unions a partial user list with defaults', () => {
+        const cfg = resolveUmkmCommands({ keywords: { ask: ['tanya dong', 'nanya dong'] } });
         expect(cfg.keywords.help).toEqual(DEFAULT_UMKM_COMMANDS.keywords.help);
-        expect(cfg.keywords.ask).toEqual(['tanya dong']);
+        expect(cfg.keywords.ask).toContain('tanya');
+        expect(cfg.keywords.ask).toContain('nanya dong');
     });
 
     it('treats non-object config as full defaults', () => {

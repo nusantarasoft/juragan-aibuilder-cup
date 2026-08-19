@@ -170,7 +170,17 @@ function normalizeMenu(raw: unknown): UmkmMenuCommand[] {
     return out;
 }
 
-/** Merge partial/user config with defaults. Empty arrays mean "disabled" (not fall back). */
+function unionKeywordList(intent: UmkmCommandIntent, userRaw: unknown): string[] {
+    const defaults = defaultKeywordsFor(intent);
+    const extra = normalizeKeywordList(userRaw);
+    const out = [...defaults];
+    for (const k of extra) {
+        if (!out.includes(k)) out.push(k);
+    }
+    return out;
+}
+
+/** Merge partial/user config with defaults. Keyword arrays union into DEFAULT (empty does not wipe). Menu/confirm/cancel still replace when present. */
 export function resolveUmkmCommands(raw?: unknown): UmkmCommandsConfig {
     if (!raw || typeof raw !== 'object') {
         return structuredClone(DEFAULT_UMKM_COMMANDS);
@@ -190,20 +200,10 @@ export function resolveUmkmCommands(raw?: unknown): UmkmCommandsConfig {
             if (userList === undefined) {
                 keywords[intent] = defaultKeywordsFor(intent);
             } else {
-                keywords[intent] = normalizeKeywordList(userList);
+                keywords[intent] = unionKeywordList(intent, userList);
             }
         } else {
             keywords[intent] = defaultKeywordsFor(intent);
-        }
-    }
-
-    // Legacy check_stock keywords → add_stock if user had them
-    if (hasKeywords && src.keywords && typeof src.keywords === 'object') {
-        const legacy = (src.keywords as Record<string, unknown>).check_stock;
-        /* v8 ignore next -- keywords.add_stock is always populated in the loop above; `?? []` is a type-guard */
-        const addStock = keywords.add_stock ?? [];
-        if (legacy !== undefined && addStock.length === 0) {
-            keywords.add_stock = normalizeKeywordList(legacy);
         }
     }
 

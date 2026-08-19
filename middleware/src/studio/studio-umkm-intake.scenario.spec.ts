@@ -2,6 +2,8 @@
  * D4.1 muddy-intent intake: clarify wizard, qty-first turn 2, narrow sticky, no RAG.
  */
 import { describe, expect, it, vi } from 'vitest';
+import type { StudioContextConfig } from './studio-db-context.service';
+import { DEFAULT_UMKM_COMMANDS } from './studio-umkm-commands';
 import { DEFAULT_STUDIO_UMKM_CONTEXT } from './studio-umkm.service';
 import { STALE_RECORD_SALE } from './studio-umkm-stale-sale.fixture';
 import { makeUmkmService, staleUmkmContext, TEST_CATALOG } from './studio-umkm-test-harness';
@@ -280,5 +282,34 @@ describe('UMKM intake — cousin-sale S5 (stale record_sale stamp)', () => {
         expect(r).not.toMatch(/Konfirmasi penjualan[\s\S]*tadi/i);
         expect(r).not.toMatch(/\*tadi\*/i);
         expect(r).toMatch(/Barang apa|Siap catat|Berapa jumlah/i);
+    });
+});
+
+describe('UMKM intake — union-merge DEFAULT keywords onto stale stamp', () => {
+    const shortStamp: StudioContextConfig = {
+        ...DEFAULT_STUDIO_UMKM_CONTEXT,
+        umkm_commands: {
+            ...DEFAULT_UMKM_COMMANDS,
+            keywords: {
+                record_sale: [...STALE_RECORD_SALE],
+                sales_report: ['laporan'],
+                check_stock: ['cek stok'],
+                list_products: ['daftar barang'],
+            },
+        },
+    };
+
+    it('omzet / daftar / stok / cousin-sale work on a notebook that stamped a short keyword list', async () => {
+        const turn = async (text: string, conv: string) => {
+            const { svc } = makeUmkmService({ products: catalog });
+            return svc.handleMessage(text, 't', `62${conv}`, shortStamp, { conversationId: conv });
+        };
+        expect(await turn('omzet hari ini berapa ya', 'u1')).toMatch(/Laporan|omzet|hari ini/i);
+        expect(await turn('daftar barang', 'u2')).toMatch(/Daftar Barang|Indomie|Mie/i);
+        expect(await turn('cek stok bakso', 'u3')).toMatch(/Bakso|Cek Stok/i);
+        expect(await turn('tadi ada yang beli 2 indomie goreng', 'u4')).toMatch(/Konfirmasi penjualan/i);
+        const mixed = await turn('beli 5 bakso', 'u5');
+        expect(mixed).toMatch(/jual|belanja/i);
+        expect(mixed).not.toMatch(/Konfirmasi penjualan/i);
     });
 });

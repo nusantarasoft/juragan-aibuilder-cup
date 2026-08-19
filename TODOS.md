@@ -34,11 +34,12 @@
 
 **Why:** Stamped notebooks freeze an old `record_sale` list. Live S5 (`tadi ada yang beli …`) failed while CI used DEFAULT. Cousin-sale PR hardcodes two phrases; the next DEFAULT addition will miss production the same way.
 
-**Context:** CEO 2026-08-17 cousin-sale HOLD (D1 A, D10 A). `resolveUmkmCommands` in `middleware/src/studio/studio-umkm-commands.ts` treats a present keyword array as a full replace. Do not open an LLM-router. Do not fold this into the S5 matcher PR.
+**Context:** CEO 2026-08-17 cousin-sale HOLD (D1 A, D10 A). `resolveUmkmCommands` in `middleware/src/studio/studio-umkm-commands.ts` previously treated a present keyword array as a full replace. Do not open an LLM-router.
 
 **Effort:** M
 **Priority:** P2
 **Depends on:** Cousin-sale S5 PR shipped
+**Status:** done 2026-08-19 — keyword arrays union into DEFAULT; menu/confirm/cancel still replace.
 
 ### Intake owns all clear UMKM jobs (not notebook stamp)
 
@@ -48,7 +49,7 @@
 
 **Context:** CEO 2026-08-17 cousin-sale HOLD D1 C deferred, D11 A. Parent plan `2026-08-17-umkm-intake-admin.md`. Start from `matchUmkmIntakeJob` after S5 ships; cleaner after union-merge (D10). First live /qa 2026-08-17 S9 `omzet hari ini berapa ya` looked like help (noisy capture). Retest after `45d681a`: same phrase returned Laporan. C17 `berapa yang beli hari ini?` is hardcoded `sales_report` (not jual, not help), same stamp-ignore pattern as cousin-sale — not full union-merge.
 
-Production `studio_settings` is empty: default provider Google / `gemini-2.5-flash`, but no API key or Vertex SA. Agentic ask restock therefore uses fallback copy (not a live Gemini answer) until Admin → AI Studio Settings is filled.
+Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier replacement after Llama 3.1 8B Instant shutdown 2026-08-16). Full cycle 2026-08-17 with SKU `teh pucuk groq`: sale `WA-20260817-062221-2222`, purchases `BL-20260817-9799` + `BL-20260817-3759`, on_hand 31. C16 restock was Groq prose (sisa 31, saran ~35), not the canned fallback.
 
 **Effort:** L
 **Priority:** P3
@@ -73,7 +74,7 @@ Production `studio_settings` is empty: default provider Google / `gemini-2.5-fla
 
 **Why:** /qa 2026-08-17 wrote two `ecom_orders` (2x and 3x indomie) but 0 purchases. Reply capture mixed cron reports; inbound rate limit fired twice. Ground truth is logs+DB, not the first fromMe body.
 
-**Context:** Report `.gstack/qa-reports/qa-report-umkm-wa-live-2026-08-17.md` and cycle `.gstack/qa-reports/qa-report-umkm-cycle-2026-08-17.md`. Cycle C1–C10 passed with 9s gaps. C11 `ya` during modal slot renamed the item; C12–C17 swallowed by `await_purchase`. **Fixed by /qa on master, 2026-08-17** (`45d681a` deployed). Retest `.gstack/qa-reports/qa-report-umkm-c11-retest-2026-08-17.md`: `beli 5` → `belanja` → `2500` → `ya` wrote `BL-20260817-6025`; cek stok sisa 28; omzet/laporan/daftar live.
+**Context:** Report `.gstack/qa-reports/qa-report-umkm-wa-live-2026-08-17.md` and cycle `.gstack/qa-reports/qa-report-umkm-cycle-2026-08-17.md`. Cycle C1–C10 passed with 9s gaps. C11 `ya` during modal slot renamed the item; C12–C17 swallowed by `await_purchase`. **Fixed by /qa on master, 2026-08-17** (`45d681a` deployed). Retest `.gstack/qa-reports/qa-report-umkm-c11-retest-2026-08-17.md`: `beli 5` → `belanja` → `2500` → `ya` wrote `BL-20260817-6025`; cek stok sisa 28; omzet/laporan/daftar live. C16 restock ask live PASS after `319afc6` (query strip + refill hint, no Vertex). **Cycle with Groq 2026-08-17:** SKU `teh pucuk groq` PHY-000004; sale `WA-20260817-062221-2222`; purchases `BL-20260817-9799` + `BL-20260817-3759`; on_hand 31; C16 Groq synthesized restock (not canned fallback).
 
 **Effort:** S
 **Priority:** P2

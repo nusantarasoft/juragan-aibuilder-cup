@@ -57,6 +57,11 @@ describe('studio-umkm.util', () => {
             }),
         ).toBe('sales_report');
         expect(
+            detectUmkmIntent('omzet hari ini berapa ya', {
+                keywords: { sales_report: ['laporan'] },
+            }),
+        ).toBe('sales_report');
+        expect(
             detectUmkmIntent('Bagaimana cara menaikkan omzet usaha saya hingga 20%'),
         ).toBe('ask');
         expect(detectUmkmIntent('bagaimana cara meningkatkan omset')).toBe('ask');
@@ -186,7 +191,7 @@ describe('studio-umkm.util', () => {
     });
 });
 
-// Empty arrays mean "disabled" in resolveUmkmCommands, so these configs exercise fallbacks.
+// Empty menu/confirm still replace. Keyword arrays union into DEFAULT (empty does not wipe).
 const cfgNoMenu: Partial<UmkmCommandsConfig> = { menu: [] };
 const cfgNoMenuNoSaleKw: Partial<UmkmCommandsConfig> = {
     menu: [],
@@ -604,7 +609,8 @@ describe('matchUmkmIntakeJob (D4.1)', () => {
         expect(STALE_RECORD_SALE).not.toContain('ada yang beli');
         expect(STALE_RECORD_SALE).not.toContain('tadi beli');
         expect(STALE_RECORD_SALE).not.toContain('yang beli');
-        expect(detectUmkmIntent('tadi ada yang beli 2 indomie goreng', stale)).toBe('unknown');
+        expect(stale.keywords.record_sale).toContain('ada yang beli');
+        expect(detectUmkmIntent('tadi ada yang beli 2 indomie goreng', stale)).toBe('record_sale');
         expect(isUmkmIntakeClearJob('tadi ada yang beli 2 indomie goreng', stale)).toBe(true);
     });
 });
