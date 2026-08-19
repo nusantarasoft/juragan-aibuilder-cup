@@ -12,7 +12,16 @@ import {
     detectUmkmFeedback,
     formatFeedbackThanks,
 } from './studio-umkm-feedback.util';
-import { detectUmkmConfirmReply, detectUmkmIntent, formatUmkmHelp, formatUnknownUmkmCommand } from './studio-umkm.util';
+import {
+    canonicalUmkmConfirmText,
+    detectUmkmConfirmReply,
+    detectUmkmIntent,
+    extractUmkmButtonReply,
+    formatUmkmHelp,
+    formatUnknownUmkmCommand,
+    isUmkmMoneyConfirmPreview,
+    umkmConfirmButtons,
+} from './studio-umkm.util';
 import { assertNoSupabaseError } from './studio-supabase.util';
 import {
     collectUmkmOwnerPhones,
@@ -374,8 +383,11 @@ export class StudioWhatsAppService {
             `WA inbound inbox=${wahaSession} tenant=${tenantId} sender=${phone}`,
         );
 
+        const buttonReply = extractUmkmButtonReply(payload);
         const question = stripWhatsAppMediaAnnotations(
-            await this.buildQuestionFromPayload(payload, wahaSession),
+            buttonReply
+                ? canonicalUmkmConfirmText(buttonReply)
+                : await this.buildQuestionFromPayload(payload, wahaSession),
         );
         if (!question.trim()) return;
 
@@ -800,6 +812,16 @@ export class StudioWhatsAppService {
         if (!text.trim()) {
             await this.wahaClient.sendText(chatId, 'Maaf, tidak ada jawaban.', session);
             return;
+        }
+        if (isUmkmMoneyConfirmPreview(text)) {
+            const buttons = await this.wahaClient.sendButtons(
+                chatId,
+                text,
+                umkmConfirmButtons(),
+                session,
+            );
+            if (buttons.success) return;
+            this.logger.warn(`WA confirm buttons unavailable, sending text: ${buttons.error}`);
         }
         for (let i = 0; i < text.length; i += WA_CHUNK) {
             const chunk = text.slice(i, i + WA_CHUNK);

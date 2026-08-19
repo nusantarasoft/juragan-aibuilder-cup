@@ -56,6 +56,42 @@ export class WahaClientService {
         }
     }
 
+    /**
+     * Reply buttons under a sale/purchase preview. Falls back to caller sendText if WAHA
+     * rejects the endpoint (Core vs Plus, or engine without buttons).
+     */
+    async sendButtons(
+        chatId: string,
+        body: string,
+        buttons: { id: string; text: string }[],
+        session?: string,
+    ): Promise<WahaSendResult> {
+        const payload = {
+            session: session || this.defaultSession,
+            chatId,
+            body,
+            buttons: buttons.map((b) => ({ id: b.id, text: b.text })),
+        };
+        const urls = [`${this.baseUrl}/api/sendButtons`, `${this.baseUrl}/api/send/buttons`];
+        let lastErr = 'sendButtons failed';
+        for (const url of urls) {
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: this.headers(),
+                    body: JSON.stringify(payload),
+                });
+                if (response.ok) return { success: true };
+                lastErr = `${response.status}: ${await response.text()}`;
+                if (response.status !== 404 && response.status !== 405) break;
+            } catch (e: any) {
+                lastErr = e?.message || lastErr;
+            }
+        }
+        this.logger.warn(`sendButtons failed: ${lastErr}`);
+        return { success: false, error: lastErr };
+    }
+
     async sendImage(
         chatId: string,
         file: { url?: string; base64?: string; mimetype?: string; filename?: string },

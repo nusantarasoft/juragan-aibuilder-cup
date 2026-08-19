@@ -4,10 +4,14 @@ import {
     validateGuideFlowGraph,
 } from './guide-flow.definition';
 import {
+    canonicalUmkmConfirmText,
     detectUmkmConfirmReply,
     detectUmkmIntent,
     detectUmkmMenuDigit,
+    extractUmkmButtonReply,
     isUmkmGreetingOnly,
+    isUmkmMoneyConfirmPreview,
+    umkmConfirmButtons,
     extractRupiahAmounts,
     extractStockProductQuery,
     formatDailyReportWa,
@@ -107,6 +111,29 @@ describe('studio-umkm.util', () => {
         expect(detectUmkmConfirmReply('1')).toBeNull();
         expect(detectUmkmConfirmReply('0')).toBeNull();
         expect(detectUmkmConfirmReply('jual 2 kopi')).toBeNull();
+        expect(detectUmkmConfirmReply('Ya, simpan')).toBeNull();
+    });
+
+    it('maps WAHA button taps to confirm/cancel without treating them as a new sale', () => {
+        expect(extractUmkmButtonReply({ selectedButtonId: 'umkm_ya' })).toBe('confirm');
+        expect(extractUmkmButtonReply({ selectedButtonId: 'umkm_batal' })).toBe('cancel');
+        expect(
+            extractUmkmButtonReply({
+                listResponse: { singleSelectReply: { selectedRowId: 'umkm_ya' } },
+            }),
+        ).toBe('confirm');
+        expect(extractUmkmButtonReply({ body: 'Ya, simpan' })).toBe('confirm');
+        expect(extractUmkmButtonReply({ body: 'jual 2 kopi' })).toBeNull();
+        expect(canonicalUmkmConfirmText('confirm')).toBe('ya');
+        expect(canonicalUmkmConfirmText('cancel')).toBe('batal');
+        expect(umkmConfirmButtons().map((b) => b.id)).toEqual(['umkm_ya', 'umkm_batal']);
+        expect(isUmkmMoneyConfirmPreview('📋 *Konfirmasi penjualan*\nTotal: *Rp 4.000*')).toBe(
+            true,
+        );
+        expect(isUmkmMoneyConfirmPreview('📋 *Konfirmasi belanja*\nTotal: *Rp 20.000*')).toBe(
+            true,
+        );
+        expect(isUmkmMoneyConfirmPreview('📦 *Cek Stok*')).toBe(false);
     });
 
     it('maps AIDLC intent aliases', () => {

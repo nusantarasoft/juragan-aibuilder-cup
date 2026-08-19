@@ -119,6 +119,77 @@ export function detectUmkmConfirmReply(
     return null;
 }
 
+/** WAHA reply-button ids for money confirm. Keep short; WhatsApp title max 20 chars. */
+export const UMKM_WA_CONFIRM_BUTTON_ID = 'umkm_ya';
+export const UMKM_WA_CANCEL_BUTTON_ID = 'umkm_batal';
+export const UMKM_WA_CONFIRM_BUTTON_TEXT = 'Ya, simpan';
+export const UMKM_WA_CANCEL_BUTTON_TEXT = 'Batal';
+
+export function umkmConfirmButtons(): { id: string; text: string }[] {
+    return [
+        { id: UMKM_WA_CONFIRM_BUTTON_ID, text: UMKM_WA_CONFIRM_BUTTON_TEXT },
+        { id: UMKM_WA_CANCEL_BUTTON_ID, text: UMKM_WA_CANCEL_BUTTON_TEXT },
+    ];
+}
+
+function nestedRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+}
+
+function firstNonEmptyString(values: unknown[]): string {
+    for (const v of values) {
+        const s = String(v ?? '').trim();
+        if (s) return s;
+    }
+    return '';
+}
+
+/**
+ * Map a WAHA button/list tap to confirm/cancel. Canonical text `ya`/`batal` still
+ * works via detectUmkmConfirmReply; this only reads interactive payload ids.
+ */
+export function extractUmkmButtonReply(
+    payload: Record<string, unknown>,
+): 'confirm' | 'cancel' | null {
+    const reply = nestedRecord(payload.reply);
+    const buttonReply = nestedRecord(payload.buttonReply);
+    const listResponse = nestedRecord(payload.listResponse);
+    const single = nestedRecord(listResponse?.singleSelectReply);
+    const data = nestedRecord(payload._data);
+    const id = firstNonEmptyString([
+        payload.selectedButtonId,
+        payload.selectedRowId,
+        payload.buttonId,
+        reply?.id,
+        reply?.selectedButtonId,
+        buttonReply?.id,
+        single?.selectedRowId,
+        data?.selectedButtonId,
+        data?.selectedId,
+    ]);
+    if (id === UMKM_WA_CONFIRM_BUTTON_ID) return 'confirm';
+    if (id === UMKM_WA_CANCEL_BUTTON_ID) return 'cancel';
+
+    const title = firstNonEmptyString([
+        payload.body,
+        reply?.title,
+        reply?.text,
+        buttonReply?.text,
+        buttonReply?.title,
+    ]);
+    if (/^ya,?\s*simpan$/i.test(title)) return 'confirm';
+    return null;
+}
+
+/** True when outbound copy is a sale/purchase money preview (send buttons). */
+export function isUmkmMoneyConfirmPreview(text: string): boolean {
+    return /\*?Konfirmasi (?:penjualan|belanja)\*?/i.test(text);
+}
+
+export function canonicalUmkmConfirmText(kind: 'confirm' | 'cancel'): 'ya' | 'batal' {
+    return kind === 'confirm' ? 'ya' : 'batal';
+}
+
 /** Extract product query from stock-check phrasing. */
 export function extractStockProductQuery(text: string): string | null {
     const t = text.trim();

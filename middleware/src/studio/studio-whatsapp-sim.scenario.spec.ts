@@ -191,6 +191,7 @@ function makeSim(opts?: SimOpts) {
         supabase as any,
         {
             sendText: wahaSend,
+            sendButtons: vi.fn(async () => ({ success: false })),
             defaultSession: 'default',
             phoneToChatId: (p: string) => `${p}@c.us`,
             downloadMedia: vi.fn(async () => null),
@@ -656,7 +657,7 @@ describe('PO — simulasi WA: apple-to-apple & isolasi', () => {
         expect(start.answer).toMatch(/Barang apa yang dijual|Siap catat penjualan/i);
 
         const stuck = await chat('cek stok', phone);
-        expect(stuck.answer).toMatch(/Harga|berapa|Oke —/i);
+        expect(stuck.answer).toMatch(/Cek stok yang mana|Cek Stok|stok/i);
 
         const reset = await wa.resetSimSession({ tenantId: TENANT, phone });
         expect(reset.ok).toBe(true);

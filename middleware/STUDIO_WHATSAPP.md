@@ -63,7 +63,7 @@ Untuk use case **UMKM** — catat penjualan dan laporan harian lewat WA — liha
 ## Arsitektur
 
 - **Inbound:** WAHA → `POST /api/studio/whatsapp/webhook` → `StudioWhatsAppService` → UMKM / `StudioService.chat()` / guided flow
-- **Outbound:** `WahaClientService.sendText` / `sendImage` / `sendFile`
+- **Outbound:** `WahaClientService.sendText` / `sendButtons` (preview jual/belanja) / `sendImage` / `sendFile`. Tombol gagal → `sendText`.
 - **Sesi:** `studio_whatsapp_sessions` maps `chat_id` ↔ `studio_conversations` (`channel=whatsapp`)
 
 ## Troubleshooting
