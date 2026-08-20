@@ -250,35 +250,38 @@ export function extractStockProductQuery(text: string): string | null {
     return null;
 }
 
-/**
- * Exact coach aliases (pendamping job). Normalize: trim, lower, collapse spaces,
- * strip trailing .!? — not fuzzy substring match.
- */
-export function normalizeUmkmPendampingAliasText(text: string): string {
+const UMKM_PENDAMPING_ALIASES = new Set([
+    'pendamping',
+    'saran bisnis',
+    'pendamping bisnis',
+]);
+
+/** Normalize for exact pendamping alias match (trim, lower, collapse space, strip trailing .!?). */
+export function normalizeUmkmPendampingAlias(text: string): string {
     return text
         .trim()
         .toLowerCase()
-        .replace(/[.!?]+$/g, '')
         .replace(/\s+/g, ' ')
+        .replace(/[.!?]+$/g, '')
         .trim();
 }
 
-const UMKM_PENDAMPING_ALIASES = new Set(['pendamping', 'saran bisnis', 'pendamping bisnis']);
-
-/** True when the whole message is an exact pendamping coach trigger. */
+/**
+ * Exact command-gated coach aliases. Soft tips ("tips naikin omzet") stay Agentic Ask.
+ * Pending sticky wins: aliases are not clear jobs.
+ */
 export function isUmkmPendampingExactAlias(text: string): boolean {
-    if (!text?.trim()) return false;
-    return UMKM_PENDAMPING_ALIASES.has(normalizeUmkmPendampingAliasText(text));
+    return UMKM_PENDAMPING_ALIASES.has(normalizeUmkmPendampingAlias(text));
 }
 
 /**
  * Advice / open question (tips, bagaimana, menaikkan omzet…) — route to Tanya,
  * not operational commands that share keywords like "omzet" / "penjualan".
+ * Exact pendamping aliases are excluded (dedicated coach path).
  */
 export function looksLikeUmkmOpenQuestion(text: string): boolean {
     const t = text.trim();
     if (!t || t.length < 8) return false;
-    // Exact coach aliases must not steal into Agentic Ask via \bsaran\b.
     if (isUmkmPendampingExactAlias(t)) return false;
     if (
         /\b(bagaimana|gimana|tips|saran|rekomendasi|strategi|ide|kenapa|mengapa|mending|sebaiknya|lebih baik)\b/i.test(
@@ -1056,8 +1059,6 @@ export function isUmkmIntakeClearJob(
     text: string,
     commands?: UmkmCommandsConfig | unknown,
 ): boolean {
-    // Coach aliases are not clear jobs — pending sticky must win over pendamping.
-    if (isUmkmPendampingExactAlias(text)) return false;
     const match = matchUmkmIntakeJob(text);
     if (match.kind === 'mixed') return false;
     if (

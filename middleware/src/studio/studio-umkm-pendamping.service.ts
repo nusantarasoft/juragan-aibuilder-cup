@@ -5,7 +5,7 @@
  */
 import { existsSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { AiRouterService } from '../ai/ai-router.service';
 import type { StudioContextConfig } from './studio-db-context.service';
 import { StudioUmkmService } from './studio-umkm.service';
@@ -45,6 +45,7 @@ export class StudioUmkmPendampingService implements OnModuleInit {
     };
 
     constructor(
+        @Inject(forwardRef(() => StudioUmkmService))
         private readonly umkm: StudioUmkmService,
         private readonly aiRouter: AiRouterService,
     ) {}
@@ -58,6 +59,12 @@ export class StudioUmkmPendampingService implements OnModuleInit {
             ...this.metrics,
             latency_samples_ms: [...this.metrics.latency_samples_ms],
         };
+    }
+
+    /** Test/helper: override cached playbook (empty = curriculum miss). */
+    setCurriculumForTests(content: string) {
+        this.curriculum = content.slice(0, CURRICULUM_MAX_CHARS);
+        this.curriculumMiss = !this.curriculum.trim();
     }
 
     /** Resolve playbook path — src next to this file, or dist sibling curriculum/. */
@@ -126,13 +133,14 @@ export class StudioUmkmPendampingService implements OnModuleInit {
             else toolFail.push('get_combined_report');
 
             const reportContent = reportResult?.ok ? reportResult.content : '';
-            const looksEmptyShop =
-                !reportContent ||
-                /Penjualan:\s*\*0\*/i.test(reportContent) ||
-                /Total penjualan:\s*\*Rp\s*0/i.test(reportContent);
+
+            const stockRows = await this.lowStockRows(tenantId);
+            const catalogEmpty = stockRows.all.length === 0;
+            const stockLines = stockRows.lowSnippet;
+            if (stockRows.all.length > 0) toolOk.push('fetchStockRows');
 
             let productsContent = '';
-            if (looksEmptyShop) {
+            if (catalogEmpty) {
                 const listRun = await executeUmkmReadTool(
                     this.umkm,
                     { name: 'list_products' },
@@ -146,19 +154,7 @@ export class StudioUmkmPendampingService implements OnModuleInit {
                 }
             }
 
-            const stockLines = await this.lowStockSnippet(tenantId);
-            if (stockLines) toolOk.push('fetchStockRows');
-
-            const toolPayloads = [
-                reportContent && `## Laporan minggu\n${reportContent}`,
-                productsContent && `## Katalog\n${productsContent}`,
-                stockLines && `## Stok tipis (on_hand≤2, max ${LOW_STOCK_MAX})\n${stockLines}`,
-                toolFail.length && `## Tools gagal\n${toolFail.join(', ')}`,
-            ]
-                .filter(Boolean)
-                .join('\n\n');
-
-            if (looksEmptyShop && !stockLines && !/Penjualan:\s*\*[1-9]/i.test(reportContent)) {
+            if (catalogEmpty) {
                 const empty = formatPendampingEmptyShop();
                 this.metrics.pendamping_success_total += 1;
                 this.logTurn({
@@ -171,6 +167,15 @@ export class StudioUmkmPendampingService implements OnModuleInit {
                 });
                 return empty.slice(0, MAX_REPLY_CHARS);
             }
+
+            const toolPayloads = [
+                reportContent && `## Laporan minggu\n${reportContent}`,
+                productsContent && `## Katalog\n${productsContent}`,
+                stockLines && `## Stok tipis (on_hand≤2, max ${LOW_STOCK_MAX})\n${stockLines}`,
+                toolFail.length && `## Tools gagal\n${toolFail.join(', ')}`,
+            ]
+                .filter(Boolean)
+                .join('\n\n');
 
             const prompt = buildPendampingSynthesizePrompt({
                 toolPayloads: toolPayloads || '(tidak ada payload tool)',
@@ -238,18 +243,24 @@ export class StudioUmkmPendampingService implements OnModuleInit {
         }
     }
 
-    private async lowStockSnippet(tenantId: string): Promise<string> {
+    private async lowStockRows(tenantId: string): Promise<{
+        all: { name: string; onHand: number }[];
+        lowSnippet: string;
+    }> {
         try {
             const rows = await this.umkm.fetchStockRows(tenantId);
+            const all = rows.map((r) => ({ name: r.name, onHand: r.onHand }));
             const low = rows
                 .filter((r) => r.onHand <= 2)
                 .sort((a, b) => a.onHand - b.onHand)
                 .slice(0, LOW_STOCK_MAX);
-            if (!low.length) return '';
-            return low.map((r) => `• ${r.name}: on_hand=${r.onHand}`).join('\n');
+            const lowSnippet = low.length
+                ? low.map((r) => `• ${r.name}: on_hand=${r.onHand}`).join('\n')
+                : '';
+            return { all, lowSnippet };
         } catch (e: any) {
             this.logger.warn(`pendamping lowStock: ${e?.message}`);
-            return '';
+            return { all: [], lowSnippet: '' };
         }
     }
 

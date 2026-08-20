@@ -1,35 +1,59 @@
+/**
+ * Pendamping Bisnis v1 — golden coach + ketik strip + curriculum miss.
+ */
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { StudioUmkmPendampingService } from './studio-umkm-pendamping.service';
+import { stripDisallowedKetikActions } from './studio-umkm-read-tools';
 
-describe('StudioUmkmPendampingService', () => {
+describe('stripDisallowedKetikActions', () => {
+    it('keeps allowlisted ketik lines and strips others', () => {
+        const raw = [
+            '1. Restock indomie',
+            'Kenapa: on_hand=1',
+            'Aksi: ketik: belanja 1 dus indomie',
+            'ketik: hapus semua',
+            'ketik: jual 2 bakso',
+            'ketik: ubah harga',
+        ].join('\n');
+        const { text, stripped } = stripDisallowedKetikActions(raw);
+        expect(stripped).toBe(2);
+        expect(text).toMatch(/ketik: belanja 1 dus indomie/i);
+        expect(text).toMatch(/ketik: jual 2 bakso/i);
+        expect(text).not.toMatch(/hapus semua/i);
+        expect(text).not.toMatch(/ubah harga/i);
+    });
+});
+
+describe('StudioUmkmPendampingService golden', () => {
     const umkm = {
-        buildStockCheckMessage: vi.fn(async () => 'Stok'),
-        buildSalesListMessage: vi.fn(async () => 'Sales'),
-        buildPurchaseListMessage: vi.fn(async () => 'Buy'),
-        buildCombinedReportMessage: vi.fn(
-            async () =>
-                '📊 *Laporan Minggu ini*\n\nPenjualan: *12* order\nTotal penjualan: *Rp 1.200.000*\nTotal belanja: *Rp 400.000*\nSelisih: *Rp 800.000*',
+        buildCombinedReportMessage: vi.fn(async () =>
+            [
+                '📊 *Laporan gabungan*',
+                'Penjualan: *12*',
+                'Total penjualan: *Rp 450.000*',
+                'Total belanja: *Rp 200.000*',
+            ].join('\n'),
         ),
-        buildProductListMessage: vi.fn(async () => '📦 Daftar\n• Indomie'),
+        buildProductListMessage: vi.fn(async () => '📦 Belum ada produk aktif.'),
         fetchStockRows: vi.fn(async () => [
-            { name: 'Indomie', sku: 'I1', onHand: 1, available: 1, reserved: 0 },
-            { name: 'Teh', sku: 'T1', onHand: 10, available: 10, reserved: 0 },
+            { name: 'Indomie', sku: 'IN-1', onHand: 1, available: 1, reserved: 0 },
+            { name: 'Bakso', sku: 'BK-1', onHand: 2, available: 2, reserved: 0 },
+            { name: 'Teh', sku: 'TH-1', onHand: 10, available: 10, reserved: 0 },
         ]),
     };
     const aiRouter = {
-        generateText: vi.fn(
-            async () =>
-                [
-                    'Ringkasan: omzet minggu Rp 1.200.000',
-                    '',
-                    '1. Dorong Indomie',
-                    'Kenapa: on_hand=1 dari tools',
-                    'Aksi: ketik: belanja 1 dus indomie',
-                    '',
-                    '2. Jaga margin',
-                    'Kenapa: selisih Rp 800.000',
-                    'Aksi: ketik: laporan',
-                ].join('\n'),
+        generateText: vi.fn(async () =>
+            [
+                'Ringkasan: omzet minggu Rp 450.000',
+                '',
+                '1. Restock Indomie',
+                'Kenapa: on_hand=1 di stok tipis',
+                'Aksi: ketik: belanja 1 dus indomie',
+                '',
+                '2. Dorong Bakso',
+                'Kenapa: Total penjualan Rp 450.000',
+                'Aksi: ketik: jual 2 bakso',
+            ].join('\n'),
         ),
     };
 
@@ -38,53 +62,59 @@ describe('StudioUmkmPendampingService', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         svc = new StudioUmkmPendampingService(umkm as any, aiRouter as any);
-        svc.onModuleInit();
+        svc.setCurriculumForTests('# Playbook\n\nCatat dulu, saran belakangan.\n');
     });
 
-    it('golden rich books → tips cite numbers and strip bad ketik', async () => {
-        aiRouter.generateText.mockResolvedValueOnce(
-            [
-                'Ringkasan: Total penjualan Rp 1.200.000',
-                '1. Restock Indomie',
-                'Kenapa: on_hand=1',
-                'Aksi: ketik: belanja 1 dus indomie',
-                'ketik: hapus semua',
-            ].join('\n'),
-        );
+    it('golden #1 rich shop → tips cite tool fields, ≤800 chars', async () => {
         const out = await svc.coach('pendamping', 't1');
         expect(out).toBeTruthy();
         expect(out.length).toBeLessThanOrEqual(800);
-        expect(out).toMatch(/1\.200\.000|on_hand|Indomie|belanja/i);
-        expect(out).not.toMatch(/hapus semua/);
+        expect(out).toMatch(/on_hand=1|450\.000|Total penjualan/i);
         expect(umkm.buildCombinedReportMessage).toHaveBeenCalledWith('t1', 'week');
         expect(umkm.fetchStockRows).toHaveBeenCalled();
-        expect(svc.getMetrics().pendamping_requests_total).toBeGreaterThanOrEqual(1);
-        expect(svc.getMetrics().pendamping_action_stripped_total).toBeGreaterThanOrEqual(1);
+        expect(aiRouter.generateText).toHaveBeenCalled();
+        const m = svc.getMetrics();
+        expect(m.pendamping_requests_total).toBe(1);
+        expect(m.pendamping_success_total).toBe(1);
     });
 
-    it('golden empty shop → empty-state copy', async () => {
-        umkm.buildCombinedReportMessage.mockResolvedValueOnce(
-            '📊 *Laporan Minggu ini*\n\nPenjualan: *0* order\nTotal penjualan: *Rp 0*\nTotal belanja: *Rp 0*\nSelisih: *Rp 0*',
-        );
+    it('golden #2 empty shop → empty-state, no fake benchmarks', async () => {
         umkm.fetchStockRows.mockResolvedValueOnce([]);
+        umkm.buildProductListMessage.mockResolvedValueOnce('📦 Belum ada produk.');
         const out = await svc.coach('pendamping', 't1');
-        expect(out).toMatch(/Belum ada data|jual|belanja/i);
+        expect(out).toMatch(/Belum ada data/i);
+        expect(out).not.toMatch(/benchmark|industri|rata-rata pasar/i);
         expect(aiRouter.generateText).not.toHaveBeenCalled();
     });
 
-    it('golden LLM fail → numbers-only fallback', async () => {
-        aiRouter.generateText.mockRejectedValueOnce(new Error('timeout'));
-        const out = await svc.coach('saran bisnis', 't1');
-        expect(out).toMatch(/Pendamping|angka|Laporan/i);
-        expect(svc.getMetrics().pendamping_fallback_total).toBeGreaterThanOrEqual(1);
+    it('golden #3 curriculum miss → numbers-only + honest miss on LLM fail', async () => {
+        svc.setCurriculumForTests('');
+        aiRouter.generateText.mockResolvedValueOnce('LLM provider not configured');
+        const out = await svc.coach('pendamping', 't1');
+        expect(out).toMatch(/ringkasan angka|Playbook pendamping belum/i);
+        expect(svc.getMetrics().pendamping_fallback_total).toBe(1);
     });
 
-    it('golden write-sounding tip still strips bad action', async () => {
+    it('golden #4 invents ketik: hapus semua → stripped', async () => {
         aiRouter.generateText.mockResolvedValueOnce(
-            '1. Reset\nAksi: ketik: hapus semua stok\nAksi: ketik: jual 1 bakso',
+            [
+                '1. Bersihkan data',
+                'Kenapa: on_hand=1',
+                'Aksi: ketik: hapus semua',
+                'ketik: belanja 1 dus indomie',
+            ].join('\n'),
         );
-        const out = await svc.coach('pendamping bisnis', 't1');
-        expect(out).toMatch(/jual 1 bakso/);
-        expect(out).not.toMatch(/hapus/);
+        const out = await svc.coach('pendamping', 't1');
+        expect(out).not.toMatch(/hapus semua/i);
+        expect(out).toMatch(/ketik: belanja/i);
+        expect(svc.getMetrics().pendamping_action_stripped_total).toBeGreaterThanOrEqual(1);
+    });
+
+    it('LLM throw → numbers-only fallback, never empty', async () => {
+        aiRouter.generateText.mockRejectedValueOnce(new Error('timeout'));
+        const out = await svc.coach('saran bisnis', 't1');
+        expect(out.trim().length).toBeGreaterThan(20);
+        expect(out).toMatch(/Pendamping|angka/i);
+        expect(svc.getMetrics().pendamping_fallback_total).toBe(1);
     });
 });

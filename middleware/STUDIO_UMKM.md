@@ -49,11 +49,16 @@ Intent internal ↔ label AIDLC:
 
 | File | Peran |
 |------|-------|
-| `studio-umkm.util.ts` | Intent, matcher intake (D4.1 + cousin-sale), parsing rupiah, format WA |
-| `studio-umkm.service.ts` | Preview/commit sale, stok, laporan, setup notebook |
+| `studio-umkm.util.ts` | Intent, matcher intake (D4.1 + cousin-sale), parsing rupiah, format WA, alias `pendamping` |
+| `studio-umkm.service.ts` | Preview/commit sale, stok, laporan, setup notebook; branch coach sebelum ask |
+| `studio-umkm-pendamping.service.ts` | Coach ritual: laporan minggu + stok tipis + playbook statis → ≤3 tips |
+| `studio-umkm-read-tools.ts` | Shared `executeUmkmReadTool` untuk Ask + Pendamping |
+| `curriculum/warung-pendamping.md` | Playbook statis (bukan notebook RAG) |
 | `guide-flow.definition.ts` | `defaultUmkmGuideFlowDefinition()` + node `action` |
 | `guide-flow.service.ts` | Eksekusi `record_sale`, `confirm_sale`, `check_stock`, … |
 | `studio-whatsapp.service.ts` | Routing UMKM saat `umkm_mode` |
+
+**Pendamping vs Tanya:** exact alias (`pendamping` / `saran bisnis` / `pendamping bisnis`) → coach string (never `null`). Soft tips (`tips naikin omzet`) tetap Agentic Ask. Pending jual/belanja: sticky confirm menang atas alias coach. Setelah sale `ya`, tidak ada nudge coach.
 
 Matcher `kind: sale` (`ada yang beli` / `tadi beli`) memaksa catat penjualan. Matcher juga **punya job jelas** omzet / cek stok / daftar / belanja (frasa DEFAULT + ekstra sepupu seperti `barang apa aja`, `etalase`, `sisa [barang]`, `masih ada berapa`) — stamp notebook tidak bisa menyembunyikannya. Keyword stamp tetap **union** ke DEFAULT sebagai alias tambahan. Help/ask tetap dijalankan sebelum matcher. Bare `yang beli` bukan cousin-sale. `berapa yang beli …` adalah **laporan** (`sales_report`), bukan jual dan bukan help. Mixed `beli` tetap klarifikasi.
 
