@@ -113,7 +113,9 @@ function makeDurableHarness() {
         createItem: vi.fn(),
         createStockMovement: vi.fn(),
     };
-    const svc = new StudioUmkmService(supabase as any, ai as any, inventory as any);
+    const svc = new StudioUmkmService(supabase as any, ai as any, inventory as any, {
+        coach: vi.fn(async () => 'Pendamping stub'),
+    } as any);
     return { svc, purchaseRows, wizardRows, saleRows };
 }
 

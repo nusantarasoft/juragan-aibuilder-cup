@@ -251,12 +251,35 @@ export function extractStockProductQuery(text: string): string | null {
 }
 
 /**
+ * Exact coach aliases (pendamping job). Normalize: trim, lower, collapse spaces,
+ * strip trailing .!? — not fuzzy substring match.
+ */
+export function normalizeUmkmPendampingAliasText(text: string): string {
+    return text
+        .trim()
+        .toLowerCase()
+        .replace(/[.!?]+$/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+const UMKM_PENDAMPING_ALIASES = new Set(['pendamping', 'saran bisnis', 'pendamping bisnis']);
+
+/** True when the whole message is an exact pendamping coach trigger. */
+export function isUmkmPendampingExactAlias(text: string): boolean {
+    if (!text?.trim()) return false;
+    return UMKM_PENDAMPING_ALIASES.has(normalizeUmkmPendampingAliasText(text));
+}
+
+/**
  * Advice / open question (tips, bagaimana, menaikkan omzet…) — route to Tanya,
  * not operational commands that share keywords like "omzet" / "penjualan".
  */
 export function looksLikeUmkmOpenQuestion(text: string): boolean {
     const t = text.trim();
     if (!t || t.length < 8) return false;
+    // Exact coach aliases must not steal into Agentic Ask via \bsaran\b.
+    if (isUmkmPendampingExactAlias(t)) return false;
     if (
         /\b(bagaimana|gimana|tips|saran|rekomendasi|strategi|ide|kenapa|mengapa|mending|sebaiknya|lebih baik)\b/i.test(
             t,
@@ -690,6 +713,7 @@ export function formatUmkmHelp(commands?: UmkmCommandsConfig | unknown): string 
     const confirmHint = cfg.confirm.slice(0, 2).map((c) => `*${c}*`).join(' / ') || '*ya*';
     const cancelHint = cfg.cancel.slice(0, 2).map((c) => `*${c}*`).join(' / ') || '*batal*';
     lines.push(`Setelah preview penjualan: ${confirmHint} = simpan, ${cancelHint} = batalkan.`);
+    lines.push('Ketik *pendamping* untuk saran bisnis.');
     return lines.join('\n');
 }
 
@@ -1032,6 +1056,8 @@ export function isUmkmIntakeClearJob(
     text: string,
     commands?: UmkmCommandsConfig | unknown,
 ): boolean {
+    // Coach aliases are not clear jobs — pending sticky must win over pendamping.
+    if (isUmkmPendampingExactAlias(text)) return false;
     const match = matchUmkmIntakeJob(text);
     if (match.kind === 'mixed') return false;
     if (

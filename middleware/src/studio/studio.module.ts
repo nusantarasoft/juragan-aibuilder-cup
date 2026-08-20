@@ -22,6 +22,7 @@ import { StudioWhatsAppService } from './studio-whatsapp.service';
 import { StudioUmkmService } from './studio-umkm.service';
 import { StudioUmkmCronService } from './studio-umkm.cron';
 import { StudioUmkmAgenticAskService } from './studio-umkm-agentic-ask.service';
+import { StudioUmkmPendampingService } from './studio-umkm-pendamping.service';
 import { StudioOutputService } from './studio-output.service';
 
 @Module({
@@ -48,6 +49,7 @@ import { StudioOutputService } from './studio-output.service';
         StudioWhatsAppService,
         StudioUmkmService,
         StudioUmkmAgenticAskService,
+        StudioUmkmPendampingService,
         StudioUmkmCronService,
     ],
     exports: [
@@ -58,6 +60,7 @@ import { StudioOutputService } from './studio-output.service';
         StudioWhatsAppService,
         StudioUmkmService,
         StudioUmkmAgenticAskService,
+        StudioUmkmPendampingService,
     ],
 })
 export class StudioModule {}

@@ -99,7 +99,8 @@ function makeService(opts?: {
     };
     const ai = { generateText: vi.fn(async () => '') };
     const inventory = { createItem, createStockMovement };
-    const svc = new StudioUmkmService(supabase as any, ai as any, inventory as any);
+    const pendamping = { coach: vi.fn(async () => 'Pendamping stub') };
+    const svc = new StudioUmkmService(supabase as any, ai as any, inventory as any, pendamping as any);
     return { svc, createItem, createStockMovement };
 }
 

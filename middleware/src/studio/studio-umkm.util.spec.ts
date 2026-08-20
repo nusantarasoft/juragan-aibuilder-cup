@@ -39,6 +39,7 @@ import {
     formatJobClarificationPrompt,
     formatPendingStickyHint,
     isUmkmIntakeClearJob,
+    isUmkmPendampingExactAlias,
 } from './studio-umkm.util';
 import type { UmkmCommandsConfig } from './studio-umkm-commands';
 import { resolveUmkmCommands } from './studio-umkm-commands';
@@ -684,5 +685,21 @@ describe('matchUmkmIntakeJob (D4.1)', () => {
         expect(stale.keywords.record_sale).toContain('ada yang beli');
         expect(detectUmkmIntent('tadi ada yang beli 2 indomie goreng', stale)).toBe('record_sale');
         expect(isUmkmIntakeClearJob('tadi ada yang beli 2 indomie goreng', stale)).toBe(true);
+    });
+
+    it('pendamping exact aliases: normalize, exclude open-Q and clear-job', () => {
+        expect(isUmkmPendampingExactAlias('pendamping')).toBe(true);
+        expect(isUmkmPendampingExactAlias('Saran Bisnis')).toBe(true);
+        expect(isUmkmPendampingExactAlias('pendamping bisnis.')).toBe(true);
+        expect(isUmkmPendampingExactAlias('  saran   bisnis  ')).toBe(true);
+        expect(isUmkmPendampingExactAlias('tips naikin omzet')).toBe(false);
+        expect(isUmkmPendampingExactAlias('saran dong')).toBe(false);
+        expect(looksLikeUmkmOpenQuestion('saran bisnis')).toBe(false);
+        expect(looksLikeUmkmOpenQuestion('tips naikin omzet toko saya')).toBe(true);
+        expect(detectUmkmIntent('saran bisnis')).not.toBe('ask');
+        expect(detectUmkmIntent('tips naikin omzet toko saya')).toBe('ask');
+        expect(isUmkmIntakeClearJob('saran bisnis')).toBe(false);
+        expect(isUmkmIntakeClearJob('pendamping')).toBe(false);
+        expect(formatUmkmHelp()).toMatch(/pendamping/);
     });
 });

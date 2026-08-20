@@ -18,12 +18,13 @@ UMKM (WhatsApp)
     → StudioWhatsAppService
         ├─ umkm_mode=true  → StudioUmkmService.handleMessage()  ← produk UMKM
         │     ├─ greeting → welcome cheat-sheet
-        │     ├─ help / ask → bantuan / Agentic Ask (sebelum matcher)
+        │     ├─ help → bantuan
+        │     ├─ pendamping / saran bisnis / pendamping bisnis → PendampingService (string, never null)
+        │     ├─ ask / tanya /1 → null → Agentic Ask (di router)
         │     ├─ mixed job → await_job_clarification (bukan tebak)
         │                  ├─ cousin-sale (`ada yang beli` / `tadi beli`) → record_sale
         │     ├─ omzet / stok / daftar / belanja jelas → matcher (bukan stamp)
         │     ├─ jual/stok/laporan → handler / slot wizard
-        │     ├─ tanya/1 → null → Agentic Ask (di router)
         │     └─ unknown → bantuan (string, tidak pernah RAG)
         ├─ else use_guided_flow=true  → Guide Flow (notebook generik / AI Gateway)
         └─ else → StudioService.chat() RAG
