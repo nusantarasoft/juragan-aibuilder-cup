@@ -117,4 +117,19 @@ describe('StudioUmkmPendampingService golden', () => {
         expect(out).toMatch(/Pendamping|angka/i);
         expect(svc.getMetrics().pendamping_fallback_total).toBe(1);
     });
+
+    it('partial tool failure → still returns tips from surviving tools', async () => {
+        umkm.fetchStockRows.mockRejectedValueOnce(new Error('stock down'));
+        const out = await svc.coach('pendamping', 't1');
+        expect(out.trim().length).toBeGreaterThan(20);
+        expect(umkm.buildCombinedReportMessage).toHaveBeenCalled();
+        // synthesizer or numbers-only path must still answer
+        expect(out).toMatch(/Pendamping|Ringkasan|angka|penjualan|450/i);
+    });
+
+    it('alias saran bisnis hits coach ritual', async () => {
+        const out = await svc.coach('saran bisnis', 'tenant-x');
+        expect(out.length).toBeLessThanOrEqual(800);
+        expect(umkm.buildCombinedReportMessage).toHaveBeenCalledWith('tenant-x', 'week');
+    });
 });
