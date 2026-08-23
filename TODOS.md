@@ -155,6 +155,66 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 **Priority:** P3
 **Depends on:** Kill-guide-flow PR
 
+### Weekly proactive pendamping cron (D3.1)
+
+**What:** Push weekly coach ritual to allowlist phones via cron (same pattern as `studio-umkm.cron.ts` daily laporan).
+
+**Why:** Proactive mentoring after on-demand `pendamping` proves value; avoids building cron before usage signal.
+
+**Context:** CEO plan `2026-08-20-umkm-pendamping-bisnis.md` D3.1 DEFER. On-demand v1 must ship first; do not clash with daily laporan push timing.
+
+**Effort:** M
+**Priority:** P3
+**Depends on:** Pendamping v1 shipped; pilot metrics show repeat `pendamping` usage
+
+### Vector RAG `search_curriculum` (D5 defer)
+
+**What:** Optional vector retrieve over warung curriculum corpus when static markdown inject is too thin.
+
+**Why:** Static playbook cap (~3k chars) may miss niche scenarios; full notebook RAG stays wrong for unknown inbound.
+
+**Context:** CEO plan D5 B accepted static v1; D3.2 original RAG amended away. Trigger: QA finds generic tips despite rich static file.
+
+**Effort:** M
+**Priority:** P3
+**Depends on:** Static pendamping v1 QA; separate from notebook indexer for unknown
+
+### Human mentor HITL brief (D3.3)
+
+**What:** Escalate coach turn to human mentor with shop context brief (omzet/stok snapshot + user question).
+
+**Why:** High-stakes advice beyond LLM comfort; product north star includes human layer eventually.
+
+**Context:** CEO plan D3.3 DEFER. Blocked on staff vs owner phone roles (above). No extra coach ACL in v1.
+
+**Effort:** L
+**Priority:** P3
+**Depends on:** Staff vs owner roles; pendamping v1 shipped
+
+### Digit cheat-sheet entry for pendamping
+
+**What:** Add menu digit (e.g. `7`) on 0–6 hub for pendamping without typing exact alias.
+
+**Why:** Discoverability; v1 is command-gated on purpose (D4 exact phrases only).
+
+**Context:** CEO plan CUT digit in v1. Add after exact-phrase gate proves usage in pilot metrics.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** Pendamping v1 shipped
+
+### Per-tenant pendamping feature flag
+
+**What:** Notebook/tenant config toggle to disable coach while keeping kasir intake.
+
+**Why:** Rollout control beyond pilot `umkm-warung-klontong-bahagia`; safe disable without matcher revert.
+
+**Context:** CEO plan v1 always-on when `umkm_mode=true`. Add after pilot fallback/latency metrics stable.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** Pendamping v1 shipped; D13 metrics baseline
+
 ## Completed
 
 ### Natural sale correction
