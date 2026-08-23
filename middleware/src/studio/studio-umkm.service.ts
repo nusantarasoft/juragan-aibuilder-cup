@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { AiRouterService } from '../ai/ai-router.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -37,6 +37,7 @@ import {
     type ParsedUmkmPurchase,
     type UmkmReportPeriod,
 } from './studio-umkm-ops.util';
+import { StudioUmkmPendampingService } from './studio-umkm-pendamping.service';
 import {
     detectUmkmConfirmReply,
     detectUmkmIntent,
@@ -52,6 +53,7 @@ import {
     generateWaOrderNumber,
     isUmkmIntakeClearJob,
     isUmkmMenuOnly,
+    isUmkmPendampingExactAlias,
     leftoverAfterCousinSale,
     matchUmkmIntakeJob,
     normalizeUmkmQtyFirst,
@@ -170,6 +172,8 @@ export class StudioUmkmService {
         private readonly supabaseService: SupabaseService,
         private readonly aiRouter: AiRouterService,
         private readonly inventoryService: InventoryService,
+        @Inject(forwardRef(() => StudioUmkmPendampingService))
+        private readonly pendamping: StudioUmkmPendampingService,
     ) {}
 
     private admin() {
@@ -201,7 +205,8 @@ export class StudioUmkmService {
             | 'purchase'
             | 'stock'
             | 'report'
-            | 'list',
+            | 'list'
+            | 'pendamping',
         extra?: { candidates?: UmkmIntakeJobCandidate[]; wizardKind?: string },
     ) {
         const candidates = extra?.candidates?.length ? extra.candidates.join(',') : '-';
@@ -668,6 +673,11 @@ export class StudioUmkmService {
             this.clearWizard(tenantId, phone, conversationId);
             this.logIntake('help');
             return formatUmkmHelp(commands);
+        }
+        if (isUmkmPendampingExactAlias(text)) {
+            this.clearWizard(tenantId, phone, conversationId);
+            this.logIntake('pendamping');
+            return this.pendamping.coach(text, tenantId, config);
         }
         if (intent === 'ask') {
             this.clearWizard(tenantId, phone, conversationId);

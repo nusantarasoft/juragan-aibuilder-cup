@@ -250,13 +250,39 @@ export function extractStockProductQuery(text: string): string | null {
     return null;
 }
 
+const UMKM_PENDAMPING_ALIASES = new Set([
+    'pendamping',
+    'saran bisnis',
+    'pendamping bisnis',
+]);
+
+/** Normalize for exact pendamping alias match (trim, lower, collapse space, strip trailing .!?). */
+export function normalizeUmkmPendampingAlias(text: string): string {
+    return text
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .replace(/[.!?]+$/g, '')
+        .trim();
+}
+
+/**
+ * Exact command-gated coach aliases. Soft tips ("tips naikin omzet") stay Agentic Ask.
+ * Pending sticky wins: aliases are not clear jobs.
+ */
+export function isUmkmPendampingExactAlias(text: string): boolean {
+    return UMKM_PENDAMPING_ALIASES.has(normalizeUmkmPendampingAlias(text));
+}
+
 /**
  * Advice / open question (tips, bagaimana, menaikkan omzet…) — route to Tanya,
  * not operational commands that share keywords like "omzet" / "penjualan".
+ * Exact pendamping aliases are excluded (dedicated coach path).
  */
 export function looksLikeUmkmOpenQuestion(text: string): boolean {
     const t = text.trim();
     if (!t || t.length < 8) return false;
+    if (isUmkmPendampingExactAlias(t)) return false;
     if (
         /\b(bagaimana|gimana|tips|saran|rekomendasi|strategi|ide|kenapa|mengapa|mending|sebaiknya|lebih baik)\b/i.test(
             t,
@@ -690,6 +716,7 @@ export function formatUmkmHelp(commands?: UmkmCommandsConfig | unknown): string 
     const confirmHint = cfg.confirm.slice(0, 2).map((c) => `*${c}*`).join(' / ') || '*ya*';
     const cancelHint = cfg.cancel.slice(0, 2).map((c) => `*${c}*`).join(' / ') || '*batal*';
     lines.push(`Setelah preview penjualan: ${confirmHint} = simpan, ${cancelHint} = batalkan.`);
+    lines.push('Ketik *pendamping* untuk saran bisnis.');
     return lines.join('\n');
 }
 
