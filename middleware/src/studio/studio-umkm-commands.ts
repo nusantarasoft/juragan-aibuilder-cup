@@ -333,8 +333,32 @@ export function uniqueMenuForDisplay(commands: UmkmCommandsConfig): UmkmMenuComm
     return out.sort((a, b) => a.digit.localeCompare(b.digit));
 }
 
-export function formatWelcomeFromCommands(commands: UmkmCommandsConfig): string {
-    const menu = uniqueMenuForDisplay(commands);
+/** omit / undefined pendampingEnabled → treat as ON (fail-open). */
+export type UmkmPendampingDisplayOpts = { pendampingEnabled?: boolean };
+
+/**
+ * Menu rows for help/welcome. When pendamping ON: suppress stamp digit 7 and inject
+ * `*7* Pendamping bisnis` (special-case wins over custom stamp).
+ */
+export function menuRowsForPendampingDisplay(
+    commands: UmkmCommandsConfig,
+    opts?: UmkmPendampingDisplayOpts,
+): { digit: string; label: string }[] {
+    const enabled = opts?.pendampingEnabled !== false;
+    let rows = uniqueMenuForDisplay(commands).map((m) => ({ digit: m.digit, label: m.label }));
+    if (enabled) {
+        rows = rows.filter((m) => m.digit !== '7');
+        rows.push({ digit: '7', label: 'Pendamping bisnis' });
+        rows.sort((a, b) => a.digit.localeCompare(b.digit));
+    }
+    return rows;
+}
+
+export function formatWelcomeFromCommands(
+    commands: UmkmCommandsConfig,
+    opts?: UmkmPendampingDisplayOpts,
+): string {
+    const menu = menuRowsForPendampingDisplay(commands, opts);
     const lines = [
         'Halo! Siap bantu catat jualan.',
         '',
@@ -344,6 +368,10 @@ export function formatWelcomeFromCommands(commands: UmkmCommandsConfig): string 
     ];
     for (const m of menu) {
         lines.push(`*${m.digit}* ${m.label}`);
+    }
+    if (opts?.pendampingEnabled !== false) {
+        lines.push('');
+        lines.push('Ketik *pendamping* untuk saran bisnis.');
     }
     return lines.join('\n');
 }

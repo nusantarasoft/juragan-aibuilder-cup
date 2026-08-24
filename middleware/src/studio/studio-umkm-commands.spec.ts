@@ -204,6 +204,10 @@ describe('studio-umkm-commands', () => {
 describe('studio-umkm hub prompts', () => {
     it('formats welcome from commands', () => {
         expect(formatWelcomeFromCommands(DEFAULT_UMKM_COMMANDS)).toContain('*Menu*');
+        expect(formatWelcomeFromCommands(DEFAULT_UMKM_COMMANDS)).toMatch(/\*7\* Pendamping bisnis/);
+        expect(formatWelcomeFromCommands(DEFAULT_UMKM_COMMANDS, { pendampingEnabled: false })).not.toMatch(
+            /pendamping/i,
+        );
     });
 
     it('formats menu hub prompt and unknown choice', () => {

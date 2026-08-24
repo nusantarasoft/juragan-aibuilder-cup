@@ -543,7 +543,7 @@ describe('StudioResolver — whatsapp/umkm', () => {
 
     it('updateStudioUmkmCommands skips republish by default', async () => {
         const res = await h.resolver.updateStudioUmkmCommands(ctx(), 'nb-1', { a: 1 }, undefined);
-        expect(h.umkmService.updateUmkmCommands).toHaveBeenCalledWith('nb-1', { a: 1 });
+        expect(h.umkmService.updateUmkmCommands).toHaveBeenCalledWith('nb-1', { a: 1 }, undefined);
         expect(h.guideFlowService.createAndPublishUmkmFlow).not.toHaveBeenCalled();
         expect(res.flow).toBeNull();
     });
@@ -558,6 +558,15 @@ describe('StudioResolver — whatsapp/umkm', () => {
         const res = await h.resolver.updateStudioUmkmCommands(ctx(), 'nb-1', { a: 1 }, false);
         expect(h.guideFlowService.createAndPublishUmkmFlow).not.toHaveBeenCalled();
         expect(res.flow).toBeNull();
+    });
+
+    it('updateStudioUmkmCommands passes pendampingEnabled true/false/null', async () => {
+        await h.resolver.updateStudioUmkmCommands(ctx(), 'nb-1', { a: 1 }, false, true);
+        expect(h.umkmService.updateUmkmCommands).toHaveBeenCalledWith('nb-1', { a: 1 }, true);
+        await h.resolver.updateStudioUmkmCommands(ctx(), 'nb-1', { a: 1 }, false, false);
+        expect(h.umkmService.updateUmkmCommands).toHaveBeenCalledWith('nb-1', { a: 1 }, false);
+        await h.resolver.updateStudioUmkmCommands(ctx(), 'nb-1', { a: 1 }, false, null);
+        expect(h.umkmService.updateUmkmCommands).toHaveBeenCalledWith('nb-1', { a: 1 }, null);
     });
 
     it('studioUmkmCommandsDefaults returns defaults', async () => {

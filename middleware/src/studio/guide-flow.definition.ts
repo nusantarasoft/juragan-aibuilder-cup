@@ -8,6 +8,7 @@ import {
     uniqueMenuForDisplay,
     type UmkmCommandsConfig,
     type UmkmCommandIntent,
+    type UmkmPendampingDisplayOpts,
 } from './studio-umkm-commands';
 
 const transitionSchema = z.discriminatedUnion('when', [
@@ -215,6 +216,7 @@ export function buildUmkmListenTransitions(commands: UmkmCommandsConfig): Listen
 /** UMKM sales assistant — catat penjualan & laporan via WhatsApp (AIDLC guided-flow). */
 export function defaultUmkmGuideFlowDefinition(
     commands?: UmkmCommandsConfig | unknown,
+    opts?: UmkmPendampingDisplayOpts,
 ): GuideFlowDefinition {
     const cfg = resolveUmkmCommands(commands ?? DEFAULT_UMKM_COMMANDS);
     const menuDigits = uniqueMenuForDisplay(cfg)
@@ -240,7 +242,7 @@ export function defaultUmkmGuideFlowDefinition(
             {
                 id: 'welcome',
                 type: 'message',
-                content: formatWelcomeFromCommands(cfg),
+                content: formatWelcomeFromCommands(cfg, opts),
                 next: 'listen_intent',
             },
             {

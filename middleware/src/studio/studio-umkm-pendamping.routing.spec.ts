@@ -6,7 +6,9 @@ import { DEFAULT_STUDIO_UMKM_CONTEXT } from './studio-umkm.service';
 import {
     detectUmkmIntent,
     formatUmkmHelp,
+    isPendampingDigit,
     isUmkmIntakeClearJob,
+    isUmkmPendampingEnabled,
     isUmkmPendampingExactAlias,
     looksLikeUmkmOpenQuestion,
     normalizeUmkmPendampingAlias,
@@ -34,11 +36,28 @@ describe('isUmkmPendampingExactAlias', () => {
     });
 });
 
+describe('pendamping flag + digit helpers', () => {
+    it('isUmkmPendampingEnabled fail-open', () => {
+        expect(isUmkmPendampingEnabled(undefined)).toBe(true);
+        expect(isUmkmPendampingEnabled({})).toBe(true);
+        expect(isUmkmPendampingEnabled({ umkm_pendamping_enabled: true })).toBe(true);
+        expect(isUmkmPendampingEnabled({ umkm_pendamping_enabled: false })).toBe(false);
+    });
+
+    it('isPendampingDigit first-line', () => {
+        expect(isPendampingDigit('7')).toBe(true);
+        expect(isPendampingDigit('7\n[User mengirim media...]')).toBe(true);
+        expect(isPendampingDigit('70')).toBe(false);
+        expect(isPendampingDigit('pendamping')).toBe(false);
+    });
+});
+
 describe('pendamping help + sticky', () => {
-    it('help includes one pendamping line', () => {
+    it('help includes *7* and alias line when enabled', () => {
         const help = formatUmkmHelp();
+        expect(help).toMatch(/\*7\* Pendamping bisnis/i);
         expect(help).toMatch(/ketik \*pendamping\* untuk saran bisnis/i);
-        expect((help.match(/pendamping/gi) || []).length).toBe(1);
+        expect(formatUmkmHelp(undefined, { pendampingEnabled: false })).not.toMatch(/pendamping/i);
     });
 
     it('CRITICAL: pending sale × pendamping → sticky, not coach', async () => {

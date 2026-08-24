@@ -27,6 +27,11 @@ export type StudioContextConfig = {
     umkm_require_catalog_match?: boolean;
     /** Configurable WA commands (keywords, menu digits, confirm/cancel). */
     umkm_commands?: UmkmCommandsConfig;
+    /**
+     * Pendamping bisnis coach (digit 7 + exact aliases).
+     * Missing/undefined = ON (fail-open). Explicit false = kill switch.
+     */
+    umkm_pendamping_enabled?: boolean;
     /** Tenant for ecom_orders / sales views (default: default). */
     tenant_id?: string;
     supabase_views?: string[];

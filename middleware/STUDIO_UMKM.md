@@ -17,9 +17,10 @@ UMKM (WhatsApp)
     → WAHA webhook
     → StudioWhatsAppService
         ├─ umkm_mode=true  → StudioUmkmService.handleMessage()  ← produk UMKM
-        │     ├─ greeting → welcome cheat-sheet
-        │     ├─ help → bantuan
-        │     ├─ pendamping / saran bisnis / pendamping bisnis → PendampingService (string, never null)
+        │     ├─ greeting → welcome cheat-sheet (*7* when pendamping ON)
+        │     ├─ help → bantuan (*7* + alias when ON)
+        │     ├─ digit 7 / pendamping / saran bisnis / pendamping bisnis → PendampingService (string, never null)
+        │     │     └─ flag `umkm_pendamping_enabled===false` → short disabled copy (kill switch)
         │     ├─ ask / tanya /1 → null → Agentic Ask (di router)
         │     ├─ mixed job → await_job_clarification (bukan tebak)
         │                  ├─ cousin-sale (`ada yang beli` / `tadi beli`) → record_sale
@@ -58,7 +59,7 @@ Intent internal ↔ label AIDLC:
 | `guide-flow.service.ts` | Eksekusi `record_sale`, `confirm_sale`, `check_stock`, … |
 | `studio-whatsapp.service.ts` | Routing UMKM saat `umkm_mode` |
 
-**Pendamping vs Tanya:** exact alias (`pendamping` / `saran bisnis` / `pendamping bisnis`) → coach string (never `null`). Soft tips (`tips naikin omzet`) tetap Agentic Ask. Pending jual/belanja: sticky confirm menang atas alias coach. Setelah sale `ya`, tidak ada nudge coach.
+**Pendamping vs Tanya:** exact alias (`pendamping` / `saran bisnis` / `pendamping bisnis`) **atau digit `7` (first-line, special-case)** → coach string (never `null`). Soft tips (`tips naikin omzet`) tetap Agentic Ask. Pending jual/belanja **dan wizard aktif** menang atas alias/digit coach. Flag `context_config.umkm_pendamping_enabled` (missing = ON); `false` = kill switch. Help/welcome menampilkan `*7* Pendamping bisnis` saat ON; stamp menu digit 7 disuppress saat ON. Setelah sale `ya`, tidak ada nudge coach.
 
 Matcher `kind: sale` (`ada yang beli` / `tadi beli`) memaksa catat penjualan. Matcher juga **punya job jelas** omzet / cek stok / daftar / belanja (frasa DEFAULT + ekstra sepupu seperti `barang apa aja`, `etalase`, `sisa [barang]`, `masih ada berapa`) — stamp notebook tidak bisa menyembunyikannya. Keyword stamp tetap **union** ke DEFAULT sebagai alias tambahan. Help/ask tetap dijalankan sebelum matcher. Bare `yang beli` bukan cousin-sale. `berapa yang beli …` adalah **laporan** (`sales_report`), bukan jual dan bukan help. Mixed `beli` tetap klarifikasi.
 

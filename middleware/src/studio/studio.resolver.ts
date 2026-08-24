@@ -618,9 +618,15 @@ export class StudioResolver {
         @Args('notebookId', { type: () => String }) notebookId: string,
         @Args('commands', { type: () => GraphQLJSONObject }) commands: Record<string, unknown>,
         @Args('republishGuideFlow', { type: () => Boolean, nullable: true }) republishGuideFlow?: boolean,
+        @Args('pendampingEnabled', { type: () => Boolean, nullable: true })
+        pendampingEnabled?: boolean | null,
     ) {
         await this.studioService.assertNotebookOwner(notebookId, this.requireUserId(context));
-        const result = await this.studioUmkmService.updateUmkmCommands(notebookId, commands);
+        const result = await this.studioUmkmService.updateUmkmCommands(
+            notebookId,
+            commands,
+            pendampingEnabled,
+        );
         let flow = null;
         if (republishGuideFlow === true) {
             flow = await this.guideFlowService.createAndPublishUmkmFlow(notebookId);

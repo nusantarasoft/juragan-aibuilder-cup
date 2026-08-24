@@ -838,16 +838,28 @@ export const studioService = {
         notebookId: string,
         commands: UmkmCommandsConfig,
         republishGuideFlow = false,
+        pendampingEnabled?: boolean,
     ): Promise<{ notebookId: string; commands: UmkmCommandsConfig }> {
         const data = await graphqlRequest(`
-            mutation($notebookId: String!, $commands: JSONObject!, $republishGuideFlow: Boolean) {
+            mutation(
+                $notebookId: String!
+                $commands: JSONObject!
+                $republishGuideFlow: Boolean
+                $pendampingEnabled: Boolean
+            ) {
                 updateStudioUmkmCommands(
                     notebookId: $notebookId
                     commands: $commands
                     republishGuideFlow: $republishGuideFlow
+                    pendampingEnabled: $pendampingEnabled
                 )
             }
-        `, { notebookId, commands, republishGuideFlow });
+        `, {
+            notebookId,
+            commands,
+            republishGuideFlow,
+            pendampingEnabled: pendampingEnabled ?? null,
+        });
         return data.updateStudioUmkmCommands;
     },
 

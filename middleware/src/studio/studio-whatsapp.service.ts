@@ -20,6 +20,7 @@ import {
     formatUmkmHelp,
     formatUnknownUmkmCommand,
     isUmkmMoneyConfirmPreview,
+    isUmkmPendampingEnabled,
     umkmConfirmButtons,
 } from './studio-umkm.util';
 import { assertNoSupabaseError } from './studio-supabase.util';
@@ -601,7 +602,9 @@ export class StudioWhatsAppService {
                             },
                             { ...notebookCfg, tenant_id: tenantId },
                         );
-                        answer = agentic.answer || formatUmkmHelp(commands);
+                        answer = agentic.answer || formatUmkmHelp(commands, {
+                            pendampingEnabled: isUmkmPendampingEnabled(notebookCfg),
+                        });
                     } else {
                         this.logger.warn(
                             `UMKM handleMessage returned null for non-ask intent tenant=${tenantId}`,
