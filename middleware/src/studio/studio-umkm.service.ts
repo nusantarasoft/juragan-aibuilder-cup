@@ -48,11 +48,14 @@ import {
     formatJobClarificationPrompt,
     formatPendingStickyHint,
     formatSaleCancelled,
+    formatPendampingDisabled,
     formatUmkmHelp,
     formatUnknownUmkmCommand,
     generateWaOrderNumber,
+    isPendampingDigit,
     isUmkmIntakeClearJob,
     isUmkmMenuOnly,
+    isUmkmPendampingEnabled,
     isUmkmPendampingExactAlias,
     leftoverAfterCousinSale,
     matchUmkmIntakeJob,
@@ -206,7 +209,8 @@ export class StudioUmkmService {
             | 'stock'
             | 'report'
             | 'list'
-            | 'pendamping',
+            | 'pendamping'
+            | 'pendamping_blocked',
         extra?: { candidates?: UmkmIntakeJobCandidate[]; wizardKind?: string },
     ) {
         const candidates = extra?.candidates?.length ? extra.candidates.join(',') : '-';
@@ -664,17 +668,23 @@ export class StudioUmkmService {
             return formatFeedbackThanks(feedback);
         }
 
+        const pendampingOpts = { pendampingEnabled: isUmkmPendampingEnabled(config) };
+
         if (isUmkmGreetingOnly(text)) {
-            return formatWelcomeFromCommands(commands);
+            return formatWelcomeFromCommands(commands, pendampingOpts);
         }
 
         const intent = detectUmkmIntent(text, commands);
         if (intent === 'help') {
             this.clearWizard(tenantId, phone, conversationId);
             this.logIntake('help');
-            return formatUmkmHelp(commands);
+            return formatUmkmHelp(commands, pendampingOpts);
         }
-        if (isUmkmPendampingExactAlias(text)) {
+        if (isPendampingDigit(text) || isUmkmPendampingExactAlias(text)) {
+            if (!isUmkmPendampingEnabled(config)) {
+                this.logIntake('pendamping_blocked');
+                return formatPendampingDisabled();
+            }
             this.clearWizard(tenantId, phone, conversationId);
             this.logIntake('pendamping');
             return this.pendamping.coach(text, tenantId, config);
@@ -1647,7 +1657,9 @@ export class StudioUmkmService {
             return undefined;
         }
         if (resolved.status === 'unknown_kind') {
-            return formatUmkmHelp(commands);
+            return formatUmkmHelp(commands, {
+                pendampingEnabled: isUmkmPendampingEnabled(config),
+            });
         }
         if (resolved.status !== 'ok') return undefined;
         const wizard = resolved.wizard;
@@ -1659,7 +1671,9 @@ export class StudioUmkmService {
             if (isConversationalWizard(wizard.kind)) {
                 return '❌ Dibatalkan. Ketik *jual ...*, *cek stok ...*, atau *laporan ...* kapan saja.';
             }
-            return `❌ Dibatalkan.\n\n${formatUmkmHelp(commands)}`;
+            return `❌ Dibatalkan.\n\n${formatUmkmHelp(commands, {
+                pendampingEnabled: isUmkmPendampingEnabled(config),
+            })}`;
         }
 
         // Slot wizards must not swallow cek stok / laporan / daftar as the next "nama barang".
@@ -1871,7 +1885,9 @@ export class StudioUmkmService {
         if (wizard.retryCount >= 1) {
             this.clearWizard(tenantId, phone, conversationId);
             this.logIntake('help', { wizardKind: 'await_job_clarification' });
-            return formatUmkmHelp(commands);
+            return formatUmkmHelp(commands, {
+                pendampingEnabled: isUmkmPendampingEnabled(config),
+            });
         }
         this.setWizard(
             tenantId,
@@ -2455,6 +2471,7 @@ export class StudioUmkmService {
     async updateUmkmCommands(
         notebookId: string,
         commandsRaw: unknown,
+        pendampingEnabled?: boolean | null,
     ): Promise<{ notebookId: string; contextConfig: StudioContextConfig; commands: UmkmCommandsConfig }> {
         const commands = sanitizeUmkmCommandsInput(commandsRaw);
 
@@ -2474,6 +2491,10 @@ export class StudioUmkmService {
             umkm_mode: true,
             umkm_commands: commands,
         };
+        // omit / null → preserve; only true/false writes
+        if (pendampingEnabled === true || pendampingEnabled === false) {
+            merged.umkm_pendamping_enabled = pendampingEnabled;
+        }
 
         const { data, error } = await this.admin()
             .from('studio_notebooks')

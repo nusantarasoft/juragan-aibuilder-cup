@@ -145,6 +145,11 @@ function commandsFromNotebook(nb: StudioNotebook | undefined): UmkmCommandsConfi
     return cfg?.umkm_commands ?? null;
 }
 
+function pendampingEnabledFromNotebook(nb: StudioNotebook | undefined): boolean {
+    const cfg = nb?.context_config as { umkm_pendamping_enabled?: boolean } | undefined;
+    return cfg?.umkm_pendamping_enabled !== false;
+}
+
 export default function UmkmStudioPage() {
     const { loading: authLoading } = useAuth();
     const userId = useStudioUserId();
@@ -167,6 +172,8 @@ export default function UmkmStudioPage() {
     const [previewConfirm, setPreviewConfirm] = useState<'confirm' | 'cancel' | null>(null);
     const [previewing, setPreviewing] = useState(false);
     const [commandsDirty, setCommandsDirty] = useState(false);
+    const [pendampingEnabled, setPendampingEnabled] = useState(true);
+    const [pendampingDirty, setPendampingDirty] = useState(false);
 
     useEffect(() => {
         studioService.getSettings().then((s) => {
@@ -200,10 +207,14 @@ export default function UmkmStudioPage() {
     const loadCommandsForNotebook = (notebookId?: string | null) => {
         if (!notebookId) {
             setCommands(defaults ? structuredClone(defaults) : emptyCommands());
+            setPendampingEnabled(true);
+            setPendampingDirty(false);
             return;
         }
         const nb = notebooks.find((n) => n.id === notebookId);
         const fromNb = commandsFromNotebook(nb);
+        setPendampingEnabled(pendampingEnabledFromNotebook(nb));
+        setPendampingDirty(false);
         if (fromNb) {
             setCommands({
                 menu: [...(fromNb.menu || [])],
@@ -243,6 +254,8 @@ export default function UmkmStudioPage() {
         });
         setCommands(defaults ? structuredClone(defaults) : emptyCommands());
         setCommandsDirty(false);
+        setPendampingEnabled(true);
+        setPendampingDirty(false);
         setPreviewSample('');
         setPreviewIntent(null);
         setPreviewConfirm(null);
@@ -322,10 +335,16 @@ export default function UmkmStudioPage() {
                 label: values.label || null,
             });
 
-            await studioService.updateUmkmCommands(notebookId, commands, false);
+            await studioService.updateUmkmCommands(
+                notebookId,
+                commands,
+                false,
+                pendampingDirty ? pendampingEnabled : undefined,
+            );
 
             message.success(editing ? 'UMKM diperbarui' : 'UMKM baru ditambahkan');
             setCommandsDirty(false);
+            setPendampingDirty(false);
             setDrawerOpen(false);
             await load();
 
@@ -674,6 +693,21 @@ export default function UmkmStudioPage() {
 
                     <Form.Item name="enabled" label="Aktifkan WhatsApp" valuePropName="checked">
                         <Switch />
+                    </Form.Item>
+
+                    <Form.Item
+                        label="Pendamping bisnis"
+                        extra="Digit *7* + alias pendamping. Matikan untuk kill-switch per toko."
+                    >
+                        <Switch
+                            checked={pendampingEnabled}
+                            checkedChildren="ON"
+                            unCheckedChildren="OFF"
+                            onChange={(checked) => {
+                                setPendampingEnabled(checked);
+                                setPendampingDirty(true);
+                            }}
+                        />
                     </Form.Item>
 
                     <Divider titlePlacement="start" plain>

@@ -34,6 +34,7 @@ import {
     formatUnknownUmkmCommand,
     formatUmkmHelp,
     detectUmkmConfirmReply,
+    isUmkmPendampingEnabled,
     looksLikeUmkmDirectDataQuery,
     looksLikeUmkmOpenQuestion,
 } from './studio-umkm.util';
@@ -252,7 +253,9 @@ export class GuideFlowService {
         const notebook = await this.studioService.getNotebook(notebookId);
         const cfg = this.dbContextService.parseConfig(notebook.context_config);
         const commands = getUmkmCommandsFromConfig(cfg);
-        const def = defaultUmkmGuideFlowDefinition(commands);
+        const def = defaultUmkmGuideFlowDefinition(commands, {
+            pendampingEnabled: isUmkmPendampingEnabled(cfg),
+        });
         const existing = await this.getPublishedFlowForNotebook(notebookId);
         if (existing?.name === 'UMKM Penjualan WA') {
             await this.updateFlow(existing.id, { definition: def });
@@ -816,7 +819,9 @@ export class GuideFlowService {
                             } else if (intent === 'sales_report') {
                                 content = await this.umkmService.buildDailyReportMessage(tenantId);
                             } else if (intent === 'help') {
-                                content = formatUmkmHelp(commands);
+                                content = formatUmkmHelp(commands, {
+                                    pendampingEnabled: isUmkmPendampingEnabled(cfg),
+                                });
                             } else if (intent === 'unknown') {
                                 content = formatUnknownUmkmCommand(commands);
                             } else {
@@ -953,7 +958,9 @@ export class GuideFlowService {
                             content = await this.umkmService.buildSalesListMessage(tenantId, 'today');
                             break;
                         case 'umkm_help': {
-                            content = formatUmkmHelp(commands);
+                            content = formatUmkmHelp(commands, {
+                                pendampingEnabled: isUmkmPendampingEnabled(cfg),
+                            });
                             break;
                         }
                         default: {

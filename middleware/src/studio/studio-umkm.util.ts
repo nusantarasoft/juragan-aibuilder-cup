@@ -4,14 +4,19 @@ import {
     buildUmkmCommandMatcher,
     DEFAULT_UMKM_COMMANDS,
     keywordsToRegex,
+    menuRowsForPendampingDisplay,
     resolveUmkmCommands,
     uniqueMenuForDisplay,
     UMKM_INTENT_DETECT_ORDER,
     type UmkmCommandIntent,
     type UmkmCommandsConfig,
     type UmkmCommandMatcher,
+    type UmkmPendampingDisplayOpts,
 } from './studio-umkm-commands';
+import type { StudioContextConfig } from './studio-db-context.service';
 import type { UmkmIntakeJobCandidate } from './studio-umkm-durable.util';
+
+export type { UmkmPendampingDisplayOpts };
 
 export type { UmkmIntakeJobCandidate };
 
@@ -272,6 +277,30 @@ export function normalizeUmkmPendampingAlias(text: string): string {
  */
 export function isUmkmPendampingExactAlias(text: string): boolean {
     return UMKM_PENDAMPING_ALIASES.has(normalizeUmkmPendampingAlias(text));
+}
+
+/** Kill switch: missing/undefined = ON; only explicit false disables. */
+export function isUmkmPendampingEnabled(config?: StudioContextConfig | null): boolean {
+    return config?.umkm_pendamping_enabled !== false;
+}
+
+/**
+ * First-line digit `7` (media-polluted OK). Special-case — not menu stamp intent.
+ */
+export function isPendampingDigit(text: string): boolean {
+    const lines = text
+        .trim()
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+    return (lines[0] || '') === '7';
+}
+
+export function formatPendampingDisabled(): string {
+    return (
+        'Pendamping bisnis tidak aktif untuk toko ini. ' +
+        'Ketik *jual ...*, *stok ...*, atau *0* untuk menu kasir.'
+    );
 }
 
 /**
@@ -683,9 +712,13 @@ export function formatUnknownUmkmCommand(commands?: UmkmCommandsConfig | unknown
     return lines.join('\n');
 }
 
-export function formatUmkmHelp(commands?: UmkmCommandsConfig | unknown): string {
+export function formatUmkmHelp(
+    commands?: UmkmCommandsConfig | unknown,
+    opts?: UmkmPendampingDisplayOpts,
+): string {
     const cfg = resolveUmkmCommands(commands ?? DEFAULT_UMKM_COMMANDS);
-    const menu = uniqueMenuForDisplay(cfg);
+    const enabled = opts?.pendampingEnabled !== false;
+    const menu = menuRowsForPendampingDisplay(cfg, { pendampingEnabled: enabled });
     const lines = [
         'Bisa. Mau catat jualan, cek stok, belanja, atau tanya — ketik seperti biasa.',
         '',
@@ -716,7 +749,9 @@ export function formatUmkmHelp(commands?: UmkmCommandsConfig | unknown): string 
     const confirmHint = cfg.confirm.slice(0, 2).map((c) => `*${c}*`).join(' / ') || '*ya*';
     const cancelHint = cfg.cancel.slice(0, 2).map((c) => `*${c}*`).join(' / ') || '*batal*';
     lines.push(`Setelah preview penjualan: ${confirmHint} = simpan, ${cancelHint} = batalkan.`);
-    lines.push('Ketik *pendamping* untuk saran bisnis.');
+    if (enabled) {
+        lines.push('Ketik *pendamping* untuk saran bisnis.');
+    }
     return lines.join('\n');
 }
 
