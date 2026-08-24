@@ -680,11 +680,18 @@ export class StudioUmkmService {
             this.logIntake('help');
             return formatUmkmHelp(commands, pendampingOpts);
         }
-        if (isPendampingDigit(text) || isUmkmPendampingExactAlias(text)) {
+        if (isUmkmPendampingExactAlias(text)) {
             if (!isUmkmPendampingEnabled(config)) {
                 this.logIntake('pendamping_blocked');
                 return formatPendampingDisabled();
             }
+            this.clearWizard(tenantId, phone, conversationId);
+            this.logIntake('pendamping');
+            return this.pendamping.coach(text, tenantId, config);
+        }
+        // Digit 7 special-case only when enabled. When OFF, fall through so stamp
+        // menu digit 7 (if any) still works — D9 "flag OFF → stamp 7 normal".
+        if (isPendampingDigit(text) && isUmkmPendampingEnabled(config)) {
             this.clearWizard(tenantId, phone, conversationId);
             this.logIntake('pendamping');
             return this.pendamping.coach(text, tenantId, config);

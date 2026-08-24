@@ -191,31 +191,19 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 **Priority:** P3
 **Depends on:** Staff vs owner roles; pendamping v1 shipped
 
-### Digit cheat-sheet entry for pendamping
+## Completed
+
+### Digit cheat-sheet entry for pendamping (v2)
 
 **What:** Add menu digit (e.g. `7`) on 0–6 hub for pendamping without typing exact alias.
 
-**Why:** Discoverability; v1 is command-gated on purpose (D4 exact phrases only).
+**Shipped:** `14b4160` / PR #3 — first-line special-case digit `7` + help/welcome `*7*`; stamp digit 7 suppressed when flag ON.
 
-**Context:** CEO plan CUT digit in v1. Add after exact-phrase gate proves usage in pilot metrics.
-
-**Effort:** S
-**Priority:** P3
-**Depends on:** Pendamping v1 shipped
-
-### Per-tenant pendamping feature flag
+### Per-tenant pendamping feature flag (v2)
 
 **What:** Notebook/tenant config toggle to disable coach while keeping kasir intake.
 
-**Why:** Rollout control beyond pilot `umkm-warung-klontong-bahagia`; safe disable without matcher revert.
-
-**Context:** CEO plan v1 always-on when `umkm_mode=true`. Add after pilot fallback/latency metrics stable.
-
-**Effort:** S
-**Priority:** P3
-**Depends on:** Pendamping v1 shipped; D13 metrics baseline
-
-## Completed
+**Shipped:** `14b4160` / PR #3 — `context_config.umkm_pendamping_enabled` (missing=ON) + admin Switch dirty-only save.
 
 ### Natural sale correction
 

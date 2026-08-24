@@ -32,6 +32,10 @@ def connect():
     c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     c.connect(HOST, port=PORT, username=USER, password=PWD,
               timeout=30, banner_timeout=30, auth_timeout=30)
+    # Keep long docker builds (admin next build) from dropping idle SSH.
+    transport = c.get_transport()
+    if transport is not None:
+        transport.set_keepalive(30)
     return c
 
 
