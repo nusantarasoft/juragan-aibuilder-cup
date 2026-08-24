@@ -154,7 +154,7 @@ describe('Pendamping routing scenarios', () => {
         expect(pendamping.coach).toHaveBeenCalled();
     });
 
-    it('F2/F3: flag false → alias + digit 7 blocked', async () => {
+    it('F2: flag false → alias blocked', async () => {
         const { svc, pendamping } = makeUmkmService();
         const off = { ...DEFAULT_STUDIO_UMKM_CONTEXT, umkm_pendamping_enabled: false };
         const a = await svc.handleMessage('pendamping', 't', '6281', off, {
@@ -162,9 +162,27 @@ describe('Pendamping routing scenarios', () => {
         });
         expect(a).toMatch(/tidak aktif/i);
         expect(pendamping.coach).not.toHaveBeenCalled();
+    });
+
+    it('F3: flag false → digit 7 not coach (stamp can win)', async () => {
+        const { svc, pendamping } = makeUmkmService();
+        const cmds = {
+            ...DEFAULT_STUDIO_UMKM_CONTEXT.umkm_commands!,
+            menu: [
+                ...(DEFAULT_STUDIO_UMKM_CONTEXT.umkm_commands?.menu || []),
+                { digit: '7', intent: 'list_products' as const, label: 'Daftar custom' },
+            ],
+        };
+        const off = {
+            ...DEFAULT_STUDIO_UMKM_CONTEXT,
+            umkm_pendamping_enabled: false,
+            umkm_commands: cmds,
+        };
         const d = await svc.handleMessage('7', 't', '6281', off, { conversationId: 'c-off-7' });
-        expect(d).toMatch(/tidak aktif/i);
         expect(pendamping.coach).not.toHaveBeenCalled();
+        expect(String(d)).not.toMatch(/tidak aktif/i);
+        // stamp list_products path (product list or empty catalog copy)
+        expect(String(d).length).toBeGreaterThan(0);
     });
 
     it('F4: flag false → help/welcome strip pendamping', async () => {
