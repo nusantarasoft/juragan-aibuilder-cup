@@ -56,12 +56,18 @@ describe('StudioUmkmPendampingService golden', () => {
             ].join('\n'),
         ),
     };
+    const context = {
+        retrieveContext: vi.fn(async () => ({
+            fileContext: '',
+            documentRetrievalStatus: 'not_indexed',
+        })),
+    };
 
     let svc: StudioUmkmPendampingService;
 
     beforeEach(() => {
         vi.clearAllMocks();
-        svc = new StudioUmkmPendampingService(umkm as any, aiRouter as any);
+        svc = new StudioUmkmPendampingService(umkm as any, aiRouter as any, context as any);
         svc.setCurriculumForTests('# Playbook\n\nCatat dulu, saran belakangan.\n');
     });
 
@@ -131,5 +137,34 @@ describe('StudioUmkmPendampingService golden', () => {
         const out = await svc.coach('saran bisnis', 'tenant-x');
         expect(out.length).toBeLessThanOrEqual(800);
         expect(umkm.buildCombinedReportMessage).toHaveBeenCalledWith('tenant-x', 'week');
+    });
+
+    it('no notebookId → retrieveContext tidak dipanggil', async () => {
+        await svc.coach('pendamping', 't1');
+        expect(context.retrieveContext).not.toHaveBeenCalled();
+    });
+
+    it('notebook indexed → retrieveContext masuk prompt synthesizer', async () => {
+        context.retrieveContext.mockResolvedValueOnce({
+            fileContext: '[Sumber 1: catatan.md]\nMargin Indomie 12 persen.',
+            documentRetrievalStatus: 'matched',
+        });
+        await svc.coach('pendamping', 't1', undefined, 'nb-1');
+        expect(context.retrieveContext).toHaveBeenCalledWith(
+            'nb-1',
+            expect.stringContaining('saran bisnis warung'),
+        );
+        const prompt = String(aiRouter.generateText.mock.calls[0][0]);
+        expect(prompt).toMatch(/BLOK_NOTEBOOK/);
+        expect(prompt).toMatch(/Margin Indomie 12 persen/);
+        expect(prompt).toMatch(/BLOK_PLAYBOOK/);
+    });
+
+    it('retrieve throw → coach tetap jalan, kasir tools tetap', async () => {
+        context.retrieveContext.mockRejectedValueOnce(new Error('rag down'));
+        const out = await svc.coach('pendamping', 't1', undefined, 'nb-1');
+        expect(out.trim().length).toBeGreaterThan(20);
+        expect(umkm.buildCombinedReportMessage).toHaveBeenCalled();
+        expect(umkm.fetchStockRows).toHaveBeenCalled();
     });
 });

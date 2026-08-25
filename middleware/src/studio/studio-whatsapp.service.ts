@@ -574,7 +574,7 @@ export class StudioWhatsAppService {
                     tenantId,
                     phone,
                     { ...notebookCfg, tenant_id: tenantId },
-                    { conversationId },
+                    { conversationId, notebookId: config.notebook_id! },
                 );
                 if (umkmAnswer) {
                     answer = umkmAnswer;

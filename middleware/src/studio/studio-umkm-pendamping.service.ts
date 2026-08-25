@@ -5,9 +5,10 @@
  */
 import { existsSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
-import { forwardRef, Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { AiRouterService } from '../ai/ai-router.service';
 import type { StudioContextConfig } from './studio-db-context.service';
+import { StudioContextService } from './studio-context.service';
 import { StudioUmkmService } from './studio-umkm.service';
 import type { AgenticAskToolCall } from './studio-umkm-agentic-ask.types';
 import {
@@ -48,6 +49,7 @@ export class StudioUmkmPendampingService implements OnModuleInit {
         @Inject(forwardRef(() => StudioUmkmService))
         private readonly umkm: StudioUmkmService,
         private readonly aiRouter: AiRouterService,
+        @Optional() private readonly context?: StudioContextService,
     ) {}
 
     onModuleInit() {
@@ -110,6 +112,7 @@ export class StudioUmkmPendampingService implements OnModuleInit {
         text: string,
         tenantId: string,
         _config?: StudioContextConfig,
+        notebookId?: string,
     ): Promise<string> {
         const started = Date.now();
         this.metrics.pendamping_requests_total += 1;
@@ -168,6 +171,14 @@ export class StudioUmkmPendampingService implements OnModuleInit {
                 return empty.slice(0, MAX_REPLY_CHARS);
             }
 
+            const notebookContext = await this.retrieveNotebookContext(
+                notebookId,
+                text,
+                stockLines,
+                toolOk,
+                toolFail,
+            );
+
             const toolPayloads = [
                 reportContent && `## Laporan minggu\n${reportContent}`,
                 productsContent && `## Katalog\n${productsContent}`,
@@ -181,6 +192,7 @@ export class StudioUmkmPendampingService implements OnModuleInit {
                 toolPayloads: toolPayloads || '(tidak ada payload tool)',
                 curriculum: this.curriculum,
                 userAlias: text.trim(),
+                notebookContext,
             });
 
             let answer = '';
@@ -240,6 +252,37 @@ export class StudioUmkmPendampingService implements OnModuleInit {
                 latencyMs: Date.now() - started,
             });
             return msg;
+        }
+    }
+
+
+    /** Notebook chunks via existing retrieveContext. Ask still owns search_docs. */
+    private async retrieveNotebookContext(
+        notebookId: string | undefined,
+        alias: string,
+        stockLines: string,
+        toolOk: string[],
+        toolFail: string[],
+    ): Promise<string> {
+        if (!notebookId || !this.context) return '';
+        const query = [alias.trim(), 'saran bisnis warung', stockLines.replace(/\n/g, ' ')]
+            .filter(Boolean)
+            .join(' ')
+            .slice(0, 500);
+        try {
+            const retrieval = await this.context.retrieveContext(notebookId, query);
+            if (retrieval.fileContext?.trim()) {
+                toolOk.push('retrieveContext');
+                return retrieval.fileContext.slice(0, 2000);
+            }
+            if (retrieval.documentRetrievalStatus === 'not_indexed') {
+                this.logger.debug(`pendamping retrieve not_indexed notebook=${notebookId}`);
+            }
+            return '';
+        } catch (e: any) {
+            toolFail.push('retrieveContext');
+            this.logger.warn(`pendamping retrieveContext: ${e?.message}`);
+            return '';
         }
     }
 
