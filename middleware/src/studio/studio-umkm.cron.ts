@@ -73,12 +73,12 @@ export class StudioUmkmCronService {
 
     /**
      * Push daily sales report to allowlisted phones for each enabled UMKM WhatsApp config.
-     * Disabled when STUDIO_UMKM_DAILY_REPORT_ENABLED=false.
+     * Disabled by default; set STUDIO_UMKM_DAILY_REPORT_ENABLED=true to enable. Cron stays registered.
      */
     @Cron('0 13 * * *', { name: 'studio-umkm-daily-report' })
     async pushDailyReports(): Promise<void> {
         const enabled =
-            (this.configService.get('STUDIO_UMKM_DAILY_REPORT_ENABLED') ?? 'true').toString() !==
+            (this.configService.get('STUDIO_UMKM_DAILY_REPORT_ENABLED') ?? 'false').toString() !==
             'false';
         if (!enabled) {
             this.logger.debug('Daily UMKM report cron skipped (disabled)');
