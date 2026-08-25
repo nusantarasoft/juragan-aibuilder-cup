@@ -602,7 +602,7 @@ export class StudioUmkmService {
         tenantId = DEFAULT_TENANT,
         phone?: string,
         config?: StudioContextConfig,
-        options?: { conversationId?: string; conversationLines?: ConversationLine[] },
+        options?: { conversationId?: string; conversationLines?: ConversationLine[]; notebookId?: string },
     ): Promise<string | null> {
         const conversationId = options?.conversationId;
         const commands = this.resolveCommands(config);
@@ -687,14 +687,14 @@ export class StudioUmkmService {
             }
             this.clearWizard(tenantId, phone, conversationId);
             this.logIntake('pendamping');
-            return this.pendamping.coach(text, tenantId, config);
+            return this.pendamping.coach(text, tenantId, config, options?.notebookId);
         }
         // Digit 7 special-case only when enabled. When OFF, fall through so stamp
         // menu digit 7 (if any) still works — D9 "flag OFF → stamp 7 normal".
         if (isPendampingDigit(text) && isUmkmPendampingEnabled(config)) {
             this.clearWizard(tenantId, phone, conversationId);
             this.logIntake('pendamping');
-            return this.pendamping.coach(text, tenantId, config);
+            return this.pendamping.coach(text, tenantId, config, options?.notebookId);
         }
         if (intent === 'ask') {
             this.clearWizard(tenantId, phone, conversationId);

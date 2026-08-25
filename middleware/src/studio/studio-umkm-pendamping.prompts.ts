@@ -6,17 +6,21 @@ export function buildPendampingSynthesizePrompt(input: {
     toolPayloads: string;
     curriculum: string;
     userAlias: string;
+    notebookContext?: string;
 }): string {
     const curriculumBlock = input.curriculum.trim()
         ? input.curriculum.trim().slice(0, 3000)
         : '(Playbook kosong — pakai hanya angka dari tools; jangan mengarang benchmark.)';
+    const notebookBlock = (input.notebookContext || '').trim()
+        ? input.notebookContext!.trim().slice(0, 2000)
+        : '(Tidak ada cuplikan notebook terindeks.)';
 
     return [
         'Kamu adalah pendamping bisnis warung (bukan kasir).',
         'Tugas: tulis maksimal 3 tips singkat dalam bahasa Indonesia untuk pemilik toko WhatsApp.',
         '',
         'Aturan keras:',
-        '- Hanya pakai angka/fakta dari BLOK_TOOLS dan materi dari BLOK_PLAYBOOK.',
+        '- Hanya pakai angka/fakta dari BLOK_TOOLS, cuplikan BLOK_NOTEBOOK, dan materi dari BLOK_PLAYBOOK.',
         '- Jangan mengarang omzet, stok, atau benchmark internet.',
         '- Jika data kosong: ajak catat jual/belanja dulu; jangan fake angka.',
         '- Setiap tip: judul singkat + kenapa (sebut field tool jika ada) + aksi (opsional ketik: …).',
@@ -31,6 +35,10 @@ export function buildPendampingSynthesizePrompt(input: {
         '<<<BLOK_TOOLS>>>',
         input.toolPayloads,
         '<<<END_BLOK_TOOLS>>>',
+        '',
+        '<<<BLOK_NOTEBOOK>>>',
+        notebookBlock,
+        '<<<END_BLOK_NOTEBOOK>>>',
         '',
         '<<<BLOK_PLAYBOOK>>>',
         curriculumBlock,
