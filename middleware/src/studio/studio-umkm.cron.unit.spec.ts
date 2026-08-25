@@ -93,9 +93,28 @@ describe('StudioUmkmCronService', () => {
             expect(whatsappService.listEnabledConfigsForCron).not.toHaveBeenCalled();
         });
 
-        it('default enabled (config undefined) → kirim ke phone allowlist', async () => {
+        it('default off (config undefined) → skip', async () => {
             const { svc, whatsappService } = build({
                 enabled: undefined,
+                configs: [
+                    {
+                        notebook_id: 'nb1',
+                        tenant_id: 't1',
+                        label: 'Toko A',
+                        allowlist_phones: ['628111'],
+                        waha_session: 'sess1',
+                    },
+                ],
+                sendOk: true,
+            });
+            await svc.pushDailyReports();
+            expect(whatsappService.listEnabledConfigsForCron).not.toHaveBeenCalled();
+            expect(whatsappService.sendOutboundText).not.toHaveBeenCalled();
+        });
+
+        it('explicit true → kirim ke phone allowlist', async () => {
+            const { svc, whatsappService } = build({
+                enabled: 'true',
                 configs: [
                     {
                         notebook_id: 'nb1',
@@ -138,6 +157,7 @@ describe('StudioUmkmCronService', () => {
 
         it('skip config tanpa notebook_id dan tanpa phone', async () => {
             const { svc, whatsappService } = build({
+                enabled: 'true',
                 configs: [
                     { tenant_id: 't3' },
                     { notebook_id: 'nb4', tenant_id: 't4', allowlist_phones: [] },
@@ -149,6 +169,7 @@ describe('StudioUmkmCronService', () => {
 
         it('listEnabledConfigsForCron throw → error log', async () => {
             const { svc } = build({
+                enabled: 'true',
                 configs: () => {
                     throw new Error('list fail');
                 },
