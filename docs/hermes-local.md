@@ -87,6 +87,10 @@ ssh -L 9129:127.0.0.1:9129 root@31.97.66.39
 # then open http://127.0.0.1:9129
 ```
 
+**Login GUI:** username `admin`. Password + secret: `scripts/master-production/deploy.local.env` (gitignored; also mirrored on server `.env.master-production`).
+
+Env keys: `HERMES_DASHBOARD_BASIC_AUTH_USERNAME` / `_PASSWORD` / `_SECRET`.
+
 Or QR / WhatsApp setup via:
 
 ```bash
@@ -101,15 +105,56 @@ Document results here (or in a dated note under this section) before any `Hermes
 2. [ ] Pipe-only: inbound does **not** get an Hermes LLM/agent reply
 3. [ ] Forward to `http://middleware:4001/api/studio/whatsapp/webhook` with HMAC (`x-webhook-hmac` / `WAHA_WEBHOOK_HMAC_KEY`)
 4. [ ] Middleware log shows one inbound; capture payload shape (normalizer yes/no)
-5. [ ] Exact config path chosen: `pre_gateway_dispatch` hook **or** bridge forward — paste working snippets below
+5. [x] Exact config path chosen: **`pre_gateway_dispatch` plugin `kasir-pipe`** (see below)
 
-**Working pipe-only config (fill after probe):**
+**Working pipe-only config (plugin path — preferred):**
 
-```text
-# TODO after E1 on server — paste Hermes config / hook that:
-# - skips agent reply
-# - POSTs signed body to middleware webhook
+Plugin source (tracked): `scripts/master-production/hermes-plugins/kasir-pipe/`  
+Runtime path on server: `volumes/hermes/plugins/kasir-pipe/` (`HERMES_HOME=/opt/data`)
+
+`config.yaml`:
+
+```yaml
+plugins:
+  enabled:
+    - kasir-pipe
 ```
+
+Compose / env on `nsoft3-hermes` (no LLM keys):
+
+| Var | Value |
+|-----|--------|
+| `WHATSAPP_ENABLED` | `true` |
+| `KASIR_WHATSAPP_WEBHOOK_URL` | `http://middleware:4001/api/studio/whatsapp/webhook` |
+| `WAHA_WEBHOOK_HMAC_KEY` | same as middleware / WAHA hook |
+| `KASIR_PIPE_SESSION` | `hermes` (webhook `session` field) |
+| `KASIR_BRIDGE_PROXY` / `_PORT` | outbound proxy `0.0.0.0:8765` → bridge `127.0.0.1:3000` |
+| Middleware `HERMES_BRIDGE_URL` | `http://hermes:8765` (used when `WHATSAPP_PROVIDER=hermes`) |
+
+Middleware transport (repo): `middleware/src/whatsapp/` — `WhatsAppTransport` + `WahaProvider` + `HermesProvider`. Default env remains **`WHATSAPP_PROVIDER=waha`** until Phase 2 QA + Phase 3 cutover.
+
+**Pair test number (interactive — you must scan):**
+
+```bash
+# laptop tunnel
+ssh -L 9129:127.0.0.1:9129 root@31.97.66.39
+# open http://127.0.0.1:9129 → login admin → WhatsApp → QR
+# OR:
+cd /opt/nusantarasoft-3
+docker compose -f docker-compose.master-production.yml --env-file .env.master-production exec -it hermes hermes whatsapp
+```
+
+Use a **test phone**, never the pilot number still on WAHA.
+
+**E1 status (2026-08-31):**
+
+- E0: `nsoft3-hermes` Up (`v2026.8.27`), ports localhost-only, volume owned by uid `10000`
+- Dashboard: `http://127.0.0.1:9129` → `/login` (creds in `deploy.local.env`)
+- Plugin: `kasir-pipe` **enabled** (`hermes plugins doctor kasir-pipe` → 1 hook); compose env has `WHATSAPP_ENABLED`, webhook URL, HMAC key
+- Synthetic HMAC probe (from inside `nsoft3-hermes`): `POST` → middleware **`200 {"ok":true}`**; log `Webhook message session=hermes` (no Unauthorized)
+- Note: middleware still replies via WAHA while `WHATSAPP_PROVIDER=waha` — `session=hermes` → WAHA 422 expected until Phase 2 `HermesProvider`
+- WhatsApp: **not paired** (`creds.json` missing) — live inbound + “no Hermes LLM reply” still needs QR on a **test** number
+- Pair + live forward proof: **blocked on QR scan**
 
 ### Notes
 

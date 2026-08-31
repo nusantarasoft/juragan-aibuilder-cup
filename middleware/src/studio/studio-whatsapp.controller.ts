@@ -8,6 +8,7 @@ import {
     RawBodyRequest,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { normalizeWhatsAppWebhook } from '../whatsapp/hermes-to-waha-webhook.normalizer';
 import { StudioWhatsAppService } from './studio-whatsapp.service';
 
 @Controller('api/studio/whatsapp')
@@ -27,7 +28,8 @@ export class StudioWhatsAppController {
             this.whatsAppService.verifyWebhookHmac(raw, hmac);
         }
 
-        const body = (req.body || {}) as Record<string, unknown>;
+        const rawBody = (req.body || {}) as Record<string, unknown>;
+        const body = normalizeWhatsAppWebhook(rawBody);
         const session = String(body.session || 'default');
         const event = String(body.event || 'message');
         this.logger.log(`Webhook ${event} session=${session}`);

@@ -884,45 +884,54 @@ export const studioService = {
         return data.studioWhatsAppSecurityMeta;
     },
 
-    async getWhatsAppSessionStatus(): Promise<StudioWhatsAppSessionStatus> {
-        const data = await graphqlRequest(`query { studioWhatsAppSessionStatus }`);
+    async getWhatsAppSessionStatus(provider?: string): Promise<StudioWhatsAppSessionStatus> {
+        const data = await graphqlRequest(
+            `query($provider: String) { studioWhatsAppSessionStatus(provider: $provider) }`,
+            { provider: provider ?? null },
+        );
         return data.studioWhatsAppSessionStatus;
     },
 
-    async restartWahaSession(): Promise<{ status: string }> {
-        const data = await graphqlRequest(`mutation { restartStudioWahaSession }`);
+    async restartWahaSession(provider?: string): Promise<{ status: string }> {
+        const data = await graphqlRequest(
+            `mutation($provider: String) { restartStudioWahaSession(provider: $provider) }`,
+            { provider: provider ?? null },
+        );
         return data.restartStudioWahaSession;
     },
 
-    async syncWahaSession(): Promise<{ status: string; connected: boolean }> {
-        const data = await graphqlRequest(`mutation { syncStudioWahaSession }`);
+    async syncWahaSession(provider?: string): Promise<{ status: string; connected: boolean }> {
+        const data = await graphqlRequest(
+            `mutation($provider: String) { syncStudioWahaSession(provider: $provider) }`,
+            { provider: provider ?? null },
+        );
         return data.syncStudioWahaSession;
     },
 
-    async getWahaAuthQr(session?: string): Promise<StudioWahaAuthQr> {
+    async getWahaAuthQr(session?: string, provider?: string): Promise<StudioWahaAuthQr> {
         const data = await graphqlRequest(`
-            query($session: String) {
-                studioWahaAuthQr(session: $session)
+            query($session: String, $provider: String) {
+                studioWahaAuthQr(session: $session, provider: $provider)
             }
-        `, { session: session ?? null });
+        `, { session: session ?? null, provider: provider ?? null });
         return data.studioWahaAuthQr;
     },
 
-    async startWahaSession(session?: string): Promise<{ status: string; connected: boolean }> {
+    async startWahaSession(session?: string, provider?: string): Promise<{ status: string; connected: boolean }> {
         const data = await graphqlRequest(`
-            mutation($session: String) {
-                startStudioWahaSession(session: $session)
+            mutation($session: String, $provider: String) {
+                startStudioWahaSession(session: $session, provider: $provider)
             }
-        `, { session: session ?? null });
+        `, { session: session ?? null, provider: provider ?? null });
         return data.startStudioWahaSession;
     },
 
-    async logoutWahaSession(session?: string): Promise<{ status: string }> {
+    async logoutWahaSession(session?: string, provider?: string): Promise<{ status: string }> {
         const data = await graphqlRequest(`
-            mutation($session: String) {
-                logoutStudioWahaSession(session: $session)
+            mutation($session: String, $provider: String) {
+                logoutStudioWahaSession(session: $session, provider: $provider)
             }
-        `, { session: session ?? null });
+        `, { session: session ?? null, provider: provider ?? null });
         return data.logoutStudioWahaSession;
     },
 
@@ -1104,10 +1113,12 @@ export interface StudioWhatsAppConfig {
 
 export interface StudioWhatsAppSecurityMeta {
     allowlistRequired: boolean;
-    rateLimitPerMinute: number;
+    rateLimitPerMinute?: number;
+    whatsappProvider?: 'waha' | 'hermes' | string;
 }
 
 export interface StudioWhatsAppSessionStatus {
+    provider?: 'waha' | 'hermes' | string;
     session: {
         name: string;
         status: string;
@@ -1124,6 +1135,7 @@ export interface StudioWahaAuthQr {
     available: boolean;
     imageBase64: string | null;
     mimetype: string | null;
+    qr?: string | null;
     error?: string | null;
     connected?: boolean;
 }

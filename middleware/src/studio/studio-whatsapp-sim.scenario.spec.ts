@@ -190,12 +190,28 @@ function makeSim(opts?: SimOpts) {
         } as any,
         supabase as any,
         {
+            defaultSession: 'default',
+            getSessionStatus: vi.fn(),
+            listSessions: vi.fn(),
+            getVersion: vi.fn(),
+        } as any,
+        {
+            providerId: 'waha',
+            defaultSession: 'default',
             sendText: wahaSend,
             sendButtons: vi.fn(async () => ({ success: false })),
             sendList: vi.fn(async () => ({ success: false })),
-            defaultSession: 'default',
             phoneToChatId: (p: string) => `${p}@c.us`,
             downloadMedia: vi.fn(async () => null),
+            ping: vi.fn(async () => ({ ok: true })),
+        } as any,
+        {
+            getSessionStatus: vi.fn(),
+            getAuthQr: vi.fn(),
+            startSession: vi.fn(),
+            logoutSession: vi.fn(),
+            syncSession: vi.fn(),
+            restartSession: vi.fn(),
         } as any,
         {
             getNotebook: vi.fn(async () => ({

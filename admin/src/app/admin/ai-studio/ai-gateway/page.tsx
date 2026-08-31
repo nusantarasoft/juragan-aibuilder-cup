@@ -43,6 +43,7 @@ import {
 } from '@/lib/studioService';
 import { useAuth } from '@/context/AuthContext';
 import { useStudioUserId } from '../useStudioUserId';
+import QRCode from 'qrcode';
 
 const { Text, Paragraph } = Typography;
 const glass = {
@@ -53,6 +54,7 @@ const glass = {
 };
 
 const DEFAULT_WAHA_DASHBOARD = 'http://127.0.0.1:3010/dashboard';
+type WaProvider = 'waha' | 'hermes';
 
 export default function WhatsAppGatewayPage() {
     return (
@@ -86,6 +88,8 @@ function WhatsAppGatewayPageContent() {
     const [securityMeta, setSecurityMeta] = useState<StudioWhatsAppSecurityMeta | null>(null);
     const [authQr, setAuthQr] = useState<StudioWahaAuthQr | null>(null);
     const [wahaDashboard, setWahaDashboard] = useState(DEFAULT_WAHA_DASHBOARD);
+    const [provider, setProvider] = useState<WaProvider>('hermes');
+    const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
     useEffect(() => {
         studioService.getSettings().then((s) => {
@@ -95,19 +99,19 @@ function WhatsAppGatewayPageContent() {
 
     const loadStatus = useCallback(async () => {
         try {
-            setSessionStatus(await studioService.getWhatsAppSessionStatus());
+            setSessionStatus(await studioService.getWhatsAppSessionStatus(provider));
         } catch {
             setSessionStatus(null);
         }
-    }, []);
+    }, [provider]);
 
     const loadQr = useCallback(async () => {
         try {
-            setAuthQr(await studioService.getWahaAuthQr());
+            setAuthQr(await studioService.getWahaAuthQr(undefined, provider));
         } catch {
             setAuthQr(null);
         }
-    }, []);
+    }, [provider]);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -119,31 +123,29 @@ function WhatsAppGatewayPageContent() {
                     setNotebooks([]);
                 }
             }
-            try {
-                const list = await studioService.listWhatsAppConfigs();
-                setWaConfigs(list);
-                const tenant = activeTenant || list[0]?.tenant_id || 'default';
-                const cfg = await studioService.getWhatsAppConfig(tenant);
-                form.setFieldsValue({
-                    tenantId: cfg?.tenant_id ?? tenant,
-                    label: cfg?.label ?? '',
-                    wahaSession: cfg?.waha_session ?? '',
-                    businessPhone: cfg?.business_phone ?? '',
-                    notebookId: cfg?.notebook_id ?? undefined,
-                    enabled: cfg?.enabled ?? false,
-                    allowlistPhones: cfg?.allowlist_phones ?? [],
-                    useGuidedFlow: cfg?.use_guided_flow ?? false,
-                });
-            } catch {}
-
-            try {
-                setSecurityMeta(await studioService.getWhatsAppSecurityMeta());
-            } catch {
-                setSecurityMeta(null);
+            const [configs, meta] = await Promise.all([
+                studioService.listWhatsAppConfigs().catch(() => [] as StudioWhatsAppConfig[]),
+                studioService.getWhatsAppSecurityMeta().catch(() => null),
+            ]);
+            setWaConfigs(configs);
+            setSecurityMeta(meta);
+            if (meta?.whatsappProvider === 'waha' || meta?.whatsappProvider === 'hermes') {
+                // Keep user choice if already interacting; seed once from env default
             }
-
-            await loadStatus();
-            await loadQr();
+            const cfg = configs.find((c) => c.tenant_id === activeTenant) || configs[0];
+            if (cfg) {
+                form.setFieldsValue({
+                    tenantId: cfg.tenant_id,
+                    notebookId: cfg.notebook_id,
+                    enabled: cfg.enabled,
+                    allowlistPhones: cfg.allowlist_phones || [],
+                    useGuidedFlow: cfg.use_guided_flow,
+                    wahaSession: cfg?.waha_session ?? '',
+                    businessPhone: cfg.business_phone || '',
+                    label: cfg.label || '',
+                });
+            }
+            await Promise.all([loadStatus(), loadQr()]);
         } finally {
             setLoading(false);
         }
@@ -158,7 +160,36 @@ function WhatsAppGatewayPageContent() {
         load();
     }, [load, authLoading]);
 
-    // WAHA Derived states
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            if (authQr?.available && authQr.imageBase64) {
+                setQrDataUrl(`data:${authQr.mimetype || 'image/png'};base64,${authQr.imageBase64}`);
+                return;
+            }
+            if (authQr?.available && authQr.qr) {
+                try {
+                    const url = await QRCode.toDataURL(authQr.qr, { width: 240, margin: 2 });
+                    if (!cancelled) setQrDataUrl(url);
+                } catch {
+                    if (!cancelled) setQrDataUrl(null);
+                }
+                return;
+            }
+            if (!cancelled) setQrDataUrl(null);
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [authQr]);
+
+    useEffect(() => {
+        // Reload session/QR when transport changes
+        if (authLoading || loading) return;
+        void Promise.all([loadStatus(), loadQr()]);
+    }, [provider]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Connection derived states
     const sess = sessionStatus?.session;
     const connected = sess?.connected === true;
     const pairedButStuck = sess?.pairedButStuck === true;
@@ -168,6 +199,7 @@ function WhatsAppGatewayPageContent() {
     const businessPhone = sess?.meId?.split('@')[0]?.replace(/\D/g, '');
     const wahaVersion = sessionStatus?.version?.version;
     const allowlistRequired = securityMeta?.allowlistRequired ?? false;
+    const providerLabel = provider === 'hermes' ? 'Hermes' : 'WAHA';
 
     // Polling effects
     useEffect(() => {
@@ -186,12 +218,12 @@ function WhatsAppGatewayPageContent() {
     const handleStart = async () => {
         setStarting(true);
         try {
-            const r = await studioService.startWahaSession();
+            const r = await studioService.startWahaSession(undefined, provider);
             if (r.connected) message.success('WhatsApp sudah terhubung');
             else message.info(`Sesi dimulai — status: ${r.status}. Scan QR di bawah.`);
             await load();
         } catch {
-            message.error('Gagal memulai sesi WAHA');
+            message.error(`Gagal memulai sesi ${providerLabel}`);
         } finally {
             setStarting(false);
         }
@@ -200,7 +232,7 @@ function WhatsAppGatewayPageContent() {
     const handleRestart = async () => {
         setRestarting(true);
         try {
-            await studioService.restartWahaSession();
+            await studioService.restartWahaSession(provider);
             message.info('Sesi di-restart. Tunggu QR muncul lalu scan ulang jika perlu.');
             await load();
         } catch {
@@ -213,9 +245,9 @@ function WhatsAppGatewayPageContent() {
     const handleSync = async () => {
         setSyncing(true);
         try {
-            const r = await studioService.syncWahaSession();
-            if (r.connected) message.success(`Status WAHA: ${r.status}`);
-            else message.warning(`Masih ${r.status}. Coba upgrade image WAHA jika stuck SCAN QR.`);
+            const r = await studioService.syncWahaSession(provider);
+            if (r.connected) message.success(`Status ${providerLabel}: ${r.status}`);
+            else message.warning(`Masih ${r.status}. Coba Sync lagi atau Mulai sesi untuk QR.`);
             await load();
         } catch {
             message.error('Gagal sync status');
@@ -227,7 +259,7 @@ function WhatsAppGatewayPageContent() {
     const handleLogout = async () => {
         setLoggingOut(true);
         try {
-            await studioService.logoutWahaSession();
+            await studioService.logoutWahaSession(undefined, provider);
             message.info('Logout berhasil. Scan QR baru untuk pairing ulang.');
             await load();
         } catch {
@@ -264,29 +296,39 @@ function WhatsAppGatewayPageContent() {
         }
     };
 
-    const qrDataUrl = authQr?.available && authQr.imageBase64 ? `data:${authQr.mimetype || 'image/png'};base64,${authQr.imageBase64}` : null;
-
     return (
         <CMSLayout
-            title="WhatsApp & WAHA"
-            subTitle="Hubungkan AI Studio ke WhatsApp — pair WAHA dan konfigurasi bot"
+            title="WhatsApp Gateway"
+            subTitle="Pair nomor WhatsApp dari aplikasi (Hermes atau WAHA) dan konfigurasi bot UMKM"
             extra={[
+                <Select
+                    key="provider"
+                    value={provider}
+                    style={{ width: 140 }}
+                    onChange={(v: WaProvider) => setProvider(v)}
+                    options={[
+                        { value: 'hermes', label: 'Hermes' },
+                        { value: 'waha', label: 'WAHA' },
+                    ]}
+                />,
                 pairedButStuck && (
                     <Button key="sync" loading={syncing} onClick={handleSync} type="primary">
                         Sync status → WORKING
                     </Button>
                 ),
                 <Button key="restart" loading={restarting} onClick={handleRestart} disabled={connected}>
-                    Restart WAHA
+                    Restart {providerLabel}
                 </Button>,
                 connected && (
                     <Button key="logout" loading={loggingOut} onClick={handleLogout} danger icon={<LogoutOutlined />}>
-                        Logout WAHA
+                        Logout {providerLabel}
                     </Button>
                 ),
-                <Button key="dash" icon={<LinkOutlined />} onClick={() => window.open(wahaDashboard, '_blank')}>
-                    WAHA Dashboard
-                </Button>,
+                provider === 'waha' && (
+                    <Button key="dash" icon={<LinkOutlined />} onClick={() => window.open(wahaDashboard, '_blank')}>
+                        WAHA Dashboard
+                    </Button>
+                ),
                 <Button key="r" icon={<ReloadOutlined />} onClick={load} loading={loading} />,
             ].filter(Boolean)}
         >
@@ -294,23 +336,43 @@ function WhatsAppGatewayPageContent() {
                 
                 {/* Connection Alerts */}
                 {wahaUnreachable && (
-                    <Alert type="error" showIcon title="WAHA tidak dapat dihubungi" description="Middleware tidak bisa reach container WAHA. Pastikan WAHA berjalan." />
+                    <Alert
+                        type="error"
+                        showIcon
+                        title={`${providerLabel} tidak dapat dihubungi`}
+                        description={
+                            provider === 'hermes'
+                                ? 'Middleware tidak reach Hermes bridge proxy (:8765). Pastikan nsoft3-hermes + plugin kasir-pipe berjalan.'
+                                : 'Middleware tidak bisa reach container WAHA. Pastikan WAHA berjalan.'
+                        }
+                    />
                 )}
                 {!loading && pairedButStuck && (
-                    <Alert type="warning" showIcon title="Bug sinkronisasi WAHA terdeteksi" description="Sudah login tapi status stuck di SCAN QR. Klik Sync status → WORKING di kanan atas." />
+                    <Alert type="warning" showIcon title="Bug sinkronisasi terdeteksi" description="Sudah login tapi status stuck di SCAN QR. Klik Sync status → WORKING di kanan atas." />
+                )}
+                {provider === 'hermes' && (
+                    <Alert
+                        type="info"
+                        showIcon
+                        title="Pairing Hermes (test / cutover)"
+                        description="Gunakan nomor test (bukan nomor pilot yang masih di WAHA). Setelah scan, klik Sync jika status belum WORKING."
+                    />
                 )}
 
                 <Row gutter={[24, 24]}>
                     {/* LEFT COL: QR CODE PAIRING */}
                     <Col xs={24} md={10} lg={8}>
-                        <Card size="small" style={glass} title={<Space><QrcodeOutlined /><Text strong>1. Koneksi Perangkat (WAHA)</Text></Space>}>
+                        <Card size="small" style={glass} title={<Space><QrcodeOutlined /><Text strong>1. Koneksi Perangkat ({providerLabel})</Text></Space>}>
                             {connected ? (
                                 <Space orientation="vertical" size="middle" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
                                     <CheckCircleOutlined style={{ fontSize: 48, color: '#25d366' }} />
-                                    <Text strong style={{ fontSize: 16 }}>WhatsApp terhubung</Text>
+                                    <Text strong style={{ fontSize: 16 }}>WhatsApp terhubung via {providerLabel}</Text>
                                     <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                                        Nomor <strong>{businessPhone}</strong> siap menerima dan membalas pesan.
+                                        Nomor <strong>{businessPhone || '—'}</strong> siap menerima dan membalas pesan.
                                     </Paragraph>
+                                    {wahaVersion && (
+                                        <Tag>{providerLabel} {wahaVersion}</Tag>
+                                    )}
                                 </Space>
                             ) : loading ? (
                                 <div style={{ textAlign: 'center', padding: 40 }}><Spin size="large" /></div>

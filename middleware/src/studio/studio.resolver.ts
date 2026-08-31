@@ -561,39 +561,48 @@ export class StudioResolver {
     }
 
     @Query(() => GraphQLJSONObject, { name: 'studioWhatsAppSessionStatus' })
-    async studioWhatsAppSessionStatus() {
-        return this.studioWhatsAppService.getWahaSessionStatus();
+    async studioWhatsAppSessionStatus(
+        @Args('provider', { type: () => String, nullable: true }) provider?: string,
+    ) {
+        return this.studioWhatsAppService.getWahaSessionStatus(provider || undefined);
     }
 
     @Mutation(() => GraphQLJSONObject, { name: 'restartStudioWahaSession' })
-    async restartStudioWahaSession() {
-        return this.studioWhatsAppService.restartWahaSession();
+    async restartStudioWahaSession(
+        @Args('provider', { type: () => String, nullable: true }) provider?: string,
+    ) {
+        return this.studioWhatsAppService.restartWahaSession(provider || undefined);
     }
 
     @Mutation(() => GraphQLJSONObject, { name: 'syncStudioWahaSession' })
-    async syncStudioWahaSession() {
-        return this.studioWhatsAppService.syncWahaSession();
+    async syncStudioWahaSession(
+        @Args('provider', { type: () => String, nullable: true }) provider?: string,
+    ) {
+        return this.studioWhatsAppService.syncWahaSession(provider || undefined);
     }
 
     @Query(() => GraphQLJSONObject, { name: 'studioWahaAuthQr' })
     async studioWahaAuthQr(
         @Args('session', { type: () => String, nullable: true }) session?: string,
+        @Args('provider', { type: () => String, nullable: true }) provider?: string,
     ) {
-        return this.studioWhatsAppService.getWahaAuthQr(session || undefined);
+        return this.studioWhatsAppService.getWahaAuthQr(session || undefined, provider || undefined);
     }
 
     @Mutation(() => GraphQLJSONObject, { name: 'startStudioWahaSession' })
     async startStudioWahaSession(
         @Args('session', { type: () => String, nullable: true }) session?: string,
+        @Args('provider', { type: () => String, nullable: true }) provider?: string,
     ) {
-        return this.studioWhatsAppService.startWahaSession(session || undefined);
+        return this.studioWhatsAppService.startWahaSession(session || undefined, provider || undefined);
     }
 
     @Mutation(() => GraphQLJSONObject, { name: 'logoutStudioWahaSession' })
     async logoutStudioWahaSession(
         @Args('session', { type: () => String, nullable: true }) session?: string,
+        @Args('provider', { type: () => String, nullable: true }) provider?: string,
     ) {
-        return this.studioWhatsAppService.logoutWahaSession(session || undefined);
+        return this.studioWhatsAppService.logoutWahaSession(session || undefined, provider || undefined);
     }
 
     @Mutation(() => GraphQLJSONObject, { name: 'studioSetupUmkmNotebook' })

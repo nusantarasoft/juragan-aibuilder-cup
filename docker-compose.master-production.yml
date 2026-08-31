@@ -527,6 +527,7 @@ services:
       # WhatsApp transport (default waha until Phase 2+ cutover — see docs/designs/waha-to-hermes-migration.md)
       - WHATSAPP_PROVIDER=${WHATSAPP_PROVIDER:-waha}
       - HERMES_BASE_URL=${HERMES_BASE_URL:-http://hermes:8642}
+      - HERMES_BRIDGE_URL=${HERMES_BRIDGE_URL:-http://hermes:8765}
       - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USER=${SMTP_USER:-}
@@ -689,7 +690,20 @@ services:
       - "127.0.0.1:${HERMES_DASHBOARD_PORT:-9129}:9119"
     environment:
       - HERMES_DASHBOARD=${HERMES_DASHBOARD:-1}
+      - HERMES_DASHBOARD_BASIC_AUTH_USERNAME=${HERMES_DASHBOARD_BASIC_AUTH_USERNAME:-admin}
+      - HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD:-}
+      - HERMES_DASHBOARD_BASIC_AUTH_SECRET=${HERMES_DASHBOARD_BASIC_AUTH_SECRET:-}
       # Phase 1 pipe-only: do NOT set OPENAI/ANTHROPIC/OPENROUTER here unless debugging agent path
+      - WHATSAPP_ENABLED=${WHATSAPP_ENABLED:-true}
+      - KASIR_WHATSAPP_WEBHOOK_URL=${KASIR_WHATSAPP_WEBHOOK_URL:-http://middleware:4001/api/studio/whatsapp/webhook}
+      - WAHA_WEBHOOK_HMAC_KEY=${WAHA_WEBHOOK_HMAC_KEY:-}
+      - KASIR_PIPE_SESSION=${KASIR_PIPE_SESSION:-hermes}
+      - KASIR_BRIDGE_PROXY=${KASIR_BRIDGE_PROXY:-1}
+      - KASIR_BRIDGE_PROXY_PORT=${KASIR_BRIDGE_PROXY_PORT:-8765}
+      - WHATSAPP_BRIDGE_PORT=${WHATSAPP_BRIDGE_PORT:-3000}
+    # Bridge proxy for middleware outbound (kasir-pipe → 127.0.0.1:3000). Docker network only.
+    expose:
+      - "8765"
     volumes:
       - ./volumes/hermes:/opt/data
     networks: [nsoft3-net]

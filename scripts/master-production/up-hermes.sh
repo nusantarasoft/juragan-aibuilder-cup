@@ -36,6 +36,10 @@ ensure_env HERMES_GATEWAY_PORT "8652"
 ensure_env HERMES_DASHBOARD_PORT "9129"
 ensure_env HERMES_DASHBOARD "1"
 ensure_env WHATSAPP_PROVIDER "waha"
+# Dashboard GUI — if missing, append placeholders; set real password on server .env before first login
+if ! grep -qE '^HERMES_DASHBOARD_BASIC_AUTH_USERNAME=' "$EF" 2>/dev/null; then
+  echo "WARN: set HERMES_DASHBOARD_BASIC_AUTH_* in $EF for dashboard login" >&2
+fi
 
 echo "==> [2/4] mkdir volumes/hermes"
 mkdir -p volumes/hermes

@@ -31,7 +31,7 @@ describe('StudioWhatsAppController', () => {
         const res = await ctrl.webhook(makeReq({ body: { session: 's2' } }));
         expect(whatsAppService.verifyWebhookHmac).not.toHaveBeenCalled();
         expect(whatsAppService.handleWebhook).toHaveBeenCalledWith(
-            { session: 's2' },
+            expect.objectContaining({ session: 's2' }),
             's2',
         );
         expect(res).toEqual({ ok: true });

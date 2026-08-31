@@ -16,6 +16,7 @@ import { AiModule } from '../ai/ai.module';
 import { RagModule } from '../rag/rag.module';
 import { DremioModule } from '../dremio/dremio.module';
 import { WahaModule } from '../waha/waha.module';
+import { WhatsAppProviderModule } from '../whatsapp/whatsapp-provider.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { StudioWhatsAppController } from './studio-whatsapp.controller';
 import { StudioWhatsAppService } from './studio-whatsapp.service';
@@ -34,6 +35,7 @@ import { StudioOutputService } from './studio-output.service';
         RagModule,
         DremioModule,
         WahaModule,
+        WhatsAppProviderModule,
         InventoryModule,
     ],
     controllers: [StudioUploadController, StudioChatController, StudioShareController, StudioWhatsAppController],

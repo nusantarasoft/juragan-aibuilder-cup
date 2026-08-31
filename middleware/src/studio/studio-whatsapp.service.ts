@@ -1,8 +1,15 @@
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
 import { WahaClientService } from '../waha/waha-client.service';
+import { HermesProvider } from '../whatsapp/hermes.provider';
+import {
+    WHATSAPP_TRANSPORT,
+    WhatsAppProviderId,
+    WhatsAppTransport,
+} from '../whatsapp/whatsapp-transport.types';
+import { resolveWhatsAppProviderId } from '../whatsapp/whatsapp-provider.module';
 import { StudioService } from './studio.service';
 import { GuideFlowService } from './guide-flow.service';
 import { StudioDbContextService, getUmkmCommandsFromConfig } from './studio-db-context.service';
@@ -66,6 +73,8 @@ export class StudioWhatsAppService {
         private readonly configService: ConfigService,
         private readonly supabaseService: SupabaseService,
         private readonly wahaClient: WahaClientService,
+        @Inject(WHATSAPP_TRANSPORT) private readonly waTransport: WhatsAppTransport,
+        private readonly hermesProvider: HermesProvider,
         private readonly studioService: StudioService,
         private readonly guideFlowService: GuideFlowService,
         private readonly dbContextService: StudioDbContextService,
@@ -81,14 +90,16 @@ export class StudioWhatsAppService {
         return all.filter((c) => c.enabled && c.notebook_id);
     }
 
-    /** Outbound text to phone (digits or chatId). Used by daily report cron — WAHA only. */
+    /** Outbound text to phone (digits or chatId). Used by daily report cron. */
     async sendOutboundText(phoneOrChatId: string, text: string, session?: string): Promise<boolean> {
         const chatId = phoneOrChatId.includes('@')
             ? phoneOrChatId
-            : this.wahaClient.phoneToChatId(phoneOrChatId);
-        const res = await this.wahaClient.sendText(chatId, text, session);
+            : this.waTransport.phoneToChatId(phoneOrChatId);
+        const res = await this.waTransport.sendText(chatId, text, session);
         if (!res.success) {
-            this.logger.warn(`sendOutboundText failed (WAHA): ${res.error}`);
+            this.logger.warn(
+                `sendOutboundText failed (${this.waTransport.providerId}): ${res.error}`,
+            );
         }
         return res.success;
     }
@@ -100,9 +111,20 @@ export class StudioWhatsAppService {
     verifyWebhookHmac(rawBody: Buffer, signatureHeader?: string): void {
         const key = this.configService.get('WAHA_WEBHOOK_HMAC_KEY') || '';
         if (!key) return;
+        // E13: fail closed when key is set. Escape hatch for local/dev only.
+        const allowMissing = ['1', 'true', 'yes'].includes(
+            String(this.configService.get('WAHA_WEBHOOK_HMAC_ALLOW_MISSING') || '')
+                .trim()
+                .toLowerCase(),
+        );
         if (!signatureHeader) {
-            this.logger.warn('WAHA_WEBHOOK_HMAC_KEY set but X-Webhook-Hmac missing — skip verify (dev)');
-            return;
+            if (allowMissing) {
+                this.logger.warn(
+                    'WAHA_WEBHOOK_HMAC_KEY set but X-Webhook-Hmac missing — allowed by WAHA_WEBHOOK_HMAC_ALLOW_MISSING',
+                );
+                return;
+            }
+            throw new UnauthorizedException('Missing webhook HMAC');
         }
         const expected = createHmac('sha512', key).update(rawBody).digest('hex');
         const sig = signatureHeader.replace(/^sha512=/i, '').trim();
@@ -112,7 +134,8 @@ export class StudioWhatsAppService {
             if (a.length !== b.length || !timingSafeEqual(a, b)) {
                 throw new UnauthorizedException('Invalid webhook HMAC');
             }
-        } catch {
+        } catch (e) {
+            if (e instanceof UnauthorizedException) throw e;
             throw new UnauthorizedException('Invalid webhook HMAC');
         }
     }
@@ -214,6 +237,7 @@ export class StudioWhatsAppService {
         return {
             allowlistRequired: this.isAllowlistRequired(),
             rateLimitPerMinute: this.getRateLimitPerMinute(),
+            whatsappProvider: this.resolveProvider(),
         };
     }
 
@@ -280,28 +304,53 @@ export class StudioWhatsAppService {
         return data as StudioWhatsAppConfigRow;
     }
 
-    async getWahaSessionStatus() {
+    private resolveProvider(override?: string | null): WhatsAppProviderId {
+        if (override) return resolveWhatsAppProviderId(override);
+        return resolveWhatsAppProviderId(this.configService.get('WHATSAPP_PROVIDER'));
+    }
+
+    async getWahaSessionStatus(provider?: string | null) {
+        const id = this.resolveProvider(provider);
+        if (id === 'hermes') {
+            const status = await this.hermesProvider.getSessionStatus();
+            return {
+                provider: 'hermes',
+                session: status,
+                sessions: status ? [{ name: status.name, status: status.status }] : [],
+                version: { version: 'hermes-bridge', engine: 'BAILEYS' },
+            };
+        }
         const status = await this.wahaClient.getSessionStatus();
         const sessions = await this.wahaClient.listSessions();
         const version = await this.wahaClient.getVersion();
-        return { session: status, sessions, version };
+        return { provider: 'waha', session: status, sessions, version };
     }
 
-    async restartWahaSession() {
+    async restartWahaSession(provider?: string | null) {
+        if (this.resolveProvider(provider) === 'hermes') {
+            return this.hermesProvider.restartSession();
+        }
         return this.wahaClient.restartSession();
     }
 
-    async syncWahaSession() {
+    async syncWahaSession(provider?: string | null) {
+        if (this.resolveProvider(provider) === 'hermes') {
+            return this.hermesProvider.syncSession();
+        }
         return this.wahaClient.syncStuckSession();
     }
 
-    async getWahaAuthQr(session?: string) {
+    async getWahaAuthQr(session?: string, provider?: string | null) {
+        if (this.resolveProvider(provider) === 'hermes') {
+            return this.hermesProvider.getAuthQr();
+        }
         const st = await this.wahaClient.getSessionStatus(session);
         if (!st) {
             return {
                 available: false,
                 imageBase64: null,
                 mimetype: null,
+                qr: null,
                 error: 'WAHA tidak reachable — pastikan container waha berjalan',
             };
         }
@@ -310,6 +359,7 @@ export class StudioWhatsAppService {
                 available: false,
                 imageBase64: null,
                 mimetype: null,
+                qr: null,
                 error: null,
                 connected: true,
             };
@@ -320,6 +370,7 @@ export class StudioWhatsAppService {
                 available: false,
                 imageBase64: null,
                 mimetype: null,
+                qr: null,
                 error: 'QR belum tersedia — klik Mulai sesi atau tunggu beberapa detik',
             };
         }
@@ -327,15 +378,22 @@ export class StudioWhatsAppService {
             available: true,
             imageBase64: qr.data,
             mimetype: qr.mimetype,
+            qr: null,
             error: null,
         };
     }
 
-    async startWahaSession(session?: string) {
+    async startWahaSession(session?: string, provider?: string | null) {
+        if (this.resolveProvider(provider) === 'hermes') {
+            return this.hermesProvider.startSession();
+        }
         return this.wahaClient.ensureSessionStarted(session);
     }
 
-    async logoutWahaSession(session?: string) {
+    async logoutWahaSession(session?: string, provider?: string | null) {
+        if (this.resolveProvider(provider) === 'hermes') {
+            return this.hermesProvider.logoutSession();
+        }
         return this.wahaClient.logoutSession(session);
     }
 
@@ -367,7 +425,7 @@ export class StudioWhatsAppService {
             return;
         }
 
-        const wahaSession = (session || String(body.session || '') || this.wahaClient.defaultSession).trim();
+        const wahaSession = (session || String(body.session || '') || this.waTransport.defaultSession).trim();
         const phone = this.extractPhone(chatId);
 
         const config = await this.resolveConfigForWebhook(wahaSession, phone, payload);
@@ -398,7 +456,7 @@ export class StudioWhatsAppService {
             chatId,
             question,
             displayName: String(payload.notifyName || payload.pushName || ''),
-            feedbackProvider: 'waha',
+            feedbackProvider: this.waTransport.providerId,
             enforceRateLimit: true,
         });
 
@@ -667,7 +725,7 @@ export class StudioWhatsAppService {
         const hasMedia = wahaPayloadHasMedia(payload);
         const messageId = String(payload.id || '');
         if (hasMedia && messageId) {
-            const media = await this.wahaClient.downloadMedia(messageId, session);
+            const media = await this.waTransport.downloadMedia(messageId, session);
             if (media) {
                 const kind = media.mimetype.startsWith('image/') ? 'gambar' : 'file';
                 parts.push(`[User mengirim ${kind}: ${media.filename}, tipe ${media.mimetype}]`);
@@ -813,23 +871,25 @@ export class StudioWhatsAppService {
     private async sendReplyChunks(chatId: string, answer: string, session?: string): Promise<void> {
         const text = this.formatForWhatsApp(answer);
         if (!text.trim()) {
-            await this.wahaClient.sendText(chatId, 'Maaf, tidak ada jawaban.', session);
+            await this.waTransport.sendText(chatId, 'Maaf, tidak ada jawaban.', session);
             return;
         }
         if (isUmkmMoneyConfirmPreview(text)) {
             const choices = umkmConfirmButtons();
-            const buttons = await this.wahaClient.sendButtons(chatId, text, choices, session);
+            const buttons = await this.waTransport.sendButtons(chatId, text, choices, session);
             if (buttons.success) return;
             this.logger.warn(`WA confirm buttons unavailable: ${buttons.error}`);
-            const list = await this.wahaClient.sendList(chatId, text, choices, session);
+            const list = await this.waTransport.sendList(chatId, text, choices, session);
             if (list.success) return;
             this.logger.warn(`WA confirm list unavailable, sending text: ${list.error}`);
         }
         for (let i = 0; i < text.length; i += WA_CHUNK) {
             const chunk = text.slice(i, i + WA_CHUNK);
-            const res = await this.wahaClient.sendText(chatId, chunk, session);
+            const res = await this.waTransport.sendText(chatId, chunk, session);
             if (!res.success) {
-                this.logger.error(`Failed to send WA chunk (WAHA): ${res.error}`);
+                this.logger.error(
+                    `Failed to send WA chunk (${this.waTransport.providerId}): ${res.error}`,
+                );
                 break;
             }
         }

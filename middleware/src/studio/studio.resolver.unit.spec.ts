@@ -506,19 +506,19 @@ describe('StudioResolver — whatsapp/umkm', () => {
 
     it('studioWahaAuthQr with and without session', async () => {
         await h.resolver.studioWahaAuthQr('s1');
-        expect(h.whatsAppService.getWahaAuthQr).toHaveBeenCalledWith('s1');
+        expect(h.whatsAppService.getWahaAuthQr).toHaveBeenCalledWith('s1', undefined);
         await h.resolver.studioWahaAuthQr('');
-        expect(h.whatsAppService.getWahaAuthQr).toHaveBeenCalledWith(undefined);
+        expect(h.whatsAppService.getWahaAuthQr).toHaveBeenCalledWith(undefined, undefined);
     });
 
     it('startStudioWahaSession passes session', async () => {
         await h.resolver.startStudioWahaSession('s1');
-        expect(h.whatsAppService.startWahaSession).toHaveBeenCalledWith('s1');
+        expect(h.whatsAppService.startWahaSession).toHaveBeenCalledWith('s1', undefined);
     });
 
     it('logoutStudioWahaSession passes undefined when empty', async () => {
         await h.resolver.logoutStudioWahaSession('');
-        expect(h.whatsAppService.logoutWahaSession).toHaveBeenCalledWith(undefined);
+        expect(h.whatsAppService.logoutWahaSession).toHaveBeenCalledWith(undefined, undefined);
     });
 
     it('setupUmkmNotebook skips flow by default', async () => {

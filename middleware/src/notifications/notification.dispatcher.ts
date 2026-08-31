@@ -1,7 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NotificationsService } from './notifications.service';
-import { WahaClientService } from '../waha/waha-client.service';
+import {
+    WHATSAPP_TRANSPORT,
+    WhatsAppTransport,
+} from '../whatsapp/whatsapp-transport.types';
 import * as nodemailer from 'nodemailer';
 
 interface SendOptions {
@@ -21,7 +24,7 @@ export class NotificationDispatcher {
     constructor(
         private notificationsService: NotificationsService,
         private configService: ConfigService,
-        private wahaClient: WahaClientService,
+        @Inject(WHATSAPP_TRANSPORT) private waTransport: WhatsAppTransport,
     ) {}
 
     /**
@@ -104,13 +107,13 @@ export class NotificationDispatcher {
         }
     }
 
-    // ─── WHATSAPP (via WAHA) ────────────────────────────────
+    // ─── WHATSAPP (via WhatsAppTransport: waha|hermes) ───────
 
     private async sendWhatsApp(phone: string, message: string): Promise<{ success: boolean; error?: string }> {
-        const chatId = this.wahaClient.phoneToChatId(phone);
-        const result = await this.wahaClient.sendText(chatId, message);
+        const chatId = this.waTransport.phoneToChatId(phone);
+        const result = await this.waTransport.sendText(chatId, message);
         if (result.success) {
-            this.logger.log(`WhatsApp sent to ${phone}`);
+            this.logger.log(`WhatsApp sent to ${phone} via ${this.waTransport.providerId}`);
         }
         return result;
     }
