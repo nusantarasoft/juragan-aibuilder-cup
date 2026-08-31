@@ -1,11 +1,18 @@
-# Hermes Agent — local sidecar
+# Hermes Agent — local sidecar + master-production Phase 1
 
-Hermes runs next to WAHA in [`docker-compose.yml`](../docker-compose.yml) for smoke testing.
-It does **not** replace WAHA or the UMKM WhatsApp pipeline yet (no middleware wiring).
+Hermes runs next to WAHA for smoke / Phase 1 pipe-only probing.
+It does **not** replace WAHA or the UMKM WhatsApp pipeline until `WHATSAPP_PROVIDER=hermes` after a documented server probe.
+
+Design: [`docs/designs/waha-to-hermes-migration.md`](./designs/waha-to-hermes-migration.md)  
+Eng plan: [`docs/designs/waha-to-hermes-eng-review.md`](./designs/waha-to-hermes-eng-review.md)
 
 Official Docker guide: [Hermes Docker docs](https://hermes-agent.nousresearch.com/docs/user-guide/docker)
 
-## Ports (localhost only)
+---
+
+## Local (`docker-compose.yml`)
+
+### Ports (localhost only)
 
 Host ports are **offset** from Hermes Desktop defaults (`8642`/`9119`) so both can run on the same laptop.
 
@@ -17,7 +24,7 @@ Host ports are **offset** from Hermes Desktop defaults (`8642`/`9119`) so both c
 
 Override via `HERMES_GATEWAY_PORT` / `HERMES_DASHBOARD_PORT` in root `.env`.
 
-## First-time setup
+### First-time setup
 
 ```powershell
 mkdir volumes\hermes -Force
@@ -30,7 +37,7 @@ docker compose up -d hermes
 
 Alternatively, set `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `OPENROUTER_API_KEY` in root `.env` and skip the wizard.
 
-## Smoke test
+### Smoke test
 
 ```powershell
 docker compose ps hermes
@@ -42,9 +49,70 @@ docker compose logs -f hermes
 
 WAHA dashboard stays at http://127.0.0.1:3010/dashboard — UMKM WhatsApp flow is unchanged.
 
-## Notes
+---
+
+## Production (`docker-compose.master-production.yml`) — Phase 1 (E0)
+
+**Server:** `31.97.66.39` · path `/opt/nusantarasoft-3` · project `nsoft3-prod` · container `nsoft3-hermes`
+
+### Isolation
+
+| Rule | Value |
+|------|--------|
+| Image | **Pinned** via `HERMES_IMAGE` (default `nousresearch/hermes-agent:v2026.8.27`) — never bare `:latest` |
+| Memory | `deploy.resources.limits.memory: 2g` (pipe-only; raise only if enabling LLM agent) |
+| Host ports | `127.0.0.1:8652` / `127.0.0.1:9129` only — **not** on public IP |
+| Middleware URL | `HERMES_BASE_URL=http://hermes:8642` on `nsoft3-net` |
+| Kasir provider | Keep `WHATSAPP_PROVIDER=waha` until Phase 2+ |
+| LLM keys | **Not required** for pipe-only Phase 1 — do not set OpenAI/Anthropic/OpenRouter on prod for this probe |
+| WAHA | Stays live on pilot number; Hermes pairs a **test number** only (one WhatsApp Web session per phone) |
+
+Dual-run budget: WAHA ~2g + Hermes ~2g + rest of stack — watch `free -h` / `docker stats` after first `up`.
+
+### Deploy Hermes only (server)
+
+```bash
+cd /opt/nusantarasoft-3
+mkdir -p volumes/hermes
+# Ensure .env.master-production has HERMES_IMAGE + WHATSAPP_PROVIDER=waha (see .env.master-production.example)
+docker compose -f docker-compose.master-production.yml --env-file .env.master-production up -d hermes
+docker compose -f docker-compose.master-production.yml --env-file .env.master-production ps hermes
+docker compose -f docker-compose.master-production.yml --env-file .env.master-production logs -f hermes
+```
+
+Dashboard via SSH tunnel (from laptop):
+
+```bash
+ssh -L 9129:127.0.0.1:9129 root@31.97.66.39
+# then open http://127.0.0.1:9129
+```
+
+Or QR / WhatsApp setup via:
+
+```bash
+docker compose -f docker-compose.master-production.yml --env-file .env.master-production exec -it hermes hermes whatsapp
+```
+
+### Phase 1 probe checklist (E1 — blocks adapter merge)
+
+Document results here (or in a dated note under this section) before any `HermesProvider` PR:
+
+1. [ ] Hermes container healthy; session paired on **test number** (not pilot)
+2. [ ] Pipe-only: inbound does **not** get an Hermes LLM/agent reply
+3. [ ] Forward to `http://middleware:4001/api/studio/whatsapp/webhook` with HMAC (`x-webhook-hmac` / `WAHA_WEBHOOK_HMAC_KEY`)
+4. [ ] Middleware log shows one inbound; capture payload shape (normalizer yes/no)
+5. [ ] Exact config path chosen: `pre_gateway_dispatch` hook **or** bridge forward — paste working snippets below
+
+**Working pipe-only config (fill after probe):**
+
+```text
+# TODO after E1 on server — paste Hermes config / hook that:
+# - skips agent reply
+# - POSTs signed body to middleware webhook
+```
+
+### Notes
 
 - Data dir `volumes/hermes/` is gitignored (secrets + sessions).
 - Do not run two Hermes gateways against the same data directory.
-- Production / `master-production` is out of scope until local smoke test passes.
-- Replacing WAHA later needs a separate Hermes WhatsApp ↔ `StudioWhatsAppService` adapter.
+- Replacing WAHA needs `WhatsAppTransport` + cutover preflight — see eng review.

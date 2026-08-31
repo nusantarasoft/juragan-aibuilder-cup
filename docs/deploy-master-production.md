@@ -24,6 +24,8 @@ Runbook untuk deploy `nusantarasoft-3` ke server production **tanpa mengganggu c
 | `3011` | WAHA dashboard |
 | `9010` | MinIO S3 API |
 
+Hermes (`nsoft3-hermes`) binds **`127.0.0.1:8652` / `127.0.0.1:9129` only** (SSH tunnel) — not on the public IP. See `docs/hermes-local.md` prod section. Keep `WHATSAPP_PROVIDER=waha` until Phase 2+.
+
 App lain di server yang **tidak** disentuh: Portainer, pustaka, andromedia, ipustah, beapi-*, dll.
 
 ## Isolasi (aman untuk co-host)

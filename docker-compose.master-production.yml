@@ -5,7 +5,8 @@
 #   docker compose -f docker-compose.master-production.yml --env-file .env.master-production up -d --build
 #
 # Isolation guarantees (server already runs other apps):
-#   - Only 4 host ports published: 8090 (nginx), 3013 (admin), 3011 (waha), 9010 (minio S3)
+#   - Only 4 host ports published publicly: 8090 (nginx), 3013 (admin), 3011 (waha), 9010 (minio S3)
+#   - Hermes binds 127.0.0.1 only (SSH tunnel) — not on 31.97.66.39
 #   - All other services are internal-only (no host port)
 #   - Dedicated bridge network `nsoft3-net`
 #   - All container names prefixed `nsoft3-` to avoid name clashes
@@ -523,6 +524,9 @@ services:
       - WAHA_API_KEY=${WAHA_API_KEY:-}
       - WAHA_SESSION=${WAHA_SESSION:-default}
       - WAHA_WEBHOOK_HMAC_KEY=${WAHA_WEBHOOK_HMAC_KEY:-}
+      # WhatsApp transport (default waha until Phase 2+ cutover — see docs/designs/waha-to-hermes-migration.md)
+      - WHATSAPP_PROVIDER=${WHATSAPP_PROVIDER:-waha}
+      - HERMES_BASE_URL=${HERMES_BASE_URL:-http://hermes:8642}
       - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USER=${SMTP_USER:-}
@@ -663,6 +667,32 @@ services:
       timeout: 10s
       retries: 5
       start_period: 45s
+
+  # Hermes Agent — Phase 1 sidecar (pipe-only probe). Does NOT replace WAHA until WHATSAPP_PROVIDER=hermes.
+  # Docs: docs/hermes-local.md (prod section) — pin tag; never bare :latest on prod.
+  hermes:
+    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.27}
+    container_name: nsoft3-hermes
+    restart: unless-stopped
+    command: gateway run
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    deploy:
+      resources:
+        # Pipe-only Phase 1; raise if enabling LLM agent features later
+        limits: { memory: 2g, cpus: "1.5" }
+        reservations: { memory: 512m }
+    ports:
+      # Server localhost only — SSH tunnel; not published on public IP
+      - "127.0.0.1:${HERMES_GATEWAY_PORT:-8652}:8642"
+      - "127.0.0.1:${HERMES_DASHBOARD_PORT:-9129}:9119"
+    environment:
+      - HERMES_DASHBOARD=${HERMES_DASHBOARD:-1}
+      # Phase 1 pipe-only: do NOT set OPENAI/ANTHROPIC/OPENROUTER here unless debugging agent path
+    volumes:
+      - ./volumes/hermes:/opt/data
+    networks: [nsoft3-net]
 
   # ─── Reverse proxy (single public entrypoint) ────────────────────────────
   nginx:
