@@ -261,12 +261,24 @@ def _start_bridge_proxy() -> None:
                 _json_response(self, 200, pair_mod.qr_payload())
                 return True
             if path == "/pair/start" and self.command == "POST":
-                _read_body(self)
-                _json_response(self, 200, pair_mod.start_pairing())
+                raw = _read_body(self)
+                force = False
+                if raw:
+                    try:
+                        body = json.loads(raw.decode("utf-8"))
+                        force = bool(body.get("force"))
+                    except Exception:
+                        force = False
+                _json_response(self, 200, pair_mod.start_pairing(force=force))
                 return True
             if path == "/pair/logout" and self.command == "POST":
                 _read_body(self)
                 _json_response(self, 200, pair_mod.logout())
+                return True
+            if path == "/pair/rebind" and self.command == "POST":
+                # Atomic: wipe old number session + start QR for a new phone
+                _read_body(self)
+                _json_response(self, 200, pair_mod.start_pairing(force=True))
                 return True
             if path == "/pair/reload" and self.command == "POST":
                 _read_body(self)

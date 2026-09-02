@@ -260,12 +260,34 @@ function WhatsAppGatewayPageContent() {
         setLoggingOut(true);
         try {
             await studioService.logoutWahaSession(undefined, provider);
-            message.info('Logout berhasil. Scan QR baru untuk pairing ulang.');
+            message.info('Logout berhasil. Session nomor lama dihapus — scan QR baru untuk nomor lain.');
+            setQrDataUrl(null);
             await load();
         } catch {
             message.error('Gagal logout sesi');
         } finally {
             setLoggingOut(false);
+        }
+    };
+
+    const handleChangeNumber = async () => {
+        setStarting(true);
+        try {
+            if (provider === 'hermes') {
+                const r = await studioService.rebindHermesSession();
+                if (r.error) message.warning(r.error);
+                else message.info('Session lama dihapus. Scan QR dengan nomor baru sekarang.');
+            } else {
+                await studioService.logoutWahaSession(undefined, provider);
+                const r = await studioService.startWahaSession(undefined, provider);
+                message.info(`Sesi dimulai — status: ${r.status}. Scan QR nomor baru.`);
+            }
+            setQrDataUrl(null);
+            await load();
+        } catch {
+            message.error('Gagal ganti nomor');
+        } finally {
+            setStarting(false);
         }
     };
 
@@ -319,7 +341,12 @@ function WhatsAppGatewayPageContent() {
                 <Button key="restart" loading={restarting} onClick={handleRestart} disabled={connected}>
                     Restart {providerLabel}
                 </Button>,
-                connected && (
+                provider === 'hermes' && (
+                    <Button key="rebind" loading={starting} onClick={handleChangeNumber} danger>
+                        Ganti nomor
+                    </Button>
+                ),
+                (connected || provider === 'hermes') && (
                     <Button key="logout" loading={loggingOut} onClick={handleLogout} danger icon={<LogoutOutlined />}>
                         Logout {providerLabel}
                     </Button>
@@ -355,7 +382,13 @@ function WhatsAppGatewayPageContent() {
                         type="info"
                         showIcon
                         title="Pairing Hermes (test / cutover)"
-                        description="Gunakan nomor test (bukan nomor pilot yang masih di WAHA). Setelah scan, klik Sync jika status belum WORKING."
+                        description={
+                            <>
+                                Restart Hermes <strong>tidak</strong> ganti nomor — session lama tetap di disk.
+                                Untuk nomor baru: klik <strong>Ganti nomor</strong> (logout + wipe + QR baru), lalu scan segera.
+                                Jangan pakai nomor yang masih aktif di WAHA.
+                            </>
+                        }
                     />
                 )}
 

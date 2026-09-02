@@ -693,8 +693,11 @@ services:
       - HERMES_DASHBOARD_BASIC_AUTH_USERNAME=${HERMES_DASHBOARD_BASIC_AUTH_USERNAME:-admin}
       - HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD:-}
       - HERMES_DASHBOARD_BASIC_AUTH_SECRET=${HERMES_DASHBOARD_BASIC_AUTH_SECRET:-}
-      # Phase 1 pipe-only: do NOT set OPENAI/ANTHROPIC/OPENROUTER here unless debugging agent path
+      # Pipe-only: no LLM keys. Bridge allowlist * so inbound reaches kasir-pipe;
+      # middleware STUDIO allowlist remains the real gate.
       - WHATSAPP_ENABLED=${WHATSAPP_ENABLED:-true}
+      - WHATSAPP_MODE=${WHATSAPP_MODE:-bot}
+      - WHATSAPP_ALLOWED_USERS=${WHATSAPP_ALLOWED_USERS:-*}
       - KASIR_WHATSAPP_WEBHOOK_URL=${KASIR_WHATSAPP_WEBHOOK_URL:-http://middleware:4001/api/studio/whatsapp/webhook}
       - WAHA_WEBHOOK_HMAC_KEY=${WAHA_WEBHOOK_HMAC_KEY:-}
       - KASIR_PIPE_SESSION=${KASIR_PIPE_SESSION:-hermes}

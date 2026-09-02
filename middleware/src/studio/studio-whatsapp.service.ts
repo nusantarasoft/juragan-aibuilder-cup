@@ -333,6 +333,10 @@ export class StudioWhatsAppService {
         return this.wahaClient.restartSession();
     }
 
+    async rebindHermesSession() {
+        return this.hermesProvider.rebindSession();
+    }
+
     async syncWahaSession(provider?: string | null) {
         if (this.resolveProvider(provider) === 'hermes') {
             return this.hermesProvider.syncSession();

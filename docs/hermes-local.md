@@ -55,6 +55,8 @@ WAHA dashboard stays at http://127.0.0.1:3010/dashboard — UMKM WhatsApp flow i
 
 **Server:** `31.97.66.39` · path `/opt/nusantarasoft-3` · project `nsoft3-prod` · container `nsoft3-hermes`
 
+Live kasir transport is **Hermes** (`WHATSAPP_PROVIDER=hermes`). WAHA stays in compose for rollback only.
+
 ### Isolation
 
 | Rule | Value |
@@ -146,15 +148,16 @@ docker compose -f docker-compose.master-production.yml --env-file .env.master-pr
 
 Use a **test phone**, never the pilot number still on WAHA.
 
-**E1 status (2026-08-31):**
+**Cutover (2026-09-03):** Hermes is the live WhatsApp transport.
 
-- E0: `nsoft3-hermes` Up (`v2026.8.27`), ports localhost-only, volume owned by uid `10000`
-- Dashboard: `http://127.0.0.1:9129` → `/login` (creds in `deploy.local.env`)
-- Plugin: `kasir-pipe` **enabled** (`hermes plugins doctor kasir-pipe` → 1 hook); compose env has `WHATSAPP_ENABLED`, webhook URL, HMAC key
-- Synthetic HMAC probe (from inside `nsoft3-hermes`): `POST` → middleware **`200 {"ok":true}`**; log `Webhook message session=hermes` (no Unauthorized)
-- Note: middleware still replies via WAHA while `WHATSAPP_PROVIDER=waha` — `session=hermes` → WAHA 422 expected until Phase 2 `HermesProvider`
-- WhatsApp: **not paired** (`creds.json` missing) — live inbound + “no Hermes LLM reply” still needs QR on a **test** number
-- Pair + live forward proof: **blocked on QR scan**
+- Middleware `WHATSAPP_PROVIDER=hermes`; `HERMES_BRIDGE_URL=http://hermes:8765`
+- Number `62811924689` (Nusantarasoft) paired on Hermes; WAHA session `default` left **FAILED** (same number — expected). Container `nsoft3-waha` still up for rollback.
+- Bridge allowlist `WHATSAPP_ALLOWED_USERS=*` so inbound reaches kasir-pipe; middleware production allowlist is the real gate. No LLM keys.
+- Adapter started `bridge.js` (`Bridge ready status: connected`). `GET /pair/status` → **WORKING**.
+- Outbound probe `POST /send` → `200 success` (HermesProvider path).
+- HMAC fail-closed unchanged. Pending sales/purchases were empty at flip.
+
+Rollback: set `WHATSAPP_PROVIDER=waha`, recreate middleware, restart WAHA session + re-QR if needed.
 
 ### Notes
 

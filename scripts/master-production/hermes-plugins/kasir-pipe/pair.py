@@ -46,20 +46,71 @@ def _creds_path() -> Path:
     return _session_dir() / "creds.json"
 
 
-def _bridge_js() -> Path:
+def _bridge_dir() -> Path:
+    """Prefer Hermes writable mirror (HERMES_HOME) so npm install persists across image layers."""
+    override = os.environ.get("WHATSAPP_BRIDGE_DIR") or ""
+    if override:
+        return Path(override)
+
+    try:
+        from gateway.platforms.whatsapp_common import resolve_whatsapp_bridge_dir
+
+        return Path(resolve_whatsapp_bridge_dir())
+    except Exception:
+        pass
+
     candidates = [
-        Path(os.environ.get("WHATSAPP_BRIDGE_JS") or ""),
-        Path("/opt/hermes/scripts/whatsapp-bridge/bridge.js"),
-        _hermes_home() / "hermes-agent" / "scripts" / "whatsapp-bridge" / "bridge.js",
+        _hermes_home() / "scripts" / "whatsapp-bridge",
+        Path("/opt/hermes/scripts/whatsapp-bridge"),
+        _hermes_home() / "hermes-agent" / "scripts" / "whatsapp-bridge",
     ]
     for c in candidates:
-        if c and c.is_file():
+        if (c / "bridge.js").is_file():
             return c
     return candidates[1]
 
 
+def _bridge_js() -> Path:
+    env_js = Path(os.environ.get("WHATSAPP_BRIDGE_JS") or "")
+    if env_js.is_file():
+        return env_js
+    return _bridge_dir() / "bridge.js"
+
+
 def _bridge_cwd() -> Path:
     return _bridge_js().parent
+
+
+def _ensure_bridge_deps(bridge_dir: Path) -> Optional[str]:
+    """Install Baileys deps when missing (Docker image ships bridge without node_modules)."""
+    stamp = bridge_dir / "node_modules" / "@whiskeysockets" / "baileys" / "package.json"
+    if stamp.is_file():
+        return None
+    npm = os.environ.get("NPM_BIN") or "npm"
+    try:
+        r = subprocess.run(
+            [npm, "ci", "--omit=dev"],
+            cwd=str(bridge_dir),
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        if r.returncode != 0:
+            r = subprocess.run(
+                [npm, "install", "--omit=dev"],
+                cwd=str(bridge_dir),
+                capture_output=True,
+                text=True,
+                timeout=180,
+            )
+        if r.returncode != 0:
+            detail = (r.stderr or r.stdout or "").strip()[-500:]
+            return f"npm install failed in {bridge_dir}: {detail}"
+        if not stamp.is_file():
+            return f"npm install finished but baileys missing in {bridge_dir}"
+    except Exception as exc:
+        return f"npm install error: {exc}"
+    return None
 
 
 def status() -> dict[str, Any]:
@@ -118,7 +169,13 @@ def status() -> dict[str, Any]:
     }
 
 
+def _pair_proc_alive() -> bool:
+    with _lock:
+        return _pair_proc is not None and _pair_proc.poll() is None
+
+
 def qr_payload() -> dict[str, Any]:
+    global _latest_qr, _pair_state, _pair_error
     st = status()
     if st["connected"]:
         return {
@@ -133,7 +190,25 @@ def qr_payload() -> dict[str, Any]:
         qr = _latest_qr
         err = _pair_error
         state = _pair_state
-    if qr:
+        alive = _pair_proc is not None and _pair_proc.poll() is None
+
+    # Never serve a QR after the pair-only bridge has exited — scan will always fail.
+    if qr and not alive:
+        with _lock:
+            _latest_qr = None
+            if state == "scan_qr":
+                _pair_state = "error"
+                _pair_error = _pair_error or "QR expired — klik Mulai sesi / Ganti nomor untuk QR baru"
+        return {
+            "available": False,
+            "qr": None,
+            "imageBase64": None,
+            "mimetype": None,
+            "connected": False,
+            "error": "QR expired — klik Mulai sesi untuk generate QR baru",
+        }
+
+    if qr and alive:
         return {
             "available": True,
             "qr": qr,
@@ -175,6 +250,17 @@ def _stop_pair_proc() -> None:
     _pair_proc = None
 
 
+def _normalize_qr_payload(qr: str) -> str:
+    """WhatsApp scanners expect the raw ``2@…`` ref; Baileys 7 may wrap it in a wa.me URL."""
+    q = (qr or "").strip()
+    marker = "linked_devices#"
+    if marker in q:
+        return q.split(marker, 1)[1].strip() or q
+    if q.startswith("https://wa.me/") and "#" in q:
+        return q.split("#", 1)[1].strip() or q
+    return q
+
+
 def _read_pair_stdout(proc: subprocess.Popen) -> None:
     global _latest_qr, _pair_state, _pair_error, _pair_user
     assert proc.stdout is not None
@@ -191,7 +277,7 @@ def _read_pair_stdout(proc: subprocess.Popen) -> None:
             event = ev.get("event")
             if event == "qr" and ev.get("qr"):
                 with _lock:
-                    _latest_qr = str(ev["qr"])
+                    _latest_qr = _normalize_qr_payload(str(ev["qr"]))
                     _pair_state = "scan_qr"
                     _pair_error = None
                 logger.info("kasir-pipe pair: QR received")
@@ -202,6 +288,19 @@ def _read_pair_stdout(proc: subprocess.Popen) -> None:
                     _latest_qr = None
                     _pair_error = None
                 logger.info("kasir-pipe pair: connected")
+                threading.Thread(
+                    target=reload_gateway,
+                    name="kasir-pair-reload",
+                    daemon=True,
+                ).start()
+            elif event == "disconnected":
+                reason = ev.get("reason")
+                logger.info("kasir-pipe pair: disconnected reason=%s (515=reconnect normal)", reason)
+                # 515 after scan is normal — bridge reconnects; do not mark error.
+                if reason not in (515, "515"):
+                    with _lock:
+                        if _pair_state not in ("connected",):
+                            _pair_error = _pair_error or f"disconnected ({reason})"
             elif event == "error":
                 with _lock:
                     _pair_state = "error"
@@ -221,14 +320,80 @@ def _read_pair_stdout(proc: subprocess.Popen) -> None:
                     _pair_error = _pair_error or f"pair process exited {code}"
 
 
-def start_pairing() -> dict[str, Any]:
+def _kill_all_bridges() -> None:
+    """Stop pair-only AND gateway-managed Baileys bridges (same binary)."""
+    global _pair_proc
+    _stop_pair_proc()
+    try:
+        subprocess.run(
+            ["pkill", "-f", "whatsapp-bridge/bridge.js"],
+            check=False,
+            timeout=5,
+        )
+    except Exception as exc:
+        logger.warning("kasir-pipe pair: pkill bridges failed: %s", exc)
+    time.sleep(0.4)
+    _pair_proc = None
+
+
+def _session_candidates() -> list[Path]:
+    return [
+        _session_dir(),
+        _hermes_home() / ".hermes" / "whatsapp" / "session",
+        _hermes_home() / "whatsapp" / "session",
+        Path("/opt/data/.hermes/whatsapp/session"),
+    ]
+
+
+def _path_exists_safe(p: Path) -> bool:
+    try:
+        return p.exists()
+    except (PermissionError, OSError):
+        return False
+
+
+def _wipe_sessions() -> Optional[str]:
+    """Remove all known WhatsApp session dirs. Returns error string or None."""
+    seen: set[str] = set()
+    for sess in _session_candidates():
+        key = str(sess)
+        if key in seen:
+            continue
+        seen.add(key)
+        if not _path_exists_safe(sess):
+            continue
+        try:
+            shutil.rmtree(sess)
+            sess.mkdir(parents=True, exist_ok=True)
+            logger.info("kasir-pipe pair: wiped session %s", sess)
+        except PermissionError:
+            logger.warning("kasir-pipe pair: skip wipe (permission denied): %s", sess)
+        except Exception as exc:
+            return f"{sess}: {exc}"
+    return None
+
+
+def start_pairing(force: bool = False) -> dict[str, Any]:
     global _pair_proc, _latest_qr, _pair_state, _pair_error, _pair_user
 
-    if _creds_path().is_file():
-        # Already paired — report connected; caller may still want reload
+    if force:
+        lo = logout()
+        if lo.get("status") == "ERROR":
+            return {"status": "ERROR", "connected": False, "error": lo.get("error")}
+        time.sleep(0.5)
+
+    if _creds_path().is_file() and not force:
         with _lock:
             _pair_state = "connected"
-        return {"status": "WORKING", "connected": True, **status()}
+        return {
+            "status": "WORKING",
+            "connected": True,
+            "error": (
+                "Sesi nomor lama masih ada. Untuk ganti nomor: Logout Hermes "
+                "(atau POST /pair/start {\"force\":true}), lalu scan QR nomor baru."
+            ),
+            **status(),
+        }
 
     bridge = _bridge_js()
     if not bridge.is_file():
@@ -238,8 +403,29 @@ def start_pairing() -> dict[str, Any]:
             "error": f"bridge.js not found at {bridge}",
         }
 
+    dep_err = _ensure_bridge_deps(_bridge_cwd())
+    if dep_err:
+        with _lock:
+            _pair_state = "error"
+            _pair_error = dep_err
+        return {"status": "ERROR", "connected": False, "error": dep_err}
+
     with _lock:
-        _stop_pair_proc()
+        # Re-clicking Mulai sesi must not SIGTERM a live QR the user is scanning.
+        if (
+            not force
+            and _pair_proc is not None
+            and _pair_proc.poll() is None
+            and _pair_state in ("scan_qr", "starting")
+        ):
+            st = status()
+            return {
+                "status": st["status"],
+                "connected": st["connected"],
+                "error": None,
+                "detail": "Pairing already running — scan QR on screen",
+            }
+        _kill_all_bridges()
         _latest_qr = None
         _pair_error = None
         _pair_user = None
@@ -247,10 +433,22 @@ def start_pairing() -> dict[str, Any]:
 
     env = os.environ.copy()
     env["WHATSAPP_MODE"] = env.get("WHATSAPP_MODE") or "bot"
-    # Ensure session dir exists
-    _session_dir().mkdir(parents=True, exist_ok=True)
+    # Ensure session dir exists — must match Hermes adapter path
+    session_dir = _session_dir()
+    session_dir.mkdir(parents=True, exist_ok=True)
+    env["WHATSAPP_SESSION_DIR"] = str(session_dir)
 
-    cmd = ["node", str(bridge), "--pair-only", "--pair-json", "--mode", "bot"]
+    # Bridge defaults to ~/.hermes/whatsapp/session; force the platforms path Hermes reads.
+    cmd = [
+        "node",
+        str(bridge),
+        "--pair-only",
+        "--pair-json",
+        "--mode",
+        "bot",
+        "--session",
+        str(session_dir),
+    ]
     try:
         proc = subprocess.Popen(
             cmd,
@@ -293,21 +491,31 @@ def start_pairing() -> dict[str, Any]:
 
 
 def logout() -> dict[str, Any]:
+    """Fully detach WhatsApp so a different phone can pair.
+
+    Restart Hermes alone does NOT clear the old number — creds stay on disk and
+    the gateway bridge may keep the old session alive. Logout must kill bridges
+    and wipe every known session directory before a new QR is valid.
+    """
     global _latest_qr, _pair_state, _pair_error, _pair_user
     with _lock:
-        _stop_pair_proc()
+        _kill_all_bridges()
         _latest_qr = None
         _pair_state = "idle"
         _pair_error = None
         _pair_user = None
-    sess = _session_dir()
-    if sess.exists():
-        try:
-            shutil.rmtree(sess)
-            sess.mkdir(parents=True, exist_ok=True)
-        except Exception as exc:
-            return {"status": "ERROR", "error": str(exc)}
-    return {"status": "SCAN_QR_CODE"}
+
+    wipe_err = _wipe_sessions()
+    if wipe_err:
+        return {"status": "ERROR", "error": wipe_err}
+
+    # Do not s6-restart the gateway here — that kills this plugin mid-request.
+    # Bridges are already dead; a later /pair/reload after successful pair is enough.
+
+    return {
+        "status": "SCAN_QR_CODE",
+        "detail": "Session wiped. Start pairing and scan with the new phone number.",
+    }
 
 
 def reload_gateway() -> dict[str, Any]:

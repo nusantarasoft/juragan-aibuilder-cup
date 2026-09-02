@@ -597,6 +597,11 @@ export class StudioResolver {
         return this.studioWhatsAppService.startWahaSession(session || undefined, provider || undefined);
     }
 
+    @Mutation(() => GraphQLJSONObject, { name: 'rebindStudioHermesSession' })
+    async rebindStudioHermesSession() {
+        return this.studioWhatsAppService.rebindHermesSession();
+    }
+
     @Mutation(() => GraphQLJSONObject, { name: 'logoutStudioWahaSession' })
     async logoutStudioWahaSession(
         @Args('session', { type: () => String, nullable: true }) session?: string,

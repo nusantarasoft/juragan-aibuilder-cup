@@ -917,13 +917,19 @@ export const studioService = {
         return data.studioWahaAuthQr;
     },
 
-    async startWahaSession(session?: string, provider?: string): Promise<{ status: string; connected: boolean }> {
+    async startWahaSession(session?: string, provider?: string): Promise<{ status: string; connected: boolean; error?: string }> {
         const data = await graphqlRequest(`
             mutation($session: String, $provider: String) {
                 startStudioWahaSession(session: $session, provider: $provider)
             }
         `, { session: session ?? null, provider: provider ?? null });
         return data.startStudioWahaSession;
+    },
+
+    /** Wipe old Hermes WhatsApp number and start a fresh QR for a new phone. */
+    async rebindHermesSession(): Promise<{ status: string; connected: boolean; error?: string }> {
+        const data = await graphqlRequest(`mutation { rebindStudioHermesSession }`);
+        return data.rebindStudioHermesSession;
     },
 
     async logoutWahaSession(session?: string, provider?: string): Promise<{ status: string }> {

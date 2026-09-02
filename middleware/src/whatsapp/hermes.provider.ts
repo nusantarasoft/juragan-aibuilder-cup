@@ -250,15 +250,30 @@ export class HermesProvider implements WhatsAppTransport {
         }
     }
 
-    async startSession(): Promise<{ status: string; connected: boolean; error?: string }> {
+    async startSession(force = false): Promise<{ status: string; connected: boolean; error?: string }> {
         try {
-            const data = await this.postJson('/pair/start', {});
+            const data = await this.postJson('/pair/start', force ? { force: true } : {});
             const body = data.json || {};
             if (body.connected) {
                 await this.postJson('/pair/reload', {});
             }
             return {
                 status: String(body.status || (data.ok ? 'STARTING' : 'ERROR')),
+                connected: Boolean(body.connected),
+                error: body.error,
+            };
+        } catch (e: any) {
+            return { status: 'ERROR', connected: false, error: e?.message };
+        }
+    }
+
+    /** Wipe old phone session and start a fresh QR for a different number. */
+    async rebindSession(): Promise<{ status: string; connected: boolean; error?: string }> {
+        try {
+            const data = await this.postJson('/pair/rebind', {});
+            const body = data.json || {};
+            return {
+                status: String(body.status || 'SCAN_QR_CODE'),
                 connected: Boolean(body.connected),
                 error: body.error,
             };
