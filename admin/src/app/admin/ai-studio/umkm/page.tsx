@@ -165,6 +165,7 @@ export default function UmkmStudioPage() {
     const [settingUp, setSettingUp] = useState(false);
     const [form] = Form.useForm();
     const [wahaDashboard, setWahaDashboard] = useState(DEFAULT_WAHA_DASHBOARD);
+    const [waProvider, setWaProvider] = useState<'waha' | 'hermes'>('hermes');
     const [commands, setCommands] = useState<UmkmCommandsConfig>(emptyCommands());
     const [defaults, setDefaults] = useState<UmkmCommandsConfig | null>(null);
     const [previewSample, setPreviewSample] = useState('');
@@ -178,6 +179,11 @@ export default function UmkmStudioPage() {
     useEffect(() => {
         studioService.getSettings().then((s) => {
             if (s?.waha_dashboard_url) setWahaDashboard(s.waha_dashboard_url);
+        }).catch(() => {});
+        studioService.getWhatsAppSecurityMeta().then((meta) => {
+            if (meta?.whatsappProvider === 'waha' || meta?.whatsappProvider === 'hermes') {
+                setWaProvider(meta.whatsappProvider);
+            }
         }).catch(() => {});
         studioService.getUmkmCommandsDefaults().then(setDefaults).catch(() => {});
     }, []);
@@ -552,14 +558,16 @@ export default function UmkmStudioPage() {
                 <Button key="add" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                     Tambah UMKM
                 </Button>,
-                <Link key="setup" href="/admin/ai-studio/waha-setup">
-                    <Button>Setup WAHA</Button>
+                <Link key="setup" href="/admin/ai-studio/ai-gateway">
+                    <Button>{waProvider === 'hermes' ? 'Setup WhatsApp' : 'Setup WAHA'}</Button>
                 </Link>,
-                <Button key="waha" onClick={() => window.open(wahaDashboard, '_blank')}>
-                    WAHA Dashboard
-                </Button>,
+                waProvider === 'waha' && (
+                    <Button key="waha" onClick={() => window.open(wahaDashboard, '_blank')}>
+                        WAHA Dashboard
+                    </Button>
+                ),
                 <Button key="r" icon={<ReloadOutlined />} onClick={load} loading={loading} />,
-            ]}
+            ].filter(Boolean)}
         >
             <motion.div
                 initial={{ opacity: 0, y: 16 }}
@@ -569,13 +577,24 @@ export default function UmkmStudioPage() {
                 <Alert
                     type="info"
                     showIcon
-                    title="Model: satu nomor WA admin (WAHA)"
+                    title={
+                        waProvider === 'hermes'
+                            ? 'Model: satu nomor WA admin (Hermes)'
+                            : 'Model: satu nomor WA admin (WAHA)'
+                    }
                     description={
                         <ol style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12 }}>
                             <li>
                                 Pair <strong>satu</strong> nomor admin di{' '}
-                                <Link href="/admin/ai-studio/waha-setup">Setup WAHA</Link> (session{' '}
-                                <code>default</code>)
+                                <Link href="/admin/ai-studio/ai-gateway">
+                                    {waProvider === 'hermes' ? 'WhatsApp Gateway (Hermes)' : 'Setup WAHA'}
+                                </Link>
+                                {waProvider === 'waha' ? (
+                                    <>
+                                        {' '}
+                                        (session <code>default</code>)
+                                    </>
+                                ) : null}
                             </li>
                             <li>
                                 <strong>Tambah UMKM</strong> — daftarkan nomor HP pemilik + atur perintah WA
@@ -585,7 +604,8 @@ export default function UmkmStudioPage() {
                             </li>
                             <li>
                                 Pemilik kirim WA ke nomor admin memakai angka menu atau keyword yang Anda set —
-                                atau uji dulu lewat tombol <strong>Simulasi chat</strong> (tanpa WAHA)
+                                atau uji dulu lewat tombol <strong>Simulasi chat</strong> (pipeline inbound,
+                                tanpa kirim WA live)
                             </li>
                             <li>Isi <strong>Katalog</strong> per tenant</li>
                         </ol>

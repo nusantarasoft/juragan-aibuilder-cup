@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Chat simulasi inbound WhatsApp — pipeline sama webhook WA (tanpa WAHA).
+ * Chat simulasi inbound WhatsApp — pipeline sama webhook WA (tanpa kirim WA live).
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Drawer, Input, Space, Tag, Typography } from 'antd';
@@ -123,7 +123,7 @@ export default function WhatsAppSimChatDrawer({
                 <Space direction="vertical" size={0}>
                     <Text strong>Simulasi chat WA</Text>
                     <Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
-                        {label} · pipeline sama inbound WhatsApp (tanpa WAHA)
+                        {label} · pipeline sama inbound WhatsApp (tanpa kirim WA live)
                     </Text>
                 </Space>
             }
