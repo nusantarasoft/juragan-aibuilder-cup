@@ -130,7 +130,7 @@ function WhatsAppGatewayPageContent() {
             setWaConfigs(configs);
             setSecurityMeta(meta);
             if (meta?.whatsappProvider === 'waha' || meta?.whatsappProvider === 'hermes') {
-                // Keep user choice if already interacting; seed once from env default
+                setProvider(meta.whatsappProvider);
             }
             const cfg = configs.find((c) => c.tenant_id === activeTenant) || configs[0];
             if (cfg) {
@@ -321,17 +321,25 @@ function WhatsAppGatewayPageContent() {
     return (
         <CMSLayout
             title="WhatsApp Gateway"
-            subTitle="Pair nomor WhatsApp dari aplikasi (Hermes atau WAHA) dan konfigurasi bot UMKM"
+            subTitle={
+                securityMeta?.whatsappProvider === 'hermes'
+                    ? 'Pair nomor WhatsApp via Hermes dan konfigurasi bot UMKM'
+                    : 'Pair nomor WhatsApp dari aplikasi (Hermes atau WAHA) dan konfigurasi bot UMKM'
+            }
             extra={[
                 <Select
                     key="provider"
                     value={provider}
-                    style={{ width: 140 }}
+                    style={{ width: 160 }}
                     onChange={(v: WaProvider) => setProvider(v)}
-                    options={[
-                        { value: 'hermes', label: 'Hermes' },
-                        { value: 'waha', label: 'WAHA' },
-                    ]}
+                    options={
+                        securityMeta?.whatsappProvider === 'hermes'
+                            ? [{ value: 'hermes', label: 'Hermes' }]
+                            : [
+                                  { value: 'hermes', label: 'Hermes' },
+                                  { value: 'waha', label: 'WAHA' },
+                              ]
+                    }
                 />,
                 pairedButStuck && (
                     <Button key="sync" loading={syncing} onClick={handleSync} type="primary">
@@ -377,17 +385,31 @@ function WhatsAppGatewayPageContent() {
                 {!loading && pairedButStuck && (
                     <Alert type="warning" showIcon title="Bug sinkronisasi terdeteksi" description="Sudah login tapi status stuck di SCAN QR. Klik Sync status → WORKING di kanan atas." />
                 )}
-                {provider === 'hermes' && (
+                {provider === 'hermes' && !connected && (
                     <Alert
                         type="info"
                         showIcon
-                        title="Pairing Hermes (test / cutover)"
+                        title="Pairing Hermes"
                         description={
                             <>
                                 Restart Hermes <strong>tidak</strong> ganti nomor — session lama tetap di disk.
                                 Untuk nomor baru: klik <strong>Ganti nomor</strong> (logout + wipe + QR baru), lalu scan segera.
-                                Jangan pakai nomor yang masih aktif di WAHA.
+                                {securityMeta?.whatsappProvider === 'hermes'
+                                    ? ' Transport production memakai Hermes; WAHA UI disembunyikan.'
+                                    : ' Jangan pakai nomor yang masih aktif di WAHA.'}
                             </>
+                        }
+                    />
+                )}
+                {provider === 'hermes' && connected && (
+                    <Alert
+                        type="success"
+                        showIcon
+                        title="Hermes aktif"
+                        description={
+                            businessPhone
+                                ? `Session WORKING untuk ${businessPhone}. Balasan kasir keluar lewat Hermes bridge.`
+                                : 'Session WORKING. Jika nomor belum tampil, Sync/refresh setelah deploy pair.py terbaru (meId dari creds.json).'
                         }
                     />
                 )}
@@ -474,7 +496,10 @@ function WhatsAppGatewayPageContent() {
                                         </Form.Item>
                                     </Col>
                                     <Col xs={24} sm={12}>
-                                        <Form.Item name="wahaSession" label="Nama Sesi WAHA">
+                                        <Form.Item
+                                            name="wahaSession"
+                                            label={provider === 'hermes' ? 'Nama Sesi (legacy)' : 'Nama Sesi WAHA'}
+                                        >
                                             <Input placeholder="default" disabled />
                                         </Form.Item>
                                     </Col>
