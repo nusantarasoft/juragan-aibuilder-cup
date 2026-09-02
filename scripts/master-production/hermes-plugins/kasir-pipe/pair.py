@@ -46,6 +46,31 @@ def _creds_path() -> Path:
     return _session_dir() / "creds.json"
 
 
+def _me_id_from_creds() -> Optional[str]:
+    """Read paired JID from Baileys creds after restart (in-memory _pair_user is gone)."""
+    path = _creds_path()
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        me = data.get("me") if isinstance(data, dict) else None
+        if isinstance(me, dict):
+            mid = me.get("id") or me.get("jid")
+            if mid:
+                return str(mid)
+        # Some Baileys dumps nest under creds.me
+        creds = data.get("creds") if isinstance(data, dict) else None
+        if isinstance(creds, dict):
+            me2 = creds.get("me")
+            if isinstance(me2, dict):
+                mid = me2.get("id") or me2.get("jid")
+                if mid:
+                    return str(mid)
+    except Exception as exc:
+        logger.debug("creds meId read failed: %s", exc)
+    return None
+
+
 def _bridge_dir() -> Path:
     """Prefer Hermes writable mirror (HERMES_HOME) so npm install persists across image layers."""
     override = os.environ.get("WHATSAPP_BRIDGE_DIR") or ""
@@ -155,7 +180,9 @@ def status() -> dict[str, Any]:
         status_name = health_status or "UNKNOWN"
 
     if user and isinstance(user, dict):
-        me_id = user.get("id")
+        me_id = user.get("id") or user.get("jid")
+    if not me_id and creds:
+        me_id = _me_id_from_creds()
 
     return {
         "name": "hermes",
