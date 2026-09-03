@@ -21,7 +21,7 @@ PG="nsoft3-postgres"
 DB="${POSTGRES_DB:-nusantarasoft}"
 
 echo "==> [1/7] make entrypoints executable"
-chmod +x volumes/api/kong-entrypoint.sh scripts/waha-entrypoint.sh 2>/dev/null || true
+chmod +x volumes/api/kong-entrypoint.sh 2>/dev/null || true
 
 echo "==> [2/7] build app images (serial: middleware, landing-page, admin)"
 for svc in middleware landing-page admin; do

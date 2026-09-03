@@ -6,7 +6,7 @@
 #
 # Isolation guarantees (server already runs other apps):
 #   - Host ports published publicly: 8090 (nginx), 3013 (admin), 9010 (minio S3)
-#   - WAHA :3011 only when profile `waha-rollback` is enabled (post-Hermes cutover default = off)
+#   - WhatsApp transport = Hermes only (WAHA removed after cutover)
 #   - Hermes binds 127.0.0.1 only (SSH tunnel) — not on 31.97.66.39
 #   - All other services are internal-only (no host port)
 #   - Dedicated bridge network `nsoft3-net`
@@ -521,11 +521,9 @@ services:
       - LABELSTUDIO_API_TOKEN=${LABELSTUDIO_API_TOKEN}
       - LABELSTUDIO_PROJECT_ID=${LABELSTUDIO_PROJECT_ID}
       - LABELSTUDIO_WEBHOOK_SECRET=${LABELSTUDIO_WEBHOOK_SECRET:-}
-      - WAHA_BASE_URL=http://waha:3000
-      - WAHA_API_KEY=${WAHA_API_KEY:-}
-      - WAHA_SESSION=${WAHA_SESSION:-default}
-      - WAHA_WEBHOOK_HMAC_KEY=${WAHA_WEBHOOK_HMAC_KEY:-}
-      # WhatsApp transport — Hermes is live after cutover; WAHA only via profile waha-rollback
+      # Prefer WHATSAPP_WEBHOOK_HMAC_KEY; WAHA_* fallback for transition
+      - WHATSAPP_WEBHOOK_HMAC_KEY=${WHATSAPP_WEBHOOK_HMAC_KEY:-${WAHA_WEBHOOK_HMAC_KEY:-}}
+      # WhatsApp transport — Hermes only
       - WHATSAPP_PROVIDER=${WHATSAPP_PROVIDER:-hermes}
       - HERMES_BASE_URL=${HERMES_BASE_URL:-http://hermes:8642}
       - HERMES_BRIDGE_URL=${HERMES_BRIDGE_URL:-http://hermes:8765}
@@ -558,7 +556,6 @@ services:
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
         NEXT_PUBLIC_S3_ENDPOINT: http://31.97.66.39:9010
         NEXT_PUBLIC_S3_BUCKET: ${S3_BUCKET}
-        NEXT_PUBLIC_WAHA_DASHBOARD_URL: http://31.97.66.39:3011/dashboard
     image: nsoft3/admin:master-production
     container_name: nsoft3-admin
     restart: unless-stopped
@@ -582,7 +579,6 @@ services:
       - S3_ACCESS_KEY=${MINIO_ROOT_USER}
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - S3_REGION=us-east-1
-      - NEXT_PUBLIC_WAHA_DASHBOARD_URL=http://31.97.66.39:3011/dashboard
     networks: [nsoft3-net]
     depends_on:
       - middleware
@@ -624,55 +620,6 @@ services:
       retries: 5
       start_period: 60s
 
-  # Optional rollback only. Default stack runs Hermes; start with:
-  #   docker compose -f docker-compose.master-production.yml --profile waha-rollback up -d waha
-  waha:
-    profiles: ["waha-rollback"]
-    image: ${WAHA_IMAGE:-devlikeapro/waha:latest}
-    container_name: nsoft3-waha
-    restart: unless-stopped
-    shm_size: "2gb"
-    logging:
-      driver: json-file
-      options: { max-size: "10m", max-file: "3" }
-    deploy:
-      resources:
-        limits: { memory: 2g }
-        reservations: { memory: 512m }
-    ports:
-      - "3011:3000"
-    environment:
-      - WHATSAPP_HOOK_URL=${WHATSAPP_HOOK_URL:-http://middleware:4001/api/studio/whatsapp/webhook}
-      - WHATSAPP_HOOK_EVENTS=message,message.any
-      - WHATSAPP_HOOK_HMAC_KEY=${WAHA_WEBHOOK_HMAC_KEY:-}
-      - WAHA_API_KEY=${WAHA_API_KEY:-}
-      - WAHA_API_KEY_PLAIN=${WAHA_API_KEY_PLAIN:-${WAHA_API_KEY:-}}
-      - WAHA_API_KEY_EXCLUDE_PATH=health
-      - WAHA_DASHBOARD_USERNAME=${WAHA_DASHBOARD_USERNAME:-admin}
-      - WAHA_DASHBOARD_PASSWORD=${WAHA_DASHBOARD_PASSWORD:-}
-      - WHATSAPP_SWAGGER_USERNAME=${WHATSAPP_SWAGGER_USERNAME:-admin}
-      - WHATSAPP_SWAGGER_PASSWORD=${WHATSAPP_SWAGGER_PASSWORD:-}
-      - WAHA_BASE_URL=http://waha:3000
-      - WHATSAPP_DEFAULT_SESSION=${WAHA_SESSION:-default}
-      - WHATSAPP_DEFAULT_ENGINE=${WAHA_DEFAULT_ENGINE:-WEBJS}
-      - WAHA_SESSION_ENGINE_INFO_TIMEOUT=15000
-      - WHATSAPP_RESTART_ALL_SESSIONS=True
-    volumes:
-      - waha-sessions:/app/.sessions
-      - ./scripts/waha-patch-lid-id.js:/patches/waha-patch-lid-id.js:ro
-      - ./scripts/waha-entrypoint.sh:/patches/waha-entrypoint.sh:ro
-    command: ["/bin/sh", "/patches/waha-entrypoint.sh"]
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-    networks: [nsoft3-net]
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --header=\"X-Api-Key: $$WAHA_API_KEY\" -O - http://127.0.0.1:3000/api/version || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 45s
-
   # Hermes Agent — live WhatsApp transport (pipe-only kasir). Docs: docs/hermes-local.md
   hermes:
     image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.27}
@@ -702,7 +649,8 @@ services:
       - WHATSAPP_MODE=${WHATSAPP_MODE:-bot}
       - WHATSAPP_ALLOWED_USERS=${WHATSAPP_ALLOWED_USERS:-*}
       - KASIR_WHATSAPP_WEBHOOK_URL=${KASIR_WHATSAPP_WEBHOOK_URL:-http://middleware:4001/api/studio/whatsapp/webhook}
-      - WAHA_WEBHOOK_HMAC_KEY=${WAHA_WEBHOOK_HMAC_KEY:-}
+      # Prefer WHATSAPP_WEBHOOK_HMAC_KEY; WAHA_* fallback for transition
+      - WHATSAPP_WEBHOOK_HMAC_KEY=${WHATSAPP_WEBHOOK_HMAC_KEY:-${WAHA_WEBHOOK_HMAC_KEY:-}}
       - KASIR_PIPE_SESSION=${KASIR_PIPE_SESSION:-hermes}
       - KASIR_BRIDGE_PROXY=${KASIR_BRIDGE_PROXY:-1}
       - KASIR_BRIDGE_PROXY_PORT=${KASIR_BRIDGE_PROXY_PORT:-8765}
@@ -751,4 +699,3 @@ volumes:
   postgres-data:
   supabase-storage:
   db-config:
-  waha-sessions:

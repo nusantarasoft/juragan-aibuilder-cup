@@ -21,7 +21,7 @@ import {
     formatUmkmHelp,
 } from './studio-umkm.util';
 import { resolveUmkmListenTarget } from './guide-flow.interpreter';
-import { stripWhatsAppMediaAnnotations, wahaPayloadHasMedia } from './studio-whatsapp.util';
+import { stripWhatsAppMediaAnnotations, whatsappPayloadHasMedia } from './studio-whatsapp.util';
 import { formatProductListWa, findBestProductMatch } from './studio-umkm-product.util';
 import {
     DEFAULT_STUDIO_UMKM_CONTEXT,
@@ -119,9 +119,9 @@ describe('WA noise & payload (sebelum intent)', () => {
     });
 
     it('teks chat biasa tidak dianggap media walau ada _data', () => {
-        expect(wahaPayloadHasMedia({ body: '2', _data: { id: 'x', type: 'chat' } })).toBe(false);
-        expect(wahaPayloadHasMedia({ hasMedia: true })).toBe(true);
-        expect(wahaPayloadHasMedia({ _data: { type: 'image', mimetype: 'image/jpeg' } })).toBe(true);
+        expect(whatsappPayloadHasMedia({ body: '2', _data: { id: 'x', type: 'chat' } })).toBe(false);
+        expect(whatsappPayloadHasMedia({ hasMedia: true })).toBe(true);
+        expect(whatsappPayloadHasMedia({ _data: { type: 'image', mimetype: 'image/jpeg' } })).toBe(true);
     });
 });
 

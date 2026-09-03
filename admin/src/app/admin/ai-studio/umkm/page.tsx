@@ -50,8 +50,6 @@ const glass = {
     borderRadius: 14,
 };
 
-const DEFAULT_WAHA_DASHBOARD = 'http://127.0.0.1:3010/dashboard';
-
 const INTENT_OPTIONS: { value: UmkmCommandIntent; label: string }[] = [
     { value: 'ask', label: 'Tanya' },
     { value: 'menu_hub', label: 'Hub Menu' },
@@ -164,8 +162,6 @@ export default function UmkmStudioPage() {
     const [saving, setSaving] = useState(false);
     const [settingUp, setSettingUp] = useState(false);
     const [form] = Form.useForm();
-    const [wahaDashboard, setWahaDashboard] = useState(DEFAULT_WAHA_DASHBOARD);
-    const [waProvider, setWaProvider] = useState<'waha' | 'hermes'>('hermes');
     const [commands, setCommands] = useState<UmkmCommandsConfig>(emptyCommands());
     const [defaults, setDefaults] = useState<UmkmCommandsConfig | null>(null);
     const [previewSample, setPreviewSample] = useState('');
@@ -177,14 +173,6 @@ export default function UmkmStudioPage() {
     const [pendampingDirty, setPendampingDirty] = useState(false);
 
     useEffect(() => {
-        studioService.getSettings().then((s) => {
-            if (s?.waha_dashboard_url) setWahaDashboard(s.waha_dashboard_url);
-        }).catch(() => {});
-        studioService.getWhatsAppSecurityMeta().then((meta) => {
-            if (meta?.whatsappProvider === 'waha' || meta?.whatsappProvider === 'hermes') {
-                setWaProvider(meta.whatsappProvider);
-            }
-        }).catch(() => {});
         studioService.getUmkmCommandsDefaults().then(setDefaults).catch(() => {});
     }, []);
 
@@ -559,13 +547,8 @@ export default function UmkmStudioPage() {
                     Tambah UMKM
                 </Button>,
                 <Link key="setup" href="/admin/ai-studio/ai-gateway">
-                    <Button>{waProvider === 'hermes' ? 'Setup WhatsApp' : 'Setup WAHA'}</Button>
+                    <Button>Setup WhatsApp</Button>
                 </Link>,
-                waProvider === 'waha' && (
-                    <Button key="waha" onClick={() => window.open(wahaDashboard, '_blank')}>
-                        WAHA Dashboard
-                    </Button>
-                ),
                 <Button key="r" icon={<ReloadOutlined />} onClick={load} loading={loading} />,
             ].filter(Boolean)}
         >
@@ -577,24 +560,14 @@ export default function UmkmStudioPage() {
                 <Alert
                     type="info"
                     showIcon
-                    title={
-                        waProvider === 'hermes'
-                            ? 'Model: satu nomor WA admin (Hermes)'
-                            : 'Model: satu nomor WA admin (WAHA)'
-                    }
+                    title="Model: satu nomor WA admin (Hermes)"
                     description={
                         <ol style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12 }}>
                             <li>
                                 Pair <strong>satu</strong> nomor admin di{' '}
                                 <Link href="/admin/ai-studio/ai-gateway">
-                                    {waProvider === 'hermes' ? 'WhatsApp Gateway (Hermes)' : 'Setup WAHA'}
+                                    WhatsApp Gateway (Hermes)
                                 </Link>
-                                {waProvider === 'waha' ? (
-                                    <>
-                                        {' '}
-                                        (session <code>default</code>)
-                                    </>
-                                ) : null}
                             </li>
                             <li>
                                 <strong>Tambah UMKM</strong> — daftarkan nomor HP pemilik + atur perintah WA

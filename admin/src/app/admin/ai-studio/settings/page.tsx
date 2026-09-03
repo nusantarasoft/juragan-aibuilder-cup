@@ -55,7 +55,6 @@ const DEFAULT_VALUES: Partial<StudioSettingsFormValues> = {
     ollama_base_url: "http://127.0.0.1:11434",
     ollama_model: "llama3",
     ollama_embedding_model: "nomic-embed-text",
-    waha_dashboard_url: "http://127.0.0.1:3010/dashboard",
 };
 
 export default function AiStudioSettingsPage() {

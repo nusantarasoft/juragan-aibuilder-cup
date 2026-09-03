@@ -107,7 +107,7 @@ export class NotificationDispatcher {
         }
     }
 
-    // ─── WHATSAPP (via WhatsAppTransport: waha|hermes) ───────
+    // ─── WHATSAPP (via Hermes WhatsAppTransport) ───────
 
     private async sendWhatsApp(phone: string, message: string): Promise<{ success: boolean; error?: string }> {
         const chatId = this.waTransport.phoneToChatId(phone);

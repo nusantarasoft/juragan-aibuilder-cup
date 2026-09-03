@@ -8,7 +8,7 @@ export type StudioWhatsAppConfigLookup = {
     notebook_id?: string | null;
 };
 
-/** Extract WAHA admin account phone from webhook payload (`me`, etc.). */
+/** Extract WhatsApp admin account phone from webhook payload (`me`, etc.). */
 export function extractBusinessPhoneFromPayload(payload: Record<string, unknown>): string | null {
     const me = payload.me as Record<string, unknown> | undefined;
     const candidates = [
@@ -34,10 +34,10 @@ export function normalizePhoneDigits(input: string): string {
 }
 
 /**
- * True only when the WAHA payload actually carries media.
- * Do NOT treat `payload._data` alone as media — NOWEB always includes `_data` for text too.
+ * True only when the webhook payload actually carries media.
+ * Do NOT treat `payload._data` alone as media — text messages may also include `_data`.
  */
-export function wahaPayloadHasMedia(payload: Record<string, unknown>): boolean {
+export function whatsappPayloadHasMedia(payload: Record<string, unknown>): boolean {
     if (payload.hasMedia === true) return true;
     if (typeof payload.mediaUrl === 'string' && payload.mediaUrl.trim()) return true;
 

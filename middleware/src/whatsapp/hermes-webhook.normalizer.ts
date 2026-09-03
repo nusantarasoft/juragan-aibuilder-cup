@@ -1,8 +1,8 @@
 /**
- * Normalize inbound webhook bodies to the WAHA-shaped contract StudioWhatsAppService expects.
+ * Normalize inbound webhook bodies to the envelope StudioWhatsAppService expects
+ * (`event` + `session` + `payload.from`).
  *
- * Always runs (D2): if already WAHA-shaped, pass through.
- * Hermes kasir-pipe already emits WAHA-shaped JSON; this covers drift + future bridge formats.
+ * Hermes kasir-pipe already emits this shape; this covers drift + future bridge formats.
  */
 export function normalizeWhatsAppWebhook(
     body: Record<string, unknown>,
@@ -11,7 +11,7 @@ export function normalizeWhatsAppWebhook(
         return { event: 'message', session: 'default', payload: {} };
     }
 
-    // Already WAHA-shaped: event + payload.from
+    // Already enveloped: event + payload.from
     const payload = (body.payload || null) as Record<string, unknown> | null;
     if (
         payload &&
@@ -26,7 +26,7 @@ export function normalizeWhatsAppWebhook(
         };
     }
 
-    // Hermes MessageEvent-ish / bridge forward without WAHA envelope
+    // Flat Hermes MessageEvent-ish / bridge forward without envelope
     const from =
         body.from ||
         body.chatId ||

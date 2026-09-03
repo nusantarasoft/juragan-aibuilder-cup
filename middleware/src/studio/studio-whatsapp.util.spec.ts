@@ -10,7 +10,7 @@ import {
     phonesMatch,
     StudioWhatsAppRateLimiter,
     stripWhatsAppMediaAnnotations,
-    wahaPayloadHasMedia,
+    whatsappPayloadHasMedia,
 } from './studio-whatsapp.util';
 
 describe('normalizePhoneDigits', () => {
@@ -33,36 +33,36 @@ describe('normalizePhoneDigits', () => {
     });
 });
 
-describe('wahaPayloadHasMedia', () => {
+describe('whatsappPayloadHasMedia', () => {
     it('ignores bare _data on text messages', () => {
-        expect(wahaPayloadHasMedia({ body: '2', _data: { id: 'x', type: 'chat' } })).toBe(false);
+        expect(whatsappPayloadHasMedia({ body: '2', _data: { id: 'x', type: 'chat' } })).toBe(false);
     });
 
     it('detects hasMedia flag and image type', () => {
-        expect(wahaPayloadHasMedia({ hasMedia: true })).toBe(true);
-        expect(wahaPayloadHasMedia({ _data: { type: 'image', mimetype: 'image/jpeg' } })).toBe(
+        expect(whatsappPayloadHasMedia({ hasMedia: true })).toBe(true);
+        expect(whatsappPayloadHasMedia({ _data: { type: 'image', mimetype: 'image/jpeg' } })).toBe(
             true,
         );
     });
 
     it('detects a trimmed mediaUrl', () => {
-        expect(wahaPayloadHasMedia({ mediaUrl: 'https://x/y.jpg' })).toBe(true);
+        expect(whatsappPayloadHasMedia({ mediaUrl: 'https://x/y.jpg' })).toBe(true);
     });
 
     it('returns false when there is no _data object', () => {
-        expect(wahaPayloadHasMedia({ body: 'hi' })).toBe(false);
+        expect(whatsappPayloadHasMedia({ body: 'hi' })).toBe(false);
     });
 
     it('detects encrypted media keys inside _data', () => {
-        expect(wahaPayloadHasMedia({ _data: { mediaKey: 'abc' } })).toBe(true);
+        expect(whatsappPayloadHasMedia({ _data: { mediaKey: 'abc' } })).toBe(true);
     });
 
     it('detects media by message type without mimetype', () => {
-        expect(wahaPayloadHasMedia({ type: 'video', _data: {} })).toBe(true);
+        expect(whatsappPayloadHasMedia({ type: 'video', _data: {} })).toBe(true);
     });
 
     it('returns false when _data has no type on either payload or data', () => {
-        expect(wahaPayloadHasMedia({ _data: { id: 'x' } })).toBe(false);
+        expect(whatsappPayloadHasMedia({ _data: { id: 'x' } })).toBe(false);
     });
 });
 
@@ -229,7 +229,7 @@ describe('pickWhatsAppConfigForWebhook (deprecated)', () => {
 });
 
 describe('extractBusinessPhoneFromPayload', () => {
-    it('reads me.id from WAHA payload', () => {
+    it('reads me.id from WhatsApp payload', () => {
         expect(
             extractBusinessPhoneFromPayload({ me: { id: '6281110115321@c.us' } }),
         ).toBe('6281110115321');

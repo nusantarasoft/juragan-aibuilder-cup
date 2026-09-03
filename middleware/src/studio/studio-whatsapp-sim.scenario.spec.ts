@@ -190,13 +190,7 @@ function makeSim(opts?: SimOpts) {
         } as any,
         supabase as any,
         {
-            defaultSession: 'default',
-            getSessionStatus: vi.fn(),
-            listSessions: vi.fn(),
-            getVersion: vi.fn(),
-        } as any,
-        {
-            providerId: 'waha',
+            providerId: 'hermes',
             defaultSession: 'default',
             sendText: wahaSend,
             sendButtons: vi.fn(async () => ({ success: false })),

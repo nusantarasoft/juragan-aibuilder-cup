@@ -42,11 +42,3 @@ services:
   studio:
     environment:
       - SUPABASE_PUBLIC_URL=https://api.nusantarasoft.com
-
-  # WAHA with production config
-  waha:
-    image: ${WAHA_IMAGE:-devlikeapro/waha:latest}
-    environment:
-      - WAHA_API_KEY=${WAHA_API_KEY}
-      - WHATSAPP_HOOK_HMAC_KEY=${WAHA_WEBHOOK_HMAC_KEY}
-      - WHATSAPP_HOOK_URL=${WHATSAPP_HOOK_URL:-http://middleware:4001/api/studio/whatsapp/webhook}

@@ -66,12 +66,12 @@ function build() {
         getConfig: vi.fn().mockResolvedValue({ id: 'wa-1', notebook_id: 'nb-1' }),
         listConfigs: vi.fn().mockResolvedValue([{ id: 'wa-1' }]),
         getSecurityMeta: vi.fn().mockResolvedValue({ meta: true }),
-        getWahaSessionStatus: vi.fn().mockResolvedValue({ status: 'WORKING' }),
-        restartWahaSession: vi.fn().mockResolvedValue({ ok: true }),
-        syncWahaSession: vi.fn().mockResolvedValue({ ok: true }),
-        getWahaAuthQr: vi.fn().mockResolvedValue({ qr: 'data' }),
-        startWahaSession: vi.fn().mockResolvedValue({ ok: true }),
-        logoutWahaSession: vi.fn().mockResolvedValue({ ok: true }),
+        getSessionStatus: vi.fn().mockResolvedValue({ status: 'WORKING' }),
+        restartSession: vi.fn().mockResolvedValue({ ok: true }),
+        syncSession: vi.fn().mockResolvedValue({ ok: true }),
+        getAuthQr: vi.fn().mockResolvedValue({ qr: 'data' }),
+        startSession: vi.fn().mockResolvedValue({ ok: true }),
+        logoutSession: vi.fn().mockResolvedValue({ ok: true }),
         updateConfig: vi.fn().mockResolvedValue({ id: 'wa-1', enabled: true }),
         simulateInboundMessage: vi.fn().mockResolvedValue({
             answer: 'ok sim',
@@ -491,34 +491,34 @@ describe('StudioResolver — whatsapp/umkm', () => {
 
     it('studioWhatsAppSessionStatus delegates', async () => {
         await h.resolver.studioWhatsAppSessionStatus();
-        expect(h.whatsAppService.getWahaSessionStatus).toHaveBeenCalled();
+        expect(h.whatsAppService.getSessionStatus).toHaveBeenCalled();
     });
 
-    it('restartStudioWahaSession delegates', async () => {
-        await h.resolver.restartStudioWahaSession();
-        expect(h.whatsAppService.restartWahaSession).toHaveBeenCalled();
+    it('restartStudioWhatsAppSession delegates', async () => {
+        await h.resolver.restartStudioWhatsAppSession();
+        expect(h.whatsAppService.restartSession).toHaveBeenCalled();
     });
 
-    it('syncStudioWahaSession delegates', async () => {
-        await h.resolver.syncStudioWahaSession();
-        expect(h.whatsAppService.syncWahaSession).toHaveBeenCalled();
+    it('syncStudioWhatsAppSession delegates', async () => {
+        await h.resolver.syncStudioWhatsAppSession();
+        expect(h.whatsAppService.syncSession).toHaveBeenCalled();
     });
 
-    it('studioWahaAuthQr with and without session', async () => {
-        await h.resolver.studioWahaAuthQr('s1');
-        expect(h.whatsAppService.getWahaAuthQr).toHaveBeenCalledWith('s1', undefined);
-        await h.resolver.studioWahaAuthQr('');
-        expect(h.whatsAppService.getWahaAuthQr).toHaveBeenCalledWith(undefined, undefined);
+    it('studioWhatsAppAuthQr with and without session', async () => {
+        await h.resolver.studioWhatsAppAuthQr('s1');
+        expect(h.whatsAppService.getAuthQr).toHaveBeenCalledWith('s1', undefined);
+        await h.resolver.studioWhatsAppAuthQr('');
+        expect(h.whatsAppService.getAuthQr).toHaveBeenCalledWith(undefined, undefined);
     });
 
-    it('startStudioWahaSession passes session', async () => {
-        await h.resolver.startStudioWahaSession('s1');
-        expect(h.whatsAppService.startWahaSession).toHaveBeenCalledWith('s1', undefined);
+    it('startStudioWhatsAppSession passes session', async () => {
+        await h.resolver.startStudioWhatsAppSession('s1');
+        expect(h.whatsAppService.startSession).toHaveBeenCalledWith('s1', undefined);
     });
 
-    it('logoutStudioWahaSession passes undefined when empty', async () => {
-        await h.resolver.logoutStudioWahaSession('');
-        expect(h.whatsAppService.logoutWahaSession).toHaveBeenCalledWith(undefined, undefined);
+    it('logoutStudioWhatsAppSession passes undefined when empty', async () => {
+        await h.resolver.logoutStudioWhatsAppSession('');
+        expect(h.whatsAppService.logoutSession).toHaveBeenCalledWith(undefined, undefined);
     });
 
     it('setupUmkmNotebook skips flow by default', async () => {

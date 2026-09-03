@@ -1,14 +1,14 @@
 """kasir-pipe — Hermes WhatsApp inbound → middleware webhook (pipe-only).
 
 Uses ``pre_gateway_dispatch`` to:
-1. Build a WAHA-shaped JSON body from the MessageEvent
-2. HMAC-SHA512 sign with ``WAHA_WEBHOOK_HMAC_KEY`` (header ``x-webhook-hmac``)
+1. Build a WhatsApp webhook JSON body from the MessageEvent
+2. HMAC-SHA512 sign with ``WHATSAPP_WEBHOOK_HMAC_KEY`` (header ``x-webhook-hmac``)
 3. POST to ``KASIR_WHATSAPP_WEBHOOK_URL``
 4. Return ``skip`` so Hermes never runs the agent / LLM
 
 Env (set on hermes container / ``volumes/hermes/.env``):
 - ``KASIR_WHATSAPP_WEBHOOK_URL`` — default ``http://middleware:4001/api/studio/whatsapp/webhook``
-- ``WAHA_WEBHOOK_HMAC_KEY`` — same key middleware verifies
+- ``WHATSAPP_WEBHOOK_HMAC_KEY`` — same key middleware verifies (fallback: ``WAHA_WEBHOOK_HMAC_KEY``)
 - ``KASIR_PIPE_SESSION`` — webhook ``session`` field (default ``hermes``)
 - ``KASIR_PIPE_PLATFORMS`` — comma list; default ``whatsapp``
 """
@@ -41,7 +41,12 @@ def _webhook_url() -> str:
 
 
 def _hmac_key() -> str:
-    return (os.environ.get("WAHA_WEBHOOK_HMAC_KEY") or "").strip()
+    # Prefer WHATSAPP_WEBHOOK_HMAC_KEY; accept legacy WAHA_* during transition
+    return (
+        os.environ.get("WHATSAPP_WEBHOOK_HMAC_KEY")
+        or os.environ.get("WAHA_WEBHOOK_HMAC_KEY")
+        or ""
+    ).strip()
 
 
 def _session_name() -> str:
@@ -140,7 +145,7 @@ def _post_signed(body: dict[str, Any]) -> tuple[int, str]:
         digest = hmac.new(key.encode("utf-8"), raw, hashlib.sha512).hexdigest()
         headers["x-webhook-hmac"] = digest
     else:
-        logger.warning("kasir-pipe: WAHA_WEBHOOK_HMAC_KEY empty — posting unsigned")
+        logger.warning("kasir-pipe: WHATSAPP_WEBHOOK_HMAC_KEY empty — posting unsigned")
 
     req = urllib.request.Request(
         _webhook_url(),

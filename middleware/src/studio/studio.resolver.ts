@@ -541,7 +541,7 @@ export class StudioResolver {
         return this.guideFlowService.guidedChatTurn(notebookId, flowId, message, conversationId, userId);
     }
 
-    // ── WhatsApp (WAHA) ─────────────────────────────────────────────
+    // ── WhatsApp (Hermes) ───────────────────────────────────────────
 
     @Query(() => GraphQLJSONObject, { name: 'studioWhatsAppConfig', nullable: true })
     async studioWhatsAppConfig(
@@ -564,37 +564,37 @@ export class StudioResolver {
     async studioWhatsAppSessionStatus(
         @Args('provider', { type: () => String, nullable: true }) provider?: string,
     ) {
-        return this.studioWhatsAppService.getWahaSessionStatus(provider || undefined);
+        return this.studioWhatsAppService.getSessionStatus(provider || undefined);
     }
 
-    @Mutation(() => GraphQLJSONObject, { name: 'restartStudioWahaSession' })
-    async restartStudioWahaSession(
+    @Mutation(() => GraphQLJSONObject, { name: 'restartStudioWhatsAppSession' })
+    async restartStudioWhatsAppSession(
         @Args('provider', { type: () => String, nullable: true }) provider?: string,
     ) {
-        return this.studioWhatsAppService.restartWahaSession(provider || undefined);
+        return this.studioWhatsAppService.restartSession(provider || undefined);
     }
 
-    @Mutation(() => GraphQLJSONObject, { name: 'syncStudioWahaSession' })
-    async syncStudioWahaSession(
+    @Mutation(() => GraphQLJSONObject, { name: 'syncStudioWhatsAppSession' })
+    async syncStudioWhatsAppSession(
         @Args('provider', { type: () => String, nullable: true }) provider?: string,
     ) {
-        return this.studioWhatsAppService.syncWahaSession(provider || undefined);
+        return this.studioWhatsAppService.syncSession(provider || undefined);
     }
 
-    @Query(() => GraphQLJSONObject, { name: 'studioWahaAuthQr' })
-    async studioWahaAuthQr(
+    @Query(() => GraphQLJSONObject, { name: 'studioWhatsAppAuthQr' })
+    async studioWhatsAppAuthQr(
         @Args('session', { type: () => String, nullable: true }) session?: string,
         @Args('provider', { type: () => String, nullable: true }) provider?: string,
     ) {
-        return this.studioWhatsAppService.getWahaAuthQr(session || undefined, provider || undefined);
+        return this.studioWhatsAppService.getAuthQr(session || undefined, provider || undefined);
     }
 
-    @Mutation(() => GraphQLJSONObject, { name: 'startStudioWahaSession' })
-    async startStudioWahaSession(
+    @Mutation(() => GraphQLJSONObject, { name: 'startStudioWhatsAppSession' })
+    async startStudioWhatsAppSession(
         @Args('session', { type: () => String, nullable: true }) session?: string,
         @Args('provider', { type: () => String, nullable: true }) provider?: string,
     ) {
-        return this.studioWhatsAppService.startWahaSession(session || undefined, provider || undefined);
+        return this.studioWhatsAppService.startSession(session || undefined, provider || undefined);
     }
 
     @Mutation(() => GraphQLJSONObject, { name: 'rebindStudioHermesSession' })
@@ -602,12 +602,12 @@ export class StudioResolver {
         return this.studioWhatsAppService.rebindHermesSession();
     }
 
-    @Mutation(() => GraphQLJSONObject, { name: 'logoutStudioWahaSession' })
-    async logoutStudioWahaSession(
+    @Mutation(() => GraphQLJSONObject, { name: 'logoutStudioWhatsAppSession' })
+    async logoutStudioWhatsAppSession(
         @Args('session', { type: () => String, nullable: true }) session?: string,
         @Args('provider', { type: () => String, nullable: true }) provider?: string,
     ) {
-        return this.studioWhatsAppService.logoutWahaSession(session || undefined, provider || undefined);
+        return this.studioWhatsAppService.logoutSession(session || undefined, provider || undefined);
     }
 
     @Mutation(() => GraphQLJSONObject, { name: 'studioSetupUmkmNotebook' })
@@ -702,7 +702,7 @@ export class StudioResolver {
     }
 
     /**
-     * Simulasi chat WA tanpa WAHA — pipeline sama dengan webhook inbound
+     * Simulasi chat WA tanpa kirim live — pipeline sama dengan webhook inbound
      * (guided / handleMessage / RAG sesuai config UMKM).
      */
     @Mutation(() => GraphQLJSONObject, { name: 'studioWhatsAppSimChat' })

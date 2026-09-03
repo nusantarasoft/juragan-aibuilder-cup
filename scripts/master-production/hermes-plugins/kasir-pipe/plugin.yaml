@@ -2,8 +2,8 @@ name: kasir-pipe
 label: Kasir WhatsApp pipe-only
 version: 1.0.0
 description: >
-  Phase 1 Hermes → middleware bridge. On WhatsApp inbound, HMAC-sign a
-  WAHA-shaped webhook body, POST to Studio WhatsApp webhook, and skip the
+  Hermes → middleware bridge. On WhatsApp inbound, HMAC-sign a
+  webhook body, POST to Studio WhatsApp webhook, and skip the
   Hermes agent (no LLM reply).
 author: NusantaraSoft
 provides_hooks:

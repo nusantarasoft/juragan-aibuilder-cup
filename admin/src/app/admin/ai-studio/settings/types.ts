@@ -21,7 +21,6 @@ export interface StudioSettings {
     ollama_base_url: string;
     ollama_model: string;
     ollama_embedding_model?: string;
-    waha_dashboard_url: string;
 }
 
 export interface ProviderReadiness {
@@ -37,7 +36,6 @@ export interface StudioAiStatus {
     embeddingProvider: EmbeddingProvider;
     embeddingModel: string;
     providers: ProviderReadiness[];
-    wahaDashboardUrl: string;
 }
 
 export interface AiConnectionTestResult {

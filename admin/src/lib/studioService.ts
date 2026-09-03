@@ -863,7 +863,7 @@ export const studioService = {
         return data.updateStudioUmkmCommands;
     },
 
-    // ── WhatsApp (WAHA) ─────────────────────────────────────
+    // ── WhatsApp (Hermes) ───────────────────────────────────
 
     async listWhatsAppConfigs(): Promise<StudioWhatsAppConfig[]> {
         const data = await graphqlRequest(`query { studioWhatsAppConfigs }`);
@@ -892,38 +892,38 @@ export const studioService = {
         return data.studioWhatsAppSessionStatus;
     },
 
-    async restartWahaSession(provider?: string): Promise<{ status: string }> {
+    async restartWhatsAppSession(provider?: string): Promise<{ status: string }> {
         const data = await graphqlRequest(
-            `mutation($provider: String) { restartStudioWahaSession(provider: $provider) }`,
+            `mutation($provider: String) { restartStudioWhatsAppSession(provider: $provider) }`,
             { provider: provider ?? null },
         );
-        return data.restartStudioWahaSession;
+        return data.restartStudioWhatsAppSession;
     },
 
-    async syncWahaSession(provider?: string): Promise<{ status: string; connected: boolean }> {
+    async syncWhatsAppSession(provider?: string): Promise<{ status: string; connected: boolean }> {
         const data = await graphqlRequest(
-            `mutation($provider: String) { syncStudioWahaSession(provider: $provider) }`,
+            `mutation($provider: String) { syncStudioWhatsAppSession(provider: $provider) }`,
             { provider: provider ?? null },
         );
-        return data.syncStudioWahaSession;
+        return data.syncStudioWhatsAppSession;
     },
 
-    async getWahaAuthQr(session?: string, provider?: string): Promise<StudioWahaAuthQr> {
+    async getWhatsAppAuthQr(session?: string, provider?: string): Promise<StudioWhatsAppAuthQr> {
         const data = await graphqlRequest(`
             query($session: String, $provider: String) {
-                studioWahaAuthQr(session: $session, provider: $provider)
+                studioWhatsAppAuthQr(session: $session, provider: $provider)
             }
         `, { session: session ?? null, provider: provider ?? null });
-        return data.studioWahaAuthQr;
+        return data.studioWhatsAppAuthQr;
     },
 
-    async startWahaSession(session?: string, provider?: string): Promise<{ status: string; connected: boolean; error?: string }> {
+    async startWhatsAppSession(session?: string, provider?: string): Promise<{ status: string; connected: boolean; error?: string }> {
         const data = await graphqlRequest(`
             mutation($session: String, $provider: String) {
-                startStudioWahaSession(session: $session, provider: $provider)
+                startStudioWhatsAppSession(session: $session, provider: $provider)
             }
         `, { session: session ?? null, provider: provider ?? null });
-        return data.startStudioWahaSession;
+        return data.startStudioWhatsAppSession;
     },
 
     /** Wipe old Hermes WhatsApp number and start a fresh QR for a new phone. */
@@ -932,13 +932,13 @@ export const studioService = {
         return data.rebindStudioHermesSession;
     },
 
-    async logoutWahaSession(session?: string, provider?: string): Promise<{ status: string }> {
+    async logoutWhatsAppSession(session?: string, provider?: string): Promise<{ status: string }> {
         const data = await graphqlRequest(`
             mutation($session: String, $provider: String) {
-                logoutStudioWahaSession(session: $session, provider: $provider)
+                logoutStudioWhatsAppSession(session: $session, provider: $provider)
             }
         `, { session: session ?? null, provider: provider ?? null });
-        return data.logoutStudioWahaSession;
+        return data.logoutStudioWhatsAppSession;
     },
 
     async updateWhatsAppConfig(params: {
@@ -986,7 +986,7 @@ export const studioService = {
         return data.updateStudioWhatsAppConfig;
     },
 
-    /** Simulasi inbound WA tanpa WAHA (pipeline sama webhook). */
+    /** Simulasi inbound WA tanpa transport live (pipeline sama webhook). */
     async whatsAppSimChat(params: {
         tenantId: string;
         message: string;
@@ -1120,11 +1120,11 @@ export interface StudioWhatsAppConfig {
 export interface StudioWhatsAppSecurityMeta {
     allowlistRequired: boolean;
     rateLimitPerMinute?: number;
-    whatsappProvider?: 'waha' | 'hermes' | string;
+    whatsappProvider?: 'hermes' | string;
 }
 
 export interface StudioWhatsAppSessionStatus {
-    provider?: 'waha' | 'hermes' | string;
+    provider?: 'hermes' | string;
     session: {
         name: string;
         status: string;
@@ -1137,7 +1137,7 @@ export interface StudioWhatsAppSessionStatus {
     version?: { version: string; engine: string } | null;
 }
 
-export interface StudioWahaAuthQr {
+export interface StudioWhatsAppAuthQr {
     available: boolean;
     imageBase64: string | null;
     mimetype: string | null;

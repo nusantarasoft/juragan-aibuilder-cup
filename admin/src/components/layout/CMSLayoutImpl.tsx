@@ -235,7 +235,7 @@ const BREADCRUMB_LABELS: Record<string, string> = {
     "ai-studio": "AI Studio",
     umkm: "UMKM",
     "ai-gateway": "WhatsApp Gateway",
-    "waha-setup": "Setup WhatsApp",
+    "whatsapp-setup": "Setup WhatsApp",
     "web-crawler": "Web Crawler",
     "agent-builder": "Agent Builder",
     "knowledge-graph": "Knowledge Graph",

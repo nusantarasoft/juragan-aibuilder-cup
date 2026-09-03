@@ -240,7 +240,6 @@ export class AiSettingsService {
             embeddingProvider: normalizeEmbeddingProvider(settings.default_embedding_provider),
             embeddingModel: embedding.model,
             providers,
-            wahaDashboardUrl: settings.waha_dashboard_url || DEFAULT_STUDIO_SETTINGS.waha_dashboard_url,
         };
     }
 

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeWhatsAppWebhook } from './hermes-to-waha-webhook.normalizer';
+import { normalizeWhatsAppWebhook } from './hermes-webhook.normalizer';
 
 describe('normalizeWhatsAppWebhook', () => {
-    it('passes through WAHA-shaped bodies', () => {
+    it('passes through enveloped bodies', () => {
         const body = {
             event: 'message',
             session: 'default',

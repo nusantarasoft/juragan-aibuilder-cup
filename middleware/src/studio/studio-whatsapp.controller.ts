@@ -8,7 +8,7 @@ import {
     RawBodyRequest,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { normalizeWhatsAppWebhook } from '../whatsapp/hermes-to-waha-webhook.normalizer';
+import { normalizeWhatsAppWebhook } from '../whatsapp/hermes-webhook.normalizer';
 import { StudioWhatsAppService } from './studio-whatsapp.service';
 
 @Controller('api/studio/whatsapp')

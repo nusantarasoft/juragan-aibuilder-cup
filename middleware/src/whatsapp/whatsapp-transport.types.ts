@@ -8,14 +8,14 @@ export type WhatsAppMediaDownload = {
     filename: string;
 } | null;
 
-export type WhatsAppProviderId = 'waha' | 'hermes';
+export type WhatsAppProviderId = 'hermes';
 
 export const WHATSAPP_TRANSPORT = Symbol('WHATSAPP_TRANSPORT');
 
 export interface WhatsAppTransport {
     readonly providerId: WhatsAppProviderId;
 
-    /** Default session name for providers that use sessions (WAHA). Hermes ignores. */
+    /** Default session name for pipe (Hermes kasir-pipe session). */
     readonly defaultSession: string;
 
     phoneToChatId(phone: string): string;
@@ -38,6 +38,6 @@ export interface WhatsAppTransport {
 
     downloadMedia(messageId: string, session?: string): Promise<WhatsAppMediaDownload>;
 
-    /** Cheap reachability check for health / cutover preflight (~timeout caller-owned). */
+    /** Cheap reachability check for health / preflight (~timeout caller-owned). */
     ping(timeoutMs?: number): Promise<{ ok: boolean; detail?: string }>;
 }

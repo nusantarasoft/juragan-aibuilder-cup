@@ -15,7 +15,6 @@ import { GqlAuthGuard } from '../auth/gql-auth.guard';
 import { AiModule } from '../ai/ai.module';
 import { RagModule } from '../rag/rag.module';
 import { DremioModule } from '../dremio/dremio.module';
-import { WahaModule } from '../waha/waha.module';
 import { WhatsAppProviderModule } from '../whatsapp/whatsapp-provider.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { StudioWhatsAppController } from './studio-whatsapp.controller';
@@ -34,7 +33,6 @@ import { StudioOutputService } from './studio-output.service';
         AiModule,
         RagModule,
         DremioModule,
-        WahaModule,
         WhatsAppProviderModule,
         InventoryModule,
     ],

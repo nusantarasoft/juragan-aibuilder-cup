@@ -567,11 +567,12 @@ services:
       - LABELSTUDIO_API_TOKEN=${LABELSTUDIO_API_TOKEN}
       - LABELSTUDIO_PROJECT_ID=${LABELSTUDIO_PROJECT_ID}
       - LABELSTUDIO_WEBHOOK_SECRET=${LABELSTUDIO_WEBHOOK_SECRET:-}
-      # WAHA (WhatsApp HTTP API) + SMTP
-      - WAHA_BASE_URL=http://waha:3000
-      - WAHA_API_KEY=${WAHA_API_KEY:-}
-      - WAHA_SESSION=${WAHA_SESSION:-default}
-      - WAHA_WEBHOOK_HMAC_KEY=${WAHA_WEBHOOK_HMAC_KEY:-}
+      # WhatsApp (Hermes) + SMTP
+      # Prefer WHATSAPP_WEBHOOK_HMAC_KEY; WAHA_* fallback for transition
+      - WHATSAPP_WEBHOOK_HMAC_KEY=${WHATSAPP_WEBHOOK_HMAC_KEY:-${WAHA_WEBHOOK_HMAC_KEY:-}}
+      - WHATSAPP_PROVIDER=${WHATSAPP_PROVIDER:-hermes}
+      - HERMES_BASE_URL=${HERMES_BASE_URL:-http://hermes:8642}
+      - HERMES_BRIDGE_URL=${HERMES_BRIDGE_URL:-http://hermes:8765}
       - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USER=${SMTP_USER:-}
@@ -582,7 +583,7 @@ services:
     depends_on:
       - kong
       - minio
-      - waha
+      - hermes
     volumes:
       - ./volumes/google-credentials.json:/gcp/key.json:ro
     extra_hosts:
@@ -625,7 +626,6 @@ services:
       - S3_ACCESS_KEY=${MINIO_ROOT_USER}
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - S3_REGION=us-east-1
-      - NEXT_PUBLIC_WAHA_DASHBOARD_URL=${NEXT_PUBLIC_WAHA_DASHBOARD_URL:-http://localhost:${WAHA_HOST_PORT:-3010}/dashboard}
     networks:
       - management-network
     depends_on:
@@ -638,65 +638,7 @@ services:
       retries: 5
       start_period: 60s
 
-  waha:
-    # Pin via WAHA_IMAGE — default latest-2026.4.3 (includes WEBJS SCAN_QR fix from waha#1690)
-    image: ${WAHA_IMAGE:-devlikeapro/waha:latest}
-    container_name: waha
-    restart: unless-stopped
-    shm_size: "2gb"
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    deploy:
-      resources:
-        limits:
-          memory: 2g
-        reservations:
-          memory: 768m
-    ports:
-      # Bind IPv4 only — localhost (::1) often hangs on Windows Docker
-      - "127.0.0.1:${WAHA_HOST_PORT:-3010}:3000"
-    environment:
-      # Host-run middleware: use host.docker.internal (extra_hosts below). LAN IP often unreachable from Docker Desktop VM.
-      - WHATSAPP_HOOK_URL=${WHATSAPP_HOOK_URL:-http://host.docker.internal:4001/api/studio/whatsapp/webhook}
-      - WHATSAPP_HOOK_EVENTS=message,message.any
-      - WHATSAPP_HOOK_HMAC_KEY=${WAHA_WEBHOOK_HMAC_KEY:-}
-      - WAHA_API_KEY=${WAHA_API_KEY:-}
-      - WAHA_API_KEY_PLAIN=${WAHA_API_KEY_PLAIN:-${WAHA_API_KEY:-}}
-      - WAHA_API_KEY_EXCLUDE_PATH=health
-      - WAHA_DASHBOARD_USERNAME=${WAHA_DASHBOARD_USERNAME:-admin}
-      - WAHA_DASHBOARD_PASSWORD=${WAHA_DASHBOARD_PASSWORD:-}
-      - WHATSAPP_SWAGGER_USERNAME=${WHATSAPP_SWAGGER_USERNAME:-admin}
-      - WHATSAPP_SWAGGER_PASSWORD=${WHATSAPP_SWAGGER_PASSWORD:-}
-      - WAHA_BASE_URL=http://waha:3000
-      - WHATSAPP_DEFAULT_SESSION=${WAHA_SESSION:-default}
-      - WHATSAPP_DEFAULT_ENGINE=${WAHA_DEFAULT_ENGINE:-WEBJS}
-      - WAHA_SESSION_ENGINE_INFO_TIMEOUT=15000
-      - WHATSAPP_RESTART_ALL_SESSIONS=True
-    volumes:
-      - waha-sessions:/app/.sessions
-      # Patch WEBJS MsgKey._serialized → $1 (WhatsApp Web change drops inbound message events otherwise)
-      - ./scripts/waha-patch-lid-id.js:/patches/waha-patch-lid-id.js:ro
-      - ./scripts/waha-entrypoint.sh:/patches/waha-entrypoint.sh:ro
-    command: ["/bin/sh", "/patches/waha-entrypoint.sh"]
-    # Required so WHATSAPP_HOOK_URL reaches middleware on the Windows host (custom dns below would otherwise break this name)
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-    networks:
-      - management-network
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --header=\"X-Api-Key: $$WAHA_API_KEY\" -O - http://127.0.0.1:3000/api/version || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 45s
-
-  # Hermes Agent sidecar (smoke test; does NOT replace WAHA / UMKM WhatsApp yet)
+  # Hermes Agent — sole WhatsApp transport
   # Docs: docs/hermes-local.md — https://hermes-agent.nousresearch.com/docs/user-guide/docker
   hermes:
     image: ${HERMES_IMAGE:-nousresearch/hermes-agent:latest}
@@ -770,4 +712,3 @@ volumes:
   minio-data:
   supabase-storage:
   db-config:
-  waha-sessions:

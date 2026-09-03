@@ -2,7 +2,6 @@ import { BadRequestException, Inject, Injectable, Logger, UnauthorizedException 
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
-import { WahaClientService } from '../waha/waha-client.service';
 import { HermesProvider } from '../whatsapp/hermes.provider';
 import {
     WHATSAPP_TRANSPORT,
@@ -40,7 +39,7 @@ import {
     pickTenantConfigBySenderPhone,
     StudioWhatsAppRateLimiter,
     stripWhatsAppMediaAnnotations,
-    wahaPayloadHasMedia,
+    whatsappPayloadHasMedia,
 } from './studio-whatsapp.util';
 
 const WA_CHUNK = 4000;
@@ -72,7 +71,6 @@ export class StudioWhatsAppService {
     constructor(
         private readonly configService: ConfigService,
         private readonly supabaseService: SupabaseService,
-        private readonly wahaClient: WahaClientService,
         @Inject(WHATSAPP_TRANSPORT) private readonly waTransport: WhatsAppTransport,
         private readonly hermesProvider: HermesProvider,
         private readonly studioService: StudioService,
@@ -109,18 +107,25 @@ export class StudioWhatsAppService {
     }
 
     verifyWebhookHmac(rawBody: Buffer, signatureHeader?: string): void {
-        const key = this.configService.get('WAHA_WEBHOOK_HMAC_KEY') || '';
+        const key =
+            this.configService.get('WHATSAPP_WEBHOOK_HMAC_KEY') ||
+            this.configService.get('WAHA_WEBHOOK_HMAC_KEY') ||
+            '';
         if (!key) return;
-        // E13: fail closed when key is set. Escape hatch for local/dev only.
+        // Fail closed when key is set. Escape hatch for local/dev only.
         const allowMissing = ['1', 'true', 'yes'].includes(
-            String(this.configService.get('WAHA_WEBHOOK_HMAC_ALLOW_MISSING') || '')
+            String(
+                this.configService.get('WHATSAPP_WEBHOOK_HMAC_ALLOW_MISSING') ||
+                    this.configService.get('WAHA_WEBHOOK_HMAC_ALLOW_MISSING') ||
+                    '',
+            )
                 .trim()
                 .toLowerCase(),
         );
         if (!signatureHeader) {
             if (allowMissing) {
                 this.logger.warn(
-                    'WAHA_WEBHOOK_HMAC_KEY set but X-Webhook-Hmac missing — allowed by WAHA_WEBHOOK_HMAC_ALLOW_MISSING',
+                    'WHATSAPP_WEBHOOK_HMAC_KEY set but X-Webhook-Hmac missing — allowed by WHATSAPP_WEBHOOK_HMAC_ALLOW_MISSING',
                 );
                 return;
             }
@@ -304,101 +309,42 @@ export class StudioWhatsAppService {
         return data as StudioWhatsAppConfigRow;
     }
 
-    private resolveProvider(override?: string | null): WhatsAppProviderId {
-        if (override) return resolveWhatsAppProviderId(override);
-        return resolveWhatsAppProviderId(this.configService.get('WHATSAPP_PROVIDER'));
+    private resolveProvider(_override?: string | null): WhatsAppProviderId {
+        return resolveWhatsAppProviderId();
     }
 
-    async getWahaSessionStatus(provider?: string | null) {
-        const id = this.resolveProvider(provider);
-        if (id === 'hermes') {
-            const status = await this.hermesProvider.getSessionStatus();
-            return {
-                provider: 'hermes',
-                session: status,
-                sessions: status ? [{ name: status.name, status: status.status }] : [],
-                version: { version: 'hermes-bridge', engine: 'BAILEYS' },
-            };
-        }
-        const status = await this.wahaClient.getSessionStatus();
-        const sessions = await this.wahaClient.listSessions();
-        const version = await this.wahaClient.getVersion();
-        return { provider: 'waha', session: status, sessions, version };
+    async getSessionStatus(_provider?: string | null) {
+        const status = await this.hermesProvider.getSessionStatus();
+        return {
+            provider: 'hermes' as const,
+            session: status,
+            sessions: status ? [{ name: status.name, status: status.status }] : [],
+            version: { version: 'hermes-bridge', engine: 'BAILEYS' },
+        };
     }
 
-    async restartWahaSession(provider?: string | null) {
-        if (this.resolveProvider(provider) === 'hermes') {
-            return this.hermesProvider.restartSession();
-        }
-        return this.wahaClient.restartSession();
+    async restartSession(_provider?: string | null) {
+        return this.hermesProvider.restartSession();
     }
 
     async rebindHermesSession() {
         return this.hermesProvider.rebindSession();
     }
 
-    async syncWahaSession(provider?: string | null) {
-        if (this.resolveProvider(provider) === 'hermes') {
-            return this.hermesProvider.syncSession();
-        }
-        return this.wahaClient.syncStuckSession();
+    async syncSession(_provider?: string | null) {
+        return this.hermesProvider.syncSession();
     }
 
-    async getWahaAuthQr(session?: string, provider?: string | null) {
-        if (this.resolveProvider(provider) === 'hermes') {
-            return this.hermesProvider.getAuthQr();
-        }
-        const st = await this.wahaClient.getSessionStatus(session);
-        if (!st) {
-            return {
-                available: false,
-                imageBase64: null,
-                mimetype: null,
-                qr: null,
-                error: 'WAHA tidak reachable — pastikan container waha berjalan',
-            };
-        }
-        if (st.connected) {
-            return {
-                available: false,
-                imageBase64: null,
-                mimetype: null,
-                qr: null,
-                error: null,
-                connected: true,
-            };
-        }
-        const qr = await this.wahaClient.getAuthQr(session);
-        if (!qr) {
-            return {
-                available: false,
-                imageBase64: null,
-                mimetype: null,
-                qr: null,
-                error: 'QR belum tersedia — klik Mulai sesi atau tunggu beberapa detik',
-            };
-        }
-        return {
-            available: true,
-            imageBase64: qr.data,
-            mimetype: qr.mimetype,
-            qr: null,
-            error: null,
-        };
+    async getAuthQr(_session?: string, _provider?: string | null) {
+        return this.hermesProvider.getAuthQr();
     }
 
-    async startWahaSession(session?: string, provider?: string | null) {
-        if (this.resolveProvider(provider) === 'hermes') {
-            return this.hermesProvider.startSession();
-        }
-        return this.wahaClient.ensureSessionStarted(session);
+    async startSession(_session?: string, _provider?: string | null) {
+        return this.hermesProvider.startSession();
     }
 
-    async logoutWahaSession(session?: string, provider?: string | null) {
-        if (this.resolveProvider(provider) === 'hermes') {
-            return this.hermesProvider.logoutSession();
-        }
-        return this.wahaClient.logoutSession(session);
+    async logoutSession(_session?: string, _provider?: string | null) {
+        return this.hermesProvider.logoutSession();
     }
 
     async handleWebhook(body: Record<string, unknown>, session?: string): Promise<void> {
@@ -469,7 +415,7 @@ export class StudioWhatsAppService {
 
     /**
      * Admin simulator: same decision tree as real WA inbound (guided / handleMessage / RAG),
-     * without sending via WAHA. Session chatId is `sim:{tenant}:{phone}` so it won't clash with live WA.
+     * without sending live WhatsApp. Session chatId is `sim:{tenant}:{phone}` so it won't clash with live WA.
      */
     async simulateInboundMessage(params: {
         tenantId: string;
@@ -726,7 +672,7 @@ export class StudioWhatsAppService {
         const body = String(payload.body || payload.caption || '').trim();
         if (body) parts.push(body);
 
-        const hasMedia = wahaPayloadHasMedia(payload);
+        const hasMedia = whatsappPayloadHasMedia(payload);
         const messageId = String(payload.id || '');
         if (hasMedia && messageId) {
             const media = await this.waTransport.downloadMedia(messageId, session);

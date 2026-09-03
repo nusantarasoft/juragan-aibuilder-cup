@@ -21,7 +21,6 @@ const DB_FIELDS = [
     "ollama_base_url",
     "ollama_model",
     "ollama_embedding_model",
-    "waha_dashboard_url",
 ] as const;
 
 export function buildSavePayload(values: StudioSettingsFormValues): Record<string, unknown> {

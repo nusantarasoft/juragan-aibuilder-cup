@@ -31,7 +31,6 @@ export interface StudioSettingsRow {
     ollama_base_url: string;
     ollama_model: string;
     ollama_embedding_model?: string;
-    waha_dashboard_url: string;
     created_at?: string;
     updated_at?: string;
 }
@@ -64,7 +63,6 @@ export interface StudioAiStatus {
     embeddingProvider: EmbeddingProvider;
     embeddingModel: string;
     providers: ProviderReadiness[];
-    wahaDashboardUrl: string;
 }
 
 export interface AiConnectionTestResult {
@@ -89,7 +87,6 @@ export const DEFAULT_STUDIO_SETTINGS: StudioSettingsRow = {
     ollama_base_url: 'http://127.0.0.1:11434',
     ollama_model: 'llama3',
     ollama_embedding_model: 'nomic-embed-text',
-    waha_dashboard_url: 'http://127.0.0.1:3010/dashboard',
 };
 
 const SECRET_FIELDS = [
@@ -120,7 +117,6 @@ export const STUDIO_SETTINGS_DB_FIELDS = [
     'ollama_base_url',
     'ollama_model',
     'ollama_embedding_model',
-    'waha_dashboard_url',
 ] as const;
 
 export type StudioSettingsUpdatePayload = Partial<

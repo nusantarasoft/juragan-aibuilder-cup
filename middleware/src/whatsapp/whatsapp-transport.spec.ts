@@ -1,37 +1,13 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { HermesProvider } from './hermes.provider';
-import { WahaProvider } from './waha.provider';
 import { resolveWhatsAppProviderId } from './whatsapp-provider.module';
 
 describe('resolveWhatsAppProviderId', () => {
-    it('defaults to waha', () => {
-        expect(resolveWhatsAppProviderId(undefined)).toBe('waha');
-        expect(resolveWhatsAppProviderId('')).toBe('waha');
-        expect(resolveWhatsAppProviderId('WAHA')).toBe('waha');
-    });
-    it('accepts hermes', () => {
+    it('always returns hermes', () => {
+        expect(resolveWhatsAppProviderId(undefined)).toBe('hermes');
+        expect(resolveWhatsAppProviderId('')).toBe('hermes');
+        expect(resolveWhatsAppProviderId('waha')).toBe('hermes');
         expect(resolveWhatsAppProviderId('hermes')).toBe('hermes');
-        expect(resolveWhatsAppProviderId('Hermes')).toBe('hermes');
-    });
-});
-
-describe('WahaProvider', () => {
-    it('delegates sendText and phoneToChatId', async () => {
-        const waha = {
-            defaultSession: 'default',
-            phoneToChatId: (p: string) => `${p}@c.us`,
-            sendText: vi.fn(async () => ({ success: true })),
-            sendButtons: vi.fn(),
-            sendList: vi.fn(),
-            downloadMedia: vi.fn(),
-            baseUrl: 'http://waha:3000',
-            apiKey: '',
-        };
-        const p = new WahaProvider(waha as any);
-        expect(p.providerId).toBe('waha');
-        expect(p.phoneToChatId('6281')).toBe('6281@c.us');
-        await p.sendText('6281@c.us', 'hi');
-        expect(waha.sendText).toHaveBeenCalledWith('6281@c.us', 'hi', undefined);
     });
 });
 

@@ -83,10 +83,10 @@ Root `.env` / `middleware/.env`:
 # Database (sesuaikan dengan docker compose Anda)
 DATABASE_URL=postgresql://supabase_admin:...@localhost:5432/nusantarasoft
 
-# WhatsApp / WAHA
-WAHA_API_KEY=your-api-key
-WAHA_SESSION=default
-WAHA_WEBHOOK_HMAC_KEY=your-webhook-secret
+# WhatsApp / Hermes
+WHATSAPP_PROVIDER=hermes
+HERMES_BRIDGE_URL=http://hermes:8765
+WHATSAPP_WEBHOOK_HMAC_KEY=your-webhook-secret
 
 # AI (opsional, untuk parsing pesan kompleks)
 ANTHROPIC_API_KEY=sk-ant-...
@@ -112,7 +112,7 @@ Get-Content .\supabase\studio_sales_seed.sql -Raw | docker exec -i postgres psql
 ### 3. Jalankan layanan
 
 ```powershell
-docker compose up -d postgres waha
+docker compose up -d postgres hermes
 cd middleware
 npm install
 npm run start:dev
