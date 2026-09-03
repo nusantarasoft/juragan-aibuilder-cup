@@ -678,7 +678,7 @@ export class StudioResolver {
         @Args('enabled', { type: () => Boolean }) enabled: boolean,
         @Args('allowlistPhones', { type: () => [String], nullable: true }) allowlistPhones: string[],
         @Args('useGuidedFlow', { type: () => Boolean, nullable: true }) useGuidedFlow: boolean,
-        @Args('wahaSession', { type: () => String, nullable: true }) wahaSession: string,
+        @Args('sessionName', { type: () => String, nullable: true }) sessionName: string,
         @Args('businessPhone', { type: () => String, nullable: true }) businessPhone: string,
         @Args('label', { type: () => String, nullable: true }) label: string,
     ) {
@@ -692,7 +692,7 @@ export class StudioResolver {
                 enabled,
                 allowlistPhones: allowlistPhones ?? [],
                 useGuidedFlow: useGuidedFlow ?? false,
-                wahaSession: wahaSession ?? undefined,
+                sessionName: sessionName ?? undefined,
                 businessPhone: businessPhone ?? undefined,
                 label: label ?? undefined,
             },

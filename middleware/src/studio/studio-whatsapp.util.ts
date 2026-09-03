@@ -1,6 +1,6 @@
 export type StudioWhatsAppConfigLookup = {
     tenant_id: string;
-    waha_session?: string | null;
+    session_name?: string | null;
     /** Nomor pemilik UMKM (pengirim ke inbox admin). */
     business_phone?: string | null;
     allowlist_phones?: string[] | null;
@@ -120,13 +120,13 @@ export function pickSingleTenantFallback(
 /** @deprecated Use pickTenantConfigBySenderPhone for shared inbox. */
 export function pickWhatsAppConfigForWebhook(
     configs: StudioWhatsAppConfigLookup[],
-    wahaSession: string,
+    sessionName: string,
     businessPhone?: string | null,
 ): StudioWhatsAppConfigLookup | null {
-    const sessionKey = wahaSession.trim().toLowerCase();
+    const sessionKey = sessionName.trim().toLowerCase();
     if (sessionKey) {
         const bySession = configs.filter(
-            (c) => (c.waha_session || 'default').trim().toLowerCase() === sessionKey,
+            (c) => (c.session_name || 'default').trim().toLowerCase() === sessionKey,
         );
         if (bySession.length === 1) return bySession[0];
     }

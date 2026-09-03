@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
 
 /**
- * Focused tests for WA simulator entry — shared inbound pipeline without WAHA send.
+ * Focused tests for WA simulator entry — shared inbound pipeline without live transport send.
  */
 describe('StudioWhatsAppService.simulateInboundMessage', () => {
     const getConfig = vi.fn();

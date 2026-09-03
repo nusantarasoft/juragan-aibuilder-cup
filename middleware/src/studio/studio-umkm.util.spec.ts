@@ -115,7 +115,7 @@ describe('studio-umkm.util', () => {
         expect(detectUmkmConfirmReply('Ya, simpan')).toBeNull();
     });
 
-    it('maps WAHA button taps to confirm/cancel without treating them as a new sale', () => {
+    it('maps WhatsApp button taps to confirm/cancel without treating them as a new sale', () => {
         expect(extractUmkmButtonReply({ selectedButtonId: 'umkm_ya' })).toBe('confirm');
         expect(extractUmkmButtonReply({ selectedButtonId: 'umkm_batal' })).toBe('cancel');
         expect(

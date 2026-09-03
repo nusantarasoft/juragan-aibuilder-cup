@@ -1,5 +1,5 @@
 /**
- * PO scenarios — Simulasi chat WA (tanpa WAHA), coverage penuh pipeline inbound.
+ * PO scenarios — Simulasi chat WA (tanpa transport live), coverage penuh pipeline inbound.
  *
  * Target 100% statements/branches pada:
  *   - simulateInboundMessage
@@ -55,7 +55,7 @@ function makeSim(opts?: SimOpts) {
     const configRow = {
         tenant_id: TENANT,
         notebook_id: notebookId,
-        waha_session: 'default',
+        session_name: 'default',
         business_phone: null as string | null,
         label: 'Toko Sim',
         enabled,
@@ -169,7 +169,7 @@ function makeSim(opts?: SimOpts) {
         }),
     };
 
-    const wahaSend = vi.fn(async () => ({ success: true }));
+    const transportSend = vi.fn(async () => ({ success: true }));
     const studioChat = vi.fn(async () => ({ answer: 'RAG-FALLBACK', conversationId: 'c-rag' }));
     const startGuidedSession = vi.fn(async () => guidedStart);
     const guidedChatTurn = vi.fn(async () => ({
@@ -192,7 +192,7 @@ function makeSim(opts?: SimOpts) {
         {
             providerId: 'hermes',
             defaultSession: 'default',
-            sendText: wahaSend,
+            sendText: transportSend,
             sendButtons: vi.fn(async () => ({ success: false })),
             sendList: vi.fn(async () => ({ success: false })),
             phoneToChatId: (p: string) => `${p}@c.us`,
@@ -265,7 +265,7 @@ function makeSim(opts?: SimOpts) {
         core,
         createItem,
         createStockMovement,
-        wahaSend,
+        transportSend,
         studioChat,
         sessions,
         startGuidedSession,
@@ -642,13 +642,13 @@ describe('PO — simulasi WA: apple-to-apple & isolasi', () => {
         expect(direct).toMatch(/Konfirmasi penjualan/i);
     });
 
-    it('A2: tidak pernah memanggil WAHA sendText', async () => {
-        const { chat, wahaSend } = makeSim();
+    it('A2: tidak pernah memanggil transport sendText', async () => {
+        const { chat, transportSend } = makeSim();
         await chat('jual 1 bakso');
         await chat('ya');
         await chat('cek stok semua');
         await chat('bantuan');
-        expect(wahaSend).not.toHaveBeenCalled();
+        expect(transportSend).not.toHaveBeenCalled();
     });
 
     it('A3: session sticky + phone isolasi', async () => {

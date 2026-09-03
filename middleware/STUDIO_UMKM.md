@@ -14,7 +14,7 @@ Modul ini mengubah AI Studio menjadi **asisten penjualan UMKM** lewat WhatsApp:
 
 ```
 UMKM (WhatsApp)
-    → WAHA webhook
+    → Hermes webhook
     → StudioWhatsAppService
         ├─ umkm_mode=true  → StudioUmkmService.handleMessage()  ← produk UMKM
         │     ├─ greeting → welcome cheat-sheet (*7* when pendamping ON)
@@ -63,13 +63,13 @@ Intent internal ↔ label AIDLC:
 
 Matcher `kind: sale` (`ada yang beli` / `tadi beli`) memaksa catat penjualan. Matcher juga **punya job jelas** omzet / cek stok / daftar / belanja (frasa DEFAULT + ekstra sepupu seperti `barang apa aja`, `etalase`, `sisa [barang]`, `masih ada berapa`) — stamp notebook tidak bisa menyembunyikannya. Keyword stamp tetap **union** ke DEFAULT sebagai alias tambahan. Help/ask tetap dijalankan sebelum matcher. Bare `yang beli` bukan cousin-sale. `berapa yang beli …` adalah **laporan** (`sales_report`), bukan jual dan bukan help. Mixed `beli` tetap klarifikasi.
 
-Preview jual/belanja di WhatsApp live mencoba tombol native, lalu **list** GOWS/NOWEB (**Ya, simpan** / **Batal**). Tap `umkm_ya`/`umkm_batal` dipetakan ke `ya`/`batal`. Ketik tetap jalan. Kalau WAHA menolak keduanya, bot jatuh ke teks.
+Preview jual/belanja di WhatsApp live mencoba tombol native, lalu **list** GOWS/NOWEB (**Ya, simpan** / **Batal**). Tap `umkm_ya`/`umkm_batal` dipetakan ke `ya`/`batal`. Ketik tetap jalan. Kalau transport menolak keduanya, bot jatuh ke teks.
 
 ## Setup aplikasi (step by step)
 
 ### Prasyarat
 
-- Docker: Postgres, WAHA, middleware
+- Docker: Postgres, Hermes, middleware
 - Tabel e-commerce: `supabase/ecommerce_schema.sql`
 - View penjualan: `middleware/sql/studio_sales_views.sql`
 - Tabel WhatsApp: `middleware/sql/studio_whatsapp.sql`
@@ -126,7 +126,7 @@ npm install
 npm run dev
 ```
 
-### 4. Pair WhatsApp (WAHA)
+### 4. Pair WhatsApp (Hermes)
 
 1. Buka http://localhost:3010/dashboard
 2. Start session `default` → scan QR
@@ -376,7 +376,7 @@ Unit test: `studio-umkm.util.spec.ts` (intent, parsing, guide flow graph).
 | "belum bisa memahami penjualan" | Gunakan format contoh; set `ANTHROPIC_API_KEY` |
 | Preview muncul tapi order tidak tersimpan | Balas `ya` dalam 15 menit |
 | Laporan selalu 0 | Pastikan `studio_sales_views.sql` terpasang; catat + konfirmasi dulu |
-| WA tidak membalas | Cek allowlist, WAHA status WORKING, notebook_id di config |
+| WA tidak membalas | Cek allowlist, Hermes session status, notebook_id di config |
 | Order tidak muncul di laporan | View filter `tenant_id=default`; sesuaikan `context_config.tenant_id` |
 | Stok selalu 0 | Isi `inv_stock_ledger` untuk `item_id` terkait |
 
@@ -392,7 +392,7 @@ Unit test: `studio-umkm.util.spec.ts` (intent, parsing, guide flow graph).
 - **Feedback logging** — ketik `nilai 1–5` / `4/5` / `puas` / `kurang` → tabel `studio_umkm_feedback` (angka polos `1–5` = menu CS, bukan rating)
 - **Potong stok otomatis** — `SALE_OUT` via `InventoryService` saat commit (item match katalog)
 - **Laporan harian cron** — `StudioUmkmCronService` pukul 13:00 UTC (~20:00 WIB); matikan dengan `STUDIO_UMKM_DAILY_REPORT_ENABLED=false`
-- **WhatsApp via WAHA** — inbound webhook + outbound `sendText` (tidak memakai Meta Cloud API)
+- **WhatsApp via Hermes** — inbound webhook + outbound `sendText` (tidak memakai Meta Cloud API)
 
 ```env
 STUDIO_UMKM_DAILY_REPORT_ENABLED=true
@@ -405,6 +405,6 @@ Get-Content .\middleware\sql\studio_umkm_feedback.sql -Raw | docker exec -i post
 
 ## Referensi
 
-- [STUDIO_WHATSAPP.md](./STUDIO_WHATSAPP.md) — WAHA & webhook
+- [STUDIO_WHATSAPP.md](./STUDIO_WHATSAPP.md) — Hermes & webhook
 - [STUDIO_DB_CONTEXT.md](./STUDIO_DB_CONTEXT.md) — view penjualan untuk chat
 - [STUDIO_GUIDED_CHAT.md](./STUDIO_GUIDED_CHAT.md) — guide flow umum

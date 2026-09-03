@@ -14,8 +14,6 @@ KASIR_WHATSAPP_WEBHOOK_URL=http://middleware:4001/api/studio/whatsapp/webhook
 KASIR_PIPE_SESSION=hermes
 ```
 
-Legacy alias (masih dibaca sebagai fallback): `WAHA_WEBHOOK_HMAC_KEY`.
-
 ### 2. Docker
 
 ```bash
@@ -34,6 +32,6 @@ docker compose up -d hermes middleware
 
 ## Catatan skema
 
-Kolom DB `studio_whatsapp_config.waha_session` masih dipakai sebagai nama sesi/inbox legacy (biasanya `default` / `hermes`). Tidak merujuk ke layanan WAHA.
+Kolom DB `studio_whatsapp_config.session_name` menyimpan nama sesi/inbox (biasanya `default` / `hermes`).
 
 Lihat juga: `docs/hermes-local.md`, `docs/deploy-master-production.md`.

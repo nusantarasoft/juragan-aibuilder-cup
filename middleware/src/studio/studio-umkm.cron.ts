@@ -103,7 +103,7 @@ export class StudioUmkmCronService {
                     const ok = await this.whatsappService.sendOutboundText(
                         phone,
                         header + report,
-                        cfg.waha_session || undefined,
+                        cfg.session_name || undefined,
                     );
                     if (ok) sent += 1;
                 }

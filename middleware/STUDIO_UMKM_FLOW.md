@@ -4,7 +4,7 @@ Dokumen ini menjelaskan **alur bisnis** (UMKM), **alur setup** (admin), dan **al
 
 Dokumen terkait:
 - [STUDIO_UMKM.md](./STUDIO_UMKM.md) — setup & konfigurasi
-- [STUDIO_WHATSAPP.md](./STUDIO_WHATSAPP.md) — WAHA & webhook
+- [STUDIO_WHATSAPP.md](./STUDIO_WHATSAPP.md) — Hermes & webhook
 - [STUDIO_GUIDED_CHAT.md](./STUDIO_GUIDED_CHAT.md) — guide flow umum
 
 ---
@@ -15,7 +15,7 @@ Dokumen terkait:
 |-------|-------|
 | **UMKM** | Pemilik/staff toko; pakai WhatsApp sehari-hari |
 | **Admin** | Setup sekali: notebook, WA, allowlist |
-| **WAHA** | Jembatan WhatsApp Web ↔ HTTP API |
+| **Hermes** | Jembatan WhatsApp Web ↔ HTTP API |
 | **Middleware** | NestJS: webhook, guide flow, parsing, DB |
 | **Postgres** | `ecom_orders` (tulis), `v_studio_sales_*` (baca) |
 
@@ -93,7 +93,7 @@ Di **Admin → UMKM Penjualan WA → Edit**:
 
 1. Atur digit menu / keyword (termasuk **Cek stok**).
 2. **Preview perintah** — ketik contoh teks → **Cek intent** memanggil GraphQL `studioPreviewUmkmIntent` (matcher sama `detectUmkmIntent` di middleware).
-3. **Coba di Simulasi** — Simpan dulu, lalu buka Simulasi chat dengan composer terisi (kirim manual). Pipeline sama inbound WA tanpa WAHA.
+3. **Coba di Simulasi** — Simpan dulu, lalu buka Simulasi chat dengan composer terisi (kirim manual). Pipeline sama inbound WA tanpa kirim live.
 
 ---
 
@@ -102,7 +102,7 @@ Di **Admin → UMKM Penjualan WA → Edit**:
 ```mermaid
 flowchart LR
     A1[DB: ecom + sales views + wa config]
-    A2[Pair WAHA QR]
+    A2[Pair Hermes QR]
     A3[Buat / pilih notebook]
     A4[studioSetupUmkmNotebook]
     A5[Config WhatsApp: notebook + allowlist, use_guided_flow false]
@@ -115,11 +115,11 @@ flowchart LR
 | Step | Apa yang terjadi | Output |
 |------|------------------|--------|
 | 1 | Jalankan SQL schema & view | Tabel `ecom_orders`, view `v_studio_sales_today` |
-| 2 | Pair WAHA | Session `WORKING`, nomor bisnis aktif |
+| 2 | Pair Hermes | Session aktif, nomor bisnis aktif |
 | 3 | Notebook AI Studio | UUID notebook |
 | 4 | `studioSetupUmkmNotebook` | `umkm_mode: true` (default **tidak** publish Guide Flow) |
 | 5 | `updateStudioWhatsAppConfig` | `enabled`, `allowlist_phones`, `use_guided_flow: false` |
-| 6 | Admin: Preview intent + **Simulasi chat** (opsional) | Konfirmasi mapping perintah tanpa WAHA |
+| 6 | Admin: Preview intent + **Simulasi chat** (opsional) | Konfirmasi mapping perintah tanpa kirim live |
 | 7 | Kirim `bantuan` / `0` dari HP | Welcome UMKM + menu |
 
 ---
@@ -130,7 +130,7 @@ flowchart LR
 sequenceDiagram
     participant U as UMKM (HP)
     participant WA as WhatsApp
-    participant WH as WAHA
+    participant WH as Hermes
     participant MW as StudioWhatsAppService
     participant GF as GuideFlowService
     participant UK as StudioUmkmService
@@ -456,7 +456,7 @@ flowchart LR
 
 | Gejala | Titik alur yang gagal | Solusi |
 |--------|----------------------|--------|
-| Tidak ada balasan | Webhook / WAHA tidak WORKING | Cek dashboard WAHA, webhook URL |
+| Tidak ada balasan | Webhook / Hermes session down | Cek dashboard Hermes, webhook URL |
 | Drop tanpa balasan | Allowlist | Tambah nomor atau kosongkan di dev |
 | Welcome lama (RAG) | Guide flow bukan UMKM | `studioSetupUmkmNotebook` + publish |
 | Error "not bound to guide flow" | Sesi lama + flow baru | Kirim pesan lagi (auto-restart) atau hapus session |
@@ -470,7 +470,7 @@ flowchart LR
 ```mermaid
 flowchart TB
     subgraph Setup["Setup (sekali)"]
-        S1[SQL + WAHA pair]
+        S1[SQL + Hermes pair]
         S2[studioSetupUmkmNotebook]
         S3[updateStudioWhatsAppConfig]
         S1 --> S2 --> S3

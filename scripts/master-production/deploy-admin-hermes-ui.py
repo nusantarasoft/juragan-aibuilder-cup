@@ -86,7 +86,7 @@ run(
     "docker exec nsoft3-middleware node -e \"console.log('provider', process.env.WHATSAPP_PROVIDER)\""
 )
 run('docker exec nsoft3-hermes curl -sS http://127.0.0.1:8765/pair/status || true')
-run("docker ps -a --filter name=nsoft3-waha --format '{{.Names}} {{.Status}}' || echo 'no waha container'")
+run("docker ps -a --filter name=nsoft3-waha --format '{{.Names}} {{.Status}}' || echo 'no legacy container'")
 
-print("\nDONE: admin rebuilt with Hermes UI; WAHA container should stay gone.", flush=True)
+print("\nDONE: admin rebuilt with Hermes UI; legacy WhatsApp container should stay gone.", flush=True)
 c.close()

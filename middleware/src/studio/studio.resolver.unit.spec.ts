@@ -596,7 +596,7 @@ describe('StudioResolver — whatsapp/umkm', () => {
         expect(h.whatsAppService.updateConfig).toHaveBeenCalledWith(
             {
                 notebookId: null, enabled: true, allowlistPhones: [], useGuidedFlow: false,
-                wahaSession: undefined, businessPhone: undefined, label: undefined,
+                sessionName: undefined, businessPhone: undefined, label: undefined,
             },
             undefined,
         );
@@ -611,7 +611,7 @@ describe('StudioResolver — whatsapp/umkm', () => {
         expect(h.whatsAppService.updateConfig).toHaveBeenCalledWith(
             {
                 notebookId: 'nb-1', enabled: true, allowlistPhones: ['62812'], useGuidedFlow: true,
-                wahaSession: 'sess', businessPhone: '62800', label: 'Toko',
+                sessionName: 'sess', businessPhone: '62800', label: 'Toko',
             },
             't1',
         );

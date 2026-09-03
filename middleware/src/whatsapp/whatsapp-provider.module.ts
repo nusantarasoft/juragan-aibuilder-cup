@@ -3,7 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HermesProvider } from './hermes.provider';
 import { WHATSAPP_TRANSPORT, WhatsAppTransport } from './whatsapp-transport.types';
 
-/** Sole production transport is Hermes (WAHA removed). */
+/** Sole production WhatsApp transport is Hermes. */
 export function resolveWhatsAppProviderId(_raw?: string): 'hermes' {
     return 'hermes';
 }

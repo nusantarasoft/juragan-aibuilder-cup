@@ -121,7 +121,7 @@ function WhatsAppGatewayPageContent() {
                     enabled: cfg.enabled,
                     allowlistPhones: cfg.allowlist_phones || [],
                     useGuidedFlow: cfg.use_guided_flow,
-                    wahaSession: cfg?.waha_session ?? '',
+                    sessionName: cfg?.session_name ?? '',
                     businessPhone: cfg.business_phone || '',
                     label: cfg.label || '',
                 });
@@ -270,7 +270,7 @@ function WhatsAppGatewayPageContent() {
                 enabled: values.enabled,
                 allowlistPhones: values.allowlistPhones || [],
                 useGuidedFlow: values.useGuidedFlow,
-                wahaSession: 'default',
+                sessionName: 'default',
                 businessPhone: values.businessPhone?.replace(/\D/g, '') || null,
                 label: values.label || null,
             });
@@ -423,7 +423,7 @@ function WhatsAppGatewayPageContent() {
                                         </Form.Item>
                                     </Col>
                                     <Col xs={24} sm={12}>
-                                        <Form.Item name="wahaSession" label="Nama Sesi (legacy)">
+                                        <Form.Item name="sessionName" label="Nama Sesi">
                                             <Input placeholder="default" disabled />
                                         </Form.Item>
                                     </Col>

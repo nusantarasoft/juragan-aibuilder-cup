@@ -52,9 +52,4 @@ describe('verifyWebhookHmac fail-closed', () => {
         const svc = makeService({ WHATSAPP_WEBHOOK_HMAC_KEY: key });
         expect(() => svc.verifyWebhookHmac(raw, sig)).not.toThrow();
     });
-
-    it('accepts legacy WAHA_WEBHOOK_HMAC_KEY env', () => {
-        const svc = makeService({ WAHA_WEBHOOK_HMAC_KEY: 'secret' });
-        expect(() => svc.verifyWebhookHmac(Buffer.from('{}'))).toThrow(UnauthorizedException);
-    });
 });

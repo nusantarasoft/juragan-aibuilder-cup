@@ -21,7 +21,7 @@ for line in p.read_text(encoding="utf-8").splitlines():
     k, v = line.split("=", 1)
     env[k.strip()] = v.strip().strip('"').strip("'")
 
-# Paths relative to repo root to ship (WAHA purge + Hermes-only GraphQL)
+# Paths relative to repo root to ship (Hermes-only GraphQL)
 INCLUDE = [
     "docker-compose.master-production.yml",
     ".env.master-production.example",
@@ -95,15 +95,8 @@ sftp.close()
 tar_path.unlink(missing_ok=True)
 
 run(f"cd {REMOTE} && tar xzf .tmp-hermes-purge.tar.gz && rm -f .tmp-hermes-purge.tar.gz")
-# Remove deleted WAHA Nest module if still on server
-run(f"rm -rf {REMOTE}/middleware/src/waha")
-run(
-    f"rm -f {REMOTE}/middleware/src/whatsapp/waha.provider.ts "
-    f"{REMOTE}/middleware/src/whatsapp/hermes-to-waha-webhook.normalizer.ts "
-    f"{REMOTE}/middleware/src/whatsapp/hermes-to-waha-webhook.normalizer.spec.ts"
-)
 
-# Ensure HMAC env: copy legacy → new key if missing
+# Ensure HMAC env present
 run(
     f"""python3 - <<'PY'
 from pathlib import Path
@@ -115,14 +108,9 @@ for line in lines:
     if '=' in line and not line.strip().startswith('#'):
         k,v = line.split('=',1)
         vals[k.strip()] = v.strip()
-legacy = vals.get('WAHA_WEBHOOK_HMAC_KEY','')
 new = vals.get('WHATSAPP_WEBHOOK_HMAC_KEY','')
 changed = False
-if legacy and not new:
-    lines.append('WHATSAPP_WEBHOOK_HMAC_KEY=' + legacy)
-    changed = True
-    print('added WHATSAPP_WEBHOOK_HMAC_KEY from legacy')
-elif new:
+if new:
     print('WHATSAPP_WEBHOOK_HMAC_KEY already set')
 else:
     print('WARN: no HMAC key found')
@@ -149,8 +137,7 @@ code, _ = run(
 run(
     "docker exec nsoft3-middleware node -e "
     "\"console.log('provider='+process.env.WHATSAPP_PROVIDER);"
-    "console.log('hmac_new='+(process.env.WHATSAPP_WEBHOOK_HMAC_KEY?'set':'empty'));"
-    "console.log('hmac_legacy='+(process.env.WAHA_WEBHOOK_HMAC_KEY?'set':'empty'))\""
+    "console.log('hmac='+(process.env.WHATSAPP_WEBHOOK_HMAC_KEY?'set':'empty'))\""
 )
 run("docker exec nsoft3-hermes curl -sS http://127.0.0.1:8765/pair/status || true")
 

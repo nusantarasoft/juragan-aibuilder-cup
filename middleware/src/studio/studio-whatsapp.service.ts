@@ -54,7 +54,7 @@ export const UMKM_INBOUND_APOLOGY = 'Sistem sibuk, ketik ulang.';
 export type StudioWhatsAppConfigRow = {
     tenant_id: string;
     notebook_id: string | null;
-    waha_session: string | null;
+    session_name: string | null;
     business_phone: string | null;
     label: string | null;
     enabled: boolean;
@@ -107,18 +107,11 @@ export class StudioWhatsAppService {
     }
 
     verifyWebhookHmac(rawBody: Buffer, signatureHeader?: string): void {
-        const key =
-            this.configService.get('WHATSAPP_WEBHOOK_HMAC_KEY') ||
-            this.configService.get('WAHA_WEBHOOK_HMAC_KEY') ||
-            '';
+        const key = this.configService.get('WHATSAPP_WEBHOOK_HMAC_KEY') || '';
         if (!key) return;
         // Fail closed when key is set. Escape hatch for local/dev only.
         const allowMissing = ['1', 'true', 'yes'].includes(
-            String(
-                this.configService.get('WHATSAPP_WEBHOOK_HMAC_ALLOW_MISSING') ||
-                    this.configService.get('WAHA_WEBHOOK_HMAC_ALLOW_MISSING') ||
-                    '',
-            )
+            String(this.configService.get('WHATSAPP_WEBHOOK_HMAC_ALLOW_MISSING') || '')
                 .trim()
                 .toLowerCase(),
         );
@@ -165,7 +158,7 @@ export class StudioWhatsAppService {
     }
 
     async resolveConfigForWebhook(
-        wahaSession: string,
+        sessionName: string,
         senderPhone: string,
         payload?: Record<string, unknown>,
     ): Promise<StudioWhatsAppConfigRow | null> {
@@ -189,7 +182,7 @@ export class StudioWhatsAppService {
         if (payload) {
             extractBusinessPhoneFromPayload(payload);
         }
-        void wahaSession;
+        void sessionName;
         return null;
     }
 
@@ -252,7 +245,7 @@ export class StudioWhatsAppService {
             enabled: boolean;
             allowlistPhones: string[];
             useGuidedFlow: boolean;
-            wahaSession: string | null;
+            sessionName: string | null;
             businessPhone: string | null;
             label: string | null;
         }>,
@@ -288,10 +281,10 @@ export class StudioWhatsAppService {
         if (patch.enabled !== undefined) row.enabled = patch.enabled;
         if (patch.allowlistPhones !== undefined) row.allowlist_phones = patch.allowlistPhones;
         if (patch.useGuidedFlow !== undefined) row.use_guided_flow = patch.useGuidedFlow;
-        if (patch.wahaSession !== undefined) {
-            row.waha_session = patch.wahaSession?.trim() || 'default';
-        } else if (!existing?.waha_session) {
-            row.waha_session = 'default';
+        if (patch.sessionName !== undefined) {
+            row.session_name = patch.sessionName?.trim() || 'default';
+        } else if (!existing?.session_name) {
+            row.session_name = 'default';
         }
         if (patch.businessPhone !== undefined) {
             row.business_phone = patch.businessPhone
@@ -375,28 +368,28 @@ export class StudioWhatsAppService {
             return;
         }
 
-        const wahaSession = (session || String(body.session || '') || this.waTransport.defaultSession).trim();
+        const inboxSession = (session || String(body.session || '') || this.waTransport.defaultSession).trim();
         const phone = this.extractPhone(chatId);
 
-        const config = await this.resolveConfigForWebhook(wahaSession, phone, payload);
+        const config = await this.resolveConfigForWebhook(inboxSession, phone, payload);
         if (!config?.enabled || !config.notebook_id) {
             this.logger.warn(
-                `WA sender ${phone} not mapped to any UMKM tenant (shared inbox ${wahaSession})`,
+                `WA sender ${phone} not mapped to any UMKM tenant (shared inbox ${inboxSession})`,
             );
-            await this.sendReplyChunks(chatId, UNREGISTERED_SENDER_MESSAGE, wahaSession);
+            await this.sendReplyChunks(chatId, UNREGISTERED_SENDER_MESSAGE, inboxSession);
             return;
         }
 
         const tenantId = config.tenant_id;
         this.logger.log(
-            `WA inbound inbox=${wahaSession} tenant=${tenantId} sender=${phone}`,
+            `WA inbound inbox=${inboxSession} tenant=${tenantId} sender=${phone}`,
         );
 
         const buttonReply = extractUmkmButtonReply(payload);
         const question = stripWhatsAppMediaAnnotations(
             buttonReply
                 ? canonicalUmkmConfirmText(buttonReply)
-                : await this.buildQuestionFromPayload(payload, wahaSession),
+                : await this.buildQuestionFromPayload(payload, inboxSession),
         );
         if (!question.trim()) return;
 
@@ -410,7 +403,7 @@ export class StudioWhatsAppService {
             enforceRateLimit: true,
         });
 
-        await this.sendReplyChunks(chatId, result.answer, wahaSession);
+        await this.sendReplyChunks(chatId, result.answer, inboxSession);
     }
 
     /**

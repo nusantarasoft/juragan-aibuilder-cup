@@ -947,7 +947,7 @@ export const studioService = {
         enabled: boolean;
         allowlistPhones?: string[];
         useGuidedFlow?: boolean;
-        wahaSession?: string | null;
+        sessionName?: string | null;
         businessPhone?: string | null;
         label?: string | null;
     }): Promise<StudioWhatsAppConfig> {
@@ -958,7 +958,7 @@ export const studioService = {
                 $enabled: Boolean!
                 $allowlistPhones: [String!]
                 $useGuidedFlow: Boolean
-                $wahaSession: String
+                $sessionName: String
                 $businessPhone: String
                 $label: String
             ) {
@@ -968,7 +968,7 @@ export const studioService = {
                     enabled: $enabled
                     allowlistPhones: $allowlistPhones
                     useGuidedFlow: $useGuidedFlow
-                    wahaSession: $wahaSession
+                    sessionName: $sessionName
                     businessPhone: $businessPhone
                     label: $label
                 )
@@ -979,7 +979,7 @@ export const studioService = {
             enabled: params.enabled,
             allowlistPhones: params.allowlistPhones ?? [],
             useGuidedFlow: params.useGuidedFlow ?? false,
-            wahaSession: params.wahaSession ?? null,
+            sessionName: params.sessionName ?? null,
             businessPhone: params.businessPhone ?? null,
             label: params.label ?? null,
         });
@@ -1108,7 +1108,7 @@ export interface StudioUmkmSetupResult {
 export interface StudioWhatsAppConfig {
     tenant_id: string;
     notebook_id: string | null;
-    waha_session?: string | null;
+    session_name?: string | null;
     business_phone?: string | null;
     label?: string | null;
     enabled: boolean;

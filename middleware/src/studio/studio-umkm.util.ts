@@ -124,7 +124,7 @@ export function detectUmkmConfirmReply(
     return null;
 }
 
-/** WAHA reply-button ids for money confirm. Keep short; WhatsApp title max 20 chars. */
+/** WhatsApp reply-button ids for money confirm. Keep short; WhatsApp title max 20 chars. */
 export const UMKM_WA_CONFIRM_BUTTON_ID = 'umkm_ya';
 export const UMKM_WA_CANCEL_BUTTON_ID = 'umkm_batal';
 export const UMKM_WA_CONFIRM_BUTTON_TEXT = 'Ya, simpan';
@@ -199,7 +199,7 @@ function collectInteractiveTitles(value: unknown, depth = 0, out: string[] = [])
 }
 
 /**
- * Map a WAHA button/list tap to confirm/cancel. Canonical text `ya`/`batal` still
+ * Map a WhatsApp button/list tap to confirm/cancel. Canonical text `ya`/`batal` still
  * works via detectUmkmConfirmReply; this only reads interactive payload ids.
  */
 export function extractUmkmButtonReply(

@@ -242,7 +242,7 @@ export default function UmkmStudioPage() {
         form.setFieldsValue({
             enabled: true,
             useGuidedFlow: false,
-            wahaSession: 'default',
+            sessionName: 'default',
             ownerPhones: [],
             createNewNotebook: true,
         });
@@ -262,7 +262,7 @@ export default function UmkmStudioPage() {
             tenantId: row.tenant_id,
             // Match table display: fall back to tenant_id when label is empty
             label: row.label || row.tenant_id || '',
-            wahaSession: row.waha_session ?? '',
+            sessionName: row.session_name ?? '',
             ownerPhones: collectConfigOwnerPhones(row),
             notebookId: row.notebook_id ?? undefined,
             enabled: row.enabled,
@@ -324,7 +324,7 @@ export default function UmkmStudioPage() {
                 enabled: values.enabled,
                 useGuidedFlow: false,
                 allowlistPhones: ownerPhones,
-                wahaSession: 'default',
+                sessionName: 'default',
                 businessPhone: ownerPhones[0],
                 label: values.label || null,
             });
@@ -627,7 +627,7 @@ export default function UmkmStudioPage() {
                     >
                         <Input placeholder="umkm-warung-bu-ani" disabled={!!editing} />
                     </Form.Item>
-                    <Form.Item name="wahaSession" hidden initialValue="default">
+                    <Form.Item name="sessionName" hidden initialValue="default">
                         <Input />
                     </Form.Item>
                     <Form.Item

@@ -107,7 +107,7 @@ describe('shared inbox routing', () => {
     const configs = [
         {
             tenant_id: 'umkm-a',
-            waha_session: 'default',
+            session_name: 'default',
             business_phone: '6281111111111',
             allowlist_phones: [],
             enabled: true,
@@ -115,7 +115,7 @@ describe('shared inbox routing', () => {
         },
         {
             tenant_id: 'umkm-b',
-            waha_session: 'default',
+            session_name: 'default',
             business_phone: '6282222222222',
             allowlist_phones: ['6283333333333'],
             enabled: true,
@@ -186,42 +186,42 @@ describe('pickWhatsAppConfigForWebhook (deprecated)', () => {
 
     it('matches a unique session', () => {
         const configs = [
-            base({ tenant_id: 'a', waha_session: 'sess-a' }),
-            base({ tenant_id: 'b', waha_session: 'sess-b' }),
+            base({ tenant_id: 'a', session_name: 'sess-a' }),
+            base({ tenant_id: 'b', session_name: 'sess-b' }),
         ];
         expect(pickWhatsAppConfigForWebhook(configs, 'SESS-A')?.tenant_id).toBe('a');
     });
 
     it('falls through to business phone when session is ambiguous', () => {
         const configs = [
-            base({ tenant_id: 'a', waha_session: 'default', business_phone: '6281111111111' }),
-            base({ tenant_id: 'b', waha_session: 'default', business_phone: '6282222222222' }),
+            base({ tenant_id: 'a', session_name: 'default', business_phone: '6281111111111' }),
+            base({ tenant_id: 'b', session_name: 'default', business_phone: '6282222222222' }),
         ];
         expect(pickWhatsAppConfigForWebhook(configs, 'default', '6282222222222')?.tenant_id).toBe('b');
     });
 
     it('uses business phone when session key is blank', () => {
         const configs = [
-            base({ tenant_id: 'a', waha_session: 'default', business_phone: '6281111111111' }),
-            base({ tenant_id: 'b', waha_session: 'default', business_phone: '6282222222222' }),
+            base({ tenant_id: 'a', session_name: 'default', business_phone: '6281111111111' }),
+            base({ tenant_id: 'b', session_name: 'default', business_phone: '6282222222222' }),
         ];
         expect(pickWhatsAppConfigForWebhook(configs, '   ', '6281111111111')?.tenant_id).toBe('a');
     });
 
     it('falls back to single/default tenant when nothing else matches', () => {
-        const configs = [base({ tenant_id: 'default', waha_session: 'other' })];
+        const configs = [base({ tenant_id: 'default', session_name: 'other' })];
         expect(pickWhatsAppConfigForWebhook(configs, 'nomatch')?.tenant_id).toBe('default');
     });
 
-    it('treats missing waha_session as "default" when matching session', () => {
-        const configs = [base({ tenant_id: 'only', waha_session: null })];
+    it('treats missing session_name as "default" when matching session', () => {
+        const configs = [base({ tenant_id: 'only', session_name: null })];
         expect(pickWhatsAppConfigForWebhook(configs, 'default')?.tenant_id).toBe('only');
     });
 
     it('handles configs without business_phone and no phone match (fallback)', () => {
         const configs = [
-            base({ tenant_id: 'a', waha_session: 'shared', business_phone: null }),
-            base({ tenant_id: 'b', waha_session: 'shared', business_phone: null }),
+            base({ tenant_id: 'a', session_name: 'shared', business_phone: null }),
+            base({ tenant_id: 'b', session_name: 'shared', business_phone: null }),
         ];
         // ambiguous session + business phone with no match -> single/default fallback -> null
         expect(pickWhatsAppConfigForWebhook(configs, 'shared', '6289999999999')).toBeNull();

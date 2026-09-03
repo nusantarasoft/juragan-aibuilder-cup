@@ -1,11 +1,6 @@
 # Hermes Agent — WhatsApp transport (local + master-production)
 
-Hermes is the **sole** WhatsApp transport for UMKM kasir (Baileys + `kasir-pipe` pipe-only). WAHA has been removed from compose and production.
-
-Historical design notes (cutover complete):
-
-- [`docs/designs/waha-to-hermes-migration.md`](./designs/waha-to-hermes-migration.md) — **SUPERSEDED / COMPLETE**
-- [`docs/designs/waha-to-hermes-eng-review.md`](./designs/waha-to-hermes-eng-review.md) — **SUPERSEDED / COMPLETE**
+Hermes is the **sole** WhatsApp transport for UMKM kasir (Baileys + `kasir-pipe` pipe-only).
 
 Official Docker guide: [Hermes Docker docs](https://hermes-agent.nousresearch.com/docs/user-guide/docker)
 
@@ -44,7 +39,7 @@ Pair via Admin → WhatsApp Gateway (or Hermes dashboard QR).
 
 ## Production (`docker-compose.master-production.yml`)
 
-- Host public ports: `8090`, `3013`, `9010` only (no WAHA `:3011`)
+- Host public ports: `8090`, `3013`, `9010` only
 - Hermes binds `127.0.0.1` only (SSH tunnel)
 - `WHATSAPP_PROVIDER=hermes`
 - Volume: `./volumes/hermes` (creds). Do not delete `creds.json` / logout without explicit ask.

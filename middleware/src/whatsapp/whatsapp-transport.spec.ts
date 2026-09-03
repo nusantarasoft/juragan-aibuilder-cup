@@ -6,7 +6,7 @@ describe('resolveWhatsAppProviderId', () => {
     it('always returns hermes', () => {
         expect(resolveWhatsAppProviderId(undefined)).toBe('hermes');
         expect(resolveWhatsAppProviderId('')).toBe('hermes');
-        expect(resolveWhatsAppProviderId('waha')).toBe('hermes');
+        expect(resolveWhatsAppProviderId('anything')).toBe('hermes');
         expect(resolveWhatsAppProviderId('hermes')).toBe('hermes');
     });
 });

@@ -71,7 +71,7 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 
 ### Live WA isolated retest (spacing + cron)
 
-**What:** Re-run purchase (`beli 5 …` → belanja → ya), empty cousin-sale slots, `cek stok`, and `daftar barang` with ≥8s between turns. Ignore WAHA messages that start with `Laporan harian otomatis`.
+**What:** Re-run purchase (`beli 5 …` → belanja → ya), empty cousin-sale slots, `cek stok`, and `daftar barang` with ≥8s between turns. Ignore Hermes messages that start with `Laporan harian otomatis`.
 
 **Why:** /qa 2026-08-17 wrote two `ecom_orders` (2x and 3x indomie) but 0 purchases. Reply capture mixed cron reports; inbound rate limit fired twice. Ground truth is logs+DB, not the first fromMe body.
 
@@ -88,7 +88,7 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 
 **Why:** Text confirm is easy to mistype; native buttons are the WhatsApp-native confirm UX.
 
-**Context:** CEO 2026-08-17 intake plan D4.2 (was Aug 16 D4.1). Dual confirm stacks (Guide Flow vs durable pending sale) must stay on the durable `handleMessage` path. Start from WAHA send-message button payload + `detectUmkmConfirmReply`.
+**Context:** CEO 2026-08-17 intake plan D4.2 (was Aug 16 D4.1). Dual confirm stacks (Guide Flow vs durable pending sale) must stay on the durable `handleMessage` path. Start from WhatsApp send-message button payload + `detectUmkmConfirmReply`.
 
 **Effort:** M
 **Priority:** P2
@@ -125,15 +125,15 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 
 **Why:** Many pemilik toko speak faster than they type; nota photos are the real ledger.
 
-**Context:** CEO 2026-08-16 D4.4 deferred. Needs media pipeline (WAHA download already exists for inbound media annotations). Not a routing fix.
+**Context:** CEO 2026-08-16 D4.4 deferred. Needs media pipeline (Hermes download already exists for inbound media annotations). Not a routing fix.
 
 **Effort:** L
 **Priority:** P3
 **Depends on:** Kill-guide-flow PR; media ingest
 
-### Official WhatsApp Cloud API vs WAHA
+### Official WhatsApp Cloud API vs Hermes
 
-**What:** Optional official WhatsApp Business Cloud API path alongside unofficial WAHA.
+**What:** Optional official WhatsApp Business Cloud API path alongside unofficial Hermes/Baileys.
 
 **Why:** Ban-risk on unofficial stacks is real; Cloud API needs Meta app, templates, webhooks.
 

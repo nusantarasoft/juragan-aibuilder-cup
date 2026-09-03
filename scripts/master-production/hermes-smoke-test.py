@@ -39,12 +39,13 @@ def check(name: str, ok: bool, detail: str) -> None:
     print(f"{status} {name}: {detail[:240]}", flush=True)
 
 
-# No WAHA container
-ps = run("docker ps -a --format '{{.Names}} {{.Status}}' | grep -E 'waha|hermes|middleware|admin' || true")
+# Stack containers (legacy WhatsApp container name must not appear)
+ps = run("docker ps -a --format '{{.Names}} {{.Status}}'")
 print(ps, flush=True)
-check("no-waha-container", "nsoft3-waha" not in ps, ps.replace("\n", " | ")[:200])
+check("no-legacy-wa-container", "nsoft3-waha" not in ps, ps.replace("\n", " | ")[:200])
 check("hermes-up", "nsoft3-hermes" in ps and "Up" in ps, "hermes listed")
 check("middleware-up", "nsoft3-middleware" in ps, "middleware listed")
+check("admin-up", "nsoft3-admin" in ps, "admin listed")
 
 prov = run("docker exec nsoft3-middleware node -e \"console.log(process.env.WHATSAPP_PROVIDER)\"").strip()
 check("provider-hermes", prov == "hermes", prov)

@@ -8,7 +8,7 @@ Uses ``pre_gateway_dispatch`` to:
 
 Env (set on hermes container / ``volumes/hermes/.env``):
 - ``KASIR_WHATSAPP_WEBHOOK_URL`` — default ``http://middleware:4001/api/studio/whatsapp/webhook``
-- ``WHATSAPP_WEBHOOK_HMAC_KEY`` — same key middleware verifies (fallback: ``WAHA_WEBHOOK_HMAC_KEY``)
+- ``WHATSAPP_WEBHOOK_HMAC_KEY`` — same key middleware verifies
 - ``KASIR_PIPE_SESSION`` — webhook ``session`` field (default ``hermes``)
 - ``KASIR_PIPE_PLATFORMS`` — comma list; default ``whatsapp``
 """
@@ -41,12 +41,7 @@ def _webhook_url() -> str:
 
 
 def _hmac_key() -> str:
-    # Prefer WHATSAPP_WEBHOOK_HMAC_KEY; accept legacy WAHA_* during transition
-    return (
-        os.environ.get("WHATSAPP_WEBHOOK_HMAC_KEY")
-        or os.environ.get("WAHA_WEBHOOK_HMAC_KEY")
-        or ""
-    ).strip()
+    return (os.environ.get("WHATSAPP_WEBHOOK_HMAC_KEY") or "").strip()
 
 
 def _session_name() -> str:
@@ -87,7 +82,7 @@ def _selected_button_id(event: Any) -> Optional[str]:
     return None
 
 
-def _waha_shaped_body(event: Any) -> dict[str, Any]:
+def _webhook_body(event: Any) -> dict[str, Any]:
     chat_id = _chat_id(event)
     text = getattr(event, "text", None) or ""
     name = (
@@ -116,7 +111,7 @@ def _waha_shaped_body(event: Any) -> dict[str, Any]:
     button_id = _selected_button_id(event)
     if button_id:
         payload["selectedButtonId"] = button_id
-        # WAHA list replies sometimes nest under _data / listResponse — keep flat for extractUmkmButtonReply
+        # List replies sometimes nest under _data / listResponse — keep flat for extractUmkmButtonReply
     media_urls = list(getattr(event, "media_urls", None) or [])
     media_types = list(getattr(event, "media_types", None) or [])
     if media_urls:
@@ -172,7 +167,7 @@ def _on_pre_gateway_dispatch(event, gateway=None, session_store=None, **kwargs):
         if platform not in _platforms():
             return None
 
-        body = _waha_shaped_body(event)
+        body = _webhook_body(event)
         chat = body["payload"].get("from") or "?"
         status, detail = _post_signed(body)
         if status and 200 <= status < 300:
