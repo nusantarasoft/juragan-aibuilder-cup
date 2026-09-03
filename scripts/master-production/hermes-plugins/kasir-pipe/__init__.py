@@ -306,7 +306,14 @@ def _start_bridge_proxy() -> None:
                     data = resp.read()
                     self.send_response(resp.status)
                     for hk, hv in resp.headers.items():
-                        if hk.lower() in ("transfer-encoding", "connection", "content-encoding"):
+                        # Drop hop-by-hop + Content-Length — we set length from the
+                        # fully-buffered body (upstream may already send Content-Length).
+                        if hk.lower() in (
+                            "transfer-encoding",
+                            "connection",
+                            "content-encoding",
+                            "content-length",
+                        ):
                             continue
                         self.send_header(hk, hv)
                     self.send_header("Content-Length", str(len(data)))
