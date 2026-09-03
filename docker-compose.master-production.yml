@@ -5,7 +5,8 @@
 #   docker compose -f docker-compose.master-production.yml --env-file .env.master-production up -d --build
 #
 # Isolation guarantees (server already runs other apps):
-#   - Only 4 host ports published publicly: 8090 (nginx), 3013 (admin), 3011 (waha), 9010 (minio S3)
+#   - Host ports published publicly: 8090 (nginx), 3013 (admin), 9010 (minio S3)
+#   - WAHA :3011 only when profile `waha-rollback` is enabled (post-Hermes cutover default = off)
 #   - Hermes binds 127.0.0.1 only (SSH tunnel) — not on 31.97.66.39
 #   - All other services are internal-only (no host port)
 #   - Dedicated bridge network `nsoft3-net`
@@ -524,8 +525,8 @@ services:
       - WAHA_API_KEY=${WAHA_API_KEY:-}
       - WAHA_SESSION=${WAHA_SESSION:-default}
       - WAHA_WEBHOOK_HMAC_KEY=${WAHA_WEBHOOK_HMAC_KEY:-}
-      # WhatsApp transport (default waha until Phase 2+ cutover — see docs/designs/waha-to-hermes-migration.md)
-      - WHATSAPP_PROVIDER=${WHATSAPP_PROVIDER:-waha}
+      # WhatsApp transport — Hermes is live after cutover; WAHA only via profile waha-rollback
+      - WHATSAPP_PROVIDER=${WHATSAPP_PROVIDER:-hermes}
       - HERMES_BASE_URL=${HERMES_BASE_URL:-http://hermes:8642}
       - HERMES_BRIDGE_URL=${HERMES_BRIDGE_URL:-http://hermes:8765}
       - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
@@ -537,7 +538,7 @@ services:
     depends_on:
       - kong
       - minio
-      - waha
+      - hermes
     volumes:
       - ./volumes/google-credentials.json:/gcp/key.json:ro
     healthcheck:
@@ -623,7 +624,10 @@ services:
       retries: 5
       start_period: 60s
 
+  # Optional rollback only. Default stack runs Hermes; start with:
+  #   docker compose -f docker-compose.master-production.yml --profile waha-rollback up -d waha
   waha:
+    profiles: ["waha-rollback"]
     image: ${WAHA_IMAGE:-devlikeapro/waha:latest}
     container_name: nsoft3-waha
     restart: unless-stopped
@@ -669,8 +673,7 @@ services:
       retries: 5
       start_period: 45s
 
-  # Hermes Agent — Phase 1 sidecar (pipe-only probe). Does NOT replace WAHA until WHATSAPP_PROVIDER=hermes.
-  # Docs: docs/hermes-local.md (prod section) — pin tag; never bare :latest on prod.
+  # Hermes Agent — live WhatsApp transport (pipe-only kasir). Docs: docs/hermes-local.md
   hermes:
     image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.27}
     container_name: nsoft3-hermes

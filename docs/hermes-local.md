@@ -151,13 +151,27 @@ Use a **test phone**, never the pilot number still on WAHA.
 **Cutover (2026-09-03):** Hermes is the live WhatsApp transport.
 
 - Middleware `WHATSAPP_PROVIDER=hermes`; `HERMES_BRIDGE_URL=http://hermes:8765`
-- Number `62811924689` (Nusantarasoft) paired on Hermes; WAHA session `default` left **FAILED** (same number — expected). Container `nsoft3-waha` still up for rollback.
+- Number `62811924689` (Nusantarasoft) paired on Hermes; WAHA session `default` left **FAILED** (same number — expected).
 - Bridge allowlist `WHATSAPP_ALLOWED_USERS=*` so inbound reaches kasir-pipe; middleware production allowlist is the real gate. No LLM keys.
 - Adapter started `bridge.js` (`Bridge ready status: connected`). `GET /pair/status` → **WORKING**.
 - Outbound probe `POST /send` → `200 success` (HermesProvider path).
 - HMAC fail-closed unchanged. Pending sales/purchases were empty at flip.
 
-Rollback: set `WHATSAPP_PROVIDER=waha`, recreate middleware, restart WAHA session + re-QR if needed.
+**Disable WAHA (default after cutover):** compose puts `waha` behind profile `waha-rollback`. Middleware depends on `hermes`, not `waha`. Default `WHATSAPP_PROVIDER` in compose is `hermes`.
+
+```bash
+# Stop running WAHA (keeps waha-sessions volume for 7–14 days)
+docker stop nsoft3-waha
+
+# After deploy of profile flip, recreate stack without starting WAHA:
+docker compose -f docker-compose.master-production.yml --env-file .env.master-production up -d middleware hermes
+
+# Rollback: bring WAHA back
+docker compose -f docker-compose.master-production.yml --env-file .env.master-production --profile waha-rollback up -d waha
+# then set WHATSAPP_PROVIDER=waha, recreate middleware, re-QR if needed
+```
+
+Rollback: set `WHATSAPP_PROVIDER=waha`, start WAHA with `--profile waha-rollback`, recreate middleware, restart WAHA session + re-QR if needed.
 
 ### Notes
 
