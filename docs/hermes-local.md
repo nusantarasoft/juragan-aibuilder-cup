@@ -151,27 +151,24 @@ Use a **test phone**, never the pilot number still on WAHA.
 **Cutover (2026-09-03):** Hermes is the live WhatsApp transport.
 
 - Middleware `WHATSAPP_PROVIDER=hermes`; `HERMES_BRIDGE_URL=http://hermes:8765`
-- Number `62811924689` (Nusantarasoft) paired on Hermes; WAHA session `default` left **FAILED** (same number — expected).
+- Number `62811924689` (Nusantarasoft) paired on Hermes (`credsPresent`; `/pair/status` WORKING).
 - Bridge allowlist `WHATSAPP_ALLOWED_USERS=*` so inbound reaches kasir-pipe; middleware production allowlist is the real gate. No LLM keys.
-- Adapter started `bridge.js` (`Bridge ready status: connected`). `GET /pair/status` → **WORKING**.
-- Outbound probe `POST /send` → `200 success` (HermesProvider path).
+- Adapter started `bridge.js` (`Bridge ready status: connected`). Outbound `POST /send` → `200`.
 - HMAC fail-closed unchanged. Pending sales/purchases were empty at flip.
 
-**Disable WAHA (default after cutover):** compose puts `waha` behind profile `waha-rollback`. Middleware depends on `hermes`, not `waha`. Default `WHATSAPP_PROVIDER` in compose is `hermes`.
+**WAHA removed from running stack (2026-09-03):** container `nsoft3-waha` stopped + removed. Compose keeps `waha` only under profile `waha-rollback`. Volume `nsoft3-prod_waha-sessions` retained for rollback (do not delete for 7–14 days).
 
 ```bash
-# Stop running WAHA (keeps waha-sessions volume for 7–14 days)
-docker stop nsoft3-waha
+# Confirm Hermes-only
+docker ps --format '{{.Names}}' | grep -E 'waha|hermes'
+# → nsoft3-hermes only
 
-# After deploy of profile flip, recreate stack without starting WAHA:
-docker compose -f docker-compose.master-production.yml --env-file .env.master-production up -d middleware hermes
-
-# Rollback: bring WAHA back
+# Rollback if needed
 docker compose -f docker-compose.master-production.yml --env-file .env.master-production --profile waha-rollback up -d waha
 # then set WHATSAPP_PROVIDER=waha, recreate middleware, re-QR if needed
 ```
 
-Rollback: set `WHATSAPP_PROVIDER=waha`, start WAHA with `--profile waha-rollback`, recreate middleware, restart WAHA session + re-QR if needed.
+Ops script (from laptop): `python scripts/master-production/disable-waha-hermes-only.py`
 
 ### Notes
 
