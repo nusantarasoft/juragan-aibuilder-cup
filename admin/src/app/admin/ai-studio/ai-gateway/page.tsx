@@ -196,7 +196,7 @@ function WhatsAppGatewayPageContent() {
     const status = (sess?.status || 'UNKNOWN').toUpperCase();
     const needsQr = !connected && (status === 'SCAN_QR_CODE' || status === 'STARTING' || status === 'FAILED');
     const wahaUnreachable = !loading && sessionStatus?.session === null;
-    const businessPhone = sess?.meId?.split('@')[0]?.replace(/\D/g, '');
+    const businessPhone = sess?.meId?.split('@')[0]?.split(':')[0]?.replace(/\D/g, '');
     const wahaVersion = sessionStatus?.version?.version;
     const allowlistRequired = securityMeta?.allowlistRequired ?? false;
     const providerLabel = provider === 'hermes' ? 'Hermes' : 'WAHA';

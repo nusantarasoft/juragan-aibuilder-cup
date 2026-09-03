@@ -25,6 +25,12 @@ describe('normalizePhoneDigits', () => {
     it('falls back to full-input digits when local part has too few', () => {
         expect(normalizePhoneDigits('abc@12345678')).toBe('12345678');
     });
+
+    // Regression: ISSUE-001 follow-up — Baileys meId device suffix must not inflate digits
+    // Found by /qa on 2026-09-03
+    it('strips Baileys device suffix after colon', () => {
+        expect(normalizePhoneDigits('62811924689:7@s.whatsapp.net')).toBe('62811924689');
+    });
 });
 
 describe('wahaPayloadHasMedia', () => {

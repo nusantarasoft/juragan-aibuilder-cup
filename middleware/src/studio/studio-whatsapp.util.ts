@@ -26,7 +26,8 @@ export function extractBusinessPhoneFromPayload(payload: Record<string, unknown>
 
 /** Normalize WhatsApp chat id / phone to digits-only for matching. */
 export function normalizePhoneDigits(input: string): string {
-    const local = input.split('@')[0] || input;
+    // Baileys meId looks like 6281…:7@s.whatsapp.net — drop device suffix after ':'
+    const local = (input.split('@')[0] || input).split(':')[0] || input;
     const digits = local.replace(/\D/g, '');
     if (digits.length >= 8) return digits;
     return input.replace(/\D/g, '');
