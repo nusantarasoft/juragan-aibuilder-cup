@@ -234,8 +234,8 @@ interface CMSLayoutProps {
 const BREADCRUMB_LABELS: Record<string, string> = {
     "ai-studio": "AI Studio",
     umkm: "UMKM",
-    "ai-gateway": "WhatsApp & WAHA",
-    "waha-setup": "Setup WAHA",
+    "ai-gateway": "WhatsApp Gateway",
+    "waha-setup": "Setup WhatsApp",
     "web-crawler": "Web Crawler",
     "agent-builder": "Agent Builder",
     "knowledge-graph": "Knowledge Graph",
