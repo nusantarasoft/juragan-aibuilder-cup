@@ -315,7 +315,7 @@ describe('assessReadQueryClarity', () => {
     it('soft-confirms bare stock queries without digit menus', () => {
         for (const t of ['cek stok', 'stok', 'berapa stok', 'sisa stok', 'stock']) {
             const a = assessReadQueryClarity('stock', t);
-            expect(a.needsSoftConfirm).toBe(true);
+            expect(a.needsSoftConfirm, t).toBe(true);
             expect(a.question).toMatch(/semua/i);
             expect(a.question).not.toMatch(/\*[1234]\*/);
         }

@@ -1685,13 +1685,11 @@ export class StudioUmkmService {
 
         // Slot wizards must not swallow cek stok / laporan / daftar as the next "nama barang".
         // Bare numbers stay in-slot (qty / harga modal). Clarify wizard keeps jual/belanja.
-        const inSlotWizard =
-            (isConversationalWizard(wizard.kind) && wizard.kind !== 'await_job_clarification') ||
-            wizard.kind === 'menu_hub' ||
-            wizard.kind === 'purchase_hub' ||
-            wizard.kind === 'report_hub';
+        // Hub NL options (daftar / tambah menu / …) are handled below — do not clear first.
+        const inConversationalSlot =
+            isConversationalWizard(wizard.kind) && wizard.kind !== 'await_job_clarification';
         const bareSlotNumber = /^\d+([.,]\d+)?(\s*(?:rb|ribu|pcs|porsi|buah|x))?$/i.test(t);
-        if (inSlotWizard && !bareSlotNumber && isUmkmIntakeClearJob(t, commands)) {
+        if (inConversationalSlot && !bareSlotNumber && isUmkmIntakeClearJob(t, commands)) {
             this.clearWizard(tenantId, phone, conversationId);
             return undefined;
         }
@@ -1730,6 +1728,12 @@ export class StudioUmkmService {
                     'Ketik *batal* untuk kembali.',
                 ].join('\n');
             }
+            // Escape hatch: clear job that is not a hub synonym (cek stok / laporan / jual …)
+            // Bare digits stay as "unknown choice" so hub can re-prompt.
+            if (!/^\d+$/.test(t) && isUmkmIntakeClearJob(t, commands)) {
+                this.clearWizard(tenantId, phone, conversationId);
+                return undefined;
+            }
             return formatMenuHubUnknownChoice();
         }
 
@@ -1765,6 +1769,10 @@ export class StudioUmkmService {
                     ),
                 ].join('\n');
             }
+            if (!/^\d+$/.test(t) && isUmkmIntakeClearJob(t, commands)) {
+                this.clearWizard(tenantId, phone, conversationId);
+                return undefined;
+            }
             return formatPurchaseHubUnknownChoice();
         }
 
@@ -1779,6 +1787,10 @@ export class StudioUmkmService {
             if (period) {
                 this.clearWizard(tenantId, phone, conversationId);
                 return this.buildCombinedReportMessage(tenantId, period);
+            }
+            if (!/^\d+$/.test(t) && isUmkmIntakeClearJob(t, commands)) {
+                this.clearWizard(tenantId, phone, conversationId);
+                return undefined;
             }
             return formatReportHubUnknownChoice();
         }

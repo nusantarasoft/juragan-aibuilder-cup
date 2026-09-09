@@ -29,6 +29,7 @@ Thumbs.db
 
 # Testing
 coverage/
+coverage-*/
 .nyc_output/
 
 # GraphQL generated

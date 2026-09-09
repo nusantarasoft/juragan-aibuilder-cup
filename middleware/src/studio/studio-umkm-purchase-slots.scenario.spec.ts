@@ -9,6 +9,7 @@ import {
     nextPurchaseSlotQuestion,
     parsePurchaseDraftHeuristic,
     purchaseDraftFromParsed,
+    purchaseDraftToParsed,
 } from './studio-umkm-purchase-slots.util';
 import { DEFAULT_STUDIO_UMKM_CONTEXT } from './studio-umkm.service';
 import { makeUmkmService } from './studio-umkm-test-harness';
@@ -90,6 +91,64 @@ describe('purchase slots util', () => {
         expect(d.items[0].quantity).toBe(5);
         expect(d.items[0].unitCost).toBe(0);
         expect(assessPurchaseSlots(d).ok).toBe(false);
+    });
+
+    it('purchaseDraftToParsed distributes total when unitCost missing', () => {
+        const parsed = purchaseDraftToParsed({
+            items: [
+                { name: 'Gula', quantity: 2, unitCost: 0 },
+                { name: 'Kopi', quantity: 0, unitCost: 0 },
+            ],
+            totalCost: 10000,
+            purchaseDate: '2026-07-24',
+        });
+        expect(parsed.totalCost).toBe(10000);
+        expect(parsed.items[0].unitCost).toBe(5000);
+    });
+
+    it('assessPurchaseSlots name hint + zero line/total', () => {
+        const noName = assessPurchaseSlots({
+            items: [{ name: '', quantity: 2, unitCost: 1000 }],
+            totalCost: 2000,
+            purchaseDate: '2026-07-24',
+        });
+        expect(noName.clarification).toMatch(/nama barang/i);
+
+        const zero = assessPurchaseSlots({
+            items: [{ name: 'X', quantity: 1, unitCost: 0 }],
+            totalCost: 0,
+            purchaseDate: '2026-07-24',
+        });
+        expect(zero.missing).toContain('unit_cost');
+    });
+
+    it('parsePurchaseDraftHeuristic name-first, total, belanja, follow-up', () => {
+        expect(parsePurchaseDraftHeuristic('bakso 5')?.items[0]).toMatchObject({
+            name: /bakso/i,
+            quantity: 5,
+        });
+        const withTotal = parsePurchaseDraftHeuristic('10 mie ayam total 50000');
+        expect(withTotal?.totalCost).toBeGreaterThan(0);
+        expect(withTotal?.items[0].unitCost).toBeGreaterThan(0);
+
+        expect(parsePurchaseDraftHeuristic('belanja')).toMatchObject({ items: [] });
+        expect(parsePurchaseDraftHeuristic('')).toBeNull();
+
+        const bare = parsePurchaseDraftHeuristic('mie ayam', { allowFollowUp: true });
+        expect(bare?.items[0].name).toMatch(/mie ayam/i);
+    });
+
+    it('applyPurchaseSlotReply total cost + empty + complete one-shot', () => {
+        expect(applyPurchaseSlotReply(emptyPurchaseDraft(), '  ').items).toEqual([]);
+
+        let d = applyPurchaseSlotReply(emptyPurchaseDraft(), 'bakso');
+        d = applyPurchaseSlotReply(d, '5');
+        d = applyPurchaseSlotReply(d, '3000');
+        expect(d.items[0].unitCost).toBe(3000);
+        expect(d.totalCost).toBe(15000);
+
+        const one = applyPurchaseSlotReply(emptyPurchaseDraft(), '10 gula @ 2000');
+        expect(one.items[0].quantity).toBe(10);
     });
 });
 

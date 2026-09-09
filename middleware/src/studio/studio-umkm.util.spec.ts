@@ -299,6 +299,7 @@ describe('studio-umkm.util — extra coverage', () => {
     it('extractStockProductQuery rejects too-short or stopword queries', () => {
         expect(extractStockProductQuery('cek stok')).toBeNull();
         expect(extractStockProductQuery('stok ada')).toBeNull();
+        expect(extractStockProductQuery('sisa stok')).toBeNull();
     });
 
     it('looksLikeUmkmOpenQuestion covers all trigger branches', () => {

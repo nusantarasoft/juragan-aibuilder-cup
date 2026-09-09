@@ -250,7 +250,7 @@ export function extractStockProductQuery(text: string): string | null {
             .replace(/[,?!].*$/, '')
             .replace(/\b(mau\s+habis|mending|restock|restok|sebaiknya|lebih\s+baik).*$/i, '')
             .trim();
-        if (q.length >= 2 && !/^(berapa|ada|semua|all)$/i.test(q)) return q;
+        if (q.length >= 2 && !/^(berapa|ada|semua|all|stok|stock|barang)$/i.test(q)) return q;
     }
     return null;
 }

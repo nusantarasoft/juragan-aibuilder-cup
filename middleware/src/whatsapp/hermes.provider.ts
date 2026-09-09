@@ -171,8 +171,6 @@ export class HermesProvider implements WhatsAppTransport {
                 }
             }
             return { ok: false, detail: 'unreachable' };
-        } catch (e: any) {
-            return { ok: false, detail: e?.message || 'unreachable' };
         } finally {
             clearTimeout(t);
         }
