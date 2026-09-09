@@ -31,6 +31,11 @@ COMPOSE = (
     f"--env-file .env.master-production"
 )
 PROBE_LOG = "/opt/data/logs/kasir-probe.jsonl"
+# Hermes reads its home from HERMES_HOME; a bare `docker exec` lands in root's
+# HOME and would silently operate on an empty, unrelated config.
+HERMES_EXEC = "docker exec -e HERMES_HOME=/opt/data nsoft3-hermes"
+# Hermes writes its own logs to the volume, not to container stdout.
+AGENT_LOG = "/opt/data/logs/agent.log"
 
 INCLUDE = [
     "docker-compose.master-production.yml",
@@ -161,7 +166,10 @@ def main() -> int:
                 f"docker exec nsoft3-hermes sh -lc "
                 f"'test -f {PROBE_LOG} && tail -n 20 {PROBE_LOG} || echo NO_PROBE_LOG_YET'"
             )
-            run("docker logs nsoft3-hermes --tail 200 2>&1 | grep -i kasir | tail -n 40 || true")
+            run(
+                f"docker exec nsoft3-hermes sh -lc "
+                f"'grep -i kasir {AGENT_LOG} | tail -n 30' || true"
+            )
             return code
 
         ship(client, run)
@@ -175,12 +183,24 @@ def main() -> int:
         )
         run(f"ls -la {REMOTE}/volumes/hermes/plugins/kasir-probe")
 
-        code, _ = run(f"{COMPOSE} up -d hermes --force-recreate", timeout=900)
+        # config.yaml carries an explicit plugins.enabled allowlist, so dropping
+        # files into the plugins dir is not enough to load them. Validate first:
+        # doctor checks the plugin against the real runtime contracts, which is
+        # cheaper than finding out from a failed startup.
+        run(f"{HERMES_EXEC} hermes plugins doctor kasir-probe 2>&1 | tail -25 || true")
+        run(f"{HERMES_EXEC} hermes plugins enable kasir-probe 2>&1 | tail -5 || true")
+        run(f"{HERMES_EXEC} hermes plugins list 2>&1 | grep -i kasir || true")
+
+        # --no-deps so the recreate cannot cascade into postgres/middleware.
+        code, _ = run(f"{COMPOSE} up -d --force-recreate --no-deps hermes", timeout=900)
         if code != 0:
             return code
 
-        run("sleep 20 && docker exec nsoft3-hermes env | grep KASIR_ || true")
-        run("docker logs nsoft3-hermes --tail 200 2>&1 | grep -i kasir | tail -n 40 || true")
+        run("sleep 25 && docker exec nsoft3-hermes env | grep KASIR_ || true")
+        run(
+            f"docker exec nsoft3-hermes sh -lc "
+            f"'grep -i kasir {AGENT_LOG} | tail -n 20' || true"
+        )
         # Pairing must survive the recreate; a dead session breaks the probe.
         run("docker exec nsoft3-hermes curl -sS http://127.0.0.1:8765/pair/status || true")
         return 0

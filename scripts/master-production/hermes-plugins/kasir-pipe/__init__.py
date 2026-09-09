@@ -18,7 +18,11 @@ Env (set on hermes container / ``volumes/hermes/.env``):
 - ``KASIR_PIPE_SESSION`` — webhook ``session`` field (default ``hermes``)
 - ``KASIR_PIPE_PLATFORMS`` — comma list; default ``whatsapp``
 - ``KASIR_AGENT_PHONES`` — comma list of numbers handled by the agent; empty
-  (the default) keeps every number on the pipe-only path
+  (the default) keeps every number on the pipe-only path. Written as ordinary
+  phone numbers even though inbound senders arrive as LIDs; the translation
+  happens here.
+- ``KASIR_WA_SESSION_DIR`` — bridge session dir holding the LID mapping files
+  (default ``/opt/data/platforms/whatsapp/session``)
 """
 
 from __future__ import annotations
@@ -57,6 +61,13 @@ def _session_name() -> str:
     return (os.environ.get("KASIR_PIPE_SESSION") or "hermes").strip() or "hermes"
 
 
+# Where the Baileys bridge keeps its session state, including the
+# lid-mapping-{phone}.json files used to translate LIDs back to numbers.
+_SESSION_DIR = (
+    os.environ.get("KASIR_WA_SESSION_DIR") or "/opt/data/platforms/whatsapp/session"
+)
+
+
 def _digits(value: str) -> str:
     # Drop the "@server" and ":device" suffixes before reading digits, so a
     # multi-device JID like 628111:12@s.whatsapp.net yields 628111, not
@@ -68,6 +79,37 @@ def _digits(value: str) -> str:
 def _agent_phones() -> set[str]:
     raw = os.environ.get("KASIR_AGENT_PHONES") or ""
     return {d for d in (_digits(p) for p in raw.split(",")) if d}
+
+
+def _lid_for_phone(phone: str) -> str:
+    """The LID WhatsApp assigns to a phone, per the bridge's session files.
+
+    Inbound messages identify the sender by LID (``37551234617412@lid``), never
+    by number, so an allowlist written in phone numbers cannot match until it is
+    translated. The bridge keeps ``lid-mapping-{phone}.json`` files for exactly
+    this and rebuilds its own map from them on every creds update.
+
+    Resolving phone -> LID (rather than the reverse) is deliberate: the reverse
+    means scanning every mapping file in the session dir on every message, and
+    there are hundreds of them.
+    """
+    try:
+        path = os.path.join(_SESSION_DIR, f"lid-mapping-{_digits(phone)}.json")
+        with open(path, "r", encoding="utf-8") as fh:
+            return _digits(str(json.load(fh)))
+    except Exception:
+        return ""
+
+
+def _agent_identities() -> set[str]:
+    """Sender ids routed to the agent: the configured phones and their LIDs."""
+    identities: set[str] = set()
+    for phone in _agent_phones():
+        identities.add(phone)
+        lid = _lid_for_phone(phone)
+        if lid:
+            identities.add(lid)
+    return identities
 
 
 def _platform_name(event: Any) -> str:
@@ -190,7 +232,7 @@ def _on_pre_gateway_dispatch(event, gateway=None, session_store=None, **kwargs):
             return None
 
         sender = _chat_id(event)
-        if _digits(sender) in _agent_phones():
+        if _digits(sender) in _agent_identities():
             # Hand the message to the Hermes agent. Returning None (not skip)
             # lets the agent loop run; forwarding it as well would have the
             # middleware answer the same message a second time.

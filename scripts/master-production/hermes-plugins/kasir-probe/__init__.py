@@ -32,7 +32,9 @@ from typing import Any
 
 logger = logging.getLogger("hermes.plugins.kasir-probe")
 
-_JID_RE = re.compile(r"\d{6,}@[a-z.]*whatsapp\.net")
+# Inbound senders arrive as LIDs (37551234617412@lid) far more often than as
+# plain numbers, so both shapes have to count as "identity was visible".
+_JID_RE = re.compile(r"\d{6,}@(?:[a-z.]*whatsapp\.net|lid|g\.us|c\.us)")
 _LOG_PATH = Path(os.environ.get("KASIR_PROBE_LOG") or "/opt/data/logs/kasir-probe.jsonl")
 
 _SCHEMA = {
