@@ -1,0 +1,14 @@
+name: kasir-probe
+label: Kasir migration probe (Fase 0)
+version: 0.1.0
+description: >
+  Throwaway diagnostic for the full-Hermes migration. Registers one tool that
+  reports which identity context a tool handler can actually see, so the real
+  multi-tenant kasir tools can be designed before they are written.
+  Remove this plugin when Fase 1 starts.
+author: NusantaraSoft
+provides_tools:
+  - kasir_probe
+provides_hooks:
+  - post_tool_call
+  - on_session_start

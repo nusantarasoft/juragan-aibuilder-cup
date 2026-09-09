@@ -1,6 +1,10 @@
 # Dependencies
 node_modules/
 
+# Python bytecode (deploy scripts + Hermes plugins)
+__pycache__/
+*.py[cod]
+
 # Build output
 .next/
 dist/

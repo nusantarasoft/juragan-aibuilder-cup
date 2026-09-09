@@ -6,11 +6,19 @@ Uses ``pre_gateway_dispatch`` to:
 3. POST to ``KASIR_WHATSAPP_WEBHOOK_URL``
 4. Return ``skip`` so Hermes never runs the agent / LLM
 
+Numbers listed in ``KASIR_AGENT_PHONES`` are the exception: their messages are
+left alone for the Hermes agent to answer, which is how the full-Hermes
+migration is rolled out one phone at a time. Such a message is deliberately NOT
+forwarded — letting both the agent and the middleware answer would send the
+user two replies.
+
 Env (set on hermes container / ``volumes/hermes/.env``):
 - ``KASIR_WHATSAPP_WEBHOOK_URL`` — default ``http://middleware:4001/api/studio/whatsapp/webhook``
 - ``WHATSAPP_WEBHOOK_HMAC_KEY`` — same key middleware verifies
 - ``KASIR_PIPE_SESSION`` — webhook ``session`` field (default ``hermes``)
 - ``KASIR_PIPE_PLATFORMS`` — comma list; default ``whatsapp``
+- ``KASIR_AGENT_PHONES`` — comma list of numbers handled by the agent; empty
+  (the default) keeps every number on the pipe-only path
 """
 
 from __future__ import annotations
@@ -20,6 +28,7 @@ import hmac
 import json
 import logging
 import os
+import re
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -46,6 +55,19 @@ def _hmac_key() -> str:
 
 def _session_name() -> str:
     return (os.environ.get("KASIR_PIPE_SESSION") or "hermes").strip() or "hermes"
+
+
+def _digits(value: str) -> str:
+    # Drop the "@server" and ":device" suffixes before reading digits, so a
+    # multi-device JID like 628111:12@s.whatsapp.net yields 628111, not
+    # 62811112 (which would silently never match the allowlist).
+    head = (value or "").split("@", 1)[0].split(":", 1)[0]
+    return re.sub(r"\D", "", head)
+
+
+def _agent_phones() -> set[str]:
+    raw = os.environ.get("KASIR_AGENT_PHONES") or ""
+    return {d for d in (_digits(p) for p in raw.split(",")) if d}
 
 
 def _platform_name(event: Any) -> str:
@@ -165,6 +187,14 @@ def _on_pre_gateway_dispatch(event, gateway=None, session_store=None, **kwargs):
             return None
         platform = _platform_name(event)
         if platform not in _platforms():
+            return None
+
+        sender = _chat_id(event)
+        if _digits(sender) in _agent_phones():
+            # Hand the message to the Hermes agent. Returning None (not skip)
+            # lets the agent loop run; forwarding it as well would have the
+            # middleware answer the same message a second time.
+            logger.info("kasir-pipe: agent-mode chat=%s (not forwarded)", sender)
             return None
 
         body = _webhook_body(event)

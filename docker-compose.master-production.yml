@@ -652,6 +652,9 @@ services:
       # WHATSAPP_WEBHOOK_HMAC_KEY for inbound webhook signing
       - WHATSAPP_WEBHOOK_HMAC_KEY=${WHATSAPP_WEBHOOK_HMAC_KEY:-}
       - KASIR_PIPE_SESSION=${KASIR_PIPE_SESSION:-hermes}
+      # Senders routed to the Hermes agent instead of the middleware pipe.
+      # Empty = every number keeps the pipe-only path (full-Hermes rollout switch).
+      - KASIR_AGENT_PHONES=${KASIR_AGENT_PHONES:-}
       - KASIR_BRIDGE_PROXY=${KASIR_BRIDGE_PROXY:-1}
       - KASIR_BRIDGE_PROXY_PORT=${KASIR_BRIDGE_PROXY_PORT:-8765}
       - WHATSAPP_BRIDGE_PORT=${WHATSAPP_BRIDGE_PORT:-3000}
