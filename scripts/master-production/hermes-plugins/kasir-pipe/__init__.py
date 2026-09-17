@@ -1,28 +1,25 @@
-"""kasir-pipe — Hermes WhatsApp inbound → middleware webhook (pipe-only).
+"""kasir-pipe — WhatsApp bridge proxy for admin QR pairing (+ outbound send).
 
-Uses ``pre_gateway_dispatch`` to:
-1. Build a WhatsApp webhook JSON body from the MessageEvent
-2. HMAC-SHA512 sign with ``WHATSAPP_WEBHOOK_HMAC_KEY`` (header ``x-webhook-hmac``)
-3. POST to ``KASIR_WHATSAPP_WEBHOOK_URL``
-4. Return ``skip`` so Hermes never runs the agent / LLM
+Kasir chat logic lives in Hermes (kasir-tools → Supabase). Middleware only
+drives the admin AI Gateway pair/QR UI via this plugin's ``/pair/*`` HTTP
+surface on port 8765.
 
-Numbers listed in ``KASIR_AGENT_PHONES`` are the exception: their messages are
-left alone for the Hermes agent to answer, which is how the full-Hermes
-migration is rolled out one phone at a time. Such a message is deliberately NOT
-forwarded — letting both the agent and the middleware answer would send the
-user two replies.
+Inbound WhatsApp:
+- Allowed only if sender matches ``studio_whatsapp_config``
+  (``business_phone`` ∪ ``allowlist_phones``) for an enabled tenant with notebook.
+- ``KASIR_AGENT_PHONES`` is merged as an emergency allowlist (ops bootstrap).
+- Non-matching senders → skip agent (no LLM).
+- Messages are NOT forwarded to the middleware Studio webhook.
 
-Env (set on hermes container / ``volumes/hermes/.env``):
-- ``KASIR_WHATSAPP_WEBHOOK_URL`` — default ``http://middleware:4001/api/studio/whatsapp/webhook``
-- ``WHATSAPP_WEBHOOK_HMAC_KEY`` — same key middleware verifies
-- ``KASIR_PIPE_SESSION`` — webhook ``session`` field (default ``hermes``)
+Env:
+- ``SUPABASE_URL`` / ``SUPABASE_SERVICE_KEY`` — DB allowlist (required for gate)
+- ``KASIR_AGENT_PHONES`` — extra phones always allowed
+- ``KASIR_ALLOWLIST_CACHE_SEC`` — DB cache TTL seconds (default 30)
 - ``KASIR_PIPE_PLATFORMS`` — comma list; default ``whatsapp``
-- ``KASIR_AGENT_PHONES`` — comma list of numbers handled by the agent; empty
-  (the default) keeps every number on the pipe-only path. Written as ordinary
-  phone numbers even though inbound senders arrive as LIDs; the translation
-  happens here.
-- ``KASIR_WA_SESSION_DIR`` — bridge session dir holding the LID mapping files
-  (default ``/opt/data/platforms/whatsapp/session``)
+- ``KASIR_BRIDGE_PROXY`` / ``KASIR_BRIDGE_PROXY_PORT`` / ``WHATSAPP_BRIDGE_PORT``
+- ``KASIR_WA_SESSION_DIR`` — Baileys session dir (pair + LID maps)
+- ``KASIR_REGISTRATION`` — ``1`` (default) enables WA DAFTAR funnel for
+  non-allowlisted senders; ``0`` restores silent skip
 """
 
 from __future__ import annotations
@@ -33,12 +30,19 @@ import json
 import logging
 import os
 import re
+import sys
+import threading
+import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from typing import Any, Optional
 
 logger = logging.getLogger("hermes.plugins.kasir-pipe")
+
+# (cached_at_epoch, identities: phones + LIDs)
+_ALLOW_CACHE: tuple[float, set[str]] = (0.0, set())
 
 
 def _platforms() -> set[str]:
@@ -101,15 +105,131 @@ def _lid_for_phone(phone: str) -> str:
         return ""
 
 
-def _agent_identities() -> set[str]:
-    """Sender ids routed to the agent: the configured phones and their LIDs."""
+def _supabase_url() -> str:
+    return (os.environ.get("SUPABASE_URL") or "").rstrip("/")
+
+
+def _service_key() -> str:
+    return (
+        os.environ.get("SUPABASE_SERVICE_KEY")
+        or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+        or ""
+    ).strip()
+
+
+def _phones_match(a: str, b: str) -> bool:
+    da, db = _digits(a), _digits(b)
+    if len(da) < 8 or len(db) < 8:
+        return False
+    return da == db
+
+
+def _owner_phones_from_row(cfg: dict[str, Any]) -> list[str]:
+    out: list[str] = []
+    bp = cfg.get("business_phone")
+    if bp:
+        d = _digits(str(bp))
+        if len(d) >= 8:
+            out.append(d)
+    allow = cfg.get("allowlist_phones") or []
+    if isinstance(allow, str):
+        try:
+            allow = json.loads(allow)
+        except Exception:
+            allow = [allow]
+    for p in allow if isinstance(allow, list) else []:
+        d = _digits(str(p))
+        if len(d) >= 8:
+            out.append(d)
+    return out
+
+
+def _fetch_db_owner_phones() -> set[str]:
+    base = _supabase_url()
+    key = _service_key()
+    if not base or not key:
+        raise RuntimeError("SUPABASE_URL / SUPABASE_SERVICE_KEY missing for allowlist")
+    url = (
+        f"{base}/rest/v1/studio_whatsapp_config?"
+        + urllib.parse.urlencode(
+            {
+                "select": "tenant_id,enabled,notebook_id,business_phone,allowlist_phones",
+            }
+        )
+    )
+    req = urllib.request.Request(url, method="GET")
+    req.add_header("apikey", key)
+    req.add_header("Authorization", f"Bearer {key}")
+    req.add_header("Accept", "application/json")
+    with urllib.request.urlopen(req, timeout=8) as resp:
+        rows = json.loads(resp.read().decode("utf-8", "replace"))
+    if not isinstance(rows, list):
+        rows = []
+    phones: set[str] = set()
+    for cfg in rows:
+        if cfg.get("enabled") is False:
+            continue
+        if not cfg.get("notebook_id"):
+            continue
+        for p in _owner_phones_from_row(cfg):
+            phones.add(p)
+    return phones
+
+
+def _expand_with_lids(phones: set[str]) -> set[str]:
     identities: set[str] = set()
-    for phone in _agent_phones():
+    for phone in phones:
         identities.add(phone)
         lid = _lid_for_phone(phone)
         if lid:
             identities.add(lid)
     return identities
+
+
+def _allowed_identities() -> set[str]:
+    """Phones + LIDs allowed to reach the Hermes agent (short TTL cache)."""
+    global _ALLOW_CACHE
+    try:
+        ttl = float(os.environ.get("KASIR_ALLOWLIST_CACHE_SEC") or "30")
+    except Exception:
+        ttl = 30.0
+    now = time.time()
+    cached_at, cached = _ALLOW_CACHE
+    if cached and (now - cached_at) < max(0.0, ttl):
+        return cached
+
+    phones = set(_agent_phones())
+    try:
+        phones |= _fetch_db_owner_phones()
+    except Exception as exc:
+        logger.error("kasir-pipe: allowlist DB fetch failed: %s", exc)
+        if not phones:
+            _ALLOW_CACHE = (now, set())
+            return set()
+
+    identities = _expand_with_lids(phones)
+    _ALLOW_CACHE = (now, identities)
+    logger.info(
+        "kasir-pipe: allowlist refreshed phones=%s identities=%s",
+        len(phones),
+        len(identities),
+    )
+    return identities
+
+
+def _sender_allowed(sender: str) -> bool:
+    dig = _digits(sender)
+    if len(dig) < 6:
+        return False
+    allowed = _allowed_identities()
+    if not allowed:
+        return False
+    if dig in allowed:
+        return True
+    for entry in allowed:
+        if len(entry) >= 8 and _phones_match(dig, entry):
+            return True
+    return False
 
 
 def _platform_name(event: Any) -> str:
@@ -124,6 +244,8 @@ def _chat_id(event: Any) -> str:
     source = getattr(event, "source", None)
     for candidate in (
         getattr(event, "user_id", None),
+        getattr(event, "chat_id", None),
+        getattr(event, "sender_id", None),
         getattr(source, "chat_id", None) if source is not None else None,
         getattr(source, "user_id", None) if source is not None else None,
     ):
@@ -223,52 +345,330 @@ def _post_signed(body: dict[str, Any]) -> tuple[int, str]:
 
 
 def _on_pre_gateway_dispatch(event, gateway=None, session_store=None, **kwargs):
-    del gateway, session_store, kwargs
+    """Allowlisted WhatsApp → Hermes agent; others → registration funnel or skip."""
+    del session_store, kwargs
     try:
         if getattr(event, "internal", False):
             return None
         platform = _platform_name(event)
         if platform not in _platforms():
             return None
-
         sender = _chat_id(event)
-        if _digits(sender) in _agent_identities():
-            # Hand the message to the Hermes agent. Returning None (not skip)
-            # lets the agent loop run; forwarding it as well would have the
-            # middleware answer the same message a second time.
-            logger.info("kasir-pipe: agent-mode chat=%s (not forwarded)", sender)
+        if _sender_allowed(sender):
+            logger.info("kasir-pipe: allowlist ok chat=%s → agent", sender)
+            # Stamp identity for kasir-tools (tool hooks often omit chat JID).
+            try:
+                phone = _resolve_sender_phone(event)
+                if len(phone) >= 8:
+                    _stamp_active_sender(chat_id=sender, phone=phone)
+            except Exception:
+                logger.exception("kasir-pipe: stamp active sender failed")
             return None
-
-        body = _webhook_body(event)
-        chat = body["payload"].get("from") or "?"
-        status, detail = _post_signed(body)
-        if status and 200 <= status < 300:
-            logger.info(
-                "kasir-pipe: forwarded ok status=%s chat=%s session=%s",
-                status,
-                chat,
-                body.get("session"),
-            )
-        else:
-            logger.error(
-                "kasir-pipe: forward failed status=%s chat=%s detail=%s",
-                status,
-                chat,
-                detail,
-            )
-        # Always skip agent on WhatsApp kasir path (even if forward failed — avoid LLM replies)
-        return {"action": "skip", "reason": f"kasir-pipe forward status={status}"}
+        logger.info("kasir-pipe: allowlist deny chat=%s → registration/skip", sender)
+        if not _registration_enabled():
+            return {
+                "action": "skip",
+                "reason": "kasir-pipe allowlist: sender not in studio_whatsapp_config",
+            }
+        reply = _run_registration(event, gateway)
+        if reply:
+            _send_wa_text(sender, reply, gateway)
+        return {
+            "action": "skip",
+            "reason": "kasir-pipe registration handled",
+        }
     except Exception as exc:
         logger.exception("kasir-pipe: unexpected error: %s", exc)
-        return {"action": "skip", "reason": f"kasir-pipe error: {exc}"}
+        return {
+            "action": "skip",
+            "reason": f"kasir-pipe allowlist error: {exc}",
+        }
+
+
+def _registration_enabled() -> bool:
+    return os.environ.get("KASIR_REGISTRATION", "1").strip().lower() not in (
+        "0",
+        "false",
+        "no",
+        "off",
+    )
+
+
+def _supabase_url() -> str:
+    return (os.environ.get("SUPABASE_URL") or "").rstrip("/")
+
+
+def _service_key() -> str:
+    return (
+        os.environ.get("SUPABASE_SERVICE_KEY")
+        or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+        or ""
+    ).strip()
+
+
+def _rest(
+    method: str,
+    path: str,
+    query: dict[str, str] | None = None,
+    body: Any = None,
+    prefer: str | None = None,
+) -> Any:
+    base = _supabase_url()
+    key = _service_key()
+    if not base or not key:
+        raise RuntimeError("SUPABASE_URL / SUPABASE_SERVICE_KEY missing for registration")
+    url = f"{base}/rest/v1/{path}"
+    if query:
+        url += "?" + urllib.parse.urlencode(query)
+    data = None
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Accept": "application/json",
+    }
+    if body is not None:
+        data = json.dumps(body).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    if prefer:
+        headers["Prefer"] = prefer
+    elif method.upper() in ("POST", "PATCH"):
+        headers["Prefer"] = "return=representation"
+    req = urllib.request.Request(url, data=data, method=method.upper(), headers=headers)
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        raw = resp.read().decode("utf-8", "replace")
+        if not raw:
+            return None
+        return json.loads(raw)
+
+
+def _resolve_sender_phone(event: Any) -> str:
+    sender = _chat_id(event)
+    dig = _digits(sender)
+    if "@lid" in sender or (dig and not sender.endswith("@s.whatsapp.net")):
+        # Prefer LID→phone map; fall back to digits.
+        mapped = ""
+        try:
+            # Reuse tools-style reverse scan via lid-mapping-{phone}.json
+            if os.path.isdir(_SESSION_DIR):
+                for name in os.listdir(_SESSION_DIR):
+                    if not (name.startswith("lid-mapping-") and name.endswith(".json")):
+                        continue
+                    phone = _digits(name[len("lid-mapping-") : -len(".json")])
+                    if not phone:
+                        continue
+                    try:
+                        with open(
+                            os.path.join(_SESSION_DIR, name), "r", encoding="utf-8"
+                        ) as fh:
+                            mapped_lid = _digits(str(json.load(fh)))
+                    except Exception:
+                        continue
+                    if mapped_lid == dig:
+                        return phone
+        except Exception:
+            pass
+    return dig
+
+
+def _stamp_active_sender(*, chat_id: str, phone: str) -> None:
+    """Write current WA sender for kasir-tools (shared volume runtime file)."""
+    import tempfile
+    import time
+    from pathlib import Path
+
+    phone_d = _digits(phone)
+    if len(phone_d) < 8:
+        return
+    runtime = Path(os.environ.get("KASIR_IDENTITY_DIR") or "/opt/data/runtime")
+    runtime.mkdir(parents=True, exist_ok=True)
+    path = runtime / "kasir_active_sender.json"
+    payload = {
+        "phone": phone_d,
+        "chat": _digits(chat_id) or chat_id,
+        "chat_raw": chat_id,
+        "ts": time.time(),
+    }
+    fd, tmp = tempfile.mkstemp(dir=str(runtime), prefix="kasir_sender_")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh)
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except Exception:
+            pass
+        raise
+
+
+def _fetch_open_registration(phone: str) -> Optional[dict[str, Any]]:
+    rows = _rest(
+        "GET",
+        "studio_umkm_registrations",
+        {
+            "select": "*",
+            "phone": f"eq.{phone}",
+            "status": "in.(draft,pending)",
+            "order": "created_at.desc",
+            "limit": "1",
+        },
+    )
+    if not isinstance(rows, list) or not rows:
+        return None
+    row = rows[0]
+    # Expire if past expires_at
+    exp = str(row.get("expires_at") or "")
+    if exp:
+        try:
+            # PostgREST returns ISO; compare as string-ish UTC
+            from datetime import datetime as _dt
+
+            exp_dt = _dt.fromisoformat(exp.replace("Z", "+00:00"))
+            if exp_dt.tzinfo is None:
+                exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+            if exp_dt < datetime.now(timezone.utc):
+                _rest(
+                    "PATCH",
+                    "studio_umkm_registrations",
+                    {"id": f"eq.{row['id']}"},
+                    {
+                        "status": "expired",
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                )
+                return None
+        except Exception:
+            pass
+    return row
+
+
+def _fetch_latest_registration(phone: str) -> Optional[dict[str, Any]]:
+    rows = _rest(
+        "GET",
+        "studio_umkm_registrations",
+        {
+            "select": "*",
+            "phone": f"eq.{phone}",
+            "order": "created_at.desc",
+            "limit": "1",
+        },
+    )
+    if not isinstance(rows, list) or not rows:
+        return None
+    return rows[0]
+
+
+def _apply_registration_patch(phone: str, row: Optional[dict], patch: dict) -> None:
+    action = patch.pop("_action", "update")
+    patch = {k: v for k, v in patch.items() if not k.startswith("_")}
+    patch["updated_at"] = datetime.now(timezone.utc).isoformat()
+    if action == "create":
+        body = {
+            "phone": phone,
+            "status": patch.get("status") or "draft",
+            "wizard_step": patch.get("wizard_step"),
+            "store_name": patch.get("store_name"),
+            "session_name": _session_name(),
+        }
+        try:
+            _rest("POST", "studio_umkm_registrations", body=body)
+        except Exception as exc:
+            # Unique conflict: fall back to update open row
+            logger.warning("kasir-pipe: registration create failed: %s", exc)
+            open_row = _fetch_open_registration(phone)
+            if open_row:
+                _rest(
+                    "PATCH",
+                    "studio_umkm_registrations",
+                    {"id": f"eq.{open_row['id']}"},
+                    patch,
+                )
+        return
+    if not row or not row.get("id"):
+        return
+    _rest(
+        "PATCH",
+        "studio_umkm_registrations",
+        {"id": f"eq.{row['id']}"},
+        patch,
+    )
+
+
+def _send_wa_text(chat_id: str, text: str, gateway: Any = None) -> None:
+    if not text:
+        return
+    # Prefer gateway adapter send when available
+    try:
+        if gateway is not None:
+            adapters = getattr(gateway, "adapters", None) or {}
+            for key in ("whatsapp", "WhatsApp", "WHATSAPP"):
+                adapter = adapters.get(key) if isinstance(adapters, dict) else None
+                if adapter is None and hasattr(adapters, "get"):
+                    adapter = adapters.get(key)
+                if adapter is not None and hasattr(adapter, "send"):
+                    adapter.send(chat_id=chat_id, text=text)
+                    return
+    except Exception:
+        logger.exception("kasir-pipe: gateway adapter send failed")
+
+    # Fallback: Baileys bridge HTTP
+    ports = [
+        int(os.environ.get("WHATSAPP_BRIDGE_PORT") or "3000"),
+        int(os.environ.get("KASIR_BRIDGE_PROXY_PORT") or "8765"),
+    ]
+    jid = chat_id if "@" in chat_id else f"{_digits(chat_id)}@s.whatsapp.net"
+    payload = json.dumps({"chatId": jid, "message": text}).encode("utf-8")
+    for port in ports:
+        try:
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{port}/send",
+                data=payload,
+                method="POST",
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                if int(resp.status) < 400:
+                    return
+        except Exception:
+            continue
+    logger.warning("kasir-pipe: failed to send registration reply to %s", chat_id)
+
+
+def _run_registration(event: Any, gateway: Any = None) -> str:
+    # Import submodule by path — do NOT `from . import register` (shadowed by
+    # this package's register(ctx) hook entrypoint).
+    from .register import advance_wizard, is_status, msg_intro
+
+    phone = _resolve_sender_phone(event)
+    text = str(getattr(event, "text", None) or "")
+    if not phone or len(phone) < 8:
+        return msg_intro()
+    try:
+        row = _fetch_open_registration(phone)
+        # STATUS needs latest closed row (rejected/approved/expired) too
+        if row is None and is_status(text):
+            row = _fetch_latest_registration(phone)
+    except Exception:
+        logger.exception("kasir-pipe: fetch registration failed")
+        return (
+            "Sistem daftar sedang sibuk. Coba lagi sebentar, "
+            "atau hubungi admin."
+        )
+    reply, patch = advance_wizard(text=text, phone=phone, row=row)
+    if patch:
+        try:
+            _apply_registration_patch(phone, row, patch)
+        except Exception:
+            logger.exception("kasir-pipe: save registration failed")
+            return "Gagal menyimpan pendaftaran. Coba ketik *DAFTAR* lagi."
+    return reply
 
 
 def register(ctx):
     ctx.register_hook("pre_gateway_dispatch", _on_pre_gateway_dispatch)
     _start_bridge_proxy()
     logger.info(
-        "kasir-pipe registered (webhook=%s platforms=%s)",
-        _webhook_url(),
+        "kasir-pipe registered (DB allowlist gate; pair+bridge; platforms=%s)",
         ",".join(sorted(_platforms())),
     )
 
@@ -280,155 +680,180 @@ def register(ctx):
 # Also serves /pair/* for admin QR pairing from NusantaraSoft.
 
 _proxy_started = False
+_proxy_lock = threading.Lock()
 
 
 def _start_bridge_proxy() -> None:
+    """Bind 0.0.0.0:8765 once per process (Hermes may register the plugin twice)."""
     global _proxy_started
-    if _proxy_started:
-        return
-    if os.environ.get("KASIR_BRIDGE_PROXY", "1").strip() in ("0", "false", "no"):
-        return
-    try:
-        import importlib.util
-        import threading
-        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-        from pathlib import Path as _Path
+    with _proxy_lock:
+        if _proxy_started or os.environ.get("KASIR_BRIDGE_PROXY_BOUND") == "1":
+            _proxy_started = True
+            return
+        if os.environ.get("KASIR_BRIDGE_PROXY", "1").strip() in ("0", "false", "no"):
+            return
+        try:
+            import importlib.util
+            from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+            from pathlib import Path as _Path
 
-        _pair_path = _Path(__file__).with_name("pair.py")
-        _spec = importlib.util.spec_from_file_location("kasir_pipe_pair", _pair_path)
-        if _spec is None or _spec.loader is None:
-            raise RuntimeError("cannot load pair.py")
-        pair_mod = importlib.util.module_from_spec(_spec)
-        _spec.loader.exec_module(pair_mod)
-    except Exception as exc:
-        logger.warning("kasir-pipe: bridge proxy deps missing: %s", exc)
-        return
+            _pair_path = _Path(__file__).with_name("pair.py")
+            _spec = importlib.util.spec_from_file_location("kasir_pipe_pair", _pair_path)
+            if _spec is None or _spec.loader is None:
+                raise RuntimeError("cannot load pair.py")
+            pair_mod = importlib.util.module_from_spec(_spec)
+            _spec.loader.exec_module(pair_mod)
+        except Exception as exc:
+            logger.warning("kasir-pipe: bridge proxy deps missing: %s", exc)
+            return
 
-    listen_port = int(os.environ.get("KASIR_BRIDGE_PROXY_PORT") or "8765")
-    upstream_port = int(os.environ.get("WHATSAPP_BRIDGE_PORT") or "3000")
-    upstream = f"http://127.0.0.1:{upstream_port}"
+        listen_port = int(os.environ.get("KASIR_BRIDGE_PROXY_PORT") or "8765")
+        upstream_port = int(os.environ.get("WHATSAPP_BRIDGE_PORT") or "3000")
+        upstream = f"http://127.0.0.1:{upstream_port}"
 
-    def _json_response(handler: BaseHTTPRequestHandler, code: int, payload: dict) -> None:
-        raw = json.dumps(payload).encode("utf-8")
-        handler.send_response(code)
-        handler.send_header("Content-Type", "application/json")
-        handler.send_header("Content-Length", str(len(raw)))
-        handler.end_headers()
-        handler.wfile.write(raw)
+        # Already serving (prior register in this process)?
+        try:
+            with urllib.request.urlopen(
+                f"http://127.0.0.1:{listen_port}/pair/status", timeout=1
+            ) as resp:
+                if int(resp.status) < 500:
+                    _proxy_started = True
+                    os.environ["KASIR_BRIDGE_PROXY_BOUND"] = "1"
+                    logger.info(
+                        "kasir-pipe: bridge proxy already up on :%s — skip bind",
+                        listen_port,
+                    )
+                    return
+        except Exception:
+            pass
 
-    def _read_body(handler: BaseHTTPRequestHandler) -> bytes:
-        length = int(handler.headers.get("Content-Length") or 0)
-        return handler.rfile.read(length) if length else b""
+        def _json_response(handler: BaseHTTPRequestHandler, code: int, payload: dict) -> None:
+            raw = json.dumps(payload).encode("utf-8")
+            handler.send_response(code)
+            handler.send_header("Content-Type", "application/json")
+            handler.send_header("Content-Length", str(len(raw)))
+            handler.end_headers()
+            handler.wfile.write(raw)
 
-    class _Handler(BaseHTTPRequestHandler):
-        def log_message(self, fmt, *args):  # noqa: N802
-            logger.debug("kasir-bridge-proxy: " + fmt, *args)
+        def _read_body(handler: BaseHTTPRequestHandler) -> bytes:
+            length = int(handler.headers.get("Content-Length") or 0)
+            return handler.rfile.read(length) if length else b""
 
-        def _handle_pair(self) -> bool:
-            path = (self.path or "/").split("?", 1)[0]
-            if path == "/pair/status" and self.command == "GET":
-                _json_response(self, 200, pair_mod.status())
-                return True
-            if path == "/pair/qr" and self.command == "GET":
-                _json_response(self, 200, pair_mod.qr_payload())
-                return True
-            if path == "/pair/start" and self.command == "POST":
-                raw = _read_body(self)
-                force = False
-                if raw:
-                    try:
-                        body = json.loads(raw.decode("utf-8"))
-                        force = bool(body.get("force"))
-                    except Exception:
-                        force = False
-                _json_response(self, 200, pair_mod.start_pairing(force=force))
-                return True
-            if path == "/pair/logout" and self.command == "POST":
-                _read_body(self)
-                _json_response(self, 200, pair_mod.logout())
-                return True
-            if path == "/pair/rebind" and self.command == "POST":
-                # Atomic: wipe old number session + start QR for a new phone
-                _read_body(self)
-                _json_response(self, 200, pair_mod.start_pairing(force=True))
-                return True
-            if path == "/pair/reload" and self.command == "POST":
-                _read_body(self)
-                _json_response(self, 200, pair_mod.reload_gateway())
-                return True
-            return False
+        class _Handler(BaseHTTPRequestHandler):
+            def log_message(self, fmt, *args):  # noqa: N802
+                logger.debug("kasir-bridge-proxy: " + fmt, *args)
 
-        def _proxy(self):
-            if self._handle_pair():
-                return
-            length = int(self.headers.get("Content-Length") or 0)
-            body = self.rfile.read(length) if length else b""
-            path = self.path or "/"
-            url = upstream + path
-            headers = {
-                k: v
-                for k, v in self.headers.items()
-                if k.lower() not in ("host", "content-length", "transfer-encoding", "connection")
-            }
-            if body and "Content-Type" not in {k.title(): k for k in headers}:
-                headers["Content-Type"] = self.headers.get("Content-Type") or "application/json"
-            req = urllib.request.Request(url, data=body or None, headers=headers, method=self.command)
-            try:
-                with urllib.request.urlopen(req, timeout=30) as resp:
-                    data = resp.read()
-                    self.send_response(resp.status)
-                    for hk, hv in resp.headers.items():
-                        # Drop hop-by-hop + Content-Length — we set length from the
-                        # fully-buffered body (upstream may already send Content-Length).
-                        if hk.lower() in (
-                            "transfer-encoding",
-                            "connection",
-                            "content-encoding",
-                            "content-length",
-                        ):
-                            continue
-                        self.send_header(hk, hv)
+            def _handle_pair(self) -> bool:
+                path = (self.path or "/").split("?", 1)[0]
+                if path == "/pair/status" and self.command == "GET":
+                    _json_response(self, 200, pair_mod.status())
+                    return True
+                if path == "/pair/qr" and self.command == "GET":
+                    _json_response(self, 200, pair_mod.qr_payload())
+                    return True
+                if path == "/pair/start" and self.command == "POST":
+                    raw = _read_body(self)
+                    force = False
+                    if raw:
+                        try:
+                            body = json.loads(raw.decode("utf-8"))
+                            force = bool(body.get("force"))
+                        except Exception:
+                            force = False
+                    _json_response(self, 200, pair_mod.start_pairing(force=force))
+                    return True
+                if path == "/pair/logout" and self.command == "POST":
+                    _read_body(self)
+                    _json_response(self, 200, pair_mod.logout())
+                    return True
+                if path == "/pair/rebind" and self.command == "POST":
+                    _read_body(self)
+                    _json_response(self, 200, pair_mod.start_pairing(force=True))
+                    return True
+                if path == "/pair/reload" and self.command == "POST":
+                    _read_body(self)
+                    _json_response(self, 200, pair_mod.reload_gateway())
+                    return True
+                return False
+
+            def _proxy(self):
+                if self._handle_pair():
+                    return
+                length = int(self.headers.get("Content-Length") or 0)
+                body = self.rfile.read(length) if length else b""
+                path = self.path or "/"
+                url = upstream + path
+                headers = {
+                    k: v
+                    for k, v in self.headers.items()
+                    if k.lower()
+                    not in ("host", "content-length", "transfer-encoding", "connection")
+                }
+                if body and "Content-Type" not in {k.title(): k for k in headers}:
+                    headers["Content-Type"] = (
+                        self.headers.get("Content-Type") or "application/json"
+                    )
+                req = urllib.request.Request(
+                    url, data=body or None, headers=headers, method=self.command
+                )
+                try:
+                    with urllib.request.urlopen(req, timeout=30) as resp:
+                        data = resp.read()
+                        self.send_response(resp.status)
+                        for hk, hv in resp.headers.items():
+                            if hk.lower() in (
+                                "transfer-encoding",
+                                "connection",
+                                "content-encoding",
+                                "content-length",
+                            ):
+                                continue
+                            self.send_header(hk, hv)
+                        self.send_header("Content-Length", str(len(data)))
+                        self.end_headers()
+                        self.wfile.write(data)
+                except urllib.error.HTTPError as e:
+                    data = e.read() if e.fp else b""
+                    self.send_response(e.code)
+                    self.send_header(
+                        "Content-Type", e.headers.get("Content-Type", "text/plain")
+                    )
                     self.send_header("Content-Length", str(len(data)))
                     self.end_headers()
                     self.wfile.write(data)
-            except urllib.error.HTTPError as e:
-                data = e.read() if e.fp else b""
-                self.send_response(e.code)
-                self.send_header("Content-Type", e.headers.get("Content-Type", "text/plain"))
-                self.send_header("Content-Length", str(len(data)))
-                self.end_headers()
-                self.wfile.write(data)
-            except Exception as e:
-                msg = str(e).encode()
-                self.send_response(502)
-                self.send_header("Content-Type", "text/plain")
-                self.send_header("Content-Length", str(len(msg)))
-                self.end_headers()
-                self.wfile.write(msg)
+                except Exception as e:
+                    msg = str(e).encode()
+                    self.send_response(502)
+                    self.send_header("Content-Type", "text/plain")
+                    self.send_header("Content-Length", str(len(msg)))
+                    self.end_headers()
+                    self.wfile.write(msg)
 
-        def do_GET(self):  # noqa: N802
-            self._proxy()
+            def do_GET(self):  # noqa: N802
+                self._proxy()
 
-        def do_POST(self):  # noqa: N802
-            self._proxy()
+            def do_POST(self):  # noqa: N802
+                self._proxy()
 
-        def do_PUT(self):  # noqa: N802
-            self._proxy()
+            def do_PUT(self):  # noqa: N802
+                self._proxy()
 
-        def do_DELETE(self):  # noqa: N802
-            self._proxy()
+            def do_DELETE(self):  # noqa: N802
+                self._proxy()
 
-    def _run():
         try:
             server = ThreadingHTTPServer(("0.0.0.0", listen_port), _Handler)
-            logger.info(
-                "kasir-pipe: bridge+pair proxy on 0.0.0.0:%s → %s (+ /pair/*)",
-                listen_port,
-                upstream,
-            )
-            server.serve_forever()
-        except Exception as exc:
-            logger.error("kasir-pipe: bridge proxy failed: %s", exc)
+        except OSError as exc:
+            logger.error("kasir-pipe: bridge proxy bind failed: %s", exc)
+            return
 
-    threading.Thread(target=_run, name="kasir-bridge-proxy", daemon=True).start()
-    _proxy_started = True
+        _proxy_started = True
+        os.environ["KASIR_BRIDGE_PROXY_BOUND"] = "1"
+        threading.Thread(
+            target=server.serve_forever, name="kasir-bridge-proxy", daemon=True
+        ).start()
+        logger.info(
+            "kasir-pipe: bridge+pair proxy on 0.0.0.0:%s → %s (+ /pair/*)",
+            listen_port,
+            upstream,
+        )

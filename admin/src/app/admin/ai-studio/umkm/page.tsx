@@ -29,11 +29,14 @@ import {
     UnorderedListOutlined,
     MessageOutlined,
     DeleteOutlined,
+    CheckOutlined,
+    CloseOutlined,
 } from '@ant-design/icons';
 import {
     studioService,
     StudioNotebook,
     StudioWhatsAppConfig,
+    StudioUmkmRegistration,
     UmkmCommandIntent,
     UmkmCommandsConfig,
     UmkmMenuCommand,
@@ -154,6 +157,8 @@ export default function UmkmStudioPage() {
 
     const [loading, setLoading] = useState(true);
     const [configs, setConfigs] = useState<StudioWhatsAppConfig[]>([]);
+    const [pendingRegs, setPendingRegs] = useState<StudioUmkmRegistration[]>([]);
+    const [actingRegId, setActingRegId] = useState<string | null>(null);
     const [notebooks, setNotebooks] = useState<StudioNotebook[]>([]);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editing, setEditing] = useState<StudioWhatsAppConfig | null>(null);
@@ -179,12 +184,14 @@ export default function UmkmStudioPage() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [list, nbs] = await Promise.all([
+            const [list, nbs, regs] = await Promise.all([
                 studioService.listWhatsAppConfigs(),
                 userId ? studioService.getNotebooks(userId) : Promise.resolve([]),
+                studioService.listUmkmRegistrations('pending').catch(() => [] as StudioUmkmRegistration[]),
             ]);
             setConfigs(list);
             setNotebooks(nbs);
+            setPendingRegs(regs);
         } catch (e: unknown) {
             const err = e as { message?: string };
             message.error(err.message || 'Gagal memuat data UMKM');
@@ -192,6 +199,34 @@ export default function UmkmStudioPage() {
             setLoading(false);
         }
     }, [userId]);
+
+    const handleApproveReg = async (row: StudioUmkmRegistration) => {
+        setActingRegId(row.id);
+        try {
+            await studioService.approveUmkmRegistration(row.id);
+            message.success(`Disetujui: ${row.store_name || row.phone}`);
+            await load();
+        } catch (e: unknown) {
+            const err = e as { message?: string };
+            message.error(err.message || 'Gagal approve');
+        } finally {
+            setActingRegId(null);
+        }
+    };
+
+    const handleRejectReg = async (row: StudioUmkmRegistration) => {
+        setActingRegId(row.id);
+        try {
+            await studioService.rejectUmkmRegistration(row.id);
+            message.success(`Ditolak: ${row.store_name || row.phone}`);
+            await load();
+        } catch (e: unknown) {
+            const err = e as { message?: string };
+            message.error(err.message || 'Gagal tolak');
+        } finally {
+            setActingRegId(null);
+        }
+    };
 
     useEffect(() => {
         if (authLoading) return;
@@ -570,20 +605,86 @@ export default function UmkmStudioPage() {
                                 </Link>
                             </li>
                             <li>
-                                <strong>Tambah UMKM</strong> — daftarkan nomor HP pemilik + atur perintah WA
+                                Pemilik bisa daftar sendiri lewat WA: ketik <strong>DAFTAR</strong> → antrean
+                                di bawah → Approve
                             </li>
                             <li>
-                                <strong>Setup UMKM</strong> — aktifkan mode UMKM
+                                Atau <strong>Tambah UMKM</strong> manual — nomor HP pemilik + perintah WA
                             </li>
                             <li>
-                                Pemilik kirim WA ke nomor admin memakai angka menu atau keyword yang Anda set —
-                                atau uji dulu lewat tombol <strong>Simulasi chat</strong> (pipeline inbound,
-                                tanpa kirim WA live)
+                                Uji lewat <strong>Simulasi chat</strong> (tanpa kirim WA live), lalu isi{' '}
+                                <strong>Katalog</strong> per tenant
                             </li>
-                            <li>Isi <strong>Katalog</strong> per tenant</li>
                         </ol>
                     }
                 />
+
+                <Card
+                    size="small"
+                    style={glass}
+                    title={
+                        <Space>
+                            <Text strong>Menunggu approve</Text>
+                            {pendingRegs.length > 0 ? (
+                                <Tag color="orange">{pendingRegs.length}</Tag>
+                            ) : null}
+                        </Space>
+                    }
+                >
+                    <Table
+                        rowKey="id"
+                        loading={loading}
+                        dataSource={pendingRegs}
+                        pagination={false}
+                        locale={{ emptyText: 'Tidak ada antrean DAFTAR dari WhatsApp' }}
+                        columns={[
+                            {
+                                title: 'Waktu',
+                                dataIndex: 'created_at',
+                                width: 160,
+                                render: (v: string) =>
+                                    v ? new Date(v).toLocaleString('id-ID') : '—',
+                            },
+                            {
+                                title: 'Nomor WA',
+                                dataIndex: 'phone',
+                                render: (p: string) => <Tag color="green">{p}</Tag>,
+                            },
+                            {
+                                title: 'Nama toko',
+                                dataIndex: 'store_name',
+                                render: (n: string | null) => n || '—',
+                            },
+                            {
+                                title: '',
+                                key: 'actions',
+                                width: 200,
+                                render: (_: unknown, row: StudioUmkmRegistration) => (
+                                    <Space>
+                                        <Button
+                                            type="primary"
+                                            size="small"
+                                            icon={<CheckOutlined />}
+                                            loading={actingRegId === row.id}
+                                            onClick={() => void handleApproveReg(row)}
+                                        >
+                                            Approve
+                                        </Button>
+                                        <Button
+                                            danger
+                                            size="small"
+                                            icon={<CloseOutlined />}
+                                            loading={actingRegId === row.id}
+                                            onClick={() => void handleRejectReg(row)}
+                                        >
+                                            Tolak
+                                        </Button>
+                                    </Space>
+                                ),
+                            },
+                        ]}
+                    />
+                </Card>
 
                 <Card size="small" style={glass} title={<Text strong>Daftar UMKM</Text>}>
                     <Table

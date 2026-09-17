@@ -1,0 +1,684 @@
+"""Fase 2 write tools: draft + confirm sale/purchase (Hermes → Supabase).
+
+Never writes without an explicit confirm tool call. Drafts live in-process
+with a 15-minute TTL (same spirit as middleware pending sales).
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+import random
+import re
+import string
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+import uuid
+from datetime import datetime, timedelta, timezone
+from typing import Any, Callable
+
+logger = logging.getLogger("hermes.plugins.kasir-tools.writes")
+
+_JAKARTA = timezone(timedelta(hours=7))
+_DRAFT_TTL_SEC = 15 * 60
+# draft_id -> draft dict
+_DRAFTS: dict[str, dict[str, Any]] = {}
+
+_WithTenant = Callable[[dict | None, dict], tuple[tuple[str, str] | None, str | None]]
+_ActiveProducts = Callable[[str], list[dict[str, Any]]]
+_Idr = Callable[[float | int], str]
+
+_with_tenant: _WithTenant | None = None
+_active_products: _ActiveProducts | None = None
+_idr: _Idr | None = None
+
+
+def bind(
+    *,
+    with_tenant: _WithTenant,
+    active_products: _ActiveProducts,
+    idr: _Idr,
+) -> None:
+    global _with_tenant, _active_products, _idr
+    _with_tenant = with_tenant
+    _active_products = active_products
+    _idr = idr
+
+
+def _supabase_url() -> str:
+    return (os.environ.get("SUPABASE_URL") or "").rstrip("/")
+
+
+def _service_key() -> str:
+    return (
+        os.environ.get("SUPABASE_SERVICE_KEY")
+        or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+        or ""
+    ).strip()
+
+
+def _sb(
+    method: str,
+    path: str,
+    *,
+    query: dict[str, str] | None = None,
+    body: Any = None,
+    prefer: str | None = None,
+) -> Any:
+    base = _supabase_url()
+    key = _service_key()
+    if not base or not key:
+        raise RuntimeError("SUPABASE_URL / SUPABASE_SERVICE_KEY belum di-set")
+    url = f"{base}/rest/v1/{path}"
+    if query:
+        url += "?" + urllib.parse.urlencode(query)
+    data = None if body is None else json.dumps(body).encode("utf-8")
+    req = urllib.request.Request(url, data=data, method=method)
+    req.add_header("apikey", key)
+    req.add_header("Authorization", f"Bearer {key}")
+    req.add_header("Accept", "application/json")
+    if data is not None:
+        req.add_header("Content-Type", "application/json")
+    if prefer:
+        req.add_header("Prefer", prefer)
+    try:
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            raw = resp.read().decode("utf-8", "replace")
+            return json.loads(raw) if raw.strip() else None
+    except urllib.error.HTTPError as err:
+        detail = err.read().decode("utf-8", "replace")[:500]
+        raise RuntimeError(f"HTTP {err.code} {path}: {detail}") from err
+
+
+def _purge_expired() -> None:
+    now = time.time()
+    dead = [k for k, v in _DRAFTS.items() if now - float(v.get("created_at", 0)) > _DRAFT_TTL_SEC]
+    for k in dead:
+        _DRAFTS.pop(k, None)
+
+
+def _new_draft_id() -> str:
+    return uuid.uuid4().hex[:12]
+
+
+def _match_product(name: str, products: list[dict[str, Any]]) -> dict[str, Any] | None:
+    q = (name or "").strip().lower()
+    if not q:
+        return None
+    exact = [p for p in products if str(p.get("name") or "").lower() == q]
+    if len(exact) == 1:
+        return exact[0]
+    partial = [
+        p
+        for p in products
+        if q in str(p.get("name") or "").lower()
+        or (p.get("sku") and q in str(p.get("sku")).lower())
+    ]
+    if len(partial) == 1:
+        return partial[0]
+    if partial:
+        # Prefer shortest name containing query
+        partial.sort(key=lambda p: len(str(p.get("name") or "")))
+        return partial[0]
+    return None
+
+
+def _parse_items(raw: Any) -> list[dict[str, Any]]:
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            return []
+    if not isinstance(raw, list):
+        return []
+    out = []
+    for it in raw:
+        if not isinstance(it, dict):
+            continue
+        name = str(it.get("name") or it.get("product") or "").strip()
+        try:
+            qty = float(it.get("quantity") or it.get("qty") or 0)
+        except Exception:
+            qty = 0
+        try:
+            price = float(
+                it.get("unit_price")
+                or it.get("unitPrice")
+                or it.get("price")
+                or it.get("unit_cost")
+                or it.get("unitCost")
+                or 0
+            )
+        except Exception:
+            price = 0
+        if name and qty > 0 and price >= 0:
+            # PostgREST/Postgres often typed quantity as integer on order lines.
+            qty_out: float | int = int(qty) if float(qty).is_integer() else qty
+            out.append({"name": name, "quantity": qty_out, "unit_price": price})
+    return out
+
+
+def _order_number() -> str:
+    now = datetime.now(_JAKARTA)
+    suffix = "".join(random.choices(string.digits, k=4))
+    return f"WA-{now.strftime('%Y%m%d-%H%M%S')}-{suffix}"
+
+
+def _purchase_number() -> str:
+    now = datetime.now(_JAKARTA)
+    suffix = "".join(random.choices(string.digits, k=4))
+    return f"BL-{now.strftime('%Y%m%d')}-{suffix}"
+
+
+def _as_qty(value: float | int) -> int | float:
+    try:
+        f = float(value)
+    except Exception:
+        return 0
+    return int(f) if f.is_integer() else f
+
+
+def _stock_move(
+    tenant_id: str,
+    *,
+    item_id: str,
+    movement_type: str,
+    quantity: float,
+    unit_cost: float,
+    reference: str,
+    reference_type: str,
+    reference_id: str,
+    notes: str,
+) -> None:
+    _sb(
+        "POST",
+        "inv_stock_movements",
+        body={
+            "tenant_id": tenant_id,
+            "item_id": item_id,
+            "variant_id": None,
+            "warehouse_id": None,
+            "movement_type": movement_type,
+            "quantity": _as_qty(quantity),
+            "unit_cost": unit_cost,
+            "total_cost": unit_cost * abs(float(quantity)),
+            "reference": reference,
+            "reference_type": reference_type,
+            "reference_id": reference_id,
+            "notes": notes,
+        },
+        prefer="return=minimal",
+    )
+    existing = _sb(
+        "GET",
+        "inv_stock_ledger",
+        query={
+            "select": "id,on_hand",
+            "tenant_id": f"eq.{tenant_id}",
+            "item_id": f"eq.{item_id}",
+            "warehouse_id": "eq.default",
+            "limit": "1",
+        },
+    )
+    row = existing[0] if isinstance(existing, list) and existing else None
+    inbound = movement_type in (
+        "IN",
+        "RETURN_IN",
+        "ADJUST_IN",
+        "PRODUCTION",
+        "MANUAL_IN",
+    )
+    delta = abs(quantity) if inbound else -abs(quantity)
+    if row:
+        _sb(
+            "PATCH",
+            "inv_stock_ledger",
+            query={"id": f"eq.{row['id']}"},
+            body={
+                "on_hand": float(row.get("on_hand") or 0) + delta,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            prefer="return=minimal",
+        )
+    else:
+        _sb(
+            "POST",
+            "inv_stock_ledger",
+            body={
+                "tenant_id": tenant_id,
+                "item_id": item_id,
+                "variant_id": None,
+                "warehouse_id": "default",
+                "on_hand": max(0, delta),
+                "reserved": 0,
+                "committed": 0,
+            },
+            prefer="return=minimal",
+        )
+
+
+def handle_draft_sale(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
+    try:
+        assert _with_tenant and _active_products and _idr
+        params = params or {}
+        resolved, err = _with_tenant(params, kwargs)
+        if err:
+            return err
+        assert resolved
+        phone, tenant_id = resolved
+        items = _parse_items(params.get("items"))
+        if not items:
+            return (
+                "Draft penjualan butuh items: "
+                '[{"name":"indomie","quantity":2,"unit_price":3500}]'
+            )
+        products = _active_products(tenant_id)
+        resolved_items = []
+        for it in items:
+            match = _match_product(it["name"], products)
+            unit = it["unit_price"]
+            if match and (not unit or unit <= 0):
+                unit = float(match.get("selling_price") or 0)
+            catalog = bool(match)
+            resolved_items.append(
+                {
+                    "name": str(match.get("name") if match else it["name"]),
+                    "quantity": it["quantity"],
+                    "unit_price": unit,
+                    "item_id": str(match["id"]) if match else None,
+                    "item_sku": (match.get("sku") if match else None),
+                    "catalog_matched": catalog,
+                }
+            )
+        total = sum(r["quantity"] * r["unit_price"] for r in resolved_items)
+        payment = (params.get("payment_method") or params.get("paymentMethod") or "").strip() or None
+        customer = (params.get("customer_name") or params.get("customerName") or "").strip() or None
+        _purge_expired()
+        draft_id = _new_draft_id()
+        _DRAFTS[draft_id] = {
+            "kind": "sale",
+            "created_at": time.time(),
+            "phone": phone,
+            "tenant_id": tenant_id,
+            "payment_method": payment,
+            "customer_name": customer,
+            "notes": (params.get("notes") or None),
+            "items": resolved_items,
+            "total": total,
+        }
+        lines = [
+            "📋 *Konfirmasi penjualan*",
+            f"draft_id: `{draft_id}`",
+            "",
+        ]
+        for r in resolved_items:
+            mark = "" if r["catalog_matched"] else " _(belum match katalog)_"
+            lines.append(
+                f"• {r['quantity']:g} × {r['name']} @ {_idr(r['unit_price'])}{mark}"
+            )
+        lines += [
+            "",
+            f"Total: *{_idr(total)}*",
+            f"Bayar: {payment or '(belum diisi)'}",
+            "",
+            "Kalau sudah benar, panggil tool *kasir_confirm_sale* dengan draft_id di atas. "
+            "Kalau salah, buat draft baru.",
+        ]
+        return "\n".join(lines)
+    except Exception as exc:
+        logger.exception("draft_sale failed")
+        return f"Gagal draft penjualan: {exc}"
+
+
+def _is_paid(payment: str) -> bool:
+    return bool(re.search(r"tunai|cash|transfer|qris|debit|paid|lunas", payment, re.I))
+
+
+def handle_confirm_sale(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
+    try:
+        assert _with_tenant and _idr
+        params = params or {}
+        resolved, err = _with_tenant(params, kwargs)
+        if err:
+            return err
+        assert resolved
+        phone, tenant_id = resolved
+        draft_id = str(params.get("draft_id") or params.get("draftId") or "").strip()
+        _purge_expired()
+        draft = _DRAFTS.get(draft_id)
+        if not draft or draft.get("kind") != "sale":
+            return "Draft penjualan tidak ditemukan / sudah kadaluarsa. Buat draft baru."
+        if draft["phone"] != phone or draft["tenant_id"] != tenant_id:
+            return "Draft bukan milik sesi toko ini. Buat draft baru."
+        items = draft["items"]
+        total = float(draft["total"])
+        payment = draft.get("payment_method")
+        is_paid = bool(payment and _is_paid(payment))
+        order_number = _order_number()
+        order = _sb(
+            "POST",
+            "ecom_orders",
+            body={
+                "tenant_id": tenant_id,
+                "order_number": order_number,
+                "customer_name": draft.get("customer_name") or f"WA {phone}",
+                "customer_phone": phone,
+                "subtotal": total,
+                "total_amount": total,
+                "paid_amount": total if is_paid else 0,
+                "payment_method": payment,
+                "payment_status": "paid" if is_paid else "unpaid",
+                "notes": draft.get("notes"),
+                "source": "api",
+                "status": "completed",
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            },
+            prefer="return=representation",
+        )
+        if isinstance(order, list):
+            order = order[0] if order else None
+        if not order or not order.get("id"):
+            return "Gagal menyimpan order."
+        order_id = str(order["id"])
+        warnings = []
+        for r in items:
+            sku = r.get("item_sku") or (
+                "WA-" + re.sub(r"\s+", "-", str(r["name"])[:20]).upper()
+            )
+            _sb(
+                "POST",
+                "ecom_order_items",
+                body={
+                    "order_id": order_id,
+                    "item_id": r.get("item_id"),
+                    "item_name": r["name"],
+                    "item_sku": sku,
+                    "quantity": _as_qty(r["quantity"]),
+                    "unit_price": r["unit_price"],
+                    "subtotal": r["quantity"] * r["unit_price"],
+                    "status": "fulfilled",
+                },
+                prefer="return=minimal",
+            )
+            if r.get("item_id") and r.get("catalog_matched"):
+                try:
+                    _stock_move(
+                        tenant_id,
+                        item_id=r["item_id"],
+                        movement_type="SALE_OUT",
+                        quantity=r["quantity"],
+                        unit_cost=r["unit_price"],
+                        reference=order_number,
+                        reference_type="ecom_order",
+                        reference_id=order_id,
+                        notes=f"UMKM WA: {r['quantity']} × {r['name']}",
+                    )
+                except Exception as stock_err:
+                    logger.warning("stock deduct failed: %s", stock_err)
+                    warnings.append(str(r["name"]))
+        _DRAFTS.pop(draft_id, None)
+        lines = [
+            "✅ *Penjualan tercatat*",
+            f"No. {order_number}",
+            f"Total: {_idr(total)}",
+        ]
+        if warnings:
+            lines.append("Stok gagal dipotong untuk: " + ", ".join(warnings))
+        return "\n".join(lines)
+    except Exception as exc:
+        logger.exception("confirm_sale failed")
+        return f"Gagal konfirmasi penjualan: {exc}"
+
+
+def handle_draft_purchase(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
+    try:
+        assert _with_tenant and _active_products and _idr
+        params = params or {}
+        resolved, err = _with_tenant(params, kwargs)
+        if err:
+            return err
+        assert resolved
+        phone, tenant_id = resolved
+        items = _parse_items(params.get("items"))
+        # unit_cost alias already handled in _parse_items via unit_price field
+        if not items:
+            return (
+                "Draft belanja butuh items: "
+                '[{"name":"indomie","quantity":10,"unit_price":3000}] '
+                "(unit_price = harga modal)"
+            )
+        products = _active_products(tenant_id)
+        resolved_items = []
+        for it in items:
+            match = _match_product(it["name"], products)
+            resolved_items.append(
+                {
+                    "name": str(match.get("name") if match else it["name"]),
+                    "quantity": it["quantity"],
+                    "unit_cost": it["unit_price"],
+                    "item_id": str(match["id"]) if match else None,
+                    "catalog_matched": bool(match),
+                }
+            )
+        total = sum(r["quantity"] * r["unit_cost"] for r in resolved_items)
+        purchase_date = (
+            str(params.get("purchase_date") or params.get("purchaseDate") or "").strip()
+            or datetime.now(_JAKARTA).strftime("%Y-%m-%d")
+        )
+        supplier = (
+            str(params.get("supplier_name") or params.get("supplierName") or "").strip()
+            or None
+        )
+        _purge_expired()
+        draft_id = _new_draft_id()
+        _DRAFTS[draft_id] = {
+            "kind": "purchase",
+            "created_at": time.time(),
+            "phone": phone,
+            "tenant_id": tenant_id,
+            "purchase_date": purchase_date,
+            "supplier_name": supplier,
+            "notes": params.get("notes"),
+            "items": resolved_items,
+            "total": total,
+        }
+        lines = [
+            "📋 *Konfirmasi belanja*",
+            f"draft_id: `{draft_id}`",
+            f"Tanggal: {purchase_date}",
+            f"Supplier: {supplier or '-'}",
+            "",
+        ]
+        for r in resolved_items:
+            mark = "" if r["catalog_matched"] else " _(belum match katalog)_"
+            lines.append(
+                f"• {r['quantity']:g} × {r['name']} @ {_idr(r['unit_cost'])}{mark}"
+            )
+        lines += [
+            "",
+            f"Total: *{_idr(total)}*",
+            "",
+            "Kalau sudah benar, panggil *kasir_confirm_purchase* dengan draft_id ini.",
+        ]
+        return "\n".join(lines)
+    except Exception as exc:
+        logger.exception("draft_purchase failed")
+        return f"Gagal draft belanja: {exc}"
+
+
+def handle_confirm_purchase(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
+    try:
+        assert _with_tenant and _idr
+        params = params or {}
+        resolved, err = _with_tenant(params, kwargs)
+        if err:
+            return err
+        assert resolved
+        phone, tenant_id = resolved
+        draft_id = str(params.get("draft_id") or params.get("draftId") or "").strip()
+        _purge_expired()
+        draft = _DRAFTS.get(draft_id)
+        if not draft or draft.get("kind") != "purchase":
+            return "Draft belanja tidak ditemukan / sudah kadaluarsa. Buat draft baru."
+        if draft["phone"] != phone or draft["tenant_id"] != tenant_id:
+            return "Draft bukan milik sesi toko ini."
+        purchase_number = _purchase_number()
+        header = _sb(
+            "POST",
+            "studio_umkm_purchases",
+            body={
+                "tenant_id": tenant_id,
+                "purchase_number": purchase_number,
+                "purchase_date": draft["purchase_date"],
+                "supplier_name": draft.get("supplier_name"),
+                "total_cost": draft["total"],
+                "notes": draft.get("notes"),
+                "source": "whatsapp",
+                "status": "completed",
+            },
+            prefer="return=representation",
+        )
+        if isinstance(header, list):
+            header = header[0] if header else None
+        if not header or not header.get("id"):
+            return "Gagal menyimpan belanja."
+        purchase_id = str(header["id"])
+        for r in draft["items"]:
+            _sb(
+                "POST",
+                "studio_umkm_purchase_items",
+                body={
+                    "purchase_id": purchase_id,
+                    "item_id": r.get("item_id"),
+                    "item_name": r["name"],
+                    "quantity": _as_qty(r["quantity"]),
+                    "unit_cost": r["unit_cost"],
+                    "subtotal": r["quantity"] * r["unit_cost"],
+                },
+                prefer="return=minimal",
+            )
+            if r.get("item_id"):
+                try:
+                    _stock_move(
+                        tenant_id,
+                        item_id=r["item_id"],
+                        movement_type="MANUAL_IN",
+                        quantity=r["quantity"],
+                        unit_cost=r["unit_cost"],
+                        reference=purchase_number,
+                        reference_type="umkm_purchase",
+                        reference_id=purchase_id,
+                        notes=f"Belanja WA {purchase_number}",
+                    )
+                except Exception as stock_err:
+                    logger.warning("stock in failed: %s", stock_err)
+        _DRAFTS.pop(draft_id, None)
+        return "\n".join(
+            [
+                "✅ *Belanja tercatat*",
+                f"No. {purchase_number}",
+                f"Tanggal: {draft['purchase_date']}",
+                f"Total: {_idr(draft['total'])}",
+            ]
+        )
+    except Exception as exc:
+        logger.exception("confirm_purchase failed")
+        return f"Gagal konfirmasi belanja: {exc}"
+
+
+WRITE_TOOL_SPECS: list[tuple[str, dict[str, Any], Callable[..., str]]] = [
+    (
+        "kasir_draft_sale",
+        {
+            "name": "kasir_draft_sale",
+            "description": (
+                "Siapkan draft penjualan (BELUM menulis ke database). "
+                "Panggil saat user minta catat jual. Setelah preview, "
+                "wajib kasir_confirm_sale dengan draft_id."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "description": "Daftar item {name, quantity, unit_price}",
+                        "items": {"type": "object"},
+                    },
+                    "payment_method": {"type": "string"},
+                    "customer_name": {"type": "string"},
+                    "phone": {"type": "string"},
+                    "notes": {"type": "string"},
+                },
+                "required": ["items"],
+            },
+        },
+        handle_draft_sale,
+    ),
+    (
+        "kasir_confirm_sale",
+        {
+            "name": "kasir_confirm_sale",
+            "description": (
+                "Commit draft penjualan ke database + potong stok. "
+                "Hanya setelah user setuju (ya). Wajib draft_id dari kasir_draft_sale."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "draft_id": {"type": "string"},
+                    "phone": {"type": "string"},
+                },
+                "required": ["draft_id"],
+            },
+        },
+        handle_confirm_sale,
+    ),
+    (
+        "kasir_draft_purchase",
+        {
+            "name": "kasir_draft_purchase",
+            "description": (
+                "Siapkan draft belanja/pembelian (BELUM menulis). "
+                "unit_price pada items = harga modal. Lanjut kasir_confirm_purchase."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "description": "Daftar item {name, quantity, unit_price=modal}",
+                        "items": {"type": "object"},
+                    },
+                    "purchase_date": {"type": "string", "description": "YYYY-MM-DD"},
+                    "supplier_name": {"type": "string"},
+                    "phone": {"type": "string"},
+                    "notes": {"type": "string"},
+                },
+                "required": ["items"],
+            },
+        },
+        handle_draft_purchase,
+    ),
+    (
+        "kasir_confirm_purchase",
+        {
+            "name": "kasir_confirm_purchase",
+            "description": (
+                "Commit draft belanja + tambah stok. Hanya setelah user setuju. "
+                "Wajib draft_id dari kasir_draft_purchase."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "draft_id": {"type": "string"},
+                    "phone": {"type": "string"},
+                },
+                "required": ["draft_id"],
+            },
+        },
+        handle_confirm_purchase,
+    ),
+]

@@ -986,6 +986,34 @@ export const studioService = {
         return data.updateStudioWhatsAppConfig;
     },
 
+    async listUmkmRegistrations(
+        status: 'draft' | 'pending' | 'approved' | 'rejected' | 'expired' | 'all' = 'pending',
+    ): Promise<StudioUmkmRegistration[]> {
+        const data = await graphqlRequest(
+            `query($status: String) { studioUmkmRegistrations(status: $status) }`,
+            { status },
+        );
+        return data.studioUmkmRegistrations || [];
+    },
+
+    async approveUmkmRegistration(id: string): Promise<StudioUmkmRegistration> {
+        const data = await graphqlRequest(
+            `mutation($id: String!) { studioApproveUmkmRegistration(id: $id) }`,
+            { id },
+        );
+        return data.studioApproveUmkmRegistration;
+    },
+
+    async rejectUmkmRegistration(id: string, reason?: string): Promise<StudioUmkmRegistration> {
+        const data = await graphqlRequest(
+            `mutation($id: String!, $reason: String) {
+                studioRejectUmkmRegistration(id: $id, reason: $reason)
+            }`,
+            { id, reason: reason ?? null },
+        );
+        return data.studioRejectUmkmRegistration;
+    },
+
     /** Simulasi inbound WA tanpa transport live (pipeline sama webhook). */
     async whatsAppSimChat(params: {
         tenantId: string;
@@ -1115,6 +1143,24 @@ export interface StudioWhatsAppConfig {
     allowlist_phones: string[];
     use_guided_flow: boolean;
     updated_at?: string;
+}
+
+export interface StudioUmkmRegistration {
+    id: string;
+    phone: string;
+    store_name?: string | null;
+    owner_name?: string | null;
+    status: 'draft' | 'pending' | 'approved' | 'rejected' | 'expired';
+    tenant_id?: string | null;
+    notebook_id?: string | null;
+    reject_reason?: string | null;
+    wizard_step?: string | null;
+    session_name?: string;
+    created_at?: string;
+    updated_at?: string;
+    expires_at?: string;
+    approved_at?: string | null;
+    approved_by?: string | null;
 }
 
 export interface StudioWhatsAppSecurityMeta {

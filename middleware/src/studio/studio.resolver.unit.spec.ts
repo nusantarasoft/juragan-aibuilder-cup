@@ -90,14 +90,27 @@ function build() {
         setupUmkmNotebook: vi.fn().mockResolvedValue({ setup: true }),
         updateUmkmCommands: vi.fn().mockResolvedValue({ updated: true }),
     };
+    const registrationService = {
+        listRegistrations: vi.fn().mockResolvedValue([{ id: 'reg-1', status: 'pending' }]),
+        approve: vi.fn().mockResolvedValue({ id: 'reg-1', status: 'approved' }),
+        reject: vi.fn().mockResolvedValue({ id: 'reg-1', status: 'rejected' }),
+    };
 
     const resolver = new StudioResolver(
         studioService as any,
         guideFlowService as any,
         whatsAppService as any,
         umkmService as any,
+        registrationService as any,
     );
-    return { resolver, studioService, guideFlowService, whatsAppService, umkmService };
+    return {
+        resolver,
+        studioService,
+        guideFlowService,
+        whatsAppService,
+        umkmService,
+        registrationService,
+    };
 }
 
 describe('StudioResolver — auth context', () => {
@@ -648,5 +661,20 @@ describe('StudioResolver — whatsapp/umkm', () => {
             phone: '62812',
         });
         expect(res.ok).toBe(true);
+    });
+
+    it('studioUmkmRegistrations defaults to pending', async () => {
+        await h.resolver.studioUmkmRegistrations(ctx());
+        expect(h.registrationService.listRegistrations).toHaveBeenCalledWith('pending');
+    });
+
+    it('studioApproveUmkmRegistration passes token user id', async () => {
+        await h.resolver.studioApproveUmkmRegistration(ctx(), 'reg-1');
+        expect(h.registrationService.approve).toHaveBeenCalledWith('reg-1', USER_ID);
+    });
+
+    it('studioRejectUmkmRegistration passes reason + token user', async () => {
+        await h.resolver.studioRejectUmkmRegistration(ctx(), 'reg-1', 'duplikat');
+        expect(h.registrationService.reject).toHaveBeenCalledWith('reg-1', 'duplikat', USER_ID);
     });
 });

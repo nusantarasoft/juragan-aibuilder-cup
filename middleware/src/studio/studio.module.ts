@@ -20,6 +20,7 @@ import { InventoryModule } from '../inventory/inventory.module';
 import { StudioWhatsAppController } from './studio-whatsapp.controller';
 import { StudioWhatsAppService } from './studio-whatsapp.service';
 import { StudioUmkmService } from './studio-umkm.service';
+import { StudioUmkmRegistrationService } from './studio-umkm-registration.service';
 import { StudioUmkmCronService } from './studio-umkm.cron';
 import { StudioUmkmAgenticAskService } from './studio-umkm-agentic-ask.service';
 import { StudioUmkmPendampingService } from './studio-umkm-pendamping.service';
@@ -36,7 +37,12 @@ import { StudioOutputService } from './studio-output.service';
         WhatsAppProviderModule,
         InventoryModule,
     ],
-    controllers: [StudioUploadController, StudioChatController, StudioShareController, StudioWhatsAppController],
+    controllers: [
+        StudioUploadController,
+        StudioChatController,
+        StudioShareController,
+        StudioWhatsAppController,
+    ],
     providers: [
         GqlAuthGuard,
         StudioService,
@@ -48,6 +54,7 @@ import { StudioOutputService } from './studio-output.service';
         StudioOutputService,
         StudioWhatsAppService,
         StudioUmkmService,
+        StudioUmkmRegistrationService,
         StudioUmkmAgenticAskService,
         StudioUmkmPendampingService,
         StudioUmkmCronService,
@@ -59,6 +66,7 @@ import { StudioOutputService } from './studio-output.service';
         StudioContextService,
         StudioWhatsAppService,
         StudioUmkmService,
+        StudioUmkmRegistrationService,
         StudioUmkmAgenticAskService,
         StudioUmkmPendampingService,
     ],

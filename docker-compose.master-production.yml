@@ -631,7 +631,8 @@ services:
       options: { max-size: "10m", max-file: "3" }
     deploy:
       resources:
-        # Pipe-only Phase 1; raise if enabling LLM agent features later
+        # Inference is remote (HTTP to the provider), so enabling the agent
+        # adds latency and cost, not memory. These limits still hold.
         limits: { memory: 2g, cpus: "1.5" }
         reservations: { memory: 512m }
     ports:
@@ -643,20 +644,30 @@ services:
       - HERMES_DASHBOARD_BASIC_AUTH_USERNAME=${HERMES_DASHBOARD_BASIC_AUTH_USERNAME:-admin}
       - HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD:-}
       - HERMES_DASHBOARD_BASIC_AUTH_SECRET=${HERMES_DASHBOARD_BASIC_AUTH_SECRET:-}
-      # Pipe-only: no LLM keys. Bridge allowlist * so inbound reaches kasir-pipe;
-      # middleware STUDIO allowlist remains the real gate.
+      # LLM credentials for the agent path. Inbound WhatsApp is gated by
+      # kasir-pipe against studio_whatsapp_config allowlist (DB, near-realtime
+      # with short cache). KASIR_AGENT_PHONES is an optional emergency union.
+      # Preferred path is OpenRouter (model set in config.yaml).
+      # GEMINI/GOOGLE keys remain optional for a direct-Gemini fallback.
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      # Kasir tools + allowlist gate query Supabase directly (middleware is pair/QR only for WA admin).
+      - SUPABASE_URL=${SUPABASE_URL:-http://kong:8000}
+      - SUPABASE_SERVICE_KEY=${SERVICE_ROLE_KEY:-}
+      # Pair/QR + outbound bridge only — inbound chat is Hermes agent when allowlisted.
       - WHATSAPP_ENABLED=${WHATSAPP_ENABLED:-true}
       - WHATSAPP_MODE=${WHATSAPP_MODE:-bot}
+      # Hermes platform allowlist; fine-grained gate is kasir-pipe → DB.
       - WHATSAPP_ALLOWED_USERS=${WHATSAPP_ALLOWED_USERS:-*}
-      - KASIR_WHATSAPP_WEBHOOK_URL=${KASIR_WHATSAPP_WEBHOOK_URL:-http://middleware:4001/api/studio/whatsapp/webhook}
-      # WHATSAPP_WEBHOOK_HMAC_KEY for inbound webhook signing
-      - WHATSAPP_WEBHOOK_HMAC_KEY=${WHATSAPP_WEBHOOK_HMAC_KEY:-}
       - KASIR_PIPE_SESSION=${KASIR_PIPE_SESSION:-hermes}
-      # Senders routed to the Hermes agent instead of the middleware pipe.
-      # Empty = every number keeps the pipe-only path (full-Hermes rollout switch).
+      # Optional emergency phones unioned with DB allowlist (also tools identity fallback).
       - KASIR_AGENT_PHONES=${KASIR_AGENT_PHONES:-}
+      - KASIR_ALLOWLIST_CACHE_SEC=${KASIR_ALLOWLIST_CACHE_SEC:-30}
       - KASIR_BRIDGE_PROXY=${KASIR_BRIDGE_PROXY:-1}
       - KASIR_BRIDGE_PROXY_PORT=${KASIR_BRIDGE_PROXY_PORT:-8765}
+      # DAFTAR funnel for non-allowlisted senders (0 = silent skip)
+      - KASIR_REGISTRATION=${KASIR_REGISTRATION:-1}
       - WHATSAPP_BRIDGE_PORT=${WHATSAPP_BRIDGE_PORT:-3000}
     # Bridge proxy for middleware outbound (kasir-pipe → 127.0.0.1:3000). Docker network only.
     expose:

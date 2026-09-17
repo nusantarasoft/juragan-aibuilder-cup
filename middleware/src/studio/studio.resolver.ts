@@ -4,6 +4,7 @@ import { StudioService } from './studio.service';
 import { GuideFlowService } from './guide-flow.service';
 import { StudioWhatsAppService } from './studio-whatsapp.service';
 import { StudioUmkmService } from './studio-umkm.service';
+import { StudioUmkmRegistrationService } from './studio-umkm-registration.service';
 import { GraphQLJSONObject } from 'graphql-type-json';
 import { DEFAULT_UMKM_COMMANDS } from './studio-umkm-commands';
 import { detectUmkmConfirmReply, detectUmkmIntent } from './studio-umkm.util';
@@ -24,6 +25,7 @@ export class StudioResolver {
         private readonly guideFlowService: GuideFlowService,
         private readonly studioWhatsAppService: StudioWhatsAppService,
         private readonly studioUmkmService: StudioUmkmService,
+        private readonly studioUmkmRegistrationService: StudioUmkmRegistrationService,
     ) { }
 
     /** Authenticated user id from the JWT (guaranteed present by GqlAuthGuard). */
@@ -746,5 +748,42 @@ export class StudioResolver {
             tenantId,
             phone: phone || undefined,
         });
+    }
+
+    // ── UMKM self-serve registrations (WA DAFTAR → admin approve) ────
+
+    @Query(() => [GraphQLJSONObject], { name: 'studioUmkmRegistrations' })
+    async studioUmkmRegistrations(
+        @Context() context: StudioAuthContext,
+        @Args('status', { type: () => String, nullable: true }) status?: string,
+    ) {
+        this.requireUserId(context);
+        const st = (status || 'pending').trim().toLowerCase();
+        const allowed = new Set(['draft', 'pending', 'approved', 'rejected', 'expired', 'all']);
+        if (!allowed.has(st)) {
+            return this.studioUmkmRegistrationService.listRegistrations('pending');
+        }
+        return this.studioUmkmRegistrationService.listRegistrations(st as any);
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'studioApproveUmkmRegistration' })
+    async studioApproveUmkmRegistration(
+        @Context() context: StudioAuthContext,
+        @Args('id', { type: () => String }) id: string,
+    ) {
+        return this.studioUmkmRegistrationService.approve(id, this.requireUserId(context));
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'studioRejectUmkmRegistration' })
+    async studioRejectUmkmRegistration(
+        @Context() context: StudioAuthContext,
+        @Args('id', { type: () => String }) id: string,
+        @Args('reason', { type: () => String, nullable: true }) reason?: string,
+    ) {
+        return this.studioUmkmRegistrationService.reject(
+            id,
+            reason,
+            this.requireUserId(context),
+        );
     }
 }
