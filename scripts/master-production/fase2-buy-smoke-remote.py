@@ -25,7 +25,7 @@ def load_env() -> dict[str, str]:
 
 
 SMOKE = r"""#!/usr/bin/env python3
-import importlib.util, re, sys, types
+import importlib.util, sys, types
 root = "/opt/data/plugins/kasir-tools"
 pkg = types.ModuleType("kasir_tools")
 pkg.__path__ = [root]
@@ -59,12 +59,11 @@ draft = writes.handle_draft_purchase({
     "supplier_name": "smoke",
 })
 print(draft)
-m = re.search(r"draft_id:\s*`([a-f0-9]+)`", draft)
-if not m:
-    print("FAIL: no draft_id")
+if "draft_id" in draft.lower() or "kasir_" in draft.lower():
+    print("FAIL: draft text leaked internal tokens")
     sys.exit(1)
-print("--- confirm purchase ---")
-print(writes.handle_confirm_purchase({"phone": phone, "draft_id": m.group(1)}))
+print("--- confirm purchase (latest draft) ---")
+print(writes.handle_confirm_purchase({"phone": phone}))
 print("--- stock after ---")
 print(mod._handle_stock({"phone": phone, "product_query": "teh"}))
 """

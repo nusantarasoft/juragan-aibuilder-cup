@@ -81,8 +81,9 @@ def main() -> int:
         "'test -f /opt/data/plugins/kasir-pipe/register.py && "
         "grep -E \"^version:\" /opt/data/plugins/kasir-pipe/plugin.yaml'"
     )
-    if "1.3.0" not in out:
-        failures.append("kasir-pipe version != 1.3.0")
+    # Accept any 1.3.x (deployed plugin may be ahead of this smoke pin).
+    if "version: 1.3." not in out:
+        failures.append("kasir-pipe version not 1.3.x")
 
     # 2) Wizard on live plugin
     wizard = r'''

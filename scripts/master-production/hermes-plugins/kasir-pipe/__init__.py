@@ -491,6 +491,15 @@ def _apply_registration_patch(phone: str, row: Optional[dict], patch: dict) -> N
 def _send_wa_text(chat_id: str, text: str, gateway: Any = None) -> None:
     if not text:
         return
+    from .user_safe import looks_unsafe, safe_user_error
+
+    if looks_unsafe(text):
+        logger.warning(
+            "kasir-pipe: blocked unsafe WA text to %s (len=%s)",
+            chat_id,
+            len(text),
+        )
+        text = safe_user_error("registration")
     # Prefer gateway adapter send when available
     try:
         if gateway is not None:

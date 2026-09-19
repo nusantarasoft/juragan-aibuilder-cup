@@ -660,6 +660,10 @@ services:
       - WHATSAPP_MODE=${WHATSAPP_MODE:-bot}
       # Hermes platform allowlist; fine-grained gate is kasir-pipe → DB.
       - WHATSAPP_ALLOWED_USERS=${WHATSAPP_ALLOWED_USERS:-*}
+      # Suppress Hermes "No home channel" nag on every new WA chat. Cron/cross-platform
+      # delivery target = ops chat (NOT UMKM owners). Chat id: phone@s.whatsapp.net
+      - WHATSAPP_HOME_CHANNEL=${WHATSAPP_HOME_CHANNEL:-}
+      - WHATSAPP_HOME_CHANNEL_NAME=${WHATSAPP_HOME_CHANNEL_NAME:-Ops}
       - KASIR_PIPE_SESSION=${KASIR_PIPE_SESSION:-hermes}
       # Optional emergency phones unioned with DB allowlist (also tools identity fallback).
       - KASIR_AGENT_PHONES=${KASIR_AGENT_PHONES:-}

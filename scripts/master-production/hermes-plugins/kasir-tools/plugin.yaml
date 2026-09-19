@@ -1,6 +1,6 @@
 name: kasir-tools
 label: Kasir tools (Hermes → Supabase)
-version: 0.5.2
+version: 0.5.3
 description: >
   Kasir read + draft/confirm write tools. Queries and writes Supabase/PostgREST
   directly from Hermes. Tenant from Hermes WhatsApp session key / pipe stamp —

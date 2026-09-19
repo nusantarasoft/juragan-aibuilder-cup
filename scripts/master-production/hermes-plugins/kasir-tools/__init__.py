@@ -29,9 +29,30 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
+
+from .user_safe import safe_user_error, sanitize_user_text
 
 logger = logging.getLogger("hermes.plugins.kasir-tools")
+
+
+def _user_safe_tool(fn: Callable[..., str], *, kind: str = "generic") -> Callable[..., str]:
+    """Wrap tool handlers so every return is sanitized before the model sees it."""
+
+    def wrapped(*args: Any, **kwargs: Any) -> str:
+        try:
+            out = fn(*args, **kwargs)
+        except Exception:
+            logger.exception("kasir-tools handler crashed kind=%s", kind)
+            return safe_user_error(kind)
+        return sanitize_user_text(
+            "" if out is None else str(out),
+            fallback=safe_user_error(kind),
+        )
+
+    wrapped.__name__ = getattr(fn, "__name__", "tool")
+    wrapped.__doc__ = getattr(fn, "__doc__", None)
+    return wrapped
 
 _JID_RE = re.compile(r"\d{6,}@(?:[a-z.]*whatsapp\.net|lid|g\.us|c\.us)")
 _SESSION_DIR = (
@@ -568,7 +589,8 @@ def _with_tenant(params: dict[str, Any] | None, kwargs: dict[str, Any]):
     try:
         tenant_id = _resolve_tenant(phone)
     except Exception as err:
-        return None, f"Gagal resolve tenant: {err}"
+        logger.exception("kasir-tools resolve tenant failed: %s", err)
+        return None, safe_user_error("tenant")
     logger.info("kasir-tools tenant phone=%s tenant=%s", phone, tenant_id)
     return (phone, tenant_id), None
 
@@ -585,8 +607,8 @@ def _handle_stock(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
         rows = _stock_rows(tenant_id, query)
         return _format_stock(rows, query)
     except Exception as err:
-        logger.exception("kasir_get_stock failed")
-        return f"Gagal cek stok: {err}"
+        logger.exception("kasir_get_stock failed: %s", err)
+        return safe_user_error("stock")
 
 
 def _handle_low_stock(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
@@ -608,8 +630,8 @@ def _handle_low_stock(params: dict[str, Any] | None = None, **kwargs: Any) -> st
         rows = _low_stock_rows(tenant_id, threshold=threshold, limit=limit)
         return _format_low_stock(rows, threshold)
     except Exception as err:
-        logger.exception("kasir_low_stock failed")
-        return f"Gagal cek stok menipis: {err}"
+        logger.exception("kasir_low_stock failed: %s", err)
+        return safe_user_error("low_stock")
 
 
 def _handle_products(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
@@ -622,8 +644,8 @@ def _handle_products(params: dict[str, Any] | None = None, **kwargs: Any) -> str
         _phone, tenant_id = resolved
         return _format_products(_active_products(tenant_id))
     except Exception as err:
-        logger.exception("kasir_list_products failed")
-        return f"Gagal daftar produk: {err}"
+        logger.exception("kasir_list_products failed: %s", err)
+        return safe_user_error("products")
 
 
 def _normalize_period(raw: str | None, default: str = "today") -> str:
@@ -655,8 +677,8 @@ def _handle_report(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
         period = _normalize_period(params.get("period"), "today")
         return _combined_report(tenant_id, period)
     except Exception as err:
-        logger.exception("kasir_daily_report failed")
-        return f"Gagal laporan: {err}"
+        logger.exception("kasir_daily_report failed: %s", err)
+        return safe_user_error("report")
 
 
 def _handle_top_products(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
@@ -676,8 +698,8 @@ def _handle_top_products(params: dict[str, Any] | None = None, **kwargs: Any) ->
         label, ranked = _top_products(tenant_id, period, limit=limit)
         return _format_top_products(label, ranked, standalone=True)
     except Exception as err:
-        logger.exception("kasir_top_products failed")
-        return f"Gagal ranking produk: {err}"
+        logger.exception("kasir_top_products failed: %s", err)
+        return safe_user_error("top")
 
 
 def _on_session_start(event=None, **kwargs: Any) -> None:
@@ -864,13 +886,24 @@ def register(ctx) -> None:
         ),
         *writes.WRITE_TOOL_SPECS,
     )
+    kind_by_name = {
+        "kasir_get_stock": "stock",
+        "kasir_low_stock": "low_stock",
+        "kasir_list_products": "products",
+        "kasir_daily_report": "report",
+        "kasir_top_products": "top",
+        "kasir_draft_sale": "draft_sale",
+        "kasir_confirm_sale": "confirm_sale",
+        "kasir_draft_purchase": "draft_purchase",
+        "kasir_confirm_purchase": "confirm_purchase",
+    }
     for name, schema, handler in tools:
         try:
             ctx.register_tool(
                 name=name,
                 toolset="kasir",
                 schema=schema,
-                handler=handler,
+                handler=_user_safe_tool(handler, kind=kind_by_name.get(name, "generic")),
             )
         except Exception as exc:
             logger.error("kasir-tools: register_tool %s failed: %s", name, exc)

@@ -81,9 +81,15 @@ def msg_status_pending(store: str | None) -> str:
 
 
 def msg_status_rejected(reason: str | None) -> str:
+    try:
+        from .user_safe import sanitize_reject_reason
+    except ImportError:  # loaded as flat module in unit tests
+        from user_safe import sanitize_reject_reason
+
     base = "Pendaftaran ditolak admin."
-    if reason:
-        return f"{base} Alasan: {reason}\nKetik *DAFTAR* untuk coba lagi."
+    clean = sanitize_reject_reason(reason)
+    if clean:
+        return f"{base} Alasan: {clean}\nKetik *DAFTAR* untuk coba lagi."
     return f"{base}\nKetik *DAFTAR* untuk coba lagi."
 
 
@@ -127,8 +133,14 @@ def msg_approved_notify(store: str) -> str:
 
 
 def msg_rejected_notify(reason: str | None) -> str:
-    if reason:
-        return f"Pendaftaran ditolak: {reason}\nKetik *DAFTAR* untuk coba lagi."
+    try:
+        from .user_safe import sanitize_reject_reason
+    except ImportError:
+        from user_safe import sanitize_reject_reason
+
+    clean = sanitize_reject_reason(reason)
+    if clean:
+        return f"Pendaftaran ditolak: {clean}\nKetik *DAFTAR* untuk coba lagi."
     return "Pendaftaran ditolak admin.\nKetik *DAFTAR* untuk coba lagi."
 
 

@@ -344,13 +344,11 @@ draft = writes.handle_draft_sale({{
     "payment_method": "tunai",
 }})
 print(draft)
-m = re.search(r"draft_id:\\s*`([a-f0-9]+)`", draft)
-if not m:
-    print("FAIL: no draft_id")
+if "draft_id" in draft.lower() or "kasir_" in draft.lower():
+    print("FAIL: draft text leaked internal tokens")
     sys.exit(1)
-draft_id = m.group(1)
-print("--- confirm sale ---")
-print(writes.handle_confirm_sale({{"phone": phone, "draft_id": draft_id}}))
+print("--- confirm sale (latest draft, no draft_id) ---")
+print(writes.handle_confirm_sale({{"phone": phone}}))
 print("--- stock after ---")
 print(mod._handle_stock({{"phone": phone, "product_query": "indomie"}}))
 print("--- report ---")

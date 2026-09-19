@@ -1,6 +1,6 @@
 name: kasir-pipe
 label: Kasir WhatsApp pair + DB allowlist gate
-version: 1.3.2
+version: 1.3.3
 description: >
   Serves /pair/* for admin QR pairing and proxies the Baileys bridge for
   outbound send. Allowlisted WhatsApp senders reach the Hermes agent.

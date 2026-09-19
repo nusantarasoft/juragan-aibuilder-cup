@@ -195,6 +195,38 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 
 Tracker: [`docs/hermes-gaps.md`](docs/hermes-gaps.md) (G1–G10 status).
 
+### Persist kasir sale/purchase drafts across Hermes restart
+
+**What:** Persist `_DRAFTS` (sale/purchase confirm state) to Hermes volume or DB so `ya` survives container recreate/redeploy.
+
+**Why:** In-memory drafts in `kasir-tools/writes.py` die on Hermes restart; confirm becomes flaky after ops recreate (outside voice / eng-review leak plan D10).
+
+**Pros:** Reliable jual/beli confirm after deploy.
+
+**Cons:** TTL, locking, multi-worker; not part of user-facing leak hardening.
+
+**Context:** Eng-review 2026-09-19 leak hardening deferred this (D10 B). After leak PR: confirm uses latest open draft per `(phone, kind)` with optional `draft_id`. Start from `writes.py` `_DRAFTS`.
+
+**Effort:** M
+**Priority:** P2
+**Depends on:** Hermes leak-hardening PR shipped (optional draft_id / latest-by-phone)
+
+### Agent-outbound WA text sanitizer (Hermes gateway egress)
+
+**What:** When Hermes supports pre-send/outbound hook or fail-closed error-text config, sanitize all allowlisted agent WhatsApp messages (not only tool returns / DAFTAR `_send_wa_text`).
+
+**Why:** Leak eng-review D8 residual — tool→model→WA paraphrase can still emit `kasir_*` / internals without gateway filter. Tool-return wrapper is soft relative to true egress.
+
+**Pros:** Hard last-mile for kasir chats.
+
+**Cons:** May require Hermes version/hook that does not exist yet; avoid forking the image.
+
+**Context:** Probe during leak-hardening implement (`exposeErrorText`, plugin hooks). Document residual in `docs/hermes-gaps.md` until this lands.
+
+**Effort:** M–L
+**Priority:** P2
+**Depends on:** Leak PR probe notes; usable Hermes egress API or config
+
 ### Spike WhatsApp Cloud API migration (gap G1) — HOLD
 
 **What:** Evaluate Meta Cloud API vs Baileys for production kasir.

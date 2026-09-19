@@ -18,7 +18,9 @@ import urllib.parse
 import urllib.request
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable
+from typing import Any, Callable, List, Optional, Tuple
+
+from .user_safe import safe_user_error
 
 logger = logging.getLogger("hermes.plugins.kasir-tools.writes")
 
@@ -27,9 +29,12 @@ _DRAFT_TTL_SEC = 15 * 60
 # draft_id -> draft dict
 _DRAFTS: dict[str, dict[str, Any]] = {}
 
-_WithTenant = Callable[[dict | None, dict], tuple[tuple[str, str] | None, str | None]]
-_ActiveProducts = Callable[[str], list[dict[str, Any]]]
-_Idr = Callable[[float | int], str]
+_WithTenant = Callable[
+    [Optional[dict], dict],
+    Tuple[Optional[Tuple[str, str]], Optional[str]],
+]
+_ActiveProducts = Callable[[str], List[dict]]
+_Idr = Callable[[Any], str]
 
 _with_tenant: _WithTenant | None = None
 _active_products: _ActiveProducts | None = None
@@ -47,6 +52,43 @@ def bind(
     _active_products = active_products
     _idr = idr
 
+
+def _purge_expired() -> None:
+    now = time.time()
+    dead = [k for k, v in _DRAFTS.items() if now - float(v.get("created_at") or 0) > _DRAFT_TTL_SEC]
+    for k in dead:
+        _DRAFTS.pop(k, None)
+
+
+def _find_draft(
+    *,
+    phone: str,
+    kind: str,
+    tenant_id: str,
+    draft_id: str = "",
+) -> tuple[str, dict[str, Any] | None]:
+    """Resolve draft by optional id, else latest open draft for (phone, kind, tenant)."""
+    _purge_expired()
+    if draft_id:
+        draft = _DRAFTS.get(draft_id)
+        if (
+            draft
+            and draft.get("kind") == kind
+            and draft.get("phone") == phone
+            and draft.get("tenant_id") == tenant_id
+        ):
+            return draft_id, draft
+    candidates = [
+        (did, d)
+        for did, d in _DRAFTS.items()
+        if d.get("kind") == kind
+        and d.get("phone") == phone
+        and d.get("tenant_id") == tenant_id
+    ]
+    if not candidates:
+        return "", None
+    did, d = max(candidates, key=lambda item: float(item[1].get("created_at") or 0))
+    return did, d
 
 def _supabase_url() -> str:
     return (os.environ.get("SUPABASE_URL") or "").rstrip("/")
@@ -91,13 +133,6 @@ def _sb(
     except urllib.error.HTTPError as err:
         detail = err.read().decode("utf-8", "replace")[:500]
         raise RuntimeError(f"HTTP {err.code} {path}: {detail}") from err
-
-
-def _purge_expired() -> None:
-    now = time.time()
-    dead = [k for k, v in _DRAFTS.items() if now - float(v.get("created_at", 0)) > _DRAFT_TTL_SEC]
-    for k in dead:
-        _DRAFTS.pop(k, None)
 
 
 def _new_draft_id() -> str:
@@ -272,8 +307,8 @@ def handle_draft_sale(params: dict[str, Any] | None = None, **kwargs: Any) -> st
         items = _parse_items(params.get("items"))
         if not items:
             return (
-                "Draft penjualan butuh items: "
-                '[{"name":"indomie","quantity":2,"unit_price":3500}]'
+                "Draft penjualan belum lengkap. Sebutkan barang, jumlah, "
+                "dan harga (contoh: jual 2 indomie 7000)."
             )
         products = _active_products(tenant_id)
         resolved_items = []
@@ -311,7 +346,6 @@ def handle_draft_sale(params: dict[str, Any] | None = None, **kwargs: Any) -> st
         }
         lines = [
             "📋 *Konfirmasi penjualan*",
-            f"draft_id: `{draft_id}`",
             "",
         ]
         for r in resolved_items:
@@ -324,13 +358,13 @@ def handle_draft_sale(params: dict[str, Any] | None = None, **kwargs: Any) -> st
             f"Total: *{_idr(total)}*",
             f"Bayar: {payment or '(belum diisi)'}",
             "",
-            "Kalau sudah benar, panggil tool *kasir_confirm_sale* dengan draft_id di atas. "
-            "Kalau salah, buat draft baru.",
+            "Kalau sudah benar, balas *ya* untuk simpan. "
+            "Kalau salah, kirim draft baru.",
         ]
         return "\n".join(lines)
     except Exception as exc:
-        logger.exception("draft_sale failed")
-        return f"Gagal draft penjualan: {exc}"
+        logger.exception("draft_sale failed: %s", exc)
+        return safe_user_error("draft_sale")
 
 
 def _is_paid(payment: str) -> bool:
@@ -347,12 +381,11 @@ def handle_confirm_sale(params: dict[str, Any] | None = None, **kwargs: Any) -> 
         assert resolved
         phone, tenant_id = resolved
         draft_id = str(params.get("draft_id") or params.get("draftId") or "").strip()
-        _purge_expired()
-        draft = _DRAFTS.get(draft_id)
-        if not draft or draft.get("kind") != "sale":
+        draft_id, draft = _find_draft(
+            phone=phone, kind="sale", tenant_id=tenant_id, draft_id=draft_id
+        )
+        if not draft or not draft_id:
             return "Draft penjualan tidak ditemukan / sudah kadaluarsa. Buat draft baru."
-        if draft["phone"] != phone or draft["tenant_id"] != tenant_id:
-            return "Draft bukan milik sesi toko ini. Buat draft baru."
         items = draft["items"]
         total = float(draft["total"])
         payment = draft.get("payment_method")
@@ -429,8 +462,8 @@ def handle_confirm_sale(params: dict[str, Any] | None = None, **kwargs: Any) -> 
             lines.append("Stok gagal dipotong untuk: " + ", ".join(warnings))
         return "\n".join(lines)
     except Exception as exc:
-        logger.exception("confirm_sale failed")
-        return f"Gagal konfirmasi penjualan: {exc}"
+        logger.exception("confirm_sale failed: %s", exc)
+        return safe_user_error("confirm_sale")
 
 
 def handle_draft_purchase(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
@@ -446,9 +479,8 @@ def handle_draft_purchase(params: dict[str, Any] | None = None, **kwargs: Any) -
         # unit_cost alias already handled in _parse_items via unit_price field
         if not items:
             return (
-                "Draft belanja butuh items: "
-                '[{"name":"indomie","quantity":10,"unit_price":3000}] '
-                "(unit_price = harga modal)"
+                "Draft belanja belum lengkap. Sebutkan barang, jumlah, "
+                "dan harga modal (contoh: beli 10 indomie modal 3000)."
             )
         products = _active_products(tenant_id)
         resolved_items = []
@@ -487,7 +519,6 @@ def handle_draft_purchase(params: dict[str, Any] | None = None, **kwargs: Any) -
         }
         lines = [
             "📋 *Konfirmasi belanja*",
-            f"draft_id: `{draft_id}`",
             f"Tanggal: {purchase_date}",
             f"Supplier: {supplier or '-'}",
             "",
@@ -501,12 +532,12 @@ def handle_draft_purchase(params: dict[str, Any] | None = None, **kwargs: Any) -
             "",
             f"Total: *{_idr(total)}*",
             "",
-            "Kalau sudah benar, panggil *kasir_confirm_purchase* dengan draft_id ini.",
+            "Kalau sudah benar, balas *ya* untuk simpan.",
         ]
         return "\n".join(lines)
     except Exception as exc:
-        logger.exception("draft_purchase failed")
-        return f"Gagal draft belanja: {exc}"
+        logger.exception("draft_purchase failed: %s", exc)
+        return safe_user_error("draft_purchase")
 
 
 def handle_confirm_purchase(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
@@ -519,12 +550,11 @@ def handle_confirm_purchase(params: dict[str, Any] | None = None, **kwargs: Any)
         assert resolved
         phone, tenant_id = resolved
         draft_id = str(params.get("draft_id") or params.get("draftId") or "").strip()
-        _purge_expired()
-        draft = _DRAFTS.get(draft_id)
-        if not draft or draft.get("kind") != "purchase":
+        draft_id, draft = _find_draft(
+            phone=phone, kind="purchase", tenant_id=tenant_id, draft_id=draft_id
+        )
+        if not draft or not draft_id:
             return "Draft belanja tidak ditemukan / sudah kadaluarsa. Buat draft baru."
-        if draft["phone"] != phone or draft["tenant_id"] != tenant_id:
-            return "Draft bukan milik sesi toko ini."
         purchase_number = _purchase_number()
         header = _sb(
             "POST",
@@ -585,8 +615,8 @@ def handle_confirm_purchase(params: dict[str, Any] | None = None, **kwargs: Any)
             ]
         )
     except Exception as exc:
-        logger.exception("confirm_purchase failed")
-        return f"Gagal konfirmasi belanja: {exc}"
+        logger.exception("confirm_purchase failed: %s", exc)
+        return safe_user_error("confirm_purchase")
 
 
 WRITE_TOOL_SPECS: list[tuple[str, dict[str, Any], Callable[..., str]]] = [
@@ -597,7 +627,8 @@ WRITE_TOOL_SPECS: list[tuple[str, dict[str, Any], Callable[..., str]]] = [
             "description": (
                 "Siapkan draft penjualan (BELUM menulis ke database). "
                 "Panggil saat user minta catat jual. Setelah preview, "
-                "wajib kasir_confirm_sale dengan draft_id."
+                "tunggu user balas ya lalu panggil kasir_confirm_sale "
+                "(draft_id opsional — pakai draft terakhir untuk nomor ini)."
             ),
             "parameters": {
                 "type": "object",
@@ -623,15 +654,19 @@ WRITE_TOOL_SPECS: list[tuple[str, dict[str, Any], Callable[..., str]]] = [
             "name": "kasir_confirm_sale",
             "description": (
                 "Commit draft penjualan ke database + potong stok. "
-                "Hanya setelah user setuju (ya). Wajib draft_id dari kasir_draft_sale."
+                "Hanya setelah user setuju (ya). draft_id opsional — "
+                "kosongkan untuk memakai draft penjualan terakhir nomor ini."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "draft_id": {"type": "string"},
+                    "draft_id": {
+                        "type": "string",
+                        "description": "Opsional. Kosong = draft penjualan terakhir.",
+                    },
                     "phone": {"type": "string"},
                 },
-                "required": ["draft_id"],
+                "required": [],
             },
         },
         handle_confirm_sale,
@@ -642,7 +677,8 @@ WRITE_TOOL_SPECS: list[tuple[str, dict[str, Any], Callable[..., str]]] = [
             "name": "kasir_draft_purchase",
             "description": (
                 "Siapkan draft belanja/pembelian (BELUM menulis). "
-                "unit_price pada items = harga modal. Lanjut kasir_confirm_purchase."
+                "unit_price pada items = harga modal. Setelah preview, "
+                "tunggu ya lalu kasir_confirm_purchase."
             ),
             "parameters": {
                 "type": "object",
@@ -668,15 +704,18 @@ WRITE_TOOL_SPECS: list[tuple[str, dict[str, Any], Callable[..., str]]] = [
             "name": "kasir_confirm_purchase",
             "description": (
                 "Commit draft belanja + tambah stok. Hanya setelah user setuju. "
-                "Wajib draft_id dari kasir_draft_purchase."
+                "draft_id opsional — kosongkan untuk draft belanja terakhir."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "draft_id": {"type": "string"},
+                    "draft_id": {
+                        "type": "string",
+                        "description": "Opsional. Kosong = draft belanja terakhir.",
+                    },
                     "phone": {"type": "string"},
                 },
-                "required": ["draft_id"],
+                "required": [],
             },
         },
         handle_confirm_purchase,

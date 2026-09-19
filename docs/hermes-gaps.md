@@ -31,12 +31,42 @@ Architecture: [`hermes-architecture.md`](./hermes-architecture.md) · Ops: [`her
 | **G8** | Dashboard / API publik | High | **DONE** | Bind `127.0.0.1` + SSH tunnel. |
 | **G9** | Tool progress chrome di WA | Low | **DONE** | Silence via deploy. |
 | **G10** | Bridge proxy `:8765` custom | — | **DONE** | Perlu Nest pair/send; ada di L5. |
+| **G11** | Teks sistem/tool bocor ke user WA | High (UX/trust) | **FIXED** | `user_safe` sanitize + wrap semua tool return; draft tanpa `draft_id`/nama tool; confirm latest `(phone,kind)`; denylist `_send_wa_text` (DAFTAR); SOUL harden; `reject_reason` cap. Residual: agent egress tanpa hook Hermes → TODOS. |
+| **G12** | Hermes nag `/sethome` / “No home channel” | Med (UX) | **FIXED** | Set `WHATSAPP_HOME_CHANNEL` (ops chat JID) di compose/env. Nag fires on first message when home unset (`gateway/run.py`). UMKM: **ignore** — jangan `/sethome` di chat toko (itu mengalihkan cron ke mereka). |
+
+---
+
+## Leak checklist (QA / live WA)
+
+Fail if user-visible WhatsApp text contains any of:
+
+- `kasir_`
+- `draft_id`
+- `traceback` / `urllib` / `PGRST` / `HTTPError` / `RuntimeError`
+- `http://` or `https://` (no product links today)
+- Raw JSON tool schemas (e.g. `"unit_price":`)
+
+Manual paths:
+
+1. Owner allowlist: `cek stok` / `laporan` / `daftar barang`
+2. Owner: jual → ringkasan → `ya` (no tool names; sale confirms)
+3. Non-owner: `DAFTAR` wizard copy stays human
+4. Rejected registration: toxic admin reason → clean/generic on WA
+
+Unit:
+
+```bash
+cd scripts/master-production/hermes-plugins/kasir-tools
+python3 -m unittest test_user_safe_copy.py -v
+```
+
+**Residual (D8):** Allowlisted agent replies go Hermes gateway (not `_send_wa_text`). Prod probe 2026-09-19: `hermes config get channels.whatsapp.exposeErrorText` → *Config key not set* (no fail-closed knob in this image). Until a gateway hook exists, rely on tool-return sanitize + SOUL + this checklist. See TODOS *Agent-outbound WA text sanitizer*.
 
 ---
 
 ## Urutan beresin (sisa)
 
-_Tidak ada gap OPEN._ G1 HOLD sampai ada keputusan produk baru.
+_Tidak ada gap OPEN._ G1 HOLD. Residual G11 agent-egress → TODOS.
 
 ---
 
@@ -45,6 +75,7 @@ _Tidak ada gap OPEN._ G1 HOLD sampai ada keputusan produk baru.
 ```bash
 python3 scripts/master-production/hermes-kasir-health.py
 HERMES_CONTAINER=nsoft3-hermes python3 scripts/master-production/hermes-kasir-health.py --docker
+python3 -m unittest scripts/master-production/hermes-plugins/kasir-tools/test_user_safe_copy.py -v
 ```
 
 ---
@@ -56,3 +87,5 @@ HERMES_CONTAINER=nsoft3-hermes python3 scripts/master-production/hermes-kasir-he
 | 2026-09-19 | Register; G3–G7 FIXED; G4 FIXED; G2 MITIGATED |
 | 2026-09-19 | **G1 HOLD** — tetap Baileys (produk) |
 | 2026-09-19 | **G2 FIXED** — deploy + smoke fail-closed jika plugin kasir absen |
+| 2026-09-19 | **G11 FIXED** — user-facing leak harden (sanitize, draft UX, DAFTAR denylist, QA checklist) |
+| 2026-09-19 | **G12 FIXED** — `WHATSAPP_HOME_CHANNEL` ops JID suppresses Hermes home-channel nag |
