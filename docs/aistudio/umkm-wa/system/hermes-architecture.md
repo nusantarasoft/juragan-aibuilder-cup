@@ -49,7 +49,7 @@ Business ladder: [`diagrams/aistudio/umkm-wa/business/`](../../../../diagrams/ai
 |-------|------|
 | **Hermes Agent** | Container `hermes` / `nsoft3-hermes`. Runs gateway + Baileys WhatsApp. Volume `./volumes/hermes` → `/opt/data`. |
 | **kasir-pipe** | Plugin: allowlist gate, DAFTAR funnel, bridge+pair proxy `:8765`. |
-| **kasir-tools** | Plugin: stock/report/sale tools → PostgREST (Kong). Tenant from sender phone / pipe stamp — never `KASIR_AGENT_PHONES` as tenant fallback. Sale/purchase drafts mirrored to `runtime/kasir_drafts.json` (15m TTL). |
+| **kasir-tools** | Plugin: stock/report/sale tools → PostgREST (Kong). Tenant from sender phone / pipe stamp — never `KASIR_AGENT_PHONES` as tenant fallback. Sale/purchase drafts mirrored to `runtime/kasir_drafts.json` (15m TTL). After draft, best-effort `/send-poll` confirm. `kasir_repeat_last_sale` uses `kasir_last_sale.json` (24h). |
 | **kasir-probe** | Debug/probe plugin (ops). |
 | **user_safe** | Shared sanitize on tool returns + DAFTAR `_send_wa_text` denylist (gap **G11**). |
 | **HermesProvider** | Nest transport: outbound + session/QR via bridge. |

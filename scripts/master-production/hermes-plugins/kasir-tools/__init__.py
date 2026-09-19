@@ -893,6 +893,7 @@ def register(ctx) -> None:
         "kasir_daily_report": "report",
         "kasir_top_products": "top",
         "kasir_draft_sale": "draft_sale",
+        "kasir_repeat_last_sale": "draft_sale",
         "kasir_confirm_sale": "confirm_sale",
         "kasir_draft_purchase": "draft_purchase",
         "kasir_confirm_purchase": "confirm_purchase",

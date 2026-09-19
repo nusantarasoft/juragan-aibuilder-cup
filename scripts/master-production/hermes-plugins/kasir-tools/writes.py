@@ -99,6 +99,141 @@ def _pop_draft(draft_id: str) -> None:
     _DRAFTS.pop(draft_id, None)
     _persist_drafts()
 
+
+def _send_confirm_poll(phone: str, title: str) -> bool:
+    """Best-effort Ya/Batal poll via Baileys bridge. Fail-open → False (text fallback)."""
+    digits = re.sub(r"\D", "", phone or "")
+    if len(digits) < 8:
+        return False
+    jid = f"{digits}@s.whatsapp.net"
+    name = (title or "Konfirmasi").strip()[:200] or "Konfirmasi"
+    # Bridge schema: chatId + question + options (not Nest-style name/values).
+    payload = json.dumps(
+        {
+            "chatId": jid,
+            "question": name,
+            "options": ["Ya, simpan", "Batal"],
+            "selectableCount": 1,
+        }
+    ).encode("utf-8")
+    ports = [
+        int(os.environ.get("WHATSAPP_BRIDGE_PORT") or "3000"),
+        int(os.environ.get("KASIR_BRIDGE_PROXY_PORT") or "8765"),
+    ]
+    for port in ports:
+        try:
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{port}/send-poll",
+                data=payload,
+                method="POST",
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                if int(resp.status) < 400:
+                    return True
+        except Exception:
+            continue
+    logger.info("kasir confirm poll unavailable phone=%s…", digits[-4:])
+    return False
+
+
+def _draft_confirm_footer(*, poll_sent: bool) -> str:
+    if poll_sent:
+        return (
+            "Pilih *Ya, simpan* atau *Batal* di tombol di atas "
+            "(atau ketik *ya* / *batal*)."
+        )
+    return (
+        "Kalau sudah benar, balas *ya* untuk simpan. "
+        "Kalau salah / batal, ketik *batal* atau kirim draft baru."
+    )
+
+
+_LAST_SALE_TTL_SEC = 24 * 60 * 60
+
+
+def _last_sale_path() -> Path:
+    override = (os.environ.get("KASIR_LAST_SALE_PATH") or "").strip()
+    if override:
+        return Path(override)
+    runtime = Path(os.environ.get("KASIR_IDENTITY_DIR") or "/opt/data/runtime")
+    return runtime / "kasir_last_sale.json"
+
+
+def _load_last_sales() -> dict[str, Any]:
+    path = _last_sale_path()
+    try:
+        if not path.is_file():
+            return {}
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        logger.exception("kasir last_sale load failed")
+        return {}
+
+
+def _save_last_sales(data: dict[str, Any]) -> None:
+    path = _last_sale_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix="kasir_last_sale_")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                json.dump(data, fh, ensure_ascii=False)
+            os.replace(tmp, path)
+        except Exception:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
+    except Exception:
+        logger.exception("kasir last_sale persist failed")
+
+
+def _last_sale_key(phone: str, tenant_id: str) -> str:
+    digits = re.sub(r"\D", "", phone)
+    return f"{digits}::{tenant_id}"
+
+
+def _remember_last_sale(*, phone: str, tenant_id: str, items: list[dict[str, Any]]) -> None:
+    if not items:
+        return
+    # Prefer first line item for "satu lagi" (typical single-SKU jual)
+    first = items[0]
+    payload = {
+        "updated_at": time.time(),
+        "phone": re.sub(r"\D", "", phone),
+        "tenant_id": tenant_id,
+        "items": [
+            {
+                "name": first.get("name"),
+                "quantity": first.get("quantity"),
+                "unit_price": first.get("unit_price"),
+                "item_id": first.get("item_id"),
+                "item_sku": first.get("item_sku"),
+                "catalog_matched": first.get("catalog_matched"),
+            }
+        ],
+    }
+    data = _load_last_sales()
+    data[_last_sale_key(phone, tenant_id)] = payload
+    _save_last_sales(data)
+
+
+def _get_last_sale(*, phone: str, tenant_id: str) -> dict[str, Any] | None:
+    data = _load_last_sales()
+    row = data.get(_last_sale_key(phone, tenant_id))
+    if not isinstance(row, dict):
+        return None
+    updated = float(row.get("updated_at") or 0)
+    if time.time() - updated > _LAST_SALE_TTL_SEC:
+        return None
+    items = row.get("items")
+    if not isinstance(items, list) or not items:
+        return None
+    return row
+
 _WithTenant = Callable[
     [Optional[dict], dict],
     Tuple[Optional[Tuple[str, str]], Optional[str]],
@@ -430,13 +565,13 @@ def handle_draft_sale(params: dict[str, Any] | None = None, **kwargs: Any) -> st
             lines.append(
                 f"• {r['quantity']:g} × {r['name']} @ {_idr(r['unit_price'])}{mark}"
             )
+        poll_ok = _send_confirm_poll(phone, "Konfirmasi penjualan")
         lines += [
             "",
             f"Total: *{_idr(total)}*",
             f"Bayar: {payment or '(belum diisi)'}",
             "",
-            "Kalau sudah benar, balas *ya* untuk simpan. "
-            "Kalau salah, kirim draft baru.",
+            _draft_confirm_footer(poll_sent=poll_ok),
         ]
         return "\n".join(lines)
     except Exception as exc:
@@ -530,6 +665,7 @@ def handle_confirm_sale(params: dict[str, Any] | None = None, **kwargs: Any) -> 
                     logger.warning("stock deduct failed: %s", stock_err)
                     warnings.append(str(r["name"]))
         _pop_draft(draft_id)
+        _remember_last_sale(phone=phone, tenant_id=tenant_id, items=items)
         lines = [
             "✅ *Penjualan tercatat*",
             f"No. {order_number}",
@@ -537,6 +673,7 @@ def handle_confirm_sale(params: dict[str, Any] | None = None, **kwargs: Any) -> 
         ]
         if warnings:
             lines.append("Stok gagal dipotong untuk: " + ", ".join(warnings))
+        lines.append("Mau ulang item yang sama? Ketik *satu lagi*.")
         return "\n".join(lines)
     except Exception as exc:
         logger.exception("confirm_sale failed: %s", exc)
@@ -608,11 +745,12 @@ def handle_draft_purchase(params: dict[str, Any] | None = None, **kwargs: Any) -
             lines.append(
                 f"• {r['quantity']:g} × {r['name']} @ {_idr(r['unit_cost'])}{mark}"
             )
+        poll_ok = _send_confirm_poll(phone, "Konfirmasi belanja")
         lines += [
             "",
             f"Total: *{_idr(total)}*",
             "",
-            "Kalau sudah benar, balas *ya* untuk simpan.",
+            _draft_confirm_footer(poll_sent=poll_ok),
         ]
         return "\n".join(lines)
     except Exception as exc:
@@ -699,6 +837,46 @@ def handle_confirm_purchase(params: dict[str, Any] | None = None, **kwargs: Any)
         return safe_user_error("confirm_purchase")
 
 
+def handle_repeat_last_sale(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
+    """Draft the same first line item as the last confirmed sale ("satu lagi")."""
+    try:
+        assert _with_tenant and _idr
+        params = params or {}
+        resolved, err = _with_tenant(params, kwargs)
+        if err:
+            return err
+        assert resolved
+        phone, tenant_id = resolved
+        last = _get_last_sale(phone=phone, tenant_id=tenant_id)
+        if not last:
+            return (
+                "Belum ada penjualan terakhir untuk diulang. "
+                "Sebutkan barangnya dulu (contoh: jual 1 indomie)."
+            )
+        items = last.get("items") or []
+        draft_items = []
+        for it in items:
+            draft_items.append(
+                {
+                    "name": it.get("name"),
+                    "quantity": it.get("quantity") or 1,
+                    "unit_price": it.get("unit_price") or 0,
+                }
+            )
+        return handle_draft_sale(
+            {
+                "phone": phone,
+                "items": draft_items,
+                "payment_method": params.get("payment_method")
+                or params.get("paymentMethod"),
+            },
+            **kwargs,
+        )
+    except Exception as exc:
+        logger.exception("repeat_last_sale failed: %s", exc)
+        return safe_user_error("draft_sale")
+
+
 WRITE_TOOL_SPECS: list[tuple[str, dict[str, Any], Callable[..., str]]] = [
     (
         "kasir_draft_sale",
@@ -729,12 +907,32 @@ WRITE_TOOL_SPECS: list[tuple[str, dict[str, Any], Callable[..., str]]] = [
         handle_draft_sale,
     ),
     (
+        "kasir_repeat_last_sale",
+        {
+            "name": "kasir_repeat_last_sale",
+            "description": (
+                "Ulang penjualan terakhir sebagai draft baru (satu lagi / ulang). "
+                "Panggil saat user bilang 'satu lagi' atau 'ulang yang tadi' "
+                "tanpa menyebut produk. Lalu tunggu ya → kasir_confirm_sale."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "phone": {"type": "string"},
+                    "payment_method": {"type": "string"},
+                },
+                "required": [],
+            },
+        },
+        handle_repeat_last_sale,
+    ),
+    (
         "kasir_confirm_sale",
         {
             "name": "kasir_confirm_sale",
             "description": (
                 "Commit draft penjualan ke database + potong stok. "
-                "Hanya setelah user setuju (ya). draft_id opsional — "
+                "Hanya setelah user setuju (ya / Ya, simpan). draft_id opsional — "
                 "kosongkan untuk memakai draft penjualan terakhir nomor ini."
             ),
             "parameters": {

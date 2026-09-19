@@ -93,7 +93,8 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 **Effort:** M
 **Priority:** P2
 **Depends on:** Intake admin PR shipped
-**Status:** done 2026-08-19 — try `sendButtons`, then GOWS/NOWEB `sendList` (Ya, simpan / Batal); tap ids map to `ya`/`batal`; text fallback. WEBJS Core returns 501 for buttons.
+**Status:** done 2026-08-19 — Nest intake try `sendButtons`, then GOWS/NOWEB `sendList` (Ya, simpan / Batal); tap ids map to `ya`/`batal`; text fallback. WEBJS Core returns 501 for buttons.  
+**Hermes (2026-09-20):** after draft, best-effort bridge `/send-poll` (`question` + `options`: `Ya, simpan` / `Batal`) from `kasir-tools/writes.py`; fail-open to text *ya*; SOUL treats poll labels as confirm/cancel.
 
 ### Last-item memory (“satu lagi”)
 
@@ -106,6 +107,7 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 **Effort:** S
 **Priority:** P3
 **Depends on:** Intake admin PR shipped
+**Status:** shipped 2026-09-20 — `kasir_repeat_last_sale` + `kasir_last_sale.json` (24h TTL) on Hermes volume; confirm sale remembers first line item.
 
 ### Tutup toko daily recap
 
