@@ -195,21 +195,13 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 
 Tracker: [`docs/aistudio/umkm-wa/system/hermes-gaps.md`](docs/aistudio/umkm-wa/system/hermes-gaps.md) (G1–G12 status).
 
+## Completed
+
 ### Persist kasir sale/purchase drafts across Hermes restart
 
-**What:** Persist `_DRAFTS` (sale/purchase confirm state) to Hermes volume or DB so `ya` survives container recreate/redeploy.
+**What:** Persist `_DRAFTS` (sale/purchase confirm state) to Hermes volume so `ya` survives container recreate/redeploy.
 
-**Why:** In-memory drafts in `kasir-tools/writes.py` die on Hermes restart; confirm becomes flaky after ops recreate (outside voice / eng-review leak plan D10).
-
-**Pros:** Reliable jual/beli confirm after deploy.
-
-**Cons:** TTL, locking, multi-worker; not part of user-facing leak hardening.
-
-**Context:** Eng-review 2026-09-19 leak hardening deferred this (D10 B). After leak PR: confirm uses latest open draft per `(phone, kind)` with optional `draft_id`. Start from `writes.py` `_DRAFTS`.
-
-**Effort:** M
-**Priority:** P2
-**Depends on:** Hermes leak-hardening PR shipped (optional draft_id / latest-by-phone)
+**Shipped:** 2026-09-20 — `writes.py` mirrors drafts to `KASIR_IDENTITY_DIR/kasir_drafts.json` (override `KASIR_DRAFTS_PATH`); TTL 15m; unit `test_draft_persist.py`.
 
 ### Agent-outbound WA text sanitizer (Hermes gateway egress)
 

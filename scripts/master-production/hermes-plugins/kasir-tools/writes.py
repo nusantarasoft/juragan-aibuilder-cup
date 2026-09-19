@@ -1,7 +1,8 @@
 """Fase 2 write tools: draft + confirm sale/purchase (Hermes → Supabase).
 
 Never writes without an explicit confirm tool call. Drafts live in-process
-with a 15-minute TTL (same spirit as middleware pending sales).
+with a 15-minute TTL and are mirrored to the Hermes volume so `ya` survives
+container recreate (KASIR_IDENTITY_DIR / kasir_drafts.json).
 """
 
 from __future__ import annotations
@@ -12,12 +13,14 @@ import os
 import random
 import re
 import string
+import tempfile
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Callable, List, Optional, Tuple
 
 from .user_safe import safe_user_error
@@ -26,8 +29,75 @@ logger = logging.getLogger("hermes.plugins.kasir-tools.writes")
 
 _JAKARTA = timezone(timedelta(hours=7))
 _DRAFT_TTL_SEC = 15 * 60
-# draft_id -> draft dict
+# draft_id -> draft dict (also persisted under Hermes volume)
 _DRAFTS: dict[str, dict[str, Any]] = {}
+_DRAFTS_LOADED = False
+
+
+def _drafts_path() -> Path:
+    override = (os.environ.get("KASIR_DRAFTS_PATH") or "").strip()
+    if override:
+        return Path(override)
+    runtime = Path(os.environ.get("KASIR_IDENTITY_DIR") or "/opt/data/runtime")
+    return runtime / "kasir_drafts.json"
+
+
+def _ensure_drafts_loaded() -> None:
+    """Load persisted drafts once per process (best-effort)."""
+    global _DRAFTS_LOADED, _DRAFTS
+    if _DRAFTS_LOADED:
+        return
+    _DRAFTS_LOADED = True
+    path = _drafts_path()
+    try:
+        if not path.is_file():
+            return
+        raw = path.read_text(encoding="utf-8")
+        data = json.loads(raw) if raw.strip() else {}
+        if isinstance(data, dict):
+            # Only accept mapping of draft_id -> object
+            loaded = {
+                str(k): v
+                for k, v in data.items()
+                if isinstance(v, dict) and v.get("kind") in ("sale", "purchase")
+            }
+            _DRAFTS.update(loaded)
+            logger.info("kasir drafts loaded count=%s path=%s", len(loaded), path)
+    except Exception:
+        logger.exception("kasir drafts load failed path=%s", path)
+
+
+def _persist_drafts() -> None:
+    """Atomic write of current draft map (best-effort; never raises to callers)."""
+    _ensure_drafts_loaded()
+    path = _drafts_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix="kasir_drafts_")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                json.dump(_DRAFTS, fh, ensure_ascii=False)
+            os.replace(tmp, path)
+        except Exception:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
+    except Exception:
+        logger.exception("kasir drafts persist failed path=%s", path)
+
+
+def _set_draft(draft_id: str, draft: dict[str, Any]) -> None:
+    _ensure_drafts_loaded()
+    _DRAFTS[draft_id] = draft
+    _persist_drafts()
+
+
+def _pop_draft(draft_id: str) -> None:
+    _ensure_drafts_loaded()
+    _DRAFTS.pop(draft_id, None)
+    _persist_drafts()
 
 _WithTenant = Callable[
     [Optional[dict], dict],
@@ -54,10 +124,14 @@ def bind(
 
 
 def _purge_expired() -> None:
+    _ensure_drafts_loaded()
     now = time.time()
     dead = [k for k, v in _DRAFTS.items() if now - float(v.get("created_at") or 0) > _DRAFT_TTL_SEC]
+    if not dead:
+        return
     for k in dead:
         _DRAFTS.pop(k, None)
+    _persist_drafts()
 
 
 def _find_draft(
@@ -333,17 +407,20 @@ def handle_draft_sale(params: dict[str, Any] | None = None, **kwargs: Any) -> st
         customer = (params.get("customer_name") or params.get("customerName") or "").strip() or None
         _purge_expired()
         draft_id = _new_draft_id()
-        _DRAFTS[draft_id] = {
-            "kind": "sale",
-            "created_at": time.time(),
-            "phone": phone,
-            "tenant_id": tenant_id,
-            "payment_method": payment,
-            "customer_name": customer,
-            "notes": (params.get("notes") or None),
-            "items": resolved_items,
-            "total": total,
-        }
+        _set_draft(
+            draft_id,
+            {
+                "kind": "sale",
+                "created_at": time.time(),
+                "phone": phone,
+                "tenant_id": tenant_id,
+                "payment_method": payment,
+                "customer_name": customer,
+                "notes": (params.get("notes") or None),
+                "items": resolved_items,
+                "total": total,
+            },
+        )
         lines = [
             "📋 *Konfirmasi penjualan*",
             "",
@@ -452,7 +529,7 @@ def handle_confirm_sale(params: dict[str, Any] | None = None, **kwargs: Any) -> 
                 except Exception as stock_err:
                     logger.warning("stock deduct failed: %s", stock_err)
                     warnings.append(str(r["name"]))
-        _DRAFTS.pop(draft_id, None)
+        _pop_draft(draft_id)
         lines = [
             "✅ *Penjualan tercatat*",
             f"No. {order_number}",
@@ -506,17 +583,20 @@ def handle_draft_purchase(params: dict[str, Any] | None = None, **kwargs: Any) -
         )
         _purge_expired()
         draft_id = _new_draft_id()
-        _DRAFTS[draft_id] = {
-            "kind": "purchase",
-            "created_at": time.time(),
-            "phone": phone,
-            "tenant_id": tenant_id,
-            "purchase_date": purchase_date,
-            "supplier_name": supplier,
-            "notes": params.get("notes"),
-            "items": resolved_items,
-            "total": total,
-        }
+        _set_draft(
+            draft_id,
+            {
+                "kind": "purchase",
+                "created_at": time.time(),
+                "phone": phone,
+                "tenant_id": tenant_id,
+                "purchase_date": purchase_date,
+                "supplier_name": supplier,
+                "notes": params.get("notes"),
+                "items": resolved_items,
+                "total": total,
+            },
+        )
         lines = [
             "📋 *Konfirmasi belanja*",
             f"Tanggal: {purchase_date}",
@@ -605,7 +685,7 @@ def handle_confirm_purchase(params: dict[str, Any] | None = None, **kwargs: Any)
                     )
                 except Exception as stock_err:
                     logger.warning("stock in failed: %s", stock_err)
-        _DRAFTS.pop(draft_id, None)
+        _pop_draft(draft_id)
         return "\n".join(
             [
                 "✅ *Belanja tercatat*",

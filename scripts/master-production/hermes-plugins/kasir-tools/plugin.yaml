@@ -1,10 +1,11 @@
 name: kasir-tools
 label: Kasir tools (Hermes → Supabase)
-version: 0.5.3
+version: 0.5.4
 description: >
   Kasir read + draft/confirm write tools. Queries and writes Supabase/PostgREST
   directly from Hermes. Tenant from Hermes WhatsApp session key / pipe stamp —
-  never KASIR_AGENT_PHONES. Middleware is not used for business logic.
+  never KASIR_AGENT_PHONES. Sale/purchase drafts persist under Hermes volume
+  (kasir_drafts.json) so confirm survives container recreate.
 author: NusantaraSoft
 provides_tools:
   - kasir_get_stock
