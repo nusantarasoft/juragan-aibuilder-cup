@@ -34,4 +34,4 @@ Write-Host "==> [2/2] up-hermes.sh on server" -ForegroundColor Cyan
 python $ssh run "cd $remoteDir && bash scripts/master-production/up-hermes.sh"
 if ($LASTEXITCODE -ne 0) { throw "up-hermes.sh failed ($LASTEXITCODE)" }
 
-Write-Host "DONE — Hermes Phase 1 up. Pair test number next (docs/hermes-local.md)." -ForegroundColor Green
+Write-Host "DONE — Hermes Phase 1 up. Pair test number next (docs/aistudio/umkm-wa/system/hermes-local.md)." -ForegroundColor Green

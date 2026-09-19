@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check Hermes kasir posture vs docs/hermes-gaps.md (G2/G5/G6/G7).
+"""Check Hermes kasir posture vs docs/aistudio/umkm-wa/system/hermes-gaps.md (G2/G5/G6/G7).
 
 Usage:
   python3 scripts/master-production/hermes-kasir-health.py
@@ -223,9 +223,9 @@ def main() -> int:
     failed = [r for r in results if r[0] == "FAIL"]
     print()
     if failed:
-        print(f"FAILED {len(failed)} required check(s). See docs/hermes-gaps.md")
+        print(f"FAILED {len(failed)} required check(s). See docs/aistudio/umkm-wa/system/hermes-gaps.md")
         return 1
-    print("OK — required checks passed (see WARNs in docs/hermes-gaps.md)")
+    print("OK — required checks passed (see WARNs in docs/aistudio/umkm-wa/system/hermes-gaps.md)")
     return 0
 
 

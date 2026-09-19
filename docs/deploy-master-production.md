@@ -23,7 +23,7 @@ Runbook untuk deploy `nusantarasoft-3` ke server production **tanpa mengganggu c
 | `3013` | admin |
 | `9010` | MinIO S3 API |
 
-WhatsApp transport = **Hermes only** (`nsoft3-hermes`). Binds **`127.0.0.1:8652` / `127.0.0.1:9129` only** (SSH tunnel) — not on the public IP. `WHATSAPP_PROVIDER=hermes`. Architecture: `docs/hermes-architecture.md`. Ops: `docs/hermes-local.md`. Gaps/status: `docs/hermes-gaps.md`.
+WhatsApp transport = **Hermes only** (`nsoft3-hermes`). Binds **`127.0.0.1:8652` / `127.0.0.1:9129` only** (SSH tunnel) — not on the public IP. `WHATSAPP_PROVIDER=hermes`. Architecture: `docs/aistudio/umkm-wa/system/hermes-architecture.md`. Ops: `docs/aistudio/umkm-wa/system/hermes-local.md`. Gaps/status: `docs/aistudio/umkm-wa/system/hermes-gaps.md`. AI Studio hub: `docs/aistudio/README.md`.
 
 App lain di server yang **tidak** disentuh: Portainer, pustaka, andromedia, ipustah, beapi-*, dll.
 

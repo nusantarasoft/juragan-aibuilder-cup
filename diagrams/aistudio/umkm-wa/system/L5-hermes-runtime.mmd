@@ -7,7 +7,7 @@ flowchart TB
     B[Baileys bridge<br/>127.0.0.1:3000]
     G[Gateway + LLM]
     P[kasir-pipe<br/>pre_gateway_dispatch]
-    T[kasir-tools]
+    T[kasir-tools<br/>user_safe wrap]
     PX[Bridge+pair proxy<br/>0.0.0.0:8765]
     B --> G
     G --> P
@@ -37,3 +37,5 @@ flowchart TB
   W --> REG
   HP -.->|approve notify| PX
   WH -.->|not kasir inbound| mid
+
+  %% Ops: WHATSAPP_HOME_CHANNEL = ops/agent JID (suppress /sethome nag). Not UMKM owner chats.

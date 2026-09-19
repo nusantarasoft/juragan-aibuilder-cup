@@ -193,7 +193,7 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 
 ## Hermes
 
-Tracker: [`docs/hermes-gaps.md`](docs/hermes-gaps.md) (G1–G10 status).
+Tracker: [`docs/aistudio/umkm-wa/system/hermes-gaps.md`](docs/aistudio/umkm-wa/system/hermes-gaps.md) (G1–G12 status).
 
 ### Persist kasir sale/purchase drafts across Hermes restart
 
@@ -221,7 +221,7 @@ Tracker: [`docs/hermes-gaps.md`](docs/hermes-gaps.md) (G1–G10 status).
 
 **Cons:** May require Hermes version/hook that does not exist yet; avoid forking the image.
 
-**Context:** Probe during leak-hardening implement (`exposeErrorText`, plugin hooks). Document residual in `docs/hermes-gaps.md` until this lands.
+**Context:** Probe during leak-hardening implement (`exposeErrorText`, plugin hooks). Document residual in `docs/aistudio/umkm-wa/system/hermes-gaps.md` until this lands.
 
 **Effort:** M–L
 **Priority:** P2
@@ -233,7 +233,7 @@ Tracker: [`docs/hermes-gaps.md`](docs/hermes-gaps.md) (G1–G10 status).
 
 **Why / decision:** **HOLD 2026-09-19** — tetap Baileys dulu (QR Admin, shared inbox, tanpa WABA). Buka lagi hanya jika ban/protocol stability memaksa.
 
-**Context:** `docs/hermes-gaps.md` G1 HOLD.
+**Context:** `docs/aistudio/umkm-wa/system/hermes-gaps.md` G1 HOLD.
 
 **Effort:** XL
 **Priority:** P4 (parked)
@@ -245,13 +245,13 @@ Tracker: [`docs/hermes-gaps.md`](docs/hermes-gaps.md) (G1–G10 status).
 
 **What:** Deploy/smoke must fail if `kasir-pipe` / `kasir-tools` missing from `plugins.enabled` while gateway allowlist is `*`.
 
-**Shipped:** 2026-09-19 — `deploy-kasir-tools.py` runs `hermes-kasir-health.py`; `hermes-smoke-test.py` asserts plugins. See `docs/hermes-gaps.md` G2 FIXED.
+**Shipped:** 2026-09-19 — `deploy-kasir-tools.py` runs `hermes-kasir-health.py`; `hermes-smoke-test.py` asserts plugins. See `docs/aistudio/umkm-wa/system/hermes-gaps.md` G2 FIXED.
 
 ### Nest WhatsApp webhook fail-closed guard (gap G4)
 
 **What:** Guard or 410/no-op on `POST /api/studio/whatsapp/webhook` so a restored pipe forward cannot revive dual-brain.
 
-**Shipped:** 2026-09-19 — default `GoneException` unless `WHATSAPP_WEBHOOK_ENABLED=1`. Simulasi uses `simulateInboundMessage`. See `docs/hermes-gaps.md` G4 FIXED.
+**Shipped:** 2026-09-19 — default `GoneException` unless `WHATSAPP_WEBHOOK_ENABLED=1`. Simulasi uses `simulateInboundMessage`. See `docs/aistudio/umkm-wa/system/hermes-gaps.md` G4 FIXED.
 
 ### Digit cheat-sheet entry for pendamping (v2)
 

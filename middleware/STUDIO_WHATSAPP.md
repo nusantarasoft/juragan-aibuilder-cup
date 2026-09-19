@@ -2,7 +2,7 @@
 
 Kasir WhatsApp runs **inside Hermes** (Baileys + plugins `kasir-pipe` / `kasir-tools`). Middleware does **not** receive production inbound WA for kasir.
 
-Canonical architecture: [`docs/hermes-architecture.md`](../docs/hermes-architecture.md) · ops: [`docs/hermes-local.md`](../docs/hermes-local.md)
+Canonical architecture: [`docs/aistudio/umkm-wa/system/hermes-architecture.md`](../docs/aistudio/umkm-wa/system/hermes-architecture.md) · ops: [`docs/aistudio/umkm-wa/system/hermes-local.md`](../docs/aistudio/umkm-wa/system/hermes-local.md) · hub: [`docs/aistudio/README.md`](../docs/aistudio/README.md)
 
 ## Setup
 
@@ -45,4 +45,4 @@ Kolom DB `studio_whatsapp_config.session_name` menyimpan nama sesi/inbox (biasan
 
 `POST /api/studio/whatsapp/webhook` returns **410 Gone** by default (pipe-only). Escape hatch: `WHATSAPP_WEBHOOK_ENABLED=1`. Admin **Simulasi chat** does not use this route (`simulateInboundMessage`).
 
-Lihat juga: `docs/deploy-master-production.md`, `docs/hermes-gaps.md`.
+Lihat juga: `docs/deploy-master-production.md`, `docs/aistudio/umkm-wa/system/hermes-gaps.md`.

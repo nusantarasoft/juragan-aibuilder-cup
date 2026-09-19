@@ -2,6 +2,8 @@
 
 Use case diagram untuk halaman **Studio** (`/admin/ai-studio`) di modul AI Studio Admin CMS.
 
+Hub AI Studio (semua modul): [../README.md](../README.md)
+
 ## File
 
 | File | Deskripsi |

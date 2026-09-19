@@ -54,4 +54,4 @@ echo
 echo "OK — nsoft3-hermes should be Up."
 echo "Dashboard (SSH tunnel): ssh -L 9129:127.0.0.1:9129 root@31.97.66.39 → http://127.0.0.1:9129"
 echo "Pair test number: docker compose -f $CF --env-file $EF exec -it hermes hermes whatsapp"
-echo "WHATSAPP_PROVIDER=hermes (sole transport). Docs: docs/hermes-local.md"
+echo "WHATSAPP_PROVIDER=hermes (sole transport). Docs: docs/aistudio/umkm-wa/system/hermes-local.md"
