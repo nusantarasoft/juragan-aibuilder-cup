@@ -147,15 +147,15 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 
 ### Voice note / foto nota as sale input
 
-**What:** Treat a voice note or photo of a receipt as a sale (STT / vision → same pending confirm).
+**What:** Treat a voice note or photo of a receipt as a sale (STT / vision → same pending confirm), behind an **explicit multimodal config flag**. When the flag is **OFF** (prod default / chat-only): reply with a short text refuse (“ketik jual/stok…”) — do **not** run vision/STT.
 
-**Why:** Many pemilik toko speak faster than they type; nota photos are the real ledger.
+**Why:** Many pemilik toko speak faster than they type; nota photos are the real ledger. Eng review 2026-09-20 Q1A + D10A: chat-only must be real at runtime, with an easy on-switch later.
 
-**Context:** CEO 2026-08-16 D4.4 deferred. Needs media pipeline (Hermes download already exists for inbound media annotations). Not a routing fix.
+**Context:** CEO 2026-08-16 D4.4 deferred. Needs media pipeline (Hermes download already exists for inbound media annotations). Not a routing fix. Platform locks: `docs/aistudio/umkm-wa/system/hermes-architecture.md`. Prefer Hermes `agent.image_input_mode` / tool gates over a custom vision stack. Ship refuse path in the same change as the flag.
 
 **Effort:** L
 **Priority:** P3
-**Depends on:** Kill-guide-flow PR; media ingest
+**Depends on:** Kill-guide-flow PR; media ingest; prefer after Hermes WhatsApp tool allowlist P0
 
 ### Official WhatsApp Cloud API vs Hermes
 
