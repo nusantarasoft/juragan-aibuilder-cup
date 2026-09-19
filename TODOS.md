@@ -40,6 +40,18 @@
 **Priority:** P0
 **Depends on:** None
 
+### Hermes concurrent tenant stamp race
+
+**What:** Verify (then fix if needed) tenant resolve under overlapping owner messages on the shared WA number — `kasir_active_sender.json` must not let tools run as the wrong tenant; drafts/`last_sale` stay keyed and safe under concurrency.
+
+**Why:** Outside voice (eng review 2026-09-20): single-file stamp is a race under multi-owner traffic; wrong-tenant sale/stock is ledger P0.
+
+**Context:** D9A — prioritize tool allowlist P0 first; then repro with two allowlisted phones messaging close together. Start `kasir-tools/identity.py`, pipe stamp in `kasir-pipe`, draft keys in `writes.py`. Prefer per-request/per-phone context over one global “active sender” file if race confirmed.
+
+**Effort:** M
+**Priority:** P1
+**Depends on:** Hermes WhatsApp tool allowlist + health fail-closed
+
 ### Union-merge default UMKM command keywords
 
 **What:** Make `resolveUmkmCommands` union DEFAULT keyword lists into notebook `umkm_commands` (add, never replace). Empty array must not delete default phrases.
