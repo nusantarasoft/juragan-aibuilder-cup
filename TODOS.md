@@ -28,6 +28,18 @@
 
 ## UMKM
 
+### Hermes WhatsApp tool allowlist + health fail-closed
+
+**What:** Disable non-kasir Hermes tools on the WhatsApp platform (terminal, browser, generic skills CRUD, etc.); make `hermes-kasir-health.py` / `deploy-kasir-tools.py` **fail** if those tools are still enabled.
+
+**Why:** SOUL “jangan shell/web” is soft; production business number must not expose coding toolsets. Eng review 2026-09-20 D7A+D8A.
+
+**Context:** Platform locks in `docs/aistudio/umkm-wa/system/hermes-architecture.md`. Probe `hermes tools` / config on image `v2026.8.27` first — if per-platform disable is missing, use a denylist in deploy or plugin gate. Smoke must assert the disabled set. Do this before claiming tenant isolation “complete.”
+
+**Effort:** M
+**Priority:** P0
+**Depends on:** None
+
 ### Union-merge default UMKM command keywords
 
 **What:** Make `resolveUmkmCommands` union DEFAULT keyword lists into notebook `umkm_commands` (add, never replace). Empty array must not delete default phrases.
