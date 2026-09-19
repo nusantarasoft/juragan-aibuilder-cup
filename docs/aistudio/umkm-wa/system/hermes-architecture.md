@@ -70,7 +70,7 @@ Settled product/architecture defaults for UMKM kasir on Hermes. Do not invert wi
 | **Knowledge** | Live facts (stok, harga, omzet, jual/beli) = **`kasir-tools` → PostgREST/DB** only. Optional RAG later = **per-tenant docs/SOP** with mandatory `tenant_id` filter — never embed the ledger; never fall through unknown inbound to RAG | Accuracy + isolation; curriculum vector RAG stays a separate deferred TODO |
 | **Character / memory** | **One shared** `SOUL.md` (“Asisten Kasir Warung”). Per-toko uniqueness = allowlist + tenant-scoped tools + app state (`kasir_drafts` / `kasir_last_sale`). Do **not** use global `MEMORY.md` as store KB; multi-SOUL per tenant is out until product sells custom agents | Brand consistency; Hermes SOUL is per-instance; session/`USER.md` are preference layers, not stock |
 | **Skills vs tools** | Owner jobs (“cek stok”, “jual”, “laporan”) are **`kasir-tools` + SOUL routing**, not Hermes Skills packs. Keep coding/browser Hermes skills off the kasir WA path | Explicit, testable, tenant-safe; skill-ifying invites the wrong toolset for warung |
-| **Tool allowlist** | **Pending implement:** deploy/`config.yaml` must **disable** non-kasir tools on the WhatsApp platform (terminal, browser, generic skills CRUD, etc.). SOUL “jangan shell/web” alone is not enough | Eng review 2026-09-20 D7A — enforce at runtime |
+| **Tool allowlist** | **Pending implement:** deploy/`config.yaml` must **disable** non-kasir tools on the WhatsApp platform (terminal, browser, generic skills CRUD, etc.). SOUL “jangan shell/web” alone is not enough. **Also pending:** `hermes-kasir-health` / deploy smoke must **fail** if dangerous tools are still enabled | Eng review 2026-09-20 D7A + D8A |
 
 ```
 User text ("cek stok indomie")
