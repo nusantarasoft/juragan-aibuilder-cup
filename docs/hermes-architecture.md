@@ -4,6 +4,8 @@ Hermes is the **sole** WhatsApp transport for UMKM kasir. This doc is the source
 
 Official product docs: [Hermes Docker](https://hermes-agent.nousresearch.com/docs/user-guide/docker).
 
+**Gaps vs Hermes best practice (status + remediation):** [`hermes-gaps.md`](./hermes-gaps.md)
+
 ---
 
 ## Mental model (read this first)
@@ -30,8 +32,8 @@ Middleware (Nest)
             send / send-poll / pair / media
             (approve/reject notify, Admin WhatsApp Gateway)
 
-Nest POST /api/studio/whatsapp/webhook still exists for Simulasi / legacy.
-It is NOT the production kasir inbound path. See TODO: fail-closed guard.
+Nest POST /api/studio/whatsapp/webhook → **410** by default (set WHATSAPP_WEBHOOK_ENABLED=1 only for legacy).
+Simulasi admin uses simulateInboundMessage, not this route. See docs/hermes-gaps.md G4.
 ```
 
 Runtime diagram (containers / ports / outbound): [`diagrams/umkm-wa/L5-hermes-runtime.svg`](../diagrams/umkm-wa/L5-hermes-runtime.svg).  

@@ -43,6 +43,6 @@ docker compose up -d hermes middleware
 
 Kolom DB `studio_whatsapp_config.session_name` menyimpan nama sesi/inbox (biasanya `hermes`).
 
-`POST /api/studio/whatsapp/webhook` remains for Simulasi/legacy. It is **not** the kasir production inbound path (pipe-only). A fail-closed guard is tracked in `TODOS.md`.
+`POST /api/studio/whatsapp/webhook` returns **410 Gone** by default (pipe-only). Escape hatch: `WHATSAPP_WEBHOOK_ENABLED=1`. Admin **Simulasi chat** does not use this route (`simulateInboundMessage`).
 
-Lihat juga: `docs/deploy-master-production.md`.
+Lihat juga: `docs/deploy-master-production.md`, `docs/hermes-gaps.md`.

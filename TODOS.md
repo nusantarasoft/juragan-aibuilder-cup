@@ -193,19 +193,33 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 
 ## Hermes
 
-### Nest WhatsApp webhook fail-closed guard
+Tracker: [`docs/hermes-gaps.md`](docs/hermes-gaps.md) (G1–G10 status).
 
-**What:** Guard or 410/no-op on `POST /api/studio/whatsapp/webhook` so a restored pipe forward cannot revive dual-brain (middleware inbound + Hermes agent).
+### Spike WhatsApp Cloud API migration (gap G1) — HOLD
 
-**Why:** Kasir inbound is Hermes `kasir-pipe` only. The Nest webhook endpoint stays callable (sim/legacy). Eng-review D8 deferred a runtime guard; without it the landmine remains.
+**What:** Evaluate Meta Cloud API vs Baileys for production kasir.
 
-**Context:** `/plan-eng-review` 2026-09-19 Hermes architecture doc plan (D4 keep endpoint, D8 doc+comment only, D9 TODO). Start at `middleware/src/studio/studio-whatsapp.controller.ts`. Audit Simulasi chat + controller specs before rejecting. After `docs/hermes-architecture.md` ships so intent is documented.
+**Why / decision:** **HOLD 2026-09-19** — tetap Baileys dulu (QR Admin, shared inbox, tanpa WABA). Buka lagi hanya jika ban/protocol stability memaksa.
 
-**Effort:** M
-**Priority:** P2
-**Depends on:** Hermes architecture doc PR merged
+**Context:** `docs/hermes-gaps.md` G1 HOLD.
+
+**Effort:** XL
+**Priority:** P4 (parked)
+**Depends on:** Explicit product un-hold
 
 ## Completed
+
+### G2 fail-closed: kasir plugins must be enabled
+
+**What:** Deploy/smoke must fail if `kasir-pipe` / `kasir-tools` missing from `plugins.enabled` while gateway allowlist is `*`.
+
+**Shipped:** 2026-09-19 — `deploy-kasir-tools.py` runs `hermes-kasir-health.py`; `hermes-smoke-test.py` asserts plugins. See `docs/hermes-gaps.md` G2 FIXED.
+
+### Nest WhatsApp webhook fail-closed guard (gap G4)
+
+**What:** Guard or 410/no-op on `POST /api/studio/whatsapp/webhook` so a restored pipe forward cannot revive dual-brain.
+
+**Shipped:** 2026-09-19 — default `GoneException` unless `WHATSAPP_WEBHOOK_ENABLED=1`. Simulasi uses `simulateInboundMessage`. See `docs/hermes-gaps.md` G4 FIXED.
 
 ### Digit cheat-sheet entry for pendamping (v2)
 

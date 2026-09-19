@@ -35,6 +35,7 @@ INCLUDE = [
     "scripts/master-production/hermes-plugins/kasir-tools",
     "scripts/master-production/hermes-plugins/kasir-pipe",
     "scripts/master-production/hermes-home/SOUL.md",
+    "scripts/master-production/hermes-kasir-health.py",
 ]
 
 
@@ -257,6 +258,18 @@ def main() -> int:
             "'echo SUPABASE_URL=$SUPABASE_URL; "
             "echo SERVICE_KEY_LEN=${#SUPABASE_SERVICE_KEY}'"
         )
+        # G2: refuse open gateway (*) without kasir-pipe/tools enabled.
+        code, _ = run(
+            "HERMES_HOME=/opt/nusantarasoft-3/volumes/hermes "
+            "python3 /opt/nusantarasoft-3/scripts/master-production/hermes-kasir-health.py"
+        )
+        if code != 0:
+            print(
+                "FAIL G2: kasir plugins missing/disabled — "
+                "WHATSAPP_ALLOWED_USERS=* would be ungated",
+                flush=True,
+            )
+            return code
         run(
             f"docker exec nsoft3-hermes sh -lc "
             f"'grep -Ei \"kasir-pipe: allowlist|kasir-tools registered\" {AGENT_LOG} | tail -n 15' || true"

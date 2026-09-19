@@ -82,6 +82,25 @@ mw_pair = run(
 ).strip()
 check("middleware-reach-hermes", "WORKING" in mw_pair, mw_pair[:160])
 
+# G2: open gateway (*) is only safe if kasir-pipe + kasir-tools are enabled
+cfg = run(
+    "python3 - <<'PY'\n"
+    "from pathlib import Path\n"
+    "p = Path('/opt/nusantarasoft-3/volumes/hermes/config.yaml')\n"
+    "t = p.read_text(encoding='utf-8') if p.is_file() else ''\n"
+    "print(t)\n"
+    "PY"
+)
+need = ("kasir-pipe", "kasir-tools")
+enabled_ok = all(
+    (f"- {n}" in cfg) or (f'- "{n}"' in cfg) or (f"- '{n}'" in cfg) for n in need
+)
+check(
+    "kasir-plugins-enabled",
+    enabled_ok,
+    "need kasir-pipe + kasir-tools under plugins.enabled (gap G2)",
+)
+
 failed = [r for r in results if r["status"] == "FAIL"]
 print(json.dumps({"failed": len(failed), "results": results}, indent=2), flush=True)
 c.close()
