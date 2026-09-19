@@ -2,8 +2,10 @@
 
 Date: 2026-09-12  
 Branch context: `master` / `master-production`  
-Status: IMPLEMENTED (code) — deploy migration + middleware + kasir-pipe remaining  
-Related: Hermes kasir-pipe allowlist, Admin AI Studio UMKM page
+Status: IMPLEMENTED (code) — lihat jalur trial CEO di [umkm-wa-register-trial.md](./umkm-wa-register-trial.md)  
+Related: Hermes kasir-pipe allowlist, Admin AI Studio UMKM page  
+
+**Trial / AIDLC / keputusan REDUCTION (2026-09-19):** [umkm-wa-register-trial.md](./umkm-wa-register-trial.md) — diagram bisnis, state machine, checklist E2E, tasks T1–T7.
 
 ## Context
 
