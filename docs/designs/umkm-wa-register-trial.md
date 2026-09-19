@@ -322,6 +322,7 @@ Paralel: T1–T4 → lalu T5 → T7. T6 = dokumen ini.
 | GraphQL | `middleware/src/studio/studio.resolver.ts` |
 | Admin UI | `admin/src/app/admin/ai-studio/umkm/page.tsx` |
 | Schema | `supabase/migrations/00000000000104_studio_umkm_registrations.sql` |
+| RLS | `supabase/migrations/00000000000105_studio_umkm_registrations_rls.sql` |
 | Deploy / smoke | `scripts/master-production/deploy-umkm-registration.py`, `smoke-umkm-registration.py` |
 
 ---
@@ -333,3 +334,4 @@ Paralel: T1–T4 → lalu T5 → T7. T6 = dokumen ini.
 | 2026-09-12 | Design parent IMPLEMENTED (code) |
 | 2026-09-19 | `/plan-ceo-review` SCOPE REDUCTION; dokumen trial + AIDLC |
 | 2026-09-19 | Aturan bisnis B1–B6 dikunci (aktor, open funnel, SLA ≤24h, sukses=`cek stok`, retry langsung, 1 HP/toko) |
+| 2026-09-19 | T1–T5: busy fallback WA, pending error UI, RLS migration, approve `expires_at`, deploy TTL=5 |

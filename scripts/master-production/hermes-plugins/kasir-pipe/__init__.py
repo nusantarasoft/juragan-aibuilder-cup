@@ -379,6 +379,15 @@ def _on_pre_gateway_dispatch(event, gateway=None, session_store=None, **kwargs):
         }
     except Exception as exc:
         logger.exception("kasir-pipe: unexpected error: %s", exc)
+        # Never silent-drop: owner must see a reply (CEO review D6).
+        try:
+            from .register import msg_system_busy
+
+            sender = _chat_id(event) if event is not None else ""
+            if sender:
+                _send_wa_text(sender, msg_system_busy(), gateway)
+        except Exception:
+            logger.exception("kasir-pipe: failed to send busy fallback")
         return {
             "action": "skip",
             "reason": f"kasir-pipe allowlist error: {exc}",

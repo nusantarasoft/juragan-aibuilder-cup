@@ -42,7 +42,7 @@ export interface StudioUmkmRegistrationRow {
 }
 
 function slugifyTenant(storeName: string): string {
-    const raw = (storeName || '')
+    const raw = storeName
         .trim()
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -104,6 +104,14 @@ export class StudioUmkmRegistrationService {
             throw new BadRequestException(
                 `Registration status is ${row.status}; only pending can be approved`,
             );
+        }
+        if (row.expires_at) {
+            const expMs = new Date(row.expires_at).getTime();
+            if (!Number.isNaN(expMs) && expMs < Date.now()) {
+                throw new BadRequestException(
+                    'Registration has expired; ask the owner to ketik DAFTAR again',
+                );
+            }
         }
         const phone = normalizePhoneDigits(row.phone);
         if (phone.length < 8) {

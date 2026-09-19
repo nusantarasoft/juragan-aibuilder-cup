@@ -184,14 +184,23 @@ export default function UmkmStudioPage() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [list, nbs, regs] = await Promise.all([
+            const [list, nbs, regsResult] = await Promise.all([
                 studioService.listWhatsAppConfigs(),
                 userId ? studioService.getNotebooks(userId) : Promise.resolve([]),
-                studioService.listUmkmRegistrations('pending').catch(() => [] as StudioUmkmRegistration[]),
+                studioService
+                    .listUmkmRegistrations('pending')
+                    .then((regs) => ({ ok: true as const, regs }))
+                    .catch((e: unknown) => ({ ok: false as const, error: e })),
             ]);
             setConfigs(list);
             setNotebooks(nbs);
-            setPendingRegs(regs);
+            if (regsResult.ok) {
+                setPendingRegs(regsResult.regs);
+            } else {
+                setPendingRegs([]);
+                const err = regsResult.error as { message?: string };
+                message.error(err?.message || 'Gagal memuat antrian pending UMKM');
+            }
         } catch (e: unknown) {
             const err = e as { message?: string };
             message.error(err.message || 'Gagal memuat data UMKM');

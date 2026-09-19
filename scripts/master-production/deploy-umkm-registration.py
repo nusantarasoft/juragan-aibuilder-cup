@@ -27,9 +27,11 @@ COMPOSE = (
 )
 HERMES_EXEC = "docker exec -e HERMES_HOME=/opt/data nsoft3-hermes"
 MIGRATION = "supabase/migrations/00000000000104_studio_umkm_registrations.sql"
+MIGRATION_RLS = "supabase/migrations/00000000000105_studio_umkm_registrations_rls.sql"
 
 INCLUDE = [
     MIGRATION,
+    MIGRATION_RLS,
     "docker-compose.master-production.yml",
     ".env.master-production.example",
     "middleware/src/studio/studio.module.ts",
@@ -105,23 +107,24 @@ def main() -> int:
 
     run(f"cd {REMOTE} && tar xzf .tmp-umkm-reg.tar.gz && rm -f .tmp-umkm-reg.tar.gz")
 
-    # Migration (idempotent CREATE IF NOT EXISTS)
-    code, _ = run(
-        f"docker exec -i nsoft3-postgres psql -U supabase_admin -d nusantarasoft "
-        f"-v ON_ERROR_STOP=1 < {REMOTE}/{MIGRATION}"
-    )
-    if code != 0:
-        client.close()
-        return code
+    # Migrations (idempotent)
+    for mig in (MIGRATION, MIGRATION_RLS):
+        code, _ = run(
+            f"docker exec -i nsoft3-postgres psql -U supabase_admin -d nusantarasoft "
+            f"-v ON_ERROR_STOP=1 < {REMOTE}/{mig}"
+        )
+        if code != 0:
+            client.close()
+            return code
+        run(
+            "docker exec nsoft3-postgres psql -U supabase_admin -d nusantarasoft -c "
+            f"\"INSERT INTO public.schema_migrations (id) VALUES ('{mig}') "
+            "ON CONFLICT (id) DO NOTHING;\""
+        )
     run(
         "docker exec nsoft3-postgres psql -U supabase_admin -d nusantarasoft -tAc "
-        "\"SELECT to_regclass('public.studio_umkm_registrations');\""
-    )
-    run(
-        "docker exec nsoft3-postgres psql -U supabase_admin -d nusantarasoft -c "
-        "\"INSERT INTO public.schema_migrations (id) "
-        "VALUES ('supabase/migrations/00000000000104_studio_umkm_registrations.sql') "
-        "ON CONFLICT (id) DO NOTHING;\""
+        "\"SELECT to_regclass('public.studio_umkm_registrations'), "
+        "relrowsecurity FROM pg_class WHERE relname='studio_umkm_registrations';\""
     )
     # PostgREST only sees new tables after schema reload
     run(
@@ -131,17 +134,35 @@ def main() -> int:
     run("docker restart nsoft3-supabase-rest || true")
     run("sleep 6")
 
-    # Ensure KASIR_REGISTRATION on server env if missing
+    # Ensure KASIR_REGISTRATION + trial allowlist TTL on server env
     run(
         "python3 - <<'PY'\n"
         "from pathlib import Path\n"
+        "import re\n"
         "p = Path('/opt/nusantarasoft-3/.env.master-production')\n"
         "t = p.read_text(encoding='utf-8')\n"
+        "changed = False\n"
         "if 'KASIR_REGISTRATION=' not in t:\n"
-        "    p.write_text(t.rstrip() + '\\nKASIR_REGISTRATION=1\\n', encoding='utf-8')\n"
+        "    t = t.rstrip() + '\\nKASIR_REGISTRATION=1\\n'\n"
+        "    changed = True\n"
         "    print('appended KASIR_REGISTRATION=1')\n"
         "else:\n"
         "    print('KASIR_REGISTRATION already set')\n"
+        "if re.search(r'(?m)^KASIR_ALLOWLIST_CACHE_SEC=', t):\n"
+        "    t2 = re.sub(r'(?m)^KASIR_ALLOWLIST_CACHE_SEC=.*$', "
+        "'KASIR_ALLOWLIST_CACHE_SEC=5', t)\n"
+        "    if t2 != t:\n"
+        "        t = t2\n"
+        "        changed = True\n"
+        "        print('set KASIR_ALLOWLIST_CACHE_SEC=5')\n"
+        "    else:\n"
+        "        print('KASIR_ALLOWLIST_CACHE_SEC already 5')\n"
+        "else:\n"
+        "    t = t.rstrip() + '\\nKASIR_ALLOWLIST_CACHE_SEC=5\\n'\n"
+        "    changed = True\n"
+        "    print('appended KASIR_ALLOWLIST_CACHE_SEC=5')\n"
+        "if changed:\n"
+        "    p.write_text(t, encoding='utf-8')\n"
         "PY"
     )
 

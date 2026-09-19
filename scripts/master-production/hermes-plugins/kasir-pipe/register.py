@@ -111,6 +111,14 @@ def msg_need_active() -> str:
     )
 
 
+def msg_system_busy() -> str:
+    """Fallback when pipe hits an unexpected error (no silent skip)."""
+    return (
+        "Sistem daftar sedang sibuk. Coba lagi sebentar, "
+        "atau hubungi admin."
+    )
+
+
 def msg_approved_notify(store: str) -> str:
     return (
         f"✅ Toko *{store}* sudah diaktifkan admin.\n"

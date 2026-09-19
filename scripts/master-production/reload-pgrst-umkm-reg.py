@@ -56,10 +56,12 @@ ok = "HTTP 200" in out or (out.strip().startswith("[") or "HTTP 200" in out)
 # probe prints HTTP status line
 if "HTTPError" in out or "PGRST205" in out:
     print("STILL BROKEN", flush=True)
-    # try grant to authenticator/anon exposure via API schemas
+    # service_role + authenticator only (CEO D8 — no anon / authenticated GRANT)
     run(
         "docker exec nsoft3-postgres psql -U supabase_admin -d nusantarasoft -c "
-        "\"GRANT ALL ON public.studio_umkm_registrations TO anon, authenticated, service_role, authenticator; "
+        "\"REVOKE ALL ON public.studio_umkm_registrations FROM anon, authenticated; "
+        "GRANT ALL ON public.studio_umkm_registrations TO service_role, authenticator; "
+        "ALTER TABLE public.studio_umkm_registrations ENABLE ROW LEVEL SECURITY; "
         "NOTIFY pgrst, 'reload schema';\""
     )
     run("docker restart nsoft3-supabase-rest")
