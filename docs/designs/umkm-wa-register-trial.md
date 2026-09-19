@@ -5,7 +5,7 @@ Status: **CEO SCOPE REDUCTION locked** (siap implementasi T1–T7)
 Parent design: [umkm-wa-register-admin-approve.md](./umkm-wa-register-admin-approve.md)  
 Related: [middleware/STUDIO_UMKM.md](../../middleware/STUDIO_UMKM.md) (AIDLC kasir)
 
-Dokumen ini mematenkan hasil `/plan-ceo-review`: apa yang kita jual secara bisnis, bagaimana itu menempel ke **AIDLC**, dan jalur **seminimal** untuk uji coba satu tenant.
+Dokumen ini mematenkan hasil `/plan-ceo-review` **dan** aturan proses bisnis v1 yang dikunci bersama (2026-09-19): apa yang kita jual, siapa aktornya, SLA, kriteria sukses, bagaimana itu menempel ke **AIDLC**, dan jalur **seminimal** uji satu tenant.
 
 ---
 
@@ -14,6 +14,45 @@ Dokumen ini mematenkan hasil `/plan-ceo-review`: apa yang kita jual secara bisni
 Pemilik warung chat ke nomor bisnis → ketik **DAFTAR** → admin setujui di AI Studio → nomor masuk allowlist → baru boleh pakai **kasir WhatsApp** (catat jual, cek stok, laporan).
 
 Tanpa langkah itu, nomor asing dulu di-skip diam-diam (bot “mati”). Funnel ini mengganti silent-drop dengan onboarding yang jelas, tanpa OTP/bayar di v1.
+
+### 1.1 Aturan proses bisnis v1 (locked)
+
+| # | Aturan | Keputusan |
+|---|--------|-----------|
+| B1 | Aktor | **Owner (WhatsApp)** + **Admin (CMS)** saja |
+| B2 | Siapa boleh DAFTAR | **Open funnel** — nomor mana pun boleh mulai; Admin menyaring via Approve/Tolak |
+| B3 | SLA pending | Ekspektasi bisnis **hari yang sama / ≤24 jam**; TTL teknis tetap 7 hari |
+| B4 | “Toko hidup” | **Approve + `cek stok` berhasil** (pintu AIDLC). Transaksi jual = fase berikutnya |
+| B5 | Setelah Tolak / BATAL | Owner **boleh DAFTAR lagi langsung** |
+| B6 | Identitas | **1 toko = 1 nomor owner** di v1 (karyawan / multi-HP = out of scope) |
+
+```mermaid
+flowchart TB
+  subgraph owner["Owner (WhatsApp)"]
+    O1[Chat nomor bisnis] --> O2{Sudah allowlist?}
+    O2 -->|Tidak| O3[Dapat hint DAFTAR]
+    O3 --> O4[DAFTAR → nama toko → YA]
+    O4 --> O5[Tunggu ≤24 jam / STATUS]
+    O2 -->|Ya| O6[Kasir AIDLC]
+    O5 --> O7{Admin putusan}
+    O7 -->|Approve| O8[Tunggu ≥5s / STATUS]
+    O8 --> O6
+    O7 -->|Tolak| O9[Boleh DAFTAR lagi]
+    O9 --> O4
+  end
+
+  subgraph admin["Admin (CMS /admin/ai-studio/umkm)"]
+    A1[Lihat Menunggu approve] --> A2{Layak?}
+    A2 -->|Ya| A3[Approve 1x]
+    A2 -->|Tidak| A4[Tolak ± alasan]
+  end
+
+  O4 -.->|pending| A1
+  A3 -.->|allowlist + notebook| O8
+  A4 -.->|rejected| O9
+```
+
+**Definisi sukses bisnis (B4):** setelah Approve, owner mendapat jawaban bermakna untuk `cek stok` (stok kosong tetap valid). Itu bukti kasir hidup; isi katalog & jual pertama = pekerjaan berikutnya, bukan syarat “hidup” v1.
 
 ```mermaid
 flowchart LR
@@ -30,7 +69,7 @@ flowchart LR
   end
 ```
 
-**Nilai uji coba sukses:** satu nomor nyata bisa `cek stok` setelah Approve — bukan hanya smoke sintetis hijau.
+**Nilai uji coba sukses (= B4):** satu nomor nyata bisa `cek stok` setelah Approve — bukan hanya smoke sintetis hijau, dan belum wajib ada transaksi jual.
 
 ---
 
@@ -248,8 +287,9 @@ flowchart LR
 | 1 | Nomor asing dapat balasan menyebut DAFTAR (bukan diam) |
 | 2 | YA → row `pending` muncul di CMS (atau error toast jika API gagal) |
 | 3 | Approve → config enabled + phone allowlist; registration `approved` |
-| 4 | Setelah wait, `cek stok` dijawab agent kasir (bukan intro DAFTAR) |
+| 4 | Setelah wait, `cek stok` dijawab agent kasir (bukan intro DAFTAR) — **B4 toko hidup** |
 | 5 | `KASIR_REGISTRATION=0` mengembalikan silent-skip untuk nomor asing |
+| 6 | Copy/ops: pending dijanjikan **≤24 jam** (B3); 1 phone = 1 toko (B6) |
 
 ---
 
@@ -288,4 +328,5 @@ Paralel: T1–T4 → lalu T5 → T7. T6 = dokumen ini.
 | Tanggal | Catatan |
 |---------|---------|
 | 2026-09-12 | Design parent IMPLEMENTED (code) |
-| 2026-09-19 | `/plan-ceo-review` SCOPE REDUCTION; dokumen trial + AIDLC ini |
+| 2026-09-19 | `/plan-ceo-review` SCOPE REDUCTION; dokumen trial + AIDLC |
+| 2026-09-19 | Aturan bisnis B1–B6 dikunci (aktor, open funnel, SLA ≤24h, sukses=`cek stok`, retry langsung, 1 HP/toko) |
