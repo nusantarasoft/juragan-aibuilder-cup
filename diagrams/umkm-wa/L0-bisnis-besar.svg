@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 220" font-family="system-ui,Segoe UI,sans-serif">
+  <title>L0 - Alur bisnis besar</title>
+  <rect width="920" height="220" fill="#f7f5f0"/>
+  <text x="24" y="36" font-size="18" font-weight="700" fill="#1a1a1a">Level 0 - Alur bisnis (paling atas)</text>
+  <text x="24" y="58" font-size="12" fill="#555">Owner -&gt; nomor NusantaraSoft -&gt; DAFTAR -&gt; Admin Approve -&gt; kasir hidup</text>
+  <rect x="24" y="90" width="140" height="64" rx="10" fill="#fff" stroke="#2c5f4a" stroke-width="2"/>
+  <text x="94" y="118" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1a1a">Owner warung</text>
+  <text x="94" y="138" text-anchor="middle" font-size="11" fill="#555">chat WhatsApp</text>
+  <path d="M172 122 H210" stroke="#2c5f4a" stroke-width="2" marker-end="url(#a0)"/>
+  <rect x="218" y="90" width="150" height="64" rx="10" fill="#e8f2ec" stroke="#2c5f4a" stroke-width="2"/>
+  <text x="293" y="118" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1a1a">Nomor bisnis NS</text>
+  <text x="293" y="138" text-anchor="middle" font-size="11" fill="#555">1 nomor shared</text>
+  <path d="M376 122 H414" stroke="#2c5f4a" stroke-width="2" marker-end="url(#a0)"/>
+  <rect x="422" y="90" width="120" height="64" rx="10" fill="#fff" stroke="#b45309" stroke-width="2"/>
+  <text x="482" y="118" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1a1a">DAFTAR</text>
+  <text x="482" y="138" text-anchor="middle" font-size="11" fill="#555">nama -&gt; YA</text>
+  <path d="M550 122 H588" stroke="#2c5f4a" stroke-width="2" marker-end="url(#a0)"/>
+  <rect x="596" y="90" width="130" height="64" rx="10" fill="#fff" stroke="#1d4ed8" stroke-width="2"/>
+  <text x="661" y="118" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1a1a">Admin Approve</text>
+  <text x="661" y="138" text-anchor="middle" font-size="11" fill="#555">CMS &lt;=24 jam</text>
+  <path d="M734 122 H772" stroke="#2c5f4a" stroke-width="2" marker-end="url(#a0)"/>
+  <rect x="780" y="90" width="116" height="64" rx="10" fill="#2c5f4a" stroke="#2c5f4a" stroke-width="2"/>
+  <text x="838" y="118" text-anchor="middle" font-size="13" font-weight="600" fill="#fff">Kasir hidup</text>
+  <text x="838" y="138" text-anchor="middle" font-size="11" fill="#d7ebe1">cek stok OK</text>
+  <text x="24" y="200" font-size="11" fill="#666">Baca dulu level ini: satu cerita bisnis tanpa teknis.</text>
+  <defs>
+    <marker id="a0" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#2c5f4a"/>
+    </marker>
+  </defs>
+</svg>

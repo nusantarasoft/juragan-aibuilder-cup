@@ -25,6 +25,9 @@ Tanpa langkah itu, nomor asing dulu di-skip diam-diam (bot “mati”). Funnel i
 | B4 | “Toko hidup” | **Approve + `cek stok` berhasil** (pintu AIDLC). Transaksi jual = fase berikutnya |
 | B5 | Setelah Tolak / BATAL | Owner **boleh DAFTAR lagi langsung** |
 | B6 | Identitas | **1 toko = 1 nomor owner** di v1 (karyawan / multi-HP = out of scope) |
+| B7 | Hermes / WA | **1 nomor bisnis NusantaraSoft shared** (bukan 1 profile Hermes per tenant) |
+
+**Diagram bertingkat (SVG):** lihat folder [`diagrams/umkm-wa/`](../../diagrams/umkm-wa/README.md) — L0 bisnis → L1 shared inbox → L2 aktor → L3 gate → L4 state machine.
 
 ```mermaid
 flowchart TB

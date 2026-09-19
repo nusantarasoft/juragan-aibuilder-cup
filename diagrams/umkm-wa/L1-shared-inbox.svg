@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 360" font-family="system-ui,Segoe UI,sans-serif">
+  <title>L1 - Shared inbox vs banyak tenant</title>
+  <rect width="920" height="360" fill="#f7f5f0"/>
+  <text x="24" y="36" font-size="18" font-weight="700" fill="#1a1a1a">Level 1 - 1 nomor NS, banyak toko (tenant)</text>
+  <text x="24" y="58" font-size="12" fill="#555">Bukan 1 Hermes profile per tenant. Shared inbox; beda toko = beda HP pengirim.</text>
+  <rect x="280" y="90" width="360" height="70" rx="12" fill="#2c5f4a"/>
+  <text x="460" y="122" text-anchor="middle" font-size="15" font-weight="700" fill="#fff">1 Hermes + 1 nomor WA bisnis NusantaraSoft</text>
+  <text x="460" y="144" text-anchor="middle" font-size="12" fill="#d7ebe1">pair di AI Gateway (shared inbox)</text>
+  <path d="M340 160 V190" stroke="#2c5f4a" stroke-width="2"/>
+  <path d="M460 160 V190" stroke="#2c5f4a" stroke-width="2"/>
+  <path d="M580 160 V190" stroke="#2c5f4a" stroke-width="2"/>
+  <path d="M340 190 H580" stroke="#2c5f4a" stroke-width="2"/>
+  <rect x="80" y="210" width="200" height="80" rx="10" fill="#fff" stroke="#2c5f4a" stroke-width="2"/>
+  <text x="180" y="240" text-anchor="middle" font-size="13" font-weight="600">Tenant A</text>
+  <text x="180" y="260" text-anchor="middle" font-size="11" fill="#555">HP owner 628xxx</text>
+  <text x="180" y="278" text-anchor="middle" font-size="11" fill="#2c5f4a">notebook + allowlist</text>
+  <rect x="360" y="210" width="200" height="80" rx="10" fill="#fff" stroke="#2c5f4a" stroke-width="2"/>
+  <text x="460" y="240" text-anchor="middle" font-size="13" font-weight="600">Tenant B</text>
+  <text x="460" y="260" text-anchor="middle" font-size="11" fill="#555">HP owner 628yyy</text>
+  <text x="460" y="278" text-anchor="middle" font-size="11" fill="#2c5f4a">notebook + allowlist</text>
+  <rect x="640" y="210" width="200" height="80" rx="10" fill="#fff" stroke="#2c5f4a" stroke-width="2"/>
+  <text x="740" y="240" text-anchor="middle" font-size="13" font-weight="600">Tenant C</text>
+  <text x="740" y="260" text-anchor="middle" font-size="11" fill="#555">HP owner 628zzz</text>
+  <text x="740" y="278" text-anchor="middle" font-size="11" fill="#2c5f4a">notebook + allowlist</text>
+  <path d="M180 190 V210" stroke="#2c5f4a" stroke-width="2"/>
+  <path d="M180 190 H340" stroke="#2c5f4a" stroke-width="2"/>
+  <path d="M740 190 V210" stroke="#2c5f4a" stroke-width="2"/>
+  <path d="M580 190 H740" stroke="#2c5f4a" stroke-width="2"/>
+  <text x="24" y="330" font-size="12" fill="#666">Aturan B6: 1 toko = 1 nomor owner. Fase 2 (opsional): nomor toko sendiri - bukan sekarang.</text>
+</svg>

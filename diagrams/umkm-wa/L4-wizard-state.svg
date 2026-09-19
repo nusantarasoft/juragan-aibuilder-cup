@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" font-family="system-ui,Segoe UI,sans-serif">
+  <title>L4 - State machine wizard DAFTAR</title>
+  <rect width="900" height="420" fill="#f7f5f0"/>
+  <text x="24" y="36" font-size="18" font-weight="700" fill="#1a1a1a">Level 4 - State machine pendaftaran</text>
+  <text x="24" y="58" font-size="12" fill="#555">Wizard non-LLM di kasir-pipe. Setelah Approved -&gt; masuk allowlist (Level 3 cabang Ya).</text>
+  <rect x="40" y="170" width="110" height="50" rx="25" fill="#fff" stroke="#555" stroke-width="2"/>
+  <text x="95" y="200" text-anchor="middle" font-size="13" font-weight="600">Intro</text>
+  <path d="M150 195 H190" stroke="#b45309" stroke-width="2" marker-end="url(#a4o)"/>
+  <text x="155" y="185" font-size="10" fill="#b45309">DAFTAR</text>
+  <rect x="198" y="170" width="120" height="50" rx="10" fill="#fff7ed" stroke="#b45309" stroke-width="2"/>
+  <text x="258" y="200" text-anchor="middle" font-size="13" font-weight="600">AskStore</text>
+  <path d="M318 195 H358" stroke="#b45309" stroke-width="2" marker-end="url(#a4o)"/>
+  <text x="320" y="185" font-size="10" fill="#b45309">nama toko</text>
+  <rect x="366" y="170" width="120" height="50" rx="10" fill="#fff7ed" stroke="#b45309" stroke-width="2"/>
+  <text x="426" y="200" text-anchor="middle" font-size="13" font-weight="600">Confirm</text>
+  <path d="M486 195 H526" stroke="#2c5f4a" stroke-width="2" marker-end="url(#a4g)"/>
+  <text x="490" y="185" font-size="10" fill="#2c5f4a">YA</text>
+  <rect x="534" y="170" width="120" height="50" rx="10" fill="#e0e7ff" stroke="#1d4ed8" stroke-width="2"/>
+  <text x="594" y="200" text-anchor="middle" font-size="13" font-weight="600">Pending</text>
+  <path d="M654 195 H694" stroke="#2c5f4a" stroke-width="2" marker-end="url(#a4g)"/>
+  <text x="656" y="185" font-size="10" fill="#2c5f4a">Approve</text>
+  <rect x="702" y="170" width="120" height="50" rx="10" fill="#2c5f4a"/>
+  <text x="762" y="200" text-anchor="middle" font-size="13" font-weight="600" fill="#fff">Approved</text>
+  <rect x="430" y="300" width="120" height="50" rx="10" fill="#f3f4f6" stroke="#777" stroke-width="2"/>
+  <text x="490" y="330" text-anchor="middle" font-size="13" font-weight="600">Rejected</text>
+  <path d="M426 220 V300" stroke="#777" stroke-width="2" marker-end="url(#a4k)"/>
+  <text x="432" y="270" font-size="10" fill="#777">BATAL / Tolak</text>
+  <path d="M430 325 H258" stroke="#b45309" stroke-width="2" marker-end="url(#a4o)"/>
+  <path d="M258 325 V220" stroke="#b45309" stroke-width="2" marker-end="url(#a4o)"/>
+  <text x="300" y="345" font-size="10" fill="#b45309">DAFTAR lagi (B5)</text>
+  <text x="702" y="250" font-size="11" fill="#2c5f4a">-&gt; allowlist + notebook</text>
+  <text x="702" y="268" font-size="11" fill="#2c5f4a">-&gt; tunggu &gt;=5s -&gt; cek stok</text>
+  <text x="24" y="390" font-size="12" fill="#666">Satu nomor hanya satu draft/pending terbuka (unique index).</text>
+  <defs>
+    <marker id="a4o" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#b45309"/></marker>
+    <marker id="a4g" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#2c5f4a"/></marker>
+    <marker id="a4k" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#777"/></marker>
+  </defs>
+</svg>
