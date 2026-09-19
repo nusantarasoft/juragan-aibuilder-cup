@@ -191,6 +191,20 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 **Priority:** P3
 **Depends on:** Staff vs owner roles; pendamping v1 shipped
 
+## Hermes
+
+### Nest WhatsApp webhook fail-closed guard
+
+**What:** Guard or 410/no-op on `POST /api/studio/whatsapp/webhook` so a restored pipe forward cannot revive dual-brain (middleware inbound + Hermes agent).
+
+**Why:** Kasir inbound is Hermes `kasir-pipe` only. The Nest webhook endpoint stays callable (sim/legacy). Eng-review D8 deferred a runtime guard; without it the landmine remains.
+
+**Context:** `/plan-eng-review` 2026-09-19 Hermes architecture doc plan (D4 keep endpoint, D8 doc+comment only, D9 TODO). Start at `middleware/src/studio/studio-whatsapp.controller.ts`. Audit Simulasi chat + controller specs before rejecting. After `docs/hermes-architecture.md` ships so intent is documented.
+
+**Effort:** M
+**Priority:** P2
+**Depends on:** Hermes architecture doc PR merged
+
 ## Completed
 
 ### Digit cheat-sheet entry for pendamping (v2)

@@ -2,7 +2,9 @@
  * Normalize inbound webhook bodies to the envelope StudioWhatsAppService expects
  * (`event` + `session` + `payload.from`).
  *
- * Hermes kasir-pipe already emits this shape; this covers drift + future bridge formats.
+ * Used by Nest `POST /api/studio/whatsapp/webhook` (Simulasi / legacy only).
+ * Production kasir inbound is Hermes kasir-pipe → agent/tools — pipe does NOT
+ * forward WA to this webhook. See docs/hermes-architecture.md.
  */
 export function normalizeWhatsAppWebhook(
     body: Record<string, unknown>,

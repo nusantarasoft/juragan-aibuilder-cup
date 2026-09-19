@@ -24,8 +24,6 @@ Env:
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import json
 import logging
 import os
@@ -48,17 +46,6 @@ _ALLOW_CACHE: tuple[float, set[str]] = (0.0, set())
 def _platforms() -> set[str]:
     raw = (os.environ.get("KASIR_PIPE_PLATFORMS") or "whatsapp").strip()
     return {p.strip().lower() for p in raw.split(",") if p.strip()}
-
-
-def _webhook_url() -> str:
-    return (
-        os.environ.get("KASIR_WHATSAPP_WEBHOOK_URL")
-        or "http://middleware:4001/api/studio/whatsapp/webhook"
-    ).strip()
-
-
-def _hmac_key() -> str:
-    return (os.environ.get("WHATSAPP_WEBHOOK_HMAC_KEY") or "").strip()
 
 
 def _session_name() -> str:
@@ -254,96 +241,6 @@ def _chat_id(event: Any) -> str:
     return ""
 
 
-def _selected_button_id(event: Any) -> Optional[str]:
-    pr = getattr(event, "prompt_response", None)
-    if isinstance(pr, dict):
-        oid = pr.get("option_id") or pr.get("selectedButtonId")
-        if oid:
-            return str(oid)
-    meta = getattr(event, "metadata", None) or {}
-    if isinstance(meta, dict):
-        for key in ("selectedButtonId", "selected_button_id", "option_id"):
-            if meta.get(key):
-                return str(meta[key])
-    return None
-
-
-def _webhook_body(event: Any) -> dict[str, Any]:
-    chat_id = _chat_id(event)
-    text = getattr(event, "text", None) or ""
-    name = (
-        getattr(event, "user_name", None)
-        or getattr(getattr(event, "source", None), "user_name", None)
-        or ""
-    )
-    message_id = getattr(event, "message_id", None) or ""
-    ts = getattr(event, "timestamp", None)
-    if isinstance(ts, datetime):
-        timestamp = int(ts.replace(tzinfo=timezone.utc).timestamp()) if ts.tzinfo is None else int(ts.timestamp())
-    else:
-        timestamp = int(datetime.now(timezone.utc).timestamp())
-
-    payload: dict[str, Any] = {
-        "id": message_id,
-        "timestamp": timestamp,
-        "from": chat_id,
-        "fromMe": False,
-        "body": text,
-        "hasMedia": bool(getattr(event, "media_urls", None)),
-        "notifyName": name,
-        "pushName": name,
-        "source": "hermes-kasir-pipe",
-    }
-    button_id = _selected_button_id(event)
-    if button_id:
-        payload["selectedButtonId"] = button_id
-        # List replies sometimes nest under _data / listResponse — keep flat for extractUmkmButtonReply
-    media_urls = list(getattr(event, "media_urls", None) or [])
-    media_types = list(getattr(event, "media_types", None) or [])
-    if media_urls:
-        payload["media"] = {
-            "url": media_urls[0],
-            "mimetype": media_types[0] if media_types else "",
-        }
-
-    return {
-        "event": "message",
-        "session": _session_name(),
-        "payload": payload,
-        "engine": "HERMES",
-        "me": {"id": "hermes-pipe"},
-    }
-
-
-def _post_signed(body: dict[str, Any]) -> tuple[int, str]:
-    raw = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    key = _hmac_key()
-    headers = {
-        "Content-Type": "application/json",
-        "User-Agent": "hermes-kasir-pipe/1.0",
-    }
-    if key:
-        digest = hmac.new(key.encode("utf-8"), raw, hashlib.sha512).hexdigest()
-        headers["x-webhook-hmac"] = digest
-    else:
-        logger.warning("kasir-pipe: WHATSAPP_WEBHOOK_HMAC_KEY empty — posting unsigned")
-
-    req = urllib.request.Request(
-        _webhook_url(),
-        data=raw,
-        headers=headers,
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            return int(resp.status), resp.read()[:500].decode("utf-8", "replace")
-    except urllib.error.HTTPError as e:
-        detail = e.read()[:500].decode("utf-8", "replace") if e.fp else ""
-        return int(e.code), detail
-    except Exception as e:
-        return 0, str(e)
-
-
 def _on_pre_gateway_dispatch(event, gateway=None, session_store=None, **kwargs):
     """Allowlisted WhatsApp → Hermes agent; others → registration funnel or skip."""
     del session_store, kwargs
@@ -401,18 +298,6 @@ def _registration_enabled() -> bool:
         "no",
         "off",
     )
-
-
-def _supabase_url() -> str:
-    return (os.environ.get("SUPABASE_URL") or "").rstrip("/")
-
-
-def _service_key() -> str:
-    return (
-        os.environ.get("SUPABASE_SERVICE_KEY")
-        or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-        or ""
-    ).strip()
 
 
 def _rest(

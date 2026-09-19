@@ -2,6 +2,8 @@
 
 Hermes is the **sole** WhatsApp transport for UMKM kasir (Baileys + `kasir-pipe` pipe-only).
 
+**How it works (architecture):** [`hermes-architecture.md`](./hermes-architecture.md)
+
 Official Docker guide: [Hermes Docker docs](https://hermes-agent.nousresearch.com/docs/user-guide/docker)
 
 ---
@@ -14,6 +16,7 @@ Official Docker guide: [Hermes Docker docs](https://hermes-agent.nousresearch.co
 |------|-----|
 | `127.0.0.1:8652` | Gateway / OpenAI-compatible API (container `:8642`) |
 | `127.0.0.1:9129` | Dashboard (`HERMES_DASHBOARD=1`, container `:9119`) |
+| (docker network) `hermes:8765` | Bridge+pair proxy for middleware (`HERMES_BRIDGE_URL`) |
 
 Override via `HERMES_GATEWAY_PORT` / `HERMES_DASHBOARD_PORT` in root `.env`.
 
@@ -25,7 +28,9 @@ docker compose run --rm -it hermes setup
 docker compose up -d hermes middleware
 ```
 
-Set `WHATSAPP_PROVIDER=hermes` and `WHATSAPP_WEBHOOK_HMAC_KEY` (same value on middleware + hermes).
+Set `WHATSAPP_PROVIDER=hermes` and `HERMES_BRIDGE_URL=http://hermes:8765` on middleware.
+
+Kasir inbound does **not** go through the Nest webhook. `WHATSAPP_WEBHOOK_HMAC_KEY` is only needed if you use Nest `POST /api/studio/whatsapp/webhook` (Simulasi / legacy).
 
 ### Smoke
 
@@ -61,5 +66,6 @@ interim assistant messages / long-running / busy-ack chrome. Also re-applied by
 Also deployed by `deploy-kasir-tools.py`:
 - `tools.tool_search.enabled: off` — kasir tools stay eager (no `⚙️ tool_search`)
 - `volumes/hermes/SOUL.md` — asisten kasir (Bahasa, routing tool, konfirmasi *ya*)
+- plugin tree under the Hermes volume (repo `scripts/master-production/hermes-plugins/`)
 
-See `docs/deploy-master-production.md`.
+See `docs/deploy-master-production.md` and `docs/hermes-architecture.md`.

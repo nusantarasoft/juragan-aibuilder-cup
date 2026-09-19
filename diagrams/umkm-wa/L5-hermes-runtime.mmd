@@ -1,0 +1,39 @@
+flowchart TB
+  subgraph wa["WhatsApp"]
+    U[Owner / admin phones]
+  end
+
+  subgraph hermes["Hermes container"]
+    B[Baileys bridge<br/>127.0.0.1:3000]
+    G[Gateway + LLM]
+    P[kasir-pipe<br/>pre_gateway_dispatch]
+    T[kasir-tools]
+    PX[Bridge+pair proxy<br/>0.0.0.0:8765]
+    B --> G
+    G --> P
+    P -->|allowlist OK<br/>stamp sender| G
+    G --> T
+    P -->|deny + REG=1| W[DAFTAR wizard]
+    W --> B
+    PX --> B
+  end
+
+  subgraph mid["Middleware Nest"]
+    HP[HermesProvider]
+    WH[POST /whatsapp/webhook<br/>Simulasi / legacy only]
+  end
+
+  subgraph db["Supabase / Kong"]
+    CFG[(studio_whatsapp_config)]
+    REG[(studio_umkm_registrations)]
+    KAS[(katalog / stok / orders)]
+  end
+
+  U <--> B
+  HP -->|send / pair| PX
+  T --> CFG
+  T --> KAS
+  P --> CFG
+  W --> REG
+  HP -.->|approve notify| PX
+  WH -.->|not kasir inbound| mid
