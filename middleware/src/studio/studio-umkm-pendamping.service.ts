@@ -26,11 +26,7 @@ import {
     ensureConsultBookCite,
     primaryPdfPageFromChunk,
 } from './studio-consult-cite.util';
-import { StudioWhatsAppService } from './studio-whatsapp.service';
-import {
-    normalizePhoneDigits,
-    pickTenantConfigBySenderPhone,
-} from './studio-whatsapp.util';
+import { normalizePhoneDigits } from './studio-whatsapp.util';
 
 const MAX_REPLY_CHARS = 800;
 const CURRICULUM_MAX_CHARS = 3000;
@@ -79,9 +75,6 @@ export class StudioUmkmPendampingService implements OnModuleInit {
         private readonly umkm: StudioUmkmService,
         private readonly aiRouter: AiRouterService,
         @Optional() private readonly context?: StudioContextService,
-        @Optional()
-        @Inject(forwardRef(() => StudioWhatsAppService))
-        private readonly whatsapp?: StudioWhatsAppService,
     ) {}
 
     onModuleInit() {
@@ -391,12 +384,11 @@ export class StudioUmkmPendampingService implements OnModuleInit {
     private async maybeShopSnapshot(phone?: string): Promise<string> {
         if (!this.injectMetricsEnabled()) return '';
         const digits = normalizePhoneDigits(phone || '');
-        if (digits.length < 8 || !this.whatsapp) return '';
+        if (digits.length < 8) return '';
         try {
-            const configs = await this.whatsapp.listConfigs();
-            const cfg = pickTenantConfigBySenderPhone(configs, digits);
-            if (!cfg?.tenant_id) return '';
-            const report = await this.umkm.buildCombinedReportMessage(cfg.tenant_id, 'today');
+            const tenantId = await this.umkm.resolveTenantIdByOwnerPhone(digits);
+            if (!tenantId) return '';
+            const report = await this.umkm.buildCombinedReportMessage(tenantId, 'today');
             return (report || '').trim().slice(0, CONSULT_SHOP_SNAPSHOT_MAX);
         } catch (e: any) {
             this.logger.warn(`kasir_consult shop snapshot: ${e?.message}`);

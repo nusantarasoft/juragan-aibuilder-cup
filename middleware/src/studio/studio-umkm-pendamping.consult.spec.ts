@@ -58,6 +58,7 @@ describe('StudioUmkmPendampingService.consultFromNotebook', () => {
         buildCombinedReportMessage: vi.fn(async () => 'should-not-run'),
         buildProductListMessage: vi.fn(async () => 'should-not-run'),
         fetchStockRows: vi.fn(async () => [{ name: 'Indomie', onHand: 1 }]),
+        resolveTenantIdByOwnerPhone: vi.fn(async () => null),
     };
     const aiRouter = {
         generateText: vi.fn(async () =>
@@ -194,17 +195,7 @@ describe('StudioUmkmPendampingService.consultFromNotebook', () => {
 
     it('INJECT_METRICS on + phone → shop snapshot in prompt (not retrieve)', async () => {
         process.env.KASIR_CONSULT_INJECT_METRICS = '1';
-        const whatsapp = {
-            listConfigs: vi.fn(async () => [
-                {
-                    tenant_id: 't-shop',
-                    enabled: true,
-                    notebook_id: 'nb-1',
-                    business_phone: '6281111111111',
-                    allowlist_phones: [],
-                },
-            ]),
-        };
+        umkm.resolveTenantIdByOwnerPhone = vi.fn(async () => 't-shop');
         umkm.buildCombinedReportMessage.mockResolvedValueOnce(
             '📊 Omzet hari ini: Rp 100.000',
         );
@@ -212,7 +203,6 @@ describe('StudioUmkmPendampingService.consultFromNotebook', () => {
             umkm as any,
             aiRouter as any,
             context as any,
-            whatsapp as any,
         );
         context.semanticSearchNotebook.mockResolvedValueOnce([
             {
@@ -226,6 +216,7 @@ describe('StudioUmkmPendampingService.consultFromNotebook', () => {
         await svc.consultFromNotebook('tanya modal', 'nb-1', {
             phone: '6281111111111',
         });
+        expect(umkm.resolveTenantIdByOwnerPhone).toHaveBeenCalledWith('6281111111111');
         expect(umkm.buildCombinedReportMessage).toHaveBeenCalledWith('t-shop', 'today');
         expect(umkm.fetchStockRows).not.toHaveBeenCalled();
         const prompt = String(aiRouter.generateText.mock.calls[0][0]);

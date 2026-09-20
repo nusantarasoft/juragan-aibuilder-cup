@@ -126,6 +126,7 @@ import {
     type UmkmWizard,
 } from './studio-umkm-durable.util';
 import { assertNoSupabaseError } from './studio-supabase.util';
+import { pickTenantConfigBySenderPhone } from './studio-whatsapp.util';
 
 const DEFAULT_TENANT = 'default';
 const PENDING_TTL_MS = 15 * 60 * 1000;
@@ -2389,6 +2390,19 @@ export class StudioUmkmService {
         lines.push('', `Total: *${formatIdrShort(total)}*`);
         lines.push('', 'Ketik *5* untuk tambah penjualan, atau *0* untuk menu utama.');
         return lines.join('\n');
+    }
+
+    /**
+     * Owner phone → tenant_id via studio_whatsapp_config allowlist.
+     * Used by consult metrics inject (avoid WhatsApp↔Pendamping circular DI).
+     */
+    async resolveTenantIdByOwnerPhone(phone: string): Promise<string | null> {
+        const { data, error } = await this.admin()
+            .from('studio_whatsapp_config')
+            .select('tenant_id,enabled,notebook_id,business_phone,allowlist_phones');
+        assertNoSupabaseError(error, 'Failed to resolve tenant by owner phone');
+        const cfg = pickTenantConfigBySenderPhone((data || []) as any, phone);
+        return cfg?.tenant_id || null;
     }
 
     async buildCombinedReportMessage(
