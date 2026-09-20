@@ -248,7 +248,7 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 
 **Why:** Stronger trust/audit for owners who want “halaman berapa”.
 
-**Context:** Soft GA now appends **`hlm. N`** from pdf-parse markers `-- N of M --` in chunk text (no re-ingest). Perfect page maps / multi-source locus still deferred. Keep WA replies ≤800. Plan: `docs/designs/ceo-plan-wa-consult-kurikulum-rag.md`.
+**Context:** Soft GA code can append **`hlm. N`** from pdf-parse markers `-- N of M --` behind **`KASIR_CONSULT_CITE_PAGES=0`** default (leave off until product wants it). Perfect page maps / multi-source locus still deferred. Keep WA replies ≤800.
 
 **Status:** partial (marker-based hlm) 2026-09-20 — perfect maps still open
 **Effort:** M

@@ -80,6 +80,7 @@ describe('StudioUmkmPendampingService.consultFromNotebook', () => {
         vi.clearAllMocks();
         delete process.env.KASIR_CONSULT_NOTEBOOK_ID;
         delete process.env.KASIR_CONSULT_INJECT_METRICS;
+        delete process.env.KASIR_CONSULT_CITE_PAGES;
         svc = new StudioUmkmPendampingService(umkm as any, aiRouter as any, context as any);
     });
 
@@ -87,6 +88,7 @@ describe('StudioUmkmPendampingService.consultFromNotebook', () => {
         if (prevNb === undefined) delete process.env.KASIR_CONSULT_NOTEBOOK_ID;
         else process.env.KASIR_CONSULT_NOTEBOOK_ID = prevNb;
         delete process.env.KASIR_CONSULT_INJECT_METRICS;
+        delete process.env.KASIR_CONSULT_CITE_PAGES;
     });
 
     it('ledger-like question → redirect; no retrieve / LLM / stock tools', async () => {
@@ -119,7 +121,7 @@ describe('StudioUmkmPendampingService.consultFromNotebook', () => {
         expect(aiRouter.generateText).not.toHaveBeenCalled();
     });
 
-    it('retrieve hit → synthesize ≤800; prompt has chunks', async () => {
+    it('retrieve hit → synthesize ≤800; prompt has chunks (cite pages off by default)', async () => {
         context.semanticSearchNotebook.mockResolvedValueOnce([
             {
                 chunkId: 'c1',
@@ -133,13 +135,31 @@ describe('StudioUmkmPendampingService.consultFromNotebook', () => {
         expect(out.status).toBe('hit');
         expect(out.text.length).toBeLessThanOrEqual(800);
         expect(out.text).toMatch(/modal|Manajemen UKM/i);
-        expect(out.text).toMatch(/hlm\.?\s*12/i);
+        expect(out.text).not.toMatch(/hlm\.?\s*12/i);
         expect(aiRouter.generateText).toHaveBeenCalledTimes(1);
         const prompt = String(aiRouter.generateText.mock.calls[0][0]);
         expect(prompt).toMatch(/BLOK_BUKU/);
         expect(prompt).toMatch(/Modal kerja harus dicatat/);
-        expect(prompt).toMatch(/hlm\. 12/);
+        expect(prompt).not.toMatch(/hlm\. 12/);
         expect(prompt).not.toMatch(/BLOK_KASIR|BLOK_TOOLS/);
+    });
+
+    it('CITE_PAGES on → hlm in prompt header + reply cite', async () => {
+        process.env.KASIR_CONSULT_CITE_PAGES = '1';
+        context.semanticSearchNotebook.mockResolvedValueOnce([
+            {
+                chunkId: 'c1',
+                sourceId: 's1',
+                filename: 'manajemen-ukm.pdf',
+                content: 'Modal kerja harus dicatat terpisah. -- 12 of 200 --',
+                score: 0.82,
+            },
+        ]);
+        const out = await svc.consultFromNotebook('gimana atur modal', 'nb-1');
+        expect(out.status).toBe('hit');
+        expect(out.text).toMatch(/hlm\.?\s*12/i);
+        const prompt = String(aiRouter.generateText.mock.calls[0][0]);
+        expect(prompt).toMatch(/hlm\. 12/);
     });
 
     it('LLM throw → busy copy (not pendamping numbers)', async () => {

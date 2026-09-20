@@ -10,7 +10,7 @@ Internal runbook. Pitch sales: [../pitch.md](../pitch.md). Teknis: [../../system
 | Notebook | `48aee243-9086-40d7-84ee-0c115d3de902` (*Kurikulum UKM*) |
 | Ingest | PDF *Manajemen Usaha Kecil dan Menengah* — **376** chunk `done` (`google_ai` / `gemini-embedding-001`) |
 | Prefix owner | `tanya` / `konsultasi` / `pendamping` |
-| Sitasi | Jawaban diakhiri `(dari buku Manajemen UKM, hlm. N)` bila chunk punya marker `-- N of M --` |
+| Sitasi | **`KASIR_CONSULT_CITE_PAGES=0`** default — set `1` untuk `(…, hlm. N)` dari marker `-- N of M --` |
 | Metrics inject | **`KASIR_CONSULT_INJECT_METRICS=0`** default — set `1` hanya jika ingin cuplikan laporan hari ini di synthesize (label *dari kasir*, L8) |
 
 Compose/example default tetap `0` — prod di-set ON lewat `.env.master-production`. Matikan keduanya bersama jika perlu.
@@ -38,7 +38,7 @@ docker exec -e HERMES_HOME=/opt/data nsoft3-hermes \
 
 | Kirim | Harap |
 |-------|--------|
-| `tanya jenis modal UKM` | Jawaban grounded buku + sitasi hlm bila ada (bukan stok) |
+| `tanya jenis modal UKM` | Jawaban grounded buku (bukan stok); sitasi `hlm` hanya jika `KASIR_CONSULT_CITE_PAGES=1` |
 | `cek stok indomie` | Angka ledger tools |
 | Topik luar (mis. harga Bitcoin) | Refuse scope — jangan mengarang harga |
 | `tanya cek stok …` | Redirect copy — tidak retrieve buku |

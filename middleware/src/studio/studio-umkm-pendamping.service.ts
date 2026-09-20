@@ -331,7 +331,8 @@ export class StudioUmkmPendampingService implements OnModuleInit {
             }
             chunkContext = chunks
                 .map((c, i) => {
-                    const page = primaryPdfPageFromChunk(c.content || '');
+                    const citeOn = this.citePagesEnabled();
+                    const page = citeOn ? primaryPdfPageFromChunk(c.content || '') : null;
                     if (page) pages.push(page);
                     const hlm = page ? ` · hlm. ${page}` : '';
                     return `[Sumber ${i + 1}: ${c.filename}${hlm} (relevansi ${(c.score * 100).toFixed(0)}%)]\n${c.content}`;
@@ -370,14 +371,29 @@ export class StudioUmkmPendampingService implements OnModuleInit {
             return done('error', CONSULT_BUSY_COPY);
         }
 
-        return done('hit', ensureConsultBookCite(answer.trim(), pages));
+        return done(
+            'hit',
+            ensureConsultBookCite(
+                answer.trim(),
+                this.citePagesEnabled() ? pages : [],
+            ),
+        );
     }
 
-    private injectMetricsEnabled(): boolean {
-        const v = String(process.env.KASIR_CONSULT_INJECT_METRICS || '')
+    private truthyEnv(name: string): boolean {
+        const v = String(process.env[name] || '')
             .trim()
             .toLowerCase();
         return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+    }
+
+    /** Soft-GA polish — default off until product wants hlm. N in WA replies. */
+    private citePagesEnabled(): boolean {
+        return this.truthyEnv('KASIR_CONSULT_CITE_PAGES');
+    }
+
+    private injectMetricsEnabled(): boolean {
+        return this.truthyEnv('KASIR_CONSULT_INJECT_METRICS');
     }
 
     /** Optional today-report snapshot — labeled kasir in prompt; never used as RAG query. */

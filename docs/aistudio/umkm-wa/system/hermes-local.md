@@ -78,7 +78,7 @@ Pair via Admin → WhatsApp Gateway (or Hermes dashboard QR).
 
 ### Kurikulum consult (`KASIR_CONSULT`)
 
-Compose/example default **off**. **Prod soft GA ON** (2026-09-20): ingest done (376 chunks), `KASIR_CONSULT_NOTEBOOK_ID` + shared `KASIR_CONSULT_KEY` set, flag **`1`** on hermes **and** middleware. Replies cite `hlm. N` when chunk text has `-- N of M --`. Optional `KASIR_CONSULT_INJECT_METRICS=1` (middleware) mixes a today-report snapshot into synthesize only — leave **0** unless product asks. Ops runbook: [`../business/ops/consult-kurikulum.md`](../business/ops/consult-kurikulum.md).
+Compose/example default **off**. **Prod soft GA ON** (2026-09-20): ingest done (376 chunks), `KASIR_CONSULT_NOTEBOOK_ID` + shared `KASIR_CONSULT_KEY` set, flag **`1`** on hermes **and** middleware. Page cites (`KASIR_CONSULT_CITE_PAGES`) and metrics inject (`KASIR_CONSULT_INJECT_METRICS`) stay **0** until product asks. Ops runbook: [`../business/ops/consult-kurikulum.md`](../business/ops/consult-kurikulum.md).
 
 ```bash
 # Local unit smoke (no Docker)
