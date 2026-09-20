@@ -149,27 +149,43 @@ def apply_config(path: Path) -> list[str]:
 def check_config(path: Path) -> list[tuple[bool, str]]:
     text = path.read_text(encoding="utf-8", errors="replace")
     out: list[tuple[bool, str]] = []
-    enabled = re.search(
-        r"(?ms)^plugins:\n(?:.*?\n)?  enabled:\n((?:    - .*\n)*)",
-        text,
-    )
-    plugins = []
-    if enabled:
-        plugins = [
-            ln.strip()[2:].strip()
-            for ln in enabled.group(1).splitlines()
-            if ln.strip().startswith("- ")
-        ]
+    plugins: list[str] = []
+    try:
+        import yaml  # type: ignore
+
+        data = yaml.safe_load(text) or {}
+        raw = (data.get("plugins") or {}).get("enabled") or []
+        if isinstance(raw, list):
+            plugins = [str(x).strip() for x in raw if str(x).strip()]
+    except Exception:
+        m = re.search(
+            r"(?ms)^plugins:\n  enabled:\n((?:    - .*\n)+)",
+            text,
+        )
+        if m:
+            plugins = [
+                ln.strip()[2:].strip()
+                for ln in m.group(1).splitlines()
+                if ln.strip().startswith("- ")
+            ]
     out.append(
         (
             "kasir-pipe" in plugins and "kasir-tools" in plugins,
             f"plugins.enabled={plugins}",
         )
     )
-    m = re.search(r"(?ms)^display:\n(.*?)(?=^[a-zA-Z_]|\Z)", text)
-    body = m.group(1) if m else ""
-    tp = re.search(r"(?m)^  tool_progress:\s*(\S+)", body)
-    val = (tp.group(1).strip().strip("\"'") if tp else "")
+    # display.tool_progress — accept off/false/0
+    try:
+        import yaml  # type: ignore
+
+        data = yaml.safe_load(text) or {}
+        disp = data.get("display") or {}
+        val = str(disp.get("tool_progress", "")).strip().lower()
+    except Exception:
+        m = re.search(r"(?ms)^display:\n(.*?)(?=^[a-zA-Z_]|\Z)", text)
+        body = m.group(1) if m else ""
+        tp = re.search(r"(?m)^  tool_progress:\s*(\S+)", body)
+        val = (tp.group(1).strip().strip("\"'").lower() if tp else "")
     out.append((val in ("off", "false", "0"), f"display.tool_progress={val!r}"))
     return out
 
