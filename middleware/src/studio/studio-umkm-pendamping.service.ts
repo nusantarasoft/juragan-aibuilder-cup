@@ -22,6 +22,15 @@ import {
     looksLikeKasirLedgerQuestion,
 } from './studio-umkm-pendamping.prompts';
 import { executeUmkmReadTool, stripDisallowedKetikActions } from './studio-umkm-read-tools';
+import {
+    ensureConsultBookCite,
+    primaryPdfPageFromChunk,
+} from './studio-consult-cite.util';
+import { StudioWhatsAppService } from './studio-whatsapp.service';
+import {
+    normalizePhoneDigits,
+    pickTenantConfigBySenderPhone,
+} from './studio-whatsapp.util';
 
 const MAX_REPLY_CHARS = 800;
 const CURRICULUM_MAX_CHARS = 3000;
@@ -29,11 +38,17 @@ const LOW_STOCK_MAX = 3;
 const CONSULT_TOP_K = 5;
 const CONSULT_QUESTION_MAX = 500;
 const CONSULT_CONTEXT_MAX = 3500;
+const CONSULT_SHOP_SNAPSHOT_MAX = 400;
 
 export type ConsultFromNotebookResult = {
     status: 'hit' | 'miss' | 'error' | 'redirect';
     text: string;
     latencyMs: number;
+};
+
+export type ConsultFromNotebookOptions = {
+    /** Optional owner phone — used only when metrics inject is on. */
+    phone?: string;
 };
 
 export type PendampingMetricsSnapshot = {
@@ -64,6 +79,9 @@ export class StudioUmkmPendampingService implements OnModuleInit {
         private readonly umkm: StudioUmkmService,
         private readonly aiRouter: AiRouterService,
         @Optional() private readonly context?: StudioContextService,
+        @Optional()
+        @Inject(forwardRef(() => StudioWhatsAppService))
+        private readonly whatsapp?: StudioWhatsAppService,
     ) {}
 
     onModuleInit() {
@@ -272,11 +290,12 @@ export class StudioUmkmPendampingService implements OnModuleInit {
 
     /**
      * WA kasir_consult path — chunk-only RAG from kurikulum notebook.
-     * Never calls coach() / store report / stock tools (L8).
+     * Never calls coach() for retrieve. Optional shop snapshot is tools-labeled (L8).
      */
     async consultFromNotebook(
         question: string,
         notebookId?: string,
+        options?: ConsultFromNotebookOptions,
     ): Promise<ConsultFromNotebookResult> {
         const started = Date.now();
         const q = (question || '').trim().slice(0, CONSULT_QUESTION_MAX);
@@ -311,16 +330,19 @@ export class StudioUmkmPendampingService implements OnModuleInit {
         }
 
         let chunkContext = '';
+        const pages: number[] = [];
         try {
             const chunks = await this.context.semanticSearchNotebook(nb, q, CONSULT_TOP_K);
             if (!chunks?.length) {
                 return done('miss', CONSULT_MISS_COPY);
             }
             chunkContext = chunks
-                .map(
-                    (c, i) =>
-                        `[Sumber ${i + 1}: ${c.filename} (relevansi ${(c.score * 100).toFixed(0)}%)]\n${c.content}`,
-                )
+                .map((c, i) => {
+                    const page = primaryPdfPageFromChunk(c.content || '');
+                    if (page) pages.push(page);
+                    const hlm = page ? ` · hlm. ${page}` : '';
+                    return `[Sumber ${i + 1}: ${c.filename}${hlm} (relevansi ${(c.score * 100).toFixed(0)}%)]\n${c.content}`;
+                })
                 .join('\n\n---\n\n')
                 .slice(0, CONSULT_CONTEXT_MAX);
             if (!chunkContext.trim()) {
@@ -331,9 +353,12 @@ export class StudioUmkmPendampingService implements OnModuleInit {
             return done('error', CONSULT_BUSY_COPY);
         }
 
+        const shopSnapshot = await this.maybeShopSnapshot(options?.phone);
+
         const prompt = buildConsultFromNotebookPrompt({
             question: q,
             chunkContext,
+            shopSnapshot: shopSnapshot || undefined,
         });
 
         let answer = '';
@@ -352,7 +377,31 @@ export class StudioUmkmPendampingService implements OnModuleInit {
             return done('error', CONSULT_BUSY_COPY);
         }
 
-        return done('hit', answer.trim());
+        return done('hit', ensureConsultBookCite(answer.trim(), pages));
+    }
+
+    private injectMetricsEnabled(): boolean {
+        const v = String(process.env.KASIR_CONSULT_INJECT_METRICS || '')
+            .trim()
+            .toLowerCase();
+        return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+    }
+
+    /** Optional today-report snapshot — labeled kasir in prompt; never used as RAG query. */
+    private async maybeShopSnapshot(phone?: string): Promise<string> {
+        if (!this.injectMetricsEnabled()) return '';
+        const digits = normalizePhoneDigits(phone || '');
+        if (digits.length < 8 || !this.whatsapp) return '';
+        try {
+            const configs = await this.whatsapp.listConfigs();
+            const cfg = pickTenantConfigBySenderPhone(configs, digits);
+            if (!cfg?.tenant_id) return '';
+            const report = await this.umkm.buildCombinedReportMessage(cfg.tenant_id, 'today');
+            return (report || '').trim().slice(0, CONSULT_SHOP_SNAPSHOT_MAX);
+        } catch (e: any) {
+            this.logger.warn(`kasir_consult shop snapshot: ${e?.message}`);
+            return '';
+        }
     }
 
     /** Notebook chunks via existing retrieveContext. Ask still owns search_docs. */

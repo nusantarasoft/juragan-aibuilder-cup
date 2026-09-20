@@ -140,26 +140,44 @@ export function looksLikeKasirLedgerQuestion(question: string): boolean {
 
 /**
  * Chunk-only synthesizer for WA kurikulum consult.
- * Never include store report/stock — L8: buku ≠ ledger.
+ * Never include store report/stock in retrieve — L8: buku ≠ ledger.
+ * Optional shopSnapshot is labeled kasir tools only (not book).
  */
 export function buildConsultFromNotebookPrompt(input: {
     question: string;
     chunkContext: string;
+    shopSnapshot?: string;
 }): string {
     const chunks = input.chunkContext.trim().slice(0, 3500) || '(Tidak ada cuplikan.)';
     const question = input.question.trim().slice(0, 500);
+    const shop = (input.shopSnapshot || '').trim().slice(0, 450);
+    const shopBlock = shop
+        ? [
+              '',
+              '<<<BLOK_KASIR>>>',
+              '(Angka toko dari tool kasir — BUKAN dari buku. Label di jawaban: "dari kasir toko kamu".)',
+              shop,
+              '<<<END_BLOK_KASIR>>>',
+              '',
+              '- Angka omzet/stok HANYA dari <<<BLOK_KASIR>>> bila ada; sebut "dari kasir toko kamu".',
+              '- Jangan campur angka kasir seolah dari buku.',
+          ]
+        : [
+              '',
+              '- Jangan sebut atau mengarang omzet, stok, harga toko, atau angka ledger kasir.',
+          ];
 
     return [
         'Kamu menjawab pertanyaan pemilik warung WhatsApp hanya dari cuplikan buku kurikulum di bawah.',
         'Bahasa Indonesia, singkat (maks ~800 karakter).',
         '',
         'Aturan keras:',
-        '- Jawab HANYA dari <<<BLOK_BUKU>>>. Jangan mengarang.',
-        '- Jangan sebut atau mengarang omzet, stok, harga toko, atau angka ledger kasir.',
-        '- Jangan minta ketik: jual/belanja/hapus. Ini bukan mode kasir.',
+        '- Jawab HANYA dari <<<BLOK_BUKU>>> untuk tip/konsep bisnis. Jangan mengarang isi buku.',
+        '- Jangan minta ketik: jual/belanja/hapus. Ini bukan mode kasir transaksi.',
         '- Jika cuplikan tidak cukup: bilang belum ketemu di buku, sarankan tanya lebih spesifik.',
-        '- Sitasi ringan: boleh akhiri dengan "(dari buku Manajemen UKM)".',
+        '- Sitasi: akhiri dengan "(dari buku Manajemen UKM, hlm. X)" bila header Sumber punya hlm.; kalau tidak ada hlm., "(dari buku Manajemen UKM)".',
         '- Tanpa markdown berlebihan.',
+        ...shopBlock,
         '',
         '<<<USER_QUESTION>>>',
         question,

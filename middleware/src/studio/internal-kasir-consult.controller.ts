@@ -20,6 +20,8 @@ import { StudioUmkmPendampingService } from './studio-umkm-pendamping.service';
 
 type ConsultBody = {
     question?: string;
+    /** Owner WA digits — used only when KASIR_CONSULT_INJECT_METRICS is on. */
+    phone?: string;
 };
 
 function isTruthyFlag(raw: string | undefined): boolean {
@@ -62,7 +64,12 @@ export class InternalKasirConsultController {
             throw new HttpException('question required', HttpStatus.BAD_REQUEST);
         }
 
-        const result = await this.pendamping.consultFromNotebook(question);
+        const phone =
+            typeof body?.phone === 'string' ? body.phone.trim().slice(0, 32) : undefined;
+
+        const result = await this.pendamping.consultFromNotebook(question, undefined, {
+            phone,
+        });
         return { status: result.status, text: result.text };
     }
 }

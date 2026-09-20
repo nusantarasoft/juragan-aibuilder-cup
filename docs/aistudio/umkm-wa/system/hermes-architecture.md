@@ -139,6 +139,7 @@ Agent replies to allowlisted chats go through the Hermes gateway. Last-mile deny
 | `KASIR_CONSULT_URL` | hermes | Default `http://middleware:4001/internal/kasir-consult` |
 | `KASIR_CONSULT_KEY` | hermes + middleware | Shared secret → header `X-Kasir-Consult-Key` (fail-closed if unset) |
 | `KASIR_CONSULT_NOTEBOOK_ID` | middleware only | Studio notebook with ingested UKM PDF (prod: `48aee243-…`, 376 chunks) |
+| `KASIR_CONSULT_INJECT_METRICS` | middleware only | Default `0`. When `1`, Nest may append a short today-report snapshot into synthesize (labeled *dari kasir toko kamu*) if Hermes forwards `phone` — **never** into retrieve / ledger RAG |
 | `KASIR_WA_SESSION_DIR` | hermes | Baileys session + LID maps |
 | `KASIR_IDENTITY_DIR` | hermes | Active-sender stamp for tools |
 | `KASIR_BRIDGE_PROXY_PORT` | hermes | Default `8765` |
@@ -161,6 +162,8 @@ Agent replies to allowlisted chats go through the Hermes gateway. Last-mile deny
 | Photo/voice while `KASIR_MULTIMODAL=1` | Gateway annotate → SOUL draft jual/beli → poll Ya/Batal (same as typed sale) |
 | `tanya …` while `KASIR_CONSULT=0` | “Konsultasi kurikulum belum aktif…” (tool always registered; no Nest call / Nest also returns off) |
 | `tanya …` while `KASIR_CONSULT=1` + miss chunks | Fixed miss copy — no free LLM |
+| `tanya …` hit | Synthesize ≤800 + cite `(dari buku…, hlm. N)` when chunk has `-- N of M --` |
+| `KASIR_CONSULT_INJECT_METRICS=1` + phone | Optional today-report in prompt as BLOK_KASIR (tools label); still no ledger RAG |
 | Nest consult timeout/5xx | “Layanan konsultasi lagi sibuk…” |
 | Topik jelas di luar toko/buku (mis. kripto) | Sering refuse SOUL/scope sebelum Nest — jangan mengarang harga luar |
 | `tanya cek stok …` / ledger-like via consult | Redirect copy — **no** notebook retrieve; owner pakai tools DB (L8 anti RAG-ledger) |

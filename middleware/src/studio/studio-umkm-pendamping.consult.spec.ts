@@ -21,7 +21,20 @@ describe('buildConsultFromNotebookPrompt', () => {
         expect(prompt).toMatch(/gimana atur modal warung/);
         expect(prompt).toMatch(/BLOK_BUKU/);
         expect(prompt).toMatch(/Modal usaha kecil/);
-        expect(prompt).not.toMatch(/BLOK_TOOLS|BLOK_PLAYBOOK|Laporan minggu|on_hand/i);
+        expect(prompt).not.toMatch(/BLOK_KASIR|BLOK_TOOLS|BLOK_PLAYBOOK|Laporan minggu|on_hand/i);
+        expect(prompt).toMatch(/Jangan sebut atau mengarang omzet/);
+    });
+
+    it('optional shopSnapshot → BLOK_KASIR labeled tools-only', () => {
+        const prompt = buildConsultFromNotebookPrompt({
+            question: 'gimana atur modal',
+            chunkContext: 'Pisahkan modal.',
+            shopSnapshot: 'Omzet hari ini: Rp 150.000',
+        });
+        expect(prompt).toMatch(/BLOK_KASIR/);
+        expect(prompt).toMatch(/dari kasir toko kamu/);
+        expect(prompt).toMatch(/Omzet hari ini/);
+        expect(prompt).toMatch(/Jangan campur angka kasir/);
     });
 });
 
@@ -65,12 +78,14 @@ describe('StudioUmkmPendampingService.consultFromNotebook', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         delete process.env.KASIR_CONSULT_NOTEBOOK_ID;
+        delete process.env.KASIR_CONSULT_INJECT_METRICS;
         svc = new StudioUmkmPendampingService(umkm as any, aiRouter as any, context as any);
     });
 
     afterEach(() => {
         if (prevNb === undefined) delete process.env.KASIR_CONSULT_NOTEBOOK_ID;
         else process.env.KASIR_CONSULT_NOTEBOOK_ID = prevNb;
+        delete process.env.KASIR_CONSULT_INJECT_METRICS;
     });
 
     it('ledger-like question → redirect; no retrieve / LLM / stock tools', async () => {
@@ -109,7 +124,7 @@ describe('StudioUmkmPendampingService.consultFromNotebook', () => {
                 chunkId: 'c1',
                 sourceId: 's1',
                 filename: 'manajemen-ukm.pdf',
-                content: 'Modal kerja harus dicatat terpisah.',
+                content: 'Modal kerja harus dicatat terpisah. -- 12 of 200 --',
                 score: 0.82,
             },
         ]);
@@ -117,11 +132,13 @@ describe('StudioUmkmPendampingService.consultFromNotebook', () => {
         expect(out.status).toBe('hit');
         expect(out.text.length).toBeLessThanOrEqual(800);
         expect(out.text).toMatch(/modal|Manajemen UKM/i);
+        expect(out.text).toMatch(/hlm\.?\s*12/i);
         expect(aiRouter.generateText).toHaveBeenCalledTimes(1);
         const prompt = String(aiRouter.generateText.mock.calls[0][0]);
         expect(prompt).toMatch(/BLOK_BUKU/);
         expect(prompt).toMatch(/Modal kerja harus dicatat/);
-        expect(prompt).not.toMatch(/BLOK_TOOLS/);
+        expect(prompt).toMatch(/hlm\. 12/);
+        expect(prompt).not.toMatch(/BLOK_KASIR|BLOK_TOOLS/);
     });
 
     it('LLM throw → busy copy (not pendamping numbers)', async () => {
@@ -167,10 +184,54 @@ describe('StudioUmkmPendampingService.consultFromNotebook', () => {
                 score: 0.8,
             },
         ]);
-        await svc.consultFromNotebook('tanya modal', 'nb-1');
+        await svc.consultFromNotebook('tanya modal', 'nb-1', {
+            phone: '6281111111111',
+        });
         expect(umkm.fetchStockRows).not.toHaveBeenCalled();
         expect(umkm.buildCombinedReportMessage).not.toHaveBeenCalled();
         expect(context.retrieveContext).not.toHaveBeenCalled();
+    });
+
+    it('INJECT_METRICS on + phone → shop snapshot in prompt (not retrieve)', async () => {
+        process.env.KASIR_CONSULT_INJECT_METRICS = '1';
+        const whatsapp = {
+            listConfigs: vi.fn(async () => [
+                {
+                    tenant_id: 't-shop',
+                    enabled: true,
+                    notebook_id: 'nb-1',
+                    business_phone: '6281111111111',
+                    allowlist_phones: [],
+                },
+            ]),
+        };
+        umkm.buildCombinedReportMessage.mockResolvedValueOnce(
+            '📊 Omzet hari ini: Rp 100.000',
+        );
+        svc = new StudioUmkmPendampingService(
+            umkm as any,
+            aiRouter as any,
+            context as any,
+            whatsapp as any,
+        );
+        context.semanticSearchNotebook.mockResolvedValueOnce([
+            {
+                chunkId: 'c1',
+                sourceId: 's1',
+                filename: 'buku.pdf',
+                content: 'Tips modal. -- 4 of 50 --',
+                score: 0.8,
+            },
+        ]);
+        await svc.consultFromNotebook('tanya modal', 'nb-1', {
+            phone: '6281111111111',
+        });
+        expect(umkm.buildCombinedReportMessage).toHaveBeenCalledWith('t-shop', 'today');
+        expect(umkm.fetchStockRows).not.toHaveBeenCalled();
+        const prompt = String(aiRouter.generateText.mock.calls[0][0]);
+        expect(prompt).toMatch(/BLOK_KASIR/);
+        expect(prompt).toMatch(/Omzet hari ini/);
+        expect(prompt).toMatch(/BLOK_BUKU/);
     });
 
     it('question >500 chars truncated before retrieve', async () => {

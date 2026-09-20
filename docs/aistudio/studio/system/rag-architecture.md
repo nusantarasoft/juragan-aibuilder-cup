@@ -41,7 +41,7 @@ Kunci embed di Settings/gateway; ganti chat model bebas. Jangan campur dua model
 | Konsumen | Notebook | Scope |
 |----------|----------|--------|
 | **Studio Chat** (Admin) | Notebook yang dibuka user | Biasanya dokumen proyek / tenant itu |
-| **WA `kasir_consult`** | Env `KASIR_CONSULT_NOTEBOOK_ID` (satu notebook kurikulum bersama) | Shared PDF UKM — **bukan** ledger jual/stok; default `KASIR_CONSULT=0` |
+| **WA `kasir_consult`** | Env `KASIR_CONSULT_NOTEBOOK_ID` (satu notebook kurikulum bersama) | Shared PDF UKM — **bukan** ledger jual/stok; default `KASIR_CONSULT=0`; cite `hlm` dari marker chunk; optional `KASIR_CONSULT_INJECT_METRICS` (synthesize only) |
 
 Ledger stok/omzet **tidak** lewat RAG — lihat [L8](../../../../diagrams/aistudio/umkm-wa/system/L8-knowledge-soul.svg) + [hermes-architecture](../../umkm-wa/system/hermes-architecture.md).
 

@@ -236,11 +236,11 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 
 **Why:** Owners may want advice that references their real omzet/stok while still citing the kurikulum book.
 
-**Context:** CEO HOLD + eng D2 explicitly forbade calling `coach()` and mixing report/stock into v1 consult (L8: buku ≠ ledger). Only revisit with a hard product signal and a separate prompt mode that labels numbers as “dari kasir tools”, never as book content. Plan: `docs/designs/ceo-plan-wa-consult-kurikulum-rag.md`.
+**Context:** Shipped behind **`KASIR_CONSULT_INJECT_METRICS=0`** default (2026-09-20). Nest loads today-report via owner `phone` → tenant; prompt labels BLOK_KASIR as *dari kasir toko kamu*. Leave off in prod until product explicitly wants mixed advice. L8 still forbids ledger RAG.
 
+**Status:** done (flagged off) 2026-09-20
 **Effort:** M
 **Priority:** P3
-**Depends on:** `kasir_consult` v1 shipped; L8 still green in QA; explicit product ask
 
 ### Accurate page citations in WA consult replies
 
@@ -248,11 +248,12 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 
 **Why:** Stronger trust/audit for owners who want “halaman berapa”.
 
-**Context:** CEO HOLD deferred perfect page cites. Chunk rows may lack page maps today — need ingest metadata quality first. Keep WA replies short (≤800). Plan: `docs/designs/ceo-plan-wa-consult-kurikulum-rag.md`.
+**Context:** Soft GA now appends **`hlm. N`** from pdf-parse markers `-- N of M --` in chunk text (no re-ingest). Perfect page maps / multi-source locus still deferred. Keep WA replies ≤800. Plan: `docs/designs/ceo-plan-wa-consult-kurikulum-rag.md`.
 
+**Status:** partial (marker-based hlm) 2026-09-20 — perfect maps still open
 **Effort:** M
 **Priority:** P4
-**Depends on:** `kasir_consult` v1 shipped; studio chunk page metadata available
+**Depends on:** studio chunk page metadata for perfect maps
 
 ### Human mentor HITL brief (D3.3)
 

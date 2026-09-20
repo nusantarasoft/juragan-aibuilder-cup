@@ -2,6 +2,9 @@
 
 Feature flag ``KASIR_CONSULT`` (default off). Always registered; OFF returns
 fixed copy without HTTP (eng-review D7).
+
+Optional ``phone`` is forwarded so Nest can inject a short kasir metrics
+snapshot when ``KASIR_CONSULT_INJECT_METRICS=1`` (default off; L8-labeled).
 """
 
 from __future__ import annotations
@@ -30,6 +33,7 @@ CONSULT_LEDGER_REDIRECT_COPY = (
 _DEFAULT_URL = "http://middleware:4001/internal/kasir-consult"
 _TIMEOUT_SEC = 30
 _QUESTION_MAX = 500
+
 
 _LEDGER_RES = (
     re.compile(r"\bcek\s*stok\b", re.I),
@@ -66,6 +70,35 @@ def consult_url() -> str:
     return (os.environ.get("KASIR_CONSULT_URL") or _DEFAULT_URL).strip() or _DEFAULT_URL
 
 
+def _digits(raw: str) -> str:
+    return re.sub(r"\D", "", raw or "")
+
+
+def _resolve_phone_best_effort(params: dict[str, Any], kwargs: dict[str, Any]) -> str:
+    """Phone for optional Nest metrics inject — never blocks consult."""
+    explicit = _digits(str(params.get("phone") or ""))
+    if len(explicit) >= 8:
+        return explicit
+    try:
+        # Prefer package resolver when kasir-tools is fully loaded.
+        from kasir_tools import _resolve_phone  # type: ignore
+
+        phone = _resolve_phone(params, kwargs) or ""
+        if len(_digits(phone)) >= 8:
+            return _digits(phone)
+    except Exception:
+        pass
+    try:
+        from .identity import read_sender
+
+        phone = read_sender() or ""
+        if len(_digits(phone)) >= 8:
+            return _digits(phone)
+    except Exception:
+        pass
+    return ""
+
+
 def handle_consult(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
     """Tool handler — returns user-facing Indonesian text only."""
     try:
@@ -90,7 +123,12 @@ def handle_consult(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
             logger.warning("kasir_consult: KASIR_CONSULT_KEY missing")
             return CONSULT_BUSY_COPY
 
-        body = json.dumps({"question": question}).encode("utf-8")
+        payload: dict[str, Any] = {"question": question}
+        phone = _resolve_phone_best_effort(params, kwargs)
+        if phone:
+            payload["phone"] = phone
+
+        body = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
             consult_url(),
             data=body,
@@ -130,6 +168,10 @@ TOOL_SPEC = (
                 "question": {
                     "type": "string",
                     "description": "Pertanyaan bisnis pemilik (Bahasa Indonesia).",
+                },
+                "phone": {
+                    "type": "string",
+                    "description": "Nomor toko (opsional; biasanya otomatis).",
                 },
             },
             "required": ["question"],

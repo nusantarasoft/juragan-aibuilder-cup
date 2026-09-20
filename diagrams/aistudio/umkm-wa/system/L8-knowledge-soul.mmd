@@ -15,7 +15,7 @@ flowchart TB
   C --> S
   S -->|KASIR_CONSULT=1 soft GA| KC[kasir_consult]
   KC --> Nest[Nest /internal/kasir-consult<br/>retrieve kurikulum PDF]
-  Nest --> Buku[Jawaban dari buku UKM]
+  Nest --> Buku[Jawaban dari buku UKM<br/>+ hlm dari marker chunk]
   S -->|KASIR_CONSULT=0| Off[Copy: belum aktif]
 
   Q -.->|FORBIDDEN| R[RAG ledger embed]

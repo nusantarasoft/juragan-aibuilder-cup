@@ -85,8 +85,24 @@ describe('InternalKasirConsultController', () => {
             { question: 'gimana atur modal' },
             'secret-test',
         );
-        expect(pendamping.consultFromNotebook).toHaveBeenCalledWith('gimana atur modal');
+        expect(pendamping.consultFromNotebook).toHaveBeenCalledWith(
+            'gimana atur modal',
+            undefined,
+            { phone: undefined },
+        );
         expect(res).toEqual({ status: 'hit', text: 'Jawaban dari buku.' });
+    });
+
+    it('forwards optional phone for metrics inject', async () => {
+        await ctrl.kasirConsult(
+            { question: 'tanya modal', phone: '6281111111111' },
+            'secret-test',
+        );
+        expect(pendamping.consultFromNotebook).toHaveBeenCalledWith(
+            'tanya modal',
+            undefined,
+            { phone: '6281111111111' },
+        );
     });
 
     it('empty question → 400', async () => {

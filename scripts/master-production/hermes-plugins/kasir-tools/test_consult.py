@@ -90,7 +90,9 @@ class ConsultTests(unittest.TestCase):
             "urlopen",
             return_value=_FakeResp({"status": "hit", "text": "Pisahkan modal usaha."}),
         ) as urlopen:
-            out = self.mod.handle_consult({"question": "gimana atur modal"})
+            out = self.mod.handle_consult(
+                {"question": "gimana atur modal", "phone": "6281111111111"}
+            )
             self.assertEqual(out, "Pisahkan modal usaha.")
             urlopen.assert_called_once()
             req = urlopen.call_args[0][0]
@@ -98,6 +100,7 @@ class ConsultTests(unittest.TestCase):
             headers = {k.lower(): v for k, v in req.header_items()}
             self.assertEqual(headers.get("x-kasir-consult-key"), "test-key")
             self.assertIn(b"gimana atur modal", req.data)
+            self.assertIn(b"6281111111111", req.data)
             self.assertEqual(urlopen.call_args.kwargs.get("timeout"), 30)
 
     def test_flag_on_nest_off_passthrough(self) -> None:
