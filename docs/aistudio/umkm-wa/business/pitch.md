@@ -3,7 +3,7 @@
 **Untuk siapa:** sales, orang bisnis, pemilik toko (tenant).  
 **Bukan** catatan teknis development — itu di folder terpisah.
 
-Satu kalimat: pemilik warung chat ke **nomor WhatsApp bisnis NusantaraSoft** → ketik **DAFTAR** → admin setujui di AI Studio → toko aktif → bisa **cek stok**, catat jual, dan lihat laporan lewat chat.
+Satu kalimat: pemilik warung chat ke **nomor WhatsApp bisnis NusantaraSoft** → ketik **DAFTAR** → admin setujui di AI Studio → toko aktif → bisa **cek stok**, catat jual/beli, dan lihat laporan lewat **chat teks**.
 
 Tanpa DAFTAR + Approve, nomor yang belum dikenal tidak dilayani sebagai kasir (bot diam atau hanya mengarahkan daftar).
 
@@ -31,6 +31,7 @@ Karyawan / banyak nomor HP per toko: belum di v1.
 | 5 | Setelah ditolak / batal, boleh **DAFTAR lagi** |
 | 6 | **Satu toko = satu nomor** pemilik di v1 |
 | 7 | **Satu nomor WhatsApp bisnis** NusantaraSoft untuk banyak toko (beda toko = beda HP pengirim) |
+| 8 | **Chat teks dulu** — foto nota / suara belakangan (belum v1 default) |
 
 ---
 
@@ -45,19 +46,37 @@ Chat nomor NS  →  DAFTAR  →  nama toko  →  YA
 
 Admin juga bisa menambah toko lewat form lama di halaman yang sama; jalur **DAFTAR** adalah yang paling mudah dijelaskan ke calon tenant.
 
-**Belum di v1:** OTP, pembayaran di chat, banyak toko per nomor.
+**Belum di v1:** OTP, pembayaran di chat, banyak toko per nomor, foto/suara sebagai input jual.
+
+---
+
+## Setelah toko hidup — yang bisa dilakukan owner
+
+Semua lewat **chat teks** ke nomor bisnis yang sama (bukan app terpisah):
+
+| Bilang kira-kira… | Yang terjadi |
+|-------------------|--------------|
+| *cek stok indomie* | Sisa barang |
+| *stok mau habis* | Daftar yang menipis |
+| *jual 2 indomie* / *ada yang beli…* | Ringkasan → ketuk **Ya, simpan** / **Batal** (atau ketik *ya* / *batal*) |
+| *satu lagi* | Ulang item jual terakhir (masih perlu *ya*) |
+| *belanja / restock…* | Ringkasan belanja → *ya* |
+| *laporan* / *paling laris* | Omzet & ringkasan |
+
+Angka stok/harga/omzet diambil dari data toko yang sudah Approve — **bukan** “tebak AI” dari dokumen generik.
 
 ---
 
 ## Gambar (cerita bisnis)
 
-Cukup tiga level ini untuk pitching:
+| Level | Gambar | Isi |
+|-------|--------|-----|
+| Cerita besar | [L0](../../../../diagrams/aistudio/umkm-wa/business/L0-bisnis-besar.svg) | DAFTAR → Approve → kasir |
+| Ritual harian | [L0b](../../../../diagrams/aistudio/umkm-wa/business/L0b-kasir-harian.svg) | stok / jual / ya / laporan |
+| Satu nomor, banyak toko | [L1](../../../../diagrams/aistudio/umkm-wa/business/L1-shared-inbox.svg) | Shared inbox |
+| Siapa melakukan apa | [L2](../../../../diagrams/aistudio/umkm-wa/business/L2-aktor-swimlane.svg) | Owner vs admin |
 
-| Level | Gambar |
-|-------|--------|
-| Cerita besar | [L0](../../../../diagrams/aistudio/umkm-wa/business/L0-bisnis-besar.svg) |
-| Satu nomor, banyak toko | [L1](../../../../diagrams/aistudio/umkm-wa/business/L1-shared-inbox.svg) |
-| Siapa melakukan apa | [L2](../../../../diagrams/aistudio/umkm-wa/business/L2-aktor-swimlane.svg) |
+Sumber Mermaid (kalau SVG belum di-render ulang): file `.mmd` di folder diagram yang sama.
 
 ---
 

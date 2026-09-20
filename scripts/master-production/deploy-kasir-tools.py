@@ -36,6 +36,7 @@ INCLUDE = [
     "scripts/master-production/hermes-plugins/kasir-pipe",
     "scripts/master-production/hermes-home/SOUL.md",
     "scripts/master-production/hermes-kasir-health.py",
+    "scripts/master-production/hermes-wa-tool-allowlist.py",
 ]
 
 
@@ -258,18 +259,37 @@ def main() -> int:
             "'echo SUPABASE_URL=$SUPABASE_URL; "
             "echo SERVICE_KEY_LEN=${#SUPABASE_SERVICE_KEY}'"
         )
-        # G2: refuse open gateway (*) without kasir-pipe/tools enabled.
+        # G13 first: pin WhatsApp toolsets before health (health fail-closes on G13).
+        run(
+            "HERMES_CONTAINER=nsoft3-hermes "
+            "python3 /opt/nusantarasoft-3/scripts/master-production/hermes-wa-tool-allowlist.py "
+            "apply --docker --container nsoft3-hermes"
+        )
+        code, _ = run(
+            "HERMES_CONTAINER=nsoft3-hermes "
+            "python3 /opt/nusantarasoft-3/scripts/master-production/hermes-wa-tool-allowlist.py "
+            "check --docker --container nsoft3-hermes"
+        )
+        if code != 0:
+            print(
+                "FAIL G13: WhatsApp still has dangerous Hermes toolsets — "
+                "see hermes-wa-tool-allowlist.py / hermes-gaps G13",
+                flush=True,
+            )
+            return code
+        # G2 + G13: refuse open gateway (*) without kasir plugins / tool allowlist.
         code, _ = run(
             "HERMES_HOME=/opt/nusantarasoft-3/volumes/hermes "
             "python3 /opt/nusantarasoft-3/scripts/master-production/hermes-kasir-health.py"
         )
         if code != 0:
             print(
-                "FAIL G2: kasir plugins missing/disabled — "
-                "WHATSAPP_ALLOWED_USERS=* would be ungated",
+                "FAIL G2/G13: kasir plugins or WhatsApp tool allowlist — "
+                "see hermes-kasir-health.py / hermes-gaps",
                 flush=True,
             )
             return code
+
         run(
             f"docker exec nsoft3-hermes sh -lc "
             f"'grep -Ei \"kasir-pipe: allowlist|kasir-tools registered\" {AGENT_LOG} | tail -n 15' || true"

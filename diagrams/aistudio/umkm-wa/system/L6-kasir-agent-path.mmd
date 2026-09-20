@@ -1,0 +1,19 @@
+%% System: allowlisted kasir turn (Hermes) — tools not skills; chat-only default
+flowchart TB
+  U[Owner WhatsApp text] --> B[Baileys]
+  B --> P[kasir-pipe allowlist]
+  P -->|deny| R[DAFTAR wizard]
+  P -->|ok stamp| G[Gateway plus LLM]
+  G --> S[SOUL.md shared persona]
+  S --> T[kasir-tools only]
+  T --> DB[(Supabase tenant data)]
+  T -->|draft jual beli| POLL[Bridge send-poll Ya Batal]
+  POLL --> U
+  T -->|confirm| DB
+
+  subgraph deny["Disabled on WhatsApp"]
+    X1[terminal file browser web]
+    X2[skills code_execution vision]
+    X3[delegation computer_use]
+  end
+  G -.->|must not call| deny

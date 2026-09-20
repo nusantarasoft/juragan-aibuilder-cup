@@ -39,8 +39,7 @@
 **Effort:** M
 **Priority:** P0
 **Depends on:** None
-
-### Hermes concurrent tenant stamp race
+**Status:** shipped 2026-09-20 — `hermes-wa-tool-allowlist.py` + health/deploy G13 fail-closed; `platform_toolsets.whatsapp` = clarify + kasir.
 
 **What:** Verify (then fix if needed) tenant resolve under overlapping owner messages on the shared WA number — `kasir_active_sender.json` must not let tools run as the wrong tenant; drafts/`last_sale` stay keyed and safe under concurrency.
 

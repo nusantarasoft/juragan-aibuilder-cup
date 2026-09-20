@@ -61,7 +61,7 @@ python scripts\master-production\hermes-kasir-health.py
 
 Pair via Admin → WhatsApp Gateway (or Hermes dashboard QR).
 
-**Note:** A fresh `volumes/hermes/config.yaml` may still show stock defaults (`tool_progress: all`, empty `plugins.enabled`). Production posture is applied by `silence-hermes-wa-tools.py` / `deploy-kasir-tools.py` — health script warns on drift (gap **G5**).
+**Note:** A fresh `volumes/hermes/config.yaml` may still show stock defaults (`tool_progress: all`, empty `plugins.enabled`, `platform_toolsets.whatsapp: hermes-whatsapp`). Production posture is applied by `silence-hermes-wa-tools.py` / `deploy-kasir-tools.py` / `hermes-wa-tool-allowlist.py` — health script fails on plugin or tool-allowlist drift (gaps **G2**, **G5**, **G13**).
 
 ---
 

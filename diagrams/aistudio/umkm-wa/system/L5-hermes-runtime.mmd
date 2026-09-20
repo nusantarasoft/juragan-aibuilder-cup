@@ -5,9 +5,9 @@ flowchart TB
 
   subgraph hermes["Hermes container"]
     B[Baileys bridge<br/>127.0.0.1:3000]
-    G[Gateway + LLM]
+    G[Gateway + LLM<br/>SOUL.md shared]
     P[kasir-pipe<br/>pre_gateway_dispatch]
-    T[kasir-tools<br/>user_safe wrap]
+    T[kasir-tools only<br/>user_safe wrap]
     PX[Bridge+pair proxy<br/>0.0.0.0:8765]
     B --> G
     G --> P
@@ -30,7 +30,7 @@ flowchart TB
   end
 
   U <--> B
-  HP -->|send / pair| PX
+  HP -->|send / pair / send-poll| PX
   T --> CFG
   T --> KAS
   P --> CFG
@@ -38,4 +38,5 @@ flowchart TB
   HP -.->|approve notify| PX
   WH -.->|not kasir inbound| mid
 
-  %% Ops: WHATSAPP_HOME_CHANNEL = ops/agent JID (suppress /sethome nag). Not UMKM owner chats.
+  %% Chat-only default; dangerous built-in toolsets disabled on platform whatsapp.
+  %% See L6-kasir-agent-path + hermes-architecture Platform locks.

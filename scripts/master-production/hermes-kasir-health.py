@@ -211,6 +211,35 @@ def main() -> int:
         results,
     )
 
+    # G13: WhatsApp must not expose coding toolsets (terminal/browser/…).
+    try:
+        from pathlib import Path as _P
+
+        al_path = _P(__file__).resolve().parent / "hermes-wa-tool-allowlist.py"
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("hermes_wa_tool_allowlist", al_path)
+        al = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(al)
+        cfg_text = config_path.read_text(encoding="utf-8", errors="replace")
+        ok_al, detail_al = al.check_allowlist_from_text(cfg_text)
+        check(
+            "whatsapp-tool-allowlist",
+            ok_al,
+            detail_al,
+            True,
+            results,
+        )
+    except Exception as exc:
+        check(
+            "whatsapp-tool-allowlist",
+            False,
+            f"checker error: {exc}",
+            True,
+            results,
+        )
+
     if data.get("_fallback"):
         check(
             "yaml-parser",

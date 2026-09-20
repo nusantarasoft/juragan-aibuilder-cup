@@ -33,6 +33,7 @@ Tracked after comparing L5 (current as-built) with [Hermes docs](https://hermes-
 | **G10** | Bridge proxy `:8765` custom | — | **DONE** | Perlu Nest pair/send; ada di L5. |
 | **G11** | Teks sistem/tool bocor ke user WA | High (UX/trust) | **FIXED** | `user_safe` sanitize + wrap semua tool return; draft tanpa `draft_id`/nama tool; confirm latest `(phone,kind)`; denylist `_send_wa_text` (DAFTAR); SOUL harden; `reject_reason` cap. Residual: agent egress tanpa hook Hermes → TODOS. |
 | **G12** | Hermes nag `/sethome` / “No home channel” | Med (UX) | **FIXED** | Set `WHATSAPP_HOME_CHANNEL` (ops chat JID) di compose/env. Nag fires on first message when home unset (`gateway/run.py`). UMKM: **ignore** — jangan `/sethome` di chat toko (itu mengalihkan cron ke mereka). |
+| **G13** | Built-in Hermes toolsets (terminal/browser/…) aktif di platform WhatsApp | High (security) | **FIXED** | `hermes-wa-tool-allowlist.py` sets `platform_toolsets.whatsapp` → `clarify` + `kasir`; deploy applies; `hermes-kasir-health.py` fail-closed. |
 
 ---
 
@@ -66,7 +67,7 @@ python3 -m unittest test_user_safe_copy.py -v
 
 ## Urutan beresin (sisa)
 
-_Tidak ada gap OPEN._ G1 HOLD. Residual G11 agent-egress → TODOS.
+_Tidak ada gap OPEN._ G1 HOLD. Residual G11 agent-egress → TODOS. G13 FIXED (tool allowlist).
 
 ---
 
@@ -90,3 +91,4 @@ python3 -m unittest scripts/master-production/hermes-plugins/kasir-tools/test_us
 | 2026-09-19 | **G11 FIXED** — user-facing leak harden (sanitize, draft UX, DAFTAR denylist, QA checklist) |
 | 2026-09-19 | **G12 FIXED** — `WHATSAPP_HOME_CHANNEL` ops JID suppresses Hermes home-channel nag |
 | 2026-09-19 | Moved under `docs/aistudio/umkm-wa/system/` |
+| 2026-09-20 | **G13 FIXED** — WhatsApp tool allowlist (`clarify`+`kasir`) + health/deploy fail-closed |
