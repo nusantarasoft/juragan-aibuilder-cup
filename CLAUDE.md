@@ -18,3 +18,7 @@ Key routing rules:
 - Save progress → invoke /context-save
 - Resume context → invoke /context-restore
 - Author a backlog-ready spec/issue → invoke /spec
+
+## Docs + diagrams (mandatory with code)
+
+Behavior / flow / architecture changes must update matching docs and ladder diagrams in the same session. See `.cursor/rules/docs-flow-diagrams-sync.mdc`.

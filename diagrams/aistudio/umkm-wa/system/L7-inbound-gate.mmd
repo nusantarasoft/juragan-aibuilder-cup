@@ -1,0 +1,19 @@
+%% System L7: inbound gate detail (pipe order) — eng / ops
+%% Complements L5 (containers) and L6 (agent path). Keep labels short for mermaid.ink.
+flowchart TB
+  IN[Inbound WA event] --> MM{KASIR_MULTIMODAL?}
+  MM -->|OFF + media| REF[Send refuse teks<br/>skip agent]
+  MM -->|ON or text| AL{Allowlist?}
+  AL -->|No + REG=1| REG[DAFTAR wizard]
+  AL -->|No + REG=0| SKIP[Silent skip]
+  AL -->|Yes| ST[Stamp sender<br/>map per chat v2]
+  ST --> AG[Hermes agent<br/>SOUL + kasir-tools]
+  AG --> TOOLS{SOUL route}
+  TOOLS -->|cek stok| T1[kasir_get_stock]
+  TOOLS -->|jual / satu lagi| T2[draft → poll → confirm]
+  TOOLS -->|laporan| T3[kasir_daily_report]
+  TOOLS -->|tutup toko| T4[kasir_tutup_toko]
+  T1 --> DB[(Supabase)]
+  T2 --> DB
+  T3 --> DB
+  T4 --> DB

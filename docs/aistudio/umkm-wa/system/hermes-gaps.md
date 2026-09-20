@@ -92,3 +92,4 @@ python3 -m unittest scripts/master-production/hermes-plugins/kasir-tools/test_us
 | 2026-09-19 | **G12 FIXED** — `WHATSAPP_HOME_CHANNEL` ops JID suppresses Hermes home-channel nag |
 | 2026-09-19 | Moved under `docs/aistudio/umkm-wa/system/` |
 | 2026-09-20 | **G13 FIXED** — WhatsApp tool allowlist (`clarify`+`kasir`) + health/deploy fail-closed |
+| 2026-09-20 | Chat-only refuse (`KASIR_MULTIMODAL=0`), stamp v2, `kasir_tutup_toko`; diagrams L0c + L7 |

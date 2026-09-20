@@ -1,0 +1,8 @@
+%% Product rule: chat-only default (sales / pitch — no eng jargon)
+%% Foto/suara belum jadi input jual di v1; sistem mengarahkan ketik teks.
+flowchart TB
+  A[Owner kirim pesan] --> B{Jenis pesan?}
+  B -->|Teks| C[Kasir biasa<br/>stok / jual / laporan / tutup]
+  B -->|Foto / suara / file| D[Balasan singkat:<br/>ketik jual / stok / laporan]
+  D --> E[Owner ketik teks]
+  E --> C

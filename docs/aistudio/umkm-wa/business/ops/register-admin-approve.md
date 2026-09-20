@@ -48,7 +48,7 @@ OTP / bayar: out of scope v1.
   jual/stok/... → ditolak lembut: belum aktif
 
 [sudah terdaftar]
-  → kasir seperti biasa (stok, jual, laporan)
+  → kasir seperti biasa (stok, jual, laporan, tutup toko — chat teks)
 ```
 
 ### Admin (CMS)

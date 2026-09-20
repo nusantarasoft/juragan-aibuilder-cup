@@ -31,7 +31,7 @@ Karyawan / banyak nomor HP per toko: belum di v1.
 | 5 | Setelah ditolak / batal, boleh **DAFTAR lagi** |
 | 6 | **Satu toko = satu nomor** pemilik di v1 |
 | 7 | **Satu nomor WhatsApp bisnis** NusantaraSoft untuk banyak toko (beda toko = beda HP pengirim) |
-| 8 | **Chat teks dulu** — foto nota / suara belakangan (belum v1 default) |
+| 8 | **Chat teks dulu** — foto/suara diganti arahkan ketik *jual* / *stok* (belum input jual dari media) |
 
 ---
 
@@ -46,7 +46,7 @@ Chat nomor NS  →  DAFTAR  →  nama toko  →  YA
 
 Admin juga bisa menambah toko lewat form lama di halaman yang sama; jalur **DAFTAR** adalah yang paling mudah dijelaskan ke calon tenant.
 
-**Belum di v1:** OTP, pembayaran di chat, banyak toko per nomor, foto/suara sebagai input jual.
+**Belum di v1:** OTP, pembayaran di chat, banyak toko per nomor, jual dari foto/suara (kalau dikirim, bot minta ketik teks).
 
 ---
 
@@ -73,7 +73,8 @@ Angka stok/harga/omzet diambil dari data toko yang sudah Approve — **bukan** �
 | Level | Gambar | Isi |
 |-------|--------|-----|
 | Cerita besar | [L0](../../../../diagrams/aistudio/umkm-wa/business/L0-bisnis-besar.svg) | DAFTAR → Approve → kasir |
-| Ritual harian | [L0b](../../../../diagrams/aistudio/umkm-wa/business/L0b-kasir-harian.svg) | stok / jual / ya / laporan / tutup toko |
+| Ritual harian | [L0b](../../../../diagrams/aistudio/umkm-wa/business/L0b-kasir-harian.svg) | stok / jual / ya / laporan / **tutup toko** |
+| Chat teks dulu | [L0c](../../../../diagrams/aistudio/umkm-wa/business/L0c-chat-only.svg) | foto/suara → ketik jual/stok |
 | Satu nomor, banyak toko | [L1](../../../../diagrams/aistudio/umkm-wa/business/L1-shared-inbox.svg) | Shared inbox |
 | Siapa melakukan apa | [L2](../../../../diagrams/aistudio/umkm-wa/business/L2-aktor-swimlane.svg) | Owner vs admin |
 

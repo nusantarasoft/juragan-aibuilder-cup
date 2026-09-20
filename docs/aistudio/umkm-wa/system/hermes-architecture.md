@@ -23,7 +23,8 @@ WhatsApp users
 Hermes container (Baileys :3000 loopback + Gateway + plugins)
       │
       ├─ kasir-pipe (pre_gateway_dispatch)
-      │     ├─ allowlist OK  → stamp active sender → Hermes LLM + kasir-tools → Supabase
+      │     ├─ media + KASIR_MULTIMODAL=0 → refuse teks + skip
+      │     ├─ allowlist OK  → stamp per-chat (v2) → Hermes LLM + kasir-tools → Supabase
       │     └─ deny         → DAFTAR wizard (non-LLM)  |  silent skip if KASIR_REGISTRATION=0
       │
       └─ HTTP 0.0.0.0:8765  → proxy Baileys + /pair/* (admin QR)
@@ -40,7 +41,8 @@ Simulasi admin uses simulateInboundMessage, not this route. See hermes-gaps.md G
 
 Runtime diagram: [`diagrams/aistudio/umkm-wa/system/L5-hermes-runtime.svg`](../../../../diagrams/aistudio/umkm-wa/system/L5-hermes-runtime.svg).  
 Agent path (SOUL → tools): [`L6-kasir-agent-path.svg`](../../../../diagrams/aistudio/umkm-wa/system/L6-kasir-agent-path.svg).  
-Business ladder: [`diagrams/aistudio/umkm-wa/business/`](../../../../diagrams/aistudio/umkm-wa/business/) (L0–L4 + L0b).
+Inbound gate order: [`L7-inbound-gate.svg`](../../../../diagrams/aistudio/umkm-wa/system/L7-inbound-gate.svg).  
+Business ladder: [`diagrams/aistudio/umkm-wa/business/`](../../../../diagrams/aistudio/umkm-wa/business/) (L0–L4 + L0b ritual + **L0c** chat-only).
 
 ---
 
@@ -49,8 +51,8 @@ Business ladder: [`diagrams/aistudio/umkm-wa/business/`](../../../../diagrams/ai
 | Piece | Role |
 |-------|------|
 | **Hermes Agent** | Container `hermes` / `nsoft3-hermes`. Runs gateway + Baileys WhatsApp. Volume `./volumes/hermes` → `/opt/data`. |
-| **kasir-pipe** | Plugin: allowlist gate, DAFTAR funnel, bridge+pair proxy `:8765`. |
-| **kasir-tools** | Plugin: stock/report/sale tools → PostgREST (Kong). Tenant from sender phone / pipe stamp — never `KASIR_AGENT_PHONES` as tenant fallback. Sale/purchase drafts mirrored to `runtime/kasir_drafts.json` (15m TTL). After draft, best-effort `/send-poll` confirm. `kasir_repeat_last_sale` uses `kasir_last_sale.json` (24h). |
+| **kasir-pipe** | Plugin: allowlist gate, **chat-only media refuse** (`KASIR_MULTIMODAL=0`), DAFTAR funnel, bridge+pair proxy `:8765`. |
+| **kasir-tools** | Plugin: stock/report/sale/**tutup toko** tools → PostgREST (Kong). Tenant from sender phone / pipe stamp — never `KASIR_AGENT_PHONES` as tenant fallback. Sale/purchase drafts mirrored to `runtime/kasir_drafts.json` (15m TTL). After draft, best-effort `/send-poll` confirm. `kasir_repeat_last_sale` uses `kasir_last_sale.json` (24h). `kasir_tutup_toko` = omzet hari ini + stok menipis. |
 | **kasir-probe** | Debug/probe plugin (ops). |
 | **user_safe** | Shared sanitize on tool returns + DAFTAR `_send_wa_text` denylist (gap **G11**). |
 | **HermesProvider** | Nest transport: outbound + session/QR via bridge. |
@@ -70,7 +72,7 @@ Settled product/architecture defaults for UMKM kasir on Hermes. Do not invert wi
 | **Modality** | **Chat-only** in prod kasir; multimodal (vision / voice→sale) behind an **explicit config flag** when we ship those paths. **Flag OFF:** inbound photo/voice get a short text refuse (“ketik jual/stok…”) — do **not** run vision/STT | Cheap micro path first; Hermes already has `agent.image_input_mode` / vision routing — turn on later, don’t always-on; eng review D10A |
 | **Knowledge** | Live facts (stok, harga, omzet, jual/beli) = **`kasir-tools` → PostgREST/DB** only. Optional RAG later = **per-tenant docs/SOP** with mandatory `tenant_id` filter — never embed the ledger; never fall through unknown inbound to RAG | Accuracy + isolation; curriculum vector RAG stays a separate deferred TODO |
 | **Character / memory** | **One shared** `SOUL.md` (“Asisten Kasir Warung”). Per-toko uniqueness = allowlist + tenant-scoped tools + app state (`kasir_drafts` / `kasir_last_sale`). Sender stamp is a **multi-chat map** (`kasir_active_sender.json` v2) keyed by chat — not one global phone. Do **not** use global `MEMORY.md` as store KB; multi-SOUL per tenant is out until product sells custom agents | Brand consistency; Hermes SOUL is per-instance; eng review D9A / T2 |
-| **Skills vs tools** | Owner jobs (“cek stok”, “jual”, “laporan”) are **`kasir-tools` + SOUL routing**, not Hermes Skills packs. Keep coding/browser Hermes skills off the kasir WA path | Explicit, testable, tenant-safe; skill-ifying invites the wrong toolset for warung |
+| **Skills vs tools** | Owner jobs (“cek stok”, “jual”, “laporan”, “tutup toko”) are **`kasir-tools` + SOUL routing**, not Hermes Skills packs. Keep coding/browser Hermes skills off the kasir WA path | Explicit, testable, tenant-safe; skill-ifying invites the wrong toolset for warung |
 | **Tool allowlist** | **FIXED (G13):** `platform_toolsets.whatsapp` = `clarify` + `kasir` only. Applied by `hermes-wa-tool-allowlist.py` on deploy; `hermes-kasir-health.py` **fails** if terminal/browser/… reappear | Eng review 2026-09-20 D7A + D8A / T1 |
 
 ```

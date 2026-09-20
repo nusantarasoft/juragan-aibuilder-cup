@@ -12,7 +12,7 @@ Dokumen **ops internal**: trial, AIDLC, checklist. Sales mulai dari [pitch.md](.
 
 ## 1. Konsep bisnis (satu kalimat)
 
-Pemilik warung chat ke nomor bisnis → ketik **DAFTAR** → admin setujui di AI Studio → nomor masuk allowlist → baru boleh pakai **kasir WhatsApp** (catat jual, cek stok, laporan).
+Pemilik warung chat ke nomor bisnis → ketik **DAFTAR** → admin setujui di AI Studio → nomor masuk allowlist → baru boleh pakai **kasir WhatsApp** (catat jual, cek stok, laporan, tutup toko — **chat teks**).
 
 Tanpa langkah itu, nomor asing dulu diabaikan (bot “mati”). Funnel ini mengganti silent-drop dengan onboarding yang jelas, tanpa OTP/bayar di v1.
 
@@ -28,7 +28,7 @@ Tanpa langkah itu, nomor asing dulu diabaikan (bot “mati”). Funnel ini mengg
 | B6 | Identitas | **1 toko = 1 nomor owner** di v1 (karyawan / multi-HP = out of scope) |
 | B7 | Nomor WA | **1 nomor bisnis NusantaraSoft shared** (bukan 1 nomor per toko) |
 
-**Diagram bisnis (SVG):** pitch sales → L0–L2 di [pitch.md](../pitch.md). Full ladder termasuk L3–L4: [`diagrams/.../business/`](../../../../../diagrams/aistudio/umkm-wa/business/).
+**Diagram bisnis (SVG):** pitch sales → L0–L2 (+ L0b, **L0c**) di [pitch.md](../pitch.md). Full ladder termasuk L3–L4: [`diagrams/.../business/`](../../../../../diagrams/aistudio/umkm-wa/business/). System gate: [`L7-inbound-gate.svg`](../../../../../diagrams/aistudio/umkm-wa/system/L7-inbound-gate.svg).
 
 ```mermaid
 flowchart TB
@@ -105,8 +105,11 @@ Contoh setelah toko aktif:
 | Pesan owner | Hasil |
 |-------------|--------|
 | `jual 2 indomie` | Preview jual → `ya` → tercatat |
+| `satu lagi` | Ulang item jual terakhir → `ya` |
 | `cek stok` | Balasan sisa stok |
 | `laporan` / omzet | Ringkasan penjualan |
+| `tutup toko` | Omzet hari ini + stok menipis |
+| foto / voice (default) | Arahkan ketik jual/stok (chat-only) |
 
 Funnel **DAFTAR** berada **sebelum** AIDLC:
 

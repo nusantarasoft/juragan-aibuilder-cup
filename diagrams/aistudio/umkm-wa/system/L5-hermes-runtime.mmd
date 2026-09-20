@@ -11,7 +11,9 @@ flowchart TB
     PX[Bridge+pair proxy<br/>0.0.0.0:8765]
     B --> G
     G --> P
-    P -->|allowlist OK<br/>stamp sender| G
+    P -->|media + multimodal OFF| REF[Refuse teks<br/>ketik jual/stok]
+    REF --> B
+    P -->|allowlist OK<br/>stamp per-chat v2| G
     G --> T
     P -->|deny + REG=1| W[DAFTAR wizard]
     W --> B
@@ -38,5 +40,5 @@ flowchart TB
   HP -.->|approve notify| PX
   WH -.->|not kasir inbound| mid
 
-  %% Chat-only default; dangerous built-in toolsets disabled on platform whatsapp.
-  %% See L6-kasir-agent-path + hermes-architecture Platform locks.
+  %% Platform locks: chat-only refuse, tool allowlist clarify+kasir, multi-chat stamp.
+  %% See L6 / L7 + hermes-architecture Platform locks.
