@@ -135,11 +135,10 @@ const HERO_THREAD: {
     who: "bot",
     text: "📦 *Cek Stok*\n\n• Indomie Goreng — sisa *12*\n• Indomie Ayam Bawang — sisa *4*",
   },
-  { who: "you", text: "jual 2 indomie goreng" },
+  { who: "you", text: "stok mau habis" },
   {
     who: "bot",
-    text: "📋 *Konfirmasi penjualan*\n\n• 2 × Indomie Goreng @ Rp 3.500\n\nTotal: *Rp 7.000*\nBayar: tunai\n\nPilih *Ya, simpan* atau *Batal* di tombol di atas (atau ketik *ya* / *batal*).",
-    poll: true,
+    text: "⚠️ *Stok menipis* (sisa ≤ 10)\n\n1. *Indomie Ayam Bawang* — sisa *4*\n2. *Teh Botol* — sisa *7*\n\nPaling kritis: *Indomie Ayam Bawang*.",
   },
 ];
 
@@ -221,20 +220,18 @@ export default function KasirLandingPage() {
               className="mt-5 max-w-lg text-base leading-relaxed sm:text-lg"
               style={{ color: "#3d4f45" }}
             >
-              Untuk pemilik toko kelontong / usaha mikro. Cek stok, catat jual,
-              lihat laporan, tutup toko malam hari — plus tanya tips usaha
-              (harga, modal, untung). Satu nomor chat, tanpa unduh app.
+              Cek stok, catat jual, laporan malam, plus tanya tips usaha — di
+              WhatsApp, tanpa unduh app.
             </p>
             <p
               className="mt-3 max-w-lg text-sm leading-relaxed"
               style={{ color: "#5a6b62" }}
             >
-              Coba gratis daftar: ketik{" "}
+              Ketik{" "}
               <span className="font-semibold" style={{ color: "#0f3d2c" }}>
                 DAFTAR
               </span>{" "}
-              ke {WA_DISPLAY}. Tim jelaskan kerja sama setelah toko disetujui —
-              tidak ada bayar di dalam chat.
+              ke {WA_DISPLAY}. Kerja sama dijelaskan tim setelah toko disetujui.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <a
@@ -265,7 +262,7 @@ export default function KasirLandingPage() {
             aria-hidden="true"
             className="kasir-float relative -mx-5 md:mx-0 md:justify-self-stretch"
           >
-            <div className="relative max-h-[min(34rem,70svh)] overflow-y-auto overflow-x-hidden bg-[linear-gradient(180deg,var(--kasir-wa-deep),var(--kasir-wa))] px-4 pb-6 pt-10 shadow-[0_24px_60px_-28px_rgba(15,61,44,0.55)] md:rounded-l-3xl md:pl-6">
+            <div className="relative max-h-[min(38rem,72svh)] overflow-y-auto overflow-x-hidden bg-[linear-gradient(180deg,var(--kasir-wa-deep),var(--kasir-wa))] px-4 pb-6 pt-10 shadow-[0_24px_60px_-28px_rgba(15,61,44,0.55)] md:rounded-l-3xl md:pl-6">
               <div className="sticky top-0 z-10 -mx-4 mb-2 flex h-9 items-center gap-2 bg-[var(--kasir-wa-deep)]/95 px-4 text-xs font-medium text-white/90 backdrop-blur-sm md:-mx-6 md:pl-6">
                 <span className="h-2 w-2 rounded-full bg-emerald-300" />
                 Kasir NusantaraSoft
@@ -291,8 +288,7 @@ export default function KasirLandingPage() {
             Di warung, yang sering terjadi
           </h2>
           <p className="mt-3 max-w-xl text-[var(--kasir-ink-soft)]">
-            Satu pekerjaan: kenali nyeri yang sudah familiar — baru tawarkan
-            chat.
+            Empat hal yang sering bikin stok dan omzet kacau.
           </p>
           <ul className="mt-10 space-y-5">
             {[
@@ -672,7 +668,7 @@ export default function KasirLandingPage() {
                 className="inline-flex items-center justify-center rounded-md px-6 py-3.5 text-sm font-semibold text-white transition hover:opacity-90"
                 style={{ backgroundColor: "#1b6b4a" }}
               >
-                Ketik DAFTAR di WhatsApp
+                Ketik DAFTAR · {WA_DISPLAY}
               </a>
             </div>
           </div>
@@ -715,12 +711,11 @@ export default function KasirLandingPage() {
             ))}
           </ul>
           <p className="mt-10 max-w-xl text-sm text-[var(--kasir-ink-soft)]">
-            Tanpa unduh app. Mulai chat{" "}
+            Ketik{" "}
             <span className="font-semibold" style={{ color: "#0f3d2c" }}>
               DAFTAR
             </span>{" "}
-            — detail kerja sama dijelaskan tim setelah toko disetujui (bukan
-            bayar di chat).
+            ke {WA_DISPLAY}. Kerja sama dijelaskan tim setelah toko disetujui.
           </p>
           <div className="mt-6">
             <a
@@ -728,7 +723,7 @@ export default function KasirLandingPage() {
               className="inline-flex items-center justify-center rounded-md px-6 py-3.5 text-sm font-semibold text-white transition hover:opacity-90"
               style={{ backgroundColor: "#1b6b4a" }}
             >
-              Ketik DAFTAR di WhatsApp
+              Ketik DAFTAR · {WA_DISPLAY}
             </a>
           </div>
         </div>
@@ -741,7 +736,7 @@ export default function KasirLandingPage() {
               NusantaraSoft
             </p>
             <p className="mt-1 text-sm text-[var(--kasir-ink-soft)]">
-              Kasir WhatsApp UMKM · Soft GA 2026
+              Kasir WhatsApp untuk warung
             </p>
           </div>
           <p className="text-xs text-[var(--kasir-ink-soft)]">
