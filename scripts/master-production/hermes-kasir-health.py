@@ -261,15 +261,17 @@ def main() -> int:
             soul_p = home / "SOUL.md"
             if soul_p.is_file():
                 soul_text = soul_p.read_text(encoding="utf-8", errors="replace")
-        soul_ok = "kasir_get_stock" in soul_text and (
-            "Foto / voice" in soul_text or "multimodal" in soul_text.lower()
+        soul_ok = (
+            "kasir_get_stock" in soul_text
+            and ("Foto / voice" in soul_text or "multimodal" in soul_text.lower())
+            and "kasir_consult" in soul_text
         )
         check(
             "platform-lock-soul",
             soul_ok,
-            "SOUL has tool routing + Foto/voice multimodal section"
+            "SOUL has tool routing + multimodal + kasir_consult"
             if soul_ok
-            else "SOUL missing tool table or Foto/voice section",
+            else "SOUL missing tool table, Foto/voice, or kasir_consult",
             False,
             results,
         )

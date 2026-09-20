@@ -37,7 +37,7 @@ Ops docs: [business/ops/](../../../docs/aistudio/umkm-wa/business/ops/)
 | **L5** | [L5-hermes-runtime.svg](./system/L5-hermes-runtime.svg) | Containers / pipe / media-refuse / bridge |
 | **L6** | [L6-kasir-agent-path.svg](./system/L6-kasir-agent-path.svg) | SOUL → kasir-tools → DB; toolsets berbahaya OFF |
 | **L7** | [L7-inbound-gate.svg](./system/L7-inbound-gate.svg) | Gate: multimodal OFF refuse / ON STT+vision → allowlist → stamp → tools |
-| **L8** | [L8-knowledge-soul.svg](./system/L8-knowledge-soul.svg) | Fakta = tools/DB only; satu SOUL; no MEMORY/RAG ledger |
+| **L8** | [L8-knowledge-soul.svg](./system/L8-knowledge-soul.svg) | Fakta = tools/DB; satu SOUL; riwayat chat pendek per session; no MEMORY/RAG ledger |
 
 Docs: [hermes-architecture.md](../../../docs/aistudio/umkm-wa/system/hermes-architecture.md)
 

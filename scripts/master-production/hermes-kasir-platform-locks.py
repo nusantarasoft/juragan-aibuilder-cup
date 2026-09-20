@@ -131,10 +131,14 @@ def main() -> int:
             if not ok:
                 failed = True
         soul = docker_cat(args.container, "/opt/data/SOUL.md") or ""
-        soul_ok = "kasir_get_stock" in soul and (
-            "Foto / voice" in soul or "multimodal" in soul.lower()
+        soul_ok = (
+            "kasir_get_stock" in soul
+            and ("Foto / voice" in soul or "multimodal" in soul.lower())
+            and "kasir_consult" in soul
         )
-        print(f"{'PASS' if soul_ok else 'WARN'}  SOUL tools+multimodal routing={soul_ok}")
+        print(
+            f"{'PASS' if soul_ok else 'WARN'}  SOUL tools+multimodal+consult routing={soul_ok}"
+        )
         mem = docker_cat(args.container, "/opt/data/MEMORY.md")
         print(
             f"{'PASS' if mem is None else 'WARN'}  MEMORY.md "

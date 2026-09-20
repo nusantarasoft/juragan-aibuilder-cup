@@ -46,7 +46,7 @@ Chat nomor NS  →  DAFTAR  →  nama toko  →  YA
 
 Admin juga bisa menambah toko lewat form lama di halaman yang sama; jalur **DAFTAR** adalah yang paling mudah dijelaskan ke calon tenant.
 
-**Belum di v1:** OTP, pembayaran di chat, banyak toko per nomor. Jual dari foto/suara **bukan** janji default — produk yang dijual tetap chat teks (lihat L0c); kalau media dikirim tanpa saklar ops, bot minta ketik teks.
+**Belum di v1 (janji sales):** OTP, pembayaran di chat, banyak toko per nomor, multi-PDF / SOP per toko, konsultasi kurikulum **selalu ON** (default tetap OFF sampai ops ingest + flag). Jual dari foto/suara **bukan** janji default — produk yang dijual tetap chat teks (lihat L0c); kalau media dikirim tanpa saklar ops, bot minta ketik teks.
 
 ---
 
@@ -63,8 +63,9 @@ Semua lewat **chat teks** ke nomor bisnis yang sama (bukan app terpisah):
 | *belanja / restock…* | Ringkasan belanja → *ya* |
 | *laporan* / *paling laris* | Omzet & ringkasan |
 | *tutup toko* | Omzet hari ini + stok menipis (ritual closing) |
+| *tanya …* / *konsultasi …* / *pendamping …* | Saran singkat dari **buku kurikulum UKM** (bukan stok toko). **Default mati** — admin ops nyalakan saklar `KASIR_CONSULT` setelah notebook siap; kalau off, bot bilang belum aktif |
 
-Angka stok/harga/omzet diambil dari data toko yang sudah Approve — **bukan** “tebak AI” dari dokumen generik.
+Angka stok/harga/omzet diambil dari data toko yang sudah Approve — **bukan** “tebak AI” dari dokumen generik. Konsultasi kurikulum (kalau saklar ON) hanya dari PDF buku yang diingest — **bukan** dari ledger jual/beli.
 
 ---
 

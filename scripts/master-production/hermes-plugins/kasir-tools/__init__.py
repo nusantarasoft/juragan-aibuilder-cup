@@ -785,7 +785,7 @@ def _on_pre_tool_call(event=None, **kwargs: Any) -> None:
 
 
 def register(ctx) -> None:
-    from . import writes
+    from . import consult, writes
 
     writes.bind(
         with_tenant=_with_tenant,
@@ -956,6 +956,7 @@ def register(ctx) -> None:
             },
             _handle_top_products,
         ),
+        consult.TOOL_SPEC,
         *writes.WRITE_TOOL_SPECS,
     )
     kind_by_name = {
@@ -965,6 +966,7 @@ def register(ctx) -> None:
         "kasir_daily_report": "report",
         "kasir_tutup_toko": "tutup",
         "kasir_top_products": "top",
+        "kasir_consult": "consult",
         "kasir_draft_sale": "draft_sale",
         "kasir_repeat_last_sale": "draft_sale",
         "kasir_confirm_sale": "confirm_sale",

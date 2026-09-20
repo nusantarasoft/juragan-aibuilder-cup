@@ -12,7 +12,10 @@ import { StudioContextService } from './studio-context.service';
 import { StudioUmkmService } from './studio-umkm.service';
 import type { AgenticAskToolCall } from './studio-umkm-agentic-ask.types';
 import {
+    buildConsultFromNotebookPrompt,
     buildPendampingSynthesizePrompt,
+    CONSULT_BUSY_COPY,
+    CONSULT_MISS_COPY,
     formatPendampingEmptyShop,
     formatPendampingNumbersOnlyFallback,
 } from './studio-umkm-pendamping.prompts';
@@ -21,6 +24,15 @@ import { executeUmkmReadTool, stripDisallowedKetikActions } from './studio-umkm-
 const MAX_REPLY_CHARS = 800;
 const CURRICULUM_MAX_CHARS = 3000;
 const LOW_STOCK_MAX = 3;
+const CONSULT_TOP_K = 5;
+const CONSULT_QUESTION_MAX = 500;
+const CONSULT_CONTEXT_MAX = 3500;
+
+export type ConsultFromNotebookResult = {
+    status: 'hit' | 'miss' | 'error';
+    text: string;
+    latencyMs: number;
+};
 
 export type PendampingMetricsSnapshot = {
     pendamping_requests_total: number;
@@ -255,6 +267,80 @@ export class StudioUmkmPendampingService implements OnModuleInit {
         }
     }
 
+
+    /**
+     * WA kasir_consult path — chunk-only RAG from kurikulum notebook.
+     * Never calls coach() / store report / stock tools (L8).
+     */
+    async consultFromNotebook(
+        question: string,
+        notebookId?: string,
+    ): Promise<ConsultFromNotebookResult> {
+        const started = Date.now();
+        const q = (question || '').trim().slice(0, CONSULT_QUESTION_MAX);
+        const nb =
+            (notebookId || '').trim() ||
+            (process.env.KASIR_CONSULT_NOTEBOOK_ID || '').trim();
+
+        const done = (
+            status: ConsultFromNotebookResult['status'],
+            text: string,
+        ): ConsultFromNotebookResult => {
+            const latencyMs = Date.now() - started;
+            this.logger.log(
+                `path=kasir_consult status=${status === 'hit' ? 'consult_hit' : status === 'miss' ? 'consult_miss' : 'consult_error'} latency_ms=${latencyMs}`,
+            );
+            return { status, text: text.slice(0, MAX_REPLY_CHARS), latencyMs };
+        };
+
+        if (!q || !nb || !this.context) {
+            return done('miss', CONSULT_MISS_COPY);
+        }
+
+        let chunkContext = '';
+        try {
+            const chunks = await this.context.semanticSearchNotebook(nb, q, CONSULT_TOP_K);
+            if (!chunks?.length) {
+                return done('miss', CONSULT_MISS_COPY);
+            }
+            chunkContext = chunks
+                .map(
+                    (c, i) =>
+                        `[Sumber ${i + 1}: ${c.filename} (relevansi ${(c.score * 100).toFixed(0)}%)]\n${c.content}`,
+                )
+                .join('\n\n---\n\n')
+                .slice(0, CONSULT_CONTEXT_MAX);
+            if (!chunkContext.trim()) {
+                return done('miss', CONSULT_MISS_COPY);
+            }
+        } catch (e: any) {
+            this.logger.warn(`kasir_consult retrieve: ${e?.message}`);
+            return done('error', CONSULT_BUSY_COPY);
+        }
+
+        const prompt = buildConsultFromNotebookPrompt({
+            question: q,
+            chunkContext,
+        });
+
+        let answer = '';
+        try {
+            answer = await this.aiRouter.generateText(prompt);
+        } catch (e: any) {
+            this.logger.warn(`kasir_consult synthesize: ${e?.message}`);
+            return done('error', CONSULT_BUSY_COPY);
+        }
+
+        if (
+            !answer?.trim() ||
+            answer.includes('not configured') ||
+            answer.includes('request failed')
+        ) {
+            return done('error', CONSULT_BUSY_COPY);
+        }
+
+        return done('hit', answer.trim());
+    }
 
     /** Notebook chunks via existing retrieveContext. Ask still owns search_docs. */
     private async retrieveNotebookContext(

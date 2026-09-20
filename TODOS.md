@@ -198,11 +198,59 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 
 **Why:** Static playbook cap (~3k chars) may miss niche scenarios; full notebook RAG stays wrong for unknown inbound.
 
-**Context:** CEO plan D5 B accepted static v1; D3.2 original RAG amended away. Trigger: QA finds generic tips despite rich static file.
+**Context:** CEO plan D5 B accepted static v1; D3.2 original RAG amended away. Trigger: QA finds generic tips despite rich static file. Related: WA `kasir_consult` → Studio notebook RAG (HOLD 2026-09-20) covers owner “tanya buku” on Hermes pipe — does **not** replace this Nest pendamping-static path unless product merges them later.
 
 **Effort:** M
 **Priority:** P3
 **Depends on:** Static pendamping v1 QA; separate from notebook indexer for unknown
+
+### Rate-limit WA `kasir_consult` per phone
+
+**What:** Cap consult calls per allowlisted phone per hour (Hermes pre- Nest or Nest guard) with user_safe “coba lagi nanti” when exceeded.
+
+**Why:** Embed + synthesize has real LLM cost; shared WA number + prefix spam can burn budget after `KASIR_CONSULT=1`.
+
+**Context:** CEO HOLD 2026-09-20 deferred rate-limit; eng review cleared v1 without it. Start after consult smoke ON + pilot. Prefer simple in-memory/redis counter keyed by phone; do not block `cek stok` tools. Plan: `docs/designs/ceo-plan-wa-consult-kurikulum-rag.md`.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** `kasir_consult` v1 shipped; pilot shows spam or cost spike
+
+### Multi-PDF / per-tenant SOP for WA consult
+
+**What:** Allow more than one kurikulum PDF and/or a per-tenant Studio notebook (custom SOP) for `kasir_consult`, instead of one global `KASIR_CONSULT_NOTEBOOK_ID`.
+
+**Why:** National UKM PDF may be thin for niche warung; tenants may want their own playbook without mixing ledger RAG.
+
+**Context:** CEO HOLD 2026-09-20 deferred multi-PDF + per-tenant SOP. Keep L8 lock: never RAG over sale/stock tables. Resolve notebook via tenant config only after global wedge proves usage. Plan: `docs/designs/ceo-plan-wa-consult-kurikulum-rag.md`.
+
+**Effort:** L
+**Priority:** P3
+**Depends on:** `kasir_consult` v1 shipped; observe assignment + hit-rate signal
+
+### Optional inject omzet/stok into WA consult prompt
+
+**What:** Optionally pass a short shop metrics snapshot into `consultFromNotebook` synthesize (not into retrieve query as ledger RAG).
+
+**Why:** Owners may want advice that references their real omzet/stok while still citing the kurikulum book.
+
+**Context:** CEO HOLD + eng D2 explicitly forbade calling `coach()` and mixing report/stock into v1 consult (L8: buku ≠ ledger). Only revisit with a hard product signal and a separate prompt mode that labels numbers as “dari kasir tools”, never as book content. Plan: `docs/designs/ceo-plan-wa-consult-kurikulum-rag.md`.
+
+**Effort:** M
+**Priority:** P3
+**Depends on:** `kasir_consult` v1 shipped; L8 still green in QA; explicit product ask
+
+### Accurate page citations in WA consult replies
+
+**What:** Surface reliable PDF page (or stable chunk locus) citations in `kasir_consult` answers beyond the light “dari buku Manajemen UKM…” line.
+
+**Why:** Stronger trust/audit for owners who want “halaman berapa”.
+
+**Context:** CEO HOLD deferred perfect page cites. Chunk rows may lack page maps today — need ingest metadata quality first. Keep WA replies short (≤800). Plan: `docs/designs/ceo-plan-wa-consult-kurikulum-rag.md`.
+
+**Effort:** M
+**Priority:** P4
+**Depends on:** `kasir_consult` v1 shipped; studio chunk page metadata available
 
 ### Human mentor HITL brief (D3.3)
 
@@ -231,7 +279,7 @@ Tracker: [`docs/aistudio/umkm-wa/system/hermes-gaps.md`](docs/aistudio/umkm-wa/s
 **Effort:** S
 **Priority:** P3
 **Depends on:** Platform locks + multimodal OFF path shipped
-**Status:** open — do once on prod/pilot phone
+**Status:** done 2026-09-20 — prod health/posture PASS; `multimodal-smoke.py` OFF `--send` + ON PASS; live gateway refuse `kasir-pipe chat-only: media refused` for allowlisted `6287859031592` (LID `138783311827127`); bridge refuse copy delivered; **time-boxed ON** (`KASIR_MULTIMODAL=1`): live `[image received]` → allowlist (no refuse) → `Image routing: native` vision attach; then restored `=0` + OFF smoke PASS.
 
 ### Never recreate hermes without posture
 

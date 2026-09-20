@@ -38,6 +38,7 @@ _SAFE_BY_KIND: dict[str, str] = {
     "report": "Gagal buat laporan. Coba lagi sebentar ya.",
     "tutup": "Gagal buat ringkasan tutup toko. Coba lagi sebentar ya.",
     "top": "Gagal ambil produk terlaris. Coba lagi sebentar ya.",
+    "consult": "Layanan konsultasi lagi sibuk. Coba lagi sebentar.",
     "tenant": "Toko belum bisa diakses dari nomor ini. Coba lagi atau hubungi admin.",
     "draft_sale": "Gagal siapkan draft penjualan. Coba lagi sebentar ya.",
     "confirm_sale": "Gagal simpan penjualan. Coba lagi sebentar ya.",

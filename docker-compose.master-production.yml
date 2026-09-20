@@ -527,6 +527,10 @@ services:
       - WHATSAPP_PROVIDER=${WHATSAPP_PROVIDER:-hermes}
       - HERMES_BASE_URL=${HERMES_BASE_URL:-http://hermes:8642}
       - HERMES_BRIDGE_URL=${HERMES_BRIDGE_URL:-http://hermes:8765}
+      # WA kasir_consult (Hermes → Nest kurikulum RAG); default OFF
+      - KASIR_CONSULT=${KASIR_CONSULT:-0}
+      - KASIR_CONSULT_KEY=${KASIR_CONSULT_KEY:-}
+      - KASIR_CONSULT_NOTEBOOK_ID=${KASIR_CONSULT_NOTEBOOK_ID:-}
       - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USER=${SMTP_USER:-}
@@ -674,6 +678,10 @@ services:
       - KASIR_REGISTRATION=${KASIR_REGISTRATION:-1}
       # Chat-only default: photo/voice/file → short refuse. Set 1 only for ops media smoke.
       - KASIR_MULTIMODAL=${KASIR_MULTIMODAL:-0}
+      # Kurikulum consult (tanya/konsultasi/pendamping). Default OFF; Nest also gates.
+      - KASIR_CONSULT=${KASIR_CONSULT:-0}
+      - KASIR_CONSULT_URL=${KASIR_CONSULT_URL:-http://middleware:4001/internal/kasir-consult}
+      - KASIR_CONSULT_KEY=${KASIR_CONSULT_KEY:-}
       - WHATSAPP_BRIDGE_PORT=${WHATSAPP_BRIDGE_PORT:-3000}
     # Bridge proxy for middleware outbound (kasir-pipe → 127.0.0.1:3000). Docker network only.
     expose:

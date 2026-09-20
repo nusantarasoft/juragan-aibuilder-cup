@@ -25,6 +25,7 @@ import { StudioUmkmCronService } from './studio-umkm.cron';
 import { StudioUmkmAgenticAskService } from './studio-umkm-agentic-ask.service';
 import { StudioUmkmPendampingService } from './studio-umkm-pendamping.service';
 import { StudioOutputService } from './studio-output.service';
+import { InternalKasirConsultController } from './internal-kasir-consult.controller';
 
 @Module({
     imports: [
@@ -42,6 +43,7 @@ import { StudioOutputService } from './studio-output.service';
         StudioChatController,
         StudioShareController,
         StudioWhatsAppController,
+        InternalKasirConsultController,
     ],
     providers: [
         GqlAuthGuard,

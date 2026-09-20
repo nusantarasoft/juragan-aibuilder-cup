@@ -1,0 +1,104 @@
+/**
+ * Fase 2 — POST /internal/kasir-consult auth + flag gate.
+ */
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { HttpException } from '@nestjs/common';
+import { InternalKasirConsultController } from './internal-kasir-consult.controller';
+import { CONSULT_OFF_COPY } from './studio-umkm-pendamping.prompts';
+
+describe('InternalKasirConsultController', () => {
+    const pendamping = {
+        consultFromNotebook: vi.fn(async () => ({
+            status: 'hit' as const,
+            text: 'Jawaban dari buku.',
+            latencyMs: 12,
+        })),
+    };
+    const config = {
+        get: vi.fn((key: string) => {
+            if (key === 'KASIR_CONSULT_KEY') return 'secret-test';
+            if (key === 'KASIR_CONSULT') return '1';
+            return undefined;
+        }),
+    };
+    let ctrl: InternalKasirConsultController;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        config.get.mockImplementation((key: string) => {
+            if (key === 'KASIR_CONSULT_KEY') return 'secret-test';
+            if (key === 'KASIR_CONSULT') return '1';
+            return undefined;
+        });
+        ctrl = new InternalKasirConsultController(
+            pendamping as any,
+            config as any,
+        );
+        vi.spyOn(ctrl['logger'], 'log').mockImplementation(() => undefined);
+        vi.spyOn(ctrl['logger'], 'warn').mockImplementation(() => undefined);
+    });
+
+    it('missing key → 401; service not called', async () => {
+        await expect(ctrl.kasirConsult({ question: 'tanya modal' })).rejects.toBeInstanceOf(
+            HttpException,
+        );
+        await expect(ctrl.kasirConsult({ question: 'tanya modal' })).rejects.toMatchObject({
+            status: 401,
+        });
+        expect(pendamping.consultFromNotebook).not.toHaveBeenCalled();
+    });
+
+    it('wrong key → 401', async () => {
+        await expect(
+            ctrl.kasirConsult({ question: 'tanya' }, 'wrong'),
+        ).rejects.toMatchObject({ status: 401 });
+        expect(pendamping.consultFromNotebook).not.toHaveBeenCalled();
+    });
+
+    it('secret unset → 401 fail-closed', async () => {
+        config.get.mockImplementation((key: string) => {
+            if (key === 'KASIR_CONSULT') return '1';
+            return undefined;
+        });
+        ctrl = new InternalKasirConsultController(pendamping as any, config as any);
+        vi.spyOn(ctrl['logger'], 'warn').mockImplementation(() => undefined);
+        await expect(
+            ctrl.kasirConsult({ question: 'tanya' }, 'secret-test'),
+        ).rejects.toMatchObject({ status: 401 });
+    });
+
+    it('KASIR_CONSULT=0 → off copy; service not called', async () => {
+        config.get.mockImplementation((key: string) => {
+            if (key === 'KASIR_CONSULT_KEY') return 'secret-test';
+            if (key === 'KASIR_CONSULT') return '0';
+            return undefined;
+        });
+        ctrl = new InternalKasirConsultController(pendamping as any, config as any);
+        vi.spyOn(ctrl['logger'], 'log').mockImplementation(() => undefined);
+        const res = await ctrl.kasirConsult({ question: 'tanya modal' }, 'secret-test');
+        expect(res).toEqual({ status: 'off', text: CONSULT_OFF_COPY });
+        expect(pendamping.consultFromNotebook).not.toHaveBeenCalled();
+    });
+
+    it('flag on + valid key → consultFromNotebook', async () => {
+        const res = await ctrl.kasirConsult(
+            { question: 'gimana atur modal' },
+            'secret-test',
+        );
+        expect(pendamping.consultFromNotebook).toHaveBeenCalledWith('gimana atur modal');
+        expect(res).toEqual({ status: 'hit', text: 'Jawaban dari buku.' });
+    });
+
+    it('empty question → 400', async () => {
+        await expect(
+            ctrl.kasirConsult({ question: '   ' }, 'secret-test'),
+        ).rejects.toMatchObject({ status: 400 });
+        expect(pendamping.consultFromNotebook).not.toHaveBeenCalled();
+    });
+
+    it('missing question body → 400', async () => {
+        await expect(ctrl.kasirConsult({}, 'secret-test')).rejects.toMatchObject({
+            status: 400,
+        });
+    });
+});

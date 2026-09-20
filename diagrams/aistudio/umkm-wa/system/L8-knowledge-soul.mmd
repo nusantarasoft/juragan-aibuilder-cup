@@ -1,14 +1,27 @@
-%% System L8: knowledge + character locks (Q2 / Q3) — eng / ops
-%% Facts never via RAG or MEMORY.md; one shared SOUL; tenant = tools/DB.
+%% System L8: knowledge + character locks (Q2 / Q3) + kurikulum consult — eng / ops
+%% Facts stok/omzet = tools/DB; short-term chat OK; kurikulum = kasir_consult→Nest RAG (flag).
+%% Never MEMORY/RAG ledger for stok/harga/omzet.
 flowchart TB
   Q[Owner tanya stok / omzet] --> S[SOUL.md shared<br/>satu persona kasir]
   S --> T[kasir-tools]
   T --> DB[(Supabase tenant)]
   DB --> A[Jawaban akurat]
 
+  Q --> H[Riwayat chat pendek<br/>per session WA / nomor]
+  H -.->|konteks thread saja<br/>bukan KB toko| S
+
+  C[Owner: tanya / konsultasi / pendamping<br/>+ pertanyaan bisnis]
+  C --> S
+  S -->|KASIR_CONSULT=1| KC[kasir_consult]
+  KC --> Nest[Nest /internal/kasir-consult<br/>retrieve kurikulum PDF]
+  Nest --> Buku[Jawaban dari buku UKM]
+  S -->|KASIR_CONSULT=0| Off[Copy: belum aktif]
+
   Q -.->|FORBIDDEN| R[RAG ledger embed]
   Q -.->|FORBIDDEN| M[MEMORY.md as store KB]
   Q -.->|FORBIDDEN| MS[Multi-SOUL per toko]
+  C -.->|FORBIDDEN| R
+  C -.->|jangan campur| DB
 
   subgraph later["Optional later only"]
     DOC[Per-tenant SOP docs<br/>RAG + tenant_id filter]

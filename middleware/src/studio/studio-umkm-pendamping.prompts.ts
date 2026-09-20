@@ -92,3 +92,48 @@ export function formatPendampingEmptyShop(): string {
         'Setelah ada angka di buku, ketik *pendamping* lagi.',
     ].join('\n');
 }
+
+/** WA kasir_consult — miss retrieve (no free LLM). */
+export const CONSULT_MISS_COPY =
+    'Belum ketemu di buku kurikulum. Coba tanya lebih spesifik, atau ketik cek stok / laporan untuk data toko.';
+
+/** WA kasir_consult — synthesize/timeout/error. */
+export const CONSULT_BUSY_COPY =
+    'Layanan konsultasi lagi sibuk. Coba lagi sebentar.';
+
+/** WA kasir_consult — feature flag off (Hermes + Nest). */
+export const CONSULT_OFF_COPY =
+    'Konsultasi kurikulum belum aktif. Untuk data toko ketik cek stok / laporan.';
+
+/**
+ * Chunk-only synthesizer for WA kurikulum consult.
+ * Never include store report/stock — L8: buku ≠ ledger.
+ */
+export function buildConsultFromNotebookPrompt(input: {
+    question: string;
+    chunkContext: string;
+}): string {
+    const chunks = input.chunkContext.trim().slice(0, 3500) || '(Tidak ada cuplikan.)';
+    const question = input.question.trim().slice(0, 500);
+
+    return [
+        'Kamu menjawab pertanyaan pemilik warung WhatsApp hanya dari cuplikan buku kurikulum di bawah.',
+        'Bahasa Indonesia, singkat (maks ~800 karakter).',
+        '',
+        'Aturan keras:',
+        '- Jawab HANYA dari <<<BLOK_BUKU>>>. Jangan mengarang.',
+        '- Jangan sebut atau mengarang omzet, stok, harga toko, atau angka ledger kasir.',
+        '- Jangan minta ketik: jual/belanja/hapus. Ini bukan mode kasir.',
+        '- Jika cuplikan tidak cukup: bilang belum ketemu di buku, sarankan tanya lebih spesifik.',
+        '- Sitasi ringan: boleh akhiri dengan "(dari buku Manajemen UKM)".',
+        '- Tanpa markdown berlebihan.',
+        '',
+        '<<<USER_QUESTION>>>',
+        question,
+        '<<<END_USER_QUESTION>>>',
+        '',
+        '<<<BLOK_BUKU>>>',
+        chunks,
+        '<<<END_BLOK_BUKU>>>',
+    ].join('\n');
+}

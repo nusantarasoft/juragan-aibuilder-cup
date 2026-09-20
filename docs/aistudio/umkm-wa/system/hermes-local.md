@@ -72,7 +72,25 @@ Pair via Admin → WhatsApp Gateway (or Hermes dashboard QR).
 3. **OFF (automated):** `docker exec -e HERMES_HOME=/opt/data nsoft3-hermes python3 /opt/data/multimodal-smoke.py off --phone 628…` → skip + refuse teks. Optional `--send` to deliver refuse over WA.
 4. **OFF (manual QA):** allowlisted phone sends real foto/voice → same refuse; log `kasir-pipe: media refuse`.
 5. **ON (time-boxed):** set `KASIR_MULTIMODAL=1` → recreate hermes → `multimodal-smoke.py on` + optional real media → set `0` → recreate → re-confirm OFF.
-6. Facts still tools/DB only — never MEMORY.md ledger (diagram **L8**). See architecture Platform locks + **L0c** / **L7** / **L8**.
+6. Facts still tools/DB only — never MEMORY.md ledger (diagram **L8**). Short-term per-chat WA history is OK (konteks thread); that is not store KB. See architecture Platform locks + **L0c** / **L7** / **L8**.
+
+**W2 closed 2026-09-20 (prod):** health + posture PASS; OFF refuse + ON smoke; live OFF refuse; **time-boxed ON** live foto → `allowlist ok` + `Image routing: native` (no media refuse); restored `KASIR_MULTIMODAL=0` + OFF smoke PASS.
+
+### Kurikulum consult (`KASIR_CONSULT`)
+
+Default **off** on hermes **and** middleware. After PDF ingest + `KASIR_CONSULT_NOTEBOOK_ID` + shared `KASIR_CONSULT_KEY`:
+
+```bash
+# Local unit smoke (no Docker)
+python3 scripts/master-production/hermes-consult-smoke.py off
+python3 scripts/master-production/hermes-consult-smoke.py on
+
+# Nest unit
+cd middleware && npm run test -- src/studio/studio-umkm-pendamping.consult.spec.ts \
+  src/studio/internal-kasir-consult.controller.spec.ts
+```
+
+Flip `KASIR_CONSULT=1` on **both** services only for a time-boxed pilot (same discipline as multimodal).
 
 ---
 
