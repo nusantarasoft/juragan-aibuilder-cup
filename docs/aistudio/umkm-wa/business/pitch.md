@@ -31,7 +31,7 @@ Karyawan / banyak nomor HP per toko: belum di v1.
 | 5 | Setelah ditolak / batal, boleh **DAFTAR lagi** |
 | 6 | **Satu toko = satu nomor** pemilik di v1 |
 | 7 | **Satu nomor WhatsApp bisnis** NusantaraSoft untuk banyak toko (beda toko = beda HP pengirim) |
-| 8 | **Chat teks dulu** — foto/suara diganti arahkan ketik *jual* / *stok* (belum input jual dari media) |
+| 8 | **Chat teks dulu** — default: foto/suara → bot minta ketik *jual* / *stok*; jual dari media hanya kalau admin ops menyalakan (bukan default produk) |
 
 ---
 
@@ -46,7 +46,7 @@ Chat nomor NS  →  DAFTAR  →  nama toko  →  YA
 
 Admin juga bisa menambah toko lewat form lama di halaman yang sama; jalur **DAFTAR** adalah yang paling mudah dijelaskan ke calon tenant.
 
-**Belum di v1:** OTP, pembayaran di chat, banyak toko per nomor, jual dari foto/suara (kalau dikirim, bot minta ketik teks).
+**Belum di v1:** OTP, pembayaran di chat, banyak toko per nomor. Jual dari foto/suara **bukan** janji default — produk yang dijual tetap chat teks (lihat L0c); kalau media dikirim tanpa saklar ops, bot minta ketik teks.
 
 ---
 

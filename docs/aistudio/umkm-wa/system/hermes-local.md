@@ -63,7 +63,14 @@ Pair via Admin → WhatsApp Gateway (or Hermes dashboard QR).
 
 **Note:** A fresh `volumes/hermes/config.yaml` may still show stock defaults (`tool_progress: all`, empty `plugins.enabled`, `platform_toolsets.whatsapp: hermes-whatsapp`). Production posture is applied by `silence-hermes-wa-tools.py` / `deploy-kasir-tools.py` / `hermes-wa-tool-allowlist.py` — health script fails on plugin or tool-allowlist drift (gaps **G2**, **G5**, **G13**).
 
-`KASIR_MULTIMODAL` defaults **off** (chat-only): inbound foto/suara get a short refuse. Leave unset in prod unless intentionally testing media pass-through. When testing ON: ensure `hermes-kasir-platform-locks.py apply` ran (`stt.language=id`, `agent.image_input_mode=auto`) and SOUL has *Foto / voice*. Facts still tools/DB only — never MEMORY.md ledger (diagram **L8**). See architecture Platform locks + **L0c** / **L7** / **L8**.
+`KASIR_MULTIMODAL` defaults **off** (chat-only): inbound foto/suara get a short refuse. Leave `0` / unset in prod unless intentionally testing media pass-through. Wire: compose `KASIR_MULTIMODAL=${KASIR_MULTIMODAL:-0}` + `.env.master-production`.
+
+**Multimodal smoke checklist**
+
+1. `hermes-kasir-health.py` PASS (required checks) + `hermes-kasir-platform-locks.py check --docker` PASS (`stt.language=id`, `image_input_mode`, SOUL *Foto / voice*, no MEMORY.md).
+2. **OFF:** allowlisted phone sends foto/voice → refuse *“Maaf, kasir ini masih chat teks saja…”*; log `kasir-pipe: media refuse` — no agent tools.
+3. **ON (time-boxed):** set `KASIR_MULTIMODAL=1` → recreate hermes only → one media turn (no refuse; agent may draft or ask one clarifying question) → set `0` → recreate → re-confirm OFF refuse.
+4. Facts still tools/DB only — never MEMORY.md ledger (diagram **L8**). See architecture Platform locks + **L0c** / **L7** / **L8**.
 
 ---
 

@@ -672,6 +672,8 @@ services:
       - KASIR_BRIDGE_PROXY_PORT=${KASIR_BRIDGE_PROXY_PORT:-8765}
       # DAFTAR funnel for non-allowlisted senders (0 = silent skip)
       - KASIR_REGISTRATION=${KASIR_REGISTRATION:-1}
+      # Chat-only default: photo/voice/file → short refuse. Set 1 only for ops media smoke.
+      - KASIR_MULTIMODAL=${KASIR_MULTIMODAL:-0}
       - WHATSAPP_BRIDGE_PORT=${WHATSAPP_BRIDGE_PORT:-3000}
     # Bridge proxy for middleware outbound (kasir-pipe → 127.0.0.1:3000). Docker network only.
     expose:
