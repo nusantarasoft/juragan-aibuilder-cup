@@ -1,0 +1,20 @@
+%% Studio RAG L4 — consumers: tenant notebook vs shared kurikulum WA
+flowchart TB
+  subgraph studio["Admin Studio Chat"]
+    NB1[Notebook proyek / tenant]
+    NB1 --> RAG1[retrieveContext]
+    RAG1 --> CHAT[studioChat]
+  end
+
+  subgraph wa["WA kasir consult v1"]
+    FLAG{KASIR_CONSULT=1?}
+    FLAG -->|no| OFF[Copy belum aktif]
+    FLAG -->|yes| KC[kasir_consult Hermes]
+    KC --> Nest[Nest /internal/kasir-consult]
+    Nest --> NB2[KASIR_CONSULT_NOTEBOOK_ID<br/>PDF UKM shared]
+    NB2 --> RAG2[semanticSearch top_k 5]
+    RAG2 --> ANS[Jawaban buku]
+  end
+
+  DB[(Supabase ledger)] -.->|FORBIDDEN for facts stok/omzet| RAG2
+  Tools[kasir-tools] --> DB

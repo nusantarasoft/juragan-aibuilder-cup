@@ -11,6 +11,8 @@ Hub AI Studio (semua modul): [../README.md](../README.md)
 | [use-case-diagram.svg](./use-case-diagram.svg) | Diagram use case (SVG, siap dibuka di browser) |
 | [use-case-diagram.puml](./use-case-diagram.puml) | Sumber PlantUML untuk diedit / diekspor ulang |
 | [TESTING.md](./TESTING.md) | Panduan unit, integration, dan E2E test Studio |
+| [system/rag-architecture.md](./system/rag-architecture.md) | RAG: ingest / retrieve / embed vs LLM / konsumen WA |
+| Diagrams RAG | [diagrams/aistudio/studio/system/](../../../diagrams/aistudio/studio/system/) L1–L4 |
 
 ## Aktor
 
