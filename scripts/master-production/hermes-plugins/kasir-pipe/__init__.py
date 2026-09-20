@@ -20,6 +20,9 @@ Env:
 - ``KASIR_WA_SESSION_DIR`` — Baileys session dir (pair + LID maps)
 - ``KASIR_REGISTRATION`` — ``1`` (default) enables WA DAFTAR funnel for
   non-allowlisted senders; ``0`` restores silent skip
+- ``KASIR_MULTIMODAL`` — ``0`` (default / chat-only): inbound photo/voice/
+  audio/video/document/sticker get a short text refuse and skip the agent.
+  ``1`` / ``true`` / ``on``: pass media through to Hermes (vision/STT later).
 """
 
 from __future__ import annotations
@@ -41,6 +44,16 @@ logger = logging.getLogger("hermes.plugins.kasir-pipe")
 
 # (cached_at_epoch, identities: phones + LIDs)
 _ALLOW_CACHE: tuple[float, set[str]] = (0.0, set())
+
+# Hermes MessageType.value strings that count as media for chat-only refuse.
+_MEDIA_MESSAGE_TYPES = frozenset(
+    {"photo", "voice", "audio", "video", "document", "sticker"}
+)
+
+_MEDIA_REFUSE_TEXT = (
+    "Maaf, kasir ini masih chat teks saja. "
+    "Ketik saja *jual* / *stok* / *laporan* ya."
+)
 
 
 def _platforms() -> set[str]:
@@ -241,6 +254,40 @@ def _chat_id(event: Any) -> str:
     return ""
 
 
+def _multimodal_enabled() -> bool:
+    """Prod default is chat-only; opt in with KASIR_MULTIMODAL=1."""
+    return os.environ.get("KASIR_MULTIMODAL", "0").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
+def _msg_media_refuse() -> str:
+    return _MEDIA_REFUSE_TEXT
+
+
+def _event_has_media(event: Any) -> bool:
+    """True when inbound looks like photo/voice/file (Hermes MessageEvent shape).
+
+    Baileys sets ``message_type`` + ``media_urls``; Cloud API the same.
+    Do not import Hermes enums — plugins must stay portable.
+    """
+    mt = getattr(event, "message_type", None)
+    if mt is not None:
+        val = str(getattr(mt, "value", mt) or "").lower()
+        if val in _MEDIA_MESSAGE_TYPES:
+            return True
+    urls = getattr(event, "media_urls", None)
+    if isinstance(urls, (list, tuple)) and len(urls) > 0:
+        return True
+    types = getattr(event, "media_types", None)
+    if isinstance(types, (list, tuple)) and len(types) > 0:
+        return True
+    return False
+
+
 def _on_pre_gateway_dispatch(event, gateway=None, session_store=None, **kwargs):
     """Allowlisted WhatsApp → Hermes agent; others → registration funnel or skip."""
     del session_store, kwargs
@@ -251,6 +298,18 @@ def _on_pre_gateway_dispatch(event, gateway=None, session_store=None, **kwargs):
         if platform not in _platforms():
             return None
         sender = _chat_id(event)
+        # Chat-only gate (eng review D10A): refuse media before agent/registration.
+        if not _multimodal_enabled() and _event_has_media(event):
+            logger.info(
+                "kasir-pipe: media refuse chat=%s (KASIR_MULTIMODAL off)",
+                sender,
+            )
+            if sender:
+                _send_wa_text(sender, _msg_media_refuse(), gateway)
+            return {
+                "action": "skip",
+                "reason": "kasir-pipe chat-only: media refused",
+            }
         if _sender_allowed(sender):
             logger.info("kasir-pipe: allowlist ok chat=%s → agent", sender)
             # Stamp identity for kasir-tools (tool hooks often omit chat JID).
@@ -365,34 +424,29 @@ def _resolve_sender_phone(event: Any) -> str:
 
 
 def _stamp_active_sender(*, chat_id: str, phone: str) -> None:
-    """Write current WA sender for kasir-tools (shared volume runtime file)."""
-    import tempfile
-    import time
+    """Stamp current WA sender for kasir-tools (shared v2 multi-chat map)."""
+    import importlib.util
     from pathlib import Path
 
-    phone_d = _digits(phone)
-    if len(phone_d) < 8:
+    candidates = [
+        Path(__file__).resolve().parent.parent / "kasir-tools" / "identity.py",
+        Path(os.environ.get("KASIR_IDENTITY_DIR") or "/opt/data/runtime").parent
+        / "plugins"
+        / "kasir-tools"
+        / "identity.py",
+        Path("/opt/data/plugins/kasir-tools/identity.py"),
+    ]
+    for path in candidates:
+        if not path.is_file():
+            continue
+        spec = importlib.util.spec_from_file_location("kasir_tools_identity", path)
+        if not spec or not spec.loader:
+            continue
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.remember_sender(chat_id=chat_id, phone=phone)
         return
-    runtime = Path(os.environ.get("KASIR_IDENTITY_DIR") or "/opt/data/runtime")
-    runtime.mkdir(parents=True, exist_ok=True)
-    path = runtime / "kasir_active_sender.json"
-    payload = {
-        "phone": phone_d,
-        "chat": _digits(chat_id) or chat_id,
-        "chat_raw": chat_id,
-        "ts": time.time(),
-    }
-    fd, tmp = tempfile.mkstemp(dir=str(runtime), prefix="kasir_sender_")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            json.dump(payload, fh)
-        os.replace(tmp, path)
-    except Exception:
-        try:
-            os.unlink(tmp)
-        except Exception:
-            pass
-        raise
+    raise FileNotFoundError("kasir-tools/identity.py not found for stamp")
 
 
 def _fetch_open_registration(phone: str) -> Optional[dict[str, Any]]:

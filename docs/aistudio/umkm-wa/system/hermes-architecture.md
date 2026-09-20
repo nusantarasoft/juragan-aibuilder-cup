@@ -69,7 +69,7 @@ Settled product/architecture defaults for UMKM kasir on Hermes. Do not invert wi
 |------|---------|-------------|
 | **Modality** | **Chat-only** in prod kasir; multimodal (vision / voice→sale) behind an **explicit config flag** when we ship those paths. **Flag OFF:** inbound photo/voice get a short text refuse (“ketik jual/stok…”) — do **not** run vision/STT | Cheap micro path first; Hermes already has `agent.image_input_mode` / vision routing — turn on later, don’t always-on; eng review D10A |
 | **Knowledge** | Live facts (stok, harga, omzet, jual/beli) = **`kasir-tools` → PostgREST/DB** only. Optional RAG later = **per-tenant docs/SOP** with mandatory `tenant_id` filter — never embed the ledger; never fall through unknown inbound to RAG | Accuracy + isolation; curriculum vector RAG stays a separate deferred TODO |
-| **Character / memory** | **One shared** `SOUL.md` (“Asisten Kasir Warung”). Per-toko uniqueness = allowlist + tenant-scoped tools + app state (`kasir_drafts` / `kasir_last_sale`). Do **not** use global `MEMORY.md` as store KB; multi-SOUL per tenant is out until product sells custom agents | Brand consistency; Hermes SOUL is per-instance; session/`USER.md` are preference layers, not stock |
+| **Character / memory** | **One shared** `SOUL.md` (“Asisten Kasir Warung”). Per-toko uniqueness = allowlist + tenant-scoped tools + app state (`kasir_drafts` / `kasir_last_sale`). Sender stamp is a **multi-chat map** (`kasir_active_sender.json` v2) keyed by chat — not one global phone. Do **not** use global `MEMORY.md` as store KB; multi-SOUL per tenant is out until product sells custom agents | Brand consistency; Hermes SOUL is per-instance; eng review D9A / T2 |
 | **Skills vs tools** | Owner jobs (“cek stok”, “jual”, “laporan”) are **`kasir-tools` + SOUL routing**, not Hermes Skills packs. Keep coding/browser Hermes skills off the kasir WA path | Explicit, testable, tenant-safe; skill-ifying invites the wrong toolset for warung |
 | **Tool allowlist** | **FIXED (G13):** `platform_toolsets.whatsapp` = `clarify` + `kasir` only. Applied by `hermes-wa-tool-allowlist.py` on deploy; `hermes-kasir-health.py` **fails** if terminal/browser/… reappear | Eng review 2026-09-20 D7A + D8A / T1 |
 
@@ -90,10 +90,11 @@ SOUL.md routing table  ──►  kasir_get_stock (tool)  ──►  Supabase
 ### Allowlisted (kasir AIDLC)
 
 1. Message hits Hermes WhatsApp adapter.
-2. `kasir-pipe` `pre_gateway_dispatch`: sender phone or LID matches allowlist cache (DB + `KASIR_AGENT_PHONES` emergency).
-3. Pipe stamps `kasir_active_sender.json` under `KASIR_IDENTITY_DIR` (default `/opt/data/runtime`) for tool tenant resolve.
-4. Hook returns `None` → Hermes agent runs with `kasir-tools` (returns wrapped via `user_safe`).
-5. Tools read/write Supabase via service role. **No** POST to middleware webhook.
+2. `kasir-pipe` `pre_gateway_dispatch`: if `KASIR_MULTIMODAL` is off (default) and the event is photo/voice/audio/video/document/sticker (`message_type` / `media_urls`), send short refuse (“ketik jual/stok…”) and `action: skip` — **no** agent, vision, or STT.
+3. Else: sender phone or LID matches allowlist cache (DB + `KASIR_AGENT_PHONES` emergency).
+4. Pipe stamps `kasir_active_sender.json` under `KASIR_IDENTITY_DIR` (default `/opt/data/runtime`) for tool tenant resolve.
+5. Hook returns `None` → Hermes agent runs with `kasir-tools` (returns wrapped via `user_safe`).
+6. Tools read/write Supabase via service role. **No** POST to middleware webhook.
 
 ### Non-allowlisted (registration)
 
@@ -129,6 +130,7 @@ Agent replies to allowlisted chats go through the Hermes gateway (not `_send_wa_
 | `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | hermes plugins | Allowlist + tools + registrations |
 | `KASIR_AGENT_PHONES` | hermes | Emergency allowlist for **pipe only** (not tenant fallback in tools) |
 | `KASIR_REGISTRATION` | hermes | `1` = DAFTAR funnel; `0` = silent skip |
+| `KASIR_MULTIMODAL` | hermes | `0` (default) = chat-only: photo/voice/file → short text refuse + skip agent; `1` = pass media to Hermes (vision/STT sale path later) |
 | `KASIR_WA_SESSION_DIR` | hermes | Baileys session + LID maps |
 | `KASIR_IDENTITY_DIR` | hermes | Active-sender stamp for tools |
 | `KASIR_BRIDGE_PROXY_PORT` | hermes | Default `8765` |
@@ -147,6 +149,7 @@ Agent replies to allowlisted chats go through the Hermes gateway (not `_send_wa_
 | Allowlist DB down and no `KASIR_AGENT_PHONES` | Treat as deny → DAFTAR or skip |
 | Registration DB error | “Sistem daftar sedang sibuk…” |
 | Unexpected pipe exception | Busy fallback + skip agent |
+| Photo/voice while `KASIR_MULTIMODAL=0` | “Maaf, kasir ini masih chat teks saja. Ketik saja jual/stok/laporan ya.” + skip agent |
 | Bridge/proxy down | Admin QR / approve notify fail; agent may still chat if Baileys up |
 | LID unmapped | Allowlist miss → registration path |
 

@@ -50,8 +50,7 @@
 **Effort:** M
 **Priority:** P1
 **Depends on:** Hermes WhatsApp tool allowlist + health fail-closed
-
-### Union-merge default UMKM command keywords
+**Status:** shipped 2026-09-20 — `kasir_active_sender.json` v2 multi-chat map; `read_sender(chat_id=)` / fail-closed if ambiguous; pipe uses shared `identity.remember_sender`.
 
 **What:** Make `resolveUmkmCommands` union DEFAULT keyword lists into notebook `umkm_commands` (add, never replace). Empty array must not delete default phrases.
 
@@ -155,7 +154,7 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 **Effort:** L
 **Priority:** P3
 **Depends on:** Kill-guide-flow PR; media ingest; prefer after Hermes WhatsApp tool allowlist P0
-
+**Status:** partial 2026-09-20 — `KASIR_MULTIMODAL` (default off) + chat-only refuse in `kasir-pipe` 1.3.4. Remaining: vision/STT → draft sale when flag ON.
 ### Official WhatsApp Cloud API vs Hermes
 
 **What:** Optional official WhatsApp Business Cloud API path alongside unofficial Hermes/Baileys.

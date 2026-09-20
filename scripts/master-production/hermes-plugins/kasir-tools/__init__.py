@@ -199,11 +199,16 @@ def _resolve_phone(params: dict[str, Any] | None, kwargs: dict[str, Any]) -> str
         return phone
     if session_id and session_id in _SESSION_PHONE:
         return _SESSION_PHONE[session_id]
-    # Last resort: recent sender stamped by kasir-pipe (same process / volume)
+    # Last resort: recent sender stamped by kasir-pipe (multi-chat map).
     try:
         from .identity import read_sender
 
-        phone = read_sender()
+        chat_hint = ""
+        for jid in jids:
+            if jid:
+                chat_hint = str(jid)
+                break
+        phone = read_sender(chat_id=chat_hint or None)
         if len(phone) >= 8:
             _remember(session_id, phone)
             return phone
