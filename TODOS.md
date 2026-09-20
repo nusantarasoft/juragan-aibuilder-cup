@@ -155,7 +155,8 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 **Effort:** L
 **Priority:** P3
 **Depends on:** Kill-guide-flow PR; media ingest; prefer after Hermes WhatsApp tool allowlist P0
-**Status:** shipped 2026-09-20 — OFF refuse in `kasir-pipe`; ON path = Hermes gateway STT (`stt.language=id`) + `image_input_mode=auto` + SOUL *Foto / voice* → draft. Runtime locks: `hermes-kasir-platform-locks.py` on deploy + health WARNs. Prod stays `KASIR_MULTIMODAL=0` until ops flips the flag.
+**Status:** shipped 2026-09-20 — OFF refuse in `kasir-pipe`; ON path = Hermes gateway STT (`stt.language=id`) + `image_input_mode=auto` + SOUL *Foto / voice* → draft. Runtime locks: `hermes-kasir-platform-locks.py` on deploy + health WARNs. **Prod soft GA:** `KASIR_MULTIMODAL=1` (2026-09-20); compose default remains `0`.
+
 ### Official WhatsApp Cloud API vs Hermes
 
 **What:** Optional official WhatsApp Business Cloud API path alongside unofficial Hermes/Baileys.
@@ -210,11 +211,12 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 
 **Why:** Embed + synthesize has real LLM cost; shared WA number + prefix spam can burn budget after `KASIR_CONSULT=1`.
 
-**Context:** CEO HOLD 2026-09-20 deferred rate-limit; eng review cleared v1 without it. Start after consult smoke ON + pilot. Prefer simple in-memory/redis counter keyed by phone; do not block `cek stok` tools. Plan: `docs/designs/ceo-plan-wa-consult-kurikulum-rag.md`.
+**Context:** CEO HOLD 2026-09-20 deferred rate-limit; eng review cleared v1 without it. **Pilot live:** prod `KASIR_CONSULT=1` + 376-chunk notebook (2026-09-20). Start after spam or cost spike. Prefer simple in-memory/redis counter keyed by phone; do not block `cek stok` tools. Plan: `docs/designs/ceo-plan-wa-consult-kurikulum-rag.md`.
 
 **Effort:** S
 **Priority:** P3
-**Depends on:** `kasir_consult` v1 shipped; pilot shows spam or cost spike
+**Depends on:** `kasir_consult` v1 shipped (**done** soft GA); pilot shows spam or cost spike
+**Status:** open — wait for usage signal
 
 ### Multi-PDF / per-tenant SOP for WA consult
 
@@ -279,7 +281,7 @@ Tracker: [`docs/aistudio/umkm-wa/system/hermes-gaps.md`](docs/aistudio/umkm-wa/s
 **Effort:** S
 **Priority:** P3
 **Depends on:** Platform locks + multimodal OFF path shipped
-**Status:** done 2026-09-20 — prod health/posture PASS; `multimodal-smoke.py` OFF `--send` + ON PASS; live gateway refuse `kasir-pipe chat-only: media refused` for allowlisted `6287859031592` (LID `138783311827127`); bridge refuse copy delivered; **time-boxed ON** (`KASIR_MULTIMODAL=1`): live `[image received]` → allowlist (no refuse) → `Image routing: native` vision attach; then restored `=0` + OFF smoke PASS.
+**Status:** done 2026-09-20 — prod health/posture PASS; OFF refuse + ON smoke + live foto ON. Later same day: **soft GA left `KASIR_MULTIMODAL=1`** (dengan `KASIR_CONSULT=1`); not restored to 0.
 
 ### Never recreate hermes without posture
 
