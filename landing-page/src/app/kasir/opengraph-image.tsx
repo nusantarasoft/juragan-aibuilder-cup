@@ -72,7 +72,6 @@ export default function OgImage() {
               fontWeight: 600,
               padding: "14px 22px",
               borderRadius: 10,
-              width: "fit-content",
             }}
           >
             Chat +62 811-924-689
