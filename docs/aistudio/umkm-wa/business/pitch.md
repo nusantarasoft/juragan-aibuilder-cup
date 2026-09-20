@@ -3,7 +3,7 @@
 **Untuk siapa:** sales, orang bisnis, pemilik toko (tenant).  
 **Bukan** catatan teknis development — itu di folder terpisah.
 
-Satu kalimat: pemilik warung chat ke **nomor WhatsApp bisnis NusantaraSoft** → ketik **DAFTAR** → admin setujui di AI Studio → toko aktif → bisa **cek stok**, catat jual/beli, dan lihat laporan lewat **chat teks**.
+Satu kalimat: pemilik warung chat ke **nomor WhatsApp bisnis NusantaraSoft** → ketik **DAFTAR** → admin setujui di AI Studio → toko aktif → bisa **cek stok**, catat jual/beli, lihat laporan, dan **tanya tips bisnis dari buku kurikulum UKM** lewat **chat teks**.
 
 Tanpa DAFTAR + Approve, nomor yang belum dikenal tidak dilayani sebagai kasir (bot diam atau hanya mengarahkan daftar).
 
@@ -46,7 +46,9 @@ Chat nomor NS  →  DAFTAR  →  nama toko  →  YA
 
 Admin juga bisa menambah toko lewat form lama di halaman yang sama; jalur **DAFTAR** adalah yang paling mudah dijelaskan ke calon tenant.
 
-**Belum di v1 (janji sales):** OTP, pembayaran di chat, banyak toko per nomor, multi-PDF / SOP per toko, konsultasi kurikulum **selalu ON** (default tetap OFF sampai ops ingest + flag). Jual dari foto/suara **bukan** janji default — produk yang dijual tetap chat teks (lihat L0c); kalau media dikirim tanpa saklar ops, bot minta ketik teks.
+**Belum di v1 (janji sales):** OTP, pembayaran di chat, banyak toko per nomor, multi-PDF / SOP per toko, sitasi halaman PDF sempurna. Jual dari foto/suara **bukan** janji default — produk yang dijual tetap chat teks (lihat L0c); kalau media dikirim tanpa saklar ops, bot minta ketik teks.
+
+**Konsultasi kurikulum (2026-09-20):** soft GA di prod — owner allowlisted boleh `tanya` / `konsultasi` / `pendamping`. Jawaban dari **satu buku UKM bersama** (bukan ChatGPT bebas, bukan angka stok toko). Ops bisa matikan saklar `KASIR_CONSULT` bila perlu.
 
 ---
 
@@ -63,9 +65,9 @@ Semua lewat **chat teks** ke nomor bisnis yang sama (bukan app terpisah):
 | *belanja / restock…* | Ringkasan belanja → *ya* |
 | *laporan* / *paling laris* | Omzet & ringkasan |
 | *tutup toko* | Omzet hari ini + stok menipis (ritual closing) |
-| *tanya …* / *konsultasi …* / *pendamping …* | Saran singkat dari **buku kurikulum UKM** (bukan stok toko). **Default mati** — admin ops nyalakan saklar `KASIR_CONSULT` setelah notebook siap; kalau off, bot bilang belum aktif |
+| *tanya …* / *konsultasi …* / *pendamping …* | Saran singkat dari **buku kurikulum UKM** (bukan stok toko). Soft GA: saklar **ON** di prod; kalau ops matikan, bot bilang belum aktif |
 
-Angka stok/harga/omzet diambil dari data toko yang sudah Approve — **bukan** “tebak AI” dari dokumen generik. Konsultasi kurikulum (kalau saklar ON) hanya dari PDF buku yang diingest — **bukan** dari ledger jual/beli.
+Angka stok/harga/omzet diambil dari data toko yang sudah Approve — **bukan** “tebak AI” dari dokumen generik. Konsultasi kurikulum hanya dari PDF buku yang diingest — **bukan** dari ledger jual/beli. Lihat [L0d](../../../../diagrams/aistudio/umkm-wa/business/L0d-tanya-kurikulum.svg): *cek stok* ≠ *tanya bisnis*.
 
 ---
 
@@ -74,8 +76,9 @@ Angka stok/harga/omzet diambil dari data toko yang sudah Approve — **bukan** �
 | Level | Gambar | Isi |
 |-------|--------|-----|
 | Cerita besar | [L0](../../../../diagrams/aistudio/umkm-wa/business/L0-bisnis-besar.svg) | DAFTAR → Approve → kasir |
-| Ritual harian | [L0b](../../../../diagrams/aistudio/umkm-wa/business/L0b-kasir-harian.svg) | stok / jual / ya / laporan / **tutup toko** |
+| Ritual harian | [L0b](../../../../diagrams/aistudio/umkm-wa/business/L0b-kasir-harian.svg) | stok / jual / ya / laporan / **tutup toko** / **tanya** |
 | Chat teks dulu | [L0c](../../../../diagrams/aistudio/umkm-wa/business/L0c-chat-only.svg) | foto/suara → ketik jual/stok |
+| Tanya vs stok | [L0d](../../../../diagrams/aistudio/umkm-wa/business/L0d-tanya-kurikulum.svg) | Tips buku ≠ angka toko |
 | Satu nomor, banyak toko | [L1](../../../../diagrams/aistudio/umkm-wa/business/L1-shared-inbox.svg) | Shared inbox |
 | Siapa melakukan apa | [L2](../../../../diagrams/aistudio/umkm-wa/business/L2-aktor-swimlane.svg) | Owner vs admin |
 

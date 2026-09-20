@@ -11,6 +11,8 @@ flowchart TB
   G --> S[SOUL.md shared]
   S --> T[kasir-tools]
   T -->|stok laporan jual tutup| DB[(Supabase tenant)]
+  T -->|kasir_consult| Nest[Nest /internal/kasir-consult<br/>kurikulum RAG]
+  Nest --> Buku[Jawaban buku UKM]
   T -->|draft jual beli| POLL[send-poll Ya Batal]
   POLL --> U
   T -->|confirm / tutup toko| DB

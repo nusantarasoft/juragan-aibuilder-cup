@@ -1,0 +1,18 @@
+%% System L9: kurikulum consult hop (eng / ops)
+%% Hermes kasir_consult → Nest double-gate → Studio RAG notebook → WA copy
+flowchart LR
+  O[Owner: tanya / konsultasi / pendamping] --> H[Hermes SOUL]
+  H --> T[kasir_consult tool]
+  T -->|KASIR_CONSULT=0| Off[Copy: belum aktif]
+  T -->|KASIR_CONSULT=1| HTTP[POST /internal/kasir-consult<br/>X-Kasir-Consult-Key]
+  HTTP --> N[Nest middleware]
+  N -->|flag off / bad key| Off2[off / 401]
+  N -->|ok| Rag[consultFromNotebook]
+  Rag --> Emb[embed query]
+  Emb --> Match[match_studio_chunks<br/>notebook kurikulum]
+  Match -->|hits| Syn[LLM synthesize ≤800]
+  Match -->|0 hits| Miss[Miss copy — no free LLM]
+  Syn --> WA[Jawaban WA]
+  Miss --> WA
+
+  DB[(Ledger stok/omzet)] -.->|FORBIDDEN| Rag

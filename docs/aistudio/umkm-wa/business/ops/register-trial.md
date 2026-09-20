@@ -12,9 +12,11 @@ Dokumen **ops internal**: trial, AIDLC, checklist. Sales mulai dari [pitch.md](.
 
 ## 1. Konsep bisnis (satu kalimat)
 
-Pemilik warung chat ke nomor bisnis → ketik **DAFTAR** → admin setujui di AI Studio → nomor masuk allowlist → baru boleh pakai **kasir WhatsApp** (catat jual, cek stok, laporan, tutup toko — **chat teks**).
+Pemilik warung chat ke nomor bisnis → ketik **DAFTAR** → admin setujui di AI Studio → nomor masuk allowlist → baru boleh pakai **kasir WhatsApp** (catat jual, cek stok, laporan, tutup toko, **tanya kurikulum** — **chat teks**).
 
 Tanpa langkah itu, nomor asing dulu diabaikan (bot “mati”). Funnel ini mengganti silent-drop dengan onboarding yang jelas, tanpa OTP/bayar di v1.
+
+Konsultasi kurikulum (soft GA): lihat [consult-kurikulum.md](./consult-kurikulum.md).
 
 ### 1.1 Aturan proses bisnis v1 (locked)
 

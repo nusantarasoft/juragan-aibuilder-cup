@@ -1,5 +1,6 @@
 %% System L8: knowledge + character locks (Q2 / Q3) + kurikulum consult — eng / ops
-%% Facts stok/omzet = tools/DB; short-term chat OK; kurikulum = kasir_consult→Nest RAG (flag).
+%% Facts stok/omzet = tools/DB; short-term chat OK; kurikulum = kasir_consult→Nest RAG.
+%% Prod soft GA: KASIR_CONSULT=1 (2026-09-20). Compose default remains 0.
 %% Never MEMORY/RAG ledger for stok/harga/omzet.
 flowchart TB
   Q[Owner tanya stok / omzet] --> S[SOUL.md shared<br/>satu persona kasir]
@@ -12,7 +13,7 @@ flowchart TB
 
   C[Owner: tanya / konsultasi / pendamping<br/>+ pertanyaan bisnis]
   C --> S
-  S -->|KASIR_CONSULT=1| KC[kasir_consult]
+  S -->|KASIR_CONSULT=1 soft GA| KC[kasir_consult]
   KC --> Nest[Nest /internal/kasir-consult<br/>retrieve kurikulum PDF]
   Nest --> Buku[Jawaban dari buku UKM]
   S -->|KASIR_CONSULT=0| Off[Copy: belum aktif]

@@ -78,7 +78,7 @@ Pair via Admin → WhatsApp Gateway (or Hermes dashboard QR).
 
 ### Kurikulum consult (`KASIR_CONSULT`)
 
-Default **off** on hermes **and** middleware. After PDF ingest + `KASIR_CONSULT_NOTEBOOK_ID` + shared `KASIR_CONSULT_KEY`:
+Compose/example default **off**. **Prod soft GA ON** (2026-09-20): ingest done (376 chunks), `KASIR_CONSULT_NOTEBOOK_ID` + shared `KASIR_CONSULT_KEY` set, flag **`1`** on hermes **and** middleware. Ops runbook: [`../business/ops/consult-kurikulum.md`](../business/ops/consult-kurikulum.md).
 
 ```bash
 # Local unit smoke (no Docker)
@@ -88,9 +88,13 @@ python3 scripts/master-production/hermes-consult-smoke.py on
 # Nest unit
 cd middleware && npm run test -- src/studio/studio-umkm-pendamping.consult.spec.ts \
   src/studio/internal-kasir-consult.controller.spec.ts
+
+# Container (after deploy copies consult-smoke.py)
+docker exec -e HERMES_HOME=/opt/data nsoft3-hermes \
+  python3 /opt/data/consult-smoke.py on --plugin-root /opt/data/plugins/kasir-tools
 ```
 
-Flip `KASIR_CONSULT=1` on **both** services only for a time-boxed pilot (same discipline as multimodal).
+Flip both services together; recreate + `hermes-kasir-posture.py apply`. Diagrams **L8** / **L9**.
 
 ---
 

@@ -68,11 +68,13 @@ WA consult: Hermes → `POST /internal/kasir-consult` → `consultFromNotebook` 
 
 ## Ops checklist (kurikulum WA)
 
-1. Notebook khusus kurikulum + PDF sah ter-ingest (`done`)  
+1. Notebook khusus kurikulum + PDF sah ter-ingest (`done`) — **prod:** 376 chunks, notebook `48aee243-…`  
 2. `KASIR_CONSULT_NOTEBOOK_ID` di **middleware**  
 3. `KASIR_CONSULT_KEY` sama di Hermes + middleware  
-4. Pilot: `KASIR_CONSULT=1` di **keduanya**; smoke `hermes-consult-smoke.py`  
-5. Kembalikan `0` setelah uji jika belum GA
+4. Soft GA: `KASIR_CONSULT=1` di **keduanya**; smoke `hermes-consult-smoke.py`  
+5. Matikan ke `0` hanya jika ops memutuskan pause (compose default tetap `0` untuk lingkungan baru)
+
+Embed: **`google_ai`** + `gemini-embedding-001` (768-d). Jangan pakai OpenRouter untuk index ini tanpa reindex + keputusan model.
 
 ## Failure modes
 
@@ -86,5 +88,5 @@ WA consult: Hermes → `POST /internal/kasir-consult` → `consultFromNotebook` 
 ## Related
 
 - Diagrams: [system README](../../../../diagrams/aistudio/studio/system/README.md)  
-- UMKM WA knowledge locks: [L8](../../../../diagrams/aistudio/umkm-wa/system/L8-knowledge-soul.svg)  
+- UMKM WA knowledge locks: [L8](../../../../diagrams/aistudio/umkm-wa/system/L8-knowledge-soul.svg) · consult hop [L9](../../../../diagrams/aistudio/umkm-wa/system/L9-kasir-consult.svg) · ops [consult-kurikulum.md](../../umkm-wa/business/ops/consult-kurikulum.md)  
 - Studio use cases: [../README.md](../README.md)

@@ -1,0 +1,13 @@
+%% Owner: tips buku vs angka toko (sales / pitch — no eng jargon)
+flowchart TB
+  O[Owner chat teks] --> Q{Apa yang ditanya?}
+  Q -->|Cek stok / jual / laporan| T[Data toko nyata]
+  Q -->|Tanya / konsultasi / pendamping<br/>+ tip bisnis| B[Saran dari buku kurikulum UKM]
+  T --> R1[Jawaban angka / transaksi]
+  B --> R2[Jawaban singkat dari buku]
+  Q -->|Topik di luar toko & buku<br/>mis. harga kripto| X[Bot: cuma urusan toko / bisnis UKM]
+
+  note1[Stok & omzet bukan dari buku]
+  note2[Tips bisnis bukan dari stok toko]
+  T -.-> note1
+  B -.-> note2

@@ -1,12 +1,13 @@
 # Business diagrams (L0–L4)
 
-Pitch sales: **L0–L2** (+ **L0b** ritual harian, **L0c** chat-only). L3–L4 = detail internal (label masih teknis).
+Pitch sales: **L0–L2** (+ **L0b** ritual harian, **L0c** chat-only, **L0d** tanya vs stok). L3–L4 = detail internal (label masih teknis).
 
 | Level | File | Isi |
 |-------|------|-----|
 | **L0** | [L0-bisnis-besar](./L0-bisnis-besar.svg) | DAFTAR → Approve → kasir |
-| **L0b** | [L0b-kasir-harian](./L0b-kasir-harian.svg) | Ritual harian termasuk **tutup toko** |
+| **L0b** | [L0b-kasir-harian](./L0b-kasir-harian.svg) | Ritual harian termasuk **tutup toko** + **tanya** |
 | **L0c** | [L0c-chat-only](./L0c-chat-only.svg) | Foto/suara → arahkan ketik teks |
+| **L0d** | [L0d-tanya-kurikulum](./L0d-tanya-kurikulum.svg) | Tips buku ≠ angka toko |
 | **L1** | [L1-shared-inbox](./L1-shared-inbox.svg) | Shared inbox |
 | **L2** | [L2-aktor-swimlane](./L2-aktor-swimlane.svg) | Aktor |
 | **L3** | [L3-gate-teknis](./L3-gate-teknis.svg) | Gate teknis |
