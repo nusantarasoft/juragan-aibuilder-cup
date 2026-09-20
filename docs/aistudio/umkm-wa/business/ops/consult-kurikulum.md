@@ -18,8 +18,12 @@ Compose/example default tetap `0` — prod di-set ON lewat `.env.master-producti
 ## Saklar
 
 ```bash
-# ON (keduanya) lalu recreate middleware + hermes + posture
-# OFF sama: KASIR_CONSULT=0
+# Soft GA ON (keduanya) lalu recreate middleware + hermes + posture
+# Soft GA OFF: KASIR_CONSULT=0 di Hermes DAN middleware, lalu recreate keduanya
+
+# Polish (tetap default OFF di prod):
+# KASIR_CONSULT_CITE_PAGES=1   → sitasi hlm (recreate middleware)
+# KASIR_CONSULT_INJECT_METRICS=1 → cuplikan laporan di synthesize (recreate middleware)
 ```
 
 Setelah recreate Hermes: `hermes-kasir-posture.py apply --docker`.

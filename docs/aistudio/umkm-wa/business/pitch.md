@@ -46,7 +46,7 @@ Chat nomor NS  →  DAFTAR  →  nama toko  →  YA
 
 Admin juga bisa menambah toko lewat form lama di halaman yang sama; jalur **DAFTAR** adalah yang paling mudah dijelaskan ke calon tenant.
 
-**Belum di v1 (janji sales):** OTP, pembayaran di chat, banyak toko per nomor, multi-PDF / SOP per toko, peta halaman PDF sempurna (ingest metadata). Soft GA sudah punya sitasi ringan `hlm. N` dari marker chunk bila ada.
+**Belum di v1 (janji sales):** OTP, pembayaran di chat, banyak toko per nomor, multi-PDF / SOP per toko, sitasi halaman PDF (saklar ops `KASIR_CONSULT_CITE_PAGES` — default OFF).
 
 **Soft GA (2026-09-20):** konsultasi kurikulum (`tanya`…) **ON**; multimodal foto/suara **ON** di prod (ops bisa matikan `KASIR_MULTIMODAL` / `KASIR_CONSULT`). Angka stok/omzet **tetap** dari kasir DB — tidak pernah dari RAG buku.
 

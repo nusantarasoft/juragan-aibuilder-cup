@@ -1,6 +1,6 @@
 %% System L9: kurikulum consult hop (eng / ops)
 %% Hermes kasir_consult → Nest double-gate → Studio RAG notebook → WA copy
-%% Cite: hlm from chunk "-- N of M --". Optional metrics: KASIR_CONSULT_INJECT_METRICS.
+%% Optional: KASIR_CONSULT_CITE_PAGES / KASIR_CONSULT_INJECT_METRICS (default off)
 flowchart LR
   O[Owner: tanya / konsultasi / pendamping] --> H[Hermes SOUL]
   H --> T[kasir_consult tool]
@@ -11,7 +11,7 @@ flowchart LR
   N -->|ok| Rag[consultFromNotebook]
   Rag --> Emb[embed query]
   Emb --> Match[match_studio_chunks<br/>notebook kurikulum]
-  Match -->|hits| Syn[LLM synthesize ≤800<br/>+ cite hlm bila ada]
+  Match -->|hits| Syn[LLM synthesize ≤800<br/>cite buku; hlm jika CITE_PAGES=1]
   Match -->|0 hits| Miss[Miss copy — no free LLM]
   Syn --> WA[Jawaban WA]
   Miss --> WA

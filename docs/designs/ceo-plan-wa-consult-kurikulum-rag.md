@@ -108,6 +108,8 @@ Synthesized from eng review. Checkbox as you ship.
 - [x] **T6 (P1)** — Docs/diagrams — L8 + pitch + hermes-architecture; ops ingest note
 - [x] **T7 (P2)** — Ops — notebook `48aee243-…` ingest **376 chunks** (`google_ai` / `gemini-embedding-001`); `NOTEBOOK_ID`/`KEY` wired; WA pilot RAG hit verified; prod **`KASIR_CONSULT=1`** (soft GA)
 
+**Post-T7 (2026-09-20):** optional polish shipped behind flags default **off** — `KASIR_CONSULT_CITE_PAGES` (hlm dari `-- N of M --`) and `KASIR_CONSULT_INJECT_METRICS` (today-report labeled kasir, synthesize only). Prod leaves both `0`.
+
 ## Failure modes
 
 | Failure | User sees | Test | Handling |

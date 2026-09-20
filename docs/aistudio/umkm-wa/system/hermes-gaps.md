@@ -43,7 +43,7 @@ Tracked after comparing L5 (current as-built) with [Hermes docs](https://hermes-
 | ID | Apa | Kenapa mudah kelupaan | Di mana tracked | Next action |
 |----|-----|------------------------|-----------------|-------------|
 | **W1** | Manual recreate hermes | `docker compose … recreate hermes` tanpa posture → plugins kosong | G14 FIXED + runbook | Selalu: `hermes-kasir-posture.py apply` atau `deploy-kasir-tools.py` |
-| **W2** | Live foto/voice QA | Smoke otomatis masih event sintetis | TODOS *done 2026-09-20* | **DONE** — OFF refuse + time-boxed ON live image (`Image routing: native`); prod back to `KASIR_MULTIMODAL=0` |
+| **W2** | Live foto/voice QA | Smoke otomatis masih event sintetis | TODOS *done 2026-09-20* | **DONE** — OFF refuse + live ON; **prod soft GA `KASIR_MULTIMODAL=1`** (2026-09-20, dengan consult ON) |
 | **W3** | Disk build cache | Prune hanya unused >7d; sisa cache aktif bisa besar | `prune-nsoft3-images.sh` | OK otomatis tiap redeploy; pantau `docker system df` kalau disk naik |
 | **W4** | Product backlog di luar deploy | Staff roles / Auth P2 / Cloud API | `TODOS.md` UMKM + Auth | Bukan residual bug deploy |
 
@@ -110,4 +110,4 @@ python3 -m unittest scripts/master-production/hermes-plugins/kasir-tools/test_us
 | 2026-09-20 | Platform locks Q1–Q3 harden — `hermes-kasir-platform-locks.py` (STT id + image_input), SOUL Foto/voice + no MEMORY KB, diagram **L8** |
 | 2026-09-20 | **G14 FIXED** + Watchlist W1–W4; posture enforces session `chmod 700` (G6) |
 | 2026-09-20 | **W2 DONE** — live media refuse + OFF/ON smoke on prod; flag stays `0` |
-| 2026-09-20 | **W2 ON live** — time-boxed `KASIR_MULTIMODAL=1`: foto → allowlist + native vision; restored `0` |
+| 2026-09-20 | **W2 ON live** — time-boxed then **soft GA left `KASIR_MULTIMODAL=1`** (dengan consult ON) |
