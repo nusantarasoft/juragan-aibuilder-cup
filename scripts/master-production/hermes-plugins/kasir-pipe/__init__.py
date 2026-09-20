@@ -23,6 +23,9 @@ Env:
 - ``KASIR_MULTIMODAL`` — ``0`` (default / chat-only): inbound photo/voice/
   audio/video/document/sticker get a short text refuse and skip the agent.
   ``1`` / ``true`` / ``on``: pass media through to Hermes (vision/STT later).
+
+Also registers ``transform_llm_output`` to sanitize agent replies (denylist
+``user_safe``) before they reach WhatsApp — closes G11 residual egress.
 """
 
 from __future__ import annotations
@@ -621,11 +624,45 @@ def _run_registration(event: Any, gateway: Any = None) -> str:
     return reply
 
 
+def _on_transform_llm_output(
+    response_text: Any = None,
+    platform: Any = None,
+    **kwargs: Any,
+) -> Optional[str]:
+    """Last-mile sanitize of agent replies before they reach WhatsApp (G11 residual).
+
+    Hermes ``transform_llm_output``: return a string to replace, or None to keep.
+    First non-empty string wins — return None when text is already clean.
+    """
+    del kwargs
+    text = response_text if isinstance(response_text, str) else ""
+    if not text.strip():
+        return None
+    plat = str(getattr(platform, "value", platform) or "").lower()
+    allowed = _platforms()
+    # Kasir Hermes is WhatsApp-first; sanitize when platform is whatsapp or unset.
+    if plat and plat not in allowed and "whatsapp" not in plat:
+        return None
+    from .user_safe import looks_unsafe, sanitize_user_text, safe_user_error
+
+    if not looks_unsafe(text):
+        return None
+    cleaned = sanitize_user_text(text, fallback=safe_user_error("generic"))
+    logger.info(
+        "kasir-pipe: transform_llm_output sanitized unsafe agent reply (len %s→%s)",
+        len(text),
+        len(cleaned),
+    )
+    return cleaned
+
+
 def register(ctx):
     ctx.register_hook("pre_gateway_dispatch", _on_pre_gateway_dispatch)
+    ctx.register_hook("transform_llm_output", _on_transform_llm_output)
     _start_bridge_proxy()
     logger.info(
-        "kasir-pipe registered (DB allowlist gate; pair+bridge; platforms=%s)",
+        "kasir-pipe registered (DB allowlist gate; egress sanitize; "
+        "pair+bridge; platforms=%s)",
         ",".join(sorted(_platforms())),
     )
 

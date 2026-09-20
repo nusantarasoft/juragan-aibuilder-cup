@@ -431,5 +431,62 @@ class MultimodalChatOnlyTest(unittest.TestCase):
         send.assert_not_called()
 
 
+class TransformLlmOutputEgressTest(unittest.TestCase):
+    """G11 residual: transform_llm_output sanitizes unsafe agent replies."""
+
+    @classmethod
+    def setUpClass(cls):
+        pkg_name = "kasir_pipe_testpkg"
+        if pkg_name not in sys.modules:
+            pkg = type(sys)(pkg_name)
+            pkg.__path__ = [str(ROOT)]
+            pkg.__package__ = pkg_name
+            sys.modules[pkg_name] = pkg
+        init_spec = importlib.util.spec_from_file_location(
+            f"{pkg_name}.__init__",
+            ROOT / "__init__.py",
+            submodule_search_locations=[str(ROOT)],
+        )
+        assert init_spec and init_spec.loader
+        cls.pipe = importlib.util.module_from_spec(init_spec)
+        cls.pipe.__package__ = pkg_name
+        sys.modules[f"{pkg_name}.__init__"] = cls.pipe
+        sys.modules[f"{pkg_name}.register"] = mod
+        # Load user_safe as package submodule
+        us_spec = importlib.util.spec_from_file_location(
+            f"{pkg_name}.user_safe", ROOT / "user_safe.py"
+        )
+        assert us_spec and us_spec.loader
+        us = importlib.util.module_from_spec(us_spec)
+        us.__package__ = pkg_name
+        sys.modules[f"{pkg_name}.user_safe"] = us
+        us_spec.loader.exec_module(us)
+        init_spec.loader.exec_module(cls.pipe)
+
+    def test_clean_text_unchanged(self):
+        out = self.pipe._on_transform_llm_output(
+            response_text="Stok indomie sisa 3.",
+            platform="whatsapp",
+        )
+        self.assertIsNone(out)
+
+    def test_unsafe_tool_name_replaced(self):
+        out = self.pipe._on_transform_llm_output(
+            response_text="Gagal: kasir_confirm_sale draft_id=abc",
+            platform="whatsapp",
+        )
+        self.assertIsInstance(out, str)
+        self.assertNotIn("kasir_", out)
+        self.assertNotIn("draft_id", out)
+        self.assertIn("sibuk", out.lower())
+
+    def test_skips_non_whatsapp_platform(self):
+        out = self.pipe._on_transform_llm_output(
+            response_text="kasir_get_stock leaked",
+            platform="telegram",
+        )
+        self.assertIsNone(out)
+
+
 if __name__ == "__main__":
     unittest.main()

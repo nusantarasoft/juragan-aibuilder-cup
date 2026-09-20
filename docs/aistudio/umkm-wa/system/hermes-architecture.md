@@ -51,10 +51,10 @@ Business ladder: [`diagrams/aistudio/umkm-wa/business/`](../../../../diagrams/ai
 | Piece | Role |
 |-------|------|
 | **Hermes Agent** | Container `hermes` / `nsoft3-hermes`. Runs gateway + Baileys WhatsApp. Volume `./volumes/hermes` → `/opt/data`. |
-| **kasir-pipe** | Plugin: allowlist gate, **chat-only media refuse** (`KASIR_MULTIMODAL=0`), DAFTAR funnel, bridge+pair proxy `:8765`. |
+| **kasir-pipe** | Plugin: allowlist gate, **chat-only media refuse** (`KASIR_MULTIMODAL=0`), DAFTAR funnel, bridge+pair proxy `:8765`, **`transform_llm_output` egress sanitize** (`user_safe`). |
 | **kasir-tools** | Plugin: stock/report/sale/**tutup toko** tools → PostgREST (Kong). Tenant from sender phone / pipe stamp — never `KASIR_AGENT_PHONES` as tenant fallback. Sale/purchase drafts mirrored to `runtime/kasir_drafts.json` (15m TTL). After draft, best-effort `/send-poll` confirm. `kasir_repeat_last_sale` uses `kasir_last_sale.json` (24h). `kasir_tutup_toko` = omzet hari ini + stok menipis. |
 | **kasir-probe** | Debug/probe plugin (ops). |
-| **user_safe** | Shared sanitize on tool returns + DAFTAR `_send_wa_text` denylist (gap **G11**). |
+| **user_safe** | Shared sanitize on tool returns + DAFTAR `_send_wa_text` + agent `transform_llm_output` (gap **G11**). |
 | **HermesProvider** | Nest transport: outbound + session/QR via bridge. |
 | **studio_whatsapp_config** | Enabled tenants + `business_phone` ∪ `allowlist_phones` + notebook. |
 | **studio_umkm_registrations** | DAFTAR drafts/pending (wizard). |
@@ -119,7 +119,7 @@ LID note: inbound JIDs are often `@lid`. Allowlist phones are expanded via `lid-
 
 Bridge binds `127.0.0.1:3000` inside the Hermes container. Other containers cannot reach it; kasir-pipe proxies `0.0.0.0:8765` → that loopback.
 
-Agent replies to allowlisted chats go through the Hermes gateway (not `_send_wa_text`). Hard egress sanitize is residual — see gaps **G11** / TODOS.
+Agent replies to allowlisted chats go through the Hermes gateway. Last-mile denylist: `kasir-pipe` `transform_llm_output` → `user_safe` (gap **G11**). Hermes also runs `_sanitize_gateway_final_response` for provider-error redaction.
 
 ---
 

@@ -243,6 +243,7 @@ Tracker: [`docs/aistudio/umkm-wa/system/hermes-gaps.md`](docs/aistudio/umkm-wa/s
 **Effort:** M–L
 **Priority:** P2
 **Depends on:** Leak PR probe notes; usable Hermes egress API or config
+**Status:** shipped 2026-09-20 — `kasir-pipe` registers Hermes `transform_llm_output` → `user_safe` denylist (WhatsApp / unset platform); version 1.3.5.
 
 ### Spike WhatsApp Cloud API migration (gap G1) — HOLD
 

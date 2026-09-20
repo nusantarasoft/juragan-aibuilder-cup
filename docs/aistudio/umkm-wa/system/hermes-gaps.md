@@ -31,7 +31,7 @@ Tracked after comparing L5 (current as-built) with [Hermes docs](https://hermes-
 | **G8** | Dashboard / API publik | High | **DONE** | Bind `127.0.0.1` + SSH tunnel. |
 | **G9** | Tool progress chrome di WA | Low | **DONE** | Silence via deploy. |
 | **G10** | Bridge proxy `:8765` custom | — | **DONE** | Perlu Nest pair/send; ada di L5. |
-| **G11** | Teks sistem/tool bocor ke user WA | High (UX/trust) | **FIXED** | `user_safe` sanitize + wrap semua tool return; draft tanpa `draft_id`/nama tool; confirm latest `(phone,kind)`; denylist `_send_wa_text` (DAFTAR); SOUL harden; `reject_reason` cap. Residual: agent egress tanpa hook Hermes → TODOS. |
+| **G11** | Teks sistem/tool bocor ke user WA | High (UX/trust) | **FIXED** | `user_safe` sanitize + wrap semua tool return; draft tanpa `draft_id`/nama tool; confirm latest `(phone,kind)`; denylist `_send_wa_text` (DAFTAR); SOUL harden; `reject_reason` cap. **Egress:** `kasir-pipe` `transform_llm_output` (1.3.5) sanitizes agent final reply before WA. |
 | **G12** | Hermes nag `/sethome` / “No home channel” | Med (UX) | **FIXED** | Set `WHATSAPP_HOME_CHANNEL` (ops chat JID) di compose/env. Nag fires on first message when home unset (`gateway/run.py`). UMKM: **ignore** — jangan `/sethome` di chat toko (itu mengalihkan cron ke mereka). |
 | **G13** | Built-in Hermes toolsets (terminal/browser/…) aktif di platform WhatsApp | High (security) | **FIXED** | `hermes-wa-tool-allowlist.py` sets `platform_toolsets.whatsapp` → `clarify` + `kasir`; deploy applies; `hermes-kasir-health.py` fail-closed. |
 
@@ -61,13 +61,13 @@ cd scripts/master-production/hermes-plugins/kasir-tools
 python3 -m unittest test_user_safe_copy.py -v
 ```
 
-**Residual (D8):** Allowlisted agent replies go Hermes gateway (not `_send_wa_text`). Prod probe 2026-09-19: `hermes config get channels.whatsapp.exposeErrorText` → *Config key not set* (no fail-closed knob in this image). Until a gateway hook exists, rely on tool-return sanitize + SOUL + this checklist. See TODOS *Agent-outbound WA text sanitizer*.
+**Residual (D8):** ~~Allowlisted agent replies go Hermes gateway without denylist~~ — **closed 2026-09-20:** `kasir-pipe` hooks `transform_llm_output` and runs `user_safe` (same denylist as tool returns / DAFTAR). Hermes built-in `_sanitize_gateway_final_response` still redacts provider errors/secrets; our hook catches `kasir_*` / `draft_id` paraphrases.
 
 ---
 
 ## Urutan beresin (sisa)
 
-_Tidak ada gap OPEN._ G1 HOLD. Residual G11 agent-egress → TODOS. G13 FIXED (tool allowlist).
+_Tidak ada gap OPEN._ G1 HOLD. G11 egress closed (`transform_llm_output`). G13 FIXED (tool allowlist).
 
 ---
 
@@ -93,3 +93,4 @@ python3 -m unittest scripts/master-production/hermes-plugins/kasir-tools/test_us
 | 2026-09-19 | Moved under `docs/aistudio/umkm-wa/system/` |
 | 2026-09-20 | **G13 FIXED** — WhatsApp tool allowlist (`clarify`+`kasir`) + health/deploy fail-closed |
 | 2026-09-20 | Chat-only refuse (`KASIR_MULTIMODAL=0`), stamp v2, `kasir_tutup_toko`; diagrams L0c + L7 |
+| 2026-09-20 | **G11 egress** — `transform_llm_output` in kasir-pipe 1.3.5 (`user_safe` denylist) |

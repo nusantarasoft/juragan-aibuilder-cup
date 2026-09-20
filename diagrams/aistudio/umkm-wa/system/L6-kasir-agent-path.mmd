@@ -12,6 +12,8 @@ flowchart TB
   T -->|draft jual beli| POLL[send-poll Ya Batal]
   POLL --> U
   T -->|confirm / tutup toko| DB
+  G --> E[transform_llm_output<br/>user_safe egress]
+  E --> U
 
   subgraph deny["Disabled on WhatsApp"]
     X1[terminal file browser web]
