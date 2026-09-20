@@ -66,6 +66,7 @@ Script melakukan:
    - apply migrasi app
    - `docker compose ... up -d`
    - restart `nsoft3-nginx` (supaya upstream IP tidak stale → hindari 502)
+   - **prune image nsoft3** (`prune-nsoft3-images.sh`) — hapus image/`dangling` tidak terpakai milik stack NusantaraSoft saja (label `nsoft3-prod` + repo `nsoft3/*` + hermes-agent unused). Tidak menyentuh image app lain di server.
 
 ### Switch berguna
 
@@ -98,7 +99,8 @@ Di server (atau dari laptop ke IP publik):
 
 - `scripts/master-production/deploy.ps1` — orkestrasi dari Windows
 - `scripts/master-production/pull-on-server.sh` — git pull/bootstrap di server
-- `scripts/master-production/redeploy.sh` — build + up + migrasi
+- `scripts/master-production/redeploy.sh` — build + up + migrasi + prune image nsoft3
+- `scripts/master-production/prune-nsoft3-images.sh` — disk hygiene: unused `nsoft3/*` / compose-project images only
 - `scripts/master-production/apply-migrations.sh` — SQL migrasi
 - `scripts/master-production/_ssh.py` — helper SSH/SFTP
 - `docker-compose.master-production.yml`

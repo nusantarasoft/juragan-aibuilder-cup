@@ -38,6 +38,7 @@ INCLUDE = [
     "scripts/master-production/hermes-kasir-health.py",
     "scripts/master-production/hermes-wa-tool-allowlist.py",
     "scripts/master-production/hermes-kasir-platform-locks.py",
+    "scripts/master-production/prune-nsoft3-images.sh",
 ]
 
 
@@ -434,6 +435,11 @@ print(mod._handle_report({"phone": phone, "period": "month"}))
             run(
                 "head -n 20 /opt/nusantarasoft-3/volumes/hermes/SOUL.md || true"
             )
+        # Disk hygiene: unused nsoft3 images / dangling with project label only.
+        run(
+            f"bash {REMOTE}/scripts/master-production/prune-nsoft3-images.sh || true",
+            timeout=300,
+        )
         return 0
     finally:
         client.close()
