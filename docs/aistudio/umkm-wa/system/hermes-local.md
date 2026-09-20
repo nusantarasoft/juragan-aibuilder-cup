@@ -63,7 +63,7 @@ Pair via Admin → WhatsApp Gateway (or Hermes dashboard QR).
 
 **Note:** A fresh `volumes/hermes/config.yaml` may still show stock defaults (`tool_progress: all`, empty `plugins.enabled`, `platform_toolsets.whatsapp: hermes-whatsapp`). Production posture is applied by `silence-hermes-wa-tools.py` / `deploy-kasir-tools.py` / `hermes-wa-tool-allowlist.py` — health script fails on plugin or tool-allowlist drift (gaps **G2**, **G5**, **G13**).
 
-`KASIR_MULTIMODAL` defaults **off** (chat-only): inbound foto/suara get a short refuse. Leave `0` / unset in prod unless intentionally testing media pass-through. Wire: compose `KASIR_MULTIMODAL=${KASIR_MULTIMODAL:-0}` + `.env.master-production`.
+`KASIR_MULTIMODAL` compose default **off** (chat-only). **Prod soft GA ON** (2026-09-20): foto/suara pass through → STT/vision + draft jual. Wire: compose `KASIR_MULTIMODAL=${KASIR_MULTIMODAL:-0}` + `.env.master-production` (prod currently `1`).
 
 **Multimodal smoke checklist**
 
@@ -71,10 +71,10 @@ Pair via Admin → WhatsApp Gateway (or Hermes dashboard QR).
 2. Or one-shot: `HERMES_HOME=./volumes/hermes python3 scripts/master-production/hermes-kasir-posture.py apply` (also used by `redeploy.sh` / `deploy-kasir-tools.py` after hermes recreate).
 3. **OFF (automated):** `docker exec -e HERMES_HOME=/opt/data nsoft3-hermes python3 /opt/data/multimodal-smoke.py off --phone 628…` → skip + refuse teks. Optional `--send` to deliver refuse over WA.
 4. **OFF (manual QA):** allowlisted phone sends real foto/voice → same refuse; log `kasir-pipe: media refuse`.
-5. **ON (time-boxed):** set `KASIR_MULTIMODAL=1` → recreate hermes → `multimodal-smoke.py on` + optional real media → set `0` → recreate → re-confirm OFF.
+5. **ON:** set `KASIR_MULTIMODAL=1` → recreate hermes → `multimodal-smoke.py on` + optional real media.
 6. Facts still tools/DB only — never MEMORY.md ledger (diagram **L8**). Short-term per-chat WA history is OK (konteks thread); that is not store KB. See architecture Platform locks + **L0c** / **L7** / **L8**.
 
-**W2 closed 2026-09-20 (prod):** health + posture PASS; OFF refuse + ON smoke; live OFF refuse; **time-boxed ON** live foto → `allowlist ok` + `Image routing: native` (no media refuse); restored `KASIR_MULTIMODAL=0` + OFF smoke PASS.
+**W2 + soft GA 2026-09-20 (prod):** health + posture PASS; OFF/ON smoke; live foto ON; left **`KASIR_MULTIMODAL=1`** (dengan consult ON).
 
 ### Kurikulum consult (`KASIR_CONSULT`)
 
