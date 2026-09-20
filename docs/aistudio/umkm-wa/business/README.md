@@ -3,6 +3,8 @@
 | Audiens | Buka |
 |---------|------|
 | **Sales / tenant / orang bisnis** | [pitch.md](./pitch.md) |
+| **Owner usaha mikro (satu lembar + contoh chat)** | [penawaran-usaha-mikro.md](./penawaran-usaha-mikro.md) |
+| **Landing page web** | Repo `landing-page` → route [`/kasir`](../../../../landing-page/src/app/kasir/page.tsx) |
 | **Tim internal** (trial, checklist) | [ops/](./ops/) |
 | **Development** | [../system/](../system/) |
 

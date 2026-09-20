@@ -3,7 +3,14 @@
 **Untuk siapa:** sales, orang bisnis, pemilik toko (tenant).  
 **Bukan** catatan teknis development — itu di folder terpisah.
 
-Satu kalimat: pemilik warung chat ke **nomor WhatsApp bisnis NusantaraSoft** → ketik **DAFTAR** → admin setujui di AI Studio → toko aktif → bisa **cek stok**, catat jual/beli, lihat laporan, dan **tanya tips bisnis dari buku kurikulum UKM** lewat **chat teks**.
+**Satu lembar untuk owner usaha mikro** (masalah → solusi → contoh chat): [penawaran-usaha-mikro.md](./penawaran-usaha-mikro.md).  
+**Landing jual:** `/kasir` — wedge *dua kerjaan, satu chat*, hari tanpa/dengan, trust angka, beda app, cara daftar, keberatan + CTA **DAFTAR**.
+
+**Satu kalimat (wedge):** **kasir warung di WhatsApp** (**+62 811-924-689**) — cek stok, catat jual, laporan, tutup toko, plus tips usaha (`tanya` / `konsultasi` / `pendamping`) — **tanpa unduh app**. Owner ketik **DAFTAR** → admin setujui → toko hidup kalau **`cek stok` dijawab**.
+
+**Beda dari app kasir (satu baris sales):** app harus dibuka dulu; ini tetap di WhatsApp yang sudah dipakai setiap hari.
+
+**Soft line komersial (boleh diucapkan):** detail kerja sama dijelaskan tim setelah approve — **bukan** bayar di chat. Jangan sebut angka harga di soft GA kecuali sudah disepakati.
 
 Tanpa DAFTAR + Approve, nomor yang belum dikenal tidak dilayani sebagai kasir (bot diam atau hanya mengarahkan daftar).
 
@@ -60,12 +67,18 @@ Semua lewat **chat teks** ke nomor bisnis yang sama (bukan app terpisah):
 |-------------------|--------------|
 | *cek stok indomie* | Sisa barang |
 | *stok mau habis* | Daftar yang menipis |
+| *daftar barang* / *katalog* | Daftar produk toko |
 | *jual 2 indomie* / *ada yang beli…* | Ringkasan → ketuk **Ya, simpan** / **Batal** (atau ketik *ya* / *batal*) |
-| *satu lagi* | Ulang item jual terakhir (masih perlu *ya*) |
+| *satu lagi* / *ulang yang tadi* | Ulang item jual terakhir (masih perlu *ya*) |
 | *belanja / restock…* | Ringkasan belanja → *ya* |
-| *laporan* / *paling laris* | Omzet & ringkasan |
-| *tutup toko* | Omzet hari ini + stok menipis (ritual closing) |
+| *laporan* | Omzet & ringkasan |
+| *paling laris* / *best seller* | Produk terlaris |
+| *tutup toko* / *mau pulang* | Omzet hari ini + stok menipis (ritual closing) |
 | *tanya …* / *konsultasi …* / *pendamping …* | Saran singkat dari **buku kurikulum UKM** (bukan stok toko). Soft GA: saklar **ON** di prod; kalau ops matikan, bot bilang belum aktif |
+| foto / suara (multimodal ON) | Draft jual/beli dari media → *ya* |
+| *STATUS* (saat menunggu Approve) | Cek antrean DAFTAR |
+
+Lembar owner + contoh chat sehari: [penawaran-usaha-mikro.md](./penawaran-usaha-mikro.md).
 
 Angka stok/harga/omzet diambil dari data toko yang sudah Approve — **bukan** “tebak AI” dari dokumen generik. Konsultasi kurikulum hanya dari PDF buku yang diingest — **bukan** dari ledger jual/beli. Lihat [L0d](../../../../diagrams/aistudio/umkm-wa/business/L0d-tanya-kurikulum.svg): *cek stok* ≠ *tanya bisnis*.
 

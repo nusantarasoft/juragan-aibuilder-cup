@@ -7,6 +7,8 @@ Satu nomor WhatsApp bisnis shared; banyak toko dipisah by nomor pemilik. Pemilik
 | Siapa | Buka |
 |-------|------|
 | **Sales / tenant / bisnis** | [business/pitch.md](./business/pitch.md) |
+| **Owner usaha mikro (penawaran + contoh)** | [business/penawaran-usaha-mikro.md](./business/penawaran-usaha-mikro.md) |
+| **Landing `/kasir`** | [`landing-page/src/app/kasir`](../../../landing-page/src/app/kasir/) |
 | **Tim internal** (trial) | [business/ops/](./business/ops/) — termasuk [consult-kurikulum.md](./business/ops/consult-kurikulum.md) |
 | **Development** | [system/](./system/) |
 
