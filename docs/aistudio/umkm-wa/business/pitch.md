@@ -62,6 +62,7 @@ Semua lewat **chat teks** ke nomor bisnis yang sama (bukan app terpisah):
 | *satu lagi* | Ulang item jual terakhir (masih perlu *ya*) |
 | *belanja / restock…* | Ringkasan belanja → *ya* |
 | *laporan* / *paling laris* | Omzet & ringkasan |
+| *tutup toko* | Omzet hari ini + stok menipis (ritual closing) |
 
 Angka stok/harga/omzet diambil dari data toko yang sudah Approve — **bukan** “tebak AI” dari dokumen generik.
 
@@ -72,7 +73,7 @@ Angka stok/harga/omzet diambil dari data toko yang sudah Approve — **bukan** �
 | Level | Gambar | Isi |
 |-------|--------|-----|
 | Cerita besar | [L0](../../../../diagrams/aistudio/umkm-wa/business/L0-bisnis-besar.svg) | DAFTAR → Approve → kasir |
-| Ritual harian | [L0b](../../../../diagrams/aistudio/umkm-wa/business/L0b-kasir-harian.svg) | stok / jual / ya / laporan |
+| Ritual harian | [L0b](../../../../diagrams/aistudio/umkm-wa/business/L0b-kasir-harian.svg) | stok / jual / ya / laporan / tutup toko |
 | Satu nomor, banyak toko | [L1](../../../../diagrams/aistudio/umkm-wa/business/L1-shared-inbox.svg) | Shared inbox |
 | Siapa melakukan apa | [L2](../../../../diagrams/aistudio/umkm-wa/business/L2-aktor-swimlane.svg) | Owner vs admin |
 

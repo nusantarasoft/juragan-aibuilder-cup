@@ -142,6 +142,7 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 **Effort:** S
 **Priority:** P3
 **Depends on:** Intake admin PR shipped
+**Status:** shipped 2026-09-20 — `kasir_tutup_toko` (hari-ini omzet + stok menipis) + SOUL routing; not just `kasir_daily_report`.
 
 ### Voice note / foto nota as sale input
 

@@ -548,7 +548,9 @@ def _format_top_products(
     return "\n".join(lines)
 
 
-def _combined_report(tenant_id: str, period: str) -> str:
+def _combined_report(
+    tenant_id: str, period: str, *, closing: bool = False
+) -> str:
     label, sales_list = _orders_in_period(tenant_id, period)
     buy_q: dict[str, str] = {
         "select": "total_cost",
@@ -578,10 +580,23 @@ def _combined_report(tenant_id: str, period: str) -> str:
         lines.append("")
         lines.append(_format_top_products(label, ranked, standalone=False))
     lines.append("")
-    lines.append(
-        "Mau lihat *minggu ini* atau *bulan ini*? Ketik *laporan minggu ini* / *laporan bulan ini*."
-    )
+    if closing:
+        lines.append("Ringkasan tutup toko untuk hari ini.")
+    else:
+        lines.append(
+            "Mau lihat *minggu ini* atau *bulan ini*? "
+            "Ketik *laporan minggu ini* / *laporan bulan ini*."
+        )
     return "\n".join(lines)
+
+
+def _format_tutup_recap(report: str, low_stock: str) -> str:
+    """Pure compose for unit tests — omzet hari ini + stok menipis + closing."""
+    parts = [report.strip(), low_stock.strip()]
+    parts.append(
+        "Toko ditutup untuk hari ini. Besok tinggal ketik *jual* / *stok* lagi ya."
+    )
+    return "\n\n".join(p for p in parts if p)
 
 
 def _with_tenant(params: dict[str, Any] | None, kwargs: dict[str, Any]):
@@ -684,6 +699,32 @@ def _handle_report(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
     except Exception as err:
         logger.exception("kasir_daily_report failed: %s", err)
         return safe_user_error("report")
+
+
+def _handle_tutup_toko(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
+    """Closing ritual: today's omzet + thin stock — no period upsell."""
+    try:
+        params = params or {}
+        resolved, err = _with_tenant(params, kwargs)
+        if err:
+            return err
+        assert resolved
+        _phone, tenant_id = resolved
+        try:
+            threshold = float(
+                params.get("threshold") if params.get("threshold") is not None else 10
+            )
+        except Exception:
+            threshold = 10.0
+        report = _combined_report(tenant_id, "today", closing=True)
+        low = _format_low_stock(
+            _low_stock_rows(tenant_id, threshold=threshold, limit=10),
+            threshold,
+        )
+        return _format_tutup_recap(report, low)
+    except Exception as err:
+        logger.exception("kasir_tutup_toko failed: %s", err)
+        return safe_user_error("tutup")
 
 
 def _handle_top_products(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
@@ -858,6 +899,32 @@ def register(ctx) -> None:
             _handle_report,
         ),
         (
+            "kasir_tutup_toko",
+            {
+                "name": "kasir_tutup_toko",
+                "description": (
+                    "Ritual tutup toko: laporan omzet *hari ini* + daftar stok "
+                    "menipis dalam satu balasan. Panggil saat user bilang tutup "
+                    "toko / tutup / closing / mau pulang. Jangan tanya periode."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "threshold": {
+                            "type": "number",
+                            "description": "Ambang stok menipis (default 10).",
+                        },
+                        "phone": {
+                            "type": "string",
+                            "description": "Nomor toko (opsional; biasanya otomatis).",
+                        },
+                    },
+                    "required": [],
+                },
+            },
+            _handle_tutup_toko,
+        ),
+        (
             "kasir_top_products",
             {
                 "name": "kasir_top_products",
@@ -896,6 +963,7 @@ def register(ctx) -> None:
         "kasir_low_stock": "low_stock",
         "kasir_list_products": "products",
         "kasir_daily_report": "report",
+        "kasir_tutup_toko": "tutup",
         "kasir_top_products": "top",
         "kasir_draft_sale": "draft_sale",
         "kasir_repeat_last_sale": "draft_sale",
