@@ -240,6 +240,62 @@ def main() -> int:
             results,
         )
 
+    # Q1–Q3 platform locks (WARN): STT/vision ready; SOUL multimodal; no MEMORY ledger.
+    try:
+        from pathlib import Path as _P
+
+        pl_path = _P(__file__).resolve().parent / "hermes-kasir-platform-locks.py"
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("hermes_kasir_platform_locks", pl_path)
+        pl = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(pl)
+        cfg_text = config_path.read_text(encoding="utf-8", errors="replace")
+        for ok_pl, detail_pl in pl.check_text(cfg_text):
+            check("platform-lock-config", ok_pl, detail_pl, False, results)
+        soul_text = ""
+        if args.docker:
+            soul_text = docker_cat(args.container, "/opt/data/SOUL.md") or ""
+        else:
+            soul_p = home / "SOUL.md"
+            if soul_p.is_file():
+                soul_text = soul_p.read_text(encoding="utf-8", errors="replace")
+        soul_ok = "kasir_get_stock" in soul_text and (
+            "Foto / voice" in soul_text or "multimodal" in soul_text.lower()
+        )
+        check(
+            "platform-lock-soul",
+            soul_ok,
+            "SOUL has tool routing + Foto/voice multimodal section"
+            if soul_ok
+            else "SOUL missing tool table or Foto/voice section",
+            False,
+            results,
+        )
+        mem_present = False
+        if args.docker:
+            mem_present = docker_cat(args.container, "/opt/data/MEMORY.md") is not None
+        else:
+            mem_present = (home / "MEMORY.md").is_file()
+        check(
+            "platform-lock-no-memory-kb",
+            not mem_present,
+            "MEMORY.md absent (good — facts via tools/DB)"
+            if not mem_present
+            else "MEMORY.md present — must not store ledger/stok as KB",
+            False,
+            results,
+        )
+    except Exception as exc:
+        check(
+            "platform-lock-config",
+            False,
+            f"checker error: {exc}",
+            False,
+            results,
+        )
+
     if data.get("_fallback"):
         check(
             "yaml-parser",

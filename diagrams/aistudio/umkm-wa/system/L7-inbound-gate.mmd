@@ -3,7 +3,9 @@
 flowchart TB
   IN[Inbound WA event] --> MM{KASIR_MULTIMODAL?}
   MM -->|OFF + media| REF[Send refuse teks<br/>skip agent]
-  MM -->|ON or text| AL{Allowlist?}
+  MM -->|ON + media| GV[Gateway STT / vision<br/>stt.id + image_input auto]
+  MM -->|text| AL{Allowlist?}
+  GV --> AL
   AL -->|No + REG=1| REG[DAFTAR wizard]
   AL -->|No + REG=0| SKIP[Silent skip]
   AL -->|Yes| ST[Stamp sender<br/>map per chat v2]
@@ -11,6 +13,7 @@ flowchart TB
   AG --> TOOLS{SOUL route}
   TOOLS -->|cek stok| T1[kasir_get_stock]
   TOOLS -->|jual / satu lagi| T2[draft → poll → confirm]
+  TOOLS -->|foto / voice ON| T2
   TOOLS -->|laporan| T3[kasir_daily_report]
   TOOLS -->|tutup toko| T4[kasir_tutup_toko]
   T1 --> DB[(Supabase)]

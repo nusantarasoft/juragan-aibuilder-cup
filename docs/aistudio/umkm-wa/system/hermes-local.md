@@ -63,7 +63,7 @@ Pair via Admin → WhatsApp Gateway (or Hermes dashboard QR).
 
 **Note:** A fresh `volumes/hermes/config.yaml` may still show stock defaults (`tool_progress: all`, empty `plugins.enabled`, `platform_toolsets.whatsapp: hermes-whatsapp`). Production posture is applied by `silence-hermes-wa-tools.py` / `deploy-kasir-tools.py` / `hermes-wa-tool-allowlist.py` — health script fails on plugin or tool-allowlist drift (gaps **G2**, **G5**, **G13**).
 
-`KASIR_MULTIMODAL` defaults **off** (chat-only): inbound foto/suara get a short refuse. Leave unset in prod unless intentionally testing media pass-through. See architecture Platform locks + diagram **L0c** / **L7**.
+`KASIR_MULTIMODAL` defaults **off** (chat-only): inbound foto/suara get a short refuse. Leave unset in prod unless intentionally testing media pass-through. When testing ON: ensure `hermes-kasir-platform-locks.py apply` ran (`stt.language=id`, `agent.image_input_mode=auto`) and SOUL has *Foto / voice*. Facts still tools/DB only — never MEMORY.md ledger (diagram **L8**). See architecture Platform locks + **L0c** / **L7** / **L8**.
 
 ---
 

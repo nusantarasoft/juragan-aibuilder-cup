@@ -37,6 +37,7 @@ INCLUDE = [
     "scripts/master-production/hermes-home/SOUL.md",
     "scripts/master-production/hermes-kasir-health.py",
     "scripts/master-production/hermes-wa-tool-allowlist.py",
+    "scripts/master-production/hermes-kasir-platform-locks.py",
 ]
 
 
@@ -277,6 +278,18 @@ def main() -> int:
                 flush=True,
             )
             return code
+        # Q1–Q3 platform locks: STT id + image_input_mode ready for multimodal ON;
+        # prod chat-only stays KASIR_MULTIMODAL=0. Soft-fail (WARN via health).
+        run(
+            "HERMES_CONTAINER=nsoft3-hermes "
+            "python3 /opt/nusantarasoft-3/scripts/master-production/hermes-kasir-platform-locks.py "
+            "apply --docker --container nsoft3-hermes"
+        )
+        run(
+            "HERMES_CONTAINER=nsoft3-hermes "
+            "python3 /opt/nusantarasoft-3/scripts/master-production/hermes-kasir-platform-locks.py "
+            "check --docker --container nsoft3-hermes"
+        )
         # G2 + G13: refuse open gateway (*) without kasir plugins / tool allowlist.
         code, _ = run(
             "HERMES_HOME=/opt/nusantarasoft-3/volumes/hermes "

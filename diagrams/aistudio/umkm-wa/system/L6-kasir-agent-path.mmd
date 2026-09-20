@@ -4,8 +4,10 @@ flowchart TB
   B --> P[kasir-pipe]
   P -->|foto/suara OFF| REF[Refuse: ketik jual/stok]
   REF --> U
+  P -->|foto/suara ON| GV[Gateway STT / vision]
   P -->|deny| R[DAFTAR wizard]
   P -->|ok stamp per-chat| G[Gateway plus LLM]
+  GV --> G
   G --> S[SOUL.md shared]
   S --> T[kasir-tools]
   T -->|stok laporan jual tutup| DB[(Supabase tenant)]

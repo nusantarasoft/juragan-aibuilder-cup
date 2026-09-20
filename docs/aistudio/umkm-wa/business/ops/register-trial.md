@@ -28,7 +28,7 @@ Tanpa langkah itu, nomor asing dulu diabaikan (bot “mati”). Funnel ini mengg
 | B6 | Identitas | **1 toko = 1 nomor owner** di v1 (karyawan / multi-HP = out of scope) |
 | B7 | Nomor WA | **1 nomor bisnis NusantaraSoft shared** (bukan 1 nomor per toko) |
 
-**Diagram bisnis (SVG):** pitch sales → L0–L2 (+ L0b, **L0c**) di [pitch.md](../pitch.md). Full ladder termasuk L3–L4: [`diagrams/.../business/`](../../../../../diagrams/aistudio/umkm-wa/business/). System gate: [`L7-inbound-gate.svg`](../../../../../diagrams/aistudio/umkm-wa/system/L7-inbound-gate.svg).
+**Diagram bisnis (SVG):** pitch sales → L0–L2 (+ L0b, **L0c**) di [pitch.md](../pitch.md). Full ladder termasuk L3–L4: [`diagrams/.../business/`](../../../../../diagrams/aistudio/umkm-wa/business/). System gate: [`L7-inbound-gate.svg`](../../../../../diagrams/aistudio/umkm-wa/system/L7-inbound-gate.svg) · knowledge/SOUL: [`L8-knowledge-soul.svg`](../../../../../diagrams/aistudio/umkm-wa/system/L8-knowledge-soul.svg).
 
 ```mermaid
 flowchart TB

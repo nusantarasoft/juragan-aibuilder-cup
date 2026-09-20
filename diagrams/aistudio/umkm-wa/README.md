@@ -5,7 +5,7 @@ Part of [docs/aistudio/](../../../docs/aistudio/README.md).
 | Bagian | Folder | Level |
 |--------|--------|-------|
 | **Business** | [business/](./business/) | L0–L4 (+ L0b, L0c) |
-| **System** | [system/](./system/) | L5–L7 |
+| **System** | [system/](./system/) | L5–L8 |
 
 ## Untuk sales / pitch (disarankan)
 
@@ -30,13 +30,14 @@ Label masih teknis; bukan pintu sales.
 
 Ops docs: [business/ops/](../../../docs/aistudio/umkm-wa/business/ops/)
 
-## System (L5–L7)
+## System (L5–L8)
 
 | Level | SVG | Isi |
 |-------|-----|-----|
 | **L5** | [L5-hermes-runtime.svg](./system/L5-hermes-runtime.svg) | Containers / pipe / media-refuse / bridge |
 | **L6** | [L6-kasir-agent-path.svg](./system/L6-kasir-agent-path.svg) | SOUL → kasir-tools → DB; toolsets berbahaya OFF |
-| **L7** | [L7-inbound-gate.svg](./system/L7-inbound-gate.svg) | Urutan gate: multimodal → allowlist → stamp → tools (stok/jual/laporan/**tutup**) |
+| **L7** | [L7-inbound-gate.svg](./system/L7-inbound-gate.svg) | Gate: multimodal OFF refuse / ON STT+vision → allowlist → stamp → tools |
+| **L8** | [L8-knowledge-soul.svg](./system/L8-knowledge-soul.svg) | Fakta = tools/DB only; satu SOUL; no MEMORY/RAG ledger |
 
 Docs: [hermes-architecture.md](../../../docs/aistudio/umkm-wa/system/hermes-architecture.md)
 

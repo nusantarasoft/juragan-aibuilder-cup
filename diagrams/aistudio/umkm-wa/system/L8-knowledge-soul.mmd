@@ -1,0 +1,16 @@
+%% System L8: knowledge + character locks (Q2 / Q3) — eng / ops
+%% Facts never via RAG or MEMORY.md; one shared SOUL; tenant = tools/DB.
+flowchart TB
+  Q[Owner tanya stok / omzet] --> S[SOUL.md shared<br/>satu persona kasir]
+  S --> T[kasir-tools]
+  T --> DB[(Supabase tenant)]
+  DB --> A[Jawaban akurat]
+
+  Q -.->|FORBIDDEN| R[RAG ledger embed]
+  Q -.->|FORBIDDEN| M[MEMORY.md as store KB]
+  Q -.->|FORBIDDEN| MS[Multi-SOUL per toko]
+
+  subgraph later["Optional later only"]
+    DOC[Per-tenant SOP docs<br/>RAG + tenant_id filter]
+  end
+  DOC -.->|never for stok/harga/omzet| T

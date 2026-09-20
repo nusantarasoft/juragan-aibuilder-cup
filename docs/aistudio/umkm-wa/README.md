@@ -10,4 +10,4 @@ Satu nomor WhatsApp bisnis shared; banyak toko dipisah by nomor pemilik. Pemilik
 | **Tim internal** (trial) | [business/ops/](./business/ops/) |
 | **Development** | [system/](./system/) |
 
-Diagram: [diagrams/aistudio/umkm-wa](../../../diagrams/aistudio/umkm-wa/README.md) — pitch L0–L2 (+ L0b ritual, **L0c** chat-only); system L5–**L7**.
+Diagram: [diagrams/aistudio/umkm-wa](../../../diagrams/aistudio/umkm-wa/README.md) — pitch L0–L2 (+ L0b ritual, **L0c** chat-only); system L5–**L8**.

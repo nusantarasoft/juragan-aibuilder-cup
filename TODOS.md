@@ -155,7 +155,7 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 **Effort:** L
 **Priority:** P3
 **Depends on:** Kill-guide-flow PR; media ingest; prefer after Hermes WhatsApp tool allowlist P0
-**Status:** partial 2026-09-20 — `KASIR_MULTIMODAL` (default off) + chat-only refuse in `kasir-pipe` 1.3.4. Remaining: vision/STT → draft sale when flag ON.
+**Status:** shipped 2026-09-20 — OFF refuse in `kasir-pipe`; ON path = Hermes gateway STT (`stt.language=id`) + `image_input_mode=auto` + SOUL *Foto / voice* → draft. Runtime locks: `hermes-kasir-platform-locks.py` on deploy + health WARNs. Prod stays `KASIR_MULTIMODAL=0` until ops flips the flag.
 ### Official WhatsApp Cloud API vs Hermes
 
 **What:** Optional official WhatsApp Business Cloud API path alongside unofficial Hermes/Baileys.

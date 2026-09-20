@@ -21,7 +21,7 @@ When you change **product behavior**, **user/ops flow**, **architecture**, or **
 | Ops / trial | `docs/aistudio/umkm-wa/business/ops/` | AIDLC examples, checklist |
 | System | `docs/aistudio/umkm-wa/system/hermes-architecture.md` (+ gaps/local) | Mental model, env, failure modes, platform locks |
 | Business diagrams | `diagrams/aistudio/umkm-wa/business/` L0–L4 (+ L0b, **L0c**) | Update `.mmd` **and** re-render `.svg` |
-| System diagrams | `diagrams/aistudio/umkm-wa/system/` L5–**L7** | Same — source + SVG |
+| System diagrams | `diagrams/aistudio/umkm-wa/system/` L5–**L8** | Same — source + SVG |
 | Indexes | `docs/aistudio/umkm-wa/README.md`, `diagrams/aistudio/umkm-wa/**/README.md` | Link new levels |
 
 Other product areas: same duty under their `docs/` + `diagrams/` trees — find the nearest ladder README and extend it.

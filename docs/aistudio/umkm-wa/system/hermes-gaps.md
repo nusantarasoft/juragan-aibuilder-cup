@@ -94,3 +94,4 @@ python3 -m unittest scripts/master-production/hermes-plugins/kasir-tools/test_us
 | 2026-09-20 | **G13 FIXED** — WhatsApp tool allowlist (`clarify`+`kasir`) + health/deploy fail-closed |
 | 2026-09-20 | Chat-only refuse (`KASIR_MULTIMODAL=0`), stamp v2, `kasir_tutup_toko`; diagrams L0c + L7 |
 | 2026-09-20 | **G11 egress** — `transform_llm_output` in kasir-pipe 1.3.5 (`user_safe` denylist) |
+| 2026-09-20 | Platform locks Q1–Q3 harden — `hermes-kasir-platform-locks.py` (STT id + image_input), SOUL Foto/voice + no MEMORY KB, diagram **L8** |
