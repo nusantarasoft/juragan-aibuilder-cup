@@ -106,7 +106,7 @@ Synthesized from eng review. Checkbox as you ship.
 - [x] **T4 (P0)** — Compose/env — wire URL/key/notebook/flag defaults + `.env.example`
 - [x] **T5 (P1)** — Tests — Nest unit auth/miss/max-len/hit-mock; Hermes unit OFF/ON; smoke OFF/ON + stock wiring check
 - [x] **T6 (P1)** — Docs/diagrams — L8 + pitch + hermes-architecture; ops ingest note
-- [ ] **T7 (P2)** — Ops — ingest PDF; set prod `KASIR_CONSULT_NOTEBOOK_ID`; pilot flag flip like multimodal
+- [x] **T7 (P2)** — Ops — notebook `48aee243-…` ingest **376 chunks** (`google_ai` / `gemini-embedding-001`); `NOTEBOOK_ID`/`KEY` wired; WA pilot RAG hit verified; prod **`KASIR_CONSULT=1`** (soft GA)
 
 ## Failure modes
 

@@ -23,9 +23,11 @@ from unittest import mock
 
 
 def _repo_plugin_root() -> Path:
-    return (
-        Path(__file__).resolve().parent / "hermes-plugins" / "kasir-tools"
-    )
+    here = Path(__file__).resolve()
+    # Container copy: /opt/data/consult-smoke.py → plugins next to it
+    if (Path("/opt/data/plugins/kasir-tools") / "consult.py").is_file():
+        return Path("/opt/data/plugins/kasir-tools")
+    return here.parent / "hermes-plugins" / "kasir-tools"
 
 
 def load_consult(root: Path):

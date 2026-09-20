@@ -14,6 +14,7 @@ provides_tools:
   - kasir_daily_report
   - kasir_tutup_toko
   - kasir_top_products
+  - kasir_consult
   - kasir_draft_sale
   - kasir_repeat_last_sale
   - kasir_confirm_sale

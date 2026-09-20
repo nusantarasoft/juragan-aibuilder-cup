@@ -40,6 +40,7 @@ INCLUDE = [
     "scripts/master-production/hermes-kasir-platform-locks.py",
     "scripts/master-production/hermes-kasir-posture.py",
     "scripts/master-production/hermes-multimodal-smoke.py",
+    "scripts/master-production/hermes-consult-smoke.py",
     "scripts/master-production/prune-nsoft3-images.sh",
 ]
 
@@ -177,6 +178,10 @@ def main() -> int:
         run(
             f"docker cp {REMOTE}/scripts/master-production/hermes-multimodal-smoke.py "
             f"nsoft3-hermes:/opt/data/multimodal-smoke.py"
+        )
+        run(
+            f"docker cp {REMOTE}/scripts/master-production/hermes-consult-smoke.py "
+            f"nsoft3-hermes:/opt/data/consult-smoke.py"
         )
         code, _ = run(
             "docker exec -e HERMES_HOME=/opt/data nsoft3-hermes "
