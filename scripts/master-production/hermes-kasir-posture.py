@@ -1,0 +1,309 @@
+#!/usr/bin/env python3
+"""Restore / verify Hermes kasir production posture (idempotent).
+
+After hermes recreate, config.yaml can lose plugins.enabled or display silence.
+This script re-applies the locked kasir posture without a full plugin redeploy.
+
+Usage (on server):
+  HERMES_HOME=/opt/nusantarasoft-3/volumes/hermes \\
+    python3 scripts/master-production/hermes-kasir-posture.py apply
+  HERMES_HOME=/opt/nusantarasoft-3/volumes/hermes \\
+    python3 scripts/master-production/hermes-kasir-posture.py check
+
+  HERMES_CONTAINER=nsoft3-hermes python3 … apply --docker
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_HOME = Path(
+    os.environ.get("HERMES_HOME") or (ROOT / "volumes" / "hermes")
+)
+
+PLUGINS_BLOCK = """plugins:
+  enabled:
+    - kasir-pipe
+    - kasir-probe
+    - kasir-tools
+  disabled: []
+  entries:
+    kasir-probe:
+      allow_tool_override: false
+    kasir-tools:
+      allow_tool_override: false
+    kasir-pipe:
+      allow_tool_override: false
+"""
+
+DISPLAY_DEFAULTS = {
+    "tool_progress": "off",
+    "interim_assistant_messages": "false",
+    "show_commentary": "false",
+    "tool_progress_command": "false",
+    "cleanup_progress": "true",
+    "long_running_notifications": "false",
+    "busy_ack_detail": "false",
+    "streaming": "false",
+}
+
+
+def _set_top(block: str, key: str, value: str) -> str:
+    pat = re.compile(rf"(?m)^  {re.escape(key)}:.*$")
+    line = f"  {key}: {value}"
+    if pat.search(block):
+        return pat.sub(line, block, count=1)
+    return block.rstrip("\n") + f"\n{line}\n"
+
+
+def ensure_plugins(text: str) -> tuple[str, bool]:
+    if re.search(r"(?m)^plugins:\s*$", text):
+        text2 = re.sub(
+            r"(?ms)^plugins:\n.*?(?=^[a-zA-Z_]|\Z)",
+            PLUGINS_BLOCK.rstrip() + "\n\n",
+            text,
+            count=1,
+        )
+    else:
+        text2 = text.rstrip() + "\n\n" + PLUGINS_BLOCK
+    return text2, text2 != text
+
+
+def ensure_display_silence(text: str) -> tuple[str, bool]:
+    """Create display: if missing; force tool_progress off + key silence flags."""
+    m = re.search(r"(?ms)^(display:\n)(.*?)(?=^[a-zA-Z_][\w]*:|\Z)", text)
+    if not m:
+        body = ""
+        for k, v in DISPLAY_DEFAULTS.items():
+            body += f"  {k}: {v}\n"
+        body += "  platforms:\n    whatsapp:\n      tool_progress: off\n"
+        text2 = text.rstrip() + "\n\ndisplay:\n" + body + "\n"
+        return text2, True
+
+    head, body = m.group(1), m.group(2)
+    orig = body
+    for k, v in DISPLAY_DEFAULTS.items():
+        body = _set_top(body, k, v)
+
+    # platforms.whatsapp.tool_progress under display (Hermes layout variant)
+    if re.search(r"(?m)^  platforms:\s*$", body):
+        if re.search(r"(?m)^    whatsapp:\s*$", body):
+            if re.search(
+                r"(?ms)^    whatsapp:\n(?:      .*\n)*?      tool_progress:",
+                body,
+            ):
+                body = re.sub(
+                    r"(?ms)(^    whatsapp:\n(?:      .*\n)*?      tool_progress:\s*)\S*",
+                    r"\1off",
+                    body,
+                    count=1,
+                )
+            else:
+                body = re.sub(
+                    r"(?m)^(    whatsapp:\s*)$",
+                    r"\1\n      tool_progress: off",
+                    body,
+                    count=1,
+                )
+        else:
+            body = re.sub(
+                r"(?m)^(  platforms:\s*)$",
+                r"\1\n    whatsapp:\n      tool_progress: off",
+                body,
+                count=1,
+            )
+    else:
+        body = body.rstrip("\n") + "\n  platforms:\n    whatsapp:\n      tool_progress: off\n"
+
+    if not body.endswith("\n"):
+        body += "\n"
+    text2 = text[: m.start()] + head + body + text[m.end() :]
+    # Un-glue accidental offstt:
+    text2 = text2.replace("tool_progress: offstt:", "tool_progress: off\nstt:")
+    return text2, body != orig or text2 != text
+
+
+def apply_config(path: Path) -> list[str]:
+    notes: list[str] = []
+    text = path.read_text(encoding="utf-8", errors="replace")
+    text, ch = ensure_plugins(text)
+    if ch:
+        notes.append("plugins.enabled")
+    text, ch = ensure_display_silence(text)
+    if ch:
+        notes.append("display.silence")
+    # Keep plugins after display edits
+    text, ch = ensure_plugins(text)
+    if ch:
+        notes.append("plugins.reassert")
+    path.write_text(text, encoding="utf-8")
+    return notes
+
+
+def check_config(path: Path) -> list[tuple[bool, str]]:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    out: list[tuple[bool, str]] = []
+    enabled = re.search(
+        r"(?ms)^plugins:\n(?:.*?\n)?  enabled:\n((?:    - .*\n)*)",
+        text,
+    )
+    plugins = []
+    if enabled:
+        plugins = [
+            ln.strip()[2:].strip()
+            for ln in enabled.group(1).splitlines()
+            if ln.strip().startswith("- ")
+        ]
+    out.append(
+        (
+            "kasir-pipe" in plugins and "kasir-tools" in plugins,
+            f"plugins.enabled={plugins}",
+        )
+    )
+    m = re.search(r"(?ms)^display:\n(.*?)(?=^[a-zA-Z_]|\Z)", text)
+    body = m.group(1) if m else ""
+    tp = re.search(r"(?m)^  tool_progress:\s*(\S+)", body)
+    val = (tp.group(1).strip().strip("\"'") if tp else "")
+    out.append((val in ("off", "false", "0"), f"display.tool_progress={val!r}"))
+    return out
+
+
+def _run(cmd: list[str], timeout: int = 120) -> int:
+    print(">>>", " ".join(cmd)[:200], flush=True)
+    return subprocess.call(cmd, timeout=timeout)
+
+
+def apply_side_scripts(*, docker: bool, container: str, home: Path) -> int:
+    here = Path(__file__).resolve().parent
+    env = os.environ.copy()
+    if docker:
+        env["HERMES_CONTAINER"] = container
+        cmds = [
+            [
+                sys.executable,
+                str(here / "hermes-wa-tool-allowlist.py"),
+                "apply",
+                "--docker",
+                "--container",
+                container,
+            ],
+            [
+                sys.executable,
+                str(here / "hermes-kasir-platform-locks.py"),
+                "apply",
+                "--docker",
+                "--container",
+                container,
+            ],
+        ]
+    else:
+        env["HERMES_HOME"] = str(home)
+        cmds = [
+            [sys.executable, str(here / "hermes-wa-tool-allowlist.py"), "apply"],
+            [sys.executable, str(here / "hermes-kasir-platform-locks.py"), "apply"],
+        ]
+    rc = 0
+    for cmd in cmds:
+        code = subprocess.call(cmd, env=env, timeout=120)
+        if code != 0:
+            rc = code
+    return rc
+
+
+def sync_plugins_from_repo(home: Path) -> None:
+    """Copy kasir plugins + SOUL from repo scripts into Hermes volume."""
+    repo = ROOT
+    plugins_src = repo / "scripts" / "master-production" / "hermes-plugins"
+    dest = home / "plugins"
+    dest.mkdir(parents=True, exist_ok=True)
+    for name in ("kasir-tools", "kasir-pipe"):
+        src = plugins_src / name
+        if not src.is_dir():
+            continue
+        subprocess.check_call(["cp", "-a", str(src), str(dest / "")])
+    soul = (
+        repo
+        / "scripts"
+        / "master-production"
+        / "hermes-home"
+        / "SOUL.md"
+    )
+    if soul.is_file():
+        (home / "SOUL.md").write_text(
+            soul.read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        print("synced SOUL.md + plugins", flush=True)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("action", choices=("apply", "check"))
+    ap.add_argument("--docker", action="store_true")
+    ap.add_argument(
+        "--container",
+        default=os.environ.get("HERMES_CONTAINER", "nsoft3-hermes"),
+    )
+    ap.add_argument("--home", default=str(DEFAULT_HOME))
+    ap.add_argument(
+        "--sync-plugins",
+        action="store_true",
+        help="Copy repo kasir-pipe/tools + SOUL into HERMES_HOME before apply",
+    )
+    ap.add_argument(
+        "--skip-side",
+        action="store_true",
+        help="Skip allowlist + platform-locks scripts",
+    )
+    args = ap.parse_args()
+    home = Path(args.home)
+
+    if args.docker:
+        # Config lives on host volume bind in prod; still prefer host path.
+        cfg = home / "config.yaml"
+        if not cfg.is_file():
+            print(f"FAIL  missing {cfg} (host volume)", file=sys.stderr)
+            return 1
+    else:
+        cfg = home / "config.yaml"
+        if not cfg.is_file():
+            print(f"FAIL  missing {cfg}", file=sys.stderr)
+            return 1
+
+    if args.action == "apply":
+        if args.sync_plugins:
+            sync_plugins_from_repo(home)
+        notes = apply_config(cfg)
+        print("applied", ",".join(notes) or "noop", flush=True)
+        if not args.skip_side:
+            side = apply_side_scripts(
+                docker=args.docker, container=args.container, home=home
+            )
+            if side != 0:
+                print("WARN  side scripts exited", side, flush=True)
+
+    failed = False
+    for ok, detail in check_config(cfg):
+        print(f"{'PASS' if ok else 'FAIL'}  {detail}")
+        if not ok:
+            failed = True
+
+    # Health is authoritative for required checks when not --skip-side
+    if args.action == "check" or not args.skip_side:
+        env = os.environ.copy()
+        env["HERMES_HOME"] = str(home)
+        health = Path(__file__).resolve().parent / "hermes-kasir-health.py"
+        code = subprocess.call([sys.executable, str(health)], env=env, timeout=60)
+        if code != 0:
+            failed = True
+
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -68,9 +68,11 @@ Pair via Admin → WhatsApp Gateway (or Hermes dashboard QR).
 **Multimodal smoke checklist**
 
 1. `hermes-kasir-health.py` PASS (required checks) + `hermes-kasir-platform-locks.py check --docker` PASS (`stt.language=id`, `image_input_mode`, SOUL *Foto / voice*, no MEMORY.md).
-2. **OFF:** allowlisted phone sends foto/voice → refuse *“Maaf, kasir ini masih chat teks saja…”*; log `kasir-pipe: media refuse` — no agent tools.
-3. **ON (time-boxed):** set `KASIR_MULTIMODAL=1` → recreate hermes only → one media turn (no refuse; agent may draft or ask one clarifying question) → set `0` → recreate → re-confirm OFF refuse.
-4. Facts still tools/DB only — never MEMORY.md ledger (diagram **L8**). See architecture Platform locks + **L0c** / **L7** / **L8**.
+2. Or one-shot: `HERMES_HOME=./volumes/hermes python3 scripts/master-production/hermes-kasir-posture.py apply` (also used by `redeploy.sh` / `deploy-kasir-tools.py` after hermes recreate).
+3. **OFF (automated):** `docker exec -e HERMES_HOME=/opt/data nsoft3-hermes python3 /opt/data/multimodal-smoke.py off --phone 628…` → skip + refuse teks. Optional `--send` to deliver refuse over WA.
+4. **OFF (manual QA):** allowlisted phone sends real foto/voice → same refuse; log `kasir-pipe: media refuse`.
+5. **ON (time-boxed):** set `KASIR_MULTIMODAL=1` → recreate hermes → `multimodal-smoke.py on` + optional real media → set `0` → recreate → re-confirm OFF.
+6. Facts still tools/DB only — never MEMORY.md ledger (diagram **L8**). See architecture Platform locks + **L0c** / **L7** / **L8**.
 
 ---
 

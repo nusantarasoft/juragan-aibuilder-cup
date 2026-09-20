@@ -80,6 +80,10 @@ done < <(docker images --format '{{.ID}} {{.Repository}} {{.Tag}}' | awk '$2=="n
 echo "==> [prune] dangling images with nsoft3-prod label (if any remain)"
 docker image prune -f --filter "label=com.docker.compose.project=nsoft3-prod" 2>/dev/null || true
 
+echo "==> [prune] unused build cache older than 7d (reclaim disk; does not remove images)"
+# Filter is time-based on unused cache entries — safe on co-hosted hosts (no container wipe).
+docker builder prune -f --filter "until=168h" 2>/dev/null || true
+
 echo "==> [prune] done (removed≈${removed}, kept nsoft3≈${kept})"
 echo "==> [prune] disk after"
 df -h / | awk 'NR==1 || /\/$/'

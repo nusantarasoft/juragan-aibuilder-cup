@@ -38,6 +38,8 @@ INCLUDE = [
     "scripts/master-production/hermes-kasir-health.py",
     "scripts/master-production/hermes-wa-tool-allowlist.py",
     "scripts/master-production/hermes-kasir-platform-locks.py",
+    "scripts/master-production/hermes-kasir-posture.py",
+    "scripts/master-production/hermes-multimodal-smoke.py",
     "scripts/master-production/prune-nsoft3-images.sh",
 ]
 
@@ -115,6 +117,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--smoke-phone", default="")
     args = parser.parse_args()
+    smoke_phone = "".join(ch for ch in (args.smoke_phone or "6287859031592") if ch.isdigit())
 
     client = connect(load_env())
     run = make_runner(client)
@@ -133,125 +136,15 @@ def main() -> int:
         run(f"{HERMES_EXEC} hermes plugins enable kasir-tools 2>&1 | tail -5 || true")
         run(f"{HERMES_EXEC} hermes plugins doctor kasir-pipe 2>&1 | tail -20 || true")
         run(f"{HERMES_EXEC} hermes plugins enable kasir-pipe 2>&1 | tail -5 || true")
+        run(f"{HERMES_EXEC} hermes config set tools.tool_search.enabled off || true")
 
-        # Eager kasir tools — no deferred catalog / ⚙️ tool_search bubbles.
+        # Host volume: plugins.enabled + display silence (creates display: if missing).
         run(
-            f"{HERMES_EXEC} hermes config set tools.tool_search.enabled off || true"
+            f"HERMES_HOME={REMOTE}/volumes/hermes "
+            f"python3 {REMOTE}/scripts/master-production/hermes-kasir-posture.py "
+            f"apply --sync-plugins --skip-side"
         )
 
-        # Ensure plugins.enabled survives display silence patches.
-        run(
-            "python3 - <<'PY'\n"
-            "from pathlib import Path\n"
-            "import re\n"
-            "p = Path('/opt/nusantarasoft-3/volumes/hermes/config.yaml')\n"
-            "t = p.read_text(encoding='utf-8')\n"
-            "block = '''plugins:\\n"
-            "  enabled:\\n"
-            "    - kasir-pipe\\n"
-            "    - kasir-probe\\n"
-            "    - kasir-tools\\n"
-            "  disabled: []\\n"
-            "  entries:\\n"
-            "    kasir-probe:\\n"
-            "      allow_tool_override: false\\n"
-            "    kasir-tools:\\n"
-            "      allow_tool_override: false\\n"
-            "    kasir-pipe:\\n"
-            "      allow_tool_override: false\\n"
-            "'''\n"
-            "if re.search(r'(?m)^plugins:\\s*$', t):\n"
-            "    t2 = re.sub(r'(?ms)^plugins:\\n.*?(?=^[a-zA-Z_]|\\Z)', block + '\\n', t, count=1)\n"
-            "else:\n"
-            "    t2 = t.rstrip() + '\\n\\n' + block\n"
-            "p.write_text(t2, encoding='utf-8')\n"
-            "print('plugins.enabled restored')\n"
-            "PY"
-        )
-
-        # Kasir chat UX: never leak ⚙️ tool_progress / interim chrome to WhatsApp.
-        for key, value in (
-            ("display.interim_assistant_messages", "false"),
-            ("display.show_commentary", "false"),
-            ("display.tool_progress_command", "false"),
-            ("display.cleanup_progress", "true"),
-            ("display.long_running_notifications", "false"),
-            ("display.busy_ack_detail", "false"),
-            ("display.streaming", "false"),
-        ):
-            run(f"{HERMES_EXEC} hermes config set {key} {value} || true")
-        # Write documented string mode with exact display-level indent (do not
-        # touch platforms.whatsapp.tool_progress via a loose \\s* match).
-        run(
-            "python3 - <<'PY'\n"
-            "from pathlib import Path\n"
-            "import re\n"
-            "p = Path('/opt/nusantarasoft-3/volumes/hermes/config.yaml')\n"
-            "t = p.read_text(encoding='utf-8')\n"
-            "m = re.search(r'(?ms)^(display:\\n)(.*?)(?=^[a-zA-Z_][\\\\w]*:|\\\\Z)', t)\n"
-            "if not m:\n"
-            "    raise SystemExit('no display block')\n"
-            "head, body = m.group(1), m.group(2)\n"
-            "def set_top(block, key, value):\n"
-            "    pat = rf'(?m)^  {re.escape(key)}:.*$'\n"
-            "    if re.search(pat, block):\n"
-            "        return re.sub(pat, f'  {key}: {value}', block, count=1)\n"
-            "    return block.rstrip('\\\\n') + f'\\\\n  {key}: {value}\\\\n'\n"
-            "body = set_top(body, 'tool_progress', 'off')\n"
-            "body = set_top(body, 'interim_assistant_messages', 'false')\n"
-            "body = set_top(body, 'streaming', 'false')\n"
-            "if re.search(r'(?m)^  platforms:\\\\s*$', body):\n"
-            "    if re.search(r'(?m)^    whatsapp:\\\\s*$', body):\n"
-            "        if re.search(r'(?ms)^    whatsapp:\\\\n(?:      .*\\\\n)*?      tool_progress:', body):\n"
-            "            body = re.sub(r'(?ms)(^    whatsapp:\\\\n(?:      .*\\\\n)*?      tool_progress:\\\\s*)\\\\S*', r'\\\\1off', body, count=1)\n"
-            "        else:\n"
-            "            body = re.sub(r'(?m)^(    whatsapp:\\\\s*)$', r'\\\\1\\\\n      tool_progress: off', body, count=1)\n"
-            "    else:\n"
-            "        body = re.sub(r'(?m)^(  platforms:\\\\s*)$', r'\\\\1\\\\n    whatsapp:\\\\n      tool_progress: off', body, count=1)\n"
-            "else:\n"
-            "    body += '  platforms:\\\\n    whatsapp:\\\\n      tool_progress: off\\\\n'\n"
-            "if not body.endswith('\\\\n'):\n"
-            "    body += '\\\\n'\n"
-            "t2 = t[:m.start()] + head + body + t[m.end():]\n"
-            "t2 = t2.replace('tool_progress: offstt:', 'tool_progress: off\\\\nstt:')\n"
-            "if not re.search(r'(?m)^plugins:\\\\s*$', t2) or 'kasir-tools' not in t2:\n"
-            "    raise SystemExit('silence patch would drop plugins — abort')\n"
-            "p.write_text(t2, encoding='utf-8')\n"
-            "print('silenced tool_progress=off')\n"
-            "PY"
-        )
-
-        # Re-assert plugins.enabled after silence (belt + suspenders).
-        run(
-            "python3 - <<'PY'\n"
-            "from pathlib import Path\n"
-            "import re\n"
-            "p = Path('/opt/nusantarasoft-3/volumes/hermes/config.yaml')\n"
-            "t = p.read_text(encoding='utf-8')\n"
-            "block = '''plugins:\\n"
-            "  enabled:\\n"
-            "    - kasir-pipe\\n"
-            "    - kasir-probe\\n"
-            "    - kasir-tools\\n"
-            "  disabled: []\\n"
-            "  entries:\\n"
-            "    kasir-probe:\\n"
-            "      allow_tool_override: false\\n"
-            "    kasir-tools:\\n"
-            "      allow_tool_override: false\\n"
-            "    kasir-pipe:\\n"
-            "      allow_tool_override: false\\n"
-            "'''\n"
-            "if re.search(r'(?m)^plugins:\\s*$', t):\n"
-            "    t2 = re.sub(r'(?ms)^plugins:\\n.*?(?=^[a-zA-Z_]|\\Z)', block + '\\n', t, count=1)\n"
-            "else:\n"
-            "    t2 = t.rstrip() + '\\n\\n' + block\n"
-            "p.write_text(t2, encoding='utf-8')\n"
-            "print('plugins.enabled ok')\n"
-            "PY"
-        )
-
-        # Recreate so SUPABASE_* env from compose is injected (+ display silence).
         code, _ = run(f"{COMPOSE} up -d --force-recreate --no-deps hermes", timeout=900)
         if code != 0:
             return code
@@ -261,45 +154,16 @@ def main() -> int:
             "'echo SUPABASE_URL=$SUPABASE_URL; "
             "echo SERVICE_KEY_LEN=${#SUPABASE_SERVICE_KEY}'"
         )
-        # G13 first: pin WhatsApp toolsets before health (health fail-closes on G13).
-        run(
-            "HERMES_CONTAINER=nsoft3-hermes "
-            "python3 /opt/nusantarasoft-3/scripts/master-production/hermes-wa-tool-allowlist.py "
-            "apply --docker --container nsoft3-hermes"
-        )
+
+        # After recreate: re-assert posture + allowlist + platform locks + health.
         code, _ = run(
-            "HERMES_CONTAINER=nsoft3-hermes "
-            "python3 /opt/nusantarasoft-3/scripts/master-production/hermes-wa-tool-allowlist.py "
-            "check --docker --container nsoft3-hermes"
+            f"HERMES_HOME={REMOTE}/volumes/hermes HERMES_CONTAINER=nsoft3-hermes "
+            f"python3 {REMOTE}/scripts/master-production/hermes-kasir-posture.py "
+            f"apply --docker --container nsoft3-hermes"
         )
         if code != 0:
             print(
-                "FAIL G13: WhatsApp still has dangerous Hermes toolsets — "
-                "see hermes-wa-tool-allowlist.py / hermes-gaps G13",
-                flush=True,
-            )
-            return code
-        # Q1–Q3 platform locks: STT id + image_input_mode ready for multimodal ON;
-        # prod chat-only stays KASIR_MULTIMODAL=0. Soft-fail (WARN via health).
-        run(
-            "HERMES_CONTAINER=nsoft3-hermes "
-            "python3 /opt/nusantarasoft-3/scripts/master-production/hermes-kasir-platform-locks.py "
-            "apply --docker --container nsoft3-hermes"
-        )
-        run(
-            "HERMES_CONTAINER=nsoft3-hermes "
-            "python3 /opt/nusantarasoft-3/scripts/master-production/hermes-kasir-platform-locks.py "
-            "check --docker --container nsoft3-hermes"
-        )
-        # G2 + G13: refuse open gateway (*) without kasir plugins / tool allowlist.
-        code, _ = run(
-            "HERMES_HOME=/opt/nusantarasoft-3/volumes/hermes "
-            "python3 /opt/nusantarasoft-3/scripts/master-production/hermes-kasir-health.py"
-        )
-        if code != 0:
-            print(
-                "FAIL G2/G13: kasir plugins or WhatsApp tool allowlist — "
-                "see hermes-kasir-health.py / hermes-gaps",
+                "FAIL posture/G2/G13 — see hermes-kasir-posture.py / hermes-gaps",
                 flush=True,
             )
             return code
@@ -310,7 +174,19 @@ def main() -> int:
         )
         run("docker exec nsoft3-hermes curl -sS http://127.0.0.1:8765/pair/status || true")
 
-        # Allowlist unit smoke inside hermes (DB + LID expand).
+        run(
+            f"docker cp {REMOTE}/scripts/master-production/hermes-multimodal-smoke.py "
+            f"nsoft3-hermes:/opt/data/multimodal-smoke.py"
+        )
+        code, _ = run(
+            "docker exec -e HERMES_HOME=/opt/data nsoft3-hermes "
+            f"python3 /opt/data/multimodal-smoke.py off --phone {smoke_phone}",
+            timeout=60,
+        )
+        if code != 0:
+            print("FAIL multimodal OFF smoke", flush=True)
+            return code
+
         allow_smoke = r'''#!/usr/bin/env python3
 import importlib.util, sys, types
 root = "/opt/data/plugins/kasir-pipe"
@@ -337,9 +213,9 @@ print("denied_random", mod._sender_allowed("6280000000000"))
         )
 
         if args.smoke_phone:
-            phone = "".join(ch for ch in args.smoke_phone if ch.isdigit())
+            phone = smoke_phone
             smoke = f'''#!/usr/bin/env python3
-import importlib.util, re, sys, types
+import importlib.util, sys, types
 
 root = "/opt/data/plugins/kasir-tools"
 pkg = types.ModuleType("kasir_tools")
@@ -397,10 +273,9 @@ print(mod._handle_top_products({{"phone": phone, "period": "month"}}))
             run(
                 "docker exec -e HERMES_HOME=/opt/data nsoft3-hermes "
                 "python3 /opt/data/fase2-write-smoke.py",
-                timeout=180,
+                timeout=120,
             )
         else:
-            # Lightweight read smoke: top products for known pilot phone if present.
             top_smoke = r'''#!/usr/bin/env python3
 import importlib.util, os, sys, types
 root = "/opt/data/plugins/kasir-tools"
@@ -425,17 +300,7 @@ print(mod._handle_report({"phone": phone, "period": "month"}))
                 "python3 /opt/data/top-products-smoke.py",
                 timeout=120,
             )
-            run(
-                "docker exec nsoft3-hermes curl -sS --max-time 5 "
-                "http://127.0.0.1:8765/pair/status || true"
-            )
-            run(
-                f"{HERMES_EXEC} hermes config get tools.tool_search.enabled || true"
-            )
-            run(
-                "head -n 20 /opt/nusantarasoft-3/volumes/hermes/SOUL.md || true"
-            )
-        # Disk hygiene: unused nsoft3 images / dangling with project label only.
+
         run(
             f"bash {REMOTE}/scripts/master-production/prune-nsoft3-images.sh || true",
             timeout=300,
