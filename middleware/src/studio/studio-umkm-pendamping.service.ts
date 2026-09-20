@@ -347,12 +347,14 @@ export class StudioUmkmPendampingService implements OnModuleInit {
             return done('error', CONSULT_BUSY_COPY);
         }
 
+        const citePages = this.citePagesEnabled();
         const shopSnapshot = await this.maybeShopSnapshot(options?.phone);
 
         const prompt = buildConsultFromNotebookPrompt({
             question: q,
             chunkContext,
             shopSnapshot: shopSnapshot || undefined,
+            citePages,
         });
 
         let answer = '';
@@ -373,10 +375,7 @@ export class StudioUmkmPendampingService implements OnModuleInit {
 
         return done(
             'hit',
-            ensureConsultBookCite(
-                answer.trim(),
-                this.citePagesEnabled() ? pages : [],
-            ),
+            ensureConsultBookCite(answer.trim(), citePages ? pages : []),
         );
     }
 

@@ -55,9 +55,15 @@ describe('ensureConsultBookCite', () => {
         expect(ensureConsultBookCite(t, [99])).toBe(t);
     });
 
-    it('no pages → bare book cite', () => {
+    it('no pages → bare book cite; strips invented hlm', () => {
         expect(ensureConsultBookCite('Tips saja.', [])).toBe(
             'Tips saja.\n\n(dari buku Manajemen UKM)',
         );
+        expect(
+            ensureConsultBookCite(
+                'Tips. (dari buku Manajemen UKM, hlm. 214)',
+                [],
+            ),
+        ).toBe('Tips. (dari buku Manajemen UKM)');
     });
 });

@@ -147,10 +147,15 @@ export function buildConsultFromNotebookPrompt(input: {
     question: string;
     chunkContext: string;
     shopSnapshot?: string;
+    /** When false/omitted, forbid page numbers in the WA cite. */
+    citePages?: boolean;
 }): string {
     const chunks = input.chunkContext.trim().slice(0, 3500) || '(Tidak ada cuplikan.)';
     const question = input.question.trim().slice(0, 500);
     const shop = (input.shopSnapshot || '').trim().slice(0, 450);
+    const citeRule = input.citePages
+        ? '- Sitasi: akhiri dengan "(dari buku Manajemen UKM, hlm. X)" bila header Sumber punya hlm.; kalau tidak ada hlm., "(dari buku Manajemen UKM)".'
+        : '- Sitasi: akhiri dengan "(dari buku Manajemen UKM)" saja. Jangan sebut nomor halaman / hlm / halaman.';
     const shopBlock = shop
         ? [
               '',
@@ -175,7 +180,7 @@ export function buildConsultFromNotebookPrompt(input: {
         '- Jawab HANYA dari <<<BLOK_BUKU>>> untuk tip/konsep bisnis. Jangan mengarang isi buku.',
         '- Jangan minta ketik: jual/belanja/hapus. Ini bukan mode kasir transaksi.',
         '- Jika cuplikan tidak cukup: bilang belum ketemu di buku, sarankan tanya lebih spesifik.',
-        '- Sitasi: akhiri dengan "(dari buku Manajemen UKM, hlm. X)" bila header Sumber punya hlm.; kalau tidak ada hlm., "(dari buku Manajemen UKM)".',
+        citeRule,
         '- Tanpa markdown berlebihan.',
         ...shopBlock,
         '',

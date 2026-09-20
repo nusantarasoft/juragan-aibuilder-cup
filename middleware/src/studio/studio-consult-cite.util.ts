@@ -38,12 +38,23 @@ export function formatHlmCite(pages: number[]): string {
 
 /**
  * Ensure answer ends with a light book cite including hlm when available.
- * Does not invent pages — only uses provided page list.
+ * When `pages` is empty, strip any invented hlm/halaman from book cites.
  */
 export function ensureConsultBookCite(answer: string, pages: number[]): string {
-    const text = (answer || '').trim();
+    let text = (answer || '').trim();
     if (!text) return text;
     const hlm = formatHlmCite(pages);
+    if (!hlm) {
+        text = text
+            .replace(
+                /\(dari buku manajemen ukm,\s*(?:hlm\.?|hal\.?|halaman)\s*[\d.,–\-—\s]+\)\.?/gi,
+                '(dari buku Manajemen UKM)',
+            )
+            .replace(
+                /,\s*(?:hlm\.?|hal\.?|halaman)\s*[\d.,–\-—]+(?=\))/gi,
+                '',
+            );
+    }
     if (/dari buku manajemen ukm/i.test(text)) {
         if (!hlm || /\bhlm\.?\s*\d/i.test(text) || /\bhalaman\s*\d/i.test(text)) {
             return text;
