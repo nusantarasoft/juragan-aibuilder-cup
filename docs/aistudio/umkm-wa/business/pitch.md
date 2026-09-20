@@ -31,7 +31,7 @@ Karyawan / banyak nomor HP per toko: belum di v1.
 | 5 | Setelah ditolak / batal, boleh **DAFTAR lagi** |
 | 6 | **Satu toko = satu nomor** pemilik di v1 |
 | 7 | **Satu nomor WhatsApp bisnis** NusantaraSoft untuk banyak toko (beda toko = beda HP pengirim) |
-| 8 | **Chat teks dulu** — default: foto/suara → bot minta ketik *jual* / *stok*; jual dari media hanya kalau admin ops menyalakan (bukan default produk) |
+| 8 | **Chat teks utama** — foto/suara boleh jadi input jual kalau saklar multimodal **ON** (soft GA ops); kalau OFF, bot minta ketik teks (lihat L0c) |
 
 ---
 
@@ -46,9 +46,9 @@ Chat nomor NS  →  DAFTAR  →  nama toko  →  YA
 
 Admin juga bisa menambah toko lewat form lama di halaman yang sama; jalur **DAFTAR** adalah yang paling mudah dijelaskan ke calon tenant.
 
-**Belum di v1 (janji sales):** OTP, pembayaran di chat, banyak toko per nomor, multi-PDF / SOP per toko, sitasi halaman PDF sempurna. Jual dari foto/suara **bukan** janji default — produk yang dijual tetap chat teks (lihat L0c); kalau media dikirim tanpa saklar ops, bot minta ketik teks.
+**Belum di v1 (janji sales):** OTP, pembayaran di chat, banyak toko per nomor, multi-PDF / SOP per toko, sitasi halaman PDF sempurna.
 
-**Konsultasi kurikulum (2026-09-20):** soft GA di prod — owner allowlisted boleh `tanya` / `konsultasi` / `pendamping`. Jawaban dari **satu buku UKM bersama** (bukan ChatGPT bebas, bukan angka stok toko). Ops bisa matikan saklar `KASIR_CONSULT` bila perlu.
+**Soft GA (2026-09-20):** konsultasi kurikulum (`tanya`…) **ON**; multimodal foto/suara **ON** di prod (ops bisa matikan `KASIR_MULTIMODAL` / `KASIR_CONSULT`). Angka stok/omzet **tetap** dari kasir DB — tidak pernah dari RAG buku.
 
 ---
 
@@ -77,7 +77,7 @@ Angka stok/harga/omzet diambil dari data toko yang sudah Approve — **bukan** �
 |-------|--------|-----|
 | Cerita besar | [L0](../../../../diagrams/aistudio/umkm-wa/business/L0-bisnis-besar.svg) | DAFTAR → Approve → kasir |
 | Ritual harian | [L0b](../../../../diagrams/aistudio/umkm-wa/business/L0b-kasir-harian.svg) | stok / jual / ya / laporan / **tutup toko** / **tanya** |
-| Chat teks dulu | [L0c](../../../../diagrams/aistudio/umkm-wa/business/L0c-chat-only.svg) | foto/suara → ketik jual/stok |
+| Chat teks + multimodal | [L0c](../../../../diagrams/aistudio/umkm-wa/business/L0c-chat-only.svg) | Foto/suara: ON → draft jual; OFF → ketik teks |
 | Tanya vs stok | [L0d](../../../../diagrams/aistudio/umkm-wa/business/L0d-tanya-kurikulum.svg) | Tips buku ≠ angka toko |
 | Satu nomor, banyak toko | [L1](../../../../diagrams/aistudio/umkm-wa/business/L1-shared-inbox.svg) | Shared inbox |
 | Siapa melakukan apa | [L2](../../../../diagrams/aistudio/umkm-wa/business/L2-aktor-swimlane.svg) | Owner vs admin |

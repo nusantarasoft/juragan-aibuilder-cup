@@ -42,7 +42,8 @@ docker exec -e HERMES_HOME=/opt/data nsoft3-hermes \
 
 ## Jangan
 
-- Jangan RAG-kan tabel jual/stok.
+- Jangan RAG-kan tabel jual/stok (`inv_stock_ledger` dll).
+- Kalau user `tanya cek stok …` lewat consult: Hermes + Nest **redirect** ke *cek stok* / *jual* / *laporan* (status `consult_ledger_redirect`) — tidak retrieve notebook.
 - Jangan ganti embedding model tanpa **reindex** seluruh sumber notebook.
 - Jangan janjikan multi-PDF / SOP per toko di v1 (lihat `TODOS.md`).
 

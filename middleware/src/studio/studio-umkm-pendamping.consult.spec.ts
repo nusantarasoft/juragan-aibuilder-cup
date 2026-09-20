@@ -6,7 +6,9 @@ import { StudioUmkmPendampingService } from './studio-umkm-pendamping.service';
 import {
     buildConsultFromNotebookPrompt,
     CONSULT_BUSY_COPY,
+    CONSULT_LEDGER_REDIRECT_COPY,
     CONSULT_MISS_COPY,
+    looksLikeKasirLedgerQuestion,
 } from './studio-umkm-pendamping.prompts';
 
 describe('buildConsultFromNotebookPrompt', () => {
@@ -20,6 +22,21 @@ describe('buildConsultFromNotebookPrompt', () => {
         expect(prompt).toMatch(/BLOK_BUKU/);
         expect(prompt).toMatch(/Modal usaha kecil/);
         expect(prompt).not.toMatch(/BLOK_TOOLS|BLOK_PLAYBOOK|Laporan minggu|on_hand/i);
+    });
+});
+
+describe('looksLikeKasirLedgerQuestion', () => {
+    it('flags live kasir intents', () => {
+        expect(looksLikeKasirLedgerQuestion('cek stok indomie')).toBe(true);
+        expect(looksLikeKasirLedgerQuestion('tanya cek stok indomie')).toBe(true);
+        expect(looksLikeKasirLedgerQuestion('laporan hari ini')).toBe(true);
+        expect(looksLikeKasirLedgerQuestion('jual 2 indomie')).toBe(true);
+    });
+
+    it('allows kurikulum business questions', () => {
+        expect(looksLikeKasirLedgerQuestion('tanya cara atur modal')).toBe(false);
+        expect(looksLikeKasirLedgerQuestion('bauran pemasaran 7P')).toBe(false);
+        expect(looksLikeKasirLedgerQuestion('jangan campur uang pribadi')).toBe(false);
     });
 });
 
@@ -54,6 +71,15 @@ describe('StudioUmkmPendampingService.consultFromNotebook', () => {
     afterEach(() => {
         if (prevNb === undefined) delete process.env.KASIR_CONSULT_NOTEBOOK_ID;
         else process.env.KASIR_CONSULT_NOTEBOOK_ID = prevNb;
+    });
+
+    it('ledger-like question → redirect; no retrieve / LLM / stock tools', async () => {
+        const out = await svc.consultFromNotebook('tanya cek stok indomie', 'nb-1');
+        expect(out.status).toBe('redirect');
+        expect(out.text).toBe(CONSULT_LEDGER_REDIRECT_COPY);
+        expect(context.semanticSearchNotebook).not.toHaveBeenCalled();
+        expect(aiRouter.generateText).not.toHaveBeenCalled();
+        expect(umkm.fetchStockRows).not.toHaveBeenCalled();
     });
 
     it('notebookId unset → miss; no retrieve / LLM', async () => {

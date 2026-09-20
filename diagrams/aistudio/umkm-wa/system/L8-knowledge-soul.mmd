@@ -23,6 +23,7 @@ flowchart TB
   Q -.->|FORBIDDEN| MS[Multi-SOUL per toko]
   C -.->|FORBIDDEN| R
   C -.->|jangan campur| DB
+  C -->|tanya cek stok…| Redir[Redirect: ketik cek stok / jual / laporan<br/>no notebook retrieve]
 
   subgraph later["Optional later only"]
     DOC[Per-tenant SOP docs<br/>RAG + tenant_id filter]

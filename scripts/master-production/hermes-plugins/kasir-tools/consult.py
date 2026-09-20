@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import urllib.error
 import urllib.request
 from typing import Any
@@ -22,9 +23,34 @@ CONSULT_BUSY_COPY = "Layanan konsultasi lagi sibuk. Coba lagi sebentar."
 CONSULT_EMPTY_Q = (
     "Tulis pertanyaan setelah *tanya* / *konsultasi*, contoh: tanya cara atur modal."
 )
+CONSULT_LEDGER_REDIRECT_COPY = (
+    "Untuk stok, jual-beli, atau laporan toko, ketik langsung *cek stok* / *jual* / "
+    "*laporan* — itu data kasir, bukan dari buku kurikulum."
+)
 _DEFAULT_URL = "http://middleware:4001/internal/kasir-consult"
 _TIMEOUT_SEC = 30
 _QUESTION_MAX = 500
+
+_LEDGER_RES = (
+    re.compile(r"\bcek\s*stok\b", re.I),
+    re.compile(r"\bstok\s+(mau\s+)?habis\b", re.I),
+    re.compile(r"\bstok\s+menipis\b", re.I),
+    re.compile(r"\bsisa\s+(stok|barang)\b", re.I),
+    re.compile(r"\bberapa\s+stok\b", re.I),
+    re.compile(r"\bstok\s+berapa\b", re.I),
+    re.compile(r"\b(omzet|laporan|paling\s+laris|tutup\s+toko)\b", re.I),
+    re.compile(r"\b(jual|ada\s+yang\s+beli)\s+\d", re.I),
+    re.compile(r"^\s*(jual|belanja|restock|satu\s+lagi)\b", re.I),
+)
+
+
+def looks_like_kasir_ledger_question(question: str) -> bool:
+    """L8: live store facts must not go through kurikulum RAG."""
+    q = (question or "").strip().lower()
+    if not q:
+        return False
+    bare = re.sub(r"^(tanya|konsultasi|pendamping)\s+", "", q, count=1, flags=re.I).strip()
+    return any(r.search(bare) or r.search(q) for r in _LEDGER_RES)
 
 
 def is_consult_enabled() -> bool:
@@ -55,6 +81,9 @@ def handle_consult(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
         question = question.strip()[:_QUESTION_MAX]
         if not question:
             return CONSULT_EMPTY_Q
+
+        if looks_like_kasir_ledger_question(question):
+            return CONSULT_LEDGER_REDIRECT_COPY
 
         key = (os.environ.get("KASIR_CONSULT_KEY") or "").strip()
         if not key:

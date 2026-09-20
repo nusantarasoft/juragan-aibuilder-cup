@@ -15,9 +15,11 @@ import {
     buildConsultFromNotebookPrompt,
     buildPendampingSynthesizePrompt,
     CONSULT_BUSY_COPY,
+    CONSULT_LEDGER_REDIRECT_COPY,
     CONSULT_MISS_COPY,
     formatPendampingEmptyShop,
     formatPendampingNumbersOnlyFallback,
+    looksLikeKasirLedgerQuestion,
 } from './studio-umkm-pendamping.prompts';
 import { executeUmkmReadTool, stripDisallowedKetikActions } from './studio-umkm-read-tools';
 
@@ -29,7 +31,7 @@ const CONSULT_QUESTION_MAX = 500;
 const CONSULT_CONTEXT_MAX = 3500;
 
 export type ConsultFromNotebookResult = {
-    status: 'hit' | 'miss' | 'error';
+    status: 'hit' | 'miss' | 'error' | 'redirect';
     text: string;
     latencyMs: number;
 };
@@ -287,14 +289,25 @@ export class StudioUmkmPendampingService implements OnModuleInit {
             text: string,
         ): ConsultFromNotebookResult => {
             const latencyMs = Date.now() - started;
-            this.logger.log(
-                `path=kasir_consult status=${status === 'hit' ? 'consult_hit' : status === 'miss' ? 'consult_miss' : 'consult_error'} latency_ms=${latencyMs}`,
-            );
+            const tag =
+                status === 'hit'
+                    ? 'consult_hit'
+                    : status === 'miss'
+                      ? 'consult_miss'
+                      : status === 'redirect'
+                        ? 'consult_ledger_redirect'
+                        : 'consult_error';
+            this.logger.log(`path=kasir_consult status=${tag} latency_ms=${latencyMs}`);
             return { status, text: text.slice(0, MAX_REPLY_CHARS), latencyMs };
         };
 
         if (!q || !nb || !this.context) {
             return done('miss', CONSULT_MISS_COPY);
+        }
+
+        // L8: never retrieve/synthesize for live ledger intents (and never query ledger tables).
+        if (looksLikeKasirLedgerQuestion(q)) {
+            return done('redirect', CONSULT_LEDGER_REDIRECT_COPY);
         }
 
         let chunkContext = '';

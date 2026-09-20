@@ -70,7 +70,7 @@ Settled product/architecture defaults for UMKM kasir on Hermes. Do not invert wi
 
 | Lock | Default | Rationale |
 |------|---------|-------------|
-| **Modality** | **Chat-only** in prod (`KASIR_MULTIMODAL=0`). **Flag OFF:** polite text refuse — no vision/STT. **Flag ON:** pipe passes media; Hermes gateway STT (`stt.language=id`) + `agent.image_input_mode=auto` annotate; SOUL *Foto / voice* → `kasir_draft_sale` / purchase → poll. Applied by `hermes-kasir-platform-locks.py` (config ready even while flag stays 0). Not custom vision tools; WA toolsets stay `clarify`+`kasir` (no `vision`/`stt` toolsets) | Cheap micro path first; eng review Q1 / D10A |
+| **Modality** | Compose default **chat-only** (`KASIR_MULTIMODAL=0`). **Prod soft GA `=1`** (2026-09-20): pipe passes media; Hermes gateway STT (`stt.language=id`) + `agent.image_input_mode=auto`; SOUL *Foto / voice* → draft sale/purchase → poll. **Flag OFF:** polite text refuse — no vision/STT. Applied by `hermes-kasir-platform-locks.py`. WA toolsets stay `clarify`+`kasir` (no `vision`/`stt` toolsets) | Eng review Q1 / D10A; ops soft GA |
 | **Knowledge** | Live facts (stok, harga, omzet, jual/beli) = **`kasir-tools` → PostgREST/DB** only. **Kurikulum bisnis** (prefix `tanya` / `konsultasi` / `pendamping`) = **`kasir_consult` → Nest** `POST /internal/kasir-consult` → Studio RAG notebook (`KASIR_CONSULT_NOTEBOOK_ID`) — **not** ledger RAG. Compose default **`KASIR_CONSULT=0`**; **prod soft GA `=1`** (2026-09-20) after ingest 376 chunks — flip both Hermes + Nest together. Optional later = per-tenant SOP docs with `tenant_id` filter. Diagrams **L8** / **L9**. Studio RAG: [`rag-architecture.md`](../../studio/system/rag-architecture.md). Health WARNs if `MEMORY.md` appears as store KB | Accuracy + isolation; eng review Q2 + consult HOLD → soft GA |
 | **Character / memory** | **One shared** `SOUL.md` (“Asisten Kasir Warung”). **Short-term:** Hermes keeps **per-chat WA session history** (konteks thread / nomor) — bukan KB toko. Per-toko uniqueness = allowlist + tenant-scoped tools + app state (`kasir_drafts` / `kasir_last_sale`). Sender stamp is a **multi-chat map** (`kasir_active_sender.json` v2) keyed by chat — not one global phone. Do **not** use global `MEMORY.md` as store KB; multi-SOUL per tenant is out until product sells custom agents. Diagram **L8** | Brand consistency; eng review Q3 / D9A |
 | **Skills vs tools** | Owner jobs (“cek stok”, “jual”, “laporan”, “tutup toko”) are **`kasir-tools` + SOUL routing**, not Hermes Skills packs. Keep coding/browser Hermes skills off the kasir WA path | Explicit, testable, tenant-safe; skill-ifying invites the wrong toolset for warung |
@@ -134,7 +134,7 @@ Agent replies to allowlisted chats go through the Hermes gateway. Last-mile deny
 | `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | hermes plugins | Allowlist + tools + registrations |
 | `KASIR_AGENT_PHONES` | hermes | Emergency allowlist for **pipe only** (not tenant fallback in tools) |
 | `KASIR_REGISTRATION` | hermes | `1` = DAFTAR funnel; `0` = silent skip |
-| `KASIR_MULTIMODAL` | hermes | `0` (default) = chat-only refuse; `1` = pass media → gateway STT/vision + SOUL → draft jual/beli. Config posture via `hermes-kasir-platform-locks.py` |
+| `KASIR_MULTIMODAL` | hermes | Compose default `0` = chat-only refuse; **prod soft GA `1`** = pass media → gateway STT/vision + SOUL → draft jual/beli. Config posture via `hermes-kasir-platform-locks.py` |
 | `KASIR_CONSULT` | hermes **and** middleware | Compose default `0` (“belum aktif”); prod soft GA **`1`**. Allow `kasir_consult` → Nest RAG. Flip both sides together |
 | `KASIR_CONSULT_URL` | hermes | Default `http://middleware:4001/internal/kasir-consult` |
 | `KASIR_CONSULT_KEY` | hermes + middleware | Shared secret → header `X-Kasir-Consult-Key` (fail-closed if unset) |
@@ -163,6 +163,7 @@ Agent replies to allowlisted chats go through the Hermes gateway. Last-mile deny
 | `tanya …` while `KASIR_CONSULT=1` + miss chunks | Fixed miss copy — no free LLM |
 | Nest consult timeout/5xx | “Layanan konsultasi lagi sibuk…” |
 | Topik jelas di luar toko/buku (mis. kripto) | Sering refuse SOUL/scope sebelum Nest — jangan mengarang harga luar |
+| `tanya cek stok …` / ledger-like via consult | Redirect copy — **no** notebook retrieve; owner pakai tools DB (L8 anti RAG-ledger) |
 | Model invents stok without tool | Soft-ban in SOUL + tools-only facts (L8); egress `user_safe` still strips tool names |
 | Bridge/proxy down | Admin QR / approve notify fail; agent may still chat if Baileys up |
 | LID unmapped | Allowlist miss → registration path |

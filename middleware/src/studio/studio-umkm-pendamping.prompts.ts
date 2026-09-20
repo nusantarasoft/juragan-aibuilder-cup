@@ -106,6 +106,39 @@ export const CONSULT_OFF_COPY =
     'Konsultasi kurikulum belum aktif. Untuk data toko ketik cek stok / laporan.';
 
 /**
+ * L8 defense: question is clearly live store facts — do not RAG buku / ledger tables.
+ * Owner should use kasir tools (cek stok / jual / laporan).
+ */
+export const CONSULT_LEDGER_REDIRECT_COPY =
+    'Untuk stok, jual-beli, atau laporan toko, ketik langsung *cek stok* / *jual* / *laporan* — itu data kasir, bukan dari buku kurikulum.';
+
+/**
+ * Heuristic: query looks like live kasir/ledger ops (stok, jual, omzet, …).
+ * Used to skip notebook retrieve — never embed or search ledger tables.
+ */
+export function looksLikeKasirLedgerQuestion(question: string): boolean {
+    const q = (question || '').trim().toLowerCase();
+    if (!q) return false;
+    // Strip common consult prefixes so "tanya cek stok indomie" still matches.
+    const bare = q
+        .replace(/^(tanya|konsultasi|pendamping)\s+/i, '')
+        .trim();
+    const patterns: RegExp[] = [
+        /\bcek\s*stok\b/,
+        /\bstok\s+(mau\s+)?habis\b/,
+        /\bstok\s+menipis\b/,
+        /\bsisa\s+(stok|barang)\b/,
+        /\bberapa\s+stok\b/,
+        /\bstok\s+berapa\b/,
+        /\b(omzet|laporan|paling\s+laris|tutup\s+toko)\b/,
+        /\b(jual|ada\s+yang\s+beli)\s+\d/,
+        /^\s*(jual|belanja|restock|satu\s+lagi)\b/,
+        /\b(on_hand|sku)\b/,
+    ];
+    return patterns.some((re) => re.test(bare) || re.test(q));
+}
+
+/**
  * Chunk-only synthesizer for WA kurikulum consult.
  * Never include store report/stock — L8: buku ≠ ledger.
  */

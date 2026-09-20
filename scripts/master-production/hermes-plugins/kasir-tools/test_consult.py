@@ -74,6 +74,15 @@ class ConsultTests(unittest.TestCase):
             self.assertEqual(out, self.mod.CONSULT_OFF_COPY)
             urlopen.assert_not_called()
 
+    def test_ledger_question_redirect_no_http(self) -> None:
+        env = {**self.env, "KASIR_CONSULT": "1"}
+        with mock.patch.dict(os.environ, env, clear=False), mock.patch.object(
+            self.mod.urllib.request, "urlopen"
+        ) as urlopen:
+            out = self.mod.handle_consult({"question": "tanya cek stok indomie"})
+            self.assertEqual(out, self.mod.CONSULT_LEDGER_REDIRECT_COPY)
+            urlopen.assert_not_called()
+
     def test_flag_on_hit(self) -> None:
         env = {**self.env, "KASIR_CONSULT": "1"}
         with mock.patch.dict(os.environ, env, clear=False), mock.patch.object(

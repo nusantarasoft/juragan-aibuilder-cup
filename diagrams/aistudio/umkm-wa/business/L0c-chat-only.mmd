@@ -1,8 +1,11 @@
-%% Product rule: chat-only default (sales / pitch — no eng jargon)
-%% Foto/suara belum jadi input jual di v1; sistem mengarahkan ketik teks.
+%% Product: chat teks + multimodal soft GA (sales — no eng jargon)
+%% Foto/suara: kalau saklar ON → bisa jadi draft jual; kalau OFF → minta ketik.
 flowchart TB
   A[Owner kirim pesan] --> B{Jenis pesan?}
-  B -->|Teks| C[Kasir biasa<br/>stok / jual / laporan / tutup]
-  B -->|Foto / suara / file| D[Balasan singkat:<br/>ketik jual / stok / laporan]
-  D --> E[Owner ketik teks]
-  E --> C
+  B -->|Teks| C[Kasir biasa<br/>stok / jual / laporan / tutup / tanya]
+  B -->|Foto / suara| M{Multimodal nyala?}
+  M -->|Ya| D[Bot baca foto/suara<br/>→ ringkasan jual → Ya/Batal]
+  M -->|Tidak| E[Balasan singkat:<br/>ketik jual / stok]
+  E --> F[Owner ketik teks]
+  F --> C
+  D --> C
