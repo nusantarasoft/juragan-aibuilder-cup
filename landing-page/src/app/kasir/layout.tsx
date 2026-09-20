@@ -23,9 +23,15 @@ export const metadata: Metadata = {
   openGraph: {
     title: "NusantaraSoft — Kasir & konsultan di WhatsApp",
     description:
-      "Kasir harian + konsultan usaha. Cukup chat WhatsApp.",
+      "Kasir harian + konsultan usaha. Cukup chat WhatsApp. Ketik DAFTAR ke +62 811-924-689.",
     type: "website",
     locale: "id_ID",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "NusantaraSoft — Kasir warung di WhatsApp",
+    description:
+      "Cek stok, catat jual, tips usaha — tanpa unduh app. +62 811-924-689",
   },
 };
 

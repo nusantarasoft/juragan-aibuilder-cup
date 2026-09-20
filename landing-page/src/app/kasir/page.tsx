@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
 const WA_URL =
@@ -142,6 +144,40 @@ const HERO_THREAD: {
   },
 ];
 
+function WhatsAppIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
+  );
+}
+
+function WaCta({
+  href,
+  children,
+  className = "",
+}: {
+  href: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <a
+      href={href}
+      className={`inline-flex items-center justify-center gap-2 rounded-md px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${className}`}
+      style={{ backgroundColor: "#1b6b4a" }}
+    >
+      <WhatsAppIcon className="h-[1.1rem] w-[1.1rem] shrink-0" />
+      {children}
+    </a>
+  );
+}
+
 function PollButtons() {
   return (
     <div
@@ -198,49 +234,102 @@ function Bubble({
 
 export default function KasirLandingPage() {
   const reduce = useReducedMotion();
+  const heroCtaRef = useRef<HTMLDivElement>(null);
+  const [showSticky, setShowSticky] = useState(false);
+
+  useEffect(() => {
+    const el = heroCtaRef.current;
+    if (!el) return;
+    const mq = window.matchMedia("(min-width: 768px)");
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (mq.matches) {
+          setShowSticky(false);
+          return;
+        }
+        setShowSticky(!entry.isIntersecting);
+      },
+      { threshold: 0, rootMargin: "0px" },
+    );
+    io.observe(el);
+    const onMq = () => {
+      if (mq.matches) setShowSticky(false);
+    };
+    mq.addEventListener("change", onMq);
+    return () => {
+      io.disconnect();
+      mq.removeEventListener("change", onMq);
+    };
+  }, []);
 
   return (
-    <main className="overflow-x-hidden">
+    <main
+      className={`overflow-x-hidden${showSticky ? " kasir-main-sticky-pad" : ""}`}
+    >
       <header className="kasir-hero-atmosphere relative min-h-[100svh] overflow-hidden">
         <div className="relative z-10 mx-auto grid min-h-[100svh] max-w-6xl items-center gap-10 px-5 pb-16 pt-10 md:grid-cols-[1.05fr_0.95fr] md:gap-12 md:px-8 md:pb-20 md:pt-14">
-          <div>
-            <p
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <motion.p
               className="kasir-display text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl"
               style={{ color: "#0f3d2c" }}
+              initial={reduce ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.04, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             >
               NusantaraSoft
-            </p>
-            <h1
+            </motion.p>
+            <motion.h1
               className="kasir-display mt-5 max-w-xl text-[1.85rem] font-semibold leading-[1.15] sm:text-4xl md:text-[2.65rem]"
               style={{ color: "#14201a" }}
+              initial={reduce ? false : { opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
             >
               Kasir warung di WhatsApp
-            </h1>
-            <p
+            </motion.h1>
+            <motion.p
               className="mt-5 max-w-lg text-base leading-relaxed sm:text-lg"
               style={{ color: "#3d4f45" }}
+              initial={reduce ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.18, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             >
               Cek stok, catat jual, laporan malam, plus tanya tips usaha — di
               WhatsApp, tanpa unduh app.
-            </p>
-            <p
+            </motion.p>
+            <motion.p
               className="mt-3 max-w-lg text-sm leading-relaxed"
               style={{ color: "#5a6b62" }}
+              initial={reduce ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.24, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             >
               Ketik{" "}
               <span className="font-semibold" style={{ color: "#0f3d2c" }}>
                 DAFTAR
               </span>{" "}
-              ke {WA_DISPLAY}. Kerja sama dijelaskan tim setelah toko disetujui.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+              ke{" "}
               <a
                 href={WA_URL}
-                className="inline-flex items-center justify-center rounded-md px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-                style={{ backgroundColor: "#1b6b4a" }}
+                className="font-semibold underline decoration-[var(--kasir-leaf)]/40 underline-offset-2 hover:decoration-[var(--kasir-leaf)]"
+                style={{ color: "#0f3d2c" }}
               >
-                Chat {WA_DISPLAY}
+                {WA_DISPLAY}
               </a>
+              . Kerja sama dijelaskan tim setelah toko disetujui.
+            </motion.p>
+            <motion.div
+              ref={heroCtaRef}
+              className="mt-8 flex flex-wrap items-center gap-3"
+              initial={reduce ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.32, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <WaCta href={WA_URL}>Chat {WA_DISPLAY}</WaCta>
               <a
                 href="#contoh"
                 className="inline-flex items-center justify-center rounded-md px-5 py-3 text-sm font-semibold underline-offset-4 transition hover:underline"
@@ -255,30 +344,43 @@ export default function KasirLandingPage() {
               >
                 Cara daftar
               </a>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
-          <div
+          <motion.div
             aria-hidden="true"
             className="kasir-float relative -mx-5 md:mx-0 md:justify-self-stretch"
+            initial={reduce ? false : { opacity: 0, x: 28 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2, duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="relative max-h-[min(38rem,72svh)] overflow-y-auto overflow-x-hidden bg-[linear-gradient(180deg,var(--kasir-wa-deep),var(--kasir-wa))] px-4 pb-6 pt-10 shadow-[0_24px_60px_-28px_rgba(15,61,44,0.55)] md:rounded-l-3xl md:pl-6">
               <div className="sticky top-0 z-10 -mx-4 mb-2 flex h-9 items-center gap-2 bg-[var(--kasir-wa-deep)]/95 px-4 text-xs font-medium text-white/90 backdrop-blur-sm md:-mx-6 md:pl-6">
-                <span className="h-2 w-2 rounded-full bg-emerald-300" />
+                <WhatsAppIcon className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
                 Kasir NusantaraSoft
               </div>
               <div className="mt-1 flex flex-col gap-2.5">
                 {HERO_THREAD.map((line, i) => (
-                  <Bubble
+                  <motion.div
                     key={`hero-${i}`}
-                    who={line.who}
-                    text={line.text}
-                    poll={line.poll}
-                  />
+                    initial={reduce ? false : { opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      delay: 0.38 + i * 0.1,
+                      duration: 0.4,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                  >
+                    <Bubble
+                      who={line.who}
+                      text={line.text}
+                      poll={line.poll}
+                    />
+                  </motion.div>
                 ))}
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </header>
 
@@ -418,7 +520,7 @@ export default function KasirLandingPage() {
                 </p>
                 <div className="flex flex-1 flex-col gap-2.5 rounded-2xl bg-[linear-gradient(180deg,#075e54,#128c7e)] p-3 pt-8 shadow-md">
                   <div className="-mt-5 mb-1 flex items-center gap-2 text-[11px] font-medium text-white/90">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+                    <WhatsAppIcon className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
                     Kasir NusantaraSoft
                   </div>
                   {c.lines.map((line, j) => (
@@ -455,7 +557,7 @@ export default function KasirLandingPage() {
             </p>
             <div className="mt-6 mx-auto max-w-xl rounded-2xl bg-[linear-gradient(180deg,#075e54,#128c7e)] p-3 pt-8 shadow-md">
               <div className="-mt-5 mb-1 flex items-center gap-2 text-[11px] font-medium text-white/90">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+                <WhatsAppIcon className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
                 Kasir NusantaraSoft · konsultan
               </div>
               <div className="flex flex-col gap-2.5">
@@ -645,7 +747,7 @@ export default function KasirLandingPage() {
             </p>
             <div className="mt-6 mx-auto max-w-xl rounded-2xl bg-[linear-gradient(180deg,#075e54,#128c7e)] p-3 pt-8 shadow-md">
               <div className="-mt-5 mb-1 flex items-center gap-2 text-[11px] font-medium text-white/90">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+                <WhatsAppIcon className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
                 Kasir NusantaraSoft · daftar
               </div>
               <div className="flex max-h-[28rem] flex-col gap-2.5 overflow-y-auto pr-1">
@@ -663,13 +765,9 @@ export default function KasirLandingPage() {
               lagi.
             </p>
             <div className="mt-8 flex justify-center">
-              <a
-                href={WA_URL}
-                className="inline-flex items-center justify-center rounded-md px-6 py-3.5 text-sm font-semibold text-white transition hover:opacity-90"
-                style={{ backgroundColor: "#1b6b4a" }}
-              >
+              <WaCta href={WA_URL} className="px-6 py-3.5">
                 Ketik DAFTAR · {WA_DISPLAY}
-              </a>
+              </WaCta>
             </div>
           </div>
         </div>
@@ -718,13 +816,9 @@ export default function KasirLandingPage() {
             ke {WA_DISPLAY}. Kerja sama dijelaskan tim setelah toko disetujui.
           </p>
           <div className="mt-6">
-            <a
-              href={WA_URL}
-              className="inline-flex items-center justify-center rounded-md px-6 py-3.5 text-sm font-semibold text-white transition hover:opacity-90"
-              style={{ backgroundColor: "#1b6b4a" }}
-            >
+            <WaCta href={WA_URL} className="px-6 py-3.5">
               Ketik DAFTAR · {WA_DISPLAY}
-            </a>
+            </WaCta>
           </div>
         </div>
       </section>
@@ -739,18 +833,31 @@ export default function KasirLandingPage() {
               Kasir WhatsApp untuk warung
             </p>
           </div>
-          <p className="text-xs text-[var(--kasir-ink-soft)]">
-            WhatsApp bisnis:{" "}
-            <a
-              href={WA_URL}
-              className="font-medium underline-offset-2 hover:underline"
-              style={{ color: "#0f3d2c" }}
-            >
-              {WA_DISPLAY}
-            </a>
-          </p>
+          <a
+            href={WA_URL}
+            className="inline-flex items-center gap-1.5 text-xs font-medium underline-offset-2 hover:underline"
+            style={{ color: "#0f3d2c" }}
+          >
+            <WhatsAppIcon className="h-3.5 w-3.5 shrink-0" />
+            {WA_DISPLAY}
+          </a>
         </div>
       </footer>
+
+      <div
+        className={`kasir-sticky-wa md:hidden${showSticky ? " is-visible" : ""}`}
+        aria-hidden={!showSticky}
+      >
+        <a
+          href={WA_URL}
+          tabIndex={showSticky ? 0 : -1}
+          className="flex w-full items-center justify-center gap-2 rounded-md px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          style={{ backgroundColor: "#1b6b4a" }}
+        >
+          <WhatsAppIcon className="h-[1.15rem] w-[1.15rem] shrink-0" />
+          Ketik DAFTAR · {WA_DISPLAY}
+        </a>
+      </div>
     </main>
   );
 }

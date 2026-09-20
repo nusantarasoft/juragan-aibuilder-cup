@@ -63,3 +63,49 @@
     animation: none;
   }
 }
+
+/* Mobile sticky WA CTA — shown after hero CTA scrolls away */
+.kasir-sticky-wa {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  padding: 0.65rem 1rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
+  background: rgba(246, 250, 247, 0.92);
+  border-top: 1px solid rgba(27, 107, 74, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transform: translateY(110%);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.28s ease-out,
+    opacity 0.28s ease-out;
+}
+
+.kasir-sticky-wa.is-visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.kasir-main-sticky-pad {
+  padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .kasir-sticky-wa {
+    display: none;
+  }
+
+  .kasir-main-sticky-pad {
+    padding-bottom: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kasir-sticky-wa {
+    transition: none;
+  }
+}
