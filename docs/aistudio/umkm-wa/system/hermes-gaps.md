@@ -26,16 +26,32 @@ Tracked after comparing L5 (current as-built) with [Hermes docs](https://hermes-
 | **G3** | Image `:latest` di local compose / `.env.example` | Med | **FIXED** | Local default + `.env.example` pin `v2026.8.27` (sama pola prod). |
 | **G4** | Nest `POST …/whatsapp/webhook` dual-brain | Med | **FIXED** | Default **410 Gone** unless `WHATSAPP_WEBHOOK_ENABLED=1`. Simulasi = `simulateInboundMessage`. |
 | **G5** | Volume lokal `config.yaml` ≠ prod | Med | **FIXED** | Doc + health WARN/FAIL pada drift. |
-| **G6** | Session Baileys `chmod 700` | Low | **FIXED** | Runbook + health WARN. |
+| **G6** | Session Baileys `chmod 700` | Low | **FIXED** | Runbook + health WARN. **2026-09-20:** `hermes-kasir-posture.py apply` enforces `chmod 700` on session dir. |
 | **G7** | Assert boot kasir plugins | Med | **FIXED** | `hermes-kasir-health.py` (+ dipakai deploy G2). |
 | **G8** | Dashboard / API publik | High | **DONE** | Bind `127.0.0.1` + SSH tunnel. |
-| **G9** | Tool progress chrome di WA | Low | **DONE** | Silence via deploy. |
+| **G9** | Tool progress chrome di WA | Low | **DONE** | Silence via deploy / posture. |
 | **G10** | Bridge proxy `:8765` custom | — | **DONE** | Perlu Nest pair/send; ada di L5. |
 | **G11** | Teks sistem/tool bocor ke user WA | High (UX/trust) | **FIXED** | `user_safe` sanitize + wrap semua tool return; draft tanpa `draft_id`/nama tool; confirm latest `(phone,kind)`; denylist `_send_wa_text` (DAFTAR); SOUL harden; `reject_reason` cap. **Egress:** `kasir-pipe` `transform_llm_output` (1.3.5) sanitizes agent final reply before WA. |
 | **G12** | Hermes nag `/sethome` / “No home channel” | Med (UX) | **FIXED** | Set `WHATSAPP_HOME_CHANNEL` (ops chat JID) di compose/env. Nag fires on first message when home unset (`gateway/run.py`). UMKM: **ignore** — jangan `/sethome` di chat toko (itu mengalihkan cron ke mereka). |
 | **G13** | Built-in Hermes toolsets (terminal/browser/…) aktif di platform WhatsApp | High (security) | **FIXED** | `hermes-wa-tool-allowlist.py` sets `platform_toolsets.whatsapp` → `clarify` + `kasir`; deploy applies; `hermes-kasir-health.py` fail-closed. |
+| **G14** | Hermes recreate menghapus posture (plugins/silence) | High (ops) | **FIXED** | `hermes-kasir-posture.py` di `redeploy.sh` + `deploy-kasir-tools.py` setelah recreate. **Jangan** recreate `nsoft3-hermes` manual tanpa posture. |
 
 ---
+
+## Watchlist — jangan lupa (bukan “nanti saja di kepala”)
+
+| ID | Apa | Kenapa mudah kelupaan | Di mana tracked | Next action |
+|----|-----|------------------------|-----------------|-------------|
+| **W1** | Manual recreate hermes | `docker compose … recreate hermes` tanpa posture → plugins kosong | G14 FIXED + runbook | Selalu: `hermes-kasir-posture.py apply` atau `deploy-kasir-tools.py` |
+| **W2** | Live foto/voice QA | Smoke otomatis masih event sintetis | TODOS *Live multimodal WA QA* | Sekali: kirim foto dari HP allowlist (OFF refuse); optional ON time-boxed |
+| **W3** | Disk build cache | Prune hanya unused >7d; sisa cache aktif bisa besar | `prune-nsoft3-images.sh` | OK otomatis tiap redeploy; pantau `docker system df` kalau disk naik |
+| **W4** | Product backlog di luar deploy | Staff roles / Auth P2 / Cloud API | `TODOS.md` UMKM + Auth | Bukan residual bug deploy |
+
+---
+
+## Urutan beresin (sisa)
+
+_Tidak ada gap OPEN untuk deploy/posture._ G1 HOLD (produk). Watchlist W2 = QA hidup (P3). G14 enforced by posture scripts.
 
 ## Leak checklist (QA / live WA)
 
@@ -65,17 +81,14 @@ python3 -m unittest test_user_safe_copy.py -v
 
 ---
 
-## Urutan beresin (sisa)
-
-_Tidak ada gap OPEN._ G1 HOLD. G11 egress closed (`transform_llm_output`). G13 FIXED (tool allowlist).
-
----
-
 ## Cara cek cepat
 
 ```bash
 python3 scripts/master-production/hermes-kasir-health.py
-HERMES_CONTAINER=nsoft3-hermes python3 scripts/master-production/hermes-kasir-health.py --docker
+HERMES_HOME=/opt/nusantarasoft-3/volumes/hermes \
+  python3 scripts/master-production/hermes-kasir-posture.py check
+docker exec -e HERMES_HOME=/opt/data nsoft3-hermes \
+  python3 /opt/data/multimodal-smoke.py off --phone 6287859031592
 python3 -m unittest scripts/master-production/hermes-plugins/kasir-tools/test_user_safe_copy.py -v
 ```
 
@@ -95,3 +108,4 @@ python3 -m unittest scripts/master-production/hermes-plugins/kasir-tools/test_us
 | 2026-09-20 | Chat-only refuse (`KASIR_MULTIMODAL=0`), stamp v2, `kasir_tutup_toko`; diagrams L0c + L7 |
 | 2026-09-20 | **G11 egress** — `transform_llm_output` in kasir-pipe 1.3.5 (`user_safe` denylist) |
 | 2026-09-20 | Platform locks Q1–Q3 harden — `hermes-kasir-platform-locks.py` (STT id + image_input), SOUL Foto/voice + no MEMORY KB, diagram **L8** |
+| 2026-09-20 | **G14 FIXED** + Watchlist W1–W4; posture enforces session `chmod 700` (G6) |

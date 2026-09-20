@@ -257,6 +257,18 @@ def sync_plugins_from_repo(home: Path) -> None:
         print("synced SOUL.md + plugins", flush=True)
 
 
+def harden_session_chmod(home: Path) -> None:
+    """Baileys session dir should be 700 (Hermes BP / gap G6) — enforce on apply."""
+    session = home / "platforms" / "whatsapp" / "session"
+    if not session.is_dir():
+        return
+    try:
+        session.chmod(0o700)
+        print("session chmod 700", session, flush=True)
+    except OSError as exc:
+        print("WARN  session chmod failed:", exc, flush=True)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("action", choices=("apply", "check"))
@@ -294,6 +306,7 @@ def main() -> int:
     if args.action == "apply":
         if args.sync_plugins:
             sync_plugins_from_repo(home)
+        harden_session_chmod(home)
         notes = apply_config(cfg)
         print("applied", ",".join(notes) or "noop", flush=True)
         if not args.skip_side:

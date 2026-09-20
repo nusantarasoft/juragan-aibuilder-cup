@@ -218,7 +218,32 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 
 ## Hermes
 
-Tracker: [`docs/aistudio/umkm-wa/system/hermes-gaps.md`](docs/aistudio/umkm-wa/system/hermes-gaps.md) (G1–G12 status).
+Tracker: [`docs/aistudio/umkm-wa/system/hermes-gaps.md`](docs/aistudio/umkm-wa/system/hermes-gaps.md) (G1–G14 + **Watchlist W1–W4**).
+
+### Live multimodal WA QA (foto/voice nyata)
+
+**What:** Once from an allowlisted phone: send a real foto (and optionally voice) while `KASIR_MULTIMODAL=0` → expect refuse teks; optional time-boxed `=1` media turn then restore `0`. Complements automated `hermes-multimodal-smoke.py` (synthetic event).
+
+**Why:** Easy to forget that deploy smoke is synthetic; product confidence needs one real WA media turn.
+
+**Context:** Gaps watchlist **W2**. Checklist in `docs/aistudio/umkm-wa/system/hermes-local.md`.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** Platform locks + multimodal OFF path shipped
+**Status:** open — do once on prod/pilot phone
+
+### Never recreate hermes without posture
+
+**What:** Ops rule — after any manual `docker compose … recreate hermes`, run `hermes-kasir-posture.py apply` (or `deploy-kasir-tools.py`).
+
+**Why:** Recreate can wipe `plugins.enabled` / display silence; silent dual-brain / open tools risk.
+
+**Context:** Gap **G14** FIXED in `redeploy.sh` / `deploy-kasir-tools`; watchlist **W1** for manual ops.
+
+**Effort:** S (discipline)
+**Priority:** P1 (ops)
+**Status:** enforced in scripts; keep W1 visible in gaps watchlist
 
 ## Completed
 
