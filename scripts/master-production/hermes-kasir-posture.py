@@ -28,10 +28,13 @@ DEFAULT_HOME = Path(
     os.environ.get("HERMES_HOME") or (ROOT / "volumes" / "hermes")
 )
 
-# G15 — UMKM kasir must not silently burn OpenRouter Claude credits.
-LOCKED_MODEL_DEFAULT = "google/gemini-2.5-flash"
+# G15/G16 — UMKM kasir: never silent-drift to Claude Opus.
+# Main = best GLM for tools; vision = best Gemma (GLM 5.3 is text-only).
+LOCKED_MODEL_DEFAULT = "z-ai/glm-5.3"
 LOCKED_MODEL_PROVIDER = "openrouter"
 LOCKED_MODEL_BASE_URL = "https://openrouter.ai/api/v1"
+LOCKED_VISION_PROVIDER = "openrouter"
+LOCKED_VISION_MODEL = "google/gemma-4-31b-it"
 
 PLUGINS_BLOCK = """plugins:
   enabled:
@@ -65,6 +68,50 @@ MODEL_BLOCK = f"""model:
   base_url: {LOCKED_MODEL_BASE_URL}
 """
 
+AUX_VISION_BLOCK = f"""auxiliary:
+  vision:
+    provider: {LOCKED_VISION_PROVIDER}
+    model: {LOCKED_VISION_MODEL}
+"""
+
+
+def ensure_auxiliary_vision(text: str) -> tuple[str, bool]:
+    """Force OpenRouter Gemma for foto annotate (main GLM is text-only)."""
+    wanted = {
+        "provider": LOCKED_VISION_PROVIDER,
+        "model": LOCKED_VISION_MODEL,
+    }
+    m = re.search(r"(?ms)^(auxiliary:\n)(.*?)(?=^[a-zA-Z_][\w]*:|\Z)", text)
+    if not m:
+        text2 = text.rstrip() + "\n\n" + AUX_VISION_BLOCK
+        return text2, True
+
+    head, body = m.group(1), m.group(2)
+    orig = body
+    # Ensure vision: subsection
+    if not re.search(r"(?m)^  vision:\s*$", body):
+        body = body.rstrip("\n") + "\n  vision:\n"
+        for k, v in wanted.items():
+            body += f"    {k}: {v}\n"
+    else:
+        for k, v in wanted.items():
+            pat = re.compile(
+                rf"(?ms)(^  vision:\n(?:    .*\n)*?    {re.escape(k)}:\s*)\S*"
+            )
+            if pat.search(body):
+                body = pat.sub(rf"\g<1>{v}", body, count=1)
+            else:
+                body = re.sub(
+                    r"(?m)^(  vision:\s*)$",
+                    rf"\1\n    {k}: {v}",
+                    body,
+                    count=1,
+                )
+    if not body.endswith("\n"):
+        body += "\n"
+    text2 = text[: m.start()] + head + body + text[m.end() :]
+    return text2, body != orig or text2 != text
+
 
 def _set_top(block: str, key: str, value: str) -> str:
     pat = re.compile(rf"(?m)^  {re.escape(key)}:.*$")
@@ -88,7 +135,7 @@ def ensure_plugins(text: str) -> tuple[str, bool]:
 
 
 def ensure_model_lock(text: str) -> tuple[str, bool]:
-    """Force OpenRouter + Gemini Flash (Hermes stock default is Claude Opus)."""
+    """Force OpenRouter + locked main LLM (Hermes stock default is Claude Opus)."""
     wanted = {
         "default": LOCKED_MODEL_DEFAULT,
         "provider": LOCKED_MODEL_PROVIDER,
@@ -192,7 +239,10 @@ def apply_config(path: Path) -> list[str]:
     text = path.read_text(encoding="utf-8", errors="replace")
     text, ch = ensure_model_lock(text)
     if ch:
-        notes.append("model.gemini-lock")
+        notes.append("model.glm-lock")
+    text, ch = ensure_auxiliary_vision(text)
+    if ch:
+        notes.append("auxiliary.vision.gemma")
     text, ch = ensure_plugins(text)
     if ch:
         notes.append("plugins.enabled")
@@ -203,10 +253,13 @@ def apply_config(path: Path) -> list[str]:
     text, ch = ensure_plugins(text)
     if ch:
         notes.append("plugins.reassert")
-    # Re-assert model last — other rewrites must not drift LLM back to Claude.
+    # Re-assert model + vision last — other rewrites must not drift LLM back to Claude.
     text, ch = ensure_model_lock(text)
     if ch:
         notes.append("model.reassert")
+    text, ch = ensure_auxiliary_vision(text)
+    if ch:
+        notes.append("auxiliary.vision.reassert")
     path.write_text(text, encoding="utf-8")
     return notes
 
@@ -266,6 +319,33 @@ def check_config(path: Path) -> list[tuple[bool, str]]:
             f"provider={model.get('provider')!r} "
             f"base_url={model.get('base_url')!r} "
             f"(want {LOCKED_MODEL_DEFAULT} / {LOCKED_MODEL_PROVIDER})",
+        )
+    )
+    # auxiliary.vision
+    vis_provider = vis_model = ""
+    try:
+        import yaml  # type: ignore
+
+        data = yaml.safe_load(text) or {}
+        vis = ((data.get("auxiliary") or {}).get("vision") or {})
+        if isinstance(vis, dict):
+            vis_provider = str(vis.get("provider") or "").strip().strip("\"'")
+            vis_model = str(vis.get("model") or "").strip().strip("\"'")
+    except Exception:
+        m = re.search(r"(?ms)^auxiliary:\n(.*?)(?=^[a-zA-Z_]|\Z)", text)
+        body = m.group(1) if m else ""
+        pm = re.search(r"(?m)^    provider:\s*(\S+)", body)
+        mm = re.search(r"(?m)^    model:\s*(\S+)", body)
+        vis_provider = pm.group(1).strip().strip("\"'") if pm else ""
+        vis_model = mm.group(1).strip().strip("\"'") if mm else ""
+    vis_ok = (
+        vis_provider == LOCKED_VISION_PROVIDER and vis_model == LOCKED_VISION_MODEL
+    )
+    out.append(
+        (
+            vis_ok,
+            f"auxiliary.vision.provider={vis_provider!r} model={vis_model!r} "
+            f"(want {LOCKED_VISION_PROVIDER} / {LOCKED_VISION_MODEL})",
         )
     )
     return out

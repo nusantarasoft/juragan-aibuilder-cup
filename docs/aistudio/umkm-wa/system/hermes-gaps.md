@@ -35,7 +35,8 @@ Tracked after comparing L5 (current as-built) with [Hermes docs](https://hermes-
 | **G12** | Hermes nag `/sethome` / “No home channel” | Med (UX) | **FIXED** | Set `WHATSAPP_HOME_CHANNEL` (ops chat JID) di compose/env. Nag fires on first message when home unset (`gateway/run.py`). UMKM: **ignore** — jangan `/sethome` di chat toko (itu mengalihkan cron ke mereka). |
 | **G13** | Built-in Hermes toolsets (terminal/browser/…) aktif di platform WhatsApp | High (security) | **FIXED** | `hermes-wa-tool-allowlist.py` sets `platform_toolsets.whatsapp` → `clarify` + `kasir`; deploy applies; `hermes-kasir-health.py` fail-closed. |
 | **G14** | Hermes recreate menghapus posture (plugins/silence) | High (ops) | **FIXED** | `hermes-kasir-posture.py` di `redeploy.sh` + `deploy-kasir-tools.py` setelah recreate. **Jangan** recreate `nsoft3-hermes` manual tanpa posture. |
-| **G15** | LLM drift ke Claude Opus (stock Hermes / OpenRouter) | High (cost) | **FIXED** | Posture locks `google/gemini-2.5-flash` + `openrouter`; health **fail-closed**. Jangan `/model` Claude di chat ops. |
+| **G15** | LLM drift ke Claude Opus (stock Hermes / OpenRouter) | High (cost) | **SUPERSEDED → G16** | Was Flash lock; now GLM 5.3 + Gemma vision (still fail-closed vs Claude). |
+| **G16** | Kasir main/vision model lock | High (cost + modality) | **FIXED** | Posture locks `z-ai/glm-5.3` + `auxiliary.vision` `google/gemma-4-31b-it` via OpenRouter; health **fail-closed**. |
 
 ---
 
@@ -52,7 +53,7 @@ Tracked after comparing L5 (current as-built) with [Hermes docs](https://hermes-
 
 ## Urutan beresin (sisa)
 
-_Tidak ada gap OPEN untuk deploy/posture._ G1 HOLD (produk). Watchlist W2 closed 2026-09-20 (live refuse + smoke). G14–G15 enforced by posture scripts.
+_Tidak ada gap OPEN untuk deploy/posture._ G1 HOLD (produk). Watchlist W2 closed 2026-09-20 (live refuse + smoke). G14 FIXED; G15 superseded by **G16** (GLM + Gemma) enforced by posture scripts.
 
 ## Leak checklist (QA / live WA)
 
@@ -114,3 +115,4 @@ python3 -m unittest scripts/master-production/hermes-plugins/kasir-tools/test_us
 | 2026-09-20 | **W2 ON live** — time-boxed then **soft GA left `KASIR_MULTIMODAL=1`** (dengan consult ON) |
 | 2026-09-21 | **G15 FIXED** — posture + health lock LLM to `google/gemini-2.5-flash` via OpenRouter (no Claude Opus drift) |
 | 2026-09-21 | Consult synthesize → OpenRouter **Qwen3.7 Flash** (`KASIR_CONSULT_SYNTH_*`; was DeepSeek); Nest OpenRouter provider; docs **model-stack** + diagram **L10** |
+| 2026-09-21 | **G16 FIXED** — Hermes main → `z-ai/glm-5.3`; vision → `google/gemma-4-31b-it` (`auxiliary.vision`); health fail-closed |

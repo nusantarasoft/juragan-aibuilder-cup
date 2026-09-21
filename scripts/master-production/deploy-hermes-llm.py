@@ -12,8 +12,9 @@ It never handles the API key itself. Put the key in the server's
 which provider and model to use, and proves end to end that the model will
 actually call a tool.
 
-Kasir production lock (G15): after any hermes recreate, run
-`hermes-kasir-posture.py apply` — it re-asserts google/gemini-2.5-flash via
+Kasir production lock (G16): after any hermes recreate, run
+`hermes-kasir-posture.py apply` — it re-asserts z-ai/glm-5.3 via OpenRouter
+(+ auxiliary.vision google/gemma-4-31b-it) so stock Claude Opus never burns credits.
 OpenRouter. Do not leave Hermes stock Claude Opus as the default.
 
 Usage:
@@ -21,7 +22,7 @@ Usage:
   python scripts/master-production/deploy-hermes-llm.py --list-models
   python scripts/master-production/deploy-hermes-llm.py --apply
   python scripts/master-production/deploy-hermes-llm.py --apply \\
-      --provider openrouter --model google/gemini-2.5-flash
+      --provider openrouter --model z-ai/glm-5.3
 
 Only the hermes container is recreated, so the blast radius stays at the one
 service being changed. The WhatsApp session lives in the volume and survives,
@@ -205,7 +206,7 @@ def main() -> int:
         "--list-models", action="store_true", help="List models the key can generate with."
     )
     parser.add_argument("--provider", default="openrouter", choices=sorted(BASE_URLS))
-    parser.add_argument("--model", default="google/gemini-2.5-flash")
+    parser.add_argument("--model", default="z-ai/glm-5.3")
     args = parser.parse_args()
 
     if not (args.apply or args.status or args.list_models):

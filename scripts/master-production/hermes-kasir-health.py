@@ -211,7 +211,7 @@ def main() -> int:
         results,
     )
 
-    # G15: main agent LLM must stay Gemini Flash via OpenRouter (not Claude Opus).
+    # G16: main agent LLM = GLM 5.3 via OpenRouter (not Claude Opus / not Flash).
     model = data.get("model") or {}
     if not isinstance(model, dict):
         model = {}
@@ -233,7 +233,7 @@ def main() -> int:
         m_default = _model_kv("default")
         m_provider = _model_kv("provider")
         m_base = _model_kv("base_url")
-    want_default = "google/gemini-2.5-flash"
+    want_default = "z-ai/glm-5.3"
     want_provider = "openrouter"
     want_base = "https://openrouter.ai/api/v1"
     model_ok = (
@@ -242,10 +242,41 @@ def main() -> int:
         and m_base == want_base
     )
     check(
-        "llm-gemini-lock",
+        "llm-glm-lock",
         model_ok,
         f"model.default={m_default!r} provider={m_provider!r} base_url={m_base!r} "
         f"(want {want_default} / {want_provider} — hermes-kasir-posture.py)",
+        True,
+        results,
+    )
+
+    # Vision aux: Gemma 4 31B (main GLM is text-only).
+    aux = data.get("auxiliary") or {}
+    if not isinstance(aux, dict):
+        aux = {}
+    vis = aux.get("vision") or {}
+    if not isinstance(vis, dict):
+        vis = {}
+    v_provider = str(vis.get("provider") or "").strip().strip("\"'")
+    v_model = str(vis.get("model") or "").strip().strip("\"'")
+    if not v_model:
+        import re as _re2
+
+        cfg_raw2 = config_path.read_text(encoding="utf-8", errors="replace")
+        am = _re2.search(r"(?ms)^auxiliary:\n(.*?)(?=^[a-zA-Z_]|\Z)", cfg_raw2)
+        abody = am.group(1) if am else ""
+        pm = _re2.search(r"(?m)^    provider:\s*(\S+)", abody)
+        mm = _re2.search(r"(?m)^    model:\s*(\S+)", abody)
+        v_provider = pm.group(1).strip().strip("\"'") if pm else ""
+        v_model = mm.group(1).strip().strip("\"'") if mm else ""
+    want_vis_provider = "openrouter"
+    want_vis_model = "google/gemma-4-31b-it"
+    vis_ok = v_provider == want_vis_provider and v_model == want_vis_model
+    check(
+        "llm-vision-gemma-lock",
+        vis_ok,
+        f"auxiliary.vision.provider={v_provider!r} model={v_model!r} "
+        f"(want {want_vis_provider} / {want_vis_model})",
         True,
         results,
     )
