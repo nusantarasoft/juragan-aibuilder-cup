@@ -35,6 +35,7 @@ Tracked after comparing L5 (current as-built) with [Hermes docs](https://hermes-
 | **G12** | Hermes nag `/sethome` / “No home channel” | Med (UX) | **FIXED** | Set `WHATSAPP_HOME_CHANNEL` (ops chat JID) di compose/env. Nag fires on first message when home unset (`gateway/run.py`). UMKM: **ignore** — jangan `/sethome` di chat toko (itu mengalihkan cron ke mereka). |
 | **G13** | Built-in Hermes toolsets (terminal/browser/…) aktif di platform WhatsApp | High (security) | **FIXED** | `hermes-wa-tool-allowlist.py` sets `platform_toolsets.whatsapp` → `clarify` + `kasir`; deploy applies; `hermes-kasir-health.py` fail-closed. |
 | **G14** | Hermes recreate menghapus posture (plugins/silence) | High (ops) | **FIXED** | `hermes-kasir-posture.py` di `redeploy.sh` + `deploy-kasir-tools.py` setelah recreate. **Jangan** recreate `nsoft3-hermes` manual tanpa posture. |
+| **G15** | LLM drift ke Claude Opus (stock Hermes / OpenRouter) | High (cost) | **FIXED** | Posture locks `google/gemini-2.5-flash` + `openrouter`; health **fail-closed**. Jangan `/model` Claude di chat ops. |
 
 ---
 
@@ -42,7 +43,7 @@ Tracked after comparing L5 (current as-built) with [Hermes docs](https://hermes-
 
 | ID | Apa | Kenapa mudah kelupaan | Di mana tracked | Next action |
 |----|-----|------------------------|-----------------|-------------|
-| **W1** | Manual recreate hermes | `docker compose … recreate hermes` tanpa posture → plugins kosong | G14 FIXED + runbook | Selalu: `hermes-kasir-posture.py apply` atau `deploy-kasir-tools.py` |
+| **W1** | Manual recreate hermes | `docker compose … recreate hermes` tanpa posture → plugins kosong **atau LLM balik Claude** | G14–G15 FIXED + runbook | Selalu: `hermes-kasir-posture.py apply` atau `deploy-kasir-tools.py` |
 | **W2** | Live foto/voice QA | Smoke otomatis masih event sintetis | TODOS *done 2026-09-20* | **DONE** — OFF refuse + live ON; **prod soft GA `KASIR_MULTIMODAL=1`** (2026-09-20, dengan consult ON) |
 | **W3** | Disk build cache | Prune hanya unused >7d; sisa cache aktif bisa besar | `prune-nsoft3-images.sh` | OK otomatis tiap redeploy; pantau `docker system df` kalau disk naik |
 | **W4** | Product backlog di luar deploy | Staff roles / Auth P2 / Cloud API | `TODOS.md` UMKM + Auth | Bukan residual bug deploy |
@@ -51,7 +52,7 @@ Tracked after comparing L5 (current as-built) with [Hermes docs](https://hermes-
 
 ## Urutan beresin (sisa)
 
-_Tidak ada gap OPEN untuk deploy/posture._ G1 HOLD (produk). Watchlist W2 closed 2026-09-20 (live refuse + smoke). G14 enforced by posture scripts.
+_Tidak ada gap OPEN untuk deploy/posture._ G1 HOLD (produk). Watchlist W2 closed 2026-09-20 (live refuse + smoke). G14–G15 enforced by posture scripts.
 
 ## Leak checklist (QA / live WA)
 
@@ -111,3 +112,4 @@ python3 -m unittest scripts/master-production/hermes-plugins/kasir-tools/test_us
 | 2026-09-20 | **G14 FIXED** + Watchlist W1–W4; posture enforces session `chmod 700` (G6) |
 | 2026-09-20 | **W2 DONE** — live media refuse + OFF/ON smoke on prod; flag stays `0` |
 | 2026-09-20 | **W2 ON live** — time-boxed then **soft GA left `KASIR_MULTIMODAL=1`** (dengan consult ON) |
+| 2026-09-21 | **G15 FIXED** — posture + health lock LLM to `google/gemini-2.5-flash` via OpenRouter (no Claude Opus drift) |

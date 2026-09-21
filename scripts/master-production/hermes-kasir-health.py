@@ -211,6 +211,45 @@ def main() -> int:
         results,
     )
 
+    # G15: main agent LLM must stay Gemini Flash via OpenRouter (not Claude Opus).
+    model = data.get("model") or {}
+    if not isinstance(model, dict):
+        model = {}
+    m_default = str(model.get("default") or "").strip().strip("\"'")
+    m_provider = str(model.get("provider") or "").strip().strip("\"'")
+    m_base = str(model.get("base_url") or "").strip().strip("\"'")
+    if not m_default:
+        # PyYAML-less fallback path only parsed plugins.enabled
+        import re as _re
+
+        cfg_raw = config_path.read_text(encoding="utf-8", errors="replace")
+        body_m = _re.search(r"(?ms)^model:\n(.*?)(?=^[a-zA-Z_]|\Z)", cfg_raw)
+        body = body_m.group(1) if body_m else ""
+
+        def _model_kv(k: str) -> str:
+            mm = _re.search(rf"(?m)^  {k}:\s*(\S+)", body)
+            return mm.group(1).strip().strip("\"'") if mm else ""
+
+        m_default = _model_kv("default")
+        m_provider = _model_kv("provider")
+        m_base = _model_kv("base_url")
+    want_default = "google/gemini-2.5-flash"
+    want_provider = "openrouter"
+    want_base = "https://openrouter.ai/api/v1"
+    model_ok = (
+        m_default == want_default
+        and m_provider == want_provider
+        and m_base == want_base
+    )
+    check(
+        "llm-gemini-lock",
+        model_ok,
+        f"model.default={m_default!r} provider={m_provider!r} base_url={m_base!r} "
+        f"(want {want_default} / {want_provider} — hermes-kasir-posture.py)",
+        True,
+        results,
+    )
+
     # G13: WhatsApp must not expose coding toolsets (terminal/browser/…).
     try:
         from pathlib import Path as _P

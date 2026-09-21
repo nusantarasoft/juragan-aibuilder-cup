@@ -12,6 +12,10 @@ It never handles the API key itself. Put the key in the server's
 which provider and model to use, and proves end to end that the model will
 actually call a tool.
 
+Kasir production lock (G15): after any hermes recreate, run
+`hermes-kasir-posture.py apply` — it re-asserts google/gemini-2.5-flash via
+OpenRouter. Do not leave Hermes stock Claude Opus as the default.
+
 Usage:
   python scripts/master-production/deploy-hermes-llm.py --status
   python scripts/master-production/deploy-hermes-llm.py --list-models

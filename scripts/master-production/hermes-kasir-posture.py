@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Restore / verify Hermes kasir production posture (idempotent).
 
-After hermes recreate, config.yaml can lose plugins.enabled or display silence.
-This script re-applies the locked kasir posture without a full plugin redeploy.
+After hermes recreate, config.yaml can lose plugins.enabled, display silence,
+or drift back to Hermes stock LLM (Claude Opus via OpenRouter). This script
+re-applies the locked kasir posture without a full plugin redeploy.
 
 Usage (on server):
   HERMES_HOME=/opt/nusantarasoft-3/volumes/hermes \\
@@ -26,6 +27,11 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_HOME = Path(
     os.environ.get("HERMES_HOME") or (ROOT / "volumes" / "hermes")
 )
+
+# G15 — UMKM kasir must not silently burn OpenRouter Claude credits.
+LOCKED_MODEL_DEFAULT = "google/gemini-2.5-flash"
+LOCKED_MODEL_PROVIDER = "openrouter"
+LOCKED_MODEL_BASE_URL = "https://openrouter.ai/api/v1"
 
 PLUGINS_BLOCK = """plugins:
   enabled:
@@ -53,6 +59,12 @@ DISPLAY_DEFAULTS = {
     "streaming": "false",
 }
 
+MODEL_BLOCK = f"""model:
+  default: {LOCKED_MODEL_DEFAULT}
+  provider: {LOCKED_MODEL_PROVIDER}
+  base_url: {LOCKED_MODEL_BASE_URL}
+"""
+
 
 def _set_top(block: str, key: str, value: str) -> str:
     pat = re.compile(rf"(?m)^  {re.escape(key)}:.*$")
@@ -73,6 +85,52 @@ def ensure_plugins(text: str) -> tuple[str, bool]:
     else:
         text2 = text.rstrip() + "\n\n" + PLUGINS_BLOCK
     return text2, text2 != text
+
+
+def ensure_model_lock(text: str) -> tuple[str, bool]:
+    """Force OpenRouter + Gemini Flash (Hermes stock default is Claude Opus)."""
+    wanted = {
+        "default": LOCKED_MODEL_DEFAULT,
+        "provider": LOCKED_MODEL_PROVIDER,
+        "base_url": LOCKED_MODEL_BASE_URL,
+    }
+    m = re.search(r"(?ms)^(model:\n)(.*?)(?=^[a-zA-Z_][\w]*:|\Z)", text)
+    if not m:
+        text2 = MODEL_BLOCK.rstrip() + "\n\n" + text.lstrip()
+        return text2, True
+
+    head, body = m.group(1), m.group(2)
+    orig = body
+    for k, v in wanted.items():
+        body = _set_top(body, k, v)
+    if not body.endswith("\n"):
+        body += "\n"
+    text2 = text[: m.start()] + head + body + text[m.end() :]
+    return text2, body != orig or text2 != text
+
+
+def parse_model_fields(text: str) -> dict[str, str]:
+    """Return model.default / provider / base_url (best-effort without PyYAML)."""
+    out: dict[str, str] = {}
+    try:
+        import yaml  # type: ignore
+
+        data = yaml.safe_load(text) or {}
+        model = data.get("model") or {}
+        if isinstance(model, dict):
+            for k in ("default", "provider", "base_url"):
+                if model.get(k) is not None:
+                    out[k] = str(model.get(k)).strip().strip("\"'")
+            return out
+    except Exception:
+        pass
+    m = re.search(r"(?ms)^model:\n(.*?)(?=^[a-zA-Z_]|\Z)", text)
+    body = m.group(1) if m else ""
+    for k in ("default", "provider", "base_url"):
+        mm = re.search(rf"(?m)^  {k}:\s*(\S+)", body)
+        if mm:
+            out[k] = mm.group(1).strip().strip("\"'")
+    return out
 
 
 def ensure_display_silence(text: str) -> tuple[str, bool]:
@@ -132,6 +190,9 @@ def ensure_display_silence(text: str) -> tuple[str, bool]:
 def apply_config(path: Path) -> list[str]:
     notes: list[str] = []
     text = path.read_text(encoding="utf-8", errors="replace")
+    text, ch = ensure_model_lock(text)
+    if ch:
+        notes.append("model.gemini-lock")
     text, ch = ensure_plugins(text)
     if ch:
         notes.append("plugins.enabled")
@@ -142,6 +203,10 @@ def apply_config(path: Path) -> list[str]:
     text, ch = ensure_plugins(text)
     if ch:
         notes.append("plugins.reassert")
+    # Re-assert model last — other rewrites must not drift LLM back to Claude.
+    text, ch = ensure_model_lock(text)
+    if ch:
+        notes.append("model.reassert")
     path.write_text(text, encoding="utf-8")
     return notes
 
@@ -187,6 +252,22 @@ def check_config(path: Path) -> list[tuple[bool, str]]:
         tp = re.search(r"(?m)^  tool_progress:\s*(\S+)", body)
         val = (tp.group(1).strip().strip("\"'").lower() if tp else "")
     out.append((val in ("off", "false", "0"), f"display.tool_progress={val!r}"))
+
+    model = parse_model_fields(text)
+    model_ok = (
+        model.get("default") == LOCKED_MODEL_DEFAULT
+        and model.get("provider") == LOCKED_MODEL_PROVIDER
+        and model.get("base_url") == LOCKED_MODEL_BASE_URL
+    )
+    out.append(
+        (
+            model_ok,
+            f"model.default={model.get('default')!r} "
+            f"provider={model.get('provider')!r} "
+            f"base_url={model.get('base_url')!r} "
+            f"(want {LOCKED_MODEL_DEFAULT} / {LOCKED_MODEL_PROVIDER})",
+        )
+    )
     return out
 
 
