@@ -35,11 +35,12 @@ Tracked after comparing L5 (current as-built) with [Hermes docs](https://hermes-
 | **G12** | Hermes nag `/sethome` / “No home channel” | Med (UX) | **FIXED** | Set `WHATSAPP_HOME_CHANNEL` (ops chat JID) di compose/env. Nag fires on first message when home unset (`gateway/run.py`). UMKM: **ignore** — jangan `/sethome` di chat toko (itu mengalihkan cron ke mereka). |
 | **G13** | Built-in Hermes toolsets (terminal/browser/…) aktif di platform WhatsApp | High (security) | **FIXED** | `hermes-wa-tool-allowlist.py` sets `platform_toolsets.whatsapp` → `clarify` + `kasir`; deploy applies; `hermes-kasir-health.py` fail-closed. |
 | **G14** | Hermes recreate menghapus posture (plugins/silence) | High (ops) | **FIXED** | `hermes-kasir-posture.py` di `redeploy.sh` + `deploy-kasir-tools.py` setelah recreate. **Jangan** recreate `nsoft3-hermes` manual tanpa posture. |
-| **G15** | LLM drift ke Claude Opus (stock Hermes / OpenRouter) | High (cost) | **SUPERSEDED → G16** | Was Flash lock; then GLM + Gemma; G17–G18 trials; G19 Qwen3-VL. |
+| **G15** | LLM drift ke Claude Opus (stock Hermes / OpenRouter) | High (cost) | **SUPERSEDED → G16** | Was Flash lock; then GLM + Gemma; G17–G19 VL trials; G20 Gemma again. |
 | **G16** | Kasir main/vision model lock | High (cost + modality) | **SUPERSEDED → G17** | Was GLM 5.3 + Gemma 31B vision; Gemma baca foto lemah. |
 | **G17** | Vision quality + self-host path | High (UX foto) | **SUPERSEDED → G18** | Was `qwen2.5-vl-32b-instruct`; then Flash trial. |
 | **G18** | Vision cost trial (Qwen3.7 Flash) | Med (UX foto / cost) | **SUPERSEDED → G19** | Flash murah; pilih kembali VL khusus OCR. |
-| **G19** | Vision → Qwen3-VL 32B | High (UX foto) | **FIXED** | `auxiliary.vision` → `qwen/qwen3-vl-32b-instruct` (termurah di Qwen3-VL Instruct OR); main `z-ai/glm-5.3`; health **fail-closed**. |
+| **G19** | Vision → Qwen3-VL 32B | High (UX foto) | **SUPERSEDED → G20** | Trial Qwen3-VL; rollback ke Gemma. |
+| **G20** | Vision → Gemma 4 31B | High (UX foto) | **FIXED** | `auxiliary.vision` → `google/gemma-4-31b-it`; main `z-ai/glm-5.3`; health **fail-closed**. |
 
 ---
 
@@ -56,7 +57,7 @@ Tracked after comparing L5 (current as-built) with [Hermes docs](https://hermes-
 
 ## Urutan beresin (sisa)
 
-_Tidak ada gap OPEN untuk deploy/posture._ G1 HOLD (produk). Watchlist W2 closed 2026-09-20 (live refuse + smoke). G14 FIXED; G15–G18 superseded by **G19** (GLM + Qwen3-VL 32B) enforced by posture scripts.
+_Tidak ada gap OPEN untuk deploy/posture._ G1 HOLD (produk). Watchlist W2 closed 2026-09-20 (live refuse + smoke). G14 FIXED; G15–G19 superseded by **G20** (GLM + Gemma 4 31B) enforced by posture scripts.
 
 ## Leak checklist (QA / live WA)
 
@@ -122,3 +123,4 @@ python3 -m unittest scripts/master-production/hermes-plugins/kasir-tools/test_us
 | 2026-09-21 | **G17 FIXED** — vision → `qwen/qwen2.5-vl-32b-instruct` (Gemma baca foto lemah; open weight → self-host later) |
 | 2026-09-21 | **G18 FIXED** — vision → `qwen/qwen3.7-flash` (trial murah; rollback ke Qwen3-VL bila OCR lemah) |
 | 2026-09-21 | **G19 FIXED** — vision → `qwen/qwen3-vl-32b-instruct` (termurah Qwen3-VL Instruct; open → self-host) |
+| 2026-09-21 | **G20 FIXED** — vision → `google/gemma-4-31b-it` (rollback dari Qwen3-VL) |

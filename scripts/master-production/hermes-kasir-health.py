@@ -270,10 +270,10 @@ def main() -> int:
         v_provider = pm.group(1).strip().strip("\"'") if pm else ""
         v_model = mm.group(1).strip().strip("\"'") if mm else ""
     want_vis_provider = "openrouter"
-    want_vis_model = "qwen/qwen3-vl-32b-instruct"
+    want_vis_model = "google/gemma-4-31b-it"
     vis_ok = v_provider == want_vis_provider and v_model == want_vis_model
     check(
-        "llm-vision-qwen3-vl-lock",
+        "llm-vision-gemma-lock",
         vis_ok,
         f"auxiliary.vision.provider={v_provider!r} model={v_model!r} "
         f"(want {want_vis_provider} / {want_vis_model})",
