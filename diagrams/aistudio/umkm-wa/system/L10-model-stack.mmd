@@ -7,10 +7,10 @@ flowchart TB
     P[Foto]
   end
 
-  subgraph Hermes[Hermes agent — G20]
+  subgraph Hermes[Hermes agent — G21]
     STT[STT: Whisper base lokal<br/>language=id]
     VIS[Vision aux: google/gemma-4-31b-it<br/>OpenRouter]
-    MAIN[Main LLM: z-ai/glm-5.3<br/>OpenRouter — tools + SOUL]
+    MAIN[Main LLM: z-ai/glm-5.3-flash<br/>OpenRouter — tools + SOUL]
     TOOLS[kasir-tools]
   end
 

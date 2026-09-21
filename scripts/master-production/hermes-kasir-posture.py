@@ -28,9 +28,9 @@ DEFAULT_HOME = Path(
     os.environ.get("HERMES_HOME") or (ROOT / "volumes" / "hermes")
 )
 
-# G16–G20 — UMKM kasir: never silent-drift to Claude Opus.
-# Main = GLM for tools; vision = Gemma 4 31B (rollback dari Qwen3-VL trial).
-LOCKED_MODEL_DEFAULT = "z-ai/glm-5.3"
+# G16–G21 — UMKM kasir: never silent-drift to Claude Opus.
+# Main = GLM 5.3 Flash (tools murah); vision = Gemma 4 31B.
+LOCKED_MODEL_DEFAULT = "z-ai/glm-5.3-flash"
 LOCKED_MODEL_PROVIDER = "openrouter"
 LOCKED_MODEL_BASE_URL = "https://openrouter.ai/api/v1"
 LOCKED_VISION_PROVIDER = "openrouter"

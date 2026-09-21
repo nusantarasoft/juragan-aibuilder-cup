@@ -40,7 +40,8 @@ Tracked after comparing L5 (current as-built) with [Hermes docs](https://hermes-
 | **G17** | Vision quality + self-host path | High (UX foto) | **SUPERSEDED → G18** | Was `qwen2.5-vl-32b-instruct`; then Flash trial. |
 | **G18** | Vision cost trial (Qwen3.7 Flash) | Med (UX foto / cost) | **SUPERSEDED → G19** | Flash murah; pilih kembali VL khusus OCR. |
 | **G19** | Vision → Qwen3-VL 32B | High (UX foto) | **SUPERSEDED → G20** | Trial Qwen3-VL; rollback ke Gemma. |
-| **G20** | Vision → Gemma 4 31B | High (UX foto) | **FIXED** | `auxiliary.vision` → `google/gemma-4-31b-it`; main `z-ai/glm-5.3`; health **fail-closed**. |
+| **G20** | Vision → Gemma 4 31B | High (UX foto) | **FIXED** | `auxiliary.vision` → `google/gemma-4-31b-it`; main was `z-ai/glm-5.3` then G21 Flash. |
+| **G21** | Main → GLM 5.3 Flash (cost) | High (cost) | **FIXED** | `model.default` → `z-ai/glm-5.3-flash` (~10× murah vs full 5.3); vision tetap Gemma; health **fail-closed**. |
 
 ---
 
@@ -57,7 +58,7 @@ Tracked after comparing L5 (current as-built) with [Hermes docs](https://hermes-
 
 ## Urutan beresin (sisa)
 
-_Tidak ada gap OPEN untuk deploy/posture._ G1 HOLD (produk). Watchlist W2 closed 2026-09-20 (live refuse + smoke). G14 FIXED; G15–G19 superseded by **G20** (GLM + Gemma 4 31B) enforced by posture scripts.
+_Tidak ada gap OPEN untuk deploy/posture._ G1 HOLD (produk). Watchlist W2 closed 2026-09-20 (live refuse + smoke). G14 FIXED; **G21** (GLM 5.3 Flash + Gemma) enforced by posture scripts.
 
 ## Leak checklist (QA / live WA)
 
@@ -124,3 +125,4 @@ python3 -m unittest scripts/master-production/hermes-plugins/kasir-tools/test_us
 | 2026-09-21 | **G18 FIXED** — vision → `qwen/qwen3.7-flash` (trial murah; rollback ke Qwen3-VL bila OCR lemah) |
 | 2026-09-21 | **G19 FIXED** — vision → `qwen/qwen3-vl-32b-instruct` (termurah Qwen3-VL Instruct; open → self-host) |
 | 2026-09-21 | **G20 FIXED** — vision → `google/gemma-4-31b-it` (rollback dari Qwen3-VL) |
+| 2026-09-21 | **G21 FIXED** — Hermes main → `z-ai/glm-5.3-flash` (cost; vision tetap Gemma) |

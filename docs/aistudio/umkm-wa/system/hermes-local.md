@@ -65,7 +65,7 @@ Pair via Admin → WhatsApp Gateway (or Hermes dashboard QR).
 
 `KASIR_MULTIMODAL` compose default **off** (chat-only). **Prod soft GA ON** (2026-09-20): foto/suara pass through → STT/vision + draft jual. Wire: compose `KASIR_MULTIMODAL=${KASIR_MULTIMODAL:-0}` + `.env.master-production` (prod currently `1`).
 
-Model locks (Hermes GLM 5.3 + Gemma vision / Nest Qwen consult / Whisper STT): [`model-stack.md`](./model-stack.md) · [L10](../../../../diagrams/aistudio/umkm-wa/system/L10-model-stack.svg).
+Model locks (Hermes GLM 5.3 Flash + Gemma vision / Nest Qwen consult / Whisper STT): [`model-stack.md`](./model-stack.md) · [L10](../../../../diagrams/aistudio/umkm-wa/system/L10-model-stack.svg).
 
 **Multimodal smoke checklist**
 

@@ -211,7 +211,7 @@ def main() -> int:
         results,
     )
 
-    # G16: main agent LLM = GLM 5.3 via OpenRouter (not Claude Opus / not Flash).
+    # G21: main agent LLM = GLM 5.3 Flash via OpenRouter (not Claude Opus / not full GLM 5.3).
     model = data.get("model") or {}
     if not isinstance(model, dict):
         model = {}
@@ -233,7 +233,7 @@ def main() -> int:
         m_default = _model_kv("default")
         m_provider = _model_kv("provider")
         m_base = _model_kv("base_url")
-    want_default = "z-ai/glm-5.3"
+    want_default = "z-ai/glm-5.3-flash"
     want_provider = "openrouter"
     want_base = "https://openrouter.ai/api/v1"
     model_ok = (
