@@ -8,9 +8,9 @@ Diagram: [L10 model stack](../../../../diagrams/aistudio/umkm-wa/system/L10-mode
 
 | Job | Where | Provider / model | Why |
 |-----|--------|------------------|-----|
-| **Kasir agent + tools** (jual/stok/laporan/tutup, routing `kasir_consult`) | Hermes | OpenRouter **`z-ai/glm-5.3`** (G16 posture) | Best GLM for agent/tools; teks-only → vision dipisah |
+| **Kasir agent + tools** (jual/stok/laporan/tutup, routing `kasir_consult`) | Hermes | OpenRouter **`z-ai/glm-5.3`** (G16/G17 posture) | Best GLM for agent/tools; teks-only → vision dipisah |
 | **STT suara** | Hermes gateway | Local **Whisper `base`** (`faster-whisper`), `stt.language=id` | Gratis (CPU); bukan token OpenRouter |
-| **Vision foto** | Hermes `auxiliary.vision` | OpenRouter **`google/gemma-4-31b-it`** | Best Gemma multimodal; deskripsi foto → GLM tools |
+| **Vision foto** | Hermes `auxiliary.vision` | OpenRouter **`qwen/qwen2.5-vl-32b-instruct`** (G17) | OCR/nota/rak lebih tajam dari Gemma; **Apache-2.0** → nanti self-host (vLLM / HF) |
 | **Consult retrieve** | Nest Studio RAG | Embed **`gemini-embedding-001`** (`google_ai`) | Notebook kurikulum; jangan ganti tanpa reindex |
 | **Consult synthesize** | Nest `AiRouter` | OpenRouter **`qwen/qwen3.7-flash`** via `KASIR_CONSULT_SYNTH_*` | Murah, Bahasa Indonesia natural; grounded Q&A pendek; **bukan** Hermes main |
 
@@ -18,13 +18,15 @@ Diagram: [L10 model stack](../../../../diagrams/aistudio/umkm-wa/system/L10-mode
 Owner WA
   ├─ teks ──────────────────────────────► GLM 5.3 (Hermes main + tools)
   ├─ voice → Whisper base ─────────────► GLM 5.3
-  ├─ foto → Gemma 4 31B (aux.vision) ──► deskripsi teks → GLM 5.3
+  ├─ foto → Qwen2.5-VL 32B (aux.vision) ► deskripsi teks → GLM 5.3
   └─ tanya… → Nest embed → Qwen3.7 Flash synthesize → WA
 ```
 
 Hermes dan Nest **boleh share** `OPENROUTER_API_KEY` — beda model slug.
 
-**Catatan biaya:** GLM 5.3 reasoning selalu on (lebih mahal/lambat dari Flash). Vision Gemma hanya saat ada foto.
+**Catatan biaya:** GLM 5.3 reasoning selalu on (lebih mahal/lambat dari Flash). Vision Qwen-VL hanya saat ada foto.
+
+**Self-host path (vision):** weights `Qwen/Qwen2.5-VL-32B-Instruct` (HF, Apache-2.0). Soft GA tetap lewat OpenRouter; nanti ganti `auxiliary.vision` ke base_url lokal (vLLM OpenAI-compatible) tanpa ganti keluarga model.
 
 ## Env (middleware)
 
@@ -52,7 +54,7 @@ model:
 auxiliary:
   vision:
     provider: openrouter
-    model: google/gemma-4-31b-it
+    model: qwen/qwen2.5-vl-32b-instruct
 agent:
   image_input_mode: auto
 ```
@@ -61,7 +63,7 @@ agent:
 
 1. Migration `00000000000106_studio_settings_openrouter.sql` (OpenRouter columns).
 2. Middleware punya `OPENROUTER_API_KEY` + synth env.
-3. Recreate hermes + `hermes-kasir-posture.py apply` (GLM + Gemma vision).
+3. Recreate hermes + `hermes-kasir-posture.py apply` (GLM + Qwen-VL vision).
 4. Smoke: `jual…` / foto rak / `tanya cara tentukan harga jual`.
 
 Full go-live: [`../../../deploy-master-production.md`](../../../deploy-master-production.md). Ops consult: [`../business/ops/consult-kurikulum.md`](../business/ops/consult-kurikulum.md).
@@ -76,9 +78,10 @@ Provider **OpenRouter** di AI Studio Settings (default katalog consult: Qwen3.7 
 - Jangan ganti embedding tanpa reindex notebook.
 - Jangan campur ledger stok ke RAG buku (L8 / L9).
 - Jangan biarkan Hermes drift ke Claude Opus (posture/health fail-closed).
+- Jangan lock vision ke Gemini/Claude kalau target jangka panjang self-host (weights tertutup).
 
 ## Related
 
 - Architecture: [`hermes-architecture.md`](./hermes-architecture.md)
-- Gaps G15→G16: [`hermes-gaps.md`](./hermes-gaps.md)
+- Gaps G16→G17: [`hermes-gaps.md`](./hermes-gaps.md)
 - Local ops: [`hermes-local.md`](./hermes-local.md)

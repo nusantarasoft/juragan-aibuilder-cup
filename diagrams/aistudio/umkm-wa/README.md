@@ -40,7 +40,7 @@ Ops docs: [business/ops/](../../../docs/aistudio/umkm-wa/business/ops/) · [cons
 | **L7** | [L7-inbound-gate.svg](./system/L7-inbound-gate.svg) | Gate: multimodal OFF refuse / ON STT+vision → allowlist → stamp → tools |
 | **L8** | [L8-knowledge-soul.svg](./system/L8-knowledge-soul.svg) | Fakta = tools/DB; `tanya`→consult→Nest kurikulum; satu SOUL; no MEMORY/RAG ledger |
 | **L9** | [L9-kasir-consult.svg](./system/L9-kasir-consult.svg) | Hop: Hermes → Nest gate → embed → match → synthesize / miss |
-| **L10** | [L10-model-stack.svg](./system/L10-model-stack.svg) | Model lock: Whisper / GLM Hermes / Gemma vision / Qwen synth |
+| **L10** | [L10-model-stack.svg](./system/L10-model-stack.svg) | Model lock: Whisper / GLM Hermes / Qwen-VL vision / Qwen synth |
 
 Studio notebook RAG (embed vs LLM, ingest/ask): [`../studio/system/`](../studio/system/README.md) L1–L4 · [rag-architecture.md](../../../docs/aistudio/studio/system/rag-architecture.md)
 
