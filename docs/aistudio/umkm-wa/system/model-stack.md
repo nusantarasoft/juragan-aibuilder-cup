@@ -10,7 +10,7 @@ Diagram: [L10 model stack](../../../../diagrams/aistudio/umkm-wa/system/L10-mode
 |-----|--------|------------------|-----|
 | **Kasir agent + tools** (jual/stok/laporan/tutup, routing `kasir_consult`) | Hermes | OpenRouter **`z-ai/glm-5.3`** (G16+ posture) | Best GLM for agent/tools; teks-only → vision dipisah |
 | **STT suara** | Hermes gateway | Local **Whisper `base`** (`faster-whisper`), `stt.language=id` | Gratis (CPU); bukan token OpenRouter |
-| **Vision foto** | Hermes `auxiliary.vision` | OpenRouter **`qwen/qwen3.7-flash`** (G18 trial) | Murah multimodal (~$0.03/$0.13); QA live vs Gemma/Qwen-VL. Self-host path tetap opsi **Qwen3-VL** jika Flash kurang tajam |
+| **Vision foto** | Hermes `auxiliary.vision` | OpenRouter **`qwen/qwen3-vl-32b-instruct`** (G19) | Qwen3-VL gen (OCR); di keluarga Qwen3-VL Instruct **paling murah** (~$0.10/$0.42); open weight → self-host (vLLM) |
 | **Consult retrieve** | Nest Studio RAG | Embed **`gemini-embedding-001`** (`google_ai`) | Notebook kurikulum; jangan ganti tanpa reindex |
 | **Consult synthesize** | Nest `AiRouter` | OpenRouter **`qwen/qwen3.7-flash`** via `KASIR_CONSULT_SYNTH_*` | Murah, Bahasa Indonesia natural; grounded Q&A pendek; **bukan** Hermes main |
 
@@ -18,15 +18,15 @@ Diagram: [L10 model stack](../../../../diagrams/aistudio/umkm-wa/system/L10-mode
 Owner WA
   ├─ teks ──────────────────────────────► GLM 5.3 (Hermes main + tools)
   ├─ voice → Whisper base ─────────────► GLM 5.3
-  ├─ foto → Qwen3.7 Flash (aux.vision) ► deskripsi teks → GLM 5.3
+  ├─ foto → Qwen3-VL 32B (aux.vision) ─► deskripsi teks → GLM 5.3
   └─ tanya… → Nest embed → Qwen3.7 Flash synthesize → WA
 ```
 
-Hermes dan Nest **boleh share** `OPENROUTER_API_KEY` — beda model slug (vision + consult synth boleh slug sama).
+Hermes dan Nest **boleh share** `OPENROUTER_API_KEY` — beda model slug.
 
-**Catatan biaya:** GLM 5.3 reasoning selalu on. Vision Flash hanya saat ada foto (lebih murah dari Qwen2.5-VL 32B).
+**Catatan biaya:** GLM 5.3 reasoning selalu on. Vision Qwen3-VL hanya saat ada foto. (G18 trial Flash diganti karena fokus OCR kasir.)
 
-**Self-host path (vision):** jika Flash API kurang / ingin on-prem → ganti ke keluarga open **Qwen3-VL** (`qwen3-vl-32b` / `30b-a3b`) + vLLM. Flash sendiri API-first.
+**Self-host path (vision):** weights `Qwen/Qwen3-VL-32B-Instruct` (HF). Soft GA lewat OpenRouter; nanti `auxiliary.vision` → base_url lokal (vLLM).
 
 ## Env (middleware)
 
@@ -54,7 +54,7 @@ model:
 auxiliary:
   vision:
     provider: openrouter
-    model: qwen/qwen3.7-flash
+    model: qwen/qwen3-vl-32b-instruct
 agent:
   image_input_mode: auto
 ```
@@ -63,7 +63,7 @@ agent:
 
 1. Migration `00000000000106_studio_settings_openrouter.sql` (OpenRouter columns).
 2. Middleware punya `OPENROUTER_API_KEY` + synth env.
-3. Recreate hermes + `hermes-kasir-posture.py apply` (GLM + Qwen3.7 Flash vision).
+3. Recreate hermes + `hermes-kasir-posture.py apply` (GLM + Qwen3-VL vision).
 4. Smoke: `jual…` / foto rak / `tanya cara tentukan harga jual`.
 
 Full go-live: [`../../../deploy-master-production.md`](../../../deploy-master-production.md). Ops consult: [`../business/ops/consult-kurikulum.md`](../business/ops/consult-kurikulum.md).
@@ -82,5 +82,5 @@ Provider **OpenRouter** di AI Studio Settings (default katalog consult: Qwen3.7 
 ## Related
 
 - Architecture: [`hermes-architecture.md`](./hermes-architecture.md)
-- Gaps G17→G18: [`hermes-gaps.md`](./hermes-gaps.md)
+- Gaps G18→G19: [`hermes-gaps.md`](./hermes-gaps.md)
 - Local ops: [`hermes-local.md`](./hermes-local.md)

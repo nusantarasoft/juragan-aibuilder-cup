@@ -7,9 +7,9 @@ flowchart TB
     P[Foto]
   end
 
-  subgraph Hermes[Hermes agent — G18]
+  subgraph Hermes[Hermes agent — G19]
     STT[STT: Whisper base lokal<br/>language=id]
-    VIS[Vision aux: qwen/qwen3.7-flash<br/>OpenRouter — trial murah]
+    VIS[Vision aux: qwen/qwen3-vl-32b-instruct<br/>OpenRouter — self-host later]
     MAIN[Main LLM: z-ai/glm-5.3<br/>OpenRouter — tools + SOUL]
     TOOLS[kasir-tools]
   end
