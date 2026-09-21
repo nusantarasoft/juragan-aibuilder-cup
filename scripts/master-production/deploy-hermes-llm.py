@@ -12,10 +12,10 @@ It never handles the API key itself. Put the key in the server's
 which provider and model to use, and proves end to end that the model will
 actually call a tool.
 
-Kasir production lock (G17): after any hermes recreate, run
+Kasir production lock (G18): after any hermes recreate, run
 `hermes-kasir-posture.py apply` — it re-asserts z-ai/glm-5.3 via OpenRouter
-(+ auxiliary.vision qwen/qwen2.5-vl-32b-instruct; Apache-2.0, self-host later)
-so stock Claude Opus never burns credits. Do not leave Hermes stock Claude Opus.
+(+ auxiliary.vision qwen/qwen3.7-flash trial) so stock Claude Opus never burns credits.
+Do not leave Hermes stock Claude Opus.
 
 Usage:
   python scripts/master-production/deploy-hermes-llm.py --status

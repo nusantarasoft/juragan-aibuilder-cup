@@ -28,13 +28,13 @@ DEFAULT_HOME = Path(
     os.environ.get("HERMES_HOME") or (ROOT / "volumes" / "hermes")
 )
 
-# G16/G17 — UMKM kasir: never silent-drift to Claude Opus.
-# Main = GLM for tools; vision = Qwen2.5-VL (open weight → self-host later; Gemma baca foto lemah).
+# G16–G18 — UMKM kasir: never silent-drift to Claude Opus.
+# Main = GLM for tools; vision = Qwen3.7 Flash (trial: murah + multimodal; eval OCR vs Qwen3-VL).
 LOCKED_MODEL_DEFAULT = "z-ai/glm-5.3"
 LOCKED_MODEL_PROVIDER = "openrouter"
 LOCKED_MODEL_BASE_URL = "https://openrouter.ai/api/v1"
 LOCKED_VISION_PROVIDER = "openrouter"
-LOCKED_VISION_MODEL = "qwen/qwen2.5-vl-32b-instruct"
+LOCKED_VISION_MODEL = "qwen/qwen3.7-flash"
 
 PLUGINS_BLOCK = """plugins:
   enabled:
@@ -242,7 +242,7 @@ def apply_config(path: Path) -> list[str]:
         notes.append("model.glm-lock")
     text, ch = ensure_auxiliary_vision(text)
     if ch:
-        notes.append("auxiliary.vision.qwen-vl")
+        notes.append("auxiliary.vision.qwen37-flash")
     text, ch = ensure_plugins(text)
     if ch:
         notes.append("plugins.enabled")
