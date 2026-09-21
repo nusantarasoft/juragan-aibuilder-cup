@@ -107,10 +107,10 @@ Flip both services together; recreate + `hermes-kasir-posture.py apply`. Diagram
 - Default image pin: `nousresearch/hermes-agent:v2026.8.27` (override with `HERMES_IMAGE`)
 - `WHATSAPP_HOME_CHANNEL` / `WHATSAPP_HOME_CHANNEL_NAME` — ops home JID (often same digits as paired agent)
 
-### Kasir WhatsApp: hide tool chrome
+### BSS WhatsApp: hide tool chrome
 
 Hermes defaults to mid-turn bubbles like `⚙️ kasir_daily_report...` in WhatsApp.
-Kasir should only send the final reply. Silence with:
+BSS / kasir tools should only send the final reply. Silence with:
 
 ```powershell
 python scripts\master-production\silence-hermes-wa-tools.py
@@ -124,7 +124,7 @@ interim assistant messages / long-running / busy-ack chrome. Also re-applied by
 Also deployed by `deploy-kasir-tools.py`:
 
 - `tools.tool_search.enabled: off` — kasir tools stay eager (no `⚙️ tool_search`)
-- `volumes/hermes/SOUL.md` — asisten kasir (Bahasa, routing tool, konfirmasi *ya*; no `kasir_` / `draft_id` to user)
+- `volumes/hermes/SOUL.md` — asisten Business Support System (Bahasa, routing tool, konfirmasi *ya*; no `kasir_` / `draft_id` to user)
 - plugin tree under the Hermes volume (repo `scripts/master-production/hermes-plugins/`), including `user_safe` (**G11**)
 
 See [`../../../deploy-master-production.md`](../../../deploy-master-production.md) and [`hermes-architecture.md`](./hermes-architecture.md).

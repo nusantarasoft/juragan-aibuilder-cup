@@ -14,7 +14,7 @@ const WA_DISPLAY = "+62 811-924-689";
 /** Copy shaped like live kasir-tools / consult replies (not marketing placeholders). */
 const CHATS = [
   {
-    label: "Kasir — cek stok (angka toko)",
+    label: "Data toko — cek stok",
     lines: [
       { who: "you" as const, text: "cek stok indomie" },
       {
@@ -29,7 +29,7 @@ const CHATS = [
     ],
   },
   {
-    label: "Kasir — catat jual (angka toko)",
+    label: "Data toko — catat jual",
     lines: [
       { who: "you" as const, text: "ada yang beli 2 indomie goreng" },
       {
@@ -289,7 +289,7 @@ export default function KasirLandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
             >
-              Kasir warung di WhatsApp
+              Business Support System di WhatsApp
             </motion.h1>
             <motion.p
               className="mt-5 max-w-lg text-base leading-relaxed sm:text-lg"
@@ -357,7 +357,7 @@ export default function KasirLandingPage() {
             <div className="relative max-h-[min(38rem,72svh)] overflow-y-auto overflow-x-hidden bg-[linear-gradient(180deg,var(--kasir-wa-deep),var(--kasir-wa))] px-4 pb-6 pt-10 shadow-[0_24px_60px_-28px_rgba(15,61,44,0.55)] md:rounded-l-3xl md:pl-6">
               <div className="sticky top-0 z-10 -mx-4 mb-2 flex h-9 items-center gap-2 bg-[var(--kasir-wa-deep)]/95 px-4 text-xs font-medium text-white/90 backdrop-blur-sm md:-mx-6 md:pl-6">
                 <WhatsAppIcon className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
-                Kasir NusantaraSoft
+                BSS · NusantaraSoft
               </div>
               <div className="mt-1 flex flex-col gap-2.5">
                 {HERO_THREAD.map((line, i) => (
@@ -521,7 +521,7 @@ export default function KasirLandingPage() {
                 <div className="flex flex-1 flex-col gap-2.5 rounded-2xl bg-[linear-gradient(180deg,#075e54,#128c7e)] p-3 pt-8 shadow-md">
                   <div className="-mt-5 mb-1 flex items-center gap-2 text-[11px] font-medium text-white/90">
                     <WhatsAppIcon className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
-                    Kasir NusantaraSoft
+                    BSS · NusantaraSoft
                   </div>
                   {c.lines.map((line, j) => (
                     <Bubble
@@ -558,7 +558,7 @@ export default function KasirLandingPage() {
             <div className="mt-6 mx-auto max-w-xl rounded-2xl bg-[linear-gradient(180deg,#075e54,#128c7e)] p-3 pt-8 shadow-md">
               <div className="-mt-5 mb-1 flex items-center gap-2 text-[11px] font-medium text-white/90">
                 <WhatsAppIcon className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
-                Kasir NusantaraSoft · konsultan
+                BSS · NusantaraSoft · konsultan
               </div>
               <div className="flex flex-col gap-2.5">
                 {CONSULT_UNTUNG.map((line, j) => (
@@ -614,7 +614,7 @@ export default function KasirLandingPage() {
         <div className="mx-auto grid max-w-5xl gap-12 md:grid-cols-2">
           <div>
             <h2 className="kasir-display text-3xl font-semibold md:text-4xl">
-              Kasir
+              Data toko
             </h2>
             <p className="mt-3 text-white/75">
               Data toko Anda — stok, jual, belanja, laporan, tutup toko.
@@ -668,7 +668,7 @@ export default function KasirLandingPage() {
             <span className="font-semibold" style={{ color: "#0f3d2c" }}>
               WhatsApp yang sudah dipakai setiap hari
             </span>{" "}
-            — kasir dan konsultan di nomor yang sama.
+            — stok/jual dan konsultan di nomor yang sama.
           </p>
         </div>
       </section>
@@ -748,7 +748,7 @@ export default function KasirLandingPage() {
             <div className="mt-6 mx-auto max-w-xl rounded-2xl bg-[linear-gradient(180deg,#075e54,#128c7e)] p-3 pt-8 shadow-md">
               <div className="-mt-5 mb-1 flex items-center gap-2 text-[11px] font-medium text-white/90">
                 <WhatsAppIcon className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
-                Kasir NusantaraSoft · daftar
+                BSS · NusantaraSoft · daftar
               </div>
               <div className="flex max-h-[28rem] flex-col gap-2.5 overflow-y-auto pr-1">
                 {SIMULASI_DAFTAR.map((line, j) => (
@@ -830,7 +830,7 @@ export default function KasirLandingPage() {
               NusantaraSoft
             </p>
             <p className="mt-1 text-sm text-[var(--kasir-ink-soft)]">
-              Kasir WhatsApp untuk warung
+              Business Support System untuk warung
             </p>
           </div>
           <a

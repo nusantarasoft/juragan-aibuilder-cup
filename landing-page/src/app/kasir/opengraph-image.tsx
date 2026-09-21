@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const alt =
-  "NusantaraSoft — Kasir warung di WhatsApp. Cek stok, catat jual, tanya tips usaha.";
+  "NusantaraSoft — Business Support System di WhatsApp. Cek stok, catat jual, tanya tips usaha.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -47,7 +47,7 @@ export default function OgImage() {
               letterSpacing: "-0.03em",
             }}
           >
-            Kasir warung di WhatsApp
+            Business Support System di WhatsApp
           </div>
           <div
             style={{
@@ -101,7 +101,7 @@ export default function OgImage() {
               marginBottom: 8,
             }}
           >
-            Kasir NusantaraSoft
+            BSS · NusantaraSoft
           </div>
           <div
             style={{

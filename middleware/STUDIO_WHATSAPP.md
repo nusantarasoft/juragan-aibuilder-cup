@@ -1,6 +1,6 @@
 # AI Studio — WhatsApp via Hermes
 
-Kasir WhatsApp runs **inside Hermes** (Baileys + plugins `kasir-pipe` / `kasir-tools`). Middleware does **not** receive production inbound WA for kasir.
+Business Support System (BSS) WhatsApp runs **inside Hermes** (Baileys + plugins `kasir-pipe` / `kasir-tools`). Middleware does **not** receive production inbound WA for BSS.
 
 Canonical architecture: [`docs/aistudio/umkm-wa/system/hermes-architecture.md`](../docs/aistudio/umkm-wa/system/hermes-architecture.md) · ops: [`docs/aistudio/umkm-wa/system/hermes-local.md`](../docs/aistudio/umkm-wa/system/hermes-local.md) · hub: [`docs/aistudio/README.md`](../docs/aistudio/README.md)
 

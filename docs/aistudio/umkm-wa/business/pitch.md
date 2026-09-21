@@ -1,4 +1,4 @@
-# Kasir WhatsApp UMKM — ringkasan untuk sales & tenant
+# Business Support System (WhatsApp UMKM) — ringkasan untuk sales & tenant
 
 **Untuk siapa:** sales, orang bisnis, pemilik toko (tenant).  
 **Bukan** catatan teknis development — itu di folder terpisah.
@@ -6,13 +6,13 @@
 **Satu lembar untuk owner usaha mikro** (masalah → solusi → contoh chat): [penawaran-usaha-mikro.md](./penawaran-usaha-mikro.md).  
 **Landing jual:** `/kasir` — wedge *dua kerjaan, satu chat*, hari tanpa/dengan, trust angka, beda app, cara daftar, keberatan + CTA **DAFTAR**.
 
-**Satu kalimat (wedge):** **kasir warung di WhatsApp** (**+62 811-924-689**) — cek stok, catat jual, laporan, tutup toko, plus tips usaha (`tanya` / `konsultasi` / `pendamping`) — **tanpa unduh app**. Owner ketik **DAFTAR** → admin setujui → toko hidup kalau **`cek stok` dijawab**.
+**Satu kalimat (wedge):** **Business Support System di WhatsApp** (**+62 811-924-689**) — cek stok, catat jual, laporan, tutup toko, plus tips usaha (`tanya` / `konsultasi` / `pendamping`) — **tanpa unduh app**. Owner ketik **DAFTAR** → admin setujui → toko hidup kalau **`cek stok` dijawab**.
 
 **Beda dari app kasir (satu baris sales):** app harus dibuka dulu; ini tetap di WhatsApp yang sudah dipakai setiap hari.
 
 **Soft line komersial (boleh diucapkan):** detail kerja sama dijelaskan tim setelah approve — **bukan** bayar di chat. Jangan sebut angka harga di soft GA kecuali sudah disepakati.
 
-Tanpa DAFTAR + Approve, nomor yang belum dikenal tidak dilayani sebagai kasir (bot diam atau hanya mengarahkan daftar).
+Tanpa DAFTAR + Approve, nomor yang belum dikenal tidak dilayani sebagai BSS (bot diam atau hanya mengarahkan daftar).
 
 ---
 
@@ -20,7 +20,7 @@ Tanpa DAFTAR + Approve, nomor yang belum dikenal tidak dilayani sebagai kasir (b
 
 | Peran | Yang dilakukan |
 |-------|----------------|
-| **Pemilik toko** | Chat WhatsApp: DAFTAR, tunggu, lalu pakai kasir |
+| **Pemilik toko** | Chat WhatsApp: DAFTAR, tunggu, lalu pakai BSS (stok / jual / tips) |
 | **Admin** | Setujui / tolak di halaman UMKM AI Studio |
 
 Karyawan / banyak nomor HP per toko: belum di v1.

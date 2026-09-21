@@ -15,21 +15,21 @@ const sans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "NusantaraSoft — Kasir & konsultan usaha di WhatsApp",
+  title: "NusantaraSoft — Business Support System di WhatsApp",
   description:
     "Catat stok, jual, laporan, dan tanya tips usaha — semua lewat chat WhatsApp. Tanpa app baru.",
   keywords:
-    "kasir WhatsApp, UMKM, usaha mikro, konsultan usaha, stok warung, NusantaraSoft",
+    "Business Support System, WhatsApp UMKM, usaha mikro, konsultan usaha, stok warung, NusantaraSoft",
   openGraph: {
-    title: "NusantaraSoft — Kasir & konsultan di WhatsApp",
+    title: "NusantaraSoft — Business Support System di WhatsApp",
     description:
-      "Kasir harian + konsultan usaha. Cukup chat WhatsApp. Ketik DAFTAR ke +62 811-924-689.",
+      "Operasional toko + konsultan usaha. Cukup chat WhatsApp. Ketik DAFTAR ke +62 811-924-689.",
     type: "website",
     locale: "id_ID",
   },
   twitter: {
     card: "summary_large_image",
-    title: "NusantaraSoft — Kasir warung di WhatsApp",
+    title: "NusantaraSoft — Business Support System di WhatsApp",
     description:
       "Cek stok, catat jual, tips usaha — tanpa unduh app. +62 811-924-689",
   },

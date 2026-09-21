@@ -1,9 +1,9 @@
-# Kasir + konsultan usaha di WhatsApp
+# Business Support System di WhatsApp
 
 **Satu lembar penawaran** — untuk pemilik warung / toko kelontong / usaha mikro.  
 Baca 2–3 menit. Intinya: **contoh chat** (bukan jargon).
 
-**Apa ini:** kasir warung di WhatsApp — cek stok, catat jual, laporan, tutup toko, plus tanya tips usaha (harga, modal, untung). Satu nomor chat, tanpa unduh app.
+**Apa ini:** Business Support System di WhatsApp — cek stok, catat jual, laporan, tutup toko, plus tanya tips usaha (harga, modal, untung). Satu nomor chat, tanpa unduh app.
 
 **Nomor WhatsApp bisnis (DAFTAR):** **+62 811-924-689**  
 Link cepat: `https://wa.me/62811924689?text=DAFTAR`
@@ -26,9 +26,9 @@ Link cepat: `https://wa.me/62811924689?text=DAFTAR`
 | Ada app kasir | Lupa buka / ribet / takut salah tekan |
 | Bingung soal usaha (modal, harga jual, kelola toko) | Tanya tetangga / YouTube / diam — atau menunggu pelatihan yang jauh |
 
-Anda sudah pakai **WhatsApp** setiap hari. Jadi kasir **dan** konsultan juga di situ — **tanpa app baru, tanpa laptop**.
+Anda sudah pakai **WhatsApp** setiap hari. Jadi operasional toko **dan** konsultan juga di situ — **tanpa app baru, tanpa laptop**.
 
-**Beda dari app kasir:** app harus dibuka dulu; ini tetap di WhatsApp yang sudah dipakai — kasir dan konsultan di nomor yang sama.
+**Beda dari app kasir:** app harus dibuka dulu; ini tetap di WhatsApp yang sudah dipakai — stok/jual dan konsultan di nomor yang sama.
 
 ---
 
@@ -36,7 +36,7 @@ Anda sudah pakai **WhatsApp** setiap hari. Jadi kasir **dan** konsultan juga di 
 
 ```text
 HP Anda  →  WhatsApp  →  nomor NS
-              ├─ kasir: stok / jual / belanja / laporan / tutup toko
+              ├─ data toko: stok / jual / belanja / laporan / tutup toko
               └─ konsultan: tanya / konsultasi / pendamping (+ pertanyaan bisnis)
 ```
 
@@ -58,8 +58,8 @@ HP Anda  →  WhatsApp  →  nomor NS
 
 ## Satu hari di “Toko Sari” (cerita + chat)
 
-**Tanpa kasir WA:** pagi tebak stok → siang jual lupa → malam hanya hitung kas.  
-**Dengan kasir WA:** pagi `cek stok` → siang jual + Ya → malam `laporan` + **`tutup toko`**. Siang juga boleh `tanya` / `konsultasi` tips (bukan angka toko).
+**Tanpa BSS:** pagi tebak stok → siang jual lupa → malam hanya hitung kas.  
+**Dengan BSS:** pagi `cek stok` → siang jual + Ya → malam `laporan` + **`tutup toko`**. Siang juga boleh `tanya` / `konsultasi` tips (bukan angka toko).
 
 ### Pagi — cek rak & katalog
 
@@ -263,14 +263,14 @@ Kalau ditolak / batal, boleh **DAFTAR** lagi.
 
 ## Ringkas: yang Anda dapat
 
-### Konsultan (beda dari kasir biasa)
+### Konsultan (beda dari data toko)
 
 | Kebutuhan | Bilang kira-kira… |
 |-----------|-------------------|
 | Modal, harga jual konsep, kelola usaha | `tanya …` |
 | Sama, kata lain | `konsultasi …` / `pendamping …` |
 
-### Kasir harian
+### Operasional harian (data toko)
 
 | Kebutuhan | Bilang kira-kira… |
 |-----------|-------------------|
@@ -329,4 +329,4 @@ Detail internal: [pitch.md](./pitch.md) · [ops/](./ops/) · hub [AI Studio](../
 
 ---
 
-*NusantaraSoft — Kasir WhatsApp UMKM · Soft GA 2026 · Dokumen untuk owner usaha mikro*
+*NusantaraSoft — Business Support System (WhatsApp UMKM) · Soft GA 2026 · Dokumen untuk owner usaha mikro*

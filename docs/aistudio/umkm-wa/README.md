@@ -1,6 +1,6 @@
-# AI Studio — UMKM kasir WhatsApp
+# AI Studio — UMKM Business Support System (WhatsApp)
 
-Satu nomor WhatsApp bisnis shared; banyak toko dipisah by nomor pemilik. Pemilik daftar lewat chat (**DAFTAR**); admin setujui di `/admin/ai-studio/umkm`; lalu kasir (stok, jual, laporan, **tutup toko**, **tanya kurikulum**) lewat **chat teks**.
+Satu nomor WhatsApp bisnis shared; banyak toko dipisah by nomor pemilik. Pemilik daftar lewat chat (**DAFTAR**); admin setujui di `/admin/ai-studio/umkm`; lalu **Business Support System** (stok, jual, laporan, **tutup toko**, **tanya kurikulum**) lewat **chat teks**.
 
 ## Pilih audiens
 

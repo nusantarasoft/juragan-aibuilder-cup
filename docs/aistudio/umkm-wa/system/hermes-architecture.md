@@ -1,8 +1,8 @@
-# Hermes architecture — UMKM kasir WhatsApp
+# Hermes architecture — UMKM Business Support System (WhatsApp)
 
 **System doc** (AI Studio → UMKM WA). Pitch: [`../business/pitch.md`](../business/pitch.md) · Trial ops: [`../business/ops/register-trial.md`](../business/ops/register-trial.md).
 
-Hermes is the **sole** WhatsApp transport for UMKM kasir. This doc is the source of truth for **how it works**. For ports, first-time setup, and smoke commands, see [`hermes-local.md`](./hermes-local.md).
+Hermes is the **sole** WhatsApp transport for UMKM Business Support System (BSS). This doc is the source of truth for **how it works**. For ports, first-time setup, and smoke commands, see [`hermes-local.md`](./hermes-local.md).
 
 Official product docs: [Hermes Docker](https://hermes-agent.nousresearch.com/docs/user-guide/docker).
 
@@ -66,13 +66,13 @@ Shared **one** business WhatsApp number (not one Hermes profile per tenant). Ten
 
 ## Platform locks (2026-09-20 eng review)
 
-Settled product/architecture defaults for UMKM kasir on Hermes. Do not invert without a new review.
+Settled product/architecture defaults for UMKM BSS on Hermes. Do not invert without a new review.
 
 | Lock | Default | Rationale |
 |------|---------|-------------|
 | **Modality** | Compose default **chat-only** (`KASIR_MULTIMODAL=0`). **Prod soft GA `=1`** (2026-09-20): pipe passes media; Hermes gateway STT (`stt.language=id`) + `agent.image_input_mode=auto`; SOUL *Foto / voice* → draft sale/purchase → poll. **Flag OFF:** polite text refuse — no vision/STT. Applied by `hermes-kasir-platform-locks.py`. WA toolsets stay `clarify`+`kasir` (no `vision`/`stt` toolsets) | Eng review Q1 / D10A; ops soft GA |
 | **Knowledge** | Live facts (stok, harga, omzet, jual/beli) = **`kasir-tools` → PostgREST/DB** only. **Kurikulum bisnis** (prefix `tanya` / `konsultasi` / `pendamping`) = **`kasir_consult` → Nest** `POST /internal/kasir-consult` → Studio RAG notebook (`KASIR_CONSULT_NOTEBOOK_ID`) — **not** ledger RAG. Compose default **`KASIR_CONSULT=0`**; **prod soft GA `=1`** (2026-09-20) after ingest 376 chunks — flip both Hermes + Nest together. Optional later = per-tenant SOP docs with `tenant_id` filter. Diagrams **L8** / **L9**. Studio RAG: [`rag-architecture.md`](../../studio/system/rag-architecture.md). Health WARNs if `MEMORY.md` appears as store KB | Accuracy + isolation; eng review Q2 + consult HOLD → soft GA |
-| **Character / memory** | **One shared** `SOUL.md` (“Asisten Kasir Warung”). **Short-term:** Hermes keeps **per-chat WA session history** (konteks thread / nomor) — bukan KB toko. Per-toko uniqueness = allowlist + tenant-scoped tools + app state (`kasir_drafts` / `kasir_last_sale`). Sender stamp is a **multi-chat map** (`kasir_active_sender.json` v2) keyed by chat — not one global phone. Do **not** use global `MEMORY.md` as store KB; multi-SOUL per tenant is out until product sells custom agents. Diagram **L8** | Brand consistency; eng review Q3 / D9A |
+| **Character / memory** | **One shared** `SOUL.md` (“Asisten Business Support System”). **Short-term:** Hermes keeps **per-chat WA session history** (konteks thread / nomor) — bukan KB toko. Per-toko uniqueness = allowlist + tenant-scoped tools + app state (`kasir_drafts` / `kasir_last_sale`). Sender stamp is a **multi-chat map** (`kasir_active_sender.json` v2) keyed by chat — not one global phone. Do **not** use global `MEMORY.md` as store KB; multi-SOUL per tenant is out until product sells custom agents. Diagram **L8** | Brand consistency; eng review Q3 / D9A |
 | **Skills vs tools** | Owner jobs (“cek stok”, “jual”, “laporan”, “tutup toko”) are **`kasir-tools` + SOUL routing**, not Hermes Skills packs. Keep coding/browser Hermes skills off the kasir WA path | Explicit, testable, tenant-safe; skill-ifying invites the wrong toolset for warung |
 | **Tool allowlist** | **FIXED (G13):** `platform_toolsets.whatsapp` = `clarify` + `kasir` only. Applied by `hermes-wa-tool-allowlist.py` on deploy; `hermes-kasir-health.py` **fails** if terminal/browser/… reappear | Eng review 2026-09-20 D7A + D8A / T1 |
 | **LLM (inference)** | **FIXED (G15):** `model.default` = `google/gemini-2.5-flash`, `provider` = `openrouter`, `base_url` = OpenRouter. Hermes stock default is Claude Opus — **do not** leave it. Re-applied by `hermes-kasir-posture.py` after every recreate; health **fails** on drift. Change only via explicit review + `deploy-hermes-llm.py` | Avoid OpenRouter Claude spend; kasir soft-GA cost lock 2026-09-21 |

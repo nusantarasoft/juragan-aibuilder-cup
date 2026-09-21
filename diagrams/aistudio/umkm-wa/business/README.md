@@ -4,7 +4,7 @@ Pitch sales: **L0–L2** (+ **L0b** ritual harian, **L0c** chat-only, **L0d** ta
 
 | Level | File | Isi |
 |-------|------|-----|
-| **L0** | [L0-bisnis-besar](./L0-bisnis-besar.svg) | DAFTAR → Approve → kasir |
+| **L0** | [L0-bisnis-besar](./L0-bisnis-besar.svg) | DAFTAR → Approve → BSS hidup |
 | **L0b** | [L0b-kasir-harian](./L0b-kasir-harian.svg) | Ritual harian termasuk **tutup toko** + **tanya** |
 | **L0c** | [L0c-chat-only](./L0c-chat-only.svg) | Foto/suara → arahkan ketik teks |
 | **L0d** | [L0d-tanya-kurikulum](./L0d-tanya-kurikulum.svg) | Tips buku ≠ angka toko |

@@ -1,4 +1,4 @@
-# Business — UMKM kasir WhatsApp
+# Business — UMKM Business Support System (WhatsApp)
 
 | Audiens | Buka |
 |---------|------|
