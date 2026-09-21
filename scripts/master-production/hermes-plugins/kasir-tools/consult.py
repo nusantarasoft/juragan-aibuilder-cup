@@ -31,7 +31,8 @@ CONSULT_LEDGER_REDIRECT_COPY = (
     "*laporan* — itu data kasir, bukan dari buku kurikulum."
 )
 _DEFAULT_URL = "http://middleware:4001/internal/kasir-consult"
-_TIMEOUT_SEC = 30
+# Nest retrieve + OpenRouter synthesize often 15–35s; 30s caused false "sibuk" on WA.
+_TIMEOUT_SEC = int(os.environ.get("KASIR_CONSULT_TIMEOUT_SEC") or "60")
 _QUESTION_MAX = 500
 
 

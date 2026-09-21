@@ -170,7 +170,7 @@ Agent replies to allowlisted chats go through the Hermes gateway. Last-mile deny
 | `tanya …` while `KASIR_CONSULT=1` + miss chunks | Fixed miss copy — no free LLM |
 | `tanya …` hit | Synthesize ≤800 + cite `(dari buku…)`; `hlm. N` only if `KASIR_CONSULT_CITE_PAGES=1` |
 | `KASIR_CONSULT_INJECT_METRICS=1` + phone | Optional today-report in prompt as BLOK_KASIR (tools label); still no ledger RAG |
-| Nest consult timeout/5xx | “Layanan konsultasi lagi sibuk…” |
+| Nest consult timeout/5xx | “Layanan konsultasi lagi sibuk…” (Hermes HTTP timeout default **60s** via `KASIR_CONSULT_TIMEOUT_SEC`; Qwen synth often 15–35s) |
 | Topik jelas di luar toko/buku (mis. kripto) | Sering refuse SOUL/scope sebelum Nest — jangan mengarang harga luar |
 | `tanya cek stok …` / ledger-like via consult | Redirect copy — **no** notebook retrieve; owner pakai tools DB (L8 anti RAG-ledger) |
 | Model invents stok without tool | Soft-ban in SOUL + tools-only facts (L8); egress `user_safe` still strips tool names |

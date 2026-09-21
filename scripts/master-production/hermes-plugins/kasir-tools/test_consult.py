@@ -101,7 +101,7 @@ class ConsultTests(unittest.TestCase):
             self.assertEqual(headers.get("x-kasir-consult-key"), "test-key")
             self.assertIn(b"gimana atur modal", req.data)
             self.assertIn(b"6281111111111", req.data)
-            self.assertEqual(urlopen.call_args.kwargs.get("timeout"), 30)
+            self.assertEqual(urlopen.call_args.kwargs.get("timeout"), 60)
 
     def test_flag_on_nest_off_passthrough(self) -> None:
         env = {**self.env, "KASIR_CONSULT": "1"}

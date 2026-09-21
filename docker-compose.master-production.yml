@@ -688,6 +688,7 @@ services:
       - KASIR_CONSULT=${KASIR_CONSULT:-0}
       - KASIR_CONSULT_URL=${KASIR_CONSULT_URL:-http://middleware:4001/internal/kasir-consult}
       - KASIR_CONSULT_KEY=${KASIR_CONSULT_KEY:-}
+      - KASIR_CONSULT_TIMEOUT_SEC=${KASIR_CONSULT_TIMEOUT_SEC:-60}
       - WHATSAPP_BRIDGE_PORT=${WHATSAPP_BRIDGE_PORT:-3000}
     # Bridge proxy for middleware outbound (kasir-pipe → 127.0.0.1:3000). Docker network only.
     expose:
