@@ -11,7 +11,7 @@ flowchart LR
   N -->|ok| Rag[consultFromNotebook]
   Rag --> Emb[embed query]
   Emb --> Match[match_studio_chunks<br/>notebook kurikulum]
-  Match -->|hits| Syn[LLM synthesize ≤800<br/>cite buku; hlm jika CITE_PAGES=1]
+  Match -->|hits| Syn[LLM synthesize ≤800<br/>Qwen3.7 Flash via OpenRouter<br/>KASIR_CONSULT_SYNTH_*]
   Match -->|0 hits| Miss[Miss copy — no free LLM]
   Syn --> WA[Jawaban WA]
   Miss --> WA

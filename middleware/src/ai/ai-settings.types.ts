@@ -5,7 +5,7 @@ import {
 
 export const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000';
 
-export type LlmProvider = 'anthropic' | 'google' | 'openai' | 'ollama' | 'groq';
+export type LlmProvider = 'anthropic' | 'google' | 'openai' | 'ollama' | 'groq' | 'openrouter';
 export type EmbeddingProvider = 'auto' | 'google_ai' | 'vertex' | 'openai' | 'ollama';
 export type AiInlineData = { mimeType: string; data: string };
 
@@ -28,6 +28,8 @@ export interface StudioSettingsRow {
     openai_embedding_model?: string;
     groq_api_key?: string | null;
     groq_model: string;
+    openrouter_api_key?: string | null;
+    openrouter_model: string;
     ollama_base_url: string;
     ollama_model: string;
     ollama_embedding_model?: string;
@@ -42,12 +44,14 @@ export interface StudioSettingsPublic extends Omit<
     | 'google_service_account_json'
     | 'openai_api_key'
     | 'groq_api_key'
+    | 'openrouter_api_key'
 > {
     anthropic_api_key_configured: boolean;
     google_api_key_configured: boolean;
     google_service_account_configured: boolean;
     openai_api_key_configured: boolean;
     groq_api_key_configured: boolean;
+    openrouter_api_key_configured: boolean;
 }
 
 export interface ProviderReadiness {
@@ -84,6 +88,7 @@ export const DEFAULT_STUDIO_SETTINGS: StudioSettingsRow = {
     openai_model: 'gpt-4o',
     openai_embedding_model: 'text-embedding-3-small',
     groq_model: 'openai/gpt-oss-20b',
+    openrouter_model: 'qwen/qwen3.7-flash',
     ollama_base_url: 'http://127.0.0.1:11434',
     ollama_model: 'llama3',
     ollama_embedding_model: 'nomic-embed-text',
@@ -95,6 +100,7 @@ const SECRET_FIELDS = [
     'google_service_account_json',
     'openai_api_key',
     'groq_api_key',
+    'openrouter_api_key',
 ] as const;
 
 export const STUDIO_SETTINGS_DB_FIELDS = [
@@ -114,6 +120,8 @@ export const STUDIO_SETTINGS_DB_FIELDS = [
     'openai_embedding_model',
     'groq_api_key',
     'groq_model',
+    'openrouter_api_key',
+    'openrouter_model',
     'ollama_base_url',
     'ollama_model',
     'ollama_embedding_model',
@@ -127,6 +135,7 @@ export type StudioSettingsUpdatePayload = Partial<
     clear_google_service_account_json?: boolean;
     clear_openai_api_key?: boolean;
     clear_groq_api_key?: boolean;
+    clear_openrouter_api_key?: boolean;
 };
 
 export function maskSettingsForClient(row: StudioSettingsRow | null): StudioSettingsPublic {
@@ -137,6 +146,7 @@ export function maskSettingsForClient(row: StudioSettingsRow | null): StudioSett
         google_service_account_json,
         openai_api_key,
         groq_api_key,
+        openrouter_api_key,
         ...rest
     } = base;
     return {
@@ -148,6 +158,8 @@ export function maskSettingsForClient(row: StudioSettingsRow | null): StudioSett
         google_service_account_configured: !!google_service_account_json?.trim(),
         openai_api_key_configured: !!openai_api_key?.trim(),
         groq_api_key_configured: !!groq_api_key?.trim(),
+        openrouter_api_key_configured:
+            !!openrouter_api_key?.trim() || !!process.env.OPENROUTER_API_KEY?.trim(),
     };
 }
 
@@ -157,6 +169,7 @@ export function normalizeLlmProvider(v: unknown): LlmProvider {
     if (s === 'openai') return 'openai';
     if (s === 'ollama') return 'ollama';
     if (s === 'groq') return 'groq';
+    if (s === 'openrouter') return 'openrouter';
     return 'google';
 }
 
@@ -212,6 +225,9 @@ export function mergeSettingsUpdate(
     }
     if (payload.clear_groq_api_key) {
         merged.groq_api_key = null;
+    }
+    if (payload.clear_openrouter_api_key) {
+        merged.openrouter_api_key = null;
     }
     return merged as Partial<StudioSettingsRow>;
 }

@@ -113,3 +113,4 @@ python3 -m unittest scripts/master-production/hermes-plugins/kasir-tools/test_us
 | 2026-09-20 | **W2 DONE** — live media refuse + OFF/ON smoke on prod; flag stays `0` |
 | 2026-09-20 | **W2 ON live** — time-boxed then **soft GA left `KASIR_MULTIMODAL=1`** (dengan consult ON) |
 | 2026-09-21 | **G15 FIXED** — posture + health lock LLM to `google/gemini-2.5-flash` via OpenRouter (no Claude Opus drift) |
+| 2026-09-21 | Consult synthesize → OpenRouter **Qwen3.7 Flash** (`KASIR_CONSULT_SYNTH_*`; was DeepSeek); Nest OpenRouter provider; docs **model-stack** + diagram **L10** |

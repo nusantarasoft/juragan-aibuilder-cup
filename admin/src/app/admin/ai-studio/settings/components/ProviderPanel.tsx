@@ -23,6 +23,7 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
     const googleSaConfigured = Form.useWatch("google_service_account_configured");
     const openaiKeyConfigured = Form.useWatch("openai_api_key_configured");
     const groqKeyConfigured = Form.useWatch("groq_api_key_configured");
+    const openrouterKeyConfigured = Form.useWatch("openrouter_api_key_configured");
 
     const req = isActive ? [{ required: true, message: "Wajib diisi untuk provider aktif" }] : [];
 
@@ -123,6 +124,32 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
                             console.groq.com/keys
                         </a>
                         . Embedding tetap pakai provider terpisah (Google / OpenAI / Ollama).
+                    </Text>
+                </>
+            )}
+
+            {provider === "openrouter" && (
+                <>
+                    <ApiKeyField
+                        name="openrouter_api_key"
+                        label="API Key"
+                        configured={!!openrouterKeyConfigured}
+                        clearFieldName="clear_openrouter_api_key"
+                        placeholder="sk-or-..."
+                    />
+                    <ModelSelect
+                        name="openrouter_model"
+                        label="Chat Model"
+                        provider="openrouter"
+                        rules={req}
+                    />
+                    <Text type="secondary" style={{ display: "block", marginBottom: 8, fontSize: 12 }}>
+                        Key dari{" "}
+                        <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">
+                            openrouter.ai/keys
+                        </a>
+                        . Boleh juga lewat env <code>OPENROUTER_API_KEY</code>. Default kasir
+                        consult: <code>qwen/qwen3.7-flash</code> (lihat model-stack docs).
                     </Text>
                 </>
             )}

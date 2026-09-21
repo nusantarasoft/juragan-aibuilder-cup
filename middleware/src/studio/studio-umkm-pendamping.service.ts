@@ -359,7 +359,15 @@ export class StudioUmkmPendampingService implements OnModuleInit {
 
         let answer = '';
         try {
-            answer = await this.aiRouter.generateText(prompt);
+            const synthProvider = (process.env.KASIR_CONSULT_SYNTH_PROVIDER || '')
+                .trim()
+                .toLowerCase();
+            const synthModel = (process.env.KASIR_CONSULT_SYNTH_MODEL || '').trim();
+            answer = await this.aiRouter.generateText(prompt, {
+                ...(synthProvider
+                    ? { provider: synthProvider, ...(synthModel ? { model: synthModel } : {}) }
+                    : {}),
+            });
         } catch (e: any) {
             this.logger.warn(`kasir_consult synthesize: ${e?.message}`);
             return done('error', CONSULT_BUSY_COPY);

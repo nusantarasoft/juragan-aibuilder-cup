@@ -5,14 +5,25 @@ import { VertexAiService } from './vertex-ai.service';
 import { OpenAiService } from './openai-ai.service';
 import { OllamaAiService } from './ollama-ai.service';
 import { GroqAiService } from './groq-ai.service';
+import { OpenRouterAiService } from './openrouter-ai.service';
 import type { PlaygroundResult } from './openai-ai.service';
 import type { AiConnectionTestResult, AiInlineData, LlmProvider, StudioAiStatus } from './ai-settings.types';
+import { normalizeLlmProvider } from './ai-settings.types';
 
 export type { AiInlineData };
 
 export type AiTestOverrides = {
     ollamaBaseUrl?: string;
     ollamaModel?: string;
+};
+
+export type GenerateTextOpts = {
+    tenantId?: string;
+    inlineData?: AiInlineData;
+    /** Override studio default provider (e.g. kasir consult → openrouter). */
+    provider?: LlmProvider | string;
+    /** Override model id for the chosen provider. */
+    model?: string;
 };
 
 @Injectable()
@@ -26,18 +37,19 @@ export class AiRouterService {
         private readonly openAi: OpenAiService,
         private readonly ollamaAi: OllamaAiService,
         private readonly groqAi: GroqAiService,
+        private readonly openRouterAi: OpenRouterAiService,
     ) {}
 
     async getActiveConfig(tenantId?: string): Promise<StudioAiStatus> {
         return this.aiSettings.getAiStatus(tenantId);
     }
 
-    async generateText(
-        prompt: string,
-        opts?: { tenantId?: string; inlineData?: AiInlineData },
-    ): Promise<string> {
-        const provider = await this.aiSettings.getLlmProvider(opts?.tenantId);
+    async generateText(prompt: string, opts?: GenerateTextOpts): Promise<string> {
+        const provider = opts?.provider
+            ? normalizeLlmProvider(opts.provider)
+            : await this.aiSettings.getLlmProvider(opts?.tenantId);
         const inlineData = opts?.inlineData;
+        const model = opts?.model?.trim() || undefined;
         switch (provider) {
             case 'anthropic':
                 return this.claudeAi.generateText(prompt, opts?.tenantId, inlineData);
@@ -45,6 +57,8 @@ export class AiRouterService {
                 return this.openAi.generateText(prompt, opts?.tenantId, inlineData);
             case 'groq':
                 return this.groqAi.generateText(prompt, opts?.tenantId, inlineData);
+            case 'openrouter':
+                return this.openRouterAi.generateText(prompt, opts?.tenantId, inlineData, model);
             case 'ollama':
                 return this.ollamaAi.generateText(prompt, opts?.tenantId, inlineData);
             default:
@@ -61,9 +75,11 @@ export class AiRouterService {
     async generateTextStream(
         prompt: string,
         onDelta: (text: string) => void,
-        opts?: { tenantId?: string; inlineData?: AiInlineData },
+        opts?: GenerateTextOpts,
     ): Promise<string> {
-        const provider = await this.aiSettings.getLlmProvider(opts?.tenantId);
+        const provider = opts?.provider
+            ? normalizeLlmProvider(opts.provider)
+            : await this.aiSettings.getLlmProvider(opts?.tenantId);
         if (provider === 'google') {
             return this.vertexAi.generateTextStream(prompt, onDelta, opts?.inlineData, opts?.tenantId);
         }
@@ -81,6 +97,8 @@ export class AiRouterService {
                 return this.openAi.generateStructuredJSON(prompt, tenantId);
             case 'groq':
                 return this.groqAi.generateStructuredJSON(prompt, tenantId);
+            case 'openrouter':
+                return this.openRouterAi.generateStructuredJSON(prompt, tenantId);
             case 'ollama':
                 return this.ollamaAi.generateStructuredJSON(prompt, tenantId);
             default:
@@ -105,6 +123,8 @@ export class AiRouterService {
                 return this.openAi.playgroundGenerate(params, tenantId);
             case 'groq':
                 return this.groqAi.playgroundGenerate(params, tenantId);
+            case 'openrouter':
+                return this.openRouterAi.playgroundGenerate(params, tenantId);
             case 'ollama':
                 return this.ollamaAi.playgroundGenerate(params, tenantId);
             default:
@@ -134,6 +154,10 @@ export class AiRouterService {
             case 'groq': {
                 const r = await this.groqAi.testConnection(tenantId);
                 return { ...r, provider: 'groq' };
+            }
+            case 'openrouter': {
+                const r = await this.openRouterAi.testConnection(tenantId);
+                return { ...r, provider: 'openrouter' };
             }
             case 'ollama': {
                 const r = await this.ollamaAi.testConnection(tenantId, {

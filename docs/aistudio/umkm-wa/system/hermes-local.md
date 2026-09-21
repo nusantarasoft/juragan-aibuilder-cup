@@ -65,6 +65,8 @@ Pair via Admin → WhatsApp Gateway (or Hermes dashboard QR).
 
 `KASIR_MULTIMODAL` compose default **off** (chat-only). **Prod soft GA ON** (2026-09-20): foto/suara pass through → STT/vision + draft jual. Wire: compose `KASIR_MULTIMODAL=${KASIR_MULTIMODAL:-0}` + `.env.master-production` (prod currently `1`).
 
+Model locks (Hermes Flash / Nest Qwen consult / Whisper STT): [`model-stack.md`](./model-stack.md) · [L10](../../../../diagrams/aistudio/umkm-wa/system/L10-model-stack.svg).
+
 **Multimodal smoke checklist**
 
 1. `hermes-kasir-health.py` PASS (required checks) + `hermes-kasir-platform-locks.py check --docker` PASS (`stt.language=id`, `image_input_mode`, SOUL *Foto / voice*, no MEMORY.md).

@@ -6,6 +6,7 @@ import { VertexAiService } from './vertex-ai.service';
 import { OpenAiService } from './openai-ai.service';
 import { OllamaAiService } from './ollama-ai.service';
 import { GroqAiService } from './groq-ai.service';
+import { OpenRouterAiService } from './openrouter-ai.service';
 import { AiRouterService } from './ai-router.service';
 
 @Module({
@@ -17,6 +18,7 @@ import { AiRouterService } from './ai-router.service';
         OpenAiService,
         OllamaAiService,
         GroqAiService,
+        OpenRouterAiService,
         AiRouterService,
     ],
     exports: [
@@ -26,7 +28,8 @@ import { AiRouterService } from './ai-router.service';
         OpenAiService,
         OllamaAiService,
         GroqAiService,
+        OpenRouterAiService,
         AiRouterService,
     ],
 })
-export class AiModule { }
+export class AiModule {}

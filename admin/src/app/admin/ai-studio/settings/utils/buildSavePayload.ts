@@ -18,6 +18,8 @@ const DB_FIELDS = [
     "openai_embedding_model",
     "groq_api_key",
     "groq_model",
+    "openrouter_api_key",
+    "openrouter_model",
     "ollama_base_url",
     "ollama_model",
     "ollama_embedding_model",
@@ -37,6 +39,7 @@ export function buildSavePayload(values: StudioSettingsFormValues): Record<strin
     if (values.clear_google_service_account_json) payload.clear_google_service_account_json = true;
     if (values.clear_openai_api_key) payload.clear_openai_api_key = true;
     if (values.clear_groq_api_key) payload.clear_groq_api_key = true;
+    if (values.clear_openrouter_api_key) payload.clear_openrouter_api_key = true;
 
     return payload;
 }
@@ -67,6 +70,12 @@ export function validateActiveProvider(
                 return "Groq API key wajib untuk provider aktif.";
             }
             if (!values.groq_model?.trim()) return "Groq model wajib diisi.";
+            return null;
+        case "openrouter":
+            if (!values.openrouter_api_key_configured && !values.openrouter_api_key?.trim()) {
+                return "OpenRouter API key wajib untuk provider aktif (atau OPENROUTER_API_KEY di env).";
+            }
+            if (!values.openrouter_model?.trim()) return "OpenRouter model wajib diisi.";
             return null;
         case "google":
             if (

@@ -76,6 +76,7 @@ Settled product/architecture defaults for UMKM BSS on Hermes. Do not invert with
 | **Skills vs tools** | Owner jobs (“cek stok”, “jual”, “laporan”, “tutup toko”) are **`kasir-tools` + SOUL routing**, not Hermes Skills packs. Keep coding/browser Hermes skills off the kasir WA path | Explicit, testable, tenant-safe; skill-ifying invites the wrong toolset for warung |
 | **Tool allowlist** | **FIXED (G13):** `platform_toolsets.whatsapp` = `clarify` + `kasir` only. Applied by `hermes-wa-tool-allowlist.py` on deploy; `hermes-kasir-health.py` **fails** if terminal/browser/… reappear | Eng review 2026-09-20 D7A + D8A / T1 |
 | **LLM (inference)** | **FIXED (G15):** `model.default` = `google/gemini-2.5-flash`, `provider` = `openrouter`, `base_url` = OpenRouter. Hermes stock default is Claude Opus — **do not** leave it. Re-applied by `hermes-kasir-posture.py` after every recreate; health **fails** on drift. Change only via explicit review + `deploy-hermes-llm.py` | Avoid OpenRouter Claude spend; kasir soft-GA cost lock 2026-09-21 |
+| **Consult synthesize** | Nest-only: `KASIR_CONSULT_SYNTH_PROVIDER=openrouter` + `KASIR_CONSULT_SYNTH_MODEL=qwen/qwen3.7-flash` (same `OPENROUTER_API_KEY`). Retrieve embed tetap `gemini-embedding-001`. Full table: [`model-stack.md`](./model-stack.md) · diagram **L10** | Grounded tips murah + ID natural; Hermes Flash tetap pegang tools |
 
 ```
 User text ("cek stok indomie")
@@ -142,6 +143,9 @@ Agent replies to allowlisted chats go through the Hermes gateway. Last-mile deny
 | `KASIR_CONSULT_NOTEBOOK_ID` | middleware only | Studio notebook with ingested UKM PDF (prod: `48aee243-…`, 376 chunks) |
 | `KASIR_CONSULT_INJECT_METRICS` | middleware only | Default `0`. When `1`, Nest may append a short today-report snapshot into synthesize (labeled *dari kasir toko kamu*) if Hermes forwards `phone` — **never** into retrieve / ledger RAG |
 | `KASIR_CONSULT_CITE_PAGES` | middleware only | Default `0`. When `1`, replies may append `hlm. N` from chunk `-- N of M --` markers |
+| `KASIR_CONSULT_SYNTH_PROVIDER` | middleware only | Default compose `openrouter`. Empty = Admin Studio `default_llm_provider`. See [`model-stack.md`](./model-stack.md) |
+| `KASIR_CONSULT_SYNTH_MODEL` | middleware only | Default `qwen/qwen3.7-flash` when provider is openrouter |
+| `OPENROUTER_API_KEY` | hermes + middleware | Hermes agent + Nest OpenRouter (consult synth / Studio OpenRouter provider) |
 | `KASIR_WA_SESSION_DIR` | hermes | Baileys session + LID maps |
 | `KASIR_IDENTITY_DIR` | hermes | Active-sender stamp for tools |
 | `KASIR_BRIDGE_PROXY_PORT` | hermes | Default `8765` |

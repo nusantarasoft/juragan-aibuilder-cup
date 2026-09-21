@@ -14,7 +14,7 @@ type Props = {
 };
 
 export default function OptionalProvidersPanel({ activeProvider, status }: Props) {
-    const inactive = (["anthropic", "google", "openai", "groq", "ollama"] as LlmProvider[]).filter(
+    const inactive = (["anthropic", "google", "openai", "groq", "openrouter", "ollama"] as LlmProvider[]).filter(
         (p) => p !== activeProvider,
     );
 

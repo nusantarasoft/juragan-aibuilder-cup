@@ -12,6 +12,7 @@ Internal runbook. Pitch sales: [../pitch.md](../pitch.md). Teknis: [../../system
 | Prefix owner | `tanya` / `konsultasi` / `pendamping` |
 | Sitasi | **`KASIR_CONSULT_CITE_PAGES=0`** default — set `1` untuk `(…, hlm. N)` dari marker `-- N of M --` |
 | Metrics inject | **`KASIR_CONSULT_INJECT_METRICS=0`** default — set `1` hanya jika ingin cuplikan laporan hari ini di synthesize (label *dari kasir*, L8) |
+| Synthesize LLM | Nest **`KASIR_CONSULT_SYNTH_PROVIDER=openrouter`** + **`qwen/qwen3.7-flash`** (bukan Hermes Flash). Key: `OPENROUTER_API_KEY`. Lihat [model-stack.md](../../system/model-stack.md) · [L10](../../../../../diagrams/aistudio/umkm-wa/system/L10-model-stack.svg) |
 
 Compose/example default tetap `0` — prod di-set ON lewat `.env.master-production`. Matikan keduanya bersama jika perlu.
 
@@ -20,6 +21,11 @@ Compose/example default tetap `0` — prod di-set ON lewat `.env.master-producti
 ```bash
 # Soft GA ON (keduanya) lalu recreate middleware + hermes + posture
 # Soft GA OFF: KASIR_CONSULT=0 di Hermes DAN middleware, lalu recreate keduanya
+
+# Synthesize model (middleware only; default Qwen3.7 Flash on OpenRouter):
+# KASIR_CONSULT_SYNTH_PROVIDER=openrouter
+# KASIR_CONSULT_SYNTH_MODEL=qwen/qwen3.7-flash
+# OPENROUTER_API_KEY=…   # same key Hermes may use
 
 # Polish (tetap default OFF di prod):
 # KASIR_CONSULT_CITE_PAGES=1   → sitasi hlm (recreate middleware)
@@ -57,4 +63,5 @@ docker exec -e HERMES_HOME=/opt/data nsoft3-hermes \
 ## Diagram
 
 - Bisnis: [L0d](../../../../../diagrams/aistudio/umkm-wa/business/L0d-tanya-kurikulum.svg)
-- Sistem: [L8](../../../../../diagrams/aistudio/umkm-wa/system/L8-knowledge-soul.svg) · [L9](../../../../../diagrams/aistudio/umkm-wa/system/L9-kasir-consult.svg)
+- Sistem: [L8](../../../../../diagrams/aistudio/umkm-wa/system/L8-knowledge-soul.svg) · [L9](../../../../../diagrams/aistudio/umkm-wa/system/L9-kasir-consult.svg) · [L10 model stack](../../../../../diagrams/aistudio/umkm-wa/system/L10-model-stack.svg)
+- Model lock: [model-stack.md](../../system/model-stack.md)

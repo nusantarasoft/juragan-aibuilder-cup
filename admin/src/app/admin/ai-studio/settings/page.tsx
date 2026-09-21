@@ -52,6 +52,7 @@ const DEFAULT_VALUES: Partial<StudioSettingsFormValues> = {
     openai_model: "gpt-4o",
     openai_embedding_model: "text-embedding-3-small",
     groq_model: "openai/gpt-oss-20b",
+    openrouter_model: "qwen/qwen3.7-flash",
     ollama_base_url: "http://127.0.0.1:11434",
     ollama_model: "llama3",
     ollama_embedding_model: "nomic-embed-text",
@@ -209,6 +210,7 @@ export default function AiStudioSettingsPage() {
                     <Form.Item name="google_service_account_configured" hidden><input type="hidden" /></Form.Item>
                     <Form.Item name="openai_api_key_configured" hidden><input type="hidden" /></Form.Item>
                     <Form.Item name="groq_api_key_configured" hidden><input type="hidden" /></Form.Item>
+                    <Form.Item name="openrouter_api_key_configured" hidden><input type="hidden" /></Form.Item>
 
                     <Card
                         style={{ ...panelCard, marginBottom: 16 }}
