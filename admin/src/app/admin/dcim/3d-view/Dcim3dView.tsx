@@ -1,24 +1,98 @@
 "use client";
 
-import React, { Suspense, useState, useRef, useMemo } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Environment, Grid, Html, ContactShadows, RoundedBox, useCursor, SoftShadows } from "@react-three/drei";
-import { EffectComposer, Bloom, SSAO, SMAA, DepthOfField } from "@react-three/postprocessing";
+import React, { Suspense, useState, useMemo } from "react";
+import { Canvas } from "@react-three/fiber";
+import { OrbitControls, ContactShadows } from "@react-three/drei";
+import { EffectComposer, SMAA } from "@react-three/postprocessing";
 import * as THREE from "three";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { theme, Badge, Button, Card, Descriptions, Drawer, Progress, Segmented, Spin, Typography, Switch, message, InputNumber, Space } from 'antd';
+import { theme, Badge, Button, Card, Descriptions, Drawer, Progress, Spin, Typography, Switch, message, Tree, Input, Tooltip, Tabs } from 'antd';
 import { motion } from "framer-motion";
-import { EditOutlined, AppstoreOutlined, ControlOutlined, ThunderboltOutlined, ExperimentOutlined, ToolOutlined, ExportOutlined, DragOutlined, SyncOutlined, EnvironmentOutlined, DownloadOutlined, UploadOutlined, SlidersOutlined, BlockOutlined, GatewayOutlined, BgColorsOutlined, DeleteOutlined, ColumnHeightOutlined, MenuOutlined, ApiOutlined, SelectOutlined } from '@ant-design/icons';
+import {
+    EditOutlined, AppstoreOutlined, ControlOutlined, ThunderboltOutlined,
+    ExperimentOutlined, ToolOutlined, DragOutlined, SyncOutlined,
+    EnvironmentOutlined, DownloadOutlined, UploadOutlined, SlidersOutlined,
+    BlockOutlined, GatewayOutlined, BgColorsOutlined, DeleteOutlined,
+    ColumnHeightOutlined, MenuOutlined, ApiOutlined, HddOutlined, WifiOutlined,
+    PlusOutlined, SearchOutlined, FolderOutlined, DatabaseOutlined,
+    ClusterOutlined, CloudServerOutlined, ApartmentOutlined, SettingOutlined,
+    DashboardOutlined, BarChartOutlined, RobotOutlined, BuildOutlined,
+    NodeIndexOutlined, FundOutlined, AlertOutlined, SafetyCertificateOutlined,
+    ZoomInOutlined, ZoomOutOutlined, ExpandOutlined, BorderOutlined,
+    EyeOutlined, CaretRightOutlined
+} from '@ant-design/icons';
+import { LineChart, Line, ResponsiveContainer, YAxis, AreaChart, Area } from 'recharts';
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useDcimStore } from "@/store/useDcimStore";
 import { DataCenterScene } from "@/components/dcim/DataCenterScene";
-import { GlassPanel } from "@/components/ui/GlassPanel";
-import { AnimatePresence } from "framer-motion";
 import { FloorPlanCanvas } from "@/components/dcim/FloorPlanCanvas";
+
+// --- Mock monitoring data ---
+const powerData = Array.from({ length: 20 }, (_, i) => ({ v: 6.5 + Math.sin(i * 0.5) * 2 + Math.random() * 0.5 }));
+const tempData = Array.from({ length: 20 }, (_, i) => ({ v: 22 + Math.sin(i * 0.3) * 3 + Math.random() }));
+const airflowData = Array.from({ length: 20 }, (_, i) => ({ v: 120 + Math.sin(i * 0.4) * 40 + Math.random() * 10 }));
+
+// --- Component Library Items ---
+const componentItems = [
+    { key: 'rack', label: 'Rack', icon: <AppstoreOutlined />, category: 'equipment' },
+    { key: 'server', label: 'Server', icon: <HddOutlined />, category: 'equipment' },
+    { key: 'server2u', label: 'Server 2U', icon: <HddOutlined />, category: 'equipment' },
+    { key: 'pdu', label: 'Power Distribution', icon: <ThunderboltOutlined />, category: 'power' },
+    { key: 'switch', label: 'Switches', icon: <WifiOutlined />, category: 'equipment' },
+    { key: 'crac', label: 'Cooling Units', icon: <CloudServerOutlined />, category: 'cooling' },
+    { key: 'cableTray', label: 'Cable Tray', icon: <NodeIndexOutlined />, category: 'structural' },
+    { key: 'pipe', label: 'Pipe', icon: <ApiOutlined />, category: 'structural' },
+    { key: 'wall', label: 'Wall', icon: <BlockOutlined />, category: 'structural' },
+    { key: 'pillar', label: 'Pillar', icon: <ColumnHeightOutlined />, category: 'structural' },
+    { key: 'generator', label: 'Generator', icon: <ThunderboltOutlined />, category: 'power' },
+    { key: 'tree', label: 'Tree', icon: <GatewayOutlined />, category: 'landscape' },
+];
+
+// --- Ribbon toolbar items ---
+const ribbonGroups = [
+    {
+        label: 'Asset Management',
+        items: [
+            { key: 'addRack', label: 'Add\nRack', icon: <PlusOutlined /> },
+            { key: 'placeServer', label: 'Place\nServer', icon: <HddOutlined /> },
+            { key: 'networkPatch', label: 'Network\nPatch', icon: <ApartmentOutlined /> },
+            { key: 'cableRoute', label: 'Cable\nRoute', icon: <NodeIndexOutlined /> },
+            { key: 'inventory', label: 'Inventory', icon: <DatabaseOutlined /> },
+        ]
+    },
+    {
+        label: 'Power',
+        items: [
+            { key: 'totalPower', label: 'Total\nPower', icon: <FundOutlined /> },
+            { key: 'temp', label: 'Temp', icon: <DashboardOutlined /> },
+        ]
+    },
+    {
+        label: 'Monitoring',
+        items: [
+            { key: 'powerUsage', label: 'Power\nUsage', icon: <BarChartOutlined /> },
+            { key: 'dataLimit', label: 'Data\nLimit', icon: <AlertOutlined /> },
+        ]
+    },
+    {
+        label: 'Automation',
+        items: [
+            { key: 'networkMatch', label: 'Network\nMatch', icon: <ClusterOutlined /> },
+        ]
+    },
+    {
+        label: 'Tools',
+        items: [
+            { key: 'settings', label: 'Settings', icon: <SettingOutlined /> },
+            { key: 'export', label: 'Export', icon: <DownloadOutlined /> },
+            { key: 'import', label: 'Import', icon: <UploadOutlined /> },
+        ]
+    },
+];
 
 // --- Main Page Component ---
 
@@ -36,6 +110,9 @@ export default function Dcim3DView() {
     const [drawerVisible, setDrawerVisible] = useState(false);
     const [serverModalVisible, setServerModalVisible] = useState(false);
     const [locationModalVisible, setLocationModalVisible] = useState(false);
+    const [activeTab, setActiveTab] = useState('datacenter');
+    const [componentSearch, setComponentSearch] = useState('');
+    const [showMinimap, setShowMinimap] = useState(true);
 
     const selectedRack = React.useMemo(() => racks.find(r => r.id === selectedRackId) || null, [racks, selectedRackId]);
     const selectedCrac = React.useMemo(() => cracs.find(c => c.id === selectedRackId) || null, [cracs, selectedRackId]);
@@ -44,6 +121,10 @@ export default function Dcim3DView() {
     const selectedServer = React.useMemo(() => selectedRack?.servers.find(s => s.id === selectedServerId) || null, [selectedRack, selectedServerId]);
     
     const selectedItem = selectedRack || selectedCrac || selectedPdu || selectedWorldObj;
+
+    // Total metrics
+    const totalPower = useMemo(() => racks.reduce((sum, r) => sum + r.power, 0), [racks]);
+    const avgTemp = useMemo(() => racks.length ? (racks.reduce((sum, r) => sum + r.temp, 0) / racks.length).toFixed(1) : '0', [racks]);
 
     React.useEffect(() => {
         if (selectedRackId) setDrawerVisible(true);
@@ -93,362 +174,824 @@ export default function Dcim3DView() {
         reader.readAsText(file);
     };
 
+    const handleAddComponent = (key: string) => {
+        const store = useDcimStore.getState();
+        store.setEditMode(true);
+        switch (key) {
+            case 'rack':
+            case 'addRack':
+                store.addRack({ id: `RACK-NEW-${Date.now()}`, name: `New Rack`, x: 0, z: 0, totalU: 42, usedU: 0, temp: 24, power: 0, status: 'normal', servers: [] });
+                message.success('Rack added!');
+                break;
+            case 'server':
+            case 'placeServer':
+                store.addWorldObject({ id: `S1U-NEW-${Date.now()}`, type: 'server1u', x: 0, z: 0 });
+                message.success('1U Server added!');
+                break;
+            case 'server2u':
+                store.addWorldObject({ id: `S2U-NEW-${Date.now()}`, type: 'server2u', x: 0, z: 0 });
+                message.success('2U Server added!');
+                break;
+            case 'pdu':
+                store.addPdu({ id: `PDU-NEW-${Date.now()}`, name: `New PDU`, x: 0, z: 0, power: 0, status: 'normal' });
+                message.success('PDU added!');
+                break;
+            case 'switch':
+                store.addWorldObject({ id: `SW-NEW-${Date.now()}`, type: 'networkSwitch', x: 0, z: 0 });
+                message.success('Network Switch added!');
+                break;
+            case 'crac':
+                store.addCrac({ id: `CRAC-NEW-${Date.now()}`, name: `New CRAC`, x: 0, z: 0, status: 'normal' });
+                message.success('CRAC Unit added!');
+                break;
+            case 'cableTray':
+            case 'cableRoute':
+                store.addWorldObject({ id: `CABLE-NEW-${Date.now()}`, type: 'cableTray', x: 0, z: 0 });
+                message.success('Cable Tray added!');
+                break;
+            case 'pipe':
+                store.addWorldObject({ id: `PIPE-NEW-${Date.now()}`, type: 'pipe', x: 0, z: 0, material: 'metal' });
+                message.success('Pipe added!');
+                break;
+            case 'wall':
+                store.addWorldObject({ id: `WALL-NEW-${Date.now()}`, type: 'wall', x: 0, z: 0 });
+                message.success('Wall added!');
+                break;
+            case 'pillar':
+                store.addWorldObject({ id: `PILLAR-NEW-${Date.now()}`, type: 'pillar', x: 0, z: 0 });
+                message.success('Pillar added!');
+                break;
+            case 'generator':
+                store.addWorldObject({ id: `GEN-NEW-${Date.now()}`, type: 'generator', x: 0, z: 0 });
+                message.success('Generator added!');
+                break;
+            case 'tree':
+                store.addWorldObject({ id: `TREE-NEW-${Date.now()}`, type: 'tree', x: 0, z: 0 });
+                message.success('Tree added!');
+                break;
+        }
+    };
+
+    const handleRibbonClick = (key: string) => {
+        switch (key) {
+            case 'addRack':
+            case 'placeServer':
+            case 'cableRoute':
+            case 'networkPatch':
+                handleAddComponent(key);
+                break;
+            case 'inventory':
+                router.push('/admin/inventory');
+                break;
+            case 'totalPower':
+            case 'powerUsage':
+                setViewMode('Power');
+                break;
+            case 'temp':
+                setViewMode('Thermal');
+                break;
+            case 'dataLimit':
+                setViewMode('Utilization');
+                break;
+            case 'networkMatch':
+                setViewMode('Network');
+                break;
+            case 'settings':
+                router.push('/admin/settings');
+                break;
+            case 'export':
+                handleExport();
+                break;
+            case 'import':
+                document.getElementById('import-file')?.click();
+                break;
+        }
+    };
+
+    // Project Explorer tree data
+    const treeData = [
+        {
+            title: 'Global Sites',
+            key: 'global',
+            icon: <FolderOutlined />,
+            children: [
+                {
+                    title: 'Asia Pacific',
+                    key: 'apac',
+                    icon: <FolderOutlined />,
+                    children: [
+                        {
+                            title: 'Nusantara DC',
+                            key: 'ndc',
+                            icon: <DatabaseOutlined />,
+                            children: [
+                                {
+                                    title: 'Floor 1',
+                                    key: 'f1',
+                                    icon: <FolderOutlined />,
+                                    children: [
+                                        {
+                                            title: 'Room A',
+                                            key: 'room-a',
+                                            icon: <FolderOutlined />,
+                                            children: [
+                                                { title: `Racks (${racks.length})`, key: 'racks', icon: <AppstoreOutlined /> },
+                                                { title: `Servers`, key: 'servers', icon: <HddOutlined /> },
+                                                { title: `Power Distribution (${pdus.length})`, key: 'power-dist', icon: <ThunderboltOutlined /> },
+                                                { title: `Cooling Units (${cracs.length})`, key: 'cooling', icon: <CloudServerOutlined /> },
+                                            ]
+                                        },
+                                        { title: 'Room B', key: 'room-b', icon: <FolderOutlined /> },
+                                    ]
+                                },
+                            ]
+                        },
+                    ]
+                },
+            ]
+        }
+    ];
+
+    const filteredComponents = componentItems.filter(c =>
+        c.label.toLowerCase().includes(componentSearch.toLowerCase())
+    );
+
+    // Color scheme
+    const bgPrimary = isDark ? '#0a0a0a' : '#f5f5f5';
+    const bgSidebar = isDark ? '#111111' : '#ffffff';
+    const bgPanel = isDark ? '#141414' : '#fafafa';
+    const bgHeader = isDark ? '#0d0d0d' : '#ffffff';
+    const borderColor = isDark ? '#222' : '#e0e0e0';
+    const textPrimary = isDark ? '#e0e0e0' : '#1a1a1a';
+    const textSecondary = isDark ? '#888' : '#666';
+    const accentColor = themeColor || '#1668dc';
+
     return (
         <CMSLayout 
             title={<AuroraText>3D Digital Twin</AuroraText>}
             subTitle={<DecryptedText text="Data Center Interactive Visualization" speed={60} />}
         >
-            {/* Toolbar overlay */}
-            <div style={{ position: 'relative', width: '100%', height: 'calc(100vh - 180px)', minHeight: 600, borderRadius: 16, overflow: 'hidden', background: isDark ? '#050505' : '#e5e5e5' }}>
+            <input type="file" id="import-file" style={{ display: 'none' }} accept=".json" onChange={handleImport} />
+
+            {/* ===== FULL CAD WORKSPACE ===== */}
+            <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                height: 'calc(100vh - 140px)', 
+                overflow: 'hidden', 
+                background: bgPrimary,
+                margin: '-24px -24px 0 -24px',
+            }}>
                 
-                {/* Visualizer Canvas */}
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-                    <Suspense fallback={<div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Spin size="large" /></div>}>
-                        <Canvas 
-                            camera={{ position: [8, 8, 8], fov: 45 }} 
-                            shadows
-                            gl={{ antialias: false, alpha: true, powerPreference: "high-performance", toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.2 }}
-                        >
-                            <SoftShadows size={15} samples={16} focus={0.5} />
-                            <color attach="background" args={[isDark ? '#050505' : '#e5e5e5']} />
-                            <fog attach="fog" args={[isDark ? '#050505' : '#e5e5e5', 10, 40]} />
-                            
-                            <ambientLight intensity={viewMode === 'Normal' ? (isDark ? 0.6 : 1.0) : 1.2} />
-                            <directionalLight position={[10, 15, 10]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} />
-                            <directionalLight position={[-10, 10, -10]} intensity={0.5} />
-                            
-                            <DataCenterScene />
-                            
-                            <EffectComposer multisampling={0}>
-                                <SMAA />
-                                <SSAO
-                                    samples={21}
-                                    radius={0.15}
-                                    intensity={15}
-                                    luminanceInfluence={0.6}
-                                />
-                                <Bloom
-                                    luminanceThreshold={0.5}
-                                    luminanceSmoothing={0.9}
-                                    intensity={1.2}
-                                />
-                                <DepthOfField focusDistance={0.05} focalLength={0.15} bokehScale={4} />
-                            </EffectComposer>
+                {/* === TOP: Navigation Tabs === */}
+                <div style={{ 
+                    background: bgHeader, 
+                    borderBottom: `1px solid ${borderColor}`,
+                    padding: '0 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    height: 36,
+                    gap: 8,
+                    flexShrink: 0
+                }}>
 
-                            <OrbitControls 
-                                makeDefault 
-                                enabled={useDcimStore((s) => s.orbitEnabled)}
-                                minPolarAngle={0} 
-                                maxPolarAngle={Math.PI / 2 - 0.05} // Prevent going below floor
-                                maxDistance={30}
-                                target={[0, 0, 0]}
-                            />
-                        </Canvas>
-                    </Suspense>
-                </div>
-
-                {/* 2D Minimap Overlay */}
-                <motion.div 
-                    initial={{ opacity: 0, scale: 0.9 }} 
-                    animate={{ opacity: 1, scale: 1 }}
-                    style={{ 
-                        position: 'absolute', 
-                        bottom: 24, 
-                        left: 24, 
-                        width: 320, 
-                        height: 320, 
-                        zIndex: 10,
-                        borderRadius: 16,
-                        overflow: 'hidden',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-                        border: `1px solid ${isDark ? '#333' : '#ddd'}`,
-                        background: isDark ? '#111' : '#f0f0f0'
-                    }}
-                >
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '4px 12px', background: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.7)', zIndex: 1, fontSize: 12, fontWeight: 600, backdropFilter: 'blur(4px)' }}>
-                        Interactive Minimap
-                    </div>
-                    <FloorPlanCanvas onRackClick={setSelectedRackId} />
-                </motion.div>
-
-                {/* Top Toolbar (CAD Style) */}
-                <motion.div 
-                    initial={{ opacity: 0, y: -20 }} 
-                    animate={{ opacity: 1, y: 0 }}
-                    style={{ position: 'absolute', top: 16, left: 16, zIndex: 10, display: 'flex', gap: 16 }}
-                >
-                    <GlassPanel isDark={isDark} intensity="high" style={{ padding: '8px 16px', display: 'flex', gap: 16, alignItems: 'center', borderRadius: 8 }}>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <Button size="small" icon={<DownloadOutlined />} onClick={handleExport} title="Export Scene" />
-                            <Button size="small" icon={<UploadOutlined />} onClick={() => document.getElementById('import-file')?.click()} title="Import Scene" />
-                            <input type="file" id="import-file" style={{ display: 'none' }} accept=".json" onChange={handleImport} />
-                        </div>
-                        <div style={{ width: 1, height: 24, background: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)', margin: '0 4px' }} />
-                        <Button type="text" icon={<EnvironmentOutlined />} onClick={() => setLocationModalVisible(true)}>
-                            Location
-                        </Button>
-                        <div style={{ width: 1, height: 24, background: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)', margin: '0 4px' }} />
-                        <span style={{ color: isDark ? '#fff' : '#000', fontWeight: 600, fontSize: 13 }}>View:</span>
-                        <Segmented 
-                            size="small"
-                            options={['Normal', 'Thermal', 'Power', 'Utilization', 'Network']} 
-                            value={viewMode}
-                            onChange={(val) => setViewMode(val as any)}
-                        />
-                        <div style={{ width: 1, height: 24, background: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)', margin: '0 4px' }} />
-                        <Switch 
-                            checkedChildren={<EditOutlined />} 
-                            unCheckedChildren="Build Mode" 
-                            checked={editMode} 
-                            onChange={setEditMode} 
-                        />
-                    </GlassPanel>
-                </motion.div>
-
-                {/* Left Tool Palette (CAD Style) */}
-                <AnimatePresence>
-                    {editMode && (
-                        <motion.div 
-                            initial={{ opacity: 0, x: -20 }} 
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            style={{ position: 'absolute', top: 80, left: 16, zIndex: 10 }}
-                        >
-                            <GlassPanel isDark={isDark} intensity="high" style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: 8, borderRadius: 8 }}>
-                                <Button 
-                                    type={!measureMode && transformMode === 'translate' ? "primary" : "text"} 
-                                    icon={<DragOutlined />} 
-                                    style={{ width: 40, height: 40, display: 'flex', justifyContent: 'center', alignItems: 'center' }} 
-                                    title="Translate"
-                                    onClick={() => { setMeasureMode(false); setTransformMode('translate'); }}
-                                />
-                                <Button 
-                                    type={!measureMode && transformMode === 'rotate' ? "primary" : "text"} 
-                                    icon={<SyncOutlined />} 
-                                    style={{ width: 40, height: 40, display: 'flex', justifyContent: 'center', alignItems: 'center' }} 
-                                    title="Rotate"
-                                    onClick={() => { setMeasureMode(false); setTransformMode('rotate'); }}
-                                />
-                                <div style={{ height: 1, width: 24, margin: '4px auto', background: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)' }} />
-                                <Button 
-                                    type={measureMode ? "primary" : "text"} 
-                                    icon={<SlidersOutlined />} 
-                                    style={{ width: 40, height: 40, display: 'flex', justifyContent: 'center', alignItems: 'center' }} 
-                                    title="Measure Ruler"
-                                    onClick={() => {
-                                        const store = useDcimStore.getState();
-                                        store.setMeasureMode(!store.measureMode);
-                                        if (!store.measureMode) message.info('Measurement tool activated. Click twice on the floor.');
-                                    }}
-                                />
-                                <div style={{ height: 1, width: 24, margin: '4px auto', background: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)' }} />
-                                <Button 
-                                    type={useDcimStore().snapToGrid ? "primary" : "text"} 
-                                    icon={<AppstoreOutlined />} 
-                                    style={{ width: 40, height: 40, display: 'flex', justifyContent: 'center', alignItems: 'center' }} 
-                                    title="Toggle Grid Snap"
-                                    onClick={() => useDcimStore.getState().setSnapToGrid(!useDcimStore().snapToGrid)}
-                                />
-                            </GlassPanel>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Right Sidebar: Build Catalog & Precision Inspector */}
-                <AnimatePresence>
-                    {editMode && (
-                        <motion.div 
-                            initial={{ opacity: 0, x: 320 }} 
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 320 }}
-                            style={{ 
-                                position: 'absolute', 
-                                top: 24, 
-                                right: 24, 
-                                zIndex: 10, 
-                                width: 300, 
-                                bottom: 24, 
-                                display: 'flex', 
-                                flexDirection: 'column', 
-                                gap: 16 
+                    {['Data Center', 'Asset Management', 'Power', 'Cooling', 'Monitoring', 'Automation', 'Tools'].map(tab => (
+                        <div
+                            key={tab}
+                            onClick={() => setActiveTab(tab.toLowerCase().replace(' ', '-'))}
+                            style={{
+                                padding: '6px 12px',
+                                fontSize: 12,
+                                cursor: 'pointer',
+                                color: activeTab === tab.toLowerCase().replace(' ', '-') ? accentColor : textSecondary,
+                                borderBottom: activeTab === tab.toLowerCase().replace(' ', '-') ? `2px solid ${accentColor}` : '2px solid transparent',
+                                fontWeight: activeTab === tab.toLowerCase().replace(' ', '-') ? 600 : 400,
+                                transition: 'all 0.2s',
+                                whiteSpace: 'nowrap',
                             }}
                         >
-                            <GlassPanel isDark={isDark} intensity="high" style={{ padding: '16px', color: isDark ? '#fff' : '#000', borderRadius: 8, flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                                    <div style={{ fontWeight: 600, fontSize: 16 }}>Build Catalog</div>
-                                </div>
-                                
-                                <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 12, textTransform: 'uppercase', color: '#888' }}>Data Center Equipment</div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 24 }}>
-                                    <Button type="dashed" style={{ height: 60 }} onClick={() => {
-                                        const store = useDcimStore.getState();
-                                        store.addRack({ id: `RACK-NEW-${Date.now()}`, name: `New Rack`, x: 0, z: 0, totalU: 42, usedU: 0, temp: 24, power: 0, status: 'normal', servers: [] });
-                                        message.success('Rack added to scene!');
-                                    }}>
-                                        <div><AppstoreOutlined style={{ fontSize: 20 }} /></div>
-                                        <div style={{ fontSize: 11 }}>Server Rack</div>
-                                    </Button>
-                                    <Button type="dashed" style={{ height: 60 }} onClick={() => {
-                                        const store = useDcimStore.getState();
-                                        store.addCrac({ id: `CRAC-NEW-${Date.now()}`, name: `New CRAC`, x: 0, z: 0, status: 'normal' });
-                                        message.success('CRAC Unit added to scene!');
-                                    }}>
-                                        <div><AppstoreOutlined style={{ fontSize: 20 }} /></div>
-                                        <div style={{ fontSize: 11 }}>CRAC Unit</div>
-                                    </Button>
-                                    <Button type="dashed" style={{ height: 60 }} onClick={() => {
-                                        const store = useDcimStore.getState();
-                                        store.addPdu({ id: `PDU-NEW-${Date.now()}`, name: `New PDU`, x: 0, z: 0, power: 0, status: 'normal' });
-                                        message.success('PDU added to scene!');
-                                    }}>
-                                        <div><AppstoreOutlined style={{ fontSize: 20 }} /></div>
-                                        <div style={{ fontSize: 11 }}>PDU</div>
-                                    </Button>
-                                </div>
+                            {tab}
+                        </div>
+                    ))}
+                    <div style={{ flex: 1 }} />
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <Tooltip title="Location">
+                            <Button type="text" size="small" icon={<EnvironmentOutlined />} onClick={() => setLocationModalVisible(true)} />
+                        </Tooltip>
+                        <Tooltip title="Settings">
+                            <Button type="text" size="small" icon={<SettingOutlined />} />
+                        </Tooltip>
+                    </div>
+                </div>
 
-                                <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 12, textTransform: 'uppercase', color: '#888' }}>Structural Objects</div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 24 }}>
-                                    <Button type="dashed" style={{ height: 60 }} onClick={() => {
-                                        const store = useDcimStore.getState();
-                                        store.addWorldObject({ id: `PILLAR-NEW-${Date.now()}`, type: 'pillar', x: 0, z: 0 });
-                                        message.success('Pillar added!');
-                                    }}>
-                                        <div><ColumnHeightOutlined style={{ fontSize: 20 }} /></div>
-                                        <div style={{ fontSize: 11 }}>Pillar</div>
-                                    </Button>
-                                    <Button type="dashed" style={{ height: 60 }} onClick={() => {
-                                        const store = useDcimStore.getState();
-                                        store.addWorldObject({ id: `CABLE-NEW-${Date.now()}`, type: 'cableTray', x: 0, z: 0 });
-                                        message.success('Cable Tray added!');
-                                    }}>
-                                        <div><MenuOutlined style={{ fontSize: 20 }} /></div>
-                                        <div style={{ fontSize: 11 }}>Cable Tray</div>
-                                    </Button>
-                                    <Button type="dashed" style={{ height: 60 }} onClick={() => {
-                                        const store = useDcimStore.getState();
-                                        store.addWorldObject({ id: `PIPE-NEW-${Date.now()}`, type: 'pipe', x: 0, z: 0, material: 'metal' });
-                                        message.success('Pipe added!');
-                                    }}>
-                                        <div><ApiOutlined style={{ fontSize: 20 }} /></div>
-                                        <div style={{ fontSize: 11 }}>Pipe</div>
-                                    </Button>
-                                </div>
-
-                                <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 12, textTransform: 'uppercase', color: '#888' }}>World & Landscape</div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 24 }}>
-                                    <Button type="dashed" style={{ height: 60 }} onClick={() => {
-                                        const store = useDcimStore.getState();
-                                        store.addWorldObject({ id: `WALL-NEW-${Date.now()}`, type: 'wall', x: 0, z: 0 });
-                                        message.success('Wall added to scene!');
-                                    }}>
-                                        <div><BlockOutlined style={{ fontSize: 20 }} /></div>
-                                        <div style={{ fontSize: 11 }}>Wall Segment</div>
-                                    </Button>
-                                    <Button type="dashed" style={{ height: 60 }} onClick={() => {
-                                        const store = useDcimStore.getState();
-                                        store.addWorldObject({ id: `TREE-NEW-${Date.now()}`, type: 'tree', x: 0, z: 0 });
-                                        message.success('Tree added to landscape!');
-                                    }}>
-                                        <div><GatewayOutlined style={{ fontSize: 20 }} /></div>
-                                        <div style={{ fontSize: 11 }}>Landscape Tree</div>
-                                    </Button>
-                                    <Button type="dashed" style={{ height: 60 }} onClick={() => {
-                                        const store = useDcimStore.getState();
-                                        store.addWorldObject({ id: `GEN-NEW-${Date.now()}`, type: 'generator', x: 0, z: 0 });
-                                        message.success('Generator added!');
-                                    }}>
-                                        <div><ThunderboltOutlined style={{ fontSize: 20 }} /></div>
-                                        <div style={{ fontSize: 11 }}>Generator</div>
-                                    </Button>
-                                    <Button type="dashed" style={{ height: 60 }} onClick={() => {
-                                        const store = useDcimStore.getState();
-                                        store.addWorldObject({ id: `ZONE-NEW-${Date.now()}`, type: 'zone', material: 'grass', x: 0, z: 0, width: 20, depth: 20 });
-                                        message.success('Landscape Zone added!');
-                                    }}>
-                                        <div><BgColorsOutlined style={{ fontSize: 20 }} /></div>
-                                        <div style={{ fontSize: 11 }}>Zone Painter</div>
-                                    </Button>
-                                </div>
-
-                                <div style={{ borderTop: `1px solid ${isDark ? '#333' : '#e5e5e5'}`, margin: '16px -16px 0 -16px' }} />
-                                
-                                <div style={{ marginTop: 16, flex: 1 }}>
-                                    {selectedRackId && (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: isDark ? '#141414' : '#fafafa', padding: 12, borderRadius: 8, marginTop: 16 }}>
-                                            <div style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>Precision Inspector</div>
-                                            <div style={{ fontSize: 11, color: '#888' }}>
-                                                Selected: {selectedRackId}
-                                            </div>
-                                            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                                                <Button size="small" style={{ flex: 1 }} onClick={() => {
-                                                    const store = useDcimStore.getState();
-                                                    if (selectedRackId.startsWith('CRAC-')) {
-                                                        const crac = store.cracs.find(c => c.id === selectedRackId);
-                                                        if (crac) store.updateCracPosition(crac.id, crac.x, crac.z, (crac.rotationY || 0) + Math.PI / 2);
-                                                    } else if (selectedRackId.startsWith('PDU-')) {
-                                                        const pdu = store.pdus.find(p => p.id === selectedRackId);
-                                                        if (pdu) store.updatePduPosition(pdu.id, pdu.x, pdu.z, (pdu.rotationY || 0) + Math.PI / 2);
-                                                    } else {
-                                                        const rack = store.racks.find(r => r.id === selectedRackId);
-                                                        if (rack) store.updateRackPosition(rack.id, rack.x, rack.z, (rack.rotationY || 0) + Math.PI / 2);
-                                                    }
-                                                }}>
-                                                    Rotate 90°
-                                                </Button>
-                                                <Button size="small" danger icon={<DeleteOutlined />} onClick={() => {
-                                                    const store = useDcimStore.getState();
-                                                    if (selectedRackId.startsWith('CRAC-')) store.removeCrac(selectedRackId);
-                                                    else if (selectedRackId.startsWith('PDU-')) store.removePdu(selectedRackId);
-                                                    else store.removeRack(selectedRackId);
-                                                    store.setSelectedRackId(null);
-                                                }} />
-                                            </div>
+                {/* === RIBBON TOOLBAR === */}
+                <div style={{ 
+                    background: bgPanel,
+                    borderBottom: `1px solid ${borderColor}`,
+                    padding: '6px 12px',
+                    display: 'flex',
+                    gap: 2,
+                    alignItems: 'flex-end',
+                    flexShrink: 0,
+                    overflowX: 'auto',
+                }}>
+                    {ribbonGroups.map(group => (
+                        <div key={group.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginRight: 4 }}>
+                            <div style={{ display: 'flex', gap: 2 }}>
+                                {group.items.map(item => (
+                                    <Tooltip key={item.key} title={item.label.replace('\n', ' ')}>
+                                        <div
+                                            onClick={() => handleRibbonClick(item.key)}
+                                            style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                padding: '4px 8px',
+                                                borderRadius: 6,
+                                                cursor: 'pointer',
+                                                minWidth: 48,
+                                                height: 52,
+                                                transition: 'background 0.15s',
+                                                background: 'transparent',
+                                            }}
+                                            onMouseEnter={e => (e.currentTarget.style.background = isDark ? '#222' : '#e8e8e8')}
+                                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                        >
+                                            <span style={{ fontSize: 18, color: textPrimary }}>{item.icon}</span>
+                                            <span style={{ fontSize: 9, color: textSecondary, textAlign: 'center', lineHeight: '12px', marginTop: 2, whiteSpace: 'pre-line' }}>{item.label}</span>
                                         </div>
-                                    )}
-                                </div>
-                            </GlassPanel>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                                    </Tooltip>
+                                ))}
+                            </div>
+                            <div style={{ fontSize: 9, color: textSecondary, marginTop: 2, borderTop: `1px solid ${borderColor}`, paddingTop: 2, width: '100%', textAlign: 'center' }}>
+                                {group.label}
+                            </div>
+                        </div>
+                    ))}
+                    
+                    {/* Separator */}
+                    <div style={{ width: 1, height: 50, background: borderColor, margin: '0 8px', flexShrink: 0 }} />
+                    
+                    {/* View Mode & Edit Mode in ribbon */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                            {['Normal', 'Thermal', 'Power', 'Utilization', 'Network'].map(mode => (
+                                <Tooltip key={mode} title={`${mode} View`}>
+                                    <div
+                                        onClick={() => setViewMode(mode as any)}
+                                        style={{
+                                            padding: '4px 8px',
+                                            borderRadius: 4,
+                                            fontSize: 10,
+                                            cursor: 'pointer',
+                                            background: viewMode === mode ? accentColor : 'transparent',
+                                            color: viewMode === mode ? '#fff' : textSecondary,
+                                            fontWeight: viewMode === mode ? 600 : 400,
+                                            transition: 'all 0.15s',
+                                        }}
+                                    >
+                                        {mode}
+                                    </div>
+                                </Tooltip>
+                            ))}
+                        </div>
+                        <div style={{ fontSize: 9, color: textSecondary, borderTop: `1px solid ${borderColor}`, paddingTop: 2, width: '100%', textAlign: 'center' }}>
+                            View Mode
+                        </div>
+                    </div>
 
-                {/* Legend */}
-                <AnimatePresence>
-                    {viewMode !== 'Normal' && (
-                        <motion.div 
-                            initial={{ opacity: 0, x: 20 }} 
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 20 }}
-                            style={{ position: 'absolute', bottom: 24, right: 24, zIndex: 10 }}
-                        >
-                            <GlassPanel isDark={isDark} intensity="high" style={{ padding: '16px', minWidth: 200, color: isDark ? '#fff' : '#000', borderRadius: 14 }}>
-                                <div style={{ fontWeight: 600, marginBottom: 12 }}>{viewMode} Legend</div>
+                    <div style={{ width: 1, height: 50, background: borderColor, margin: '0 8px', flexShrink: 0 }} />
+
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                        <Switch 
+                            checkedChildren={<EditOutlined />} 
+                            unCheckedChildren="Edit" 
+                            checked={editMode} 
+                            onChange={setEditMode}
+                            style={{ marginTop: 4 }}
+                        />
+                        <div style={{ fontSize: 9, color: textSecondary, borderTop: `1px solid ${borderColor}`, paddingTop: 2, width: '100%', textAlign: 'center' }}>
+                            Build
+                        </div>
+                    </div>
+                </div>
+
+                {/* === MAIN WORKSPACE: LEFT SIDEBAR + 3D VIEWPORT + RIGHT PANEL === */}
+                <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+                    
+                    {/* === LEFT SIDEBAR === */}
+                    <div style={{ 
+                        width: 240, 
+                        flexShrink: 0, 
+                        background: bgSidebar, 
+                        borderRight: `1px solid ${borderColor}`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                    }}>
+                        {/* Project Explorer */}
+                        <div style={{ flex: 1, overflow: 'auto', padding: '8px 4px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', marginBottom: 4 }}>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: textPrimary }}>Project Explorer</span>
+                                <Button type="text" size="small" icon={<ExpandOutlined style={{ fontSize: 10 }} />} />
+                            </div>
+                            <Tree
+                                treeData={treeData}
+                                defaultExpandAll
+                                showIcon
+                                blockNode
+                                style={{ fontSize: 12, background: 'transparent' }}
+                            />
+                        </div>
+
+                        {/* Divider */}
+                        <div style={{ height: 1, background: borderColor }} />
+
+                        {/* Component Library */}
+                        <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: textPrimary }}>Component Library</span>
+                                <Button type="text" size="small" icon={<PlusOutlined style={{ fontSize: 10 }} />} />
+                            </div>
+                            <Input
+                                placeholder="Search components..."
+                                prefix={<SearchOutlined style={{ color: textSecondary }} />}
+                                size="small"
+                                value={componentSearch}
+                                onChange={e => setComponentSearch(e.target.value)}
+                                style={{ marginBottom: 8 }}
+                            />
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
+                                {filteredComponents.map(comp => (
+                                    <div
+                                        key={comp.key}
+                                        onClick={() => handleAddComponent(comp.key)}
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            padding: '8px 4px',
+                                            borderRadius: 6,
+                                            border: `1px solid ${borderColor}`,
+                                            cursor: 'pointer',
+                                            background: isDark ? '#1a1a1a' : '#fff',
+                                            transition: 'all 0.15s',
+                                            minHeight: 64,
+                                        }}
+                                        onMouseEnter={e => {
+                                            e.currentTarget.style.borderColor = accentColor;
+                                            e.currentTarget.style.background = isDark ? '#1e1e2e' : '#f0f5ff';
+                                        }}
+                                        onMouseLeave={e => {
+                                            e.currentTarget.style.borderColor = borderColor;
+                                            e.currentTarget.style.background = isDark ? '#1a1a1a' : '#fff';
+                                        }}
+                                    >
+                                        <span style={{ fontSize: 20, color: textPrimary, marginBottom: 4 }}>{comp.icon}</span>
+                                        <span style={{ fontSize: 9, color: textSecondary, textAlign: 'center', lineHeight: '11px' }}>{comp.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* === CENTER: 3D VIEWPORT === */}
+                    <div style={{ flex: 1, position: 'relative', background: isDark ? '#050505' : '#e5e5e5' }}>
+                        
+                        {/* 3D Canvas */}
+                        <Suspense fallback={<div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Spin size="large" /></div>}>
+                            <Canvas 
+                                camera={{ position: [15, 18, 15], fov: 50 }} 
+                                shadows
+                                gl={{ antialias: true, alpha: true, powerPreference: "high-performance", toneMapping: THREE.NoToneMapping }}
+                            >
+                                <color attach="background" args={[isDark ? '#1a1a2e' : '#f5f5f5']} />
+                                <fog attach="fog" args={[isDark ? '#1a1a2e' : '#f5f5f5', 40, 80]} />
                                 
+                                <DataCenterScene />
+                                
+                                <EffectComposer multisampling={0}>
+                                    <SMAA />
+                                </EffectComposer>
+
+                                <OrbitControls 
+                                    makeDefault 
+                                    enabled={useDcimStore((s) => s.orbitEnabled)}
+                                    minPolarAngle={0.1} 
+                                    maxPolarAngle={Math.PI / 2 - 0.02}
+                                    maxDistance={50}
+                                    minDistance={3}
+                                    target={[0, 0, 0]}
+                                />
+                            </Canvas>
+                        </Suspense>
+
+                        {/* Status Bar Overlay (top center) */}
+                        <div style={{ 
+                            position: 'absolute', 
+                            top: 8, 
+                            left: '50%', 
+                            transform: 'translateX(-50%)', 
+                            display: 'flex', 
+                            gap: 24,
+                            background: isDark ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.85)',
+                            backdropFilter: 'blur(12px)',
+                            padding: '6px 20px',
+                            borderRadius: 8,
+                            border: `1px solid ${isDark ? '#333' : '#ddd'}`,
+                            zIndex: 5,
+                        }}>
+                            <span style={{ fontSize: 12, color: textSecondary }}>Total Power: <strong style={{ color: accentColor }}>{(totalPower * 0.15).toFixed(1)} MW</strong></span>
+                            <span style={{ fontSize: 12, color: textSecondary }}>Cooling Load: <strong style={{ color: '#52c41a' }}>65%</strong></span>
+                            <span style={{ fontSize: 12, color: textSecondary }}>PUE: <strong style={{ color: '#faad14' }}>1.12</strong></span>
+                        </div>
+
+                        {/* View Cube (top right of viewport) */}
+                        <div style={{ 
+                            position: 'absolute', 
+                            top: 8, 
+                            right: 8,
+                            background: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.8)',
+                            backdropFilter: 'blur(8px)',
+                            padding: '6px 10px',
+                            borderRadius: 6,
+                            border: `1px solid ${isDark ? '#333' : '#ddd'}`,
+                            fontSize: 11,
+                            color: textSecondary,
+                            zIndex: 5,
+                            cursor: 'pointer',
+                        }}>
+                            <EyeOutlined /> View Cube
+                        </div>
+
+                        {/* Left-side tool controls */}
+                        <div style={{ 
+                            position: 'absolute', 
+                            top: 8, 
+                            left: 8, 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: 4,
+                            zIndex: 5,
+                        }}>
+                            {/* Zoom controls */}
+                            <div style={{ 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                gap: 2,
+                                background: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.85)',
+                                backdropFilter: 'blur(8px)',
+                                borderRadius: 6,
+                                border: `1px solid ${isDark ? '#333' : '#ddd'}`,
+                                padding: 2,
+                            }}>
+                                <Button type="text" size="small" icon={<ZoomInOutlined />} style={{ width: 28, height: 28 }} />
+                                <Button type="text" size="small" icon={<ZoomOutOutlined />} style={{ width: 28, height: 28 }} />
+                                <div style={{ height: 1, background: borderColor, margin: '0 4px' }} />
+                                <Button type="text" size="small" icon={<ExpandOutlined />} style={{ width: 28, height: 28 }} />
+                            </div>
+                            
+                            {/* Transform tools */}
+                            {editMode && (
+                                <div style={{ 
+                                    display: 'flex', 
+                                    flexDirection: 'column', 
+                                    gap: 2,
+                                    background: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.85)',
+                                    backdropFilter: 'blur(8px)',
+                                    borderRadius: 6,
+                                    border: `1px solid ${isDark ? '#333' : '#ddd'}`,
+                                    padding: 2,
+                                }}>
+                                    <Tooltip title="Translate" placement="right">
+                                        <Button 
+                                            type={!measureMode && transformMode === 'translate' ? "primary" : "text"} 
+                                            size="small" 
+                                            icon={<DragOutlined />} 
+                                            style={{ width: 28, height: 28 }}
+                                            onClick={() => { setMeasureMode(false); setTransformMode('translate'); }}
+                                        />
+                                    </Tooltip>
+                                    <Tooltip title="Rotate" placement="right">
+                                        <Button 
+                                            type={!measureMode && transformMode === 'rotate' ? "primary" : "text"} 
+                                            size="small" 
+                                            icon={<SyncOutlined />} 
+                                            style={{ width: 28, height: 28 }}
+                                            onClick={() => { setMeasureMode(false); setTransformMode('rotate'); }}
+                                        />
+                                    </Tooltip>
+                                    <div style={{ height: 1, background: borderColor, margin: '0 4px' }} />
+                                    <Tooltip title="Measure" placement="right">
+                                        <Button 
+                                            type={measureMode ? "primary" : "text"} 
+                                            size="small" 
+                                            icon={<SlidersOutlined />} 
+                                            style={{ width: 28, height: 28 }}
+                                            onClick={() => {
+                                                const store = useDcimStore.getState();
+                                                store.setMeasureMode(!store.measureMode);
+                                                if (!store.measureMode) message.info('Measurement tool activated. Click twice on the floor.');
+                                            }}
+                                        />
+                                    </Tooltip>
+                                    <Tooltip title="Grid Snap" placement="right">
+                                        <Button 
+                                            type={useDcimStore.getState().snapToGrid ? "primary" : "text"} 
+                                            size="small" 
+                                            icon={<AppstoreOutlined />} 
+                                            style={{ width: 28, height: 28 }}
+                                            onClick={() => useDcimStore.getState().setSnapToGrid(!useDcimStore.getState().snapToGrid)}
+                                        />
+                                    </Tooltip>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Minimap overlay (bottom-left) */}
+                        {showMinimap && (
+                            <div style={{
+                                position: 'absolute',
+                                bottom: 8,
+                                left: 8,
+                                width: 180,
+                                height: 180,
+                                zIndex: 5,
+                                borderRadius: 8,
+                                overflow: 'hidden',
+                                boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+                                border: `1px solid ${isDark ? '#333' : '#ddd'}`,
+                                background: isDark ? '#111' : '#f0f0f0'
+                            }}>
+                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '2px 8px', background: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.7)', zIndex: 1, fontSize: 10, fontWeight: 600, backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span>Minimap</span>
+                                    <span style={{ cursor: 'pointer', fontSize: 10, color: textSecondary }} onClick={() => setShowMinimap(false)}>✕</span>
+                                </div>
+                                <FloorPlanCanvas onRackClick={setSelectedRackId} />
+                            </div>
+                        )}
+
+                        {/* Legend (bottom-right) */}
+                        {viewMode !== 'Normal' && (
+                            <div style={{
+                                position: 'absolute',
+                                bottom: 8,
+                                right: 8,
+                                zIndex: 5,
+                                background: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)',
+                                backdropFilter: 'blur(12px)',
+                                padding: '10px 14px',
+                                borderRadius: 8,
+                                border: `1px solid ${isDark ? '#333' : '#ddd'}`,
+                                color: textPrimary,
+                                fontSize: 11,
+                            }}>
+                                <div style={{ fontWeight: 600, marginBottom: 6 }}>{viewMode} Legend</div>
                                 {viewMode === 'Thermal' && (
                                     <>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}><div style={{ width: 16, height: 16, background: '#ff4d4f', borderRadius: 4 }}/> &gt; 29°C (Critical)</div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}><div style={{ width: 16, height: 16, background: '#faad14', borderRadius: 4 }}/> 25-29°C (Warning)</div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><div style={{ width: 16, height: 16, background: '#52c41a', borderRadius: 4 }}/> &lt; 25°C (Normal)</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}><div style={{ width: 12, height: 12, background: '#ff4d4f', borderRadius: 3 }}/> &gt; 29°C (Critical)</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}><div style={{ width: 12, height: 12, background: '#faad14', borderRadius: 3 }}/> 25-29°C (Warning)</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 12, height: 12, background: '#52c41a', borderRadius: 3 }}/> &lt; 25°C (Normal)</div>
                                     </>
                                 )}
                                 {viewMode === 'Utilization' && (
                                     <>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}><div style={{ width: 16, height: 16, background: '#ff4d4f', borderRadius: 4 }}/> &gt; 80% Used</div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}><div style={{ width: 16, height: 16, background: '#52c41a', borderRadius: 4 }}/> 50-80% Used</div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><div style={{ width: 16, height: 16, background: '#d9d9d9', borderRadius: 4 }}/> &lt; 50% Used</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}><div style={{ width: 12, height: 12, background: '#ff4d4f', borderRadius: 3 }}/> &gt; 80% Used</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}><div style={{ width: 12, height: 12, background: '#52c41a', borderRadius: 3 }}/> 50-80% Used</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 12, height: 12, background: '#d9d9d9', borderRadius: 3 }}/> &lt; 50% Used</div>
                                     </>
                                 )}
                                 {viewMode === 'Power' && (
                                     <>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}><div style={{ width: 16, height: 16, background: '#722ed1', borderRadius: 4 }}/> &gt; 7 kW</div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}><div style={{ width: 16, height: 16, background: '#108ee9', borderRadius: 4 }}/> 4-7 kW</div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><div style={{ width: 16, height: 16, background: '#87d068', borderRadius: 4 }}/> &lt; 4 kW</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}><div style={{ width: 12, height: 12, background: '#722ed1', borderRadius: 3 }}/> &gt; 7 kW</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}><div style={{ width: 12, height: 12, background: '#108ee9', borderRadius: 3 }}/> 4-7 kW</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 12, height: 12, background: '#87d068', borderRadius: 3 }}/> &lt; 4 kW</div>
                                     </>
                                 )}
-                            </GlassPanel>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* === RIGHT PANEL: Properties & Inspector === */}
+                    <div style={{
+                        width: 280,
+                        flexShrink: 0,
+                        background: bgSidebar,
+                        borderLeft: `1px solid ${borderColor}`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'auto',
+                    }}>
+                        <div style={{ padding: '10px 12px', borderBottom: `1px solid ${borderColor}`, fontWeight: 600, fontSize: 13, color: textPrimary }}>
+                            Properties &amp; Inspector
+                        </div>
+                        
+                        {selectedItem ? (
+                            <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {/* Item Header */}
+                                <div style={{ 
+                                    background: isDark ? '#1a1a1a' : '#f0f5ff', 
+                                    padding: '10px 12px', 
+                                    borderRadius: 8,
+                                    border: `1px solid ${isDark ? '#2a2a2a' : '#d6e4ff'}`
+                                }}>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: accentColor, marginBottom: 8 }}>
+                                        {selectedRack?.name || selectedCrac?.name || selectedPdu?.name || selectedWorldObj?.type || 'Selected'}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <span style={{ color: textSecondary }}>ID</span>
+                                            <span style={{ color: textPrimary, fontWeight: 500 }}>{selectedItem.id}</span>
+                                        </div>
+                                        {selectedRack && (
+                                            <>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: textSecondary }}>Model</span>
+                                                    <span style={{ color: textPrimary }}>APC NetShelter SX</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: textSecondary }}>U-count</span>
+                                                    <span style={{ color: textPrimary }}>{selectedRack.totalU}</span>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Dynamic Fields */}
+                                <div>
+                                    <div style={{ fontSize: 11, fontWeight: 600, color: textSecondary, textTransform: 'uppercase', marginBottom: 8 }}>Dynamic Fields</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                                        {selectedRack && (
+                                            <>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: `1px solid ${isDark ? '#1e1e1e' : '#f0f0f0'}` }}>
+                                                    <span style={{ color: textSecondary }}>Power Usage</span>
+                                                    <span style={{ color: textPrimary, fontWeight: 600 }}>{selectedRack.power} kW</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: `1px solid ${isDark ? '#1e1e1e' : '#f0f0f0'}` }}>
+                                                    <span style={{ color: textSecondary }}>Temperature</span>
+                                                    <span style={{ color: selectedRack.temp > 29 ? '#ff4d4f' : textPrimary, fontWeight: 600 }}>{selectedRack.temp}°C</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                                                    <span style={{ color: textSecondary }}>U-Space</span>
+                                                    <span style={{ color: textPrimary, fontWeight: 600 }}>{selectedRack.totalU - selectedRack.usedU} Available</span>
+                                                </div>
+                                            </>
+                                        )}
+                                        {selectedCrac && (
+                                            <>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                                                    <span style={{ color: textSecondary }}>Status</span>
+                                                    <Badge status={selectedCrac.status === 'normal' ? 'success' : 'error'} text={selectedCrac.status.toUpperCase()} />
+                                                </div>
+                                            </>
+                                        )}
+                                        {selectedPdu && (
+                                            <>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                                                    <span style={{ color: textSecondary }}>Power Load</span>
+                                                    <span style={{ color: textPrimary, fontWeight: 600 }}>{selectedPdu.power} kW</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                                                    <span style={{ color: textSecondary }}>Status</span>
+                                                    <Badge status={selectedPdu.status === 'normal' ? 'success' : 'error'} text={selectedPdu.status.toUpperCase()} />
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                {editMode && (
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                        <Button size="small" style={{ flex: 1 }} onClick={() => {
+                                            const store = useDcimStore.getState();
+                                            if (selectedRackId?.startsWith('CRAC-')) {
+                                                const crac = store.cracs.find(c => c.id === selectedRackId);
+                                                if (crac) store.updateCracPosition(crac.id, crac.x, crac.z, (crac.rotationY || 0) + Math.PI / 2);
+                                            } else if (selectedRackId?.startsWith('PDU-')) {
+                                                const pdu = store.pdus.find(p => p.id === selectedRackId);
+                                                if (pdu) store.updatePduPosition(pdu.id, pdu.x, pdu.z, (pdu.rotationY || 0) + Math.PI / 2);
+                                            } else {
+                                                const rack = store.racks.find(r => r.id === selectedRackId);
+                                                if (rack) store.updateRackPosition(rack.id, rack.x, rack.z, (rack.rotationY || 0) + Math.PI / 2);
+                                            }
+                                        }}>
+                                            Rotate 90°
+                                        </Button>
+                                        <Button size="small" danger icon={<DeleteOutlined />} onClick={() => {
+                                            const store = useDcimStore.getState();
+                                            if (selectedRackId?.startsWith('CRAC-')) store.removeCrac(selectedRackId);
+                                            else if (selectedRackId?.startsWith('PDU-')) store.removePdu(selectedRackId);
+                                            else if (selectedRackId) store.removeRack(selectedRackId);
+                                            store.setSelectedRackId(null);
+                                        }} />
+                                    </div>
+                                )}
+
+                                {/* Open Detail */}
+                                <Button type="default" size="small" block onClick={() => setDrawerVisible(true)}>
+                                    Open Full Details →
+                                </Button>
+                            </div>
+                        ) : (
+                            <div style={{ padding: 16, color: textSecondary, fontSize: 12, textAlign: 'center', marginTop: 24 }}>
+                                <EyeOutlined style={{ fontSize: 32, marginBottom: 8, display: 'block', opacity: 0.3 }} />
+                                Select an object in the 3D viewport to inspect its properties
+                            </div>
+                        )}
+
+                        {/* Monitoring Graphs (always visible) */}
+                        <div style={{ 
+                            padding: 12, 
+                            borderTop: `1px solid ${borderColor}`,
+                            marginTop: 'auto',
+                        }}>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: textSecondary, textTransform: 'uppercase', marginBottom: 8 }}>Monitoring Graphs</div>
+                            
+                            {/* Power Graph */}
+                            <div style={{ marginBottom: 12 }}>
+                                <div style={{ fontSize: 11, color: textPrimary, fontWeight: 500, marginBottom: 4 }}>Power</div>
+                                <div style={{ height: 50, background: isDark ? '#0d0d0d' : '#f5f5f5', borderRadius: 4, overflow: 'hidden' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={powerData}>
+                                            <defs>
+                                                <linearGradient id="powerGrad" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor={accentColor} stopOpacity={0.3}/>
+                                                    <stop offset="95%" stopColor={accentColor} stopOpacity={0}/>
+                                                </linearGradient>
+                                            </defs>
+                                            <Area type="monotone" dataKey="v" stroke={accentColor} fill="url(#powerGrad)" strokeWidth={1.5} dot={false} />
+                                            <YAxis hide domain={['auto', 'auto']} />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            {/* Temp Graph */}
+                            <div style={{ marginBottom: 12 }}>
+                                <div style={{ fontSize: 11, color: textPrimary, fontWeight: 500, marginBottom: 4 }}>Temp</div>
+                                <div style={{ height: 50, background: isDark ? '#0d0d0d' : '#f5f5f5', borderRadius: 4, overflow: 'hidden' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={tempData}>
+                                            <defs>
+                                                <linearGradient id="tempGrad" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#faad14" stopOpacity={0.3}/>
+                                                    <stop offset="95%" stopColor="#faad14" stopOpacity={0}/>
+                                                </linearGradient>
+                                            </defs>
+                                            <Area type="monotone" dataKey="v" stroke="#faad14" fill="url(#tempGrad)" strokeWidth={1.5} dot={false} />
+                                            <YAxis hide domain={['auto', 'auto']} />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            {/* Air Flow Graph */}
+                            <div>
+                                <div style={{ fontSize: 11, color: textPrimary, fontWeight: 500, marginBottom: 4 }}>Air Flow</div>
+                                <div style={{ height: 50, background: isDark ? '#0d0d0d' : '#f5f5f5', borderRadius: 4, overflow: 'hidden' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={airflowData}>
+                                            <defs>
+                                                <linearGradient id="airGrad" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#52c41a" stopOpacity={0.3}/>
+                                                    <stop offset="95%" stopColor="#52c41a" stopOpacity={0}/>
+                                                </linearGradient>
+                                            </defs>
+                                            <Area type="monotone" dataKey="v" stroke="#52c41a" fill="url(#airGrad)" strokeWidth={1.5} dot={false} />
+                                            <YAxis hide domain={['auto', 'auto']} />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* === BOTTOM STATUS BAR === */}
+                <div style={{ 
+                    height: 24, 
+                    background: bgHeader, 
+                    borderTop: `1px solid ${borderColor}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '0 12px',
+                    gap: 16,
+                    flexShrink: 0,
+                }}>
+                    <span style={{ fontSize: 10, color: textSecondary }}>Projects</span>
+                    <span style={{ fontSize: 10, color: accentColor, fontWeight: 600 }}>UX</span>
+                    <div style={{ flex: 1 }} />
+                    <span style={{ fontSize: 10, color: textSecondary }}>Racks: {racks.length}</span>
+                    <span style={{ fontSize: 10, color: textSecondary }}>Objects: {worldObjects.length}</span>
+                    <span style={{ fontSize: 10, color: textSecondary }}>Mode: {editMode ? 'Edit' : 'View'}</span>
+                </div>
             </div>
+
+            {/* ===== DRAWERS (kept from original) ===== */}
 
             {/* Right Drawer for Rack Details */}
             <Drawer
@@ -508,12 +1051,9 @@ export default function Dcim3DView() {
                             }}>
                                 {Array.from({ length: selectedRack.totalU }).map((_, i) => {
                                     const uSlot = i + 1;
-                                    // Find if a server occupies this slot
                                     const server = selectedRack.servers.find(s => uSlot >= s.uSlot && uSlot < s.uSlot + s.uHeight);
                                     const isServerBase = server?.uSlot === uSlot;
-
-                                    if (server && !isServerBase) return null; // Rendered by the base slot
-
+                                    if (server && !isServerBase) return null;
                                     return (
                                         <div 
                                             key={uSlot}
@@ -651,6 +1191,8 @@ export default function Dcim3DView() {
                     </div>
                 )}
             </Drawer>
+
+            {/* Location Drawer */}
             <Drawer
                 title="Geographic Location"
                 placement="bottom"

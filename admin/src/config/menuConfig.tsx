@@ -1397,6 +1397,17 @@ const menuConfig = {
                     { path: "/admin/bim/quantity-takeoff", name: "Quantity Takeoff", icon: <CalculatorOutlined />, isLeaf: true },
                 ],
             },
+            {
+                path: "/admin/dc-calculator",
+                key: "/admin/dc-calculator-menu",
+                name: "DC Calculator",
+                icon: <CalculatorOutlined />,
+                routes: [
+                    { path: "/admin/dc-calculator", name: "Calculator", icon: <CalculatorOutlined />, isLeaf: true },
+                    { path: "/admin/dc-calculator/scenarios", name: "Saved Scenarios", icon: <FolderOutlined />, isLeaf: true },
+                    { path: "/admin/dc-calculator/reports", name: "Cost Reports", icon: <BarChartOutlined />, isLeaf: true },
+                ],
+            },
 
             // ═══════════════════════════════════════
             // PLATFORM

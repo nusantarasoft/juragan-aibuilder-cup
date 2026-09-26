@@ -1,0 +1,320 @@
+--progress is a global compose flag, better use `docker compose --progress xx build ...
+ Image nusantarasoft-minimal-admin Building 
+ Image nusantarasoft-minimal-middleware Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.21kB done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 2.75kB 0.0s done
+#2 DONE 0.2s
+
+#3 [internal] load metadata for docker.io/library/node:20-alpine
+#3 DONE 0.8s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 33B
+#4 transferring context: 614B 0.0s done
+#4 DONE 0.2s
+
+#5 [base 1/3] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#5 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.0s done
+#5 DONE 0.0s
+
+#6 [base 3/3] WORKDIR /app
+#6 CACHED
+
+#7 [runner 1/6] WORKDIR /app
+#7 CACHED
+
+#8 [runner 2/6] RUN addgroup --system --gid 1001 nodejs &&     adduser --system --uid 1001 nextjs
+#8 DONE 0.8s
+
+#9 [deps 1/3] RUN apk add --no-cache python3 make g++ vips-dev
+#9 3.194 (  1/212) Upgrading libcrypto3 (3.5.6-r0 -> 3.5.7-r0)
+#9 4.100 (  2/212) Upgrading libssl3 (3.5.6-r0 -> 3.5.7-r0)
+#9 4.291 (  3/212) Installing libstdc++-dev (15.2.0-r2)
+#9 5.612 (  4/212) Installing jansson (2.14.1-r0)
+#9 5.701 (  5/212) Installing zstd-libs (1.5.7-r2)
+#9 5.872 (  6/212) Installing binutils (2.45.1-r0)
+#9 6.675 (  7/212) Installing libgomp (15.2.0-r2)
+#9 6.771 (  8/212) Installing libatomic (15.2.0-r2)
+#9 6.822 (  9/212) Installing gmp (6.3.0-r4)
+#9 6.957 ( 10/212) Installing isl26 (0.26-r1)
+#9 7.269 ( 11/212) Installing mpfr4 (4.2.2-r0)
+#9 7.404 ( 12/212) Installing mpc1 (1.3.1-r1)
+#9 7.482 ( 13/212) Installing gcc (15.2.0-r2)
+#9 21.52 ( 14/212) Installing musl-dev (1.2.5-r23)
+#9 22.33 ( 15/212) Installing g++ (15.2.0-r2)
+#9 26.52 ( 16/212) Installing make (4.4.1-r3)
+#9 26.61 ( 17/212) Installing libbz2 (1.0.8-r6)
+#9 26.70 ( 18/212) Installing libexpat (2.8.2-r0)
+#9 27.85 ( 19/212) Installing libffi (3.5.2-r0)
+#9 28.17 ( 20/212) Installing gdbm (1.26-r0)
+#9 28.24 ( 21/212) Installing xz-libs (5.8.3-r0)
+#9 28.35 ( 22/212) Installing mpdecimal (4.0.1-r0)
+#9 28.46 ( 23/212) Installing ncurses-terminfo-base (6.5_p20251123-r0)
+#9 28.58 ( 24/212) Installing libncursesw (6.5_p20251123-r0)
+#9 28.73 ( 25/212) Installing libpanelw (6.5_p20251123-r0)
+#9 28.79 ( 26/212) Installing readline (8.3.1-r0)
+#9 28.91 ( 27/212) Installing sqlite-libs (3.51.2-r0)
+#9 29.17 ( 28/212) Installing python3 (3.12.13-r0)
+#9 31.18 ( 29/212) Installing python3-pycache-pyc0 (3.12.13-r0)
+#9 32.31 ( 30/212) Installing pyc (3.12.13-r0)
+#9 32.31 ( 31/212) Installing python3-pyc (3.12.13-r0)
+#9 32.31 ( 32/212) Installing libintl (0.24.1-r1)
+#9 32.41 ( 33/212) Installing libeconf (0.8.3-r0)
+#9 32.55 ( 34/212) Installing libblkid (2.41.4-r0)
+#9 32.68 ( 35/212) Installing libmount (2.41.4-r0)
+#9 32.78 ( 36/212) Installing pcre2 (10.47-r0)
+#9 32.93 ( 37/212) Installing glib (2.86.3-r0)
+#9 33.53 ( 38/212) Installing openexr-libiex (3.4.13-r0)
+#9 33.63 ( 39/212) Installing openexr-libilmthread (3.4.13-r0)
+#9 33.69 ( 40/212) Installing imath (3.1.12-r0)
+#9 33.78 ( 41/212) Installing libdeflate (1.25-r0)
+#9 33.86 ( 42/212) Installing openexr-libopenexrcore (3.4.13-r0)
+#9 33.99 ( 43/212) Installing openexr-libopenexr (3.4.13-r0)
+#9 34.16 ( 44/212) Installing acl-libs (2.3.2-r1)
+#9 34.20 ( 45/212) Installing lz4-libs (1.10.0-r0)
+#9 34.28 ( 46/212) Installing libarchive (3.8.5-r0)
+#9 34.48 ( 47/212) Installing libxau (1.0.12-r0)
+#9 34.53 ( 48/212) Installing libmd (1.1.0-r0)
+#9 34.61 ( 49/212) Installing libbsd (0.12.2-r0)
+#9 34.70 ( 50/212) Installing libxdmcp (1.1.5-r1)
+#9 34.79 ( 51/212) Installing libxcb (1.17.0-r1)
+#9 34.93 ( 52/212) Installing libx11 (1.8.12-r1)
+#9 35.23 ( 53/212) Installing libxext (1.3.6-r2)
+#9 35.32 ( 54/212) Installing libxrender (0.9.12-r0)
+#9 35.40 ( 55/212) Installing brotli-libs (1.2.0-r0)
+#9 35.57 ( 56/212) Installing libpng (1.6.58-r1)
+#9 35.67 ( 57/212) Installing freetype (2.14.3-r0)
+#9 ...
+
+#10 [internal] load build context
+#10 transferring context: 39.07MB 6.3s done
+#10 DONE 6.4s
+
+#9 [deps 1/3] RUN apk add --no-cache python3 make g++ vips-dev
+#9 35.82 ( 58/212) Installing fontconfig (2.17.1-r0)
+#9 35.94 ( 59/212) Installing pixman (0.46.4-r0)
+#9 36.08 ( 60/212) Installing cairo (1.18.4-r0)
+#9 36.29 ( 61/212) Installing c-ares (1.34.8-r0)
+#9 36.38 ( 62/212) Installing libunistring (1.4.1-r0)
+#9 36.63 ( 63/212) Installing libidn2 (2.3.8-r0)
+#9 36.71 ( 64/212) Installing nghttp2-libs (1.69.0-r0)
+#9 36.79 ( 65/212) Installing libpsl (0.21.5-r3)
+#9 36.86 ( 66/212) Installing libcurl (8.20.0-r0)
+#9 37.02 ( 67/212) Installing cfitsio (4.6.3-r0)
+#9 37.29 ( 68/212) Installing cgif (0.5.0-r1)
+#9 37.33 ( 69/212) Installing libexif (0.6.26-r0)
+#9 37.45 ( 70/212) Installing fftw-double-libs (3.3.10-r7)
+#9 37.70 ( 71/212) Installing libhwy (1.3.0-r0)
+#9 37.78 ( 72/212) Installing libimagequant (4.2.2-r0)
+#9 37.94 ( 73/212) Installing libjpeg-turbo (3.1.2-r0)
+#9 38.07 ( 74/212) Installing lcms2 (2.19-r0)
+#9 38.18 ( 75/212) Installing openjpeg (2.5.4-r1)
+#9 38.27 ( 76/212) Installing libxft (2.3.9-r0)
+#9 38.40 ( 77/212) Installing fribidi (1.0.16-r2)
+#9 38.49 ( 78/212) Installing graphite2 (1.3.14-r6)
+#9 38.57 ( 79/212) Installing harfbuzz (12.2.0-r0)
+#9 38.80 ( 80/212) Installing pango (1.56.4-r0)
+#9 38.98 ( 81/212) Installing libdav1d (1.5.2-r0)
+#9 39.25 ( 82/212) Installing pkgconf (2.5.1-r0)
+#9 39.39 ( 83/212) Installing libxml2 (2.13.9-r1)
+#9 39.58 ( 84/212) Installing shared-mime-info (2.4-r6)
+#9 39.76 ( 85/212) Installing libsharpyuv (1.6.0-r0)
+#9 39.81 ( 86/212) Installing libwebp (1.6.0-r0)
+#9 39.97 ( 87/212) Installing tiff (4.7.1-r0)
+#9 40.06 ( 88/212) Installing gdk-pixbuf (2.44.4-r0)
+#9 40.16 ( 89/212) Installing librsvg (2.61.2-r0)
+#9 40.73 ( 90/212) Installing libspng (0.7.4-r1)
+#9 40.85 ( 91/212) Installing libwebpdemux (1.6.0-r0)
+#9 40.93 ( 92/212) Installing libwebpmux (1.6.0-r0)
+#9 41.06 ( 93/212) Installing vips (8.17.3-r1)
+#9 41.41 ( 94/212) Installing vips-cpp (8.17.3-r1)
+#9 41.49 ( 95/212) Installing libdeflate-static (1.25-r0)
+#9 41.59 ( 96/212) Installing openexr-libopenexrutil (3.4.13-r0)
+#9 41.66 ( 97/212) Installing boost1.84-python3 (1.84.0-r3)
+#9 41.75 ( 98/212) Installing py3-imath (3.1.12-r0)
+#9 42.92 ( 99/212) Installing imath-dev (3.1.12-r0)
+#9 43.04 (100/212) Installing libdeflate-dev (1.25-r0)
+#9 43.13 (101/212) Installing openexr-dev (3.4.13-r0)
+#9 43.25 (102/212) Installing cairo-tools (1.18.4-r0)
+#9 43.31 (103/212) Installing expat (2.8.2-r0)
+#9 43.46 (104/212) Installing expat-dev (2.8.2-r0)
+#9 43.53 (105/212) Installing bzip2-dev (1.0.8-r6)
+#9 43.58 (106/212) Installing brotli (1.2.0-r0)
+#9 43.71 (107/212) Installing brotli-dev (1.2.0-r0)
+#9 43.76 (108/212) Installing zlib-dev (1.3.2-r0)
+#9 43.91 (109/212) Installing libpng-dev (1.6.58-r1)
+#9 44.01 (110/212) Installing freetype-dev (2.14.3-r0)
+#9 44.14 (111/212) Installing fontconfig-dev (2.17.1-r0)
+#9 44.21 (112/212) Installing xorgproto (2024.1-r0)
+#9 44.39 (113/212) Installing libxau-dev (1.0.12-r0)
+#9 44.45 (114/212) Installing xcb-proto (1.17.0-r0)
+#9 44.58 (115/212) Installing xcb-proto-pyc (1.17.0-r0)
+#9 44.68 (116/212) Installing libxdmcp-dev (1.1.5-r1)
+#9 44.74 (117/212) Installing libxcb-dev (1.17.0-r1)
+#9 44.85 (118/212) Installing xtrans (1.6.0-r0)
+#9 44.93 (119/212) Installing libx11-dev (1.8.12-r1)
+#9 45.06 (120/212) Installing libxext-dev (1.3.6-r2)
+#9 45.12 (121/212) Installing libxrender-dev (0.9.12-r0)
+#9 45.23 (122/212) Installing pixman-dev (0.46.4-r0)
+#9 45.30 (123/212) Installing util-macros (1.20.2-r0)
+#9 45.38 (124/212) Installing xcb-util (0.4.1-r3)
+#9 45.43 (125/212) Installing xcb-util-dev (0.4.1-r3)
+#9 45.51 (126/212) Installing cairo-gobject (1.18.4-r0)
+#9 45.58 (127/212) Installing libxml2-utils (2.13.9-r1)
+#9 45.71 (128/212) Installing docbook-xml (4.5-r10)
+#9 45.89   Executing docbook-xml-4.5-r10.post-install
+#9 45.93 (129/212) Installing libxslt (1.1.43-r3)
+#9 46.03 (130/212) Installing docbook-xsl-ns (1.79.2-r13)
+#9 46.69   Executing docbook-xsl-ns-1.79.2-r13.post-install
+#9 46.76 (131/212) Installing docbook-xsl-nons (1.79.2-r13)
+#9 47.46   Executing docbook-xsl-nons-1.79.2-r13.post-install
+#9 47.56 (132/212) Installing docbook-xsl (1.79.2-r13)
+#9 47.63 (133/212) Installing xz (5.8.3-r0)
+#9 47.72 (134/212) Installing gettext-asprintf (0.24.1-r1)
+#9 47.79 (135/212) Installing gettext-libs (0.24.1-r1)
+#9 47.95 (136/212) Installing gettext-envsubst (0.24.1-r1)
+#9 48.06 (137/212) Installing gettext (0.24.1-r1)
+#9 48.32 (138/212) Installing gettext-dev (0.24.1-r1)
+#9 48.53 (139/212) Installing py3-parsing (3.2.5-r0)
+#9 48.65 (140/212) Installing py3-parsing-pyc (3.2.5-r0)
+#9 48.79 (141/212) Installing py3-packaging (25.0-r0)
+#9 48.90 (142/212) Installing py3-packaging-pyc (25.0-r0)
+#9 49.00 (143/212) Installing linux-headers (6.16.12-r0)
+#9 49.64 (144/212) Installing libffi-dev (3.5.2-r0)
+#9 49.78 (145/212) Installing bsd-compat-headers (0.7.2-r6)
+#9 49.88 (146/212) Installing libformw (6.5_p20251123-r0)
+#9 50.03 (147/212) Installing libmenuw (6.5_p20251123-r0)
+#9 50.12 (148/212) Installing libncurses++ (6.5_p20251123-r0)
+#9 50.20 (149/212) Installing ncurses-dev (6.5_p20251123-r0)
+#9 50.36 (150/212) Installing libedit (20251016.3.1-r0)
+#9 50.45 (151/212) Installing libedit-dev (20251016.3.1-r0)
+#9 50.55 (152/212) Installing libpcre2-16 (10.47-r0)
+#9 50.68 (153/212) Installing libpcre2-32 (10.47-r0)
+#9 50.81 (154/212) Installing pcre2-dev (10.47-r0)
+#9 50.88 (155/212) Installing libuuid (2.41.4-r0)
+#9 50.99 (156/212) Installing libfdisk (2.41.4-r0)
+#9 51.10 (157/212) Installing liblastlog2 (2.41.4-r0)
+#9 51.16 (158/212) Installing libsmartcols (2.41.4-r0)
+#9 51.27 (159/212) Installing sqlite (3.51.2-r0)
+#9 51.55 (160/212) Installing sqlite-dev (3.51.2-r0)
+#9 51.67 (161/212) Installing util-linux-dev (2.41.4-r0)
+#9 51.75 (162/212) Installing glib-dev (2.86.3-r0)
+#9 52.27 (163/212) Installing cairo-dev (1.18.4-r0)
+#9 52.37 (164/212) Installing cfitsio-dev (4.6.3-r0)
+#9 52.47 (165/212) Installing cgif-dev (0.5.0-r1)
+#9 52.53 (166/212) Installing fftw-long-double-libs (3.3.10-r7)
+#9 52.73 (167/212) Installing fftw-single-libs (3.3.10-r7)
+#9 53.06 (168/212) Installing fftw-dev (3.3.10-r7)
+#9 53.18 (169/212) Installing libimagequant-dev (4.2.2-r0)
+#9 53.23 (170/212) Installing lcms2-plugins (2.19-r0)
+#9 53.32 (171/212) Installing libturbojpeg (3.1.2-r0)
+#9 53.45 (172/212) Installing libjpeg-turbo-dev (3.1.2-r0)
+#9 53.62 (173/212) Installing libtiffxx (4.7.1-r0)
+#9 53.69 (174/212) Installing libwebpdecoder (1.6.0-r0)
+#9 53.81 (175/212) Installing libwebp-dev (1.6.0-r0)
+#9 53.90 (176/212) Installing zstd (1.5.7-r2)
+#9 54.00 (177/212) Installing zstd-dev (1.5.7-r2)
+#9 54.12 (178/212) Installing tiff-dev (4.7.1-r0)
+#9 54.20 (179/212) Installing lcms2-dev (2.19-r0)
+#9 54.30 (180/212) Installing openssl-dev (3.5.7-r0)
+#9 54.52 (181/212) Installing libarchive-dev (3.8.5-r0)
+#9 54.61 (182/212) Installing libexif-dev (0.6.26-r0)
+#9 54.68 (183/212) Installing libhwy_contrib (1.3.0-r0)
+#9 55.21 (184/212) Installing libhwy_test (1.3.0-r0)
+#9 55.26 (185/212) Installing gtest (1.17.0-r0)
+#9 55.35 (186/212) Installing gmock (1.17.0-r0)
+#9 55.43 (187/212) Installing gtest-dev (1.17.0-r0)
+#9 55.55 (188/212) Installing highway-dev (1.3.0-r0)
+#9 55.77 (189/212) Installing openjpeg-tools (2.5.4-r1)
+#9 55.90 (190/212) Installing openjpeg-dev (2.5.4-r1)
+#9 56.00 (191/212) Installing rsvg-convert (2.61.2-r0)
+#9 56.51 (192/212) Installing dav1d-dev (1.5.2-r0)
+#9 56.60 (193/212) Installing gdk-pixbuf-dev (2.44.4-r0)
+#9 56.69 (194/212) Installing harfbuzz-cairo (12.2.0-r0)
+#9 56.82 (195/212) Installing harfbuzz-gobject (12.2.0-r0)
+#9 56.90 (196/212) Installing icu-data-en (76.1-r1)
+#9 57.18   Executing icu-data-en-76.1-r1.post-install
+#9 57.19   * 
+#9 57.19   * If you need ICU with non-English locales and legacy charset support, install
+#9 57.19   * package icu-data-full.
+#9 57.19   * 
+#9 57.19 (197/212) Installing icu-libs (76.1-r1)
+#9 57.74 (198/212) Installing harfbuzz-icu (12.2.0-r0)
+#9 57.79 (199/212) Installing harfbuzz-subset (12.2.0-r0)
+#9 57.98 (200/212) Installing graphite2-dev (1.3.14-r6)
+#9 58.09 (201/212) Installing icu (76.1-r1)
+#9 58.35 (202/212) Installing icu-dev (76.1-r1)
+#9 58.66 (203/212) Installing harfbuzz-dev (12.2.0-r0)
+#9 58.81 (204/212) Installing xz-dev (5.8.3-r0)
+#9 58.90 (205/212) Installing libxml2-dev (2.13.9-r1)
+#9 59.00 (206/212) Installing pango-tools (1.56.4-r0)
+#9 59.12 (207/212) Installing fribidi-dev (1.0.16-r2)
+#9 59.20 (208/212) Installing libxft-dev (2.3.9-r0)
+#9 59.32 (209/212) Installing pango-dev (1.56.4-r0)
+#9 59.45 (210/212) Installing librsvg-dev (2.61.2-r0)
+#9 59.55 (211/212) Installing libspng-dev (0.7.4-r1)
+#9 59.60 (212/212) Installing vips-dev (8.17.3-r1)
+#9 59.76 Executing busybox-1.37.0-r30.trigger
+#9 59.78 Executing glib-2.86.3-r0.trigger
+#9 59.79 * No schema files found: doing nothing.
+#9 59.80 Executing shared-mime-info-2.4-r6.trigger
+#9 61.09 Executing gdk-pixbuf-2.44.4-r0.trigger
+#9 61.13 OK: 481.2 MiB in 231 packages
+#9 DONE 66.6s
+
+#11 [deps 2/3] COPY package.json ./
+#11 DONE 0.5s
+
+#12 [deps 3/3] RUN npm config set fetch-retry-mintimeout 600000 &&     npm config set fetch-retry-maxtimeout 1200000 &&     npm install --legacy-peer-deps
+#12 263.9 npm warn deprecated sourcemap-codec@1.4.8: Please use @jridgewell/sourcemap-codec instead
+#12 266.9 npm warn deprecated rollup-plugin-terser@7.0.2: This package has been deprecated and is no longer maintained. Please use @rollup/plugin-terser
+#12 268.0 npm warn deprecated workbox-cacheable-response@6.6.0: workbox-background-sync@6.6.0
+#12 268.2 npm warn deprecated workbox-google-analytics@6.6.0: It is not compatible with newer versions of GA starting with v4, as long as you are using GAv3 it should be ok, but the package is not longer being maintained
+#12 268.4 npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+#12 268.5 npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+#12 269.4 npm warn deprecated prebuild-install@7.1.3: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.
+#12 273.3 npm warn deprecated @otplib/plugin-crypto@12.0.1: Please upgrade to v13 of otplib. Refer to otplib docs for migration paths
+#12 273.3 npm warn deprecated @otplib/preset-default@12.0.1: Please upgrade to v13 of otplib. Refer to otplib docs for migration paths
+#12 273.3 npm warn deprecated @otplib/plugin-thirty-two@12.0.1: Please upgrade to v13 of otplib. Refer to otplib docs for migration paths
+#12 273.6 npm warn deprecated rimraf@2.7.1: Rimraf versions prior to v4 are no longer supported
+#12 316.5 npm warn deprecated @tsparticles/react@3.0.0: Please update to version 4.1.1
+#12 335.2 npm warn deprecated @tsparticles/plugin-easing-quad@3.9.1: Please update to version 4.1.1
+#12 335.3 npm warn deprecated @tsparticles/updater-size@3.9.1: Please update to version 4.1.1
+#12 335.4 npm warn deprecated @tsparticles/updater-color@3.9.1: this package was deprecated in tsparticles v4, replaced by @tsparticles/updater-paint
+#12 337.5 npm warn deprecated @tsparticles/plugin-rgb-color@3.9.1: Please update to version 4.1.1
+#12 337.6 npm warn deprecated @tsparticles/interaction-external-pause@3.9.1: Please update to version 4.1.1
+#12 337.7 npm warn deprecated @tsparticles/updater-opacity@3.9.1: Please update to version 4.1.1
+#12 337.7 npm warn deprecated @tsparticles/plugin-hsl-color@3.9.1: Please update to version 4.1.1
+#12 337.7 npm warn deprecated @tsparticles/move-parallax@3.9.1: this package was deprecated in tsparticles v4, replaced by @tsparticles/interaction-external-parallax
+#12 338.5 npm warn deprecated @tsparticles/shape-line@3.9.1: Please update to version 4.1.1
+#12 341.0 npm warn deprecated @tsparticles/updater-stroke-color@3.9.1: this package was deprecated in tsparticles v4, replaced by @tsparticles/updater-paint
+#12 341.3 npm warn deprecated @tsparticles/shape-square@3.9.1: Please update to version 4.1.1
+#12 341.6 npm warn deprecated @tsparticles/interaction-particles-attract@3.9.1: Please update to version 4.1.1
+#12 345.4 npm warn deprecated wx-react-gantt@1.3.1: This package is no longer actively maintained. Use @svar-ui/react-gantt instead: a fully React-based architecture (no wrappers), TypeScript support, and an MIT license. https://www.npmjs.com/package/@svar-ui/react-gantt
+#12 346.5 npm warn deprecated @tsparticles/shape-circle@3.9.1: Please update to version 4.1.1
+#12 347.7 npm warn deprecated @tsparticles/shape-star@3.9.1: Please update to version 4.1.1
+#12 348.1 npm warn deprecated @tsparticles/shape-emoji@3.9.1: Please update to version 4.1.1
+#12 348.8 npm warn deprecated @tsparticles/interaction-particles-collisions@3.9.1: Please update to version 4.1.1
+#12 349.4 npm warn deprecated @tsparticles/move-base@3.9.1: this package was deprecated in tsparticles v4, replaced by @tsparticles/plugin-move
+#12 355.4 npm warn deprecated @tsparticles/shape-polygon@3.9.1: Please update to version 4.1.1
+#12 358.7 npm warn deprecated @tsparticles/updater-out-modes@3.9.1: Please update to version 4.1.1
+#12 358.8 npm warn deprecated @tsparticles/interaction-external-remove@3.9.1: Please update to version 4.1.1
+#12 360.5 npm warn deprecated @tsparticles/interaction-external-push@3.9.1: Please update to version 4.1.1
+#12 360.7 npm warn deprecated @tsparticles/interaction-external-slow@3.9.1: Please update to version 4.1.1
+#12 361.7 npm warn deprecated @tsparticles/updater-rotate@3.9.1: Please update to version 4.1.1
+#12 363.4 npm warn deprecated @tsparticles/basic@3.9.1: Please update to version 4.1.1
+#12 365.2 npm warn deprecated @tsparticles/interaction-external-bounce@3.9.1: Please update to version 4.1.1
+#12 368.0 npm warn deprecated @tsparticles/interaction-external-attract@3.9.1: Please update to version 4.1.1
+#12 368.2 npm warn deprecated @tsparticles/interaction-external-repulse@3.9.1: Please update to version 4.1.1
+#12 370.4 npm warn deprecated @tsparticles/interaction-external-grab@3.9.1: Please update to version 4.1.1
+#12 370.4 npm warn deprecated @tsparticles/interaction-external-connect@3.9.1: Please update to version 4.1.1
+#12 373.0 npm warn deprecated @tsparticles/updater-life@3.9.1: Please update to version 4.1.1
+#12 377.4 npm warn deprecated @tsparticles/slim@3.9.1: Please update to version 4.1.1
+#12 379.2 npm warn deprecated @tsparticles/interaction-external-bubble@3.9.1: Please update to version 4.1.1
+#12 379.4 npm warn deprecated @tsparticles/interaction-particles-links@3.9.1: Please update to version 4.1.1
+#12 388.4 npm warn deprecated @tsparticles/shape-image@3.9.1: Please update to version 4.1.1
+#12 447.5 npm warn deprecated recharts@2.15.4: 1.x and 2.x branches are no longer active. Bump to Recharts v3 to receive latest features and bugfixes. See https://github.com/recharts/recharts/wiki/3.0-migration-guide

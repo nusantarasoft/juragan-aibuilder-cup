@@ -28,11 +28,11 @@ function GenericBimElement({ geometry, position, scale, rotation, color, type, o
             onClick={(e) => { e.stopPropagation(); onClick(name, e); }}
             onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
             onPointerOut={() => setHovered(false)}
-            castShadow
-            receiveShadow
+            castShadow={type !== 'performance'}
+            receiveShadow={type !== 'performance'}
         >
             {geometry ? null : <boxGeometry />}
-            {type === 'hidden-line' || type === 'flat' ? (
+            {type === 'hidden-line' || type === 'flat' || type === 'performance' ? (
                 <meshBasicMaterial 
                     color={hovered ? '#40a9ff' : color} 
                     transparent={isGhost} 
@@ -55,7 +55,7 @@ function GenericBimElement({ geometry, position, scale, rotation, color, type, o
                     side={THREE.DoubleSide}
                 />
             )}
-            <Edges scale={1} threshold={15} color={hovered ? "#fff" : (isWireframe ? color : (type === 'hidden-line' ? '#333' : '#222'))} />
+            {type !== 'performance' && <Edges scale={1} threshold={15} color={hovered ? "#fff" : (isWireframe ? color : (type === 'hidden-line' ? '#333' : '#222'))} />}
         </mesh>
     );
 }
@@ -81,11 +81,11 @@ function CylinderBimElement({ position, scale, rotation, color, type, onClick, n
             onClick={(e) => { e.stopPropagation(); onClick(name, e); }}
             onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
             onPointerOut={() => setHovered(false)}
-            castShadow
-            receiveShadow
+            castShadow={type !== 'performance'}
+            receiveShadow={type !== 'performance'}
         >
             <cylinderGeometry args={args || [1, 1, 1, 16]} />
-            {type === 'hidden-line' || type === 'flat' ? (
+            {type === 'hidden-line' || type === 'flat' || type === 'performance' ? (
                 <meshBasicMaterial 
                     color={hovered ? '#40a9ff' : color} 
                     transparent={isGhost} 
@@ -107,7 +107,7 @@ function CylinderBimElement({ position, scale, rotation, color, type, onClick, n
                     side={THREE.DoubleSide}
                 />
             )}
-            <Edges scale={1} threshold={15} color={hovered ? "#fff" : (isWireframe ? color : (type === 'hidden-line' ? '#333' : '#222'))} />
+            {type !== 'performance' && <Edges scale={1} threshold={15} color={hovered ? "#fff" : (isWireframe ? color : (type === 'hidden-line' ? '#333' : '#222'))} />}
         </mesh>
     );
 }
@@ -141,10 +141,10 @@ export function MockBuildingModel({ onElementClick, viewMode, activeSystems, exp
         plumbColor = "#f8fafc"; // PVC white
     }
 
-    const floors = 5;
+    const floors = 8;
     const floorHeight = 4.5;
-    const bWidth = 30;
-    const bDepth = 20;
+    const bWidth = 50;
+    const bDepth = 50;
 
     const elements = [];
 
@@ -165,8 +165,8 @@ export function MockBuildingModel({ onElementClick, viewMode, activeSystems, exp
             // Columns (grid)
             if (i < floors) {
                 const colY = y + floorHeight / 2;
-                for (let x = -bWidth/2 + 1; x <= bWidth/2 - 1; x += 7) {
-                    for (let z = -bDepth/2 + 1; z <= bDepth/2 - 1; z += 6) {
+                for (let x = -bWidth/2 + 2.5; x <= bWidth/2 - 2.5; x += 7.5) {
+                    for (let z = -bDepth/2 + 2.5; z <= bDepth/2 - 2.5; z += 7.5) {
                         elements.push(
                             <GenericBimElement key={`arch-col-${i}-${x}-${z}`} position={[x, colY, z]} scale={[0.8, floorHeight, 0.8]} color="#94a3b8" type={renderType} onClick={onElementClick} name={`Architectural / Structural Column L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
                         );
@@ -175,10 +175,24 @@ export function MockBuildingModel({ onElementClick, viewMode, activeSystems, exp
 
                 // Core (Elevator Shaft)
                 elements.push(
-                    <GenericBimElement key={`arch-core-${i}`} position={[0, colY, 0]} scale={[6, floorHeight, 6]} color="#cbd5e1" type={renderType} onClick={onElementClick} name={`Architectural / Concrete Core L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
+                    <GenericBimElement key={`arch-core-${i}`} position={[0, colY, 0]} scale={[8, floorHeight, 8]} color="#cbd5e1" type={renderType} onClick={onElementClick} name={`Architectural / Concrete Core L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
                 );
 
-                // Glass Curtain Wall (South & North faces)
+                // Interior Walls (Corridors)
+                elements.push(
+                    <GenericBimElement key={`arch-int1-${i}`} position={[0, colY, 6]} scale={[bWidth - 10, floorHeight, 0.2]} color={archColor} type={renderType} onClick={onElementClick} name={`Architectural / Interior Wall Corridor S L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
+                );
+                elements.push(
+                    <GenericBimElement key={`arch-int2-${i}`} position={[0, colY, -6]} scale={[bWidth - 10, floorHeight, 0.2]} color={archColor} type={renderType} onClick={onElementClick} name={`Architectural / Interior Wall Corridor N L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
+                );
+                elements.push(
+                    <GenericBimElement key={`arch-int3-${i}`} position={[6, colY, 0]} scale={[0.2, floorHeight, bDepth - 10]} color={archColor} type={renderType} onClick={onElementClick} name={`Architectural / Interior Wall Corridor E L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
+                );
+                elements.push(
+                    <GenericBimElement key={`arch-int4-${i}`} position={[-6, colY, 0]} scale={[0.2, floorHeight, bDepth - 10]} color={archColor} type={renderType} onClick={onElementClick} name={`Architectural / Interior Wall Corridor W L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
+                );
+
+                // Glass Curtain Wall (All faces)
                 const wallMode = renderType === 'shaded' ? 'ghost' : renderType;
                 
                 // Performance Heatmap colors for glass based on orientation
@@ -190,6 +204,12 @@ export function MockBuildingModel({ onElementClick, viewMode, activeSystems, exp
                 );
                 elements.push(
                     <GenericBimElement key={`arch-wall-n-${i}`} position={[0, colY, -bDepth/2]} scale={[bWidth, floorHeight, 0.2]} color={northGlassColor} type={wallMode} onClick={onElementClick} name={`Architectural / Curtain Wall North L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
+                );
+                elements.push(
+                    <GenericBimElement key={`arch-wall-e-${i}`} position={[bWidth/2, colY, 0]} scale={[0.2, floorHeight, bDepth]} color={glassColor} type={wallMode} onClick={onElementClick} name={`Architectural / Curtain Wall East L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
+                );
+                elements.push(
+                    <GenericBimElement key={`arch-wall-w-${i}`} position={[-bWidth/2, colY, 0]} scale={[0.2, floorHeight, bDepth]} color={glassColor} type={wallMode} onClick={onElementClick} name={`Architectural / Curtain Wall West L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
                 );
             }
         }
@@ -219,13 +239,16 @@ export function MockBuildingModel({ onElementClick, viewMode, activeSystems, exp
             const ceilingY = i * floorHeight + 3.8;
             // Primary Loop
             elements.push(
-                <GenericBimElement key={`mech-duct-p-${i}`} position={[0, ceilingY, -3]} scale={[24, 0.6, 1.2]} color={hvacColor} type={renderType} onClick={onElementClick} name={`Mechanical / Primary Supply Duct L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
+                <GenericBimElement key={`mech-duct-p1-${i}`} position={[0, ceilingY, -9]} scale={[30, 0.6, 1.2]} color={hvacColor} type={renderType} onClick={onElementClick} name={`Mechanical / Primary Supply Duct N L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
+            );
+            elements.push(
+                <GenericBimElement key={`mech-duct-p2-${i}`} position={[0, ceilingY, 9]} scale={[30, 0.6, 1.2]} color={hvacColor} type={renderType} onClick={onElementClick} name={`Mechanical / Primary Supply Duct S L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
             );
             // Branches
-            for (let x = -10; x <= 10; x += 5) {
+            for (let x = -15; x <= 15; x += 7.5) {
                 if (x === 0) continue; // Skip core
                 elements.push(
-                    <GenericBimElement key={`mech-duct-b-${i}-${x}`} position={[x, ceilingY, 2]} scale={[0.5, 0.4, 10]} color={hvacColor} type={renderType} onClick={onElementClick} name={`Mechanical / Branch Duct L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
+                    <GenericBimElement key={`mech-duct-b-${i}-${x}`} position={[x, ceilingY, 0]} scale={[0.5, 0.4, 20]} color={hvacColor} type={renderType} onClick={onElementClick} name={`Mechanical / Branch Duct L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
                 );
                 // VAV Box
                 elements.push(
@@ -252,17 +275,17 @@ export function MockBuildingModel({ onElementClick, viewMode, activeSystems, exp
             const floorY = i * floorHeight;
             // Floor Panel
             elements.push(
-                <GenericBimElement key={`elec-panel-${i}`} position={[-4.5, floorY + 1.5, 2.5]} scale={[1.2, 2, 0.3]} color={elecColor} type={renderType} onClick={onElementClick} name={`Electrical / Distribution Panel L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
+                <GenericBimElement key={`elec-panel-${i}`} position={[-6.5, floorY + 1.5, 2.5]} scale={[1.2, 2, 0.3]} color={elecColor} type={renderType} onClick={onElementClick} name={`Electrical / Distribution Panel L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
             );
             // Cable Tray Loop
             elements.push(
-                <GenericBimElement key={`elec-tray-${i}`} position={[0, ceilingY, 4]} scale={[22, 0.1, 0.8]} color={elecColor} type={renderType} onClick={onElementClick} name={`Electrical / Primary Cable Tray L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
+                <GenericBimElement key={`elec-tray-${i}`} position={[0, ceilingY, 8]} scale={[35, 0.1, 0.8]} color={elecColor} type={renderType} onClick={onElementClick} name={`Electrical / Primary Cable Tray L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
             );
             
             // Lighting Grid
-            for (let x = -12; x <= 12; x += 4) {
-                for (let z = -8; z <= 8; z += 4) {
-                    if (Math.abs(x) < 4 && Math.abs(z) < 4) continue; // Skip core
+            for (let x = -20; x <= 20; x += 5) {
+                for (let z = -20; z <= 20; z += 5) {
+                    if (Math.abs(x) < 6 && Math.abs(z) < 6) continue; // Skip core
                     elements.push(
                         <GenericBimElement key={`elec-light-${i}-${x}-${z}`} position={[x, ceilingY, z]} scale={[1.2, 0.05, 0.6]} color="#ffffff" type={renderType} onClick={onElementClick} name={`Electrical / LED Troffer L${i}`} explodeFactor={explodeFactor} clipPlane={clipPlane} />
                     );

@@ -86,5 +86,49 @@ export function WorldObjectRenderer({ data, viewMode }: { data: WorldObjectData;
         );
     }
 
+    if (data.type === 'server1u') {
+        return (
+            <group position={[0, 0.05, 0]}>
+                <Box args={[0.8, 0.1, 1]} castShadow receiveShadow>
+                    <meshStandardMaterial color="#2c2c2c" roughness={0.7} metalness={0.4} />
+                </Box>
+                {/* Front Panel Lights */}
+                <Box args={[0.7, 0.05, 0.01]} position={[0, 0, 0.5]} castShadow={false}>
+                    <meshStandardMaterial color="#52c41a" emissive="#52c41a" emissiveIntensity={0.5} />
+                </Box>
+            </group>
+        );
+    }
+
+    if (data.type === 'server2u') {
+        return (
+            <group position={[0, 0.1, 0]}>
+                <Box args={[0.8, 0.2, 1]} castShadow receiveShadow>
+                    <meshStandardMaterial color="#262626" roughness={0.8} metalness={0.3} />
+                </Box>
+                {/* Drive Bays */}
+                {Array.from({ length: 4 }).map((_, i) => (
+                    <Box key={i} args={[0.15, 0.15, 0.02]} position={[-0.3 + (i * 0.2), 0, 0.5]} castShadow={false}>
+                        <meshStandardMaterial color="#1f1f1f" />
+                    </Box>
+                ))}
+            </group>
+        );
+    }
+
+    if (data.type === 'networkSwitch') {
+        return (
+            <group position={[0, 0.05, 0]}>
+                <Box args={[0.8, 0.1, 0.8]} castShadow receiveShadow>
+                    <meshStandardMaterial color="#1a1a1a" roughness={0.6} metalness={0.5} />
+                </Box>
+                {/* Ports */}
+                <Box args={[0.7, 0.05, 0.01]} position={[0, 0, 0.4]} castShadow={false}>
+                    <meshStandardMaterial color="#1890ff" emissive="#1890ff" emissiveIntensity={0.8} />
+                </Box>
+            </group>
+        );
+    }
+
     return null;
 }

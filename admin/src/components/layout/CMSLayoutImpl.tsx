@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { AnimatedThemeToggler } from "@/components/magicui/animated-theme-toggler";
+import FloatingOrbMenu from "../dock/FloatingOrbMenu";
 import {
     LogoutOutlined,
     SearchOutlined,
@@ -30,6 +31,12 @@ import {
     DownOutlined,
     MenuOutlined,
     CloseOutlined,
+    TeamOutlined,
+    GlobalOutlined,
+    CodeOutlined,
+    DashboardOutlined,
+    SafetyCertificateOutlined,
+    BellOutlined,
 } from "@ant-design/icons";
 import {
     PageContainer,
@@ -42,7 +49,6 @@ import {
     Dropdown,
     Input,
     theme,
-    Segmented,
     Popover,
     Avatar,
     Typography,
@@ -51,6 +57,8 @@ import {
     message,
     Popconfirm,
     Divider,
+    Badge,
+    Segmented,
 } from "antd";
 import AIStudioDrawer from "./AIStudioDrawer";
 import CommandPalette from "../common/CommandPalette";
@@ -59,20 +67,55 @@ import { useRouter, usePathname } from "next/navigation";
 import menuConfig from "@/config/menuConfig";
 import GlitchText from "@/components/react-bits/GlitchText";
 import { usePreferencesStore, hexToRgb } from "@/store/usePreferencesStore";
-import GlobalDateRangePicker from "@/components/common/GlobalDateRangePicker";
 import NotificationBell from "@/components/common/NotificationBell";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
 import LiveCursors from "@/components/common/LiveCursors";
 import { useWebSocketStore } from "@/store/useWebSocketStore";
 import { useDockStore } from "@/store/useDockStore";
+import ModuleIllustrationCards from "./ModuleIllustrationCards";
+import { TamagotchiGlobal } from "../helper/TamagotchiGlobal";
+import LeftDockToolbar from "./LeftDockToolbar";
 // Dynamic import for MetaBalls to prevent SSR crash (ogl WebGL library requires browser)
 const MetaBalls = dynamic(
     () => import("@/components/react-bits/MetaBalls"),
     { ssr: false }
 );
 import { SpeedDial } from 'primereact/speeddial';
+import DockWindow from "@/components/dock/DockWindow";
+import AthanWidget from "@/components/dock/widgets/AthanWidget";
+import CalculatorWidget from "@/components/dock/widgets/CalculatorWidget";
+import NotesWidget from "@/components/dock/widgets/NotesWidget";
+import CalendarWidget from "@/components/dock/widgets/CalendarWidget";
+import SnakeWidget from "@/components/dock/widgets/SnakeWidget";
+import PongWidget from "@/components/dock/widgets/PongWidget";
 
 const { Text } = Typography;
+
+// MacDock widget data for the left dock items (Productivity)
+const LEFT_DOCK_WIDGETS = [
+    { id: 'notes', label: 'Notes', icon: '📝', width: 400, height: 500 },
+    { id: 'tasks', label: 'Tasks', icon: '✅', width: 350, height: 450 },
+    { id: 'calendar', label: 'Calendar', icon: '📅', width: 350, height: 400 },
+    { id: 'clock', label: 'Clock', icon: '⏱️', width: 300, height: 350 },
+    { id: 'contacts', label: 'Contacts', icon: '👤', width: 350, height: 500 },
+    { id: 'email', label: 'Mail', icon: '📧', width: 450, height: 600 },
+    { id: 'files', label: 'Files', icon: '📁', width: 500, height: 400 },
+    { id: 'messages', label: 'Messages', icon: '💬', width: 400, height: 550 },
+] as const;
+
+// MacDock widget data for the bottom dock items
+const BOTTOM_DOCK_WIDGETS = [
+    { id: 'analytics', label: 'Analytics', icon: '📊', width: 600, height: 400 },
+    { id: 'calculator', label: 'Calculator', icon: '🧮', width: 320, height: 480 },
+    { id: 'terminal', label: 'Terminal', icon: '💻', width: 600, height: 400 },
+    { id: 'snake', label: 'Snake', icon: '🐍', width: 450, height: 600 },
+    { id: 'pong', label: 'Pong', icon: '🏓', width: 450, height: 500 },
+    { id: 'athan', label: 'Athan', icon: '🧭', width: 350, height: 450 },
+    { id: 'robot', label: 'AI Assistant', icon: '🤖', width: 400, height: 600 },
+    { id: 'weather', label: 'Weather', icon: '⛅', width: 350, height: 350 },
+    { id: 'music', label: 'Music', icon: '🎵', width: 350, height: 450 },
+    { id: 'settings', label: 'Settings', icon: '⚙️', width: 500, height: 500 },
+] as const;
 
 // Search Input Component for Header
 const SearchInput = () => {
@@ -159,16 +202,10 @@ const findMenuItemByPath = (routes: any[], path: string): any => {
 const getInnerMenuRoutes = (segment: string, pinned: any[], starred: any[]) => {
     const normalizePath = (p: string) => p.replace(/\/$/, "");
     
-    // Diagnostic hook for debugging
-    if (typeof window !== "undefined") {
-        (window as any).CMS_MENU_ROUTES = { segment, pinned, starred };
-    }
-
     const resolveIcon = (path: string, fallback: React.ReactNode) => {
         if (!menuConfig?.route?.routes) return fallback;
         const normalizedTarget = normalizePath(path);
         
-        // Helper specifically for this resolve to use normalized paths
         const findIconByNormalizedPath = (routes: any[], target: string): React.ReactNode | null => {
             for (const route of routes) {
                 if (normalizePath(route.path) === target) return route.icon;
@@ -220,6 +257,27 @@ const getInnerMenuRoutes = (segment: string, pinned: any[], starred: any[]) => {
         default:
             return [];
     }
+};
+
+// Get active parent module based on current pathname
+const getActiveParentModule = (pathname: string): { name: string; path: string; icon: React.ReactNode; routes: any[] } | null => {
+    if (!menuConfig?.route?.routes) return null;
+    for (const route of menuConfig.route.routes) {
+        if (route.routes && route.routes.length > 0 && pathname.startsWith(route.path)) {
+            return {
+                name: route.name,
+                path: route.path,
+                icon: route.icon,
+                routes: route.routes.map((r: any) => ({
+                    path: r.path,
+                    name: r.name,
+                    icon: r.icon,
+                    isLeaf: r.isLeaf,
+                })),
+            };
+        }
+    }
+    return null;
 };
 
 interface CMSLayoutProps {
@@ -345,10 +403,10 @@ export default function CMSLayoutImpl({
         isStarred,
         toggleStarred,
         selectedSegment,
-        setSelectedSegment
+        setSelectedSegment,
     } = usePreferencesStore();
 
-    const { dockMode, setDockMode } = useDockStore();
+    const { dockMode, setDockMode, windows: dockWindows, openWindow: openDockWindow } = useDockStore();
 
     const [darkMode, setDarkMode] = useState(false);
     const [appListOpen, setAppListOpen] = useState(false);
@@ -902,9 +960,6 @@ export default function CMSLayoutImpl({
     // Get inner menu based on selected segment
     const innerRoutes = getInnerMenuRoutes(selectedSegment, pinnedItems, starredItems);
 
-    // Dynamic logo based on theme
-    const logoSrc = darkMode ? "/logo-white.png" : "/logo-black.png";
-
     // Segmented options
     const segmentedOptions = [
         { value: "new", icon: <PlusOutlined /> },
@@ -913,6 +968,9 @@ export default function CMSLayoutImpl({
         { value: "starred", icon: <StarOutlined /> },
         { value: "history", icon: <HistoryOutlined /> },
     ];
+
+    // Dynamic logo based on theme
+    const logoSrc = darkMode ? "/logo-white.png" : "/logo-black.png";
 
     return (
         <div
@@ -953,7 +1011,7 @@ export default function CMSLayoutImpl({
                         headerRender={false}
                         siderWidth={260}
                         navTheme={darkMode ? "realDark" : "light"}
-                        token={{ sider: { colorMenuBackground: darkMode ? themePalette.sidebarBg : undefined, colorTextMenu: darkMode ? 'rgba(255,255,255,0.75)' : undefined, colorTextMenuSelected: darkMode ? '#fff' : themePalette.primary, colorBgMenuItemSelected: `${themePalette.primary}${darkMode ? '40' : '15'}`, colorTextMenuItemHover: darkMode ? '#fff' : themePalette.primary, colorBgMenuItemHover: `${themePalette.primary}${darkMode ? '20' : '08'}` } }}
+                        token={{ sider: { colorMenuBackground: darkMode ? '#1f1f1f' : '#f4f0fa', colorTextMenu: darkMode ? 'rgba(255,255,255,0.75)' : '#4a5568', colorTextMenuSelected: darkMode ? '#fff' : '#1a202c', colorBgMenuItemSelected: darkMode ? 'rgba(255,255,255,0.15)' : '#ffffff', colorTextMenuItemHover: darkMode ? '#fff' : '#2d3748', colorBgMenuItemHover: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.5)' } }}
                         layout="side"
                         contentStyle={{
                             padding: 0,
@@ -980,170 +1038,214 @@ export default function CMSLayoutImpl({
                                     return result;
                                 });
                             };
-                            return attachIcons(menuData);
+                            return attachIcons(menuData).filter(item => 
+                                item.path !== "/admin/dashboard" && item.path !== "/admin/activity"
+                            );
                         }}
                         menuProps={{
                             openKeys,
                             onOpenChange: (keys) => setOpenKeys(keys as string[]),
                         }}
-                        menuExtraRender={() => (
+                        menuExtraRender={() => {
+                            const isDashboard = pathname === "/admin/dashboard";
+                            const isActivity = pathname === "/admin/activity";
+                            return (
+                            <>
                             <div style={{
                                 display: "flex",
-                                flexDirection: outerCollapsed ? "column" : "row",
                                 alignItems: "center",
                                 justifyContent: outerCollapsed ? "center" : "space-between",
-                                minHeight: 48,
-                                padding: outerCollapsed ? "4px 0" : "0 12px",
-                                gap: outerCollapsed ? 8 : 0,
+                                minHeight: 52,
+                                padding: outerCollapsed ? "8px 4px" : "0 12px",
+                                gap: outerCollapsed ? 6 : 0,
                                 borderBottom: darkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid #f0f0f0",
                                 boxSizing: "border-box",
+                                flexDirection: outerCollapsed ? "column" : "row",
                             }}>
-                                {outerCollapsed ? (
-                                    // Collapsed: Vertical layout - Logo, AppList, Toggle
-                                    <>
-                                        {/* Logo */}
-                                        <Image
-                                            src={logoSrc}
-                                            alt="Logo"
-                                            width={28}
-                                            height={28}
-                                            style={{
-                                                objectFit: "contain",
-                                                cursor: "pointer",
-                                            }}
-                                            onClick={() => router.push("/admin/dashboard")}
-                                        />
-                                        {/* NS GlitchText under logo in collapsed state */}
-                                        <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: '1px', lineHeight: '14px', marginTop: 2 }}>
-                                            <GlitchText
-                                                speed={0.5}
-                                                enableShadows={true}
-                                                color={darkMode ? '#ffffff' : '#333333'}
-                                                glitchColor1={themePalette.accent}
-                                                glitchColor2={themePalette.secondary}
-                                            >
+                                {/* Left: App Switcher + Logo + NS */}
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, flexDirection: outerCollapsed ? "column" : "row" }}>
+                                    <Popover
+                                        content={<AppListContent darkMode={darkMode} />}
+                                        trigger="click"
+                                        placement={outerCollapsed ? "rightTop" : "bottomLeft"}
+                                        open={appListOpen}
+                                        onOpenChange={setAppListOpen}
+                                    >
+                                        <div style={{
+                                            cursor: "pointer",
+                                            padding: 5,
+                                            borderRadius: 6,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            background: darkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)",
+                                            transition: "all 0.2s",
+                                        }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = darkMode ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.08)"; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = darkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)"; }}
+                                        >
+                                            <AppstoreOutlined style={{ fontSize: 14 }} />
+                                        </div>
+                                    </Popover>
+                                    <Image
+                                        src={logoSrc}
+                                        alt="Logo"
+                                        width={22}
+                                        height={22}
+                                        style={{ objectFit: "contain", cursor: "pointer" }}
+                                        onClick={() => router.push("/admin/dashboard")}
+                                    />
+                                    {!outerCollapsed && (
+                                        <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: '1.5px', lineHeight: '20px', display: 'flex', alignItems: 'center' }}>
+                                            <GlitchText speed={0.5} enableShadows={true} color={darkMode ? '#ffffff' : '#333333'} glitchColor1={themePalette.accent} glitchColor2={themePalette.secondary}>
                                                 NS
                                             </GlitchText>
                                         </div>
-                                        {/* App List Popover */}
-                                        <Popover
-                                            content={<AppListContent darkMode={darkMode} />}
-                                            trigger="click"
-                                            placement="rightTop"
-                                            open={appListOpen}
-                                            onOpenChange={setAppListOpen}
-                                        >
-                                            <div style={{
-                                                cursor: "pointer",
-                                                padding: 6,
-                                                borderRadius: 6,
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                background: darkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)",
-                                            }}>
-                                                <AppstoreOutlined style={{ fontSize: 16 }} />
-                                            </div>
-                                        </Popover>
-                                        {/* Dark/Light Toggle */}
-                                        <AnimatedThemeToggler
-                                            isDark={darkMode}
-                                            onThemeChange={handleDarkModeChange}
-                                            size={16}
-                                            style={{
-                                                color: darkMode ? "#fff" : "#000",
-                                                padding: 4,
-                                            }}
-                                        />
-                                    </>
-                                ) : (
-                                    // Expanded: Horizontal layout
-                                    <>
-                                        {/* Left: AppList + Logo + Title */}
-                                        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                                            {/* App List Popover */}
-                                            <Popover
-                                                content={<AppListContent darkMode={darkMode} />}
-                                                trigger="click"
-                                                placement="bottomLeft"
-                                                open={appListOpen}
-                                                onOpenChange={setAppListOpen}
-                                            >
-                                                <div style={{
-                                                    cursor: "pointer",
-                                                    padding: 6,
-                                                    borderRadius: 6,
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    justifyContent: "center",
-                                                    background: darkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)",
-                                                    flexShrink: 0,
-                                                }}>
-                                                    <AppstoreOutlined style={{ fontSize: 16 }} />
+                                    )}
+                                    {outerCollapsed && (
+                                        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.5px', lineHeight: '14px' }}>
+                                            <GlitchText speed={0.5} enableShadows={true} color={darkMode ? '#ffffff' : '#333333'} glitchColor1={themePalette.accent} glitchColor2={themePalette.secondary}>
+                                                NS
+                                            </GlitchText>
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Right: Quick-action icon circles */}
+                                <div style={{ display: "flex", alignItems: "center", gap: 4, flexDirection: outerCollapsed ? "column" : "row", marginTop: outerCollapsed ? 4 : 0 }}>
+                                    <Tooltip title="Sarah J." placement={outerCollapsed ? "right" : "bottom"}>
+                                        <Avatar size={22} src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah" style={{ backgroundColor: "#86efac", cursor: "pointer", fontSize: 10 }}>S</Avatar>
+                                    </Tooltip>
+                                    {!outerCollapsed && (
+                                        <>
+                                            <Tooltip title="Sync" placement="bottom">
+                                                <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#fca5a5", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                                                    <SwapOutlined style={{ fontSize: 10, color: "#fff" }} />
                                                 </div>
-                                            </Popover>
-                                            {/* Logo */}
-                                            <Image
-                                                src={logoSrc}
-                                                alt="Logo"
-                                                width={24}
-                                                height={24}
-                                                style={{
-                                                    objectFit: "contain",
-                                                    cursor: "pointer",
-                                                    flexShrink: 0,
-                                                }}
-                                                onClick={() => router.push("/admin/dashboard")}
-                                            />
-                                            {/* Title with GlitchText - vertically centered with logo */}
-                                            <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: '2px', lineHeight: '24px', display: 'flex', alignItems: 'center' }}>
-                                                <GlitchText
-                                                    speed={0.5}
-                                                    enableShadows={true}
-                                                    color={darkMode ? '#ffffff' : '#333333'}
-                                                    glitchColor1={themePalette.accent}
-                                                    glitchColor2={themePalette.secondary}
-                                                >
-                                                    NS
-                                                </GlitchText>
-                                            </div>
-                                        </div>
-                                        {/* Right: Presence + Dark/Light */}
-                                        <div style={{ marginLeft: 16, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <Avatar.Group max={{ count: 3 }} size="small" style={{ display: 'flex', alignItems: 'center' }}>
-                                                {Object.values(cursors).map((c: { id: string; color: string; name: string }) => (
-                                                    <Avatar key={c.id} style={{ backgroundColor: c.color }}>
-                                                        {c.name.charAt(0)}
-                                                    </Avatar>
-                                                ))}
-                                            </Avatar.Group>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <AnimatedThemeToggler
-                                                isDark={darkMode}
-                                                onThemeChange={handleDarkModeChange}
-                                                size={18}
-                                                style={{
-                                                    color: darkMode ? "#fff" : "#000",
-                                                }}
-                                            />
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
+                                            </Tooltip>
+                                            <Tooltip title="Recent" placement="bottom">
+                                                <div style={{ width: 22, height: 22, borderRadius: "50%", background: darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                                                    <ClockCircleOutlined style={{ fontSize: 10 }} />
+                                                </div>
+                                            </Tooltip>
+                                            <Tooltip title="Settings" placement="bottom">
+                                                <div onClick={() => setThemeDrawerVisible(true)} style={{ width: 22, height: 22, borderRadius: "50%", background: darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                                                    <SettingOutlined style={{ fontSize: 10 }} />
+                                                </div>
+                                            </Tooltip>
+                                            <AnimatedThemeToggler isDark={darkMode} onThemeChange={handleDarkModeChange} size={14} style={{ color: darkMode ? "#fff" : "#000" }} />
+                                        </>
+                                    )}
+                                    {outerCollapsed && (
+                                        <AnimatedThemeToggler isDark={darkMode} onThemeChange={handleDarkModeChange} size={14} style={{ color: darkMode ? "#fff" : "#000" }} />
+                                    )}
+                                </div>
                             </div>
-                        )}
+                            {/* Dashboard & Activity Feed Card */}
+                            <div style={{
+                                background: darkMode ? "rgba(255,255,255,0.08)" : "#ffffff",
+                                borderRadius: 16,
+                                padding: "8px",
+                                border: darkMode ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.06)",
+                                boxShadow: darkMode
+                                    ? "0 2px 8px rgba(0,0,0,0.3)"
+                                    : "0 2px 8px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)",
+                                margin: outerCollapsed ? "8px 4px" : "12px 8px",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 4
+                            }}>
+                                {/* Dashboard Item */}
+                                <div 
+                                    onClick={() => { setPathname("/admin/dashboard"); router.push("/admin/dashboard"); }}
+                                    style={{
+                                        padding: "10px 12px",
+                                        borderRadius: 12,
+                                        cursor: "pointer",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 12,
+                                        background: isDashboard ? (darkMode ? "rgba(255,255,255,0.15)" : "#ffffff") : "transparent",
+                                        boxShadow: isDashboard && !darkMode ? "0 2px 10px rgba(0,0,0,0.05)" : "none",
+                                        color: isDashboard ? (darkMode ? "#fff" : "#1a202c") : (darkMode ? "rgba(255,255,255,0.75)" : "#4a5568"),
+                                        transition: "all 0.2s"
+                                    }}
+                                    onMouseEnter={(e) => { if (!isDashboard) e.currentTarget.style.background = darkMode ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.5)"; }}
+                                    onMouseLeave={(e) => { if (!isDashboard) e.currentTarget.style.background = "transparent"; }}
+                                >
+                                    <DashboardOutlined style={{ fontSize: 16, color: isDashboard ? "var(--theme-color)" : "inherit" }} />
+                                    {!outerCollapsed && (
+                                        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                            <span style={{ fontSize: 14, fontWeight: isDashboard ? 500 : 400 }}>Dashboard</span>
+                                            <div style={{ width: 24, height: 24, background: "rgba(124, 58, 237, 0.1)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                <SafetyCertificateOutlined style={{ fontSize: 12, color: "#7c3aed" }} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Activity Feed Item */}
+                                <div 
+                                    onClick={() => { setPathname("/admin/activity"); router.push("/admin/activity"); }}
+                                    style={{
+                                        padding: "10px 12px",
+                                        borderRadius: 12,
+                                        cursor: "pointer",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 12,
+                                        background: isActivity ? (darkMode ? "rgba(255,255,255,0.15)" : "#ffffff") : "transparent",
+                                        boxShadow: isActivity && !darkMode ? "0 2px 10px rgba(0,0,0,0.05)" : "none",
+                                        color: isActivity ? (darkMode ? "#fff" : "#1a202c") : (darkMode ? "rgba(255,255,255,0.75)" : "#4a5568"),
+                                        transition: "all 0.2s"
+                                    }}
+                                    onMouseEnter={(e) => { if (!isActivity) e.currentTarget.style.background = darkMode ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.5)"; }}
+                                    onMouseLeave={(e) => { if (!isActivity) e.currentTarget.style.background = "transparent"; }}
+                                >
+                                    <ClockCircleOutlined style={{ fontSize: 16, color: isActivity ? "var(--theme-color)" : "inherit" }} />
+                                    {!outerCollapsed && (
+                                        <span style={{ fontSize: 14, fontWeight: isActivity ? 500 : 400 }}>Activity Feed</span>
+                                    )}
+                                </div>
+                            </div>
+                            </>
+                            );
+                        }}
                         actionsRender={(props) => {
                             if (props.isMobile) return [];
                             return [<SidebarActions key="sidebar-actions" />];
                         }}
-                        menuRender={(props, defaultDom) => (
+                        menuRender={(props, defaultDom) => {
+                            return (
                             <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                                 <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
                                     {defaultDom}
                                 </div>
-
+                                {/* Bottom Profile Section */}
+                                <div style={{ 
+                                    padding: "16px 12px", 
+                                    borderTop: darkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.04)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: outerCollapsed ? "center" : "space-between"
+                                }}>
+                                    <Badge count={29} size="small" offset={[-2, 2]} color="var(--theme-color, #7c3aed)">
+                                        <div style={{
+                                            width: 36, height: 36, borderRadius: "50%",
+                                            background: darkMode ? "rgba(255,255,255,0.1)" : "#e2e8f0",
+                                            display: "flex", alignItems: "center", justifyContent: "center",
+                                            cursor: "pointer"
+                                        }}>
+                                            <BellOutlined style={{ fontSize: 16, color: darkMode ? "#fff" : "#4a5568" }} />
+                                        </div>
+                                    </Badge>
+                                    {!outerCollapsed && (
+                                        <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", background: darkMode ? "rgba(255,255,255,0.1)" : "rgba(124, 58, 237, 0.1)", padding: "4px 12px 4px 4px", borderRadius: 20 }}>
+                                            <Avatar size="small" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah" style={{ backgroundColor: "#86efac" }}>S</Avatar>
+                                            <span style={{ fontSize: 13, fontWeight: 500, color: darkMode ? "#fff" : "#1a202c" }}>Sarah J.</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        )}
+                        )}}
                         menuItemRender={(item, dom) => {
                             // Unified rendering for both collapsed and expanded modes.
                             // Uses classes so the useEffect can target elements precisely.
@@ -1250,13 +1352,7 @@ export default function CMSLayoutImpl({
                                 routes: innerRoutes,
                             }}
                             hasSiderMenu={true}
-                            fixSiderbar={false}
-                            // @ts-ignore
-                            siderStyle={{
-                                position: 'sticky',
-                                top: 0,
-                                height: '100vh',
-                            }}
+                            fixSiderbar={true}
                             collapsed={innerCollapsed}
                             breakpoint={false}
                             onCollapse={handleInnerCollapse}
@@ -1270,6 +1366,9 @@ export default function CMSLayoutImpl({
                             }}
                             menuDataRender={() => innerRoutes.length > 0 ? innerRoutes : [{ path: '/dummy', name: 'No items' }]}
                             menuHeaderRender={false}
+                            menuFooterRender={(props) => (
+                                <ModuleIllustrationCards collapsed={innerCollapsed} darkMode={darkMode} />
+                            )}
                             menuExtraRender={() => (
                                 <div style={{
                                     minHeight: 48,
@@ -1277,7 +1376,7 @@ export default function CMSLayoutImpl({
                                     alignItems: "center",
                                     justifyContent: "center",
                                     padding: innerCollapsed ? "12px 8px" : "0 16px",
-                                    borderBottom: darkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid #f0f0f0",
+                                    borderBottom: "none",
                                     boxSizing: "border-box",
                                 }}>
                                     <Segmented
@@ -1297,7 +1396,6 @@ export default function CMSLayoutImpl({
                             actionsRender={(props) => {
                                 return [];
                             }}
-
                             menuItemRender={(item, dom) => {
                                 const isPinnedOrStarred = selectedSegment === "pinned" || selectedSegment === "starred";
                                 
@@ -1331,8 +1429,6 @@ export default function CMSLayoutImpl({
                                                         togglePinned({ path: item.path!, name: (item.name as string) || "" });
                                                         message.success("Removed from pinned");
                                                     } else {
-                                                        // For starred, we reuse toggleStarred or handle it via handleToggleStar logic
-                                                        // But since we are in the list, we can just call the store's toggleStarred
                                                         toggleStarred({ path: item.path!, name: (item.name as string) || "" });
                                                         message.success("Removed from favorites");
                                                     }
@@ -1354,12 +1450,11 @@ export default function CMSLayoutImpl({
                                     </div>
                                 );
                             }}
-
                         >
                             <PageContainer
                                 title={title}
                                 subTitle={subTitle}
-                                extra={[<GlobalDateRangePicker key="global-date" compact />, ...(extra || []), <PinStarShareActions key="pin-star-actions" />]}
+                                extra={[...(extra || []), <PinStarShareActions key="pin-star-actions" />]}
                                 breadcrumb={{
                                     items: breadcrumbItems.map((item, index) => ({
                                         key: index,
@@ -1378,118 +1473,205 @@ export default function CMSLayoutImpl({
                 </ConfigProvider>
             </ProConfigProvider>
 
+            <div className="hidden md:flex" style={{
+                position: 'fixed',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                left: (outerCollapsed ? OUTER_COLLAPSED_WIDTH : 260) + (innerCollapsed ? 48 : 240) + 16,
+                zIndex: 50,
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 10,
+                background: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.7)',
+                backdropFilter: 'blur(12px)',
+                padding: '12px 8px',
+                borderRadius: '24px',
+                border: darkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.5)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.05)',
+            }}>
+                {LEFT_DOCK_WIDGETS.map((item) => {
+                    const isOpen = dockWindows.some(w => w.widgetType === item.id);
+                    return (
+                        <Tooltip title={item.label} key={item.id} placement="right">
+                            <div
+                                onClick={() => openDockWindow(item.id as any, item.label, item.width, item.height)}
+                                style={{
+                                    position: 'relative',
+                                    width: 36,
+                                    height: 36,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: 'transparent',
+                                    borderRadius: 12,
+                                    transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                    cursor: 'pointer',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'scale(1.2) translateX(4px)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'scale(1) translateX(0)';
+                                }}
+                            >
+                                <span style={{
+                                    fontSize: '1.6rem',
+                                    lineHeight: 1,
+                                    filter: 'drop-shadow(0px 3px 5px rgba(0,0,0,0.2))',
+                                    userSelect: 'none',
+                                }}>
+                                    {item.icon}
+                                </span>
+                                {isOpen && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        right: -6,
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        width: 5,
+                                        height: 5,
+                                        borderRadius: '50%',
+                                        background: 'rgba(0,0,0,0.4)',
+                                        boxShadow: '0 0 4px rgba(0,0,0,0.2)',
+                                    }} />
+                                )}
+                            </div>
+                        </Tooltip>
+                    );
+                })}
+            </div>
+
+            {/* Dock Widget Windows */}
+            {dockWindows.map(win => !win.minimized && (
+                <DockWindow
+                    key={win.id}
+                    id={win.id}
+                    title={win.title}
+                    width={win.width}
+                    height={win.height}
+                    zIndex={win.zIndex}
+                >
+                    {win.widgetType === 'athan' && <AthanWidget />}
+                    {win.widgetType === 'calculator' && <CalculatorWidget />}
+                    {win.widgetType === 'notes' && <NotesWidget />}
+                    {win.widgetType === 'calendar' && <CalendarWidget />}
+                    {win.widgetType === 'snake' && <SnakeWidget />}
+                    {win.widgetType === 'pong' && <PongWidget />}
+                </DockWindow>
+            ))}
+
+            {/* Bottom Dock Footer — Floating Icons */}
+            <div className="hidden md:flex" style={{
+                position: 'fixed',
+                bottom: 16,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 9999,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                background: darkMode ? 'rgba(30,30,40,0.72)' : 'rgba(255, 255, 255, 0.72)',
+                backdropFilter: 'blur(20px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                padding: '8px 16px',
+                borderRadius: 30,
+                border: darkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.5)',
+                boxShadow: darkMode ? '0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2)' : '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
+            }}>
+                {BOTTOM_DOCK_WIDGETS.map((item) => {
+                    const isOpen = dockWindows.some(w => w.widgetType === item.id);
+                    return (
+                        <Tooltip title={item.label} key={item.id}>
+                            <div
+                                onClick={() => openDockWindow(item.id as any, item.label, item.width, item.height)}
+                                style={{
+                                    position: 'relative',
+                                    width: '2.8rem',
+                                    height: '2.8rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: 'transparent',
+                                    borderRadius: 12,
+                                    transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                    cursor: 'pointer',
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.25) translateY(-6px)'}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1) translateY(0)'}
+                            >
+                                <span style={{
+                                    fontSize: '2.2rem',
+                                    lineHeight: 1,
+                                    filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.3))',
+                                    userSelect: 'none',
+                                }}>
+                                    {item.icon}
+                                </span>
+                                {isOpen && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        bottom: -8,
+                                        left: '50%',
+                                        transform: 'translateX(-50%)',
+                                        width: 5,
+                                        height: 5,
+                                        borderRadius: '50%',
+                                        background: 'rgba(0,0,0,0.4)',
+                                        boxShadow: '0 0 4px rgba(0,0,0,0.2)',
+                                    }} />
+                                )}
+                            </div>
+                        </Tooltip>
+                    );
+                })}
+                {/* Add Widget button */}
+                <Tooltip title="Add Widget">
+                    <div
+                        style={{
+                            position: 'relative',
+                            width: '2.8rem',
+                            height: '2.8rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.25) translateY(-6px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1) translateY(0)'}
+                    >
+                        <span style={{
+                            fontSize: '2.2rem',
+                            lineHeight: 1,
+                            filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.3))',
+                            userSelect: 'none',
+                        }}>
+                            ➕
+                        </span>
+                    </div>
+                </Tooltip>
+            </div>
+
             {/* AI Studio Drawer */}
             <AIStudioDrawer visible={aiStudioVisible} onClose={() => setAIStudioVisible(false)} />
 
             {/* Global Command Palette (Ctrl+K / Cmd+K) */}
             <CommandPalette isDark={darkMode} themeColor={themeColor} />
+            <TamagotchiGlobal darkMode={darkMode} />
             <LiveCursors />
 
             {/* Theme Customizer Drawer */}
             <ThemeDrawer visible={themeDrawerVisible} onClose={() => setThemeDrawerVisible(false)} darkMode={darkMode} />
 
-            {/* SpeedDial Quarter Circle with MetaBalls - Bottom Right */}
-            <div className="fixed bottom-0 right-0 z-50 w-48 h-48 hidden md:block">
-                {/* MetaBalls animation - purely decorative, non-interactive */}
-                {showBackground && (
-                    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', zIndex: 1 }}>
-                        <MetaBalls
-                            color={themeColor}
-                            cursorBallColor={themeColor}
-                            enableTransparency={true}
-                            enableMouseInteraction={true}
-                            hoverSmoothness={0.05}
-                            clumpFactor={1.1}
-                            ballCount={15}
-                            cursorBallSize={3.5}
-                            animationSize={25}
-                            speed={0.4}
-                        />
-                    </div>
-                )}
-                {/* SpeedDial - positioned at bottom right */}
-                <div style={{ position: 'absolute', inset: 0, zIndex: 10, pointerEvents: 'none' }}>
-                    <SpeedDial
-                            model={[
-                                {
-                                    label: 'AI Studio',
-                                    icon: 'pi pi-sparkles',
-                                    command: () => setAIStudioVisible(true),
-                                },
-                                {
-                                    label: 'Theme',
-                                    icon: 'pi pi-palette',
-                                    command: () => setThemeDrawerVisible(true),
-                                },
-                                {
-                                    label: showBackground ? 'Disable Background' : 'Enable Background',
-                                    icon: showBackground ? 'pi pi-eye-slash' : 'pi pi-eye',
-                                    command: () => {
-                                        const newValue = !showBackground;
-                                        setShowBackground(newValue);
-                                        localStorage.setItem('cms-show-background', String(newValue));
-                                    }
-                                },
-                                {
-                                    label: darkMode ? 'Light Mode' : 'Dark Mode',
-                                    icon: darkMode ? 'pi pi-sun' : 'pi pi-moon',
-                                    command: () => handleDarkModeChange(!darkMode)
-                                },
-                                {
-                                    label: dockMode === 'hidden' ? 'Show Dock' : 'Hide Dock',
-                                    icon: dockMode === 'hidden' ? 'pi pi-eye' : 'pi pi-eye-slash',
-                                    command: () => useDockStore.getState().setDockMode(dockMode === 'hidden' ? 'auto' : 'hidden')
-                                },
-                                {
-                                    label: dockMode === 'always' ? 'Unpin Dock' : 'Pin Dock',
-                                    icon: dockMode === 'always' ? 'pi pi-unlock' : 'pi pi-lock',
-                                    command: () => useDockStore.getState().setDockMode(dockMode === 'always' ? 'auto' : 'always')
-                                },
-                                {
-                                    label: 'Settings',
-                                    icon: 'pi pi-cog',
-                                    command: () => router.push('/admin/settings')
-                                }
-                            ]}
-                            direction="up-left"
-                            type="quarter-circle"
-                            buttonTemplate={(options) => {
-                                return (
-                                    <div 
-                                        onClick={options.onClick}
-                                        style={{
-                                            width: 56, height: 56, borderRadius: '50%',
-                                            background: themeColor,
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            boxShadow: 'none',
-                                            cursor: 'pointer',
-                                            border: 'none',
-                                            transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.transform = 'scale(1.1)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.transform = 'scale(1)';
-                                        }}
-                                    >
-                                        {options.visible ? <CloseOutlined style={{ fontSize: 24, color: '#fff' }} /> : <MenuOutlined style={{ fontSize: 24, color: '#fff' }} />}
-                                    </div>
-                                );
-                            }}
-                            showIcon="pi pi-bars"
-                            hideIcon="pi pi-times"
-                            rotateAnimation={true}
-                            style={{
-                                position: 'absolute',
-                                right: 16,
-                                bottom: 16,
-                                pointerEvents: 'auto',
-                                '--p-speeddial-button-width': '2.5rem',
-                                '--p-speeddial-button-height': '2.5rem',
-                            } as React.CSSProperties}
-                        />
-                </div>
+            {/* Floating Action Button Cluster - Bottom Right */}
+            <div className="hidden md:block" style={{
+                position: 'fixed',
+                bottom: 32,
+                right: 32,
+                zIndex: 50,
+            }}>
+                {/* MetaBalls animation behind cluster */}
+                {/* Main Glassmorphic SpeedDial - Replaced with FloatingOrbMenu */}
+                <FloatingOrbMenu />
             </div>
 
             {/* CSS for sidebar alignment */}
@@ -1516,10 +1698,80 @@ export default function CMSLayoutImpl({
                 
 
                 
-                /* Fix inner sidebar - use clip for children only, not the sidebar itself */
-                /* This allows the collapse button to extend beyond the sidebar */
+                /* --- SUBTLE UI REFINEMENT --- */
+                
+                /* Outer Menu (Primary Sidebar) — Light theme with pale purple tint */
+                .cms-outer-sider {
+                    border-right: none !important;
+                    z-index: 100 !important;
+                    background: ${darkMode ? '#1a1a2e' : '#f4f0fa'} !important;
+                }
+                .cms-outer-sider .ant-layout-sider-children {
+                    background: ${darkMode ? '#1a1a2e' : '#f4f0fa'} !important;
+                }
+                .cms-outer-sider .ant-menu {
+                    background: transparent !important;
+                    color: ${darkMode ? 'rgba(255,255,255,0.75)' : '#4a5568'} !important;
+                }
+                .cms-outer-sider .ant-menu-item,
+                .cms-outer-sider .ant-menu-submenu-title {
+                    color: ${darkMode ? 'rgba(255,255,255,0.75)' : '#4a5568'} !important;
+                }
+                .cms-outer-sider .ant-menu-item .anticon,
+                .cms-outer-sider .ant-menu-submenu-title .anticon {
+                    color: ${darkMode ? 'rgba(255,255,255,0.5)' : '#718096'} !important;
+                }
+                .cms-outer-sider .ant-menu-item-group-title {
+                    color: ${darkMode ? 'rgba(255,255,255,0.35)' : '#a0aec0'} !important;
+                    font-size: 11px !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.8px !important;
+                }
+                
+                /* Inner Menu (Contextual Sidebar) */
                 .cms-inner-sider {
+                    border-right: none !important;
                     overflow: visible !important;
+                    left: ${outerCollapsed ? OUTER_COLLAPSED_WIDTH : 260}px !important;
+                    z-index: 99 !important;
+                    background: ${darkMode ? '#141414' : '#ffffff'} !important;
+                }
+                .cms-inner-sider .ant-layout-sider-children {
+                    background: ${darkMode ? '#141414' : '#ffffff'} !important;
+                }
+                
+                /* Clean Menu Item Hover & Active States */
+                .cms-outer-sider .ant-menu-item,
+                .cms-inner-sider .ant-menu-item {
+                    transition: all 0.2s ease !important;
+                    border-radius: 12px !important;
+                }
+                
+                .cms-outer-sider .ant-menu-item:hover {
+                    background: ${darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(255, 255, 255, 0.5)'} !important;
+                    box-shadow: none !important;
+                }
+                .cms-inner-sider .ant-menu-item:hover {
+                    background: ${darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)'} !important;
+                    box-shadow: none !important;
+                }
+                
+                .cms-outer-sider .ant-menu-item-selected {
+                    background: ${darkMode ? 'rgba(139, 92, 246, 0.2)' : '#ffffff'} !important;
+                    box-shadow: ${darkMode ? '0 2px 10px rgba(139,92,246,0.15)' : '0 2px 10px rgba(0,0,0,0.05)'} !important;
+                    border-radius: 12px !important;
+                    color: ${darkMode ? '#e2e8f0' : '#1a202c'} !important;
+                }
+                .cms-outer-sider .ant-menu-item-selected .anticon {
+                    color: ${darkMode ? '#a78bfa' : 'var(--theme-color, #7c3aed)'} !important;
+                }
+                
+                .cms-inner-sider .ant-menu-item-selected {
+                    background: ${darkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(var(--theme-color-rgb), 0.08)'} !important;
+                    box-shadow: inset 4px 0 0 ${darkMode ? '#a78bfa' : 'var(--theme-color)'} !important;
+                }
+                .cms-inner-sider .ant-menu-item-selected .anticon {
+                    color: ${darkMode ? '#a78bfa' : 'var(--theme-color, #7c3aed)'} !important;
                 }
                 
                 /* The sider-children contains the collapse button, so we can't clip it */
@@ -1534,6 +1786,7 @@ export default function CMSLayoutImpl({
                 .cms-inner-sider .ant-menu {
                     overflow-x: hidden !important;
                     overflow-y: auto !important;
+                    background: transparent !important;
                 }
                 
                 .cms-inner-sider .cms-inner-sider-extra {
@@ -1543,6 +1796,11 @@ export default function CMSLayoutImpl({
                 .cms-inner-sider .ant-menu-item,
                 .cms-inner-sider .ant-menu-submenu-title {
                     padding-inline: 12px !important;
+                    color: ${darkMode ? 'rgba(255,255,255,0.75)' : '#4a5568'} !important;
+                }
+                .cms-inner-sider .ant-menu-item .anticon,
+                .cms-inner-sider .ant-menu-submenu-title .anticon {
+                    color: ${darkMode ? 'rgba(255,255,255,0.5)' : '#718096'} !important;
                 }
                 
                 /* Fix segmented control to fit within sidebar */
@@ -1551,52 +1809,75 @@ export default function CMSLayoutImpl({
                     box-sizing: border-box !important;
                 }
                 
-                /* Ensure collapse button is fully visible and above other elements */
+                /* Ensure collapse buttons are fully visible and above other elements */
+                .cms-outer-sider-collapsed-button,
+                .cms-outer-layout .ant-layout-sider-trigger,
+                .cms-outer-layout .ant-pro-sider-collapsed-button,
+                .ant-layout-sider-trigger,
+                .ant-pro-sider-collapsed-button {
+                    z-index: 250 !important;
+                }
+
                 .cms-inner-sider-collapsed-button {
                     z-index: 200 !important;
                 }
                 
-                /* SpeedDial button styling - smaller size with MetaBalls colors */
-                .speeddial-metaballs-btn {
+                /* SpeedDial button styling - glassmorphic matching docks */
+                .speeddial-glass-btn {
+                    width: 3.5rem !important;
+                    height: 3.5rem !important;
+                    background: ${darkMode ? 'rgba(30,30,40,0.72)' : 'rgba(255, 255, 255, 0.72)'} !important;
+                    backdrop-filter: blur(20px) saturate(180%) !important;
+                    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+                    border: ${darkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.5)'} !important;
+                    box-shadow: ${darkMode ? '0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2)' : '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)'} !important;
+                    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+                    border-radius: 18px !important;
+                }
+                
+                .speeddial-glass-btn:hover {
+                    transform: scale(1.15) translateY(-4px) !important;
+                }
+                
+                .speeddial-glass-btn .pi {
+                    font-size: 1.5rem !important;
+                    color: ${darkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)'} !important;
+                    filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.1)) !important;
+                }
+                
+                /* SpeedDial action buttons - pastel gradient circles */
+                .p-speeddial-action {
                     width: 2.5rem !important;
                     height: 2.5rem !important;
-                    background: linear-gradient(135deg, ${themeColor} 0%, ${themeColor}dd 100%) !important;
-                    border: none !important;
-                    box-shadow: 0 4px 15px ${themeColor}66 !important;
-                    transition: all 0.3s ease !important;
-                }
-                
-                .speeddial-metaballs-btn:hover {
-                    transform: scale(1.1) !important;
-                    box-shadow: 0 6px 20px ${themeColor}99 !important;
-                }
-                
-                .speeddial-metaballs-btn .pi {
-                    font-size: 1rem !important;
-                    color: white !important;
-                }
-                
-                /* SpeedDial action buttons - purple theme */
-                .p-speeddial-action {
-                    width: 2.25rem !important;
-                    height: 2.25rem !important;
-                    background: linear-gradient(135deg, ${themeColor}cc 0%, ${themeColor}99 100%) !important;
-                    border: none !important;
-                    box-shadow: 0 2px 8px ${themeColor}4d !important;
+                    background: linear-gradient(135deg, rgba(var(--theme-color-rgb), 0.12), rgba(var(--theme-color-rgb), 0.06)) !important;
+                    border: 1px solid rgba(var(--theme-color-rgb), 0.15) !important;
+                    box-shadow: 0 3px 12px rgba(var(--theme-color-rgb), 0.15) !important;
+                    color: ${themeColor} !important;
+                    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+                    backdrop-filter: blur(8px) !important;
                 }
                 
                 .p-speeddial-action:hover {
-                    background: linear-gradient(135deg, ${themeColor} 0%, ${themeColor}dd 100%) !important;
                     transform: scale(1.15) !important;
+                    background: linear-gradient(135deg, rgba(var(--theme-color-rgb), 0.22), rgba(var(--theme-color-rgb), 0.12)) !important;
+                    box-shadow: 0 6px 20px rgba(var(--theme-color-rgb), 0.25) !important;
                 }
                 
                 .p-speeddial-action .pi {
-                    font-size: 0.875rem !important;
-                    color: white !important;
+                    font-size: 1rem !important;
+                    color: ${themeColor} !important;
                 }
                 /* Align PageContainer title and subtitle by baseline */
                 .ant-page-header-heading-left {
                     align-items: baseline !important;
+                }
+
+                /* Left Dock Toolbar */
+                .left-dock-toolbar {
+                    scrollbar-width: none;
+                }
+                .left-dock-toolbar::-webkit-scrollbar {
+                    display: none;
                 }
             `}</style>
         </div>
