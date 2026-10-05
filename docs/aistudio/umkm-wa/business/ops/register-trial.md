@@ -109,7 +109,8 @@ Contoh setelah toko aktif:
 | `jual 2 indomie` | Preview jual → `ya` → tercatat |
 | `satu lagi` | Ulang item jual terakhir → `ya` |
 | `cek stok` | Balasan sisa stok |
-| `laporan` / omzet | Ringkasan penjualan |
+| `laporan` / omzet | Ringkasan penjualan (hari/minggu/bulan) |
+| `laporan tahun ini` | Omzet YTD (Jan→hari ini). Tahun lalu / 2024 → arahkan ke tahun/bulan ini |
 | `tutup toko` | Omzet hari ini + stok menipis |
 | foto / voice (default) | Arahkan ketik jual/stok (chat-only) |
 

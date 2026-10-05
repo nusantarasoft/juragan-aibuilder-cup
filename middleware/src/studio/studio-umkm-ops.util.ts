@@ -1,6 +1,6 @@
 /** UMKM ops helpers — date ranges, purchase / product / stock parsing. */
 
-export type UmkmReportPeriod = 'today' | 'week' | 'month' | 'all';
+export type UmkmReportPeriod = 'today' | 'week' | 'month' | 'year' | 'all';
 
 export type ParsedUmkmPurchaseItem = {
     name: string;
@@ -50,6 +50,7 @@ export function periodRange(period: UmkmReportPeriod, now = new Date()): {
     from: string | null;
     to: string | null;
 } {
+    // Keep `year` YTD bounds in sync with Hermes kasir-tools `_period_range`.
     const { y, m, day } = jakartaDateParts(now);
     const today = toIsoDate(y, m, day);
     if (period === 'today') {
@@ -76,6 +77,11 @@ export function periodRange(period: UmkmReportPeriod, now = new Date()): {
         const to = toIsoDate(e.y, e.m, e.day);
         return { label: 'minggu ini', from: `${from}T00:00:00+07:00`, to: `${to}T23:59:59.999+07:00` };
     }
+    if (period === 'year') {
+        // Calendar YTD Asia/Jakarta: Jan 1 → end of today (WA totals still Hermes).
+        const from = toIsoDate(y, 1, 1);
+        return { label: 'tahun ini', from: `${from}T00:00:00+07:00`, to: `${today}T23:59:59.999+07:00` };
+    }
     return { label: 'semua waktu', from: null, to: null };
 }
 
@@ -84,6 +90,13 @@ export function detectReportPeriod(text: string): UmkmReportPeriod | null {
     if (/^(1|hari(\s+ini)?|today)$/i.test(t) || /\bhari\s+ini\b/i.test(t)) return 'today';
     if (/^(2|minggu(\s+ini)?|week)$/i.test(t) || /\bminggu\s+ini\b/i.test(t)) return 'week';
     if (/^(3|bulan(\s+ini)?|month)$/i.test(t) || /\bbulan\s+ini\b/i.test(t)) return 'month';
+    if (
+        /^(tahun(\s+ini)?|year|ytd)$/i.test(t) ||
+        /\btahun\s+ini\b/i.test(t) ||
+        /\bthis\s+year\b/i.test(t)
+    ) {
+        return 'year';
+    }
     if (/^(4|semua|all)$/i.test(t) || /\bsemua\b/i.test(t)) return 'all';
     return null;
 }

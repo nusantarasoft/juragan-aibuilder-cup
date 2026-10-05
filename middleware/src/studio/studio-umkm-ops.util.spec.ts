@@ -63,6 +63,15 @@ describe('periodRange', () => {
         const r = periodRange('all', now);
         expect(r).toEqual({ label: 'semua waktu', from: null, to: null });
     });
+
+    it('year is calendar YTD Jakarta (parity with Hermes)', () => {
+        // Fixture shared with Hermes test_period_year.py — 2026-03-15 Jakarta.
+        const mid = new Date('2026-03-15T05:00:00Z'); // Jakarta 12:00
+        const r = periodRange('year', mid);
+        expect(r.label).toBe('tahun ini');
+        expect(r.from).toBe('2026-01-01T00:00:00+07:00');
+        expect(r.to).toBe('2026-03-15T23:59:59.999+07:00');
+    });
 });
 
 describe('detectReportPeriod', () => {
@@ -80,6 +89,12 @@ describe('detectReportPeriod', () => {
     it('month variants', () => {
         expect(detectReportPeriod('3')).toBe('month');
         expect(detectReportPeriod('bulan ini')).toBe('month');
+    });
+    it('year variants', () => {
+        expect(detectReportPeriod('tahun ini')).toBe('year');
+        expect(detectReportPeriod('year')).toBe('year');
+        expect(detectReportPeriod('laporan tahun ini')).toBe('year');
+        expect(detectReportPeriod('ytd')).toBe('year');
     });
     it('all variants', () => {
         expect(detectReportPeriod('4')).toBe('all');

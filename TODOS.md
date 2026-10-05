@@ -267,6 +267,30 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 **Priority:** P3
 **Depends on:** Staff vs owner roles; pendamping v1 shipped
 
+### DB aggregate RPC for BSS year / heavy reports
+
+**What:** Postgres/PostgREST RPC (or view) that aggregates order count + revenue (and purchase totals) per `tenant_id` + period; Hermes calls it instead of paginating `ecom_orders` rows for `year` (and later heavy months).
+
+**Why:** HOLD v1 soft-cap (`page_size=200`, `max_pages=50`, wall-clock ~45s) redirects busy shops to *bulan ini* — they never get full YTD in chat. DB-side aggregate fixes accuracy + latency.
+
+**Context:** CEO/eng HOLD 2026-09-22 BSS DB insight (`ceo-plans/2026-09-22-bss-db-insight-hold.md`). Match status filters in Hermes `_orders_in_period` / `_combined_report`. Observe cap/timeout logs after year ships before prioritizing. Keep `tenant_id` forced; no Hermes MCP.
+
+**Effort:** M–L
+**Priority:** P2
+**Depends on:** Year YTD path shipped + observability for cap/timeout hits
+
+### BSS report: tahun lalu / explicit calendar year
+
+**What:** Support owner phrases *tahun lalu* and/or explicit years (e.g. *laporan 2024*) in Hermes period normalize + Nest detect; replace HOLD soft-refuse with real ranges.
+
+**Why:** YTD-only leaves common compare-to-last-year asks on the refuse path; owners will keep asking.
+
+**Context:** CEO/eng HOLD 2026-09-22 D13 A (soft refuse) + D21 A. Prefer after YTD ships; better with or after DB aggregate RPC so last-year isn’t another paginate cliff. Keep Asia/Jakarta bounds; never silent-map unknown years to YTD.
+
+**Effort:** M
+**Priority:** P3
+**Depends on:** Year YTD path shipped
+
 ## Hermes
 
 Tracker: [`docs/aistudio/umkm-wa/system/hermes-gaps.md`](docs/aistudio/umkm-wa/system/hermes-gaps.md) (G1–G14 + **Watchlist W1–W4**).

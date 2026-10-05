@@ -71,7 +71,8 @@ Semua lewat **chat teks** ke nomor bisnis yang sama (bukan app terpisah):
 | *jual 2 indomie* / *ada yang beli…* | Ringkasan → ketuk **Ya, simpan** / **Batal** (atau ketik *ya* / *batal*) |
 | *satu lagi* / *ulang yang tadi* | Ulang item jual terakhir (masih perlu *ya*) |
 | *belanja / restock…* | Ringkasan belanja → *ya* |
-| *laporan* | Omzet & ringkasan |
+| *laporan* / *laporan hari ini* | Omzet & ringkasan (hari/minggu/bulan) |
+| *laporan tahun ini* | Omzet YTD (Januari → hari ini, Jakarta). Bukan tahun lalu / 2024 |
 | *paling laris* / *best seller* | Produk terlaris |
 | *tutup toko* / *mau pulang* | Omzet hari ini + stok menipis (ritual closing) |
 | *tanya …* / *konsultasi …* / *pendamping …* | Saran singkat dari **buku kurikulum UKM** (bukan stok toko). Soft GA: saklar **ON** di prod; kalau ops matikan, bot bilang belum aktif |

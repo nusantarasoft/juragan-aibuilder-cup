@@ -24,6 +24,7 @@ import json
 import logging
 import os
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -34,6 +35,50 @@ from typing import Any, Callable
 from .user_safe import safe_user_error, sanitize_user_text
 
 logger = logging.getLogger("hermes.plugins.kasir-tools")
+
+# Ledger tables: every REST read must carry tenant_id=eq.… (service key bypasses RLS).
+_TENANT_REQUIRED_PATHS = frozenset(
+    {
+        "inv_items",
+        "inv_stock_ledger",
+        "ecom_orders",
+        "studio_umkm_purchases",
+    }
+)
+
+# Year YTD pagination (HOLD 2026-09-22 D17 A) — keep in sync with docs/pitch.
+_YEAR_PAGE_SIZE = 200
+_YEAR_MAX_PAGES = 50  # 10k orders
+_YEAR_WALL_CLOCK_S = 45.0
+
+_OUT_OF_YTD_RE = re.compile(
+    r"(tahun\s+lalu|last\s*year|setahun\s+terakhir|"
+    r"\b12\s*bulan\b|\b20\d{2}\b)",
+    re.IGNORECASE,
+)
+
+_OUT_OF_YTD_MSG = (
+    "Untuk sekarang yang ada *laporan tahun ini* (Januari sampai hari ini). "
+    "Tahun lalu / tahun tertentu belum tersedia. "
+    "Coba ketik *laporan tahun ini* atau *laporan bulan ini*."
+)
+
+_YEAR_CAP_MSG = (
+    "Data *tahun ini* terlalu banyak untuk diringkas di chat. "
+    "Coba ketik *laporan bulan ini* atau *laporan minggu ini*."
+)
+
+
+class _ReportFetchError(Exception):
+    """PostgREST/page failure — fail closed (no partial totals)."""
+
+
+class _ReportCapExceeded(Exception):
+    """Soft page cap or wall-clock hit — no partial totals."""
+
+
+class _OutOfYtdPeriod(Exception):
+    """Unsupported period phrase; message is user-safe."""
 
 
 def _user_safe_tool(fn: Callable[..., str], *, kind: str = "generic") -> Callable[..., str]:
@@ -226,22 +271,39 @@ def _phones_match(a: str, b: str) -> bool:
     return da == db
 
 
-def _rest(path: str, query: dict[str, str] | None = None) -> Any:
+def _rest(
+    path: str,
+    query: dict[str, str] | None = None,
+    *,
+    timeout: float = 30,
+) -> Any:
     base = _supabase_url()
     key = _service_key()
     if not base or not key:
         raise RuntimeError(
             "SUPABASE_URL / SUPABASE_SERVICE_KEY belum di-set di container Hermes"
         )
+    q = dict(query or {})
+    if path in _TENANT_REQUIRED_PATHS:
+        tid = str(q.get("tenant_id") or "")
+        if not tid.startswith("eq.") or len(tid) < 5:
+            raise RuntimeError(
+                f"kasir-tools: refused REST {path} without tenant_id=eq filter"
+            )
     url = f"{base}/rest/v1/{path}"
-    if query:
-        url += "?" + urllib.parse.urlencode(query)
+    if q:
+        url += "?" + urllib.parse.urlencode(q)
     req = urllib.request.Request(url, method="GET")
     req.add_header("apikey", key)
     req.add_header("Authorization", f"Bearer {key}")
     req.add_header("Accept", "application/json")
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8", "replace"))
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode("utf-8", "replace"))
+    except urllib.error.HTTPError as err:
+        raise _ReportFetchError(f"HTTP {err.code} on {path}") from err
+    except urllib.error.URLError as err:
+        raise _ReportFetchError(f"URL error on {path}: {err}") from err
 
 
 def _resolve_tenant(phone: str) -> str:
@@ -306,6 +368,7 @@ def _jakarta_today() -> datetime:
 
 
 def _period_range(period: str) -> tuple[str, str | None, str | None]:
+    """Jakarta calendar ranges. Keep `year` YTD in sync with Nest periodRange."""
     now = _jakarta_today()
     today = now.strftime("%Y-%m-%d")
     if period == "month":
@@ -325,6 +388,10 @@ def _period_range(period: str) -> tuple[str, str | None, str | None]:
         start = start_dt.strftime("%Y-%m-%d")
         end = end_dt.strftime("%Y-%m-%d")
         return "minggu ini", f"{start}T00:00:00+07:00", f"{end}T23:59:59.999+07:00"
+    if period == "year":
+        # Calendar YTD Asia/Jakarta: Jan 1 → end of today (HOLD D7 A).
+        start = now.replace(month=1, day=1).strftime("%Y-%m-%d")
+        return "tahun ini", f"{start}T00:00:00+07:00", f"{today}T23:59:59.999+07:00"
     return "hari ini", f"{today}T00:00:00+07:00", f"{today}T23:59:59.999+07:00"
 
 
@@ -452,19 +519,22 @@ def _stock_rows(tenant_id: str, product_query: str | None) -> list[dict[str, Any
 
 def _orders_in_period(tenant_id: str, period: str) -> tuple[str, list[dict[str, Any]]]:
     label, frm, to = _period_range(period)
-    sales_q: dict[str, str] = {
-        "select": "id,total_amount,paid_amount,payment_status,status",
-        "tenant_id": f"eq.{tenant_id}",
-        "order": "created_at.desc",
-        "limit": "500",
-    }
-    # PostgREST: one filter per column unless wrapped in and=
-    if frm and to:
-        sales_q["and"] = f"(created_at.gte.{frm},created_at.lte.{to})"
-    elif frm:
-        sales_q["created_at"] = f"gte.{frm}"
-    sales = _rest("ecom_orders", sales_q)
-    rows = sales if isinstance(sales, list) else []
+    if period == "year":
+        rows = _fetch_orders_year_paginated(tenant_id, frm, to)
+    else:
+        sales_q: dict[str, str] = {
+            "select": "id,total_amount,paid_amount,payment_status,status",
+            "tenant_id": f"eq.{tenant_id}",
+            "order": "created_at.desc",
+            "limit": "500",
+        }
+        # PostgREST: one filter per column unless wrapped in and=
+        if frm and to:
+            sales_q["and"] = f"(created_at.gte.{frm},created_at.lte.{to})"
+        elif frm:
+            sales_q["created_at"] = f"gte.{frm}"
+        sales = _rest("ecom_orders", sales_q)
+        rows = sales if isinstance(sales, list) else []
     active = [
         r
         for r in rows
@@ -473,14 +543,73 @@ def _orders_in_period(tenant_id: str, period: str) -> tuple[str, list[dict[str, 
     return label, active
 
 
+def _fetch_orders_year_paginated(
+    tenant_id: str, frm: str | None, to: str | None
+) -> list[dict[str, Any]]:
+    """Paginate YTD orders; fail-closed on error; soft-cap / wall-clock (D9/D11/D17)."""
+    if not frm or not to:
+        raise _ReportFetchError("year range missing from/to")
+    started = time.monotonic()
+    out: list[dict[str, Any]] = []
+    for page in range(_YEAR_MAX_PAGES):
+        if time.monotonic() - started > _YEAR_WALL_CLOCK_S:
+            logger.warning(
+                "kasir-tools year wall-clock tenant=%s pages=%s rows=%s",
+                tenant_id,
+                page,
+                len(out),
+            )
+            raise _ReportCapExceeded("wall_clock")
+        sales_q: dict[str, str] = {
+            "select": "id,total_amount,paid_amount,payment_status,status,created_at",
+            "tenant_id": f"eq.{tenant_id}",
+            "order": "created_at.desc",
+            "limit": str(_YEAR_PAGE_SIZE),
+            "offset": str(page * _YEAR_PAGE_SIZE),
+            "and": f"(created_at.gte.{frm},created_at.lte.{to})",
+        }
+        try:
+            sales = _rest("ecom_orders", sales_q, timeout=30)
+        except _ReportFetchError:
+            raise
+        except Exception as err:
+            raise _ReportFetchError(str(err)) from err
+        batch = sales if isinstance(sales, list) else []
+        out.extend(batch)
+        if len(batch) < _YEAR_PAGE_SIZE:
+            logger.info(
+                "kasir-tools year done tenant=%s pages=%s rows=%s latency_ms=%s",
+                tenant_id,
+                page + 1,
+                len(out),
+                int((time.monotonic() - started) * 1000),
+            )
+            return out
+    logger.warning(
+        "kasir-tools year soft-cap tenant=%s pages=%s rows=%s",
+        tenant_id,
+        _YEAR_MAX_PAGES,
+        len(out),
+    )
+    raise _ReportCapExceeded("max_pages")
+
+
 def _top_products(
-    tenant_id: str, period: str, limit: int = 5
+    tenant_id: str,
+    period: str,
+    limit: int = 5,
+    *,
+    orders: list[dict[str, Any]] | None = None,
+    label: str | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     """Aggregate ecom_order_items by item_name for the period (revenue desc)."""
-    label, orders = _orders_in_period(tenant_id, period)
+    if orders is None:
+        label, orders = _orders_in_period(tenant_id, period)
+    elif not label:
+        label = _period_range(period)[0]
     ids = [str(o["id"]) for o in orders if o.get("id")]
     if not ids:
-        return label, []
+        return label or _period_range(period)[0], []
     # Chunk in.() to keep URLs short on bigger months.
     items: list[dict[str, Any]] = []
     chunk = 80
@@ -528,7 +657,7 @@ def _format_top_products(
         if standalone:
             body.append("")
             body.append(
-                "Coba periode lain: *hari ini* / *minggu ini* / *bulan ini*."
+                "Coba periode lain: *hari ini* / *minggu ini* / *bulan ini* / *tahun ini*."
             )
         return "\n".join(body)
 
@@ -567,7 +696,9 @@ def _combined_report(
     revenue = sum(float(r.get("total_amount") or 0) for r in sales_list)
     purchase_total = sum(float(r.get("total_cost") or 0) for r in buys_list)
     margin = revenue - purchase_total
-    _, ranked = _top_products(tenant_id, period, limit=5)
+    _, ranked = _top_products(
+        tenant_id, period, limit=5, orders=sales_list, label=label
+    )
     lines = [
         f"📊 *Laporan {label}*",
         "",
@@ -584,8 +715,8 @@ def _combined_report(
         lines.append("Ringkasan tutup toko untuk hari ini.")
     else:
         lines.append(
-            "Mau lihat *minggu ini* atau *bulan ini*? "
-            "Ketik *laporan minggu ini* / *laporan bulan ini*."
+            "Mau lihat *minggu ini*, *bulan ini*, atau *tahun ini*? "
+            "Ketik *laporan minggu ini* / *laporan bulan ini* / *laporan tahun ini*."
         )
     return "\n".join(lines)
 
@@ -600,6 +731,9 @@ def _format_tutup_recap(report: str, low_stock: str) -> str:
 
 
 def _with_tenant(params: dict[str, Any] | None, kwargs: dict[str, Any]):
+    # Model must never supply tenant_id — only phone → resolve (D12 A).
+    if params and "tenant_id" in params:
+        params.pop("tenant_id", None)
     phone = _resolve_phone(params, kwargs)
     if not phone:
         return None, (
@@ -668,7 +802,22 @@ def _handle_products(params: dict[str, Any] | None = None, **kwargs: Any) -> str
         return safe_user_error("products")
 
 
+def _out_of_ytd_refuse(raw: str | None) -> str | None:
+    """HOLD D13 A: never silent-map tahun lalu / 20xx to YTD."""
+    p = str(raw or "").strip().lower()
+    if not p:
+        return None
+    if p in ("year", "tahun", "tahun ini", "this year", "ytd"):
+        return None
+    if _OUT_OF_YTD_RE.search(p):
+        return _OUT_OF_YTD_MSG
+    return None
+
+
 def _normalize_period(raw: str | None, default: str = "today") -> str:
+    refuse = _out_of_ytd_refuse(raw)
+    if refuse:
+        raise _OutOfYtdPeriod(refuse)
     p = str(raw or default).strip().lower()
     aliases = {
         "today": "today",
@@ -680,10 +829,16 @@ def _normalize_period(raw: str | None, default: str = "today") -> str:
         "month": "month",
         "bulan": "month",
         "bulan ini": "month",
+        "year": "year",
+        "tahun": "year",
+        "tahun ini": "year",
+        "this year": "year",
+        "ytd": "year",
     }
+    allowed = ("today", "week", "month", "year")
     if p in aliases:
         return aliases[p]
-    return default if default in ("today", "week", "month") else "today"
+    return default if default in allowed else "today"
 
 
 def _handle_report(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
@@ -696,6 +851,13 @@ def _handle_report(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
         _phone, tenant_id = resolved
         period = _normalize_period(params.get("period"), "today")
         return _combined_report(tenant_id, period)
+    except _OutOfYtdPeriod as err:
+        return sanitize_user_text(str(err) or _OUT_OF_YTD_MSG) or _OUT_OF_YTD_MSG
+    except _ReportCapExceeded:
+        return sanitize_user_text(_YEAR_CAP_MSG) or _YEAR_CAP_MSG
+    except _ReportFetchError as err:
+        logger.warning("kasir_daily_report fetch failed: %s", err)
+        return safe_user_error("report")
     except Exception as err:
         logger.exception("kasir_daily_report failed: %s", err)
         return safe_user_error("report")
@@ -743,6 +905,13 @@ def _handle_top_products(params: dict[str, Any] | None = None, **kwargs: Any) ->
             limit = 5
         label, ranked = _top_products(tenant_id, period, limit=limit)
         return _format_top_products(label, ranked, standalone=True)
+    except _OutOfYtdPeriod as err:
+        return sanitize_user_text(str(err) or _OUT_OF_YTD_MSG) or _OUT_OF_YTD_MSG
+    except _ReportCapExceeded:
+        return sanitize_user_text(_YEAR_CAP_MSG) or _YEAR_CAP_MSG
+    except _ReportFetchError as err:
+        logger.warning("kasir_top_products fetch failed: %s", err)
+        return safe_user_error("top")
     except Exception as err:
         logger.exception("kasir_top_products failed: %s", err)
         return safe_user_error("top")
@@ -877,7 +1046,9 @@ def register(ctx) -> None:
                 "name": "kasir_daily_report",
                 "description": (
                     "Laporan penjualan + pembelian + ranking produk terlaris "
-                    "(langsung dari database). period: today|week|month. "
+                    "(langsung dari database). period: today|week|month|year. "
+                    "year = tahun ini (Januari s/d hari ini, Asia/Jakarta). "
+                    "Jangan pakai tahun lalu / 2024 — belum didukung. "
                     "Pakai untuk omzet/laporan. Untuk pertanyaan 'produk paling "
                     "laris / paling oke' lebih tepat kasir_top_products."
                 ),
@@ -886,7 +1057,7 @@ def register(ctx) -> None:
                     "properties": {
                         "period": {
                             "type": "string",
-                            "description": "today (default), week, atau month",
+                            "description": "today (default), week, month, atau year (tahun ini YTD)",
                         },
                         "phone": {
                             "type": "string",
@@ -940,7 +1111,7 @@ def register(ctx) -> None:
                     "properties": {
                         "period": {
                             "type": "string",
-                            "description": "month (default), week, atau today",
+                            "description": "month (default), week, today, atau year",
                         },
                         "limit": {
                             "type": "integer",

@@ -1,12 +1,14 @@
 name: kasir-tools
 label: Kasir tools (Hermes → Supabase)
-version: 0.5.8
+version: 0.5.9
 description: >
   Kasir read + draft/confirm write tools. Queries and writes Supabase/PostgREST
-  directly from Hermes. Tenant from Hermes WhatsApp session key / pipe stamp —
-  never KASIR_AGENT_PHONES. Drafts persist on volume; confirm poll via /send-poll;
-  satu lagi via last_sale memory; tutup toko = hari-ini omzet + stok menipis.
-  kasir_consult forwards optional phone for Nest metrics inject (flagged).
+  directly from Hermes (no Supabase MCP on WA). Tenant from Hermes WhatsApp
+  session key / pipe stamp — never KASIR_AGENT_PHONES. Report period year =
+  calendar YTD Jakarta with paginated fetch + soft-cap. Drafts persist on volume;
+  confirm poll via /send-poll; satu lagi via last_sale memory; tutup toko =
+  hari-ini omzet + stok menipis. kasir_consult forwards optional phone for Nest
+  metrics inject (flagged).
 author: NusantaraSoft
 provides_tools:
   - kasir_get_stock
