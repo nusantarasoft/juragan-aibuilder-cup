@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { EditOutlined, StarOutlined, MailOutlined, BellOutlined, WarningFilled, PlusOutlined, MenuOutlined, CloseOutlined } from '@ant-design/icons';
 import { Tooltip, Badge } from 'antd';
 import { BorderBeam } from '@/components/ui/border-beam';
+import { getVOTheme } from '../layout/voTheme';
 
-const FloatingOrbMenu = () => {
+const FloatingOrbMenu = ({ darkMode = false }: { darkMode?: boolean }) => {
+    const vo = getVOTheme(darkMode);
     const [isOpen, setIsOpen] = useState(false); // Default closed
     const [isHovered, setIsHovered] = useState(false);
 
@@ -63,13 +65,14 @@ const FloatingOrbMenu = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'radial-gradient(circle at 30% 30%, #ffffff 0%, #f3f4f6 70%, #e5e7eb 100%)',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.15), inset 0 4px 6px rgba(255,255,255,0.8), inset -2px -2px 6px rgba(0,0,0,0.05)',
+        background: vo.glass,
+        boxShadow: vo.shadow,
         cursor: 'pointer',
-        color: '#1f2937', 
+        color: vo.text, 
         fontSize: '1rem',
         transition: 'transform 0.2s ease',
-        border: '1px solid rgba(255,255,255,0.8)'
+        border: `1px solid ${vo.border}`,
+        backdropFilter: vo.blur
     };
 
     return (
@@ -178,7 +181,7 @@ const FloatingOrbMenu = () => {
                                             height: 20,
                                             borderRadius: '50%',
                                             background: child.badgeColor,
-                                            border: '2px solid white',
+                                            border: `2px solid ${vo.ring}`,
                                             color: 'white',
                                             fontSize: '10px',
                                             fontWeight: 'bold',
@@ -287,12 +290,13 @@ const FloatingOrbMenu = () => {
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        background: '#ffffff',
-                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                                        background: vo.glass,
+                                                        boxShadow: vo.shadow,
                                                         cursor: 'pointer',
-                                                        color: '#1677ff', 
+                                                        color: vo.text, 
                                                         fontSize: '0.8rem',
-                                                        border: '1px solid rgba(22, 119, 255, 0.2)',
+                                                        border: `1px solid ${vo.borderStrong}`,
+                                                        backdropFilter: vo.blur,
                                                         transition: 'transform 0.2s ease',
                                                     }}
                                                     onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
@@ -333,8 +337,8 @@ const FloatingOrbMenu = () => {
                             height: 75,
                             flexShrink: 0,
                             borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #4096ff, #1677ff)',
-                            boxShadow: '0 12px 35px rgba(22,119,255,0.4), inset -8px -8px 20px rgba(0,0,0,0.15), inset 8px 8px 20px rgba(255,255,255,0.3)',
+                            background: vo.accentGradient,
+                            boxShadow: vo.accentGlow,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -385,8 +389,8 @@ const FloatingOrbMenu = () => {
                     borderRadius: '50%',
                     cursor: 'pointer',
                     pointerEvents: 'auto',
-                    background: 'linear-gradient(135deg, #4096ff, #1677ff)',
-                    boxShadow: '0 8px 25px rgba(22,119,255,0.4), inset -4px -4px 10px rgba(0,0,0,0.15), inset 4px 4px 10px rgba(255,255,255,0.3)',
+                    background: vo.accentGradient,
+                    boxShadow: vo.accentGlow,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',

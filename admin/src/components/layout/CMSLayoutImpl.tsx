@@ -37,6 +37,7 @@ import {
     DashboardOutlined,
     SafetyCertificateOutlined,
     BellOutlined,
+    CodeSandboxOutlined,
 } from "@ant-design/icons";
 import {
     PageContainer,
@@ -61,6 +62,7 @@ import {
     Segmented,
 } from "antd";
 import AIStudioDrawer from "./AIStudioDrawer";
+import AgentSessionOverlay from "@/components/agent-session/AgentSessionOverlay";
 import CommandPalette from "../common/CommandPalette";
 import ThemeDrawer from "./ThemeDrawer";
 import { useRouter, usePathname } from "next/navigation";
@@ -73,6 +75,9 @@ import LiveCursors from "@/components/common/LiveCursors";
 import { useWebSocketStore } from "@/store/useWebSocketStore";
 import { useDockStore } from "@/store/useDockStore";
 import ModuleIllustrationCards from "./ModuleIllustrationCards";
+import OnlineUsersAvatars, { SIDER_FOOTER_ROW_HEIGHT } from "./OnlineUsersAvatars";
+import { MacWaveDock } from "../dock/MacWaveDock";
+import { getVOTheme } from "./voTheme";
 import { TamagotchiGlobal } from "../helper/TamagotchiGlobal";
 import LeftDockToolbar from "./LeftDockToolbar";
 // Dynamic import for MetaBalls to prevent SSR crash (ogl WebGL library requires browser)
@@ -115,6 +120,7 @@ const BOTTOM_DOCK_WIDGETS = [
     { id: 'weather', label: 'Weather', icon: '⛅', width: 350, height: 350 },
     { id: 'music', label: 'Music', icon: '🎵', width: 350, height: 450 },
     { id: 'settings', label: 'Settings', icon: '⚙️', width: 500, height: 500 },
+    { id: 'add-widget', label: 'Add Widget', icon: '➕', width: 400, height: 300 },
 ] as const;
 
 // Search Input Component for Header
@@ -415,6 +421,8 @@ export default function CMSLayoutImpl({
     const [themeDrawerVisible, setThemeDrawerVisible] = useState(false);
     const { themePalette } = usePreferencesStore();
     const themeColor = themePalette.primary;
+    // Virtual Office HUD look for sidemenus / docks / orb menu
+    const vo = getVOTheme(darkMode);
     const { cursors } = useWebSocketStore();
 
     // Controlled openKeys to prevent submenu collapse on navigation
@@ -519,9 +527,11 @@ export default function CMSLayoutImpl({
 
     // Sidebar Actions Component (Language, Notification, Theme) - for outer ProLayout actionsRender
     const SidebarActions = () => (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-around", gap: 12 }}>
-            <Divider orientation="vertical" style={{ height: 16, background: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)', margin: 0 }} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: outerCollapsed ? "center" : "space-evenly", flexDirection: outerCollapsed ? "column" : "row", gap: outerCollapsed ? 12 : 0, width: "100%" }}>
             <LanguageSwitcher isDark={darkMode} />
+            <div onClick={() => setThemeDrawerVisible(true)} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: vo.textMuted, borderRadius: 10 }} className="vo-icon-btn">
+                <SettingOutlined style={{ fontSize: 16 }} />
+            </div>
             <NotificationBell />
             <Dropdown
                 key="account-menu"
@@ -567,13 +577,13 @@ export default function CMSLayoutImpl({
                     justifyContent: 'center',
                     width: 32,
                     height: 32,
-                    borderRadius: '50%',
+                    borderRadius: 10,
                     transition: 'all 0.2s',
-                    color: darkMode ? '#fff' : '#000',
+                    color: vo.textMuted,
                 }}
-                className="hover:bg-gray-200 dark:hover:bg-gray-800"
+                className="vo-icon-btn"
                 >
-                    <Avatar icon={<UserOutlined />} size="small" style={{ backgroundColor: themePalette.primary, width: 24, height: 24, lineHeight: "24px" }} />
+                    <Avatar icon={<UserOutlined />} size="small" style={{ background: vo.accentGradient, width: 24, height: 24, lineHeight: "24px", border: `1px solid ${vo.border}` }} />
                 </div>
             </Dropdown>
         </div>
@@ -668,6 +678,31 @@ export default function CMSLayoutImpl({
                 </Tooltip>
             </Popover>
         </div>
+    );
+
+    // Entry point to the 3D Virtual Office (AI Agents) — rendered at the far right of the page header
+    const virtualOfficeButton = (
+        <Tooltip key="virtual-office" title="Enter the 3D Virtual Office (AI Agents)" placement="bottomRight">
+            <Button
+                type="primary"
+                icon={<CodeSandboxOutlined />}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    router.push("/admin/virtual-office");
+                }}
+                style={{
+                    marginLeft: 8,
+                    height: 32,
+                    borderRadius: 10,
+                    fontWeight: 600,
+                    border: "none",
+                    background: "linear-gradient(135deg, #6366f1 0%, #22d3ee 100%)",
+                    boxShadow: "0 6px 18px -6px rgba(99, 102, 241, 0.6)",
+                }}
+            >
+                Virtual Office
+            </Button>
+        </Tooltip>
     );
 
     React.useEffect(() => {
@@ -1011,7 +1046,7 @@ export default function CMSLayoutImpl({
                         headerRender={false}
                         siderWidth={260}
                         navTheme={darkMode ? "realDark" : "light"}
-                        token={{ sider: { colorMenuBackground: darkMode ? '#1f1f1f' : '#f4f0fa', colorTextMenu: darkMode ? 'rgba(255,255,255,0.75)' : '#4a5568', colorTextMenuSelected: darkMode ? '#fff' : '#1a202c', colorBgMenuItemSelected: darkMode ? 'rgba(255,255,255,0.15)' : '#ffffff', colorTextMenuItemHover: darkMode ? '#fff' : '#2d3748', colorBgMenuItemHover: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.5)' } }}
+                        token={{ sider: { colorMenuBackground: vo.surfaceStrong, colorTextMenu: vo.textMuted, colorTextMenuSelected: vo.text, colorBgMenuItemSelected: vo.selectedBg, colorTextMenuItemHover: vo.text, colorBgMenuItemHover: vo.hoverBg, colorTextMenuSecondary: vo.textDim, colorTextMenuTitle: vo.text } }}
                         layout="side"
                         contentStyle={{
                             padding: 0,
@@ -1058,7 +1093,7 @@ export default function CMSLayoutImpl({
                                 minHeight: 52,
                                 padding: outerCollapsed ? "8px 4px" : "0 12px",
                                 gap: outerCollapsed ? 6 : 0,
-                                borderBottom: darkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid #f0f0f0",
+                                borderBottom: `1px solid ${vo.border}`,
                                 boxSizing: "border-box",
                                 flexDirection: outerCollapsed ? "column" : "row",
                             }}>
@@ -1071,18 +1106,22 @@ export default function CMSLayoutImpl({
                                         open={appListOpen}
                                         onOpenChange={setAppListOpen}
                                     >
+                                        {/* VO identity tile (same as the Virtual Office TopBar logo tile) */}
                                         <div style={{
                                             cursor: "pointer",
-                                            padding: 5,
-                                            borderRadius: 6,
+                                            width: 28,
+                                            height: 28,
+                                            borderRadius: 10,
                                             display: "flex",
                                             alignItems: "center",
                                             justifyContent: "center",
-                                            background: darkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)",
-                                            transition: "all 0.2s",
+                                            background: vo.accentGradient,
+                                            color: "#ffffff",
+                                            boxShadow: vo.accentGlow,
+                                            transition: "transform 0.2s, filter 0.2s",
                                         }}
-                                        onMouseEnter={(e) => { e.currentTarget.style.background = darkMode ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.08)"; }}
-                                        onMouseLeave={(e) => { e.currentTarget.style.background = darkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)"; }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; e.currentTarget.style.transform = "scale(1.05)"; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; e.currentTarget.style.transform = "scale(1)"; }}
                                         >
                                             <AppstoreOutlined style={{ fontSize: 14 }} />
                                         </div>
@@ -1112,72 +1151,45 @@ export default function CMSLayoutImpl({
                                 </div>
                                 {/* Right: Quick-action icon circles */}
                                 <div style={{ display: "flex", alignItems: "center", gap: 4, flexDirection: outerCollapsed ? "column" : "row", marginTop: outerCollapsed ? 4 : 0 }}>
-                                    <Tooltip title="Sarah J." placement={outerCollapsed ? "right" : "bottom"}>
-                                        <Avatar size={22} src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah" style={{ backgroundColor: "#86efac", cursor: "pointer", fontSize: 10 }}>S</Avatar>
-                                    </Tooltip>
-                                    {!outerCollapsed && (
-                                        <>
-                                            <Tooltip title="Sync" placement="bottom">
-                                                <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#fca5a5", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                                                    <SwapOutlined style={{ fontSize: 10, color: "#fff" }} />
-                                                </div>
-                                            </Tooltip>
-                                            <Tooltip title="Recent" placement="bottom">
-                                                <div style={{ width: 22, height: 22, borderRadius: "50%", background: darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                                                    <ClockCircleOutlined style={{ fontSize: 10 }} />
-                                                </div>
-                                            </Tooltip>
-                                            <Tooltip title="Settings" placement="bottom">
-                                                <div onClick={() => setThemeDrawerVisible(true)} style={{ width: 22, height: 22, borderRadius: "50%", background: darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                                                    <SettingOutlined style={{ fontSize: 10 }} />
-                                                </div>
-                                            </Tooltip>
-                                            <AnimatedThemeToggler isDark={darkMode} onThemeChange={handleDarkModeChange} size={14} style={{ color: darkMode ? "#fff" : "#000" }} />
-                                        </>
-                                    )}
-                                    {outerCollapsed && (
-                                        <AnimatedThemeToggler isDark={darkMode} onThemeChange={handleDarkModeChange} size={14} style={{ color: darkMode ? "#fff" : "#000" }} />
-                                    )}
+                                    <AnimatedThemeToggler isDark={darkMode} onThemeChange={handleDarkModeChange} size={14} style={{ color: vo.textMuted }} />
                                 </div>
                             </div>
-                            {/* Dashboard & Activity Feed Card */}
+                            {/* Dashboard & Activity Feed Card (VO glass card) */}
                             <div style={{
-                                background: darkMode ? "rgba(255,255,255,0.08)" : "#ffffff",
+                                background: vo.hoverBg,
                                 borderRadius: 16,
-                                padding: "8px",
-                                border: darkMode ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.06)",
-                                boxShadow: darkMode
-                                    ? "0 2px 8px rgba(0,0,0,0.3)"
-                                    : "0 2px 8px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)",
+                                padding: "6px",
+                                border: `1px solid ${vo.border}`,
+                                boxShadow: "none",
                                 margin: outerCollapsed ? "8px 4px" : "12px 8px",
                                 display: "flex",
                                 flexDirection: "column",
-                                gap: 4
+                                gap: 2
                             }}>
                                 {/* Dashboard Item */}
                                 <div 
                                     onClick={() => { setPathname("/admin/dashboard"); router.push("/admin/dashboard"); }}
                                     style={{
-                                        padding: "10px 12px",
+                                        padding: "9px 11px",
                                         borderRadius: 12,
                                         cursor: "pointer",
                                         display: "flex",
                                         alignItems: "center",
                                         gap: 12,
-                                        background: isDashboard ? (darkMode ? "rgba(255,255,255,0.15)" : "#ffffff") : "transparent",
-                                        boxShadow: isDashboard && !darkMode ? "0 2px 10px rgba(0,0,0,0.05)" : "none",
-                                        color: isDashboard ? (darkMode ? "#fff" : "#1a202c") : (darkMode ? "rgba(255,255,255,0.75)" : "#4a5568"),
+                                        background: isDashboard ? vo.selectedBg : "transparent",
+                                        border: `1px solid ${isDashboard ? vo.selectedBorder : "transparent"}`,
+                                        color: isDashboard ? vo.text : vo.textMuted,
                                         transition: "all 0.2s"
                                     }}
-                                    onMouseEnter={(e) => { if (!isDashboard) e.currentTarget.style.background = darkMode ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.5)"; }}
-                                    onMouseLeave={(e) => { if (!isDashboard) e.currentTarget.style.background = "transparent"; }}
+                                    onMouseEnter={(e) => { if (!isDashboard) { e.currentTarget.style.background = vo.hoverBg; e.currentTarget.style.borderColor = vo.border; e.currentTarget.style.color = vo.text; } }}
+                                    onMouseLeave={(e) => { if (!isDashboard) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.color = vo.textMuted; } }}
                                 >
-                                    <DashboardOutlined style={{ fontSize: 16, color: isDashboard ? "var(--theme-color)" : "inherit" }} />
+                                    <DashboardOutlined style={{ fontSize: 16, color: isDashboard ? vo.accent : "inherit" }} />
                                     {!outerCollapsed && (
                                         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                            <span style={{ fontSize: 14, fontWeight: isDashboard ? 500 : 400 }}>Dashboard</span>
-                                            <div style={{ width: 24, height: 24, background: "rgba(124, 58, 237, 0.1)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                                <SafetyCertificateOutlined style={{ fontSize: 12, color: "#7c3aed" }} />
+                                            <span style={{ fontSize: 13, fontWeight: isDashboard ? 600 : 500 }}>Dashboard</span>
+                                            <div style={{ width: 22, height: 22, background: vo.accentSoft, border: `1px solid ${vo.border}`, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                <SafetyCertificateOutlined style={{ fontSize: 11, color: vo.accent }} />
                                             </div>
                                         </div>
                                     )}
@@ -1186,23 +1198,23 @@ export default function CMSLayoutImpl({
                                 <div 
                                     onClick={() => { setPathname("/admin/activity"); router.push("/admin/activity"); }}
                                     style={{
-                                        padding: "10px 12px",
+                                        padding: "9px 11px",
                                         borderRadius: 12,
                                         cursor: "pointer",
                                         display: "flex",
                                         alignItems: "center",
                                         gap: 12,
-                                        background: isActivity ? (darkMode ? "rgba(255,255,255,0.15)" : "#ffffff") : "transparent",
-                                        boxShadow: isActivity && !darkMode ? "0 2px 10px rgba(0,0,0,0.05)" : "none",
-                                        color: isActivity ? (darkMode ? "#fff" : "#1a202c") : (darkMode ? "rgba(255,255,255,0.75)" : "#4a5568"),
+                                        background: isActivity ? vo.selectedBg : "transparent",
+                                        border: `1px solid ${isActivity ? vo.selectedBorder : "transparent"}`,
+                                        color: isActivity ? vo.text : vo.textMuted,
                                         transition: "all 0.2s"
                                     }}
-                                    onMouseEnter={(e) => { if (!isActivity) e.currentTarget.style.background = darkMode ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.5)"; }}
-                                    onMouseLeave={(e) => { if (!isActivity) e.currentTarget.style.background = "transparent"; }}
+                                    onMouseEnter={(e) => { if (!isActivity) { e.currentTarget.style.background = vo.hoverBg; e.currentTarget.style.borderColor = vo.border; e.currentTarget.style.color = vo.text; } }}
+                                    onMouseLeave={(e) => { if (!isActivity) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.color = vo.textMuted; } }}
                                 >
-                                    <ClockCircleOutlined style={{ fontSize: 16, color: isActivity ? "var(--theme-color)" : "inherit" }} />
+                                    <ClockCircleOutlined style={{ fontSize: 16, color: isActivity ? vo.accent : "inherit" }} />
                                     {!outerCollapsed && (
-                                        <span style={{ fontSize: 14, fontWeight: isActivity ? 500 : 400 }}>Activity Feed</span>
+                                        <span style={{ fontSize: 13, fontWeight: isActivity ? 600 : 500 }}>Activity Feed</span>
                                     )}
                                 </div>
                             </div>
@@ -1210,39 +1222,17 @@ export default function CMSLayoutImpl({
                             );
                         }}
                         actionsRender={(props) => {
-                            if (props.isMobile) return [];
-                            return [<SidebarActions key="sidebar-actions" />];
+                            return [
+                                <div key="sidebar-actions-wrap" style={{ boxSizing: 'border-box', width: '100%', display: 'flex' }}>
+                                    <SidebarActions />
+                                </div>
+                            ];
                         }}
                         menuRender={(props, defaultDom) => {
                             return (
                             <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                                 <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
                                     {defaultDom}
-                                </div>
-                                {/* Bottom Profile Section */}
-                                <div style={{ 
-                                    padding: "16px 12px", 
-                                    borderTop: darkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.04)",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: outerCollapsed ? "center" : "space-between"
-                                }}>
-                                    <Badge count={29} size="small" offset={[-2, 2]} color="var(--theme-color, #7c3aed)">
-                                        <div style={{
-                                            width: 36, height: 36, borderRadius: "50%",
-                                            background: darkMode ? "rgba(255,255,255,0.1)" : "#e2e8f0",
-                                            display: "flex", alignItems: "center", justifyContent: "center",
-                                            cursor: "pointer"
-                                        }}>
-                                            <BellOutlined style={{ fontSize: 16, color: darkMode ? "#fff" : "#4a5568" }} />
-                                        </div>
-                                    </Badge>
-                                    {!outerCollapsed && (
-                                        <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", background: darkMode ? "rgba(255,255,255,0.1)" : "rgba(124, 58, 237, 0.1)", padding: "4px 12px 4px 4px", borderRadius: 20 }}>
-                                            <Avatar size="small" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah" style={{ backgroundColor: "#86efac" }}>S</Avatar>
-                                            <span style={{ fontSize: 13, fontWeight: 500, color: darkMode ? "#fff" : "#1a202c" }}>Sarah J.</span>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         )}}
@@ -1358,7 +1348,7 @@ export default function CMSLayoutImpl({
                             onCollapse={handleInnerCollapse}
                             siderWidth={240}
                             navTheme={darkMode ? "realDark" : "light"}
-                            token={{ sider: { colorMenuBackground: darkMode ? '#141414' : '#fff', colorTextMenuSelected: themePalette.primary, colorBgMenuItemSelected: `${themePalette.primary}15`, colorTextMenuItemHover: themePalette.primary, colorBgMenuItemHover: `${themePalette.primary}08` } }}
+                            token={{ sider: { colorMenuBackground: vo.surface, colorTextMenu: vo.textMuted, colorTextMenuSelected: vo.text, colorBgMenuItemSelected: vo.selectedBg, colorTextMenuItemHover: vo.text, colorBgMenuItemHover: vo.hoverBg, colorTextMenuSecondary: vo.textDim, colorTextMenuTitle: vo.text } }}
                             layout="side"
                             contentStyle={{
                                 padding: 0,
@@ -1367,7 +1357,10 @@ export default function CMSLayoutImpl({
                             menuDataRender={() => innerRoutes.length > 0 ? innerRoutes : [{ path: '/dummy', name: 'No items' }]}
                             menuHeaderRender={false}
                             menuFooterRender={(props) => (
-                                <ModuleIllustrationCards collapsed={innerCollapsed} darkMode={darkMode} />
+                                <>
+                                    <ModuleIllustrationCards collapsed={innerCollapsed} darkMode={darkMode} />
+                                    <OnlineUsersAvatars collapsed={innerCollapsed} darkMode={darkMode} />
+                                </>
                             )}
                             menuExtraRender={() => (
                                 <div style={{
@@ -1387,8 +1380,10 @@ export default function CMSLayoutImpl({
                                         vertical={innerCollapsed}
                                         options={segmentedOptions}
                                         style={{
-                                            background: darkMode ? `rgba(var(--theme-color-rgb, 139, 92, 246), 0.15)` : `rgba(var(--theme-color-rgb, 139, 92, 246), 0.08)`,
-                                            border: darkMode ? `1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.3)` : `1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)`,
+                                            background: vo.hoverBg,
+                                            border: `1px solid ${vo.border}`,
+                                            borderRadius: 12,
+                                            padding: 2,
                                         }}
                                     />
                                 </div>
@@ -1454,7 +1449,7 @@ export default function CMSLayoutImpl({
                             <PageContainer
                                 title={title}
                                 subTitle={subTitle}
-                                extra={[...(extra || []), <PinStarShareActions key="pin-star-actions" />]}
+                                extra={[...(extra || []), <PinStarShareActions key="pin-star-actions" />, virtualOfficeButton]}
                                 breadcrumb={{
                                     items: breadcrumbItems.map((item, index) => ({
                                         key: index,
@@ -1479,66 +1474,14 @@ export default function CMSLayoutImpl({
                 transform: 'translateY(-50%)',
                 left: (outerCollapsed ? OUTER_COLLAPSED_WIDTH : 260) + (innerCollapsed ? 48 : 240) + 16,
                 zIndex: 50,
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 10,
-                background: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.7)',
-                backdropFilter: 'blur(12px)',
-                padding: '12px 8px',
-                borderRadius: '24px',
-                border: darkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.5)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.05)',
             }}>
-                {LEFT_DOCK_WIDGETS.map((item) => {
-                    const isOpen = dockWindows.some(w => w.widgetType === item.id);
-                    return (
-                        <Tooltip title={item.label} key={item.id} placement="right">
-                            <div
-                                onClick={() => openDockWindow(item.id as any, item.label, item.width, item.height)}
-                                style={{
-                                    position: 'relative',
-                                    width: 36,
-                                    height: 36,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    background: 'transparent',
-                                    borderRadius: 12,
-                                    transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                                    cursor: 'pointer',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform = 'scale(1.2) translateX(4px)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = 'scale(1) translateX(0)';
-                                }}
-                            >
-                                <span style={{
-                                    fontSize: '1.6rem',
-                                    lineHeight: 1,
-                                    filter: 'drop-shadow(0px 3px 5px rgba(0,0,0,0.2))',
-                                    userSelect: 'none',
-                                }}>
-                                    {item.icon}
-                                </span>
-                                {isOpen && (
-                                    <div style={{
-                                        position: 'absolute',
-                                        right: -6,
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        width: 5,
-                                        height: 5,
-                                        borderRadius: '50%',
-                                        background: 'rgba(0,0,0,0.4)',
-                                        boxShadow: '0 0 4px rgba(0,0,0,0.2)',
-                                    }} />
-                                )}
-                            </div>
-                        </Tooltip>
-                    );
-                })}
+                <MacWaveDock 
+                    items={LEFT_DOCK_WIDGETS as any} 
+                    direction="vertical" 
+                    darkMode={darkMode} 
+                    onItemClick={openDockWindow as any} 
+                    dockWindows={dockWindows} 
+                />
             </div>
 
             {/* Dock Widget Windows */}
@@ -1563,96 +1506,25 @@ export default function CMSLayoutImpl({
             {/* Bottom Dock Footer — Floating Icons */}
             <div className="hidden md:flex" style={{
                 position: 'fixed',
-                bottom: 16,
+                bottom: 0,
                 left: '50%',
                 transform: 'translateX(-50%)',
                 zIndex: 9999,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                background: darkMode ? 'rgba(30,30,40,0.72)' : 'rgba(255, 255, 255, 0.72)',
-                backdropFilter: 'blur(20px) saturate(180%)',
-                WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                padding: '8px 16px',
-                borderRadius: 30,
-                border: darkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.5)',
-                boxShadow: darkMode ? '0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2)' : '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
             }}>
-                {BOTTOM_DOCK_WIDGETS.map((item) => {
-                    const isOpen = dockWindows.some(w => w.widgetType === item.id);
-                    return (
-                        <Tooltip title={item.label} key={item.id}>
-                            <div
-                                onClick={() => openDockWindow(item.id as any, item.label, item.width, item.height)}
-                                style={{
-                                    position: 'relative',
-                                    width: '2.8rem',
-                                    height: '2.8rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    background: 'transparent',
-                                    borderRadius: 12,
-                                    transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                                    cursor: 'pointer',
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.25) translateY(-6px)'}
-                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1) translateY(0)'}
-                            >
-                                <span style={{
-                                    fontSize: '2.2rem',
-                                    lineHeight: 1,
-                                    filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.3))',
-                                    userSelect: 'none',
-                                }}>
-                                    {item.icon}
-                                </span>
-                                {isOpen && (
-                                    <div style={{
-                                        position: 'absolute',
-                                        bottom: -8,
-                                        left: '50%',
-                                        transform: 'translateX(-50%)',
-                                        width: 5,
-                                        height: 5,
-                                        borderRadius: '50%',
-                                        background: 'rgba(0,0,0,0.4)',
-                                        boxShadow: '0 0 4px rgba(0,0,0,0.2)',
-                                    }} />
-                                )}
-                            </div>
-                        </Tooltip>
-                    );
-                })}
-                {/* Add Widget button */}
-                <Tooltip title="Add Widget">
-                    <div
-                        style={{
-                            position: 'relative',
-                            width: '2.8rem',
-                            height: '2.8rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.25) translateY(-6px)'}
-                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1) translateY(0)'}
-                    >
-                        <span style={{
-                            fontSize: '2.2rem',
-                            lineHeight: 1,
-                            filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.3))',
-                            userSelect: 'none',
-                        }}>
-                            ➕
-                        </span>
-                    </div>
-                </Tooltip>
+                <MacWaveDock 
+                    items={BOTTOM_DOCK_WIDGETS as any} 
+                    direction="horizontal" 
+                    darkMode={darkMode} 
+                    onItemClick={openDockWindow as any} 
+                    dockWindows={dockWindows} 
+                />
             </div>
 
             {/* AI Studio Drawer */}
             <AIStudioDrawer visible={aiStudioVisible} onClose={() => setAIStudioVisible(false)} />
+
+            {/* AI agent session (Virtual Office → module page, ?agentSession=<id>) */}
+            <AgentSessionOverlay />
 
             {/* Global Command Palette (Ctrl+K / Cmd+K) */}
             <CommandPalette isDark={darkMode} themeColor={themeColor} />
@@ -1671,7 +1543,7 @@ export default function CMSLayoutImpl({
             }}>
                 {/* MetaBalls animation behind cluster */}
                 {/* Main Glassmorphic SpeedDial - Replaced with FloatingOrbMenu */}
-                <FloatingOrbMenu />
+                <FloatingOrbMenu darkMode={darkMode} />
             </div>
 
             {/* CSS for sidebar alignment */}
@@ -1698,80 +1570,159 @@ export default function CMSLayoutImpl({
                 
 
                 
-                /* --- SUBTLE UI REFINEMENT --- */
+                /* --- VIRTUAL OFFICE THEME (see components/layout/voTheme.ts) --- */
                 
-                /* Outer Menu (Primary Sidebar) — Light theme with pale purple tint */
+                /* Outer Menu (Primary Sidebar) — VO glass, strongest surface */
                 .cms-outer-sider {
-                    border-right: none !important;
+                    border-right: 1px solid ${vo.border} !important;
                     z-index: 100 !important;
-                    background: ${darkMode ? '#1a1a2e' : '#f4f0fa'} !important;
+                    background: ${vo.surfaceStrong} !important;
+                    backdrop-filter: ${vo.blur} !important;
+                    -webkit-backdrop-filter: ${vo.blur} !important;
+                    box-shadow: ${vo.shadow} !important;
                 }
                 .cms-outer-sider .ant-layout-sider-children {
-                    background: ${darkMode ? '#1a1a2e' : '#f4f0fa'} !important;
-                }
-                .cms-outer-sider .ant-menu {
                     background: transparent !important;
-                    color: ${darkMode ? 'rgba(255,255,255,0.75)' : '#4a5568'} !important;
+                }
+                /* Footer hairline, like the VO panel dividers */
+                .cms-outer-sider .cms-outer-sider-actions {
+                    border-top: 1px solid ${vo.border} !important;
+                }
+                /* Outer sider footer actions (actionsRender).
+                   DOM: .cms-outer-sider-actions > .ant-space.cms-outer-sider-actions-list
+                        > .ant-space-item > .cms-outer-sider-actions-list-item > SidebarActions
+                   Stretch every level to the full outer sider width so space-evenly works. */
+                .cms-outer-sider .cms-outer-sider-actions {
+                    display: flex !important;
+                    align-items: center !important;
+                    width: 100% !important;
+                    height: ${SIDER_FOOTER_ROW_HEIGHT}px !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    box-sizing: border-box !important;
+                }
+                .cms-outer-sider .cms-outer-sider-actions-collapsed {
+                    height: auto !important;
+                    padding: 8px 0 !important;
+                }
+                /* Inner footer: drop ProLayout's 16px bottom padding so the online-users
+                   row sits on the same baseline as the outer footer buttons. */
+                .cms-inner-sider .cms-inner-sider-footer {
+                    padding-block-end: 0 !important;
+                    margin-block-end: 0 !important;
+                }
+                .cms-outer-sider .cms-outer-sider-actions-list,
+                .cms-outer-sider .cms-outer-sider-actions-list > .ant-space-item,
+                .cms-outer-sider .cms-outer-sider-actions-list-item {
+                    display: flex !important;
+                    flex: 1 1 100% !important;
+                    width: 100% !important;
+                    min-width: 0 !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                }
+                .cms-outer-sider .cms-outer-sider-actions-list-item,
+                .cms-outer-sider .cms-outer-sider-actions-list-item:hover {
+                    background: transparent !important;
+                    cursor: default !important;
+                }
+                /* ---- Menus (both siders): base ---- */
+                .cms-outer-sider .ant-menu,
+                .cms-inner-sider .ant-menu {
+                    background: transparent !important;
+                    color: ${vo.textMuted} !important;
+                    border-inline-end: none !important;
+                }
+                .cms-outer-sider .ant-menu-sub,
+                .cms-inner-sider .ant-menu-sub {
+                    background: transparent !important;
                 }
                 .cms-outer-sider .ant-menu-item,
-                .cms-outer-sider .ant-menu-submenu-title {
-                    color: ${darkMode ? 'rgba(255,255,255,0.75)' : '#4a5568'} !important;
+                .cms-outer-sider .ant-menu-submenu-title,
+                .cms-inner-sider .ant-menu-item,
+                .cms-inner-sider .ant-menu-submenu-title {
+                    color: ${vo.textMuted} !important;
+                    font-weight: 500 !important;
+                    border: 1px solid transparent !important;
+                    border-radius: 12px !important;
+                    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
+                }
+                .cms-inner-sider .ant-menu-item,
+                .cms-inner-sider .ant-menu-submenu-title {
+                    padding-inline: 12px !important;
                 }
                 .cms-outer-sider .ant-menu-item .anticon,
-                .cms-outer-sider .ant-menu-submenu-title .anticon {
-                    color: ${darkMode ? 'rgba(255,255,255,0.5)' : '#718096'} !important;
+                .cms-outer-sider .ant-menu-submenu-title .anticon,
+                .cms-inner-sider .ant-menu-item .anticon,
+                .cms-inner-sider .ant-menu-submenu-title .anticon {
+                    color: ${vo.textDim} !important;
+                    transition: color 0.2s ease !important;
                 }
-                .cms-outer-sider .ant-menu-item-group-title {
-                    color: ${darkMode ? 'rgba(255,255,255,0.35)' : '#a0aec0'} !important;
-                    font-size: 11px !important;
+                .cms-outer-sider .ant-menu-submenu-arrow,
+                .cms-inner-sider .ant-menu-submenu-arrow {
+                    color: ${vo.textDim} !important;
+                }
+                /* VO section labels: 10px bold uppercase, wide tracking */
+                .cms-outer-sider .ant-menu-item-group-title,
+                .cms-inner-sider .ant-menu-item-group-title {
+                    color: ${vo.textDim} !important;
+                    font-size: 10px !important;
+                    font-weight: 700 !important;
                     text-transform: uppercase !important;
-                    letter-spacing: 0.8px !important;
+                    letter-spacing: 0.14em !important;
                 }
                 
-                /* Inner Menu (Contextual Sidebar) */
+                /* Inner Menu (Contextual Sidebar) — VO glass, secondary surface */
                 .cms-inner-sider {
-                    border-right: none !important;
+                    border-right: 1px solid ${vo.border} !important;
                     overflow: visible !important;
                     left: ${outerCollapsed ? OUTER_COLLAPSED_WIDTH : 260}px !important;
                     z-index: 99 !important;
-                    background: ${darkMode ? '#141414' : '#ffffff'} !important;
+                    background: ${vo.surface} !important;
+                    backdrop-filter: ${vo.blur} !important;
+                    -webkit-backdrop-filter: ${vo.blur} !important;
                 }
                 .cms-inner-sider .ant-layout-sider-children {
-                    background: ${darkMode ? '#141414' : '#ffffff'} !important;
+                    background: transparent !important;
                 }
                 
-                /* Clean Menu Item Hover & Active States */
-                .cms-outer-sider .ant-menu-item,
-                .cms-inner-sider .ant-menu-item {
-                    transition: all 0.2s ease !important;
-                    border-radius: 12px !important;
-                }
-                
-                .cms-outer-sider .ant-menu-item:hover {
-                    background: ${darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(255, 255, 255, 0.5)'} !important;
+                /* ---- Hover (VO AgentRow: white/5 fill + white/10 hairline) ---- */
+                .cms-outer-sider .ant-menu-item:hover,
+                .cms-outer-sider .ant-menu-submenu-title:hover,
+                .cms-inner-sider .ant-menu-item:hover,
+                .cms-inner-sider .ant-menu-submenu-title:hover {
+                    background: ${vo.hoverBg} !important;
+                    border-color: ${vo.border} !important;
+                    color: ${vo.text} !important;
                     box-shadow: none !important;
                 }
-                .cms-inner-sider .ant-menu-item:hover {
-                    background: ${darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)'} !important;
+                .cms-outer-sider .ant-menu-item:hover .anticon,
+                .cms-outer-sider .ant-menu-submenu-title:hover .anticon,
+                .cms-inner-sider .ant-menu-item:hover .anticon,
+                .cms-inner-sider .ant-menu-submenu-title:hover .anticon {
+                    color: ${vo.text} !important;
+                }
+                
+                /* ---- Selected (VO AgentRow selected: white/10 fill + white/25 border) ---- */
+                .cms-outer-sider .ant-menu-item.ant-menu-item-selected,
+                .cms-inner-sider .ant-menu-item.ant-menu-item-selected {
+                    background: ${vo.selectedBg} !important;
+                    border-color: ${vo.selectedBorder} !important;
+                    color: ${vo.text} !important;
+                    font-weight: 600 !important;
                     box-shadow: none !important;
                 }
-                
-                .cms-outer-sider .ant-menu-item-selected {
-                    background: ${darkMode ? 'rgba(139, 92, 246, 0.2)' : '#ffffff'} !important;
-                    box-shadow: ${darkMode ? '0 2px 10px rgba(139,92,246,0.15)' : '0 2px 10px rgba(0,0,0,0.05)'} !important;
-                    border-radius: 12px !important;
-                    color: ${darkMode ? '#e2e8f0' : '#1a202c'} !important;
+                .cms-outer-sider .ant-menu-item.ant-menu-item-selected .anticon,
+                .cms-inner-sider .ant-menu-item.ant-menu-item-selected .anticon {
+                    color: ${vo.accent} !important;
                 }
-                .cms-outer-sider .ant-menu-item-selected .anticon {
-                    color: ${darkMode ? '#a78bfa' : 'var(--theme-color, #7c3aed)'} !important;
+                .cms-outer-sider .ant-menu-submenu-selected > .ant-menu-submenu-title,
+                .cms-inner-sider .ant-menu-submenu-selected > .ant-menu-submenu-title {
+                    color: ${vo.text} !important;
                 }
-                
-                .cms-inner-sider .ant-menu-item-selected {
-                    background: ${darkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(var(--theme-color-rgb), 0.08)'} !important;
-                    box-shadow: inset 4px 0 0 ${darkMode ? '#a78bfa' : 'var(--theme-color)'} !important;
-                }
-                .cms-inner-sider .ant-menu-item-selected .anticon {
-                    color: ${darkMode ? '#a78bfa' : 'var(--theme-color, #7c3aed)'} !important;
+                .cms-outer-sider .ant-menu-submenu-selected > .ant-menu-submenu-title .anticon,
+                .cms-inner-sider .ant-menu-submenu-selected > .ant-menu-submenu-title .anticon {
+                    color: ${vo.accent} !important;
                 }
                 
                 /* The sider-children contains the collapse button, so we can't clip it */
@@ -1786,27 +1737,76 @@ export default function CMSLayoutImpl({
                 .cms-inner-sider .ant-menu {
                     overflow-x: hidden !important;
                     overflow-y: auto !important;
-                    background: transparent !important;
                 }
                 
                 .cms-inner-sider .cms-inner-sider-extra {
                     overflow-x: hidden !important;
                 }
                 
-                .cms-inner-sider .ant-menu-item,
-                .cms-inner-sider .ant-menu-submenu-title {
-                    padding-inline: 12px !important;
-                    color: ${darkMode ? 'rgba(255,255,255,0.75)' : '#4a5568'} !important;
-                }
-                .cms-inner-sider .ant-menu-item .anticon,
-                .cms-inner-sider .ant-menu-submenu-title .anticon {
-                    color: ${darkMode ? 'rgba(255,255,255,0.5)' : '#718096'} !important;
-                }
-                
                 /* Fix segmented control to fit within sidebar */
                 .cms-inner-sider .ant-segmented {
                     max-width: 100% !important;
                     box-sizing: border-box !important;
+                }
+                /* VO tab look: muted items, white/10 selected pill */
+                .cms-inner-sider .ant-segmented .ant-segmented-item {
+                    color: ${vo.textMuted} !important;
+                    border-radius: 9px !important;
+                    transition: color 0.2s ease !important;
+                }
+                .cms-inner-sider .ant-segmented .ant-segmented-item:hover:not(.ant-segmented-item-selected) {
+                    color: ${vo.text} !important;
+                    background: transparent !important;
+                }
+                .cms-inner-sider .ant-segmented .ant-segmented-item-selected,
+                .cms-inner-sider .ant-segmented .ant-segmented-thumb {
+                    background: ${vo.selectedBg} !important;
+                    color: ${vo.text} !important;
+                    box-shadow: inset 0 0 0 1px ${vo.border} !important;
+                    border-radius: 9px !important;
+                }
+                .cms-inner-sider .ant-segmented .ant-segmented-item-selected .anticon {
+                    color: ${vo.accent} !important;
+                }
+                
+                /* VO IconButton (footer actions) */
+                .vo-icon-btn {
+                    transition: background 0.2s ease, color 0.2s ease !important;
+                }
+                .vo-icon-btn:hover {
+                    background: ${vo.selectedBg} !important;
+                    color: ${vo.text} !important;
+                }
+                
+                /* Slim VO scrollbars inside the siders */
+                .cms-outer-sider ::-webkit-scrollbar,
+                .cms-inner-sider ::-webkit-scrollbar {
+                    width: 6px;
+                    height: 6px;
+                }
+                .cms-outer-sider ::-webkit-scrollbar-thumb,
+                .cms-inner-sider ::-webkit-scrollbar-thumb {
+                    background: ${vo.border};
+                    border-radius: 999px;
+                }
+                .cms-outer-sider ::-webkit-scrollbar-track,
+                .cms-inner-sider ::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                
+                /* Collapse buttons: VO glass chip */
+                .cms-outer-sider-collapsed-button,
+                .cms-inner-sider-collapsed-button {
+                    background: ${vo.glass} !important;
+                    backdrop-filter: ${vo.blur} !important;
+                    -webkit-backdrop-filter: ${vo.blur} !important;
+                    border: 1px solid ${vo.border} !important;
+                    color: ${vo.textMuted} !important;
+                    box-shadow: ${vo.shadow} !important;
+                }
+                .cms-outer-sider-collapsed-button:hover,
+                .cms-inner-sider-collapsed-button:hover {
+                    color: ${vo.text} !important;
                 }
                 
                 /* Ensure collapse buttons are fully visible and above other elements */
