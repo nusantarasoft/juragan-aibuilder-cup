@@ -53,7 +53,7 @@ Chat nomor NS  →  DAFTAR  →  nama toko  →  YA
 
 Admin juga bisa menambah toko lewat form lama di halaman yang sama; jalur **DAFTAR** adalah yang paling mudah dijelaskan ke calon tenant.
 
-**Belum di v1 (janji sales):** OTP, pembayaran di chat, banyak toko per nomor, multi-PDF / SOP per toko, sitasi halaman PDF (saklar ops `KASIR_CONSULT_CITE_PAGES` — default OFF).
+**Belum di v1 (janji sales):** OTP, pembayaran di chat, banyak toko per nomor, multi-PDF / SOP per toko, sitasi halaman PDF (saklar ops `KASIR_CONSULT_CITE_PAGES` — default OFF), rentang bebas *dari…sampai…*, tahun angka (*laporan 2024*).
 
 **Soft GA (2026-09-20):** konsultasi kurikulum (`tanya`…) **ON**; multimodal foto/suara **ON** di prod (ops bisa matikan `KASIR_MULTIMODAL` / `KASIR_CONSULT`). Angka stok/omzet **tetap** dari kasir DB — tidak pernah dari RAG buku.
 
@@ -72,7 +72,10 @@ Semua lewat **chat teks** ke nomor bisnis yang sama (bukan app terpisah):
 | *satu lagi* / *ulang yang tadi* | Ulang item jual terakhir (masih perlu *ya*) |
 | *belanja / restock…* | Ringkasan belanja → *ya* |
 | *laporan* / *laporan hari ini* | Omzet & ringkasan (hari/minggu/bulan) |
-| *laporan tahun ini* | Omzet YTD (Januari → hari ini, Jakarta). Bukan tahun lalu / 2024 |
+| *laporan 3 bulan terakhir* | Omzet ~3 bulan kalender (hari-1 bulan−2 → hari ini) — beda dari kuartal |
+| *laporan kuartal ini* / *kuartal lalu* | Omzet kuartal kalender (Q1–Q4 Jakarta) |
+| *laporan tahun ini* | Omzet YTD (Januari → hari ini, Jakarta) |
+| *laporan tahun lalu* | Omzet tahun kalender sebelumnya |
 | *paling laris* / *best seller* | Produk terlaris |
 | *tutup toko* / *mau pulang* | Omzet hari ini + stok menipis (ritual closing) |
 | *tanya …* / *konsultasi …* / *pendamping …* | Saran singkat dari **buku kurikulum UKM** (bukan stok toko). Soft GA: saklar **ON** di prod; kalau ops matikan, bot bilang belum aktif |

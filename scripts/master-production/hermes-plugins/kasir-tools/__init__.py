@@ -32,6 +32,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from . import period as period_mod
 from .user_safe import safe_user_error, sanitize_user_text
 
 logger = logging.getLogger("hermes.plugins.kasir-tools")
@@ -46,40 +47,12 @@ _TENANT_REQUIRED_PATHS = frozenset(
     }
 )
 
-# Year YTD pagination (HOLD 2026-09-22 D17 A) — keep in sync with docs/pitch.
-_YEAR_PAGE_SIZE = 200
-_YEAR_MAX_PAGES = 50  # 10k orders
-_YEAR_WALL_CLOCK_S = 45.0
-
-_OUT_OF_YTD_RE = re.compile(
-    r"(tahun\s+lalu|last\s*year|setahun\s+terakhir|"
-    r"\b12\s*bulan\b|\b20\d{2}\b)",
-    re.IGNORECASE,
-)
-
-_OUT_OF_YTD_MSG = (
-    "Untuk sekarang yang ada *laporan tahun ini* (Januari sampai hari ini). "
-    "Tahun lalu / tahun tertentu belum tersedia. "
-    "Coba ketik *laporan tahun ini* atau *laporan bulan ini*."
-)
-
-_YEAR_CAP_MSG = (
-    "Data *tahun ini* terlalu banyak untuk diringkas di chat. "
-    "Coba ketik *laporan bulan ini* atau *laporan minggu ini*."
-)
+# BSS period reports via PostgREST RPC (CEO+eng 2026-10-06). Kill switch:
+# KASIR_PERIOD_RPC=0 → user_safe (never row-fetch fallback).
 
 
 class _ReportFetchError(Exception):
-    """PostgREST/page failure — fail closed (no partial totals)."""
-
-
-class _ReportCapExceeded(Exception):
-    """Soft page cap or wall-clock hit — no partial totals."""
-
-
-class _OutOfYtdPeriod(Exception):
-    """Unsupported period phrase; message is user-safe."""
-
+    """PostgREST/RPC failure — fail closed (no partial totals)."""
 
 def _user_safe_tool(fn: Callable[..., str], *, kind: str = "generic") -> Callable[..., str]:
     """Wrap tool handlers so every return is sanitized before the model sees it."""
@@ -306,6 +279,46 @@ def _rest(
         raise _ReportFetchError(f"URL error on {path}: {err}") from err
 
 
+def _rpc(fn: str, body: dict[str, Any], *, timeout: float = 20) -> Any:
+    """POST /rest/v1/rpc/{fn} — eng E1; timeout 20s > SQL statement_timeout 15s."""
+    base = _supabase_url()
+    key = _service_key()
+    if not base or not key:
+        raise RuntimeError(
+            "SUPABASE_URL / SUPABASE_SERVICE_KEY belum di-set di container Hermes"
+        )
+    url = f"{base}/rest/v1/rpc/{fn}"
+    data = json.dumps(body).encode("utf-8")
+    req = urllib.request.Request(url, data=data, method="POST")
+    req.add_header("apikey", key)
+    req.add_header("Authorization", f"Bearer {key}")
+    req.add_header("Accept", "application/json")
+    req.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode("utf-8", "replace"))
+    except urllib.error.HTTPError as err:
+        raise _ReportFetchError(f"HTTP {err.code} on rpc/{fn}") from err
+    except urllib.error.URLError as err:
+        raise _ReportFetchError(f"URL error on rpc/{fn}: {err}") from err
+
+
+def _period_rpc_enabled() -> bool:
+    return os.environ.get("KASIR_PERIOD_RPC", "1").strip().lower() not in (
+        "0",
+        "false",
+        "no",
+        "off",
+    )
+
+
+def _strip_tool_phone(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Eng E7: report tools ignore model-supplied phone (stamp/JID only)."""
+    out = dict(params or {})
+    out.pop("phone", None)
+    return out
+
+
 def _resolve_tenant(phone: str) -> str:
     rows = _rest(
         "studio_whatsapp_config",
@@ -364,36 +377,12 @@ def _idr(n: float | int) -> str:
 
 
 def _jakarta_today() -> datetime:
-    return datetime.now(_JAKARTA)
+    return period_mod.jakarta_now()
 
 
-def _period_range(period: str) -> tuple[str, str | None, str | None]:
-    """Jakarta calendar ranges. Keep `year` YTD in sync with Nest periodRange."""
-    now = _jakarta_today()
-    today = now.strftime("%Y-%m-%d")
-    if period == "month":
-        start = now.replace(day=1).strftime("%Y-%m-%d")
-        # last day of month
-        if now.month == 12:
-            nxt = now.replace(year=now.year + 1, month=1, day=1)
-        else:
-            nxt = now.replace(month=now.month + 1, day=1)
-        end = (nxt - timedelta(days=1)).strftime("%Y-%m-%d")
-        return "bulan ini", f"{start}T00:00:00+07:00", f"{end}T23:59:59.999+07:00"
-    if period == "week":
-        # Monday-start
-        dow = now.weekday()  # Mon=0
-        start_dt = now - timedelta(days=dow)
-        end_dt = start_dt + timedelta(days=6)
-        start = start_dt.strftime("%Y-%m-%d")
-        end = end_dt.strftime("%Y-%m-%d")
-        return "minggu ini", f"{start}T00:00:00+07:00", f"{end}T23:59:59.999+07:00"
-    if period == "year":
-        # Calendar YTD Asia/Jakarta: Jan 1 → end of today (HOLD D7 A).
-        start = now.replace(month=1, day=1).strftime("%Y-%m-%d")
-        return "tahun ini", f"{start}T00:00:00+07:00", f"{today}T23:59:59.999+07:00"
-    return "hari ini", f"{today}T00:00:00+07:00", f"{today}T23:59:59.999+07:00"
-
+def _period_range(period: str) -> tuple[str, str, str]:
+    """Jakarta calendar ranges — keep Nest periodRange in sync."""
+    return period_mod.period_range(period)
 
 def _active_products(tenant_id: str) -> list[dict[str, Any]]:
     rows = _rest(
@@ -517,209 +506,63 @@ def _stock_rows(tenant_id: str, product_query: str | None) -> list[dict[str, Any
     return out
 
 
-def _orders_in_period(tenant_id: str, period: str) -> tuple[str, list[dict[str, Any]]]:
+def _fetch_period_payload(
+    tenant_id: str, period: str, *, top_n: int = 5
+) -> tuple[str, dict[str, Any]]:
+    """Call kasir_period_report RPC; fail-closed; no row-fetch fallback."""
+    if not _period_rpc_enabled():
+        raise _ReportFetchError("KASIR_PERIOD_RPC=0")
     label, frm, to = _period_range(period)
-    if period == "year":
-        rows = _fetch_orders_year_paginated(tenant_id, frm, to)
-    else:
-        sales_q: dict[str, str] = {
-            "select": "id,total_amount,paid_amount,payment_status,status",
-            "tenant_id": f"eq.{tenant_id}",
-            "order": "created_at.desc",
-            "limit": "500",
-        }
-        # PostgREST: one filter per column unless wrapped in and=
-        if frm and to:
-            sales_q["and"] = f"(created_at.gte.{frm},created_at.lte.{to})"
-        elif frm:
-            sales_q["created_at"] = f"gte.{frm}"
-        sales = _rest("ecom_orders", sales_q)
-        rows = sales if isinstance(sales, list) else []
-    active = [
-        r
-        for r in rows
-        if str(r.get("status") or "").lower() not in ("cancelled", "refunded")
-    ]
-    return label, active
-
-
-def _fetch_orders_year_paginated(
-    tenant_id: str, frm: str | None, to: str | None
-) -> list[dict[str, Any]]:
-    """Paginate YTD orders; fail-closed on error; soft-cap / wall-clock (D9/D11/D17)."""
-    if not frm or not to:
-        raise _ReportFetchError("year range missing from/to")
     started = time.monotonic()
-    out: list[dict[str, Any]] = []
-    for page in range(_YEAR_MAX_PAGES):
-        if time.monotonic() - started > _YEAR_WALL_CLOCK_S:
-            logger.warning(
-                "kasir-tools year wall-clock tenant=%s pages=%s rows=%s",
-                tenant_id,
-                page,
-                len(out),
-            )
-            raise _ReportCapExceeded("wall_clock")
-        sales_q: dict[str, str] = {
-            "select": "id,total_amount,paid_amount,payment_status,status,created_at",
-            "tenant_id": f"eq.{tenant_id}",
-            "order": "created_at.desc",
-            "limit": str(_YEAR_PAGE_SIZE),
-            "offset": str(page * _YEAR_PAGE_SIZE),
-            "and": f"(created_at.gte.{frm},created_at.lte.{to})",
-        }
-        try:
-            sales = _rest("ecom_orders", sales_q, timeout=30)
-        except _ReportFetchError:
-            raise
-        except Exception as err:
-            raise _ReportFetchError(str(err)) from err
-        batch = sales if isinstance(sales, list) else []
-        out.extend(batch)
-        if len(batch) < _YEAR_PAGE_SIZE:
-            logger.info(
-                "kasir-tools year done tenant=%s pages=%s rows=%s latency_ms=%s",
-                tenant_id,
-                page + 1,
-                len(out),
-                int((time.monotonic() - started) * 1000),
-            )
-            return out
-    logger.warning(
-        "kasir-tools year soft-cap tenant=%s pages=%s rows=%s",
-        tenant_id,
-        _YEAR_MAX_PAGES,
-        len(out),
+    raw = _rpc(
+        "kasir_period_report",
+        {
+            "p_tenant_id": tenant_id,
+            "p_from": frm,
+            "p_to": to,
+            "p_top_n": max(1, min(int(top_n), 20)),
+        },
+        timeout=20,
     )
-    raise _ReportCapExceeded("max_pages")
+    # PostgREST may return object or single-element list
+    if isinstance(raw, list):
+        raw = raw[0] if raw else {}
+    try:
+        payload = period_mod.validate_report_payload(raw)
+    except ValueError as err:
+        raise _ReportFetchError(f"rpc schema: {err}") from err
+    logger.info(
+        "kasir-tools period rpc tenant=%s preset=%s orders=%s latency_ms=%s ok",
+        tenant_id,
+        period,
+        payload["order_count"],
+        int((time.monotonic() - started) * 1000),
+    )
+    return label, payload
 
 
 def _top_products(
-    tenant_id: str,
-    period: str,
-    limit: int = 5,
-    *,
-    orders: list[dict[str, Any]] | None = None,
-    label: str | None = None,
+    tenant_id: str, period: str, limit: int = 5
 ) -> tuple[str, list[dict[str, Any]]]:
-    """Aggregate ecom_order_items by item_name for the period (revenue desc)."""
-    if orders is None:
-        label, orders = _orders_in_period(tenant_id, period)
-    elif not label:
-        label = _period_range(period)[0]
-    ids = [str(o["id"]) for o in orders if o.get("id")]
-    if not ids:
-        return label or _period_range(period)[0], []
-    # Chunk in.() to keep URLs short on bigger months.
-    items: list[dict[str, Any]] = []
-    chunk = 80
-    for i in range(0, len(ids), chunk):
-        part = ids[i : i + chunk]
-        rows = _rest(
-            "ecom_order_items",
-            {
-                "select": "item_name,quantity,subtotal,status",
-                "order_id": f"in.({','.join(part)})",
-            },
-        )
-        if isinstance(rows, list):
-            items.extend(rows)
-
-    product_map: dict[str, dict[str, Any]] = {}
-    for row in items:
-        status = str(row.get("status") or "").lower()
-        if status in ("cancelled", "returned"):
-            continue
-        name = str(row.get("item_name") or "Produk").strip() or "Produk"
-        key = name.lower()
-        prev = product_map.get(key) or {"name": name, "units": 0.0, "revenue": 0.0}
-        prev["units"] += float(row.get("quantity") or 0)
-        prev["revenue"] += float(row.get("subtotal") or 0)
-        product_map[key] = prev
-
-    ranked = sorted(
-        product_map.values(),
-        key=lambda p: (float(p["revenue"]), float(p["units"])),
-        reverse=True,
-    )
-    return label, ranked[: max(1, min(limit, 20))]
+    label, payload = _fetch_period_payload(tenant_id, period, top_n=limit)
+    return label, list(payload.get("top_products") or [])
 
 
 def _format_top_products(
     label: str, ranked: list[dict[str, Any]], *, standalone: bool
 ) -> str:
-    if not ranked:
-        body = [
-            f"🏆 *Produk terlaris ({label})*",
-            "",
-            "Belum ada penjualan di periode ini.",
-        ]
-        if standalone:
-            body.append("")
-            body.append(
-                "Coba periode lain: *hari ini* / *minggu ini* / *bulan ini* / *tahun ini*."
-            )
-        return "\n".join(body)
-
-    lines = [f"🏆 *Produk terlaris ({label})*", ""]
-    for i, p in enumerate(ranked, 1):
-        units = p["units"]
-        units_s = (
-            str(int(units)) if float(units).is_integer() else f"{units:g}"
-        )
-        lines.append(
-            f"{i}. *{p['name']}* — {units_s} pcs · {_idr(p['revenue'])}"
-        )
-    if standalone:
-        best = ranked[0]["name"]
-        lines.append("")
-        lines.append(f"Paling oke: *{best}*.")
-    return "\n".join(lines)
+    return period_mod.format_top_products(
+        label, ranked, standalone=standalone, idr=_idr
+    )
 
 
 def _combined_report(
     tenant_id: str, period: str, *, closing: bool = False
 ) -> str:
-    label, sales_list = _orders_in_period(tenant_id, period)
-    buy_q: dict[str, str] = {
-        "select": "total_cost",
-        "tenant_id": f"eq.{tenant_id}",
-        "status": "eq.completed",
-    }
-    _label, frm, to = _period_range(period)
-    if frm and to:
-        d0, d1 = frm[:10], to[:10]
-        buy_q["and"] = f"(purchase_date.gte.{d0},purchase_date.lte.{d1})"
-    buys = _rest("studio_umkm_purchases", buy_q)
-    buys_list = buys if isinstance(buys, list) else []
-    order_count = len(sales_list)
-    revenue = sum(float(r.get("total_amount") or 0) for r in sales_list)
-    purchase_total = sum(float(r.get("total_cost") or 0) for r in buys_list)
-    margin = revenue - purchase_total
-    _, ranked = _top_products(
-        tenant_id, period, limit=5, orders=sales_list, label=label
+    label, payload = _fetch_period_payload(tenant_id, period, top_n=5)
+    return period_mod.format_combined_report(
+        label, payload, closing=closing, idr=_idr
     )
-    lines = [
-        f"📊 *Laporan {label}*",
-        "",
-        f"Penjualan: *{order_count}* order",
-        f"Total penjualan: *{_idr(revenue)}*",
-        f"Total belanja: *{_idr(purchase_total)}*",
-        f"Selisih: *{_idr(margin)}*",
-    ]
-    if ranked:
-        lines.append("")
-        lines.append(_format_top_products(label, ranked, standalone=False))
-    lines.append("")
-    if closing:
-        lines.append("Ringkasan tutup toko untuk hari ini.")
-    else:
-        lines.append(
-            "Mau lihat *minggu ini*, *bulan ini*, atau *tahun ini*? "
-            "Ketik *laporan minggu ini* / *laporan bulan ini* / *laporan tahun ini*."
-        )
-    return "\n".join(lines)
-
 
 def _format_tutup_recap(report: str, low_stock: str) -> str:
     """Pure compose for unit tests — omzet hari ini + stok menipis + closing."""
@@ -802,48 +645,27 @@ def _handle_products(params: dict[str, Any] | None = None, **kwargs: Any) -> str
         return safe_user_error("products")
 
 
-def _out_of_ytd_refuse(raw: str | None) -> str | None:
-    """HOLD D13 A: never silent-map tahun lalu / 20xx to YTD."""
-    p = str(raw or "").strip().lower()
-    if not p:
-        return None
-    if p in ("year", "tahun", "tahun ini", "this year", "ytd"):
-        return None
-    if _OUT_OF_YTD_RE.search(p):
-        return _OUT_OF_YTD_MSG
-    return None
-
-
 def _normalize_period(raw: str | None, default: str = "today") -> str:
-    refuse = _out_of_ytd_refuse(raw)
-    if refuse:
-        raise _OutOfYtdPeriod(refuse)
-    p = str(raw or default).strip().lower()
-    aliases = {
-        "today": "today",
-        "hari": "today",
-        "hari ini": "today",
-        "week": "week",
-        "minggu": "week",
-        "minggu ini": "week",
-        "month": "month",
-        "bulan": "month",
-        "bulan ini": "month",
-        "year": "year",
-        "tahun": "year",
-        "tahun ini": "year",
-        "this year": "year",
-        "ytd": "year",
-    }
-    allowed = ("today", "week", "month", "year")
-    if p in aliases:
-        return aliases[p]
-    return default if default in allowed else "today"
+    return period_mod.compile_period(raw, default)
+
+
+def _handle_period_error(err: BaseException, *, kind: str) -> str:
+    if isinstance(err, (period_mod.PeriodRefuse, period_mod.PeriodAmbiguous)):
+        return sanitize_user_text(str(err)) or period_mod.UNSUPPORTED_MSG
+    if isinstance(err, _ReportFetchError):
+        if "KASIR_PERIOD_RPC=0" in str(err):
+            return sanitize_user_text(period_mod.rpc_off_message()) or safe_user_error(
+                kind
+            )
+        logger.warning("kasir period fetch failed kind=%s: %s", kind, err)
+        return safe_user_error(kind)
+    logger.exception("kasir period handler failed kind=%s: %s", kind, err)
+    return safe_user_error(kind)
 
 
 def _handle_report(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
     try:
-        params = params or {}
+        params = _strip_tool_phone(params)
         resolved, err = _with_tenant(params, kwargs)
         if err:
             return err
@@ -851,22 +673,14 @@ def _handle_report(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
         _phone, tenant_id = resolved
         period = _normalize_period(params.get("period"), "today")
         return _combined_report(tenant_id, period)
-    except _OutOfYtdPeriod as err:
-        return sanitize_user_text(str(err) or _OUT_OF_YTD_MSG) or _OUT_OF_YTD_MSG
-    except _ReportCapExceeded:
-        return sanitize_user_text(_YEAR_CAP_MSG) or _YEAR_CAP_MSG
-    except _ReportFetchError as err:
-        logger.warning("kasir_daily_report fetch failed: %s", err)
-        return safe_user_error("report")
     except Exception as err:
-        logger.exception("kasir_daily_report failed: %s", err)
-        return safe_user_error("report")
+        return _handle_period_error(err, kind="report")
 
 
 def _handle_tutup_toko(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
     """Closing ritual: today's omzet + thin stock — no period upsell."""
     try:
-        params = params or {}
+        params = _strip_tool_phone(params)
         resolved, err = _with_tenant(params, kwargs)
         if err:
             return err
@@ -885,19 +699,17 @@ def _handle_tutup_toko(params: dict[str, Any] | None = None, **kwargs: Any) -> s
         )
         return _format_tutup_recap(report, low)
     except Exception as err:
-        logger.exception("kasir_tutup_toko failed: %s", err)
-        return safe_user_error("tutup")
+        return _handle_period_error(err, kind="tutup")
 
 
 def _handle_top_products(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
     try:
-        params = params or {}
+        params = _strip_tool_phone(params)
         resolved, err = _with_tenant(params, kwargs)
         if err:
             return err
         assert resolved
         _phone, tenant_id = resolved
-        # Default month: "produk paling laris" without a period usually means recent stretch.
         period = _normalize_period(params.get("period"), "month")
         try:
             limit = int(params.get("limit") or 5)
@@ -905,17 +717,8 @@ def _handle_top_products(params: dict[str, Any] | None = None, **kwargs: Any) ->
             limit = 5
         label, ranked = _top_products(tenant_id, period, limit=limit)
         return _format_top_products(label, ranked, standalone=True)
-    except _OutOfYtdPeriod as err:
-        return sanitize_user_text(str(err) or _OUT_OF_YTD_MSG) or _OUT_OF_YTD_MSG
-    except _ReportCapExceeded:
-        return sanitize_user_text(_YEAR_CAP_MSG) or _YEAR_CAP_MSG
-    except _ReportFetchError as err:
-        logger.warning("kasir_top_products fetch failed: %s", err)
-        return safe_user_error("top")
     except Exception as err:
-        logger.exception("kasir_top_products failed: %s", err)
-        return safe_user_error("top")
-
+        return _handle_period_error(err, kind="top")
 
 def _on_session_start(event=None, **kwargs: Any) -> None:
     try:
@@ -1046,22 +849,20 @@ def register(ctx) -> None:
                 "name": "kasir_daily_report",
                 "description": (
                     "Laporan penjualan + pembelian + ranking produk terlaris "
-                    "(langsung dari database). period: today|week|month|year. "
-                    "year = tahun ini (Januari s/d hari ini, Asia/Jakarta). "
-                    "Jangan pakai tahun lalu / 2024 — belum didukung. "
-                    "Pakai untuk omzet/laporan. Untuk pertanyaan 'produk paling "
-                    "laris / paling oke' lebih tepat kasir_top_products."
+                    "(RPC aggregate). period enum: today|week|month|year|"
+                    "quarter|quarter_last|last_3_months|last_year. "
+                    "year=YTD; last_year=tahun kalender lalu; "
+                    "last_3_months=dari tgl 1 dua bulan lalu s/d hari ini; "
+                    "kuartal=kalender Q. Jangan kirim tahun angka (2024) atau "
+                    "rentang tanggal bebas. Analisa periode = tool ini (angka)."
                 ),
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "period": {
                             "type": "string",
-                            "description": "today (default), week, month, atau year (tahun ini YTD)",
-                        },
-                        "phone": {
-                            "type": "string",
-                            "description": "Nomor toko (opsional; biasanya otomatis).",
+                            "enum": list(period_mod.PERIOD_PRESETS),
+                            "description": "Preset periode (default today).",
                         },
                     },
                     "required": [],
@@ -1085,10 +886,6 @@ def register(ctx) -> None:
                             "type": "number",
                             "description": "Ambang stok menipis (default 10).",
                         },
-                        "phone": {
-                            "type": "string",
-                            "description": "Nomor toko (opsional; biasanya otomatis).",
-                        },
                     },
                     "required": [],
                 },
@@ -1100,26 +897,20 @@ def register(ctx) -> None:
             {
                 "name": "kasir_top_products",
                 "description": (
-                    "Ranking produk terlaris berdasarkan qty + omzet dari "
-                    "ecom_order_items. Panggil saat user tanya produk paling "
-                    "laris / paling oke / best seller / penjualan per produk. "
-                    "Default period=month. Jangan tanya periode dulu kecuali "
-                    "user meminta periode spesifik."
+                    "Ranking produk terlaris (RPC). Default period=month. "
+                    "Pakai enum period yang sama dengan kasir_daily_report."
                 ),
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "period": {
                             "type": "string",
-                            "description": "month (default), week, today, atau year",
+                            "enum": list(period_mod.PERIOD_PRESETS),
+                            "description": "Preset periode (default month).",
                         },
                         "limit": {
                             "type": "integer",
                             "description": "Jumlah produk (default 5, max 20).",
-                        },
-                        "phone": {
-                            "type": "string",
-                            "description": "Nomor toko (opsional; biasanya otomatis).",
                         },
                     },
                     "required": [],

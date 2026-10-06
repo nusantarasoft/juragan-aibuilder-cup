@@ -267,29 +267,58 @@ Production `studio_settings` uses **Groq** / `openai/gpt-oss-20b` (free-tier rep
 **Priority:** P3
 **Depends on:** Staff vs owner roles; pendamping v1 shipped
 
-### DB aggregate RPC for BSS year / heavy reports
+## BSS period reports
 
-**What:** Postgres/PostgREST RPC (or view) that aggregates order count + revenue (and purchase totals) per `tenant_id` + period; Hermes calls it instead of paginating `ecom_orders` rows for `year` (and later heavy months).
+Plan: `~/.gstack/projects/spygunpro-nusantarasoft-3/ceo-plans/2026-10-06-bss-period-compiler-rpc.md` (HOLD; supersedes 2026-09-22 year-paginate HOLD). v1 ships compiler presets + `/rpc/kasir_period_report` (includes `last_year`); WIP paginate year is folded away.
 
-**Why:** HOLD v1 soft-cap (`page_size=200`, `max_pages=50`, wall-clock ~45s) redirects busy shops to *bulan ini* — they never get full YTD in chat. DB-side aggregate fixes accuracy + latency.
+### BSS free date ranges on WA
 
-**Context:** CEO/eng HOLD 2026-09-22 BSS DB insight (`ceo-plans/2026-09-22-bss-db-insight-hold.md`). Match status filters in Hermes `_orders_in_period` / `_combined_report`. Observe cap/timeout logs after year ships before prioritizing. Keep `tenant_id` forced; no Hermes MCP.
+**What:** Parse explicit `dari…sampai…` / date pairs into Jakarta `from`/`to` (max window), soft-refuse inverted/too-long ranges, call the same `kasir_period_report` RPC.
 
-**Effort:** M–L
+**Why:** Preset-only v1 rejects ad-hoc analisa (*1 Jan–15 Mar*) even though the aggregate API can serve any bounds.
+
+**Context:** CEO review 2026-10-06 D6 B / D17 A. Start from Hermes period compiler + Nest detect mirror; never silent-map bad ranges to a preset. Prefer after RPC + presets are live and smoked.
+
+**Effort:** M
 **Priority:** P2
-**Depends on:** Year YTD path shipped + observability for cap/timeout hits
+**Depends on:** Period compiler + RPC v1 shipped
 
-### BSS report: tahun lalu / explicit calendar year
+### Nest laporan / Agentic Ask → same period RPC
 
-**What:** Support owner phrases *tahun lalu* and/or explicit years (e.g. *laporan 2024*) in Hermes period normalize + Nest detect; replace HOLD soft-refuse with real ranges.
+**What:** Switch Nest `studio-umkm.service` report/Ask aggregates from row-fetch to `/rpc/kasir_period_report` (service role) with the same filters as Hermes.
 
-**Why:** YTD-only leaves common compare-to-last-year asks on the refuse path; owners will keep asking.
+**Why:** v1 leaves Nest on row-fetch (D10 B) — WA and Ask can drift on multi-month totals.
 
-**Context:** CEO/eng HOLD 2026-09-22 D13 A (soft refuse) + D21 A. Prefer after YTD ships; better with or after DB aggregate RPC so last-year isn’t another paginate cliff. Keep Asia/Jakarta bounds; never silent-map unknown years to YTD.
+**Context:** CEO review 2026-10-06 D19 A. Docs must keep saying Nest row path is not SoT until this lands. Harness needs RPC mocks.
+
+**Effort:** M
+**Priority:** P2
+**Depends on:** RPC v1 live + WA smoke green
+
+### BSS explicit calendar year (*laporan 2024*)
+
+**What:** Accept 4-digit / “tahun 2024” → Jan 1–Dec 31 Jakarta; reject future / out-of-data years with soft-refuse.
+
+**Why:** v1 includes `tahun lalu` only; owners still say the year number.
+
+**Context:** CEO review 2026-10-06 D9 A / D18 A. RPC already supports any calendar year; compiler + bounds + fixtures only. Do not silent-map to YTD.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** RPC + `last_year` shipped
+
+### Bound narrative on RPC JSON (non-RAG)
+
+**What:** Optional short LLM summary that may only use fields from the period RPC JSON (omzet/belanja/top-N) — no kurikulum retrieve, no invented numbers; behind a flag.
+
+**Why:** Owners say “analisa”; v1 is numbers-only (D11 A). A later path can feel like analisa without L8 ledger RAG.
+
+**Context:** CEO review 2026-10-06 D20 A. Not `kasir_consult`. Eval must catch numeric hallucination.
 
 **Effort:** M
 **Priority:** P3
-**Depends on:** Year YTD path shipped
+**Depends on:** RPC v1 + presets live
+
 
 ## Hermes
 

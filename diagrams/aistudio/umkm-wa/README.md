@@ -5,7 +5,7 @@ Part of [docs/aistudio/](../../../docs/aistudio/README.md).
 | Bagian | Folder | Level |
 |--------|--------|-------|
 | **Business** | [business/](./business/) | L0–L4 (+ L0b, L0c, **L0d**) |
-| **System** | [system/](./system/) | L5–**L10** |
+| **System** | [system/](./system/) | L5–**L11** |
 
 ## Untuk sales / pitch (disarankan)
 
@@ -31,7 +31,7 @@ Label masih teknis; bukan pintu sales.
 
 Ops docs: [business/ops/](../../../docs/aistudio/umkm-wa/business/ops/) · [consult-kurikulum.md](../../../docs/aistudio/umkm-wa/business/ops/consult-kurikulum.md)
 
-## System (L5–L10)
+## System (L5–L11)
 
 | Level | SVG | Isi |
 |-------|-----|-----|
@@ -41,6 +41,7 @@ Ops docs: [business/ops/](../../../docs/aistudio/umkm-wa/business/ops/) · [cons
 | **L8** | [L8-knowledge-soul.svg](./system/L8-knowledge-soul.svg) | Fakta = tools/DB; `tanya`→consult→Nest kurikulum; satu SOUL; no MEMORY/RAG ledger |
 | **L9** | [L9-kasir-consult.svg](./system/L9-kasir-consult.svg) | Hop: Hermes → Nest gate → embed → match → synthesize / miss |
 | **L10** | [L10-model-stack.svg](./system/L10-model-stack.svg) | Model lock: Whisper / GLM Flash Hermes / Qwen3-VL vision / Qwen synth |
+| **L11** | [L11-period-report-rpc.svg](./system/L11-period-report-rpc.svg) | Period presets → `kasir_period_report` RPC; kill switch |
 
 Studio notebook RAG (embed vs LLM, ingest/ask): [`../studio/system/`](../studio/system/README.md) L1–L4 · [rag-architecture.md](../../../docs/aistudio/studio/system/rag-architecture.md)
 

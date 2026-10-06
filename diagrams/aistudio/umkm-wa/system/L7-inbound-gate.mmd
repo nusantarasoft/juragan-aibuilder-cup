@@ -14,7 +14,7 @@ flowchart TB
   TOOLS -->|cek stok| T1[kasir_get_stock]
   TOOLS -->|jual / satu lagi| T2[draft → poll → confirm]
   TOOLS -->|foto / voice ON| T2
-  TOOLS -->|laporan| T3[kasir_daily_report]
+  TOOLS -->|laporan| T3[period compiler<br/>→ kasir_period_report RPC]
   TOOLS -->|tutup toko| T4[kasir_tutup_toko]
   T1 --> DB[(Supabase)]
   T2 --> DB

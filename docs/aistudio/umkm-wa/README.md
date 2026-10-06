@@ -12,4 +12,4 @@ Satu nomor WhatsApp bisnis shared; banyak toko dipisah by nomor pemilik. Pemilik
 | **Tim internal** (trial) | [business/ops/](./business/ops/) — termasuk [consult-kurikulum.md](./business/ops/consult-kurikulum.md) |
 | **Development** | [system/](./system/) — [model-stack.md](./system/model-stack.md) (GLM Flash Hermes / Qwen3-VL vision / Qwen consult / Whisper) · architecture · gaps · local |
 
-Diagram: [diagrams/aistudio/umkm-wa](../../../diagrams/aistudio/umkm-wa/README.md) — pitch L0–L2 (+ L0b ritual, **L0c** chat-only, **L0d** tanya vs stok); system L5–**L10**.
+Diagram: [diagrams/aistudio/umkm-wa](../../../diagrams/aistudio/umkm-wa/README.md) — pitch L0–L2 (+ L0b ritual, **L0c** chat-only, **L0d** tanya vs stok); system L5–**L11** (period RPC).

@@ -110,7 +110,11 @@ Contoh setelah toko aktif:
 | `satu lagi` | Ulang item jual terakhir → `ya` |
 | `cek stok` | Balasan sisa stok |
 | `laporan` / omzet | Ringkasan penjualan (hari/minggu/bulan) |
-| `laporan tahun ini` | Omzet YTD (Jan→hari ini). Tahun lalu / 2024 → arahkan ke tahun/bulan ini |
+| `laporan 3 bulan terakhir` | Omzet ~3 bulan (bukan kuartal kalender) |
+| `laporan kuartal ini` / `kuartal lalu` | Omzet Q kalender (Jakarta) |
+| `laporan tahun ini` | Omzet YTD (Jan→hari ini) |
+| `laporan tahun lalu` | Omzet tahun kalender sebelumnya |
+| `laporan 2024` / `dari…sampai…` | Belum v1 — arahkan ke preset di atas (jangan silent-map) |
 | `tutup toko` | Omzet hari ini + stok menipis |
 | foto / voice (default) | Arahkan ketik jual/stok (chat-only) |
 

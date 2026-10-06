@@ -1,4 +1,4 @@
-# System diagrams (L5–L10)
+# System diagrams (L5–L11)
 
 | Level | File | Isi |
 |-------|------|-----|
@@ -8,5 +8,6 @@
 | **L8** | [L8-knowledge-soul](./L8-knowledge-soul.svg) | Tools/DB facts; `tanya`→`kasir_consult`→Nest kurikulum; satu SOUL; no MEMORY/RAG ledger |
 | **L9** | [L9-kasir-consult](./L9-kasir-consult.svg) | Consult hop: Hermes → Nest gate → embed → match → synthesize / miss |
 | **L10** | [L10-model-stack](./L10-model-stack.svg) | Model lock: Whisper STT, GLM 5.3 Flash Hermes, Qwen3-VL vision, embed Gemini, Qwen synthesize |
+| **L11** | [L11-period-report-rpc](./L11-period-report-rpc.svg) | Period compiler presets → `/rpc/kasir_period_report`; kill switch; refuse free ranges |
 
 Index: [../README.md](../README.md) · Docs: [hermes-architecture.md](../../../docs/aistudio/umkm-wa/system/hermes-architecture.md) · Model stack: [model-stack.md](../../../docs/aistudio/umkm-wa/system/model-stack.md) · Ops consult: [consult-kurikulum.md](../../../docs/aistudio/umkm-wa/business/ops/consult-kurikulum.md)

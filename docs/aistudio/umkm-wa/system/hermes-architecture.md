@@ -43,6 +43,7 @@ Runtime diagram: [`diagrams/aistudio/umkm-wa/system/L5-hermes-runtime.svg`](../.
 Agent path (SOUL → tools): [`L6-kasir-agent-path.svg`](../../../../diagrams/aistudio/umkm-wa/system/L6-kasir-agent-path.svg).  
 Inbound gate order: [`L7-inbound-gate.svg`](../../../../diagrams/aistudio/umkm-wa/system/L7-inbound-gate.svg).
 Knowledge / SOUL locks: [`L8-knowledge-soul.svg`](../../../../diagrams/aistudio/umkm-wa/system/L8-knowledge-soul.svg).
+Period report RPC: [`L11-period-report-rpc.svg`](../../../../diagrams/aistudio/umkm-wa/system/L11-period-report-rpc.svg).
 Business ladder: [`diagrams/aistudio/umkm-wa/business/`](../../../../diagrams/aistudio/umkm-wa/business/) (L0–L4 + L0b ritual + **L0c** chat-only).
 
 ---
@@ -53,7 +54,7 @@ Business ladder: [`diagrams/aistudio/umkm-wa/business/`](../../../../diagrams/ai
 |-------|------|
 | **Hermes Agent** | Container `hermes` / `nsoft3-hermes`. Runs gateway + Baileys WhatsApp. Volume `./volumes/hermes` → `/opt/data`. |
 | **kasir-pipe** | Plugin: allowlist gate, **chat-only media refuse** (`KASIR_MULTIMODAL=0`), DAFTAR funnel, bridge+pair proxy `:8765`, **`transform_llm_output` egress sanitize** (`user_safe`). |
-| **kasir-tools** | Plugin: stock/report/sale/**tutup toko** tools → PostgREST (Kong). Tenant from sender phone / pipe stamp — never `KASIR_AGENT_PHONES` as tenant fallback. Sale/purchase drafts mirrored to `runtime/kasir_drafts.json` (15m TTL). After draft, best-effort `/send-poll` confirm. `kasir_repeat_last_sale` uses `kasir_last_sale.json` (24h). `kasir_tutup_toko` = omzet hari ini + stok menipis. Report periods: `today\|week\|month\|year` (**year** = calendar YTD Asia/Jakarta). Year fetches paginate (`page_size=200`, `max_pages=50`, wall-clock ~45s) fail-closed; soft-cap redirects to *bulan ini*. Ledger REST requires `tenant_id=eq.…` (service key bypasses RLS). **No Hermes Supabase MCP on WA** — MCP stays Cursor/dev only. |
+| **kasir-tools** | Plugin: stock/report/sale/**tutup toko** tools → PostgREST (Kong). Tenant from sender phone / pipe stamp — never `KASIR_AGENT_PHONES` as tenant fallback. Sale/purchase drafts mirrored to `runtime/kasir_drafts.json` (15m TTL). After draft, best-effort `/send-poll` confirm. `kasir_repeat_last_sale` uses `kasir_last_sale.json` (24h). `kasir_tutup_toko` = omzet hari ini + stok menipis. **Period reports:** compiler presets (`today\|week\|month\|year\|quarter\|quarter_last\|last_3_months\|last_year`) → `POST /rpc/kasir_period_report` (SQL aggregate; no Hermes row-paginate). Kill switch `KASIR_PERIOD_RPC=0` → fail-closed user_safe (no REST fallback). Free ranges / year numbers refuse (SOUL). Nest `periodRange` / `detectReportPeriod` mirror presets for CMS/Ask labels only — WA totals = Hermes RPC. Ledger REST still requires `tenant_id=eq.…`. **No Hermes Supabase MCP on WA** — MCP stays Cursor/dev only. Diagram **L11**. |
 | **kasir-probe** | Debug/probe plugin (ops). |
 | **user_safe** | Shared sanitize on tool returns + DAFTAR `_send_wa_text` + agent `transform_llm_output` (gap **G11**). |
 | **HermesProvider** | Nest transport: outbound + session/QR via bridge. |
@@ -137,6 +138,7 @@ Agent replies to allowlisted chats go through the Hermes gateway. Last-mile deny
 | `KASIR_AGENT_PHONES` | hermes | Emergency allowlist for **pipe only** (not tenant fallback in tools) |
 | `KASIR_REGISTRATION` | hermes | `1` = DAFTAR funnel; `0` = silent skip |
 | `KASIR_MULTIMODAL` | hermes | Compose default `0` = chat-only refuse; **prod soft GA `1`** = pass media → gateway STT/vision + SOUL → draft jual/beli. Config posture via `hermes-kasir-platform-locks.py` |
+| `KASIR_PERIOD_RPC` | hermes | Default `1`. When `0`, period reports fail-closed (user_safe) — **no** row-fetch fallback. Requires migration `kasir_period_report` applied |
 | `KASIR_CONSULT` | hermes **and** middleware | Compose default `0` (“belum aktif”); prod soft GA **`1`**. Allow `kasir_consult` → Nest RAG. Flip both sides together |
 | `KASIR_CONSULT_URL` | hermes | Default `http://middleware:4001/internal/kasir-consult` |
 | `KASIR_CONSULT_KEY` | hermes + middleware | Shared secret → header `X-Kasir-Consult-Key` (fail-closed if unset) |
@@ -176,6 +178,8 @@ Agent replies to allowlisted chats go through the Hermes gateway. Last-mile deny
 | Model invents stok without tool | Soft-ban in SOUL + tools-only facts (L8); egress `user_safe` still strips tool names |
 | Bridge/proxy down | Admin QR / approve notify fail; agent may still chat if Baileys up |
 | LID unmapped | Allowlist miss → registration path |
+| `KASIR_PERIOD_RPC=0` or RPC error / bad schema | Period laporan: user_safe busy/mati copy — **no** invented omzet; no REST row fallback |
+| Tahun angka / `dari…sampai…` / *triwulan* ambigu | Refuse or clarify (SOUL + compiler) — never silent-map to *tahun ini* / *hari ini* |
 
 ---
 

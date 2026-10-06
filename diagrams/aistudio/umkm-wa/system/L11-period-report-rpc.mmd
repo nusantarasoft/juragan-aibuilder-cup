@@ -1,0 +1,23 @@
+%% System L11: BSS period report — compiler presets → PostgREST RPC (eng)
+%% Complements L6 (agent path). Sales phrases stay on pitch.md / L0b.
+flowchart TB
+  U[Owner: laporan …] --> SOUL[SOUL + kasir-tools]
+  SOUL --> COMP[period compiler<br/>Asia/Jakarta]
+  COMP -->|preset OK| RPC["POST /rpc/kasir_period_report<br/>tenant + from/to + top_n"]
+  COMP -->|tahun angka / dari-sampai| REF[Refuse / arahkan preset]
+  COMP -->|triwulan ambigu| ASK[Clarify: kuartal vs 3 bulan]
+  RPC -->|KASIR_PERIOD_RPC=1| DB[(SQL aggregate<br/>DEFINER)]
+  RPC -->|KASIR_PERIOD_RPC=0| OFF[Fail-closed user_safe<br/>no REST fallback]
+  DB -->|JSON omzet belanja top-N| FMT[Format WA]
+  FMT --> U
+  REF --> U
+  ASK --> U
+  OFF --> U
+
+  subgraph presets["Presets v1"]
+    P1[today week month]
+    P2[quarter / quarter_last]
+    P3[last_3_months]
+    P4[year YTD / last_year]
+  end
+  COMP -.-> presets
