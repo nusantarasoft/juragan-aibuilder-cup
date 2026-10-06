@@ -58,7 +58,7 @@ export interface PduData {
 
 export interface WorldObjectData {
     id: string;
-    type: 'wall' | 'tree' | 'generator' | 'zone' | 'pillar' | 'cableTray' | 'pipe';
+    type: 'wall' | 'tree' | 'generator' | 'zone' | 'pillar' | 'cableTray' | 'pipe' | 'server1u' | 'server2u' | 'networkSwitch';
     material?: 'grass' | 'concrete' | 'tiles' | 'metal';
     x: number;
     z: number;
@@ -117,14 +117,19 @@ interface DcimState {
     updateWorldObjectDimensions: (id: string, width: number, depth: number) => void;
 }
 
-// Generate demo racks
+// Generate demo racks - dcTrack style layout with numbered rows and lettered columns
 const generateRacks = (): RackData[] => {
     const racks: RackData[] = [];
     let id = 1;
     let srvId = 1;
 
-    for (let row = 0; row < 4; row++) {
-        for (let col = 0; col < 6; col++) {
+    const ROWS = 8;        // 8 rows
+    const COLS = 8;         // 8 racks per row
+    const COL_SPACING = 1.4; // meters between racks in a row
+    const ROW_SPACING = 2.5; // meters between rows (aisle width)
+
+    for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
             const temp = 22 + Math.random() * 12;
             let status: 'normal' | 'warning' | 'critical' = 'normal';
             if (temp > 30) status = 'critical';
@@ -136,21 +141,21 @@ const generateRacks = (): RackData[] => {
             let rackPower = 0;
             let rackUsedU = 0;
 
-            while (currentU < totalU - 4) { // leave some empty space at top
+            while (currentU < totalU - 4) {
                 if (Math.random() > 0.3) {
                     const uHeight = Math.random() > 0.8 ? 2 : 1;
                     if (currentU + uHeight <= totalU) {
                         const srvTemp = 25 + Math.random() * 15;
                         const srvCpu = Math.floor(Math.random() * 100);
                         const srvStatus = srvTemp > 35 ? 'critical' : (srvCpu > 85 ? 'warning' : 'normal');
-                        const srvPower = uHeight * (150 + Math.random() * 300); // Watts
-                        
+                        const srvPower = uHeight * (150 + Math.random() * 300);
+
                         servers.push({
                             id: `SRV-${srvId++}`,
                             name: `AppNode-${srvId}`,
                             uSlot: currentU,
                             uHeight,
-                            ip: `10.0.${row}.${col*10 + servers.length}`,
+                            ip: `10.0.${row}.${col * 10 + servers.length}`,
                             cpu: srvCpu,
                             ram: Math.floor(40 + Math.random() * 50),
                             temp: Math.round(srvTemp * 10) / 10,
@@ -164,25 +169,30 @@ const generateRacks = (): RackData[] => {
                         break;
                     }
                 } else {
-                    currentU += 1; // empty slot
+                    currentU += 1;
                 }
             }
 
-            // Aisle containment logic: face racks towards the cold aisle
-            // Assuming cols 0-5. We want col 0 and 1 facing each other?
-            // Wait, we have 4 rows of 6 racks. Let's make rows 0 and 1 face each other.
+            // Alternate facing for hot/cold aisle containment
             const isTopRowOfAisle = row % 2 === 0;
             const rotationY = isTopRowOfAisle ? 0 : Math.PI;
 
+            // dcTrack-style naming: row number + column letter (1A, 1B, ..., 8H)
+            const name = `${row + 1}${String.fromCharCode(65 + col)}`;
+
+            // Position: centered around origin
+            const xOffset = (col - (COLS - 1) / 2) * COL_SPACING;
+            const zOffset = (row - (ROWS - 1) / 2) * ROW_SPACING;
+
             racks.push({
                 id: `RACK-${id++}`,
-                name: `${String.fromCharCode(65 + row)}${String(col + 1).padStart(2, '0')}`,
-                x: (col * 1.5) - 3.75, 
-                z: (row * 3) - 4.5,    
+                name,
+                x: xOffset,
+                z: zOffset,
                 totalU,
                 usedU: rackUsedU,
                 temp: Math.round(temp * 10) / 10,
-                power: Math.round((rackPower / 1000) * 10) / 10, // kW
+                power: Math.round((rackPower / 1000) * 10) / 10,
                 status,
                 rotationY,
                 servers
@@ -192,40 +202,50 @@ const generateRacks = (): RackData[] => {
     return racks;
 };
 
-// Generate demo pods (Cold aisle containment enclosing two rows)
+// Generate demo pods (Cold aisle containment between paired rows)
 const generatePods = (): PodData[] => {
-    return [
-        {
-            id: 'POD-1',
-            name: 'Cold Aisle 1',
+    const pods: PodData[] = [];
+    const COLS = 8;
+    const COL_SPACING = 1.4;
+    const ROW_SPACING = 2.5;
+    const width = COLS * COL_SPACING;
+
+    // One pod between each pair of rows (0-1, 2-3, 4-5, 6-7)
+    for (let pair = 0; pair < 4; pair++) {
+        const row0 = pair * 2;
+        const row1 = pair * 2 + 1;
+        const z0 = (row0 - 3.5) * ROW_SPACING;
+        const z1 = (row1 - 3.5) * ROW_SPACING;
+        pods.push({
+            id: `POD-${pair + 1}`,
+            name: `Cold Aisle ${pair + 1}`,
             x: 0,
-            z: -3, // Between row 0 (z=-4.5) and row 1 (z=-1.5)
-            width: 10, // Encloses all 6 racks in the row horizontally
-            depth: 3, // Encloses the space between the rows
+            z: (z0 + z1) / 2,
+            width,
+            depth: ROW_SPACING * 0.6,
             type: 'cold-aisle'
-        },
-        {
-            id: 'POD-2',
-            name: 'Cold Aisle 2',
-            x: 0,
-            z: 3, // Between row 2 (z=1.5) and row 3 (z=4.5)
-            width: 10,
-            depth: 3,
-            type: 'cold-aisle'
-        }
-    ];
+        });
+    }
+    return pods;
 };
 
 const generateCracs = (): CracData[] => {
     return [
-        { id: 'CRAC-1', name: 'CRAC Unit A', x: -8, z: -2, status: 'normal' },
-        { id: 'CRAC-2', name: 'CRAC Unit B', x: 8, z: -2, status: 'normal' }
+        { id: 'CRAC-1', name: 'CRAC-A', x: -10, z: -6, status: 'normal' },
+        { id: 'CRAC-2', name: 'CRAC-B', x: -10, z: 0, status: 'normal' },
+        { id: 'CRAC-3', name: 'CRAC-C', x: -10, z: 6, status: 'normal' },
+        { id: 'CRAC-4', name: 'CRAC-D', x: 10, z: -6, status: 'normal' },
+        { id: 'CRAC-5', name: 'CRAC-E', x: 10, z: 0, status: 'warning' },
+        { id: 'CRAC-6', name: 'CRAC-F', x: 10, z: 6, status: 'normal' },
     ];
 };
 
 const generatePdus = (): PduData[] => {
     return [
-        { id: 'PDU-1', name: 'Main PDU', x: 10, z: 10, power: 120, status: 'normal' }
+        { id: 'PDU-1', name: 'PDU-1A', x: -12, z: -4, power: 120, status: 'normal' },
+        { id: 'PDU-2', name: 'PDU-1B', x: -12, z: 4, power: 95, status: 'normal' },
+        { id: 'PDU-3', name: 'PDU-2A', x: 12, z: -4, power: 110, status: 'normal' },
+        { id: 'PDU-4', name: 'PDU-2B', x: 12, z: 4, power: 85, status: 'normal' },
     ];
 };
 

@@ -649,6 +649,35 @@
 }
 
 /* ========================================
+   Dark Mode Illustration Cards
+   ======================================== */
+
+.dark .module-illustration-card {
+  background: linear-gradient(145deg, rgba(35, 30, 65, 0.95) 0%, rgba(22, 20, 48, 0.98) 100%) !important;
+  border: 1px solid rgba(139, 92, 246, 0.4) !important;
+  box-shadow: 0 4px 24px rgba(139, 92, 246, 0.15), inset 0 1px 0 rgba(255,255,255,0.08) !important;
+  backdrop-filter: blur(16px) !important;
+}
+
+.dark .module-illustration-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3), 0 0 20px rgba(139, 92, 246, 0.1) !important;
+  border-color: rgba(139, 92, 246, 0.55) !important;
+}
+
+.dark .module-illustration-card .card-title {
+  color: #e2e8f0 !important;
+}
+
+.dark .module-illustration-card .card-subtitle {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.dark .module-illustration-card .card-label {
+  color: inherit !important;
+}
+
+/* ========================================
    Dark Mode Cyberpunk Tags
    ======================================== */
 
@@ -1622,16 +1651,26 @@ ul.ant-pagination li.ant-pagination-next.ant-pagination-disabled > button {
    ======================================== */
 
 .mac-dock-container .p-dock-list-container {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 1.5rem;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-top: 1px solid rgba(255, 255, 255, 0.6);
+    border-left: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 1.75rem;
     padding: 0.5rem 1rem;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.mac-dock-container .p-dock-list-container:hover {
+    transform: scale(1.02);
 }
 
 .dark .mac-dock-container .p-dock-list-container {
-    background: rgba(15, 15, 23, 0.5);
-    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(15, 15, 23, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
 }
 

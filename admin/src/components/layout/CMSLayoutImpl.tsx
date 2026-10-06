@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { AnimatedThemeToggler } from "@/components/magicui/animated-theme-toggler";
+import FloatingOrbMenu from "../dock/FloatingOrbMenu";
 import {
     LogoutOutlined,
     SearchOutlined,
@@ -30,6 +31,13 @@ import {
     DownOutlined,
     MenuOutlined,
     CloseOutlined,
+    TeamOutlined,
+    GlobalOutlined,
+    CodeOutlined,
+    DashboardOutlined,
+    SafetyCertificateOutlined,
+    BellOutlined,
+    CodeSandboxOutlined,
 } from "@ant-design/icons";
 import {
     PageContainer,
@@ -42,7 +50,6 @@ import {
     Dropdown,
     Input,
     theme,
-    Segmented,
     Popover,
     Avatar,
     Typography,
@@ -51,28 +58,70 @@ import {
     message,
     Popconfirm,
     Divider,
+    Badge,
+    Segmented,
 } from "antd";
 import AIStudioDrawer from "./AIStudioDrawer";
+import AgentSessionOverlay from "@/components/agent-session/AgentSessionOverlay";
 import CommandPalette from "../common/CommandPalette";
 import ThemeDrawer from "./ThemeDrawer";
 import { useRouter, usePathname } from "next/navigation";
 import menuConfig from "@/config/menuConfig";
 import GlitchText from "@/components/react-bits/GlitchText";
 import { usePreferencesStore, hexToRgb } from "@/store/usePreferencesStore";
-import GlobalDateRangePicker from "@/components/common/GlobalDateRangePicker";
 import NotificationBell from "@/components/common/NotificationBell";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
 import LiveCursors from "@/components/common/LiveCursors";
 import { useWebSocketStore } from "@/store/useWebSocketStore";
 import { useDockStore } from "@/store/useDockStore";
+import ModuleIllustrationCards from "./ModuleIllustrationCards";
+import OnlineUsersAvatars, { SIDER_FOOTER_ROW_HEIGHT } from "./OnlineUsersAvatars";
+import { MacWaveDock } from "../dock/MacWaveDock";
+import { getVOTheme } from "./voTheme";
+import { TamagotchiGlobal } from "../helper/TamagotchiGlobal";
+import LeftDockToolbar from "./LeftDockToolbar";
 // Dynamic import for MetaBalls to prevent SSR crash (ogl WebGL library requires browser)
 const MetaBalls = dynamic(
     () => import("@/components/react-bits/MetaBalls"),
     { ssr: false }
 );
 import { SpeedDial } from 'primereact/speeddial';
+import DockWindow from "@/components/dock/DockWindow";
+import AthanWidget from "@/components/dock/widgets/AthanWidget";
+import CalculatorWidget from "@/components/dock/widgets/CalculatorWidget";
+import NotesWidget from "@/components/dock/widgets/NotesWidget";
+import CalendarWidget from "@/components/dock/widgets/CalendarWidget";
+import SnakeWidget from "@/components/dock/widgets/SnakeWidget";
+import PongWidget from "@/components/dock/widgets/PongWidget";
 
 const { Text } = Typography;
+
+// MacDock widget data for the left dock items (Productivity)
+const LEFT_DOCK_WIDGETS = [
+    { id: 'notes', label: 'Notes', icon: '📝', width: 400, height: 500 },
+    { id: 'tasks', label: 'Tasks', icon: '✅', width: 350, height: 450 },
+    { id: 'calendar', label: 'Calendar', icon: '📅', width: 350, height: 400 },
+    { id: 'clock', label: 'Clock', icon: '⏱️', width: 300, height: 350 },
+    { id: 'contacts', label: 'Contacts', icon: '👤', width: 350, height: 500 },
+    { id: 'email', label: 'Mail', icon: '📧', width: 450, height: 600 },
+    { id: 'files', label: 'Files', icon: '📁', width: 500, height: 400 },
+    { id: 'messages', label: 'Messages', icon: '💬', width: 400, height: 550 },
+] as const;
+
+// MacDock widget data for the bottom dock items
+const BOTTOM_DOCK_WIDGETS = [
+    { id: 'analytics', label: 'Analytics', icon: '📊', width: 600, height: 400 },
+    { id: 'calculator', label: 'Calculator', icon: '🧮', width: 320, height: 480 },
+    { id: 'terminal', label: 'Terminal', icon: '💻', width: 600, height: 400 },
+    { id: 'snake', label: 'Snake', icon: '🐍', width: 450, height: 600 },
+    { id: 'pong', label: 'Pong', icon: '🏓', width: 450, height: 500 },
+    { id: 'athan', label: 'Athan', icon: '🧭', width: 350, height: 450 },
+    { id: 'robot', label: 'AI Assistant', icon: '🤖', width: 400, height: 600 },
+    { id: 'weather', label: 'Weather', icon: '⛅', width: 350, height: 350 },
+    { id: 'music', label: 'Music', icon: '🎵', width: 350, height: 450 },
+    { id: 'settings', label: 'Settings', icon: '⚙️', width: 500, height: 500 },
+    { id: 'add-widget', label: 'Add Widget', icon: '➕', width: 400, height: 300 },
+] as const;
 
 // Search Input Component for Header
 const SearchInput = () => {
@@ -159,16 +208,10 @@ const findMenuItemByPath = (routes: any[], path: string): any => {
 const getInnerMenuRoutes = (segment: string, pinned: any[], starred: any[]) => {
     const normalizePath = (p: string) => p.replace(/\/$/, "");
     
-    // Diagnostic hook for debugging
-    if (typeof window !== "undefined") {
-        (window as any).CMS_MENU_ROUTES = { segment, pinned, starred };
-    }
-
     const resolveIcon = (path: string, fallback: React.ReactNode) => {
         if (!menuConfig?.route?.routes) return fallback;
         const normalizedTarget = normalizePath(path);
         
-        // Helper specifically for this resolve to use normalized paths
         const findIconByNormalizedPath = (routes: any[], target: string): React.ReactNode | null => {
             for (const route of routes) {
                 if (normalizePath(route.path) === target) return route.icon;
@@ -220,6 +263,27 @@ const getInnerMenuRoutes = (segment: string, pinned: any[], starred: any[]) => {
         default:
             return [];
     }
+};
+
+// Get active parent module based on current pathname
+const getActiveParentModule = (pathname: string): { name: string; path: string; icon: React.ReactNode; routes: any[] } | null => {
+    if (!menuConfig?.route?.routes) return null;
+    for (const route of menuConfig.route.routes) {
+        if (route.routes && route.routes.length > 0 && pathname.startsWith(route.path)) {
+            return {
+                name: route.name,
+                path: route.path,
+                icon: route.icon,
+                routes: route.routes.map((r: any) => ({
+                    path: r.path,
+                    name: r.name,
+                    icon: r.icon,
+                    isLeaf: r.isLeaf,
+                })),
+            };
+        }
+    }
+    return null;
 };
 
 interface CMSLayoutProps {
@@ -363,10 +427,10 @@ export default function CMSLayoutImpl({
         isStarred,
         toggleStarred,
         selectedSegment,
-        setSelectedSegment
+        setSelectedSegment,
     } = usePreferencesStore();
 
-    const { dockMode, setDockMode } = useDockStore();
+    const { dockMode, setDockMode, windows: dockWindows, openWindow: openDockWindow } = useDockStore();
 
     const [darkMode, setDarkMode] = useState(false);
     const [appListOpen, setAppListOpen] = useState(false);
@@ -375,6 +439,8 @@ export default function CMSLayoutImpl({
     const [themeDrawerVisible, setThemeDrawerVisible] = useState(false);
     const { themePalette } = usePreferencesStore();
     const themeColor = themePalette.primary;
+    // Virtual Office HUD look for sidemenus / docks / orb menu
+    const vo = getVOTheme(darkMode);
     const { cursors } = useWebSocketStore();
 
     // Controlled openKeys to prevent submenu collapse on navigation
@@ -479,9 +545,11 @@ export default function CMSLayoutImpl({
 
     // Sidebar Actions Component (Language, Notification, Theme) - for outer ProLayout actionsRender
     const SidebarActions = () => (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-around", gap: 12 }}>
-            <Divider orientation="vertical" style={{ height: 16, background: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)', margin: 0 }} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: outerCollapsed ? "center" : "space-evenly", flexDirection: outerCollapsed ? "column" : "row", gap: outerCollapsed ? 12 : 0, width: "100%" }}>
             <LanguageSwitcher isDark={darkMode} />
+            <div onClick={() => setThemeDrawerVisible(true)} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: vo.textMuted, borderRadius: 10 }} className="vo-icon-btn">
+                <SettingOutlined style={{ fontSize: 16 }} />
+            </div>
             <NotificationBell />
             <Dropdown
                 key="account-menu"
@@ -527,13 +595,13 @@ export default function CMSLayoutImpl({
                     justifyContent: 'center',
                     width: 32,
                     height: 32,
-                    borderRadius: '50%',
+                    borderRadius: 10,
                     transition: 'all 0.2s',
-                    color: darkMode ? '#fff' : '#000',
+                    color: vo.textMuted,
                 }}
-                className="hover:bg-gray-200 dark:hover:bg-gray-800"
+                className="vo-icon-btn"
                 >
-                    <Avatar icon={<UserOutlined />} size="small" style={{ backgroundColor: themePalette.primary, width: 24, height: 24, lineHeight: "24px" }} />
+                    <Avatar icon={<UserOutlined />} size="small" style={{ background: vo.accentGradient, width: 24, height: 24, lineHeight: "24px", border: `1px solid ${vo.border}` }} />
                 </div>
             </Dropdown>
         </div>
@@ -628,6 +696,31 @@ export default function CMSLayoutImpl({
                 </Tooltip>
             </Popover>
         </div>
+    );
+
+    // Entry point to the 3D Virtual Office (AI Agents) — rendered at the far right of the page header
+    const virtualOfficeButton = (
+        <Tooltip key="virtual-office" title="Enter the 3D Virtual Office (AI Agents)" placement="bottomRight">
+            <Button
+                type="primary"
+                icon={<CodeSandboxOutlined />}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    router.push("/admin/virtual-office");
+                }}
+                style={{
+                    marginLeft: 8,
+                    height: 32,
+                    borderRadius: 10,
+                    fontWeight: 600,
+                    border: "none",
+                    background: "linear-gradient(135deg, #6366f1 0%, #22d3ee 100%)",
+                    boxShadow: "0 6px 18px -6px rgba(99, 102, 241, 0.6)",
+                }}
+            >
+                Virtual Office
+            </Button>
+        </Tooltip>
     );
 
     React.useEffect(() => {
@@ -920,9 +1013,6 @@ export default function CMSLayoutImpl({
     // Get inner menu based on selected segment
     const innerRoutes = getInnerMenuRoutes(selectedSegment, pinnedItems, starredItems);
 
-    // Dynamic logo based on theme
-    const logoSrc = darkMode ? "/logo-white.png" : "/logo-black.png";
-
     // Segmented options
     const segmentedOptions = [
         { value: "new", icon: <PlusOutlined /> },
@@ -931,6 +1021,9 @@ export default function CMSLayoutImpl({
         { value: "starred", icon: <StarOutlined /> },
         { value: "history", icon: <HistoryOutlined /> },
     ];
+
+    // Dynamic logo based on theme
+    const logoSrc = darkMode ? "/logo-white.png" : "/logo-black.png";
 
     return (
         <div
@@ -971,7 +1064,7 @@ export default function CMSLayoutImpl({
                         headerRender={false}
                         siderWidth={260}
                         navTheme={darkMode ? "realDark" : "light"}
-                        token={{ sider: { colorMenuBackground: darkMode ? themePalette.sidebarBg : undefined, colorTextMenu: darkMode ? 'rgba(255,255,255,0.75)' : undefined, colorTextMenuSelected: darkMode ? '#fff' : themePalette.primary, colorBgMenuItemSelected: `${themePalette.primary}${darkMode ? '40' : '15'}`, colorTextMenuItemHover: darkMode ? '#fff' : themePalette.primary, colorBgMenuItemHover: `${themePalette.primary}${darkMode ? '20' : '08'}` } }}
+                        token={{ sider: { colorMenuBackground: vo.surfaceStrong, colorTextMenu: vo.textMuted, colorTextMenuSelected: vo.text, colorBgMenuItemSelected: vo.selectedBg, colorTextMenuItemHover: vo.text, colorBgMenuItemHover: vo.hoverBg, colorTextMenuSecondary: vo.textDim, colorTextMenuTitle: vo.text } }}
                         layout="side"
                         contentStyle={{
                             padding: 0,
@@ -998,170 +1091,169 @@ export default function CMSLayoutImpl({
                                     return result;
                                 });
                             };
-                            return attachIcons(menuData);
+                            return attachIcons(menuData).filter(item => 
+                                item.path !== "/admin/dashboard" && item.path !== "/admin/activity"
+                            );
                         }}
                         menuProps={{
                             openKeys,
                             onOpenChange: (keys) => setOpenKeys(keys as string[]),
                         }}
-                        menuExtraRender={() => (
+                        menuExtraRender={() => {
+                            const isDashboard = pathname === "/admin/dashboard";
+                            const isActivity = pathname === "/admin/activity";
+                            return (
+                            <>
                             <div style={{
                                 display: "flex",
-                                flexDirection: outerCollapsed ? "column" : "row",
                                 alignItems: "center",
                                 justifyContent: outerCollapsed ? "center" : "space-between",
-                                minHeight: 48,
-                                padding: outerCollapsed ? "4px 0" : "0 12px",
-                                gap: outerCollapsed ? 8 : 0,
-                                borderBottom: darkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid #f0f0f0",
+                                minHeight: 52,
+                                padding: outerCollapsed ? "8px 4px" : "0 12px",
+                                gap: outerCollapsed ? 6 : 0,
+                                borderBottom: `1px solid ${vo.border}`,
                                 boxSizing: "border-box",
+                                flexDirection: outerCollapsed ? "column" : "row",
                             }}>
-                                {outerCollapsed ? (
-                                    // Collapsed: Vertical layout - Logo, AppList, Toggle
-                                    <>
-                                        {/* Logo */}
-                                        <Image
-                                            src={logoSrc}
-                                            alt="Logo"
-                                            width={28}
-                                            height={28}
-                                            style={{
-                                                objectFit: "contain",
-                                                cursor: "pointer",
-                                            }}
-                                            onClick={() => router.push("/admin/dashboard")}
-                                        />
-                                        {/* NS GlitchText under logo in collapsed state */}
-                                        <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: '1px', lineHeight: '14px', marginTop: 2 }}>
-                                            <GlitchText
-                                                speed={0.5}
-                                                enableShadows={true}
-                                                color={darkMode ? '#ffffff' : '#333333'}
-                                                glitchColor1={themePalette.accent}
-                                                glitchColor2={themePalette.secondary}
-                                            >
+                                {/* Left: App Switcher + Logo + NS */}
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, flexDirection: outerCollapsed ? "column" : "row" }}>
+                                    <Popover
+                                        content={<AppListContent darkMode={darkMode} />}
+                                        trigger="click"
+                                        placement={outerCollapsed ? "rightTop" : "bottomLeft"}
+                                        open={appListOpen}
+                                        onOpenChange={setAppListOpen}
+                                    >
+                                        {/* VO identity tile (same as the Virtual Office TopBar logo tile) */}
+                                        <div style={{
+                                            cursor: "pointer",
+                                            width: 28,
+                                            height: 28,
+                                            borderRadius: 10,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            background: vo.accentGradient,
+                                            color: "#ffffff",
+                                            boxShadow: vo.accentGlow,
+                                            transition: "transform 0.2s, filter 0.2s",
+                                        }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; e.currentTarget.style.transform = "scale(1.05)"; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; e.currentTarget.style.transform = "scale(1)"; }}
+                                        >
+                                            <AppstoreOutlined style={{ fontSize: 14 }} />
+                                        </div>
+                                    </Popover>
+                                    <Image
+                                        src={logoSrc}
+                                        alt="Logo"
+                                        width={22}
+                                        height={22}
+                                        style={{ objectFit: "contain", cursor: "pointer" }}
+                                        onClick={() => router.push("/admin/dashboard")}
+                                    />
+                                    {!outerCollapsed && (
+                                        <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: '1.5px', lineHeight: '20px', display: 'flex', alignItems: 'center' }}>
+                                            <GlitchText speed={0.5} enableShadows={true} color={darkMode ? '#ffffff' : '#333333'} glitchColor1={themePalette.accent} glitchColor2={themePalette.secondary}>
                                                 NS
                                             </GlitchText>
                                         </div>
-                                        {/* App List Popover */}
-                                        <Popover
-                                            content={<AppListContent darkMode={darkMode} />}
-                                            trigger="click"
-                                            placement="rightTop"
-                                            open={appListOpen}
-                                            onOpenChange={setAppListOpen}
-                                        >
-                                            <div style={{
-                                                cursor: "pointer",
-                                                padding: 6,
-                                                borderRadius: 6,
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                background: darkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)",
-                                            }}>
-                                                <AppstoreOutlined style={{ fontSize: 16 }} />
-                                            </div>
-                                        </Popover>
-                                        {/* Dark/Light Toggle */}
-                                        <AnimatedThemeToggler
-                                            isDark={darkMode}
-                                            onThemeChange={handleDarkModeChange}
-                                            size={16}
-                                            style={{
-                                                color: darkMode ? "#fff" : "#000",
-                                                padding: 4,
-                                            }}
-                                        />
-                                    </>
-                                ) : (
-                                    // Expanded: Horizontal layout
-                                    <>
-                                        {/* Left: AppList + Logo + Title */}
-                                        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                                            {/* App List Popover */}
-                                            <Popover
-                                                content={<AppListContent darkMode={darkMode} />}
-                                                trigger="click"
-                                                placement="bottomLeft"
-                                                open={appListOpen}
-                                                onOpenChange={setAppListOpen}
-                                            >
-                                                <div style={{
-                                                    cursor: "pointer",
-                                                    padding: 6,
-                                                    borderRadius: 6,
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    justifyContent: "center",
-                                                    background: darkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)",
-                                                    flexShrink: 0,
-                                                }}>
-                                                    <AppstoreOutlined style={{ fontSize: 16 }} />
-                                                </div>
-                                            </Popover>
-                                            {/* Logo */}
-                                            <Image
-                                                src={logoSrc}
-                                                alt="Logo"
-                                                width={24}
-                                                height={24}
-                                                style={{
-                                                    objectFit: "contain",
-                                                    cursor: "pointer",
-                                                    flexShrink: 0,
-                                                }}
-                                                onClick={() => router.push("/admin/dashboard")}
-                                            />
-                                            {/* Title with GlitchText - vertically centered with logo */}
-                                            <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: '2px', lineHeight: '24px', display: 'flex', alignItems: 'center' }}>
-                                                <GlitchText
-                                                    speed={0.5}
-                                                    enableShadows={true}
-                                                    color={darkMode ? '#ffffff' : '#333333'}
-                                                    glitchColor1={themePalette.accent}
-                                                    glitchColor2={themePalette.secondary}
-                                                >
-                                                    NS
-                                                </GlitchText>
-                                            </div>
+                                    )}
+                                    {outerCollapsed && (
+                                        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.5px', lineHeight: '14px' }}>
+                                            <GlitchText speed={0.5} enableShadows={true} color={darkMode ? '#ffffff' : '#333333'} glitchColor1={themePalette.accent} glitchColor2={themePalette.secondary}>
+                                                NS
+                                            </GlitchText>
                                         </div>
-                                        {/* Right: Presence + Dark/Light */}
-                                        <div style={{ marginLeft: 16, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <Avatar.Group max={{ count: 3 }} size="small" style={{ display: 'flex', alignItems: 'center' }}>
-                                                {Object.values(cursors).map((c: { id: string; color: string; name: string }) => (
-                                                    <Avatar key={c.id} style={{ backgroundColor: c.color }}>
-                                                        {c.name.charAt(0)}
-                                                    </Avatar>
-                                                ))}
-                                            </Avatar.Group>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <AnimatedThemeToggler
-                                                isDark={darkMode}
-                                                onThemeChange={handleDarkModeChange}
-                                                size={18}
-                                                style={{
-                                                    color: darkMode ? "#fff" : "#000",
-                                                }}
-                                            />
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
+                                    )}
+                                </div>
+                                {/* Right: Quick-action icon circles */}
+                                <div style={{ display: "flex", alignItems: "center", gap: 4, flexDirection: outerCollapsed ? "column" : "row", marginTop: outerCollapsed ? 4 : 0 }}>
+                                    <AnimatedThemeToggler isDark={darkMode} onThemeChange={handleDarkModeChange} size={14} style={{ color: vo.textMuted }} />
+                                </div>
                             </div>
-                        )}
-                        actionsRender={(props) => {
-                            if (props.isMobile) return [];
-                            return [<SidebarActions key="sidebar-actions" />];
+                            {/* Dashboard & Activity Feed Card (VO glass card) */}
+                            <div style={{
+                                background: vo.hoverBg,
+                                borderRadius: 16,
+                                padding: "6px",
+                                border: `1px solid ${vo.border}`,
+                                boxShadow: "none",
+                                margin: outerCollapsed ? "8px 4px" : "12px 8px",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 2
+                            }}>
+                                {/* Dashboard Item */}
+                                <div 
+                                    onClick={() => { setPathname("/admin/dashboard"); router.push("/admin/dashboard"); }}
+                                    style={{
+                                        padding: "9px 11px",
+                                        borderRadius: 12,
+                                        cursor: "pointer",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 12,
+                                        background: isDashboard ? vo.selectedBg : "transparent",
+                                        border: `1px solid ${isDashboard ? vo.selectedBorder : "transparent"}`,
+                                        color: isDashboard ? vo.text : vo.textMuted,
+                                        transition: "all 0.2s"
+                                    }}
+                                    onMouseEnter={(e) => { if (!isDashboard) { e.currentTarget.style.background = vo.hoverBg; e.currentTarget.style.borderColor = vo.border; e.currentTarget.style.color = vo.text; } }}
+                                    onMouseLeave={(e) => { if (!isDashboard) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.color = vo.textMuted; } }}
+                                >
+                                    <DashboardOutlined style={{ fontSize: 16, color: isDashboard ? vo.accent : "inherit" }} />
+                                    {!outerCollapsed && (
+                                        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                            <span style={{ fontSize: 13, fontWeight: isDashboard ? 600 : 500 }}>Dashboard</span>
+                                            <div style={{ width: 22, height: 22, background: vo.accentSoft, border: `1px solid ${vo.border}`, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                <SafetyCertificateOutlined style={{ fontSize: 11, color: vo.accent }} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Activity Feed Item */}
+                                <div 
+                                    onClick={() => { setPathname("/admin/activity"); router.push("/admin/activity"); }}
+                                    style={{
+                                        padding: "9px 11px",
+                                        borderRadius: 12,
+                                        cursor: "pointer",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 12,
+                                        background: isActivity ? vo.selectedBg : "transparent",
+                                        border: `1px solid ${isActivity ? vo.selectedBorder : "transparent"}`,
+                                        color: isActivity ? vo.text : vo.textMuted,
+                                        transition: "all 0.2s"
+                                    }}
+                                    onMouseEnter={(e) => { if (!isActivity) { e.currentTarget.style.background = vo.hoverBg; e.currentTarget.style.borderColor = vo.border; e.currentTarget.style.color = vo.text; } }}
+                                    onMouseLeave={(e) => { if (!isActivity) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.color = vo.textMuted; } }}
+                                >
+                                    <ClockCircleOutlined style={{ fontSize: 16, color: isActivity ? vo.accent : "inherit" }} />
+                                    {!outerCollapsed && (
+                                        <span style={{ fontSize: 13, fontWeight: isActivity ? 600 : 500 }}>Activity Feed</span>
+                                    )}
+                                </div>
+                            </div>
+                            </>
+                            );
                         }}
-                        menuRender={(props, defaultDom) => (
+                        actionsRender={(props) => {
+                            return [
+                                <div key="sidebar-actions-wrap" style={{ boxSizing: 'border-box', width: '100%', display: 'flex' }}>
+                                    <SidebarActions />
+                                </div>
+                            ];
+                        }}
+                        menuRender={(props, defaultDom) => {
+                            return (
                             <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                                 <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
                                     {defaultDom}
                                 </div>
-
                             </div>
-                        )}
+                        )}}
                         menuItemRender={(item, dom) => {
                             // Unified rendering for both collapsed and expanded modes.
                             // Uses classes so the useEffect can target elements precisely.
@@ -1268,19 +1360,13 @@ export default function CMSLayoutImpl({
                                 routes: innerRoutes,
                             }}
                             hasSiderMenu={true}
-                            fixSiderbar={false}
-                            // @ts-ignore
-                            siderStyle={{
-                                position: 'sticky',
-                                top: 0,
-                                height: '100vh',
-                            }}
+                            fixSiderbar={true}
                             collapsed={innerCollapsed}
                             breakpoint={false}
                             onCollapse={handleInnerCollapse}
                             siderWidth={240}
                             navTheme={darkMode ? "realDark" : "light"}
-                            token={{ sider: { colorMenuBackground: darkMode ? '#141414' : '#fff', colorTextMenuSelected: themePalette.primary, colorBgMenuItemSelected: `${themePalette.primary}15`, colorTextMenuItemHover: themePalette.primary, colorBgMenuItemHover: `${themePalette.primary}08` } }}
+                            token={{ sider: { colorMenuBackground: vo.surface, colorTextMenu: vo.textMuted, colorTextMenuSelected: vo.text, colorBgMenuItemSelected: vo.selectedBg, colorTextMenuItemHover: vo.text, colorBgMenuItemHover: vo.hoverBg, colorTextMenuSecondary: vo.textDim, colorTextMenuTitle: vo.text } }}
                             layout="side"
                             contentStyle={{
                                 padding: 0,
@@ -1288,6 +1374,12 @@ export default function CMSLayoutImpl({
                             }}
                             menuDataRender={() => innerRoutes.length > 0 ? innerRoutes : [{ path: '/dummy', name: 'No items' }]}
                             menuHeaderRender={false}
+                            menuFooterRender={(props) => (
+                                <>
+                                    <ModuleIllustrationCards collapsed={innerCollapsed} darkMode={darkMode} />
+                                    <OnlineUsersAvatars collapsed={innerCollapsed} darkMode={darkMode} />
+                                </>
+                            )}
                             menuExtraRender={() => (
                                 <div style={{
                                     minHeight: 48,
@@ -1295,7 +1387,7 @@ export default function CMSLayoutImpl({
                                     alignItems: "center",
                                     justifyContent: "center",
                                     padding: innerCollapsed ? "12px 8px" : "0 16px",
-                                    borderBottom: darkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid #f0f0f0",
+                                    borderBottom: "none",
                                     boxSizing: "border-box",
                                 }}>
                                     <Segmented
@@ -1306,8 +1398,10 @@ export default function CMSLayoutImpl({
                                         vertical={innerCollapsed}
                                         options={segmentedOptions}
                                         style={{
-                                            background: darkMode ? `rgba(var(--theme-color-rgb, 139, 92, 246), 0.15)` : `rgba(var(--theme-color-rgb, 139, 92, 246), 0.08)`,
-                                            border: darkMode ? `1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.3)` : `1px solid rgba(var(--theme-color-rgb, 139, 92, 246), 0.2)`,
+                                            background: vo.hoverBg,
+                                            border: `1px solid ${vo.border}`,
+                                            borderRadius: 12,
+                                            padding: 2,
                                         }}
                                     />
                                 </div>
@@ -1315,7 +1409,6 @@ export default function CMSLayoutImpl({
                             actionsRender={(props) => {
                                 return [];
                             }}
-
                             menuItemRender={(item, dom) => {
                                 const isPinnedOrStarred = selectedSegment === "pinned" || selectedSegment === "starred";
                                 
@@ -1349,8 +1442,6 @@ export default function CMSLayoutImpl({
                                                         togglePinned({ path: item.path!, name: (item.name as string) || "" });
                                                         message.success("Removed from pinned");
                                                     } else {
-                                                        // For starred, we reuse toggleStarred or handle it via handleToggleStar logic
-                                                        // But since we are in the list, we can just call the store's toggleStarred
                                                         toggleStarred({ path: item.path!, name: (item.name as string) || "" });
                                                         message.success("Removed from favorites");
                                                     }
@@ -1372,12 +1463,11 @@ export default function CMSLayoutImpl({
                                     </div>
                                 );
                             }}
-
                         >
                             <PageContainer
                                 title={title}
                                 subTitle={subTitle}
-                                extra={[<GlobalDateRangePicker key="global-date" compact />, ...(extra || []), <PinStarShareActions key="pin-star-actions" />]}
+                                extra={[...(extra || []), <PinStarShareActions key="pin-star-actions" />, virtualOfficeButton]}
                                 breadcrumb={{
                                     items: breadcrumbItems.map((item, index) => ({
                                         key: index,
@@ -1396,118 +1486,82 @@ export default function CMSLayoutImpl({
                 </ConfigProvider>
             </ProConfigProvider>
 
+            <div className="hidden md:flex" style={{
+                position: 'fixed',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                left: (outerCollapsed ? OUTER_COLLAPSED_WIDTH : 260) + (innerCollapsed ? 48 : 240) + 16,
+                zIndex: 50,
+            }}>
+                <MacWaveDock 
+                    items={LEFT_DOCK_WIDGETS as any} 
+                    direction="vertical" 
+                    darkMode={darkMode} 
+                    onItemClick={openDockWindow as any} 
+                    dockWindows={dockWindows} 
+                />
+            </div>
+
+            {/* Dock Widget Windows */}
+            {dockWindows.map(win => !win.minimized && (
+                <DockWindow
+                    key={win.id}
+                    id={win.id}
+                    title={win.title}
+                    width={win.width}
+                    height={win.height}
+                    zIndex={win.zIndex}
+                >
+                    {win.widgetType === 'athan' && <AthanWidget />}
+                    {win.widgetType === 'calculator' && <CalculatorWidget />}
+                    {win.widgetType === 'notes' && <NotesWidget />}
+                    {win.widgetType === 'calendar' && <CalendarWidget />}
+                    {win.widgetType === 'snake' && <SnakeWidget />}
+                    {win.widgetType === 'pong' && <PongWidget />}
+                </DockWindow>
+            ))}
+
+            {/* Bottom Dock Footer — Floating Icons */}
+            <div className="hidden md:flex" style={{
+                position: 'fixed',
+                bottom: 0,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 9999,
+            }}>
+                <MacWaveDock 
+                    items={BOTTOM_DOCK_WIDGETS as any} 
+                    direction="horizontal" 
+                    darkMode={darkMode} 
+                    onItemClick={openDockWindow as any} 
+                    dockWindows={dockWindows} 
+                />
+            </div>
+
             {/* AI Studio Drawer */}
             <AIStudioDrawer visible={aiStudioVisible} onClose={() => setAIStudioVisible(false)} />
 
+            {/* AI agent session (Virtual Office → module page, ?agentSession=<id>) */}
+            <AgentSessionOverlay />
+
             {/* Global Command Palette (Ctrl+K / Cmd+K) */}
             <CommandPalette isDark={darkMode} themeColor={themeColor} />
+            <TamagotchiGlobal darkMode={darkMode} />
             <LiveCursors />
 
             {/* Theme Customizer Drawer */}
             <ThemeDrawer visible={themeDrawerVisible} onClose={() => setThemeDrawerVisible(false)} darkMode={darkMode} />
 
-            {/* SpeedDial Quarter Circle with MetaBalls - Bottom Right */}
-            <div className="fixed bottom-0 right-0 z-50 w-48 h-48 hidden md:block">
-                {/* MetaBalls animation - purely decorative, non-interactive */}
-                {showBackground && (
-                    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', zIndex: 1 }}>
-                        <MetaBalls
-                            color={themeColor}
-                            cursorBallColor={themeColor}
-                            enableTransparency={true}
-                            enableMouseInteraction={true}
-                            hoverSmoothness={0.05}
-                            clumpFactor={1.1}
-                            ballCount={15}
-                            cursorBallSize={3.5}
-                            animationSize={25}
-                            speed={0.4}
-                        />
-                    </div>
-                )}
-                {/* SpeedDial - positioned at bottom right */}
-                <div style={{ position: 'absolute', inset: 0, zIndex: 10, pointerEvents: 'none' }}>
-                    <SpeedDial
-                            model={[
-                                {
-                                    label: 'AI Studio',
-                                    icon: 'pi pi-sparkles',
-                                    command: () => setAIStudioVisible(true),
-                                },
-                                {
-                                    label: 'Theme',
-                                    icon: 'pi pi-palette',
-                                    command: () => setThemeDrawerVisible(true),
-                                },
-                                {
-                                    label: showBackground ? 'Disable Background' : 'Enable Background',
-                                    icon: showBackground ? 'pi pi-eye-slash' : 'pi pi-eye',
-                                    command: () => {
-                                        const newValue = !showBackground;
-                                        setShowBackground(newValue);
-                                        localStorage.setItem('cms-show-background', String(newValue));
-                                    }
-                                },
-                                {
-                                    label: darkMode ? 'Light Mode' : 'Dark Mode',
-                                    icon: darkMode ? 'pi pi-sun' : 'pi pi-moon',
-                                    command: () => handleDarkModeChange(!darkMode)
-                                },
-                                {
-                                    label: dockMode === 'hidden' ? 'Show Dock' : 'Hide Dock',
-                                    icon: dockMode === 'hidden' ? 'pi pi-eye' : 'pi pi-eye-slash',
-                                    command: () => useDockStore.getState().setDockMode(dockMode === 'hidden' ? 'auto' : 'hidden')
-                                },
-                                {
-                                    label: dockMode === 'always' ? 'Unpin Dock' : 'Pin Dock',
-                                    icon: dockMode === 'always' ? 'pi pi-unlock' : 'pi pi-lock',
-                                    command: () => useDockStore.getState().setDockMode(dockMode === 'always' ? 'auto' : 'always')
-                                },
-                                {
-                                    label: 'Settings',
-                                    icon: 'pi pi-cog',
-                                    command: () => router.push('/admin/settings')
-                                }
-                            ]}
-                            direction="up-left"
-                            type="quarter-circle"
-                            buttonTemplate={(options) => {
-                                return (
-                                    <div 
-                                        onClick={options.onClick}
-                                        style={{
-                                            width: 56, height: 56, borderRadius: '50%',
-                                            background: themeColor,
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            boxShadow: 'none',
-                                            cursor: 'pointer',
-                                            border: 'none',
-                                            transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.transform = 'scale(1.1)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.transform = 'scale(1)';
-                                        }}
-                                    >
-                                        {options.visible ? <CloseOutlined style={{ fontSize: 24, color: '#fff' }} /> : <MenuOutlined style={{ fontSize: 24, color: '#fff' }} />}
-                                    </div>
-                                );
-                            }}
-                            showIcon="pi pi-bars"
-                            hideIcon="pi pi-times"
-                            rotateAnimation={true}
-                            style={{
-                                position: 'absolute',
-                                right: 16,
-                                bottom: 16,
-                                pointerEvents: 'auto',
-                                '--p-speeddial-button-width': '2.5rem',
-                                '--p-speeddial-button-height': '2.5rem',
-                            } as React.CSSProperties}
-                        />
-                </div>
+            {/* Floating Action Button Cluster - Bottom Right */}
+            <div className="hidden md:block" style={{
+                position: 'fixed',
+                bottom: 32,
+                right: 32,
+                zIndex: 50,
+            }}>
+                {/* MetaBalls animation behind cluster */}
+                {/* Main Glassmorphic SpeedDial - Replaced with FloatingOrbMenu */}
+                <FloatingOrbMenu darkMode={darkMode} />
             </div>
 
             {/* CSS for sidebar alignment */}
@@ -1534,10 +1588,159 @@ export default function CMSLayoutImpl({
                 
 
                 
-                /* Fix inner sidebar - use clip for children only, not the sidebar itself */
-                /* This allows the collapse button to extend beyond the sidebar */
+                /* --- VIRTUAL OFFICE THEME (see components/layout/voTheme.ts) --- */
+                
+                /* Outer Menu (Primary Sidebar) — VO glass, strongest surface */
+                .cms-outer-sider {
+                    border-right: 1px solid ${vo.border} !important;
+                    z-index: 100 !important;
+                    background: ${vo.surfaceStrong} !important;
+                    backdrop-filter: ${vo.blur} !important;
+                    -webkit-backdrop-filter: ${vo.blur} !important;
+                    box-shadow: ${vo.shadow} !important;
+                }
+                .cms-outer-sider .ant-layout-sider-children {
+                    background: transparent !important;
+                }
+                /* Footer hairline, like the VO panel dividers */
+                .cms-outer-sider .cms-outer-sider-actions {
+                    border-top: 1px solid ${vo.border} !important;
+                }
+                /* Outer sider footer actions (actionsRender).
+                   DOM: .cms-outer-sider-actions > .ant-space.cms-outer-sider-actions-list
+                        > .ant-space-item > .cms-outer-sider-actions-list-item > SidebarActions
+                   Stretch every level to the full outer sider width so space-evenly works. */
+                .cms-outer-sider .cms-outer-sider-actions {
+                    display: flex !important;
+                    align-items: center !important;
+                    width: 100% !important;
+                    height: ${SIDER_FOOTER_ROW_HEIGHT}px !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    box-sizing: border-box !important;
+                }
+                .cms-outer-sider .cms-outer-sider-actions-collapsed {
+                    height: auto !important;
+                    padding: 8px 0 !important;
+                }
+                /* Inner footer: drop ProLayout's 16px bottom padding so the online-users
+                   row sits on the same baseline as the outer footer buttons. */
+                .cms-inner-sider .cms-inner-sider-footer {
+                    padding-block-end: 0 !important;
+                    margin-block-end: 0 !important;
+                }
+                .cms-outer-sider .cms-outer-sider-actions-list,
+                .cms-outer-sider .cms-outer-sider-actions-list > .ant-space-item,
+                .cms-outer-sider .cms-outer-sider-actions-list-item {
+                    display: flex !important;
+                    flex: 1 1 100% !important;
+                    width: 100% !important;
+                    min-width: 0 !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                }
+                .cms-outer-sider .cms-outer-sider-actions-list-item,
+                .cms-outer-sider .cms-outer-sider-actions-list-item:hover {
+                    background: transparent !important;
+                    cursor: default !important;
+                }
+                /* ---- Menus (both siders): base ---- */
+                .cms-outer-sider .ant-menu,
+                .cms-inner-sider .ant-menu {
+                    background: transparent !important;
+                    color: ${vo.textMuted} !important;
+                    border-inline-end: none !important;
+                }
+                .cms-outer-sider .ant-menu-sub,
+                .cms-inner-sider .ant-menu-sub {
+                    background: transparent !important;
+                }
+                .cms-outer-sider .ant-menu-item,
+                .cms-outer-sider .ant-menu-submenu-title,
+                .cms-inner-sider .ant-menu-item,
+                .cms-inner-sider .ant-menu-submenu-title {
+                    color: ${vo.textMuted} !important;
+                    font-weight: 500 !important;
+                    border: 1px solid transparent !important;
+                    border-radius: 12px !important;
+                    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
+                }
+                .cms-inner-sider .ant-menu-item,
+                .cms-inner-sider .ant-menu-submenu-title {
+                    padding-inline: 12px !important;
+                }
+                .cms-outer-sider .ant-menu-item .anticon,
+                .cms-outer-sider .ant-menu-submenu-title .anticon,
+                .cms-inner-sider .ant-menu-item .anticon,
+                .cms-inner-sider .ant-menu-submenu-title .anticon {
+                    color: ${vo.textDim} !important;
+                    transition: color 0.2s ease !important;
+                }
+                .cms-outer-sider .ant-menu-submenu-arrow,
+                .cms-inner-sider .ant-menu-submenu-arrow {
+                    color: ${vo.textDim} !important;
+                }
+                /* VO section labels: 10px bold uppercase, wide tracking */
+                .cms-outer-sider .ant-menu-item-group-title,
+                .cms-inner-sider .ant-menu-item-group-title {
+                    color: ${vo.textDim} !important;
+                    font-size: 10px !important;
+                    font-weight: 700 !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.14em !important;
+                }
+                
+                /* Inner Menu (Contextual Sidebar) — VO glass, secondary surface */
                 .cms-inner-sider {
+                    border-right: 1px solid ${vo.border} !important;
                     overflow: visible !important;
+                    left: ${outerCollapsed ? OUTER_COLLAPSED_WIDTH : 260}px !important;
+                    z-index: 99 !important;
+                    background: ${vo.surface} !important;
+                    backdrop-filter: ${vo.blur} !important;
+                    -webkit-backdrop-filter: ${vo.blur} !important;
+                }
+                .cms-inner-sider .ant-layout-sider-children {
+                    background: transparent !important;
+                }
+                
+                /* ---- Hover (VO AgentRow: white/5 fill + white/10 hairline) ---- */
+                .cms-outer-sider .ant-menu-item:hover,
+                .cms-outer-sider .ant-menu-submenu-title:hover,
+                .cms-inner-sider .ant-menu-item:hover,
+                .cms-inner-sider .ant-menu-submenu-title:hover {
+                    background: ${vo.hoverBg} !important;
+                    border-color: ${vo.border} !important;
+                    color: ${vo.text} !important;
+                    box-shadow: none !important;
+                }
+                .cms-outer-sider .ant-menu-item:hover .anticon,
+                .cms-outer-sider .ant-menu-submenu-title:hover .anticon,
+                .cms-inner-sider .ant-menu-item:hover .anticon,
+                .cms-inner-sider .ant-menu-submenu-title:hover .anticon {
+                    color: ${vo.text} !important;
+                }
+                
+                /* ---- Selected (VO AgentRow selected: white/10 fill + white/25 border) ---- */
+                .cms-outer-sider .ant-menu-item.ant-menu-item-selected,
+                .cms-inner-sider .ant-menu-item.ant-menu-item-selected {
+                    background: ${vo.selectedBg} !important;
+                    border-color: ${vo.selectedBorder} !important;
+                    color: ${vo.text} !important;
+                    font-weight: 600 !important;
+                    box-shadow: none !important;
+                }
+                .cms-outer-sider .ant-menu-item.ant-menu-item-selected .anticon,
+                .cms-inner-sider .ant-menu-item.ant-menu-item-selected .anticon {
+                    color: ${vo.accent} !important;
+                }
+                .cms-outer-sider .ant-menu-submenu-selected > .ant-menu-submenu-title,
+                .cms-inner-sider .ant-menu-submenu-selected > .ant-menu-submenu-title {
+                    color: ${vo.text} !important;
+                }
+                .cms-outer-sider .ant-menu-submenu-selected > .ant-menu-submenu-title .anticon,
+                .cms-inner-sider .ant-menu-submenu-selected > .ant-menu-submenu-title .anticon {
+                    color: ${vo.accent} !important;
                 }
                 
                 /* The sider-children contains the collapse button, so we can't clip it */
@@ -1558,63 +1761,141 @@ export default function CMSLayoutImpl({
                     overflow-x: hidden !important;
                 }
                 
-                .cms-inner-sider .ant-menu-item,
-                .cms-inner-sider .ant-menu-submenu-title {
-                    padding-inline: 12px !important;
-                }
-                
                 /* Fix segmented control to fit within sidebar */
                 .cms-inner-sider .ant-segmented {
                     max-width: 100% !important;
                     box-sizing: border-box !important;
                 }
+                /* VO tab look: muted items, white/10 selected pill */
+                .cms-inner-sider .ant-segmented .ant-segmented-item {
+                    color: ${vo.textMuted} !important;
+                    border-radius: 9px !important;
+                    transition: color 0.2s ease !important;
+                }
+                .cms-inner-sider .ant-segmented .ant-segmented-item:hover:not(.ant-segmented-item-selected) {
+                    color: ${vo.text} !important;
+                    background: transparent !important;
+                }
+                .cms-inner-sider .ant-segmented .ant-segmented-item-selected,
+                .cms-inner-sider .ant-segmented .ant-segmented-thumb {
+                    background: ${vo.selectedBg} !important;
+                    color: ${vo.text} !important;
+                    box-shadow: inset 0 0 0 1px ${vo.border} !important;
+                    border-radius: 9px !important;
+                }
+                .cms-inner-sider .ant-segmented .ant-segmented-item-selected .anticon {
+                    color: ${vo.accent} !important;
+                }
                 
-                /* Ensure collapse button is fully visible and above other elements */
+                /* VO IconButton (footer actions) */
+                .vo-icon-btn {
+                    transition: background 0.2s ease, color 0.2s ease !important;
+                }
+                .vo-icon-btn:hover {
+                    background: ${vo.selectedBg} !important;
+                    color: ${vo.text} !important;
+                }
+                
+                /* Slim VO scrollbars inside the siders */
+                .cms-outer-sider ::-webkit-scrollbar,
+                .cms-inner-sider ::-webkit-scrollbar {
+                    width: 6px;
+                    height: 6px;
+                }
+                .cms-outer-sider ::-webkit-scrollbar-thumb,
+                .cms-inner-sider ::-webkit-scrollbar-thumb {
+                    background: ${vo.border};
+                    border-radius: 999px;
+                }
+                .cms-outer-sider ::-webkit-scrollbar-track,
+                .cms-inner-sider ::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                
+                /* Collapse buttons: VO glass chip */
+                .cms-outer-sider-collapsed-button,
+                .cms-inner-sider-collapsed-button {
+                    background: ${vo.glass} !important;
+                    backdrop-filter: ${vo.blur} !important;
+                    -webkit-backdrop-filter: ${vo.blur} !important;
+                    border: 1px solid ${vo.border} !important;
+                    color: ${vo.textMuted} !important;
+                    box-shadow: ${vo.shadow} !important;
+                }
+                .cms-outer-sider-collapsed-button:hover,
+                .cms-inner-sider-collapsed-button:hover {
+                    color: ${vo.text} !important;
+                }
+                
+                /* Ensure collapse buttons are fully visible and above other elements */
+                .cms-outer-sider-collapsed-button,
+                .cms-outer-layout .ant-layout-sider-trigger,
+                .cms-outer-layout .ant-pro-sider-collapsed-button,
+                .ant-layout-sider-trigger,
+                .ant-pro-sider-collapsed-button {
+                    z-index: 250 !important;
+                }
+
                 .cms-inner-sider-collapsed-button {
                     z-index: 200 !important;
                 }
                 
-                /* SpeedDial button styling - smaller size with MetaBalls colors */
-                .speeddial-metaballs-btn {
+                /* SpeedDial button styling - glassmorphic matching docks */
+                .speeddial-glass-btn {
+                    width: 3.5rem !important;
+                    height: 3.5rem !important;
+                    background: ${darkMode ? 'rgba(30,30,40,0.72)' : 'rgba(255, 255, 255, 0.72)'} !important;
+                    backdrop-filter: blur(20px) saturate(180%) !important;
+                    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+                    border: ${darkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.5)'} !important;
+                    box-shadow: ${darkMode ? '0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2)' : '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)'} !important;
+                    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+                    border-radius: 18px !important;
+                }
+                
+                .speeddial-glass-btn:hover {
+                    transform: scale(1.15) translateY(-4px) !important;
+                }
+                
+                .speeddial-glass-btn .pi {
+                    font-size: 1.5rem !important;
+                    color: ${darkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)'} !important;
+                    filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.1)) !important;
+                }
+                
+                /* SpeedDial action buttons - pastel gradient circles */
+                .p-speeddial-action {
                     width: 2.5rem !important;
                     height: 2.5rem !important;
-                    background: linear-gradient(135deg, ${themeColor} 0%, ${themeColor}dd 100%) !important;
-                    border: none !important;
-                    box-shadow: 0 4px 15px ${themeColor}66 !important;
-                    transition: all 0.3s ease !important;
-                }
-                
-                .speeddial-metaballs-btn:hover {
-                    transform: scale(1.1) !important;
-                    box-shadow: 0 6px 20px ${themeColor}99 !important;
-                }
-                
-                .speeddial-metaballs-btn .pi {
-                    font-size: 1rem !important;
-                    color: white !important;
-                }
-                
-                /* SpeedDial action buttons - purple theme */
-                .p-speeddial-action {
-                    width: 2.25rem !important;
-                    height: 2.25rem !important;
-                    background: linear-gradient(135deg, ${themeColor}cc 0%, ${themeColor}99 100%) !important;
-                    border: none !important;
-                    box-shadow: 0 2px 8px ${themeColor}4d !important;
+                    background: linear-gradient(135deg, rgba(var(--theme-color-rgb), 0.12), rgba(var(--theme-color-rgb), 0.06)) !important;
+                    border: 1px solid rgba(var(--theme-color-rgb), 0.15) !important;
+                    box-shadow: 0 3px 12px rgba(var(--theme-color-rgb), 0.15) !important;
+                    color: ${themeColor} !important;
+                    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+                    backdrop-filter: blur(8px) !important;
                 }
                 
                 .p-speeddial-action:hover {
-                    background: linear-gradient(135deg, ${themeColor} 0%, ${themeColor}dd 100%) !important;
                     transform: scale(1.15) !important;
+                    background: linear-gradient(135deg, rgba(var(--theme-color-rgb), 0.22), rgba(var(--theme-color-rgb), 0.12)) !important;
+                    box-shadow: 0 6px 20px rgba(var(--theme-color-rgb), 0.25) !important;
                 }
                 
                 .p-speeddial-action .pi {
-                    font-size: 0.875rem !important;
-                    color: white !important;
+                    font-size: 1rem !important;
+                    color: ${themeColor} !important;
                 }
                 /* Align PageContainer title and subtitle by baseline */
                 .ant-page-header-heading-left {
                     align-items: baseline !important;
+                }
+
+                /* Left Dock Toolbar */
+                .left-dock-toolbar {
+                    scrollbar-width: none;
+                }
+                .left-dock-toolbar::-webkit-scrollbar {
+                    display: none;
                 }
             `}</style>
         </div>

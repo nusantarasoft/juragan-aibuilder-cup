@@ -1,0 +1,75 @@
+﻿docker :  Image nusantarasoft-minimal-admin Building 
+At line:1 char:1
++ docker compose build admin 2>&1 | Out-File -FilePath "C:\Users\Adityo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Image nusantar...admin Building :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Image nusantarasoft-minimal-middleware Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.21kB done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 2.75kB 0.0s done
+#2 DONE 0.2s
+
+#3 [internal] load metadata for docker.io/library/node:20-alpine
+#3 DONE 1.5s
+
+#4 [base 1/3] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#4 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 614B done
+#5 DONE 0.1s
+
+#6 [internal] load build context
+#6 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 39.07MB 3.3s done
+#6 DONE 3.4s
+
+#7 [base 2/3] RUN apk add --no-cache libc6-compat
+#7 CACHED
+
+#8 [base 3/3] WORKDIR /app
+#8 CACHED
+
+#9 [builder 1/3] COPY --from=deps /app/node_modules ./node_modules
+#9 CACHED
+
+#10 [builder 1/3] COPY --from=deps /app/node_modules ./node_modules
+#10 CACHED
+
+#11 [deps 1/3] RUN apk add --no-cache python3 make g++ vips-dev
+#11 CACHED
+
+#12 [deps 2/3] COPY package.json ./
+#12 CACHED
+
+#13 [deps 3/3] RUN npm config set fetch-retry-mintimeout 600000 &&     npm config set fetch-retry-maxtimeout 1200000 &&     npm install --legacy-peer-deps
+#13 CACHED
+
+#14 [builder 2/3] COPY . .
+#14 DONE 0.9s
+
+#15 [builder 3/3] RUN npm run build
+#15 1.563 
+#15 1.563 > admin@0.1.0 build
+#15 1.563 > next build
+#15 1.563 
+#15 5.349 Γû▓ Next.js 16.1.0 (Turbopack)
+#15 5.351 
+#15 5.564   Creating an optimized production build ...
+#15 ...
+
+#8 [base 3/3] WORKDIR /app
+#8 CACHED
+
+#16 [runner 1/6] WORKDIR /app
+#16 CACHED
+
+#15 [builder 3/3] RUN npm run build

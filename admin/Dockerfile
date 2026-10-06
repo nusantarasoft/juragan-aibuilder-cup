@@ -6,14 +6,15 @@ WORKDIR /app
 # ===== Dependencies Stage =====
 FROM base AS deps
 RUN apk add --no-cache python3 make g++ vips-dev
-COPY package.json ./
+COPY package.json package-lock.json ./
 RUN npm config set fetch-retry-mintimeout 600000 && \
     npm config set fetch-retry-maxtimeout 1200000 && \
-    npm install --legacy-peer-deps
+    npm ci --legacy-peer-deps
 
 # ===== Builder Stage =====
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
+ARG BUST_CACHE=1
 COPY . .
 
 # Disable telemetry during build
