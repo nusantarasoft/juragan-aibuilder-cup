@@ -146,7 +146,7 @@ function toRow(input: object | null | undefined, spec: readonly FieldSpec[]): Ro
     return row;
 }
 
-function diffObjects(before: Row, after: Row): Row | null {
+export function diffObjects(before: Row, after: Row): Row | null {
     const out: Row = {};
     const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
     for (const key of keys) {
@@ -220,6 +220,7 @@ const TASK_FIELDS: readonly FieldSpec[] = [
     ['dueAt', 'due_at', true],
     ['result', 'result', true],
     ['error', 'error', true],
+    ['goalId', 'goal_id', true],
 ];
 
 const MEMORY_AREA_FIELDS: readonly FieldSpec[] = [
@@ -405,6 +406,7 @@ export function mapTask(r: Row): AosTask {
         updatedAt: strOrNull(r.updated_at),
         workflowRunId: strOrNull(r.workflow_run_id),
         nodeId: strOrNull(r.node_id),
+        goalId: strOrNull(r.goal_id),
     };
 }
 
@@ -978,6 +980,19 @@ export class AgenticOsService {
         return row;
     }
 
+    /** Phase 4: '' clears the goal link; any other value must be an existing goal id. */
+    private async checkGoalRef(row: Row): Promise<void> {
+        if (row.goal_id === undefined || row.goal_id === null) return;
+        if (row.goal_id === '') {
+            row.goal_id = null;
+            return;
+        }
+        const goal = isUuid(row.goal_id)
+            ? (must(await this.db.from('aos_goals').select('id').eq('id', row.goal_id).maybeSingle()) as Row | null)
+            : null;
+        if (!goal) throw new Error('Goal not found');
+    }
+
     /** Next sort_order within an agent's queue (unassigned tasks form their own queue). */
     async nextQueueSortOrder(tenantId: string, agentId: string | null): Promise<number> {
         const max = await this.maxSortOrder('aos_tasks', (q) => {
@@ -1049,6 +1064,7 @@ export class AgenticOsService {
         const row = toRow(input, TASK_FIELDS);
         await this.resolveAgentRefs(t, row, 'agent_id');
         if (row.agent_id === undefined) row.agent_id = playbook?.agent_id ?? null;
+        await this.checkGoalRef(row);
 
         row.title = String(input.title ?? playbook?.title ?? '').trim();
         row.module_id = input.moduleId || playbook?.module_id;
@@ -1086,6 +1102,7 @@ export class AgenticOsService {
         if (input.status === 'done') throw new Error('Use aosCompleteTask to mark a task as done');
         const patch = toRow(input, TASK_FIELDS);
         await this.resolveAgentRefs(row.tenant_id, patch, 'agent_id');
+        await this.checkGoalRef(patch);
         if (patch.title !== undefined) {
             patch.title = String(patch.title).trim();
             if (!patch.title) throw new Error('Task title cannot be empty');

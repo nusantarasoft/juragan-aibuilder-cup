@@ -116,10 +116,12 @@ export interface OsTask {
     archivedAt: string | null;
     createdAt: string;
     updatedAt: string;
+    /** Phase 4: the goal this task contributes to. Optional so the core snapshot never depends on it. */
+    goalId?: string | null;
 }
 
 export type OsTaskInput = Partial<
-    Pick<OsTask, "agentId" | "playbookId" | "title" | "description" | "moduleId" | "route" | "steps" | "status" | "priority" | "sortOrder" | "source" | "requiresApproval" | "dueAt">
+    Pick<OsTask, "agentId" | "playbookId" | "title" | "description" | "moduleId" | "route" | "steps" | "status" | "priority" | "sortOrder" | "source" | "requiresApproval" | "dueAt" | "goalId">
 >;
 
 export interface OsApproval {
@@ -439,4 +441,129 @@ export interface OsWorkflowRun {
     startedAt: string;
     finishedAt: string | null;
     error: string | null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Phase 4 — Command Deck · Goals & gate reviews                       */
+/* ------------------------------------------------------------------ */
+
+export type GoalStatus = "active" | "at_risk" | "paused" | "achieved" | "missed";
+export type GoalVerdict = "on_track" | "at_risk" | "off_track" | "achieved" | "missed";
+
+export interface OsGoal {
+    id: string;
+    title: string;
+    description: string;
+    areaId: string | null;
+    ownerAgentId: string | null;
+    metric: string;
+    targetValue: number | null;
+    currentValue: number | null;
+    unit: string;
+    windowDays: number;
+    /** `YYYY-MM-DD` */
+    startsOn: string;
+    /** `YYYY-MM-DD` */
+    gateOn: string;
+    status: GoalStatus;
+    progress: number;
+    nextAction: string;
+    nextActionDue: string | null;
+    color: string;
+    sortOrder: number;
+    createdBy: string | null;
+    archivedAt: string | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+    reviewCount: number;
+    lastReviewedAt: string | null;
+    lastVerdict: GoalVerdict | null;
+    openTasks: number;
+    doneTasks: number;
+}
+
+export type OsGoalInput = Partial<
+    Pick<
+        OsGoal,
+        | "title"
+        | "description"
+        | "areaId"
+        | "ownerAgentId"
+        | "metric"
+        | "targetValue"
+        | "currentValue"
+        | "unit"
+        | "windowDays"
+        | "startsOn"
+        | "gateOn"
+        | "status"
+        | "progress"
+        | "nextAction"
+        | "nextActionDue"
+        | "color"
+        | "sortOrder"
+    >
+>;
+
+export interface OsGoalReview {
+    id: string;
+    goalId: string;
+    verdict: GoalVerdict;
+    progress: number | null;
+    currentValue: number | null;
+    note: string;
+    nextAction: string | null;
+    nextGateOn: string | null;
+    reviewedBy: string | null;
+    createdAt: string;
+}
+
+export interface OsGoalReviewInput {
+    goalId: string;
+    verdict: GoalVerdict;
+    progress?: number | null;
+    currentValue?: number | null;
+    note?: string;
+    nextAction?: string | null;
+    nextGateOn?: string | null;
+}
+
+export interface OsDayStats {
+    date: string;
+    runs: number;
+    success: number;
+    failed: number;
+    blocked: number;
+    costUsd: number;
+    tokens: number;
+}
+
+export interface OsWeekStats {
+    weekStart: string;
+    tasksCreated: number;
+    tasksDone: number;
+    reviewsWaiting: number;
+    approvalsDecided: number;
+    approvalsTotal: number;
+    notesAdded: number;
+    runs: number;
+    overdueTasks: number;
+}
+
+export interface OsWeekActivity {
+    weekStart: string;
+    tasksDone: number;
+    runs: number;
+    approvals: number;
+    notes: number;
+    score: number;
+}
+
+export interface OsDeckStats {
+    now: string;
+    timezone: string;
+    today: OsDayStats;
+    yesterday: OsDayStats;
+    week: OsWeekStats;
+    weeks: OsWeekActivity[];
 }

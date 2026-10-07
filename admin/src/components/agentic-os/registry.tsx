@@ -8,7 +8,8 @@ import { GovernanceApp } from "./apps/Governance";
 import { MemoryMap } from "./apps/MemoryMap";
 import { Playbooks } from "./apps/Playbooks";
 import { Pulse } from "./apps/Pulse";
-import { OsSettingsApp, Overview } from "./apps/SystemApps";
+import { OsSettingsApp } from "./apps/SystemApps";
+import { CommandDeck } from "./apps/deck/CommandDeck";
 import { TaskManager } from "./apps/TaskManager";
 import { Workflows } from "./apps/Workflows";
 import type { AppId, AppParams } from "./lib/osUi";
@@ -31,7 +32,7 @@ export const APPS: AppDef[] = [
     {
         id: "overview", name: "Overview", icon: LayoutDashboard, color: "#38bdf8", layer: "S",
         description: "KPIs, agents at work, Pulse and live activity",
-        render: (_p, open) => <Overview onOpen={(a, p) => open(a as AppId, p)} />,
+        render: (_p, open) => <CommandDeck onOpen={(a, p) => open(a as AppId, p)} />,
     },
     {
         id: "studio", name: "Agent Studio", icon: Bot, color: "#818cf8", layer: "A",
