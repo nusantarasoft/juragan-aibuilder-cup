@@ -47,7 +47,7 @@ export const VO_DARK: VOTheme = {
     surfaceStrong: "rgba(2, 6, 23, 0.92)", // slate-950
     surface: "rgba(2, 6, 23, 0.78)",
     glass: "rgba(2, 6, 23, 0.70)", // exact VO GLASS
-    glassFaint: "rgba(2, 6, 23, 0.10)",
+    glassFaint: "rgba(2, 6, 23, 0.05)",
     blur: "blur(24px) saturate(160%)",
     border: "rgba(255, 255, 255, 0.10)",
     borderStrong: "rgba(255, 255, 255, 0.25)",
@@ -70,7 +70,7 @@ export const VO_LIGHT: VOTheme = {
     surfaceStrong: "rgba(255, 255, 255, 0.92)",
     surface: "rgba(255, 255, 255, 0.78)",
     glass: "rgba(255, 255, 255, 0.72)",
-    glassFaint: "rgba(255, 255, 255, 0.10)",
+    glassFaint: "rgba(255, 255, 255, 0.05)",
     blur: "blur(24px) saturate(160%)",
     border: "rgba(15, 23, 42, 0.08)",
     borderStrong: "rgba(15, 23, 42, 0.16)",

@@ -128,7 +128,7 @@ const FloatingOrbMenu = ({ darkMode = false }: { darkMode?: boolean }) => {
                                     key={`arc-${i}`}
                                     d={`M ${startX} ${startY} A 65 65 0 0 1 ${endX} ${endY}`} 
                                     fill="none" 
-                                    stroke="rgba(107, 114, 128, 0.6)" 
+                                    stroke={vo.borderStrong} 
                                     strokeWidth="3" 
                                     strokeLinecap="round"
                                 />
@@ -240,7 +240,7 @@ const FloatingOrbMenu = ({ darkMode = false }: { darkMode?: boolean }) => {
 
                                                 return (
                                                     <g key={`sub-group-${sub.id}`}>
-                                                        <circle cx={dotCx} cy={dotCy} r="3" fill="rgba(22, 119, 255, 0.8)" />
+                                                        <circle cx={dotCx} cy={dotCy} r="3" fill={vo.accent} />
                                                         {arcs.map((arc, aIdx) => {
                                                             const startX = 60 + 28 * Math.cos(arc.startRad);
                                                             const startY = 60 + 28 * Math.sin(arc.startRad);
@@ -251,7 +251,7 @@ const FloatingOrbMenu = ({ darkMode = false }: { darkMode?: boolean }) => {
                                                                     key={`sub-arc-${i}-${aIdx}`}
                                                                     d={`M ${startX} ${startY} A 28 28 0 0 1 ${endX} ${endY}`} 
                                                                     fill="none" 
-                                                                    stroke="rgba(22, 119, 255, 0.4)" 
+                                                                    stroke={vo.accentSoft} 
                                                                     strokeWidth="2.5" 
                                                                     strokeLinecap="round"
                                                                 />
@@ -344,7 +344,7 @@ const FloatingOrbMenu = ({ darkMode = false }: { darkMode?: boolean }) => {
                             justifyContent: 'center',
                         }}
                     >
-                        <BorderBeam size={75} duration={4} colorFrom="#ffffff" colorTo="transparent" borderWidth={2.5} />
+                        <BorderBeam size={75} duration={4} colorFrom={vo.accent} colorTo="transparent" borderWidth={2.5} />
                         <PlusOutlined style={{ fontSize: '2.4rem', color: '#ffffff', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }} />
 
                         {/* Orange Warning Badge */}
@@ -396,7 +396,7 @@ const FloatingOrbMenu = ({ darkMode = false }: { darkMode?: boolean }) => {
                     justifyContent: 'center',
                 }}
             >
-                <BorderBeam size={55} duration={4} colorFrom="#ffffff" colorTo="transparent" borderWidth={2.5} />
+                <BorderBeam size={55} duration={4} colorFrom={vo.accent} colorTo="transparent" borderWidth={2.5} />
                 {isOpen ? 
                     <CloseOutlined style={{ fontSize: '1.5rem', color: '#ffffff', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }} /> :
                     <MenuOutlined style={{ fontSize: '1.5rem', color: '#ffffff', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }} />

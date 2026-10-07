@@ -1,8 +1,7 @@
 import { create } from "zustand";
 import type { Object3D } from "three";
 import type { Lighting } from "./floorplan";
-import { INITIAL_AGENTS, initialActivity } from "./mockData";
-import type { ActivityEntry, Agent, AgentCommand, AgentDataSource, ChatMessage, OfficeEvent, ZoneId } from "./types";
+import type { ActivityEntry, Agent, AgentCommand, AgentDataSource, ChatMessage, DataMode, OfficeEvent, ZoneId } from "./types";
 
 export type CameraMode = "overview" | "top" | "zone" | "follow" | "free";
 
@@ -10,6 +9,8 @@ interface OfficeState {
     agents: Agent[];
     activity: ActivityEntry[];
     chats: Record<string, ChatMessage[]>;
+    /** Where agents come from: the Agentic OS database or the local demo simulation. */
+    dataMode: DataMode;
 
     selectedId: string | null;
     hoveredId: string | null;
@@ -44,9 +45,10 @@ interface OfficeState {
 }
 
 export const useOfficeStore = create<OfficeState>((set, get) => ({
-    agents: INITIAL_AGENTS,
-    activity: initialActivity(),
+    agents: [],
+    activity: [],
     chats: {},
+    dataMode: "connecting",
 
     selectedId: null,
     hoveredId: null,
@@ -75,8 +77,21 @@ export const useOfficeStore = create<OfficeState>((set, get) => ({
                     agents: s.agents.map((a) => (a.id === event.agentId ? { ...a, ...event.patch } : a)),
                 }));
                 break;
+            case "roster":
+                set((s) => {
+                    const ids = new Set(event.agents.map((a) => a.id));
+                    return {
+                        agents: event.agents,
+                        selectedId: s.selectedId && !ids.has(s.selectedId) ? null : s.selectedId,
+                        screenAgentId: s.screenAgentId && !ids.has(s.screenAgentId) ? null : s.screenAgentId,
+                    };
+                });
+                break;
+            case "mode":
+                set({ dataMode: event.mode });
+                break;
             case "activity":
-                set((s) => ({ activity: [event.entry, ...s.activity].slice(0, 100) }));
+                set((s) => (s.activity.some((x) => x.id === event.entry.id) ? s : { activity: [event.entry, ...s.activity].slice(0, 100) }));
                 break;
             case "chat":
                 set((s) => ({

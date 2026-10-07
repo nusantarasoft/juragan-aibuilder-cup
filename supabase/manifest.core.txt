@@ -1,4 +1,4 @@
-﻿# Core schema migrations — applied in order by scripts/apply-migrations.ps1
+# Core schema migrations — applied in order by scripts/apply-migrations.ps1
 # Fresh DB: docker mounts supabase/migrations/ (see docker-compose*.yml)
 
 supabase/migrations/00000000000001_schema_migrations.sql
@@ -52,3 +52,6 @@ supabase/migrations/20260506000002_notifications_module.sql
 supabase/migrations/20260506000003_data_export_logs.sql
 supabase/migrations/20260506000004_realtime_notifications.sql
 supabase/migrations/20260506999999_reload_postgrest.sql
+supabase/migrations/20261006000000_agentic_os.sql
+supabase/migrations/20261007000000_agentic_os_pulse.sql
+supabase/migrations/20261008000000_agentic_os_phase3.sql

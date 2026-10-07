@@ -53,6 +53,7 @@ import { FormsModule } from './forms/forms.module';
 import { WahaModule } from './waha/waha.module';
 import { FacilityModule } from './facility/facility.module';
 import { PentestModule } from './pentest/pentest.module';
+import { AgenticOsModule } from './agentic-os/agentic-os.module';
 @Module({
     imports: [
         // Environment configuration
@@ -125,6 +126,8 @@ import { PentestModule } from './pentest/pentest.module';
         FormsModule,
         FacilityModule,
         PentestModule,
+        // Agentic OS (agents, playbooks, task queue, memory, pulse, governance)
+        AgenticOsModule,
     ],
 })
 export class AppModule { }

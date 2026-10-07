@@ -3,7 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useShallow } from "zustand/react/shallow";
-import { ArrowLeft, Box, Crosshair, Eye, EyeOff, LayoutGrid, Maximize2, Minimize2, Moon, Sun } from "lucide-react";
+import { ArrowLeft, Box, Cpu, Crosshair, Eye, EyeOff, LayoutGrid, Maximize2, Minimize2, Moon, Sun } from "lucide-react";
+import { useOsUi } from "@/components/agentic-os/registry";
+import { useAosStore } from "@/components/agentic-os/lib/store";
 import { useOfficeStore } from "../lib/store";
 import { GLASS, IconButton, cx, formatTokens } from "./shared";
 
@@ -20,9 +22,10 @@ function Stat({ label, value, color }: { label: string; value: React.ReactNode; 
 
 export function TopBar() {
     const router = useRouter();
-    const { agents, cameraMode, selectedId, lighting, showLabels, setCameraMode, toggleLighting, toggleLabels } = useOfficeStore(
+    const { agents, dataMode, cameraMode, selectedId, lighting, showLabels, setCameraMode, toggleLighting, toggleLabels } = useOfficeStore(
         useShallow((s) => ({
             agents: s.agents,
+            dataMode: s.dataMode,
             cameraMode: s.cameraMode,
             selectedId: s.selectedId,
             lighting: s.lighting,
@@ -32,6 +35,8 @@ export function TopBar() {
             toggleLabels: s.toggleLabels,
         })),
     );
+    const launchOs = useOsUi((s) => s.launch);
+    const pendingApprovals = useAosStore((s) => s.stats?.pendingApprovals ?? 0);
     const [fullscreen, setFullscreen] = useState(false);
 
     useEffect(() => {
@@ -45,6 +50,7 @@ export function TopBar() {
     const thinking = agents.filter((a) => a.status === "thinking").length;
     const meeting = agents.filter((a) => a.status === "meeting").length;
     const issues = agents.filter((a) => a.status === "error").length;
+    const review = agents.reduce((sum, a) => sum + (a.review ?? 0), 0);
     const tokens = agents.reduce((sum, a) => sum + a.stats.tokensToday, 0);
     const done = agents.reduce((sum, a) => sum + a.stats.tasksCompleted, 0);
 
@@ -71,11 +77,20 @@ export function TopBar() {
                 <div className="leading-tight">
                     <div className="flex items-center gap-2 text-sm font-semibold">
                         Virtual Office
-                        <span className="rounded-md border border-amber-400/30 bg-amber-400/10 px-1.5 py-px text-[9px] font-bold uppercase tracking-wider text-amber-300">
-                            Preview
-                        </span>
+                        {dataMode === "live" ? (
+                            <span className="flex items-center gap-1 rounded-md border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-px text-[9px] font-bold uppercase tracking-wider text-emerald-300">
+                                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> Live
+                            </span>
+                        ) : (
+                            <span
+                                className="rounded-md border border-amber-400/30 bg-amber-400/10 px-1.5 py-px text-[9px] font-bold uppercase tracking-wider text-amber-300"
+                                title={dataMode === "demo" ? "Agentic OS backend unreachable — showing the local demo simulation" : "Connecting to the Agentic OS…"}
+                            >
+                                {dataMode === "demo" ? "Demo" : "Connecting"}
+                            </span>
+                        )}
                     </div>
-                    <div className="text-[11px] text-slate-400">AI Agent HQ · simulated agents</div>
+                    <div className="text-[11px] text-slate-400">AI Agent HQ · {dataMode === "live" ? "Agentic OS agents" : "simulated agents"}</div>
                 </div>
             </div>
 
@@ -86,12 +101,24 @@ export function TopBar() {
                 <Stat label="Thinking" value={thinking} color="#a855f7" />
                 <Stat label="Meeting" value={meeting} color="#f59e0b" />
                 <Stat label="Attention" value={issues} color={issues ? "#ef4444" : undefined} />
+                {dataMode === "live" && <Stat label="Review" value={review} color={review ? "#c084fc" : undefined} />}
                 <Stat label="Tasks done" value={done} />
                 <Stat label="Tokens today" value={formatTokens(tokens)} />
             </div>
 
             {/* View controls */}
             <div className={cx(GLASS, "pointer-events-auto flex items-center gap-1 rounded-2xl p-1.5")}>
+                <button
+                    type="button"
+                    onClick={() => launchOs(pendingApprovals ? "governance" : "overview")}
+                    title="Open the Agentic OS — customize agents, tasks and playbooks"
+                    className="relative mr-1 flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-3 py-1.5 text-[12px] font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:brightness-110"
+                >
+                    <Cpu className="h-4 w-4" /> Agentic OS
+                    {pendingApprovals > 0 && (
+                        <span className="absolute -right-1.5 -top-1.5 min-w-[18px] rounded-full bg-amber-500 px-1 text-center text-[10px] font-bold text-black">{pendingApprovals}</span>
+                    )}
+                </button>
                 <div className="flex items-center gap-1 rounded-xl bg-white/5 p-0.5">
                     <IconButton title="Overview (1)" active={cameraMode === "overview"} onClick={() => setCameraMode("overview")}>
                         <Box className="h-4 w-4" />

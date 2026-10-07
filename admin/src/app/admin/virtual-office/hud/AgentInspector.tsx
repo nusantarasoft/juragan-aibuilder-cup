@@ -10,6 +10,7 @@ import {
     ExternalLink,
     Gauge,
     House,
+    ListTodo,
     MessageSquare,
     Monitor,
     Pause,
@@ -17,6 +18,7 @@ import {
     Power,
     RotateCcw,
     Send,
+    SlidersHorizontal,
     Sparkles,
     Target,
     Users,
@@ -24,6 +26,7 @@ import {
     Zap,
     type LucideIcon,
 } from "lucide-react";
+import { useOsUi } from "@/components/agentic-os/registry";
 import { STATUS_META, ZONE_BY_ID } from "../lib/floorplan";
 import { MODULES, sessionUrl } from "../lib/modules";
 import { useOfficeStore } from "../lib/store";
@@ -152,15 +155,17 @@ function Chat({ agent }: { agent: Agent }) {
 
 export function AgentInspector() {
     const router = useRouter();
-    const { agent, activity, select, command, openScreen } = useOfficeStore(
+    const { agent, activity, dataMode, select, command, openScreen } = useOfficeStore(
         useShallow((s) => ({
             agent: s.agents.find((a) => a.id === s.selectedId),
             activity: s.activity,
+            dataMode: s.dataMode,
             select: s.select,
             command: s.command,
             openScreen: s.openScreen,
         })),
     );
+    const launchOs = useOsUi((s) => s.launch);
     const [tab, setTab] = useState<"chat" | "activity">("chat");
     const now = useNow(1000);
     const agentActivity = useMemo(() => (agent ? activity.filter((e) => e.agentId === agent.id).slice(0, 30) : []), [activity, agent]);
@@ -256,6 +261,34 @@ export function AgentInspector() {
                             Open module
                         </button>
                     </div>
+                </div>
+
+                {/* Agentic OS */}
+                <div className="flex items-center gap-1.5 rounded-xl border border-indigo-400/20 bg-indigo-500/[0.07] p-2">
+                    <div className="min-w-0 flex-1 text-[11px] leading-tight text-slate-300">
+                        {dataMode === "live" ? (
+                            <>
+                                <span className="font-semibold text-white">{agent.queued ?? 0}</span> queued ·{" "}
+                                <span className={cx("font-semibold", agent.review ? "text-purple-300" : "text-white")}>{agent.review ?? 0}</span> to review
+                            </>
+                        ) : (
+                            <span className="text-slate-400">Demo agent — customize live agents in the OS</span>
+                        )}
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => launchOs("studio", agent.dbId ? { agentId: agent.dbId } : {})}
+                        className="inline-flex items-center gap-1 rounded-lg bg-indigo-500/80 px-2 py-1 text-[11px] font-semibold text-white hover:bg-indigo-500"
+                    >
+                        <SlidersHorizontal className="h-3 w-3" /> Customize
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => launchOs("tasks", agent.dbId ? { agentId: agent.dbId } : {})}
+                        className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[11px] font-semibold text-slate-200 hover:bg-white/10"
+                    >
+                        <ListTodo className="h-3 w-3" /> Tasks
+                    </button>
                 </div>
 
                 {/* Stats */}

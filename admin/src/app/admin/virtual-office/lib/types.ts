@@ -88,6 +88,12 @@ export interface Agent {
     modules: ModuleId[];
     skills: string[];
     stats: AgentStats;
+    /** Agentic OS record id (live mode only). */
+    dbId?: string;
+    /** Tasks waiting in the agent's queue (live mode). */
+    queued?: number;
+    /** Finished tasks waiting for a human to confirm (live mode). */
+    review?: number;
 }
 
 export type ActivityLevel = "info" | "success" | "warning" | "error";
@@ -109,8 +115,13 @@ export interface ChatMessage {
     ts: number;
 }
 
+/** "live" = agents from the Agentic OS database; "demo" = local simulation. */
+export type DataMode = "connecting" | "live" | "demo";
+
 export type OfficeEvent =
     | { type: "agent.patch"; agentId: string; patch: Partial<Omit<Agent, "id">> }
+    | { type: "roster"; agents: Agent[] }
+    | { type: "mode"; mode: DataMode }
     | { type: "activity"; entry: ActivityEntry }
     | { type: "chat"; agentId: string; message: ChatMessage };
 

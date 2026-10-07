@@ -1212,6 +1212,12 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
+                        path: "/admin/agentic-os",
+                        name: "Agentic OS",
+                        icon: <RobotOutlined />,
+                        isLeaf: true,
+                    },
+                    {
                         path: "/admin/ai-studio/knowledge-graph",
                         name: "Knowledge Graph",
                         icon: <ShareAltOutlined />,
