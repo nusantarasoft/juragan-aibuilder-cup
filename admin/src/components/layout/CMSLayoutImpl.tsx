@@ -1051,8 +1051,8 @@ export default function CMSLayoutImpl({
                     {/* OUTER PROLAYOUT - Main section navigation */}
                     <ProLayout
                         prefixCls="cms-outer"
-                        title=""
-                        logo={logoSrc}
+                        title={false}
+                        logo={false}
                         {...menuConfig}
                         location={{
                             pathname,
@@ -1064,7 +1064,7 @@ export default function CMSLayoutImpl({
                         headerRender={false}
                         siderWidth={260}
                         navTheme={darkMode ? "realDark" : "light"}
-                        token={{ sider: { colorMenuBackground: vo.surfaceStrong, colorTextMenu: vo.textMuted, colorTextMenuSelected: vo.text, colorBgMenuItemSelected: vo.selectedBg, colorTextMenuItemHover: vo.text, colorBgMenuItemHover: vo.hoverBg, colorTextMenuSecondary: vo.textDim, colorTextMenuTitle: vo.text } }}
+                        token={{ sider: { colorMenuBackground: 'transparent', colorTextMenu: vo.text, colorTextMenuSelected: vo.text, colorBgMenuItemSelected: vo.selectedBg, colorTextMenuItemHover: vo.text, colorBgMenuItemHover: vo.hoverBg, colorTextMenuSecondary: vo.textDim, colorTextMenuTitle: vo.text } }}
                         layout="side"
                         contentStyle={{
                             padding: 0,
@@ -1153,17 +1153,13 @@ export default function CMSLayoutImpl({
                                         onClick={() => router.push("/admin/dashboard")}
                                     />
                                     {!outerCollapsed && (
-                                        <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: '1.5px', lineHeight: '20px', display: 'flex', alignItems: 'center' }}>
-                                            <GlitchText speed={0.5} enableShadows={true} color={darkMode ? '#ffffff' : '#333333'} glitchColor1={themePalette.accent} glitchColor2={themePalette.secondary}>
-                                                NS
-                                            </GlitchText>
+                                        <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: '1.5px', lineHeight: '20px', display: 'flex', alignItems: 'center', color: vo.text }}>
+                                            NS
                                         </div>
                                     )}
                                     {outerCollapsed && (
-                                        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.5px', lineHeight: '14px' }}>
-                                            <GlitchText speed={0.5} enableShadows={true} color={darkMode ? '#ffffff' : '#333333'} glitchColor1={themePalette.accent} glitchColor2={themePalette.secondary}>
-                                                NS
-                                            </GlitchText>
+                                        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.5px', lineHeight: '14px', color: vo.text }}>
+                                            NS
                                         </div>
                                     )}
                                 </div>
@@ -1255,6 +1251,30 @@ export default function CMSLayoutImpl({
                             </div>
                         )}}
                         menuItemRender={(item, dom) => {
+                            // Render section dividers (e.g., 'BUSINESS') as non-clickable headers with cyan dot
+                            if (item.path?.includes('divider') && !item.icon) {
+                                return (
+                                    <div
+                                        className="vo-divider-header"
+                                        style={{
+                                            fontSize: '10px',
+                                            fontWeight: 700,
+                                            color: vo.accent,
+                                            padding: '16px 12px 8px 12px',
+                                            letterSpacing: '0.14em',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            textTransform: 'uppercase',
+                                            pointerEvents: 'none'
+                                        }}
+                                    >
+                                        <span style={{ display: 'block', width: 6, height: 6, borderRadius: '50%', background: vo.accent }} />
+                                        {item.name}
+                                    </div>
+                                );
+                            }
+
                             // Unified rendering for both collapsed and expanded modes.
                             // Uses classes so the useEffect can target elements precisely.
                             const route = findMenuItemByPath(menuConfig.route.routes, item.path || '');
@@ -1322,7 +1342,7 @@ export default function CMSLayoutImpl({
                                                 e.preventDefault();
                                             }
                                         }}
-                                        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, overflow: 'hidden' }}
                                     >
                                         <span className="anticon submenu-icon-el" style={{ display: 'inline-flex', fontSize: 16, flexShrink: 0 }}>{icon}</span>
                                         <span className="submenu-text-el">{item.name}</span>
@@ -1349,7 +1369,7 @@ export default function CMSLayoutImpl({
                         {/* INNER PROLAYOUT - Sub-navigation with segmented header */}
                         <ProLayout
                             prefixCls="cms-inner"
-                            title=""
+                            title={false}
                             logo={false}
                             style={{ minHeight: '100vh', width: '100%' }}
                             location={{
@@ -1366,7 +1386,7 @@ export default function CMSLayoutImpl({
                             onCollapse={handleInnerCollapse}
                             siderWidth={240}
                             navTheme={darkMode ? "realDark" : "light"}
-                            token={{ sider: { colorMenuBackground: vo.surface, colorTextMenu: vo.textMuted, colorTextMenuSelected: vo.text, colorBgMenuItemSelected: vo.selectedBg, colorTextMenuItemHover: vo.text, colorBgMenuItemHover: vo.hoverBg, colorTextMenuSecondary: vo.textDim, colorTextMenuTitle: vo.text } }}
+                            token={{ sider: { colorMenuBackground: 'transparent', colorTextMenu: vo.text, colorTextMenuSelected: vo.text, colorBgMenuItemSelected: vo.selectedBg, colorTextMenuItemHover: vo.text, colorBgMenuItemHover: vo.hoverBg, colorTextMenuSecondary: vo.textDim, colorTextMenuTitle: vo.text } }}
                             layout="side"
                             contentStyle={{
                                 padding: 0,
@@ -1414,25 +1434,48 @@ export default function CMSLayoutImpl({
                                 
                                 return (
                                     <div style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
-                                        <div
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                setPathname(item.path || "/admin/dashboard");
-                                                if (item.path) {
-                                                    router.push(item.path);
-                                                }
-                                            }}
-                                            onClickCapture={(e) => {
-                                                const target = e.target as HTMLElement;
-                                                if (target.tagName === 'A' || target.closest('a')) {
+                                        {item.icon ? (
+                                            <div
+                                                onClick={(e) => {
                                                     e.preventDefault();
-                                                }
-                                            }}
-                                            style={{ cursor: "pointer", flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                                        >
-                                            {dom}
-                                        </div>
+                                                    e.stopPropagation();
+                                                    setPathname(item.path || "/admin/dashboard");
+                                                    if (item.path) {
+                                                        router.push(item.path);
+                                                    }
+                                                }}
+                                                onClickCapture={(e) => {
+                                                    const target = e.target as HTMLElement;
+                                                    if (target.tagName === 'A' || target.closest('a')) {
+                                                        e.preventDefault();
+                                                    }
+                                                }}
+                                                style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: "pointer", flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                            >
+                                                <span className="anticon menuitem-icon-el" style={{ display: 'inline-flex', fontSize: 16, flexShrink: 0 }}>{item.icon}</span>
+                                                <span className="menuitem-text-el">{item.name}</span>
+                                            </div>
+                                        ) : (
+                                            <div
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setPathname(item.path || "/admin/dashboard");
+                                                    if (item.path) {
+                                                        router.push(item.path);
+                                                    }
+                                                }}
+                                                onClickCapture={(e) => {
+                                                    const target = e.target as HTMLElement;
+                                                    if (target.tagName === 'A' || target.closest('a')) {
+                                                        e.preventDefault();
+                                                    }
+                                                }}
+                                                style={{ cursor: "pointer", flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                            >
+                                                {dom}
+                                            </div>
+                                        )}
                                         {isPinnedOrStarred && !innerCollapsed && (
                                             <Popconfirm
                                                 title={`Remove from ${selectedSegment}?`}
@@ -1463,11 +1506,43 @@ export default function CMSLayoutImpl({
                                     </div>
                                 );
                             }}
+                            subMenuItemRender={(item, dom) => {
+                                if (item.icon) {
+                                    return (
+                                        <div
+                                            className="submenu-item-wrapper"
+                                            onClickCapture={(e) => {
+                                                const target = e.target as HTMLElement;
+                                                if (target.tagName === 'A' || target.closest('a')) {
+                                                    e.preventDefault();
+                                                }
+                                            }}
+                                            style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, overflow: 'hidden' }}
+                                        >
+                                            <span className="anticon submenu-icon-el" style={{ display: 'inline-flex', fontSize: 16, flexShrink: 0 }}>{item.icon}</span>
+                                            <span className="submenu-text-el">{item.name}</span>
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <div
+                                        onClickCapture={(e) => {
+                                            const target = e.target as HTMLElement;
+                                            if (target.tagName === 'A' || target.closest('a')) {
+                                                e.preventDefault();
+                                            }
+                                        }}
+                                        style={{ cursor: 'pointer' }}
+                                    >
+                                        {dom}
+                                    </div>
+                                );
+                            }}
                         >
                             <PageContainer
                                 title={title}
                                 subTitle={subTitle}
-                                extra={[...(extra || []), <PinStarShareActions key="pin-star-actions" />, virtualOfficeButton]}
+                                extra={[...(extra || []), <PinStarShareActions key="pin-star-actions" />]}
                                 breadcrumb={{
                                     items: breadcrumbItems.map((item, index) => ({
                                         key: index,
@@ -1476,6 +1551,12 @@ export default function CMSLayoutImpl({
                                         className: item.path ? "cursor-pointer" : "",
                                     })),
                                 }}
+                                breadcrumbRender={(props, defaultDom) => (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {defaultDom}
+                                        {virtualOfficeButton}
+                                    </div>
+                                )}
                             >
                                 <ProCard>
                                     {children}
@@ -1566,6 +1647,36 @@ export default function CMSLayoutImpl({
 
             {/* CSS for sidebar alignment */}
             <style jsx global>{`
+                /* Nuke the 64px ProLayout default header block and ALL phantom top margins */
+                .cms-outer-sider .ant-pro-sider-logo,
+                .cms-inner-sider .ant-pro-sider-logo,
+                .cms-outer-sider [class*="-sider-logo"],
+                .cms-inner-sider [class*="-sider-logo"] {
+                    display: none !important;
+                    height: 0 !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                }
+                
+                /* Force all immediate children of the sider to have NO top margin or padding */
+                .cms-outer-sider .ant-layout-sider-children > *,
+                .cms-inner-sider .ant-layout-sider-children > * {
+                    margin-top: 0 !important;
+                    padding-top: 0 !important;
+                    margin-block-start: 0 !important;
+                    padding-block-start: 0 !important;
+                }
+                
+                .cms-outer-sider .ant-pro-sider-menu,
+                .cms-inner-sider .ant-pro-sider-menu,
+                .cms-outer-sider .ant-menu,
+                .cms-inner-sider .ant-menu {
+                    margin-top: 0 !important;
+                    padding-top: 0 !important;
+                    margin-block-start: 0 !important;
+                    padding-block-start: 0 !important;
+                }
+                
                 /* Fix margin-inline for sider-extra */
                 .cms-outer-sider-extra.cms-outer-sider-extra-no-logo,
                 .cms-inner-sider-extra {
@@ -1590,17 +1701,30 @@ export default function CMSLayoutImpl({
                 
                 /* --- VIRTUAL OFFICE THEME (see components/layout/voTheme.ts) --- */
                 
+                /* Layout background - apply canvas backdrop */
+                .cms-outer-layout {
+                    background: ${vo.canvas} !important;
+                }
+
                 /* Outer Menu (Primary Sidebar) — VO glass, strongest surface */
                 .cms-outer-sider {
-                    border-right: 1px solid ${vo.border} !important;
+                    background: transparent !important;
+                    border: none !important;
+                    box-shadow: none !important;
                     z-index: 100 !important;
-                    background: ${vo.surfaceStrong} !important;
+                }
+                .cms-outer-sider .ant-layout-sider-children {
+                    background: ${vo.glass} !important;
                     backdrop-filter: ${vo.blur} !important;
                     -webkit-backdrop-filter: ${vo.blur} !important;
                     box-shadow: ${vo.shadow} !important;
-                }
-                .cms-outer-sider .ant-layout-sider-children {
-                    background: transparent !important;
+                    border: 1px solid ${vo.border} !important;
+                    margin: 16px 8px 16px 16px !important;
+                    border-radius: 20px !important;
+                    height: calc(100vh - 32px) !important;
+                    overflow: visible !important;
+                    display: flex;
+                    flex-direction: column;
                 }
                 /* Footer hairline, like the VO panel dividers */
                 .cms-outer-sider .cms-outer-sider-actions {
@@ -1656,19 +1780,58 @@ export default function CMSLayoutImpl({
                     background: transparent !important;
                 }
                 .cms-outer-sider .ant-menu-item,
+                .cms-inner-sider .ant-menu-item {
+                    padding-left: 12px !important;
+                    padding-right: 12px !important;
+                }
+                
+                .cms-outer-sider .ant-menu-submenu-title,
+                .cms-inner-sider .ant-menu-submenu-title {
+                    padding-left: 12px !important;
+                    padding-right: 34px !important;
+                }
+                
+                .cms-outer-sider .ant-menu-item,
                 .cms-outer-sider .ant-menu-submenu-title,
                 .cms-inner-sider .ant-menu-item,
                 .cms-inner-sider .ant-menu-submenu-title {
-                    color: ${vo.textMuted} !important;
-                    font-weight: 500 !important;
+                    color: ${vo.text} !important;
+                    font-size: 13px !important;
+                    font-weight: 600 !important;
                     border: 1px solid transparent !important;
                     border-radius: 12px !important;
                     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
+                    margin-inline: 8px !important;
+                    margin-top: 2px !important;
+                    margin-bottom: 2px !important;
+                    height: auto !important;
+                    line-height: normal !important;
+                    padding-block: 8px !important;
                 }
-                .cms-inner-sider .ant-menu-item,
-                .cms-inner-sider .ant-menu-submenu-title {
-                    padding-inline: 12px !important;
+                
+                /* Freeze item widths so they don't shrink when a scrollbar appears, which caused the arrow to jump */
+                .cms-outer-sider:not(.ant-layout-sider-collapsed) .ant-menu-item,
+                .cms-outer-sider:not(.ant-layout-sider-collapsed) .ant-menu-submenu-title {
+                    width: 214px !important;
                 }
+                
+                .cms-inner-sider:not(.ant-layout-sider-collapsed) .ant-menu-item,
+                .cms-inner-sider:not(.ant-layout-sider-collapsed) .ant-menu-submenu-title {
+                    width: 194px !important;
+                }
+                
+                /* Completely remove styling from wrapper li if it's a divider */
+                .cms-outer-sider .ant-menu-item:has(.vo-divider-header),
+                .cms-inner-sider .ant-menu-item:has(.vo-divider-header) {
+                    background: transparent !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    height: auto !important;
+                    pointer-events: none !important;
+                }
+                
                 .cms-outer-sider .ant-menu-item .anticon,
                 .cms-outer-sider .ant-menu-submenu-title .anticon,
                 .cms-inner-sider .ant-menu-item .anticon,
@@ -1680,28 +1843,49 @@ export default function CMSLayoutImpl({
                 .cms-inner-sider .ant-menu-submenu-arrow {
                     color: ${vo.textDim} !important;
                 }
-                /* VO section labels: 10px bold uppercase, wide tracking */
+                /* VO section labels: 10px bold uppercase, wide tracking, with cyan dot */
                 .cms-outer-sider .ant-menu-item-group-title,
                 .cms-inner-sider .ant-menu-item-group-title {
-                    color: ${vo.textDim} !important;
+                    color: ${vo.accent} !important;
                     font-size: 10px !important;
                     font-weight: 700 !important;
                     text-transform: uppercase !important;
                     letter-spacing: 0.14em !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 6px !important;
+                }
+                .cms-outer-sider .ant-menu-item-group-title::before,
+                .cms-inner-sider .ant-menu-item-group-title::before {
+                    content: '';
+                    display: block;
+                    width: 6px;
+                    height: 6px;
+                    border-radius: 50%;
+                    background: ${vo.accent};
                 }
                 
                 /* Inner Menu (Contextual Sidebar) — VO glass, secondary surface */
                 .cms-inner-sider {
-                    border-right: 1px solid ${vo.border} !important;
+                    background: transparent !important;
+                    border: none !important;
+                    box-shadow: none !important;
                     overflow: visible !important;
                     left: ${outerCollapsed ? OUTER_COLLAPSED_WIDTH : 260}px !important;
                     z-index: 99 !important;
-                    background: ${vo.surface} !important;
-                    backdrop-filter: ${vo.blur} !important;
-                    -webkit-backdrop-filter: ${vo.blur} !important;
                 }
                 .cms-inner-sider .ant-layout-sider-children {
-                    background: transparent !important;
+                    background: ${vo.glass} !important;
+                    backdrop-filter: ${vo.blur} !important;
+                    -webkit-backdrop-filter: ${vo.blur} !important;
+                    box-shadow: ${vo.shadow} !important;
+                    border: 1px solid ${vo.border} !important;
+                    margin: 16px 16px 16px 8px !important;
+                    border-radius: 20px !important;
+                    height: calc(100vh - 32px) !important;
+                    overflow: visible !important;
+                    display: flex;
+                    flex-direction: column;
                 }
                 
                 /* ---- Hover (VO AgentRow: white/5 fill + white/10 hairline) ---- */
@@ -1743,18 +1927,27 @@ export default function CMSLayoutImpl({
                     color: ${vo.accent} !important;
                 }
                 
-                /* The sider-children contains the collapse button, so we can't clip it */
-                /* Instead, use clip-path or keep overflow visible */
-                .cms-inner-sider .ant-layout-sider-children {
-                    overflow: visible !important;
-                    width: 100% !important;
-                    height: 100% !important;
+                /* Force the exact ProLayout scrolling wrapper to always show the scrollbar */
+                .cms-outer-sider .ant-pro-sider-menu,
+                .cms-inner-sider .ant-pro-sider-menu,
+                .cms-outer-sider div:has(> .ant-menu),
+                .cms-inner-sider div:has(> .ant-menu),
+                .cms-outer-sider div[style*="overflow: hidden auto"],
+                .cms-inner-sider div[style*="overflow: hidden auto"] {
+                    overflow-y: scroll !important;
                 }
                 
-                /* Apply overflow hidden only to the menu and extra containers */
+                /* Ensure text truncates properly */
+                .submenu-text-el, .menuitem-text-el {
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                    flex: 1;
+                    min-width: 0;
+                }
+                
                 .cms-inner-sider .ant-menu {
                     overflow-x: hidden !important;
-                    overflow-y: auto !important;
                 }
                 
                 .cms-inner-sider .cms-inner-sider-extra {

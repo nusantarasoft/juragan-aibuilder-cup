@@ -11,6 +11,7 @@ import { AgentInspector } from "./hud/AgentInspector";
 import { AgentScreenView } from "./hud/AgentScreenView";
 import { CommandBar } from "./hud/CommandBar";
 import { GLASS, cx } from "./hud/shared";
+import { AgenticOsOverlay } from "@/components/agentic-os/AgenticOsOverlay";
 
 const OfficeScene = dynamic(() => import("./scene/OfficeScene"), { ssr: false });
 
@@ -49,6 +50,30 @@ function LoadingVeil() {
 }
 
 export default function VirtualOffice() {
+    const lighting = useOfficeStore(s => s.lighting);
+
+    // Initial load from localstorage
+    useEffect(() => {
+        const savedDarkMode = localStorage.getItem("cms-dark-mode");
+        const isDark = savedDarkMode !== null ? savedDarkMode === "true" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (isDark && useOfficeStore.getState().lighting === "day") {
+            useOfficeStore.setState({ lighting: "night" });
+        } else if (!isDark && useOfficeStore.getState().lighting === "night") {
+            useOfficeStore.setState({ lighting: "day" });
+        }
+    }, []);
+
+    // Sync state changes to global and tailwind
+    useEffect(() => {
+        const isDark = lighting === "night";
+        localStorage.setItem("cms-dark-mode", String(isDark));
+        if (isDark) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    }, [lighting]);
+
     // The runtime (mock today, real backend later — see lib/runtime.ts) lives for the whole tab,
     // so agents keep working while the user follows them into module pages.
     useEffect(() => {
@@ -110,6 +135,7 @@ export default function VirtualOffice() {
                 <AgentScreenView />
             </div>
             <LoadingVeil />
+            <AgenticOsOverlay />
         </div>
     );
 }

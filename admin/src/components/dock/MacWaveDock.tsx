@@ -40,13 +40,13 @@ export const MacWaveDock: React.FC<MacWaveDockProps> = ({
                 display: 'flex',
                 flexDirection: isHorizontal ? 'row' : 'column',
                 alignItems: isHorizontal ? 'flex-end' : 'flex-start',
-                gap: 4,
+                gap: 2,
                 background: vo.glassFaint,
                 backdropFilter: vo.blur,
                 WebkitBackdropFilter: vo.blur,
                 // Fix the cross-axis size so the container doesn't "wave", only the icons do
                 height: isHorizontal ? 60 : undefined,
-                width: isHorizontal ? undefined : 48,
+                width: isHorizontal ? undefined : 40,
                 padding: isHorizontal ? '0 12px 8px 12px' : '16px 6px 16px 6px',
                 borderRadius: isHorizontal ? '24px 24px 0 0' : 24,
                 border: `1px solid ${vo.border}`,
@@ -97,10 +97,10 @@ function DockIcon({
     });
 
     // Define sizing based on direction (left dock is smaller)
-    const baseSize = direction === "horizontal" ? 44 : 36;
-    const maxSize = direction === "horizontal" ? 80 : 64;
-    const iconBaseSize = direction === "horizontal" ? 24 : 18;
-    const iconMaxSize = direction === "horizontal" ? 48 : 36;
+    const baseSize = direction === "horizontal" ? 44 : 32;
+    const maxSize = direction === "horizontal" ? 80 : 54;
+    const iconBaseSize = direction === "horizontal" ? 24 : 16;
+    const iconMaxSize = direction === "horizontal" ? 48 : 28;
 
     const sizeTransform = useTransform(distance, [-150, 0, 150], [baseSize, maxSize, baseSize]);
     const iconSizeTransform = useTransform(distance, [-150, 0, 150], [iconBaseSize, iconMaxSize, iconBaseSize]);

@@ -23,6 +23,7 @@ import { MODULES } from "../lib/modules";
 import type { Zone } from "../lib/types";
 import { AgentAvatar } from "./AgentAvatar";
 import { DataWall, Desk, HoloTable, LoungeSet, MeetingRoom, Orchestrator, Plant, ServerRack } from "./Furniture";
+import { RoutineBoard } from "./RoutineBoard";
 
 /* ------------------------------------------------------------------ */
 /* Lights                                                              */
@@ -232,6 +233,8 @@ function Props({ lighting }: { lighting: Lighting }) {
             })}
 
             <MeetingRoom lighting={lighting} inSession={inSession} />
+            {/* Live Pulse routine board on the War Room wall (Agentic OS "Screen") */}
+            <RoutineBoard position={[11, 1.75, -13.8]} lighting={lighting} />
             <DataWall position={[-11, 1.8, -13.9]} lighting={lighting} />
             <LoungeSet table={LOUNGE_TABLE} lighting={lighting} />
             <HoloTable position={[11, 10.4]} />

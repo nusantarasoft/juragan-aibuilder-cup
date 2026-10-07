@@ -45,7 +45,7 @@ const defaultItems = [
     {
         title: "GitHub",
         icon: <IconBrandGithub className="h-full w-full text-neutral-500 dark:text-neutral-300" />,
-        href: "https://github.com",
+        href: "https://github.com/nusantarasoft/nusantarasoft-3",
     },
     {
         title: "Twitter",

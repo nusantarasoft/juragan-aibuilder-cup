@@ -74,6 +74,15 @@ export const DESKS: Desk[] = [
     { id: "ops-1", zone: "operations", position: [-16, -8.4], rotation: 0 },
     { id: "ops-2", zone: "operations", position: [-11, -8.4], rotation: 0 },
     { id: "ops-3", zone: "operations", position: [-6, -8.4], rotation: 0 },
+    // Second row — capacity for agents created in the Agentic OS.
+    ...pod("engineering", "eng-4", -16, 9.6),
+    ...pod("engineering", "eng-5", -11, 9.6),
+    ...pod("engineering", "eng-6", -6, 9.6),
+    ...pod("research", "res-3", 7.5, 9.6),
+    ...pod("research", "res-4", 14.5, 9.6),
+    { id: "ops-4", zone: "operations", position: [-16, -11.6], rotation: 0 },
+    { id: "ops-5", zone: "operations", position: [-11, -11.6], rotation: 0 },
+    { id: "ops-6", zone: "operations", position: [-6, -11.6], rotation: 0 },
 ];
 
 export const DESK_BY_ID = Object.fromEntries(DESKS.map((d) => [d.id, d])) as Record<string, Desk>;
@@ -174,8 +183,14 @@ function exitPoints(pos: P, zone: ZoneId, yaw: number): P[] {
     }
     const pts: P[] = [];
     const towardCorridor = pos[1] > CORRIDOR_Z ? -1 : 1;
+    // A desk in the same column between the avatar and the corridor (front rows block the back rows).
+    const blocked = DESKS.some(
+        (d) =>
+            Math.abs(d.position[0] - pos[0]) < 1.0 &&
+            (towardCorridor < 0 ? d.position[1] < pos[1] - 0.2 && d.position[1] > CORRIDOR_Z : d.position[1] > pos[1] + 0.2 && d.position[1] < CORRIDOR_Z),
+    );
     // If the desk/table sits between the avatar and the corridor, side-step into the aisle first.
-    if (Math.cos(yaw) * towardCorridor > 0.5) {
+    if (Math.cos(yaw) * towardCorridor > 0.5 || blocked) {
         const dir = pos[0] >= ZONE_BY_ID[zone].center[0] ? 1 : -1;
         pts.push([pos[0] + dir * 1.15, pos[1]]);
     }
