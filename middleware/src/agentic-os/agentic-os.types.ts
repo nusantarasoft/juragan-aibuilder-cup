@@ -107,6 +107,8 @@ export class AosTask {
     // Phase 3 (Workflows)
     @Field(() => String, { nullable: true }) workflowRunId: string | null;
     @Field(() => String, { nullable: true }) nodeId: string | null;
+    // Phase 4 (Goals)
+    @Field(() => String, { nullable: true }) goalId: string | null;
 }
 
 @ObjectType()
@@ -366,6 +368,105 @@ export class AosStats {
     @Field(() => Int) pendingApprovals: number;
 }
 
+// ── Phase 4 (Command Deck · Goals & gate reviews) ───────────────────────────
+
+@ObjectType()
+export class AosGoal {
+    @Field() id: string;
+    @Field() title: string;
+    @Field() description: string;
+    @Field(() => String, { nullable: true }) areaId: string | null;
+    @Field(() => String, { nullable: true }) ownerAgentId: string | null;
+    @Field() metric: string;
+    @Field(() => Float, { nullable: true }) targetValue: number | null;
+    @Field(() => Float, { nullable: true }) currentValue: number | null;
+    @Field() unit: string;
+    @Field(() => Int) windowDays: number;
+    /** 'YYYY-MM-DD' */
+    @Field() startsOn: string;
+    /** 'YYYY-MM-DD' */
+    @Field() gateOn: string;
+    @Field() status: string;
+    @Field(() => Float) progress: number;
+    @Field() nextAction: string;
+    /** 'YYYY-MM-DD' */
+    @Field(() => String, { nullable: true }) nextActionDue: string | null;
+    @Field() color: string;
+    @Field(() => Int) sortOrder: number;
+    @Field(() => String, { nullable: true }) createdBy: string | null;
+    @Field(() => String, { nullable: true }) archivedAt: string | null;
+    @Field(() => String, { nullable: true }) createdAt: string | null;
+    @Field(() => String, { nullable: true }) updatedAt: string | null;
+    // computed
+    @Field(() => Int) reviewCount: number;
+    @Field(() => String, { nullable: true }) lastReviewedAt: string | null;
+    @Field(() => String, { nullable: true }) lastVerdict: string | null;
+    /** Linked, non-archived tasks whose status is not done/cancelled. */
+    @Field(() => Int) openTasks: number;
+    /** Linked, non-archived tasks with status 'done'. */
+    @Field(() => Int) doneTasks: number;
+}
+
+@ObjectType()
+export class AosGoalReview {
+    @Field() id: string;
+    @Field() goalId: string;
+    @Field() verdict: string;
+    @Field(() => Float, { nullable: true }) progress: number | null;
+    @Field(() => Float, { nullable: true }) currentValue: number | null;
+    @Field() note: string;
+    @Field(() => String, { nullable: true }) nextAction: string | null;
+    @Field(() => String, { nullable: true }) nextGateOn: string | null;
+    @Field(() => String, { nullable: true }) reviewedBy: string | null;
+    @Field() createdAt: string;
+}
+
+@ObjectType()
+export class AosDayStats {
+    @Field() date: string;
+    @Field(() => Int) runs: number;
+    @Field(() => Int) success: number;
+    @Field(() => Int) failed: number;
+    @Field(() => Int) blocked: number;
+    @Field(() => Float) costUsd: number;
+    @Field(() => Int) tokens: number;
+}
+
+@ObjectType()
+export class AosWeekStats {
+    /** Monday 'YYYY-MM-DD' in the requested timezone. */
+    @Field() weekStart: string;
+    @Field(() => Int) tasksCreated: number;
+    @Field(() => Int) tasksDone: number;
+    @Field(() => Int) reviewsWaiting: number;
+    @Field(() => Int) approvalsDecided: number;
+    @Field(() => Int) approvalsTotal: number;
+    @Field(() => Int) notesAdded: number;
+    @Field(() => Int) runs: number;
+    @Field(() => Int) overdueTasks: number;
+}
+
+@ObjectType()
+export class AosWeekActivity {
+    @Field() weekStart: string;
+    @Field(() => Int) tasksDone: number;
+    @Field(() => Int) runs: number;
+    @Field(() => Int) approvals: number;
+    @Field(() => Int) notes: number;
+    /** tasksDone + runs + approvals + notes */
+    @Field(() => Int) score: number;
+}
+
+@ObjectType()
+export class AosDeckStats {
+    @Field() now: string;
+    @Field() timezone: string;
+    @Field(() => AosDayStats) today: AosDayStats;
+    @Field(() => AosDayStats) yesterday: AosDayStats;
+    @Field(() => AosWeekStats) week: AosWeekStats;
+    @Field(() => [AosWeekActivity]) weeks: AosWeekActivity[];
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // Input types (every writable column optional — partial updates)
 // ════════════════════════════════════════════════════════════════════════════
@@ -434,6 +535,7 @@ export class AosTaskInput {
     @Field(() => String, { nullable: true }) dueAt?: string | null;
     @Field(() => String, { nullable: true }) result?: string | null;
     @Field(() => String, { nullable: true }) error?: string | null;
+    @Field(() => String, { nullable: true }) goalId?: string | null;
 }
 
 @InputType()
@@ -510,4 +612,38 @@ export class AosSettingsInput {
     @Field(() => String, { nullable: true }) llmMode?: string;
     @Field(() => Boolean, { nullable: true }) pulseEnabled?: boolean;
     @Field(() => Float, { nullable: true }) runCostCeilingUsd?: number;
+}
+
+// ── Phase 4 (Goals & gate reviews) ───────────────────────────────────────────
+
+@InputType()
+export class AosGoalInput {
+    @Field(() => String, { nullable: true }) title?: string;
+    @Field(() => String, { nullable: true }) description?: string;
+    @Field(() => String, { nullable: true }) areaId?: string | null;
+    @Field(() => String, { nullable: true }) ownerAgentId?: string | null;
+    @Field(() => String, { nullable: true }) metric?: string;
+    @Field(() => Float, { nullable: true }) targetValue?: number | null;
+    @Field(() => Float, { nullable: true }) currentValue?: number | null;
+    @Field(() => String, { nullable: true }) unit?: string;
+    @Field(() => Int, { nullable: true }) windowDays?: number;
+    @Field(() => String, { nullable: true }) startsOn?: string;
+    @Field(() => String, { nullable: true }) gateOn?: string;
+    @Field(() => String, { nullable: true }) status?: string;
+    @Field(() => Float, { nullable: true }) progress?: number;
+    @Field(() => String, { nullable: true }) nextAction?: string;
+    @Field(() => String, { nullable: true }) nextActionDue?: string | null;
+    @Field(() => String, { nullable: true }) color?: string;
+    @Field(() => Int, { nullable: true }) sortOrder?: number;
+}
+
+@InputType()
+export class AosGoalReviewInput {
+    @Field() goalId: string;
+    @Field() verdict: string;
+    @Field(() => Float, { nullable: true }) progress?: number | null;
+    @Field(() => Float, { nullable: true }) currentValue?: number | null;
+    @Field(() => String, { nullable: true }) note?: string | null;
+    @Field(() => String, { nullable: true }) nextAction?: string | null;
+    @Field(() => String, { nullable: true }) nextGateOn?: string | null;
 }

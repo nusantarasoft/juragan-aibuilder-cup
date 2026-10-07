@@ -4,6 +4,7 @@ import GraphQLJSON from 'graphql-type-json';
 import { AgenticOsService, AosActor } from './agentic-os.service';
 import { AgenticOsPulse } from './agentic-os.pulse';
 import { AgenticOsWorkflows } from './agentic-os.workflows';
+import { AgenticOsGoals, DEFAULT_DECK_TZ } from './agentic-os.goals';
 import { AosAuthGuard } from './aos-auth.guard';
 import {
     AosAgent,
@@ -12,6 +13,11 @@ import {
     AosApproval,
     AosAuditEntry,
     AosCronPreview,
+    AosDeckStats,
+    AosGoal,
+    AosGoalInput,
+    AosGoalReview,
+    AosGoalReviewInput,
     AosMemoryArea,
     AosMemoryAreaInput,
     AosMemoryItem,
@@ -47,6 +53,7 @@ export class AgenticOsResolver {
         private readonly svc: AgenticOsService,
         private readonly pulse: AgenticOsPulse,
         private readonly workflows: AgenticOsWorkflows,
+        private readonly goals: AgenticOsGoals,
     ) {}
 
     // ════════════════════════════════════════════════════════════════════════
@@ -208,6 +215,36 @@ export class AgenticOsResolver {
     @Query(() => AosStats)
     aosStats(@Args('tenantId', optStr) tenantId?: string) {
         return this.svc.getStats(tenantId);
+    }
+
+    // ── Phase 4: Command Deck · Goals ────────────────────────────────────────
+
+    /** Order: archived last, then gate_on asc, then sort_order. */
+    @Query(() => [AosGoal])
+    aosGoals(
+        @Args('includeArchived', archivedArg) includeArchived?: boolean,
+        @Args('tenantId', optStr) tenantId?: string,
+    ) {
+        return this.goals.listGoals(tenantId, includeArchived);
+    }
+
+    /** Newest first. */
+    @Query(() => [AosGoalReview])
+    aosGoalReviews(
+        @Args('goalId', optStr) goalId?: string,
+        @Args('limit', { type: () => Int, nullable: true, defaultValue: 50 }) limit?: number,
+        @Args('tenantId', optStr) tenantId?: string,
+    ) {
+        return this.goals.listReviews({ tenantId, goalId, limit });
+    }
+
+    /** Read-only Command Deck numbers in one round-trip. */
+    @Query(() => AosDeckStats)
+    aosDeckStats(
+        @Args('timezone', { type: () => String, nullable: true, defaultValue: DEFAULT_DECK_TZ }) timezone?: string,
+        @Args('tenantId', optStr) tenantId?: string,
+    ) {
+        return this.goals.deckStats(timezone, tenantId);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -546,6 +583,47 @@ export class AgenticOsResolver {
     @UseGuards(AosAuthGuard)
     aosCancelWorkflowRun(@Args('id') id: string, @Context() ctx: AosContext) {
         return this.workflows.cancelRun(id, actorOf(ctx));
+    }
+
+    // ── Goals (Phase 4) ──────────────────────────────────────────────────────
+
+    @Mutation(() => AosGoal)
+    @UseGuards(AosAuthGuard)
+    aosCreateGoal(
+        @Args('input', { type: () => AosGoalInput }) input: AosGoalInput,
+        @Args('tenantId', optStr) tenantId: string | undefined,
+        @Context() ctx: AosContext,
+    ) {
+        return this.goals.createGoal(tenantId, input, actorOf(ctx));
+    }
+
+    @Mutation(() => AosGoal)
+    @UseGuards(AosAuthGuard)
+    aosUpdateGoal(
+        @Args('id') id: string,
+        @Args('input', { type: () => AosGoalInput }) input: AosGoalInput,
+        @Context() ctx: AosContext,
+    ) {
+        return this.goals.updateGoal(id, input, actorOf(ctx));
+    }
+
+    @Mutation(() => AosGoal)
+    @UseGuards(AosAuthGuard)
+    aosArchiveGoal(@Args('id') id: string, @Context() ctx: AosContext) {
+        return this.goals.setGoalArchived(id, true, actorOf(ctx));
+    }
+
+    @Mutation(() => AosGoal)
+    @UseGuards(AosAuthGuard)
+    aosRestoreGoal(@Args('id') id: string, @Context() ctx: AosContext) {
+        return this.goals.setGoalArchived(id, false, actorOf(ctx));
+    }
+
+    /** Appends a gate review (append-only) and returns the updated goal. */
+    @Mutation(() => AosGoal)
+    @UseGuards(AosAuthGuard)
+    aosReviewGoal(@Args('input', { type: () => AosGoalReviewInput }) input: AosGoalReviewInput, @Context() ctx: AosContext) {
+        return this.goals.reviewGoal(input, actorOf(ctx));
     }
 
     // ── Governance ───────────────────────────────────────────────────────────

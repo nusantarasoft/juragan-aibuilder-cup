@@ -8,11 +8,12 @@ import { AgenticOsResolver } from './agentic-os.resolver';
 import { AgenticOsRunner } from './agentic-os.runner';
 import { AgenticOsPulse } from './agentic-os.pulse';
 import { AgenticOsWorkflows } from './agentic-os.workflows';
+import { AgenticOsGoals } from './agentic-os.goals';
 import { AosAuthGuard } from './aos-auth.guard';
 
 @Module({
     imports: [SupabaseModule, AuthModule, AiModule, NotificationsModule],
-    providers: [AgenticOsService, AgenticOsResolver, AgenticOsRunner, AgenticOsPulse, AgenticOsWorkflows, AosAuthGuard],
+    providers: [AgenticOsService, AgenticOsResolver, AgenticOsRunner, AgenticOsPulse, AgenticOsWorkflows, AgenticOsGoals, AosAuthGuard],
     exports: [AgenticOsService],
 })
 export class AgenticOsModule { }

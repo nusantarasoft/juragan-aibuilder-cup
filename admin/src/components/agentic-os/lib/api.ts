@@ -11,6 +11,11 @@ import type {
     OsApproval,
     OsAuditEntry,
     OsCronPreview,
+    OsDeckStats,
+    OsGoal,
+    OsGoalInput,
+    OsGoalReview,
+    OsGoalReviewInput,
     OsMemoryArea,
     OsMemoryAreaInput,
     OsMemoryItem,
@@ -428,4 +433,62 @@ export const phase3Api = {
     runWorkflow: (id: string) => m<"aosRunWorkflow", OsWorkflowRun>("aosRunWorkflow", `mutation($id: String!) { aosRunWorkflow(id: $id) { ${WF_RUN} } }`, { id }),
     cancelWorkflowRun: (id: string) =>
         m<"aosCancelWorkflowRun", OsWorkflowRun>("aosCancelWorkflowRun", `mutation($id: String!) { aosCancelWorkflowRun(id: $id) { ${WF_RUN} } }`, { id }),
+};
+
+/* ------------------------------------------------------------------ */
+/* Phase 4 — Command Deck · Goals & gate reviews                       */
+/* ------------------------------------------------------------------ */
+
+const GOAL = `id title description areaId ownerAgentId metric targetValue currentValue unit windowDays startsOn gateOn status progress
+  nextAction nextActionDue color sortOrder createdBy archivedAt createdAt updatedAt reviewCount lastReviewedAt lastVerdict openTasks doneTasks`;
+const GOAL_REVIEW = `id goalId verdict progress currentValue note nextAction nextGateOn reviewedBy createdAt`;
+const DAY = `date runs success failed blocked costUsd tokens`;
+const DECK_STATS = `now timezone today { ${DAY} } yesterday { ${DAY} }
+  week { weekStart tasksCreated tasksDone reviewsWaiting approvalsDecided approvalsTotal notesAdded runs overdueTasks }
+  weeks { weekStart tasksDone runs approvals notes score }`;
+
+export interface DeckSnapshot {
+    goals: OsGoal[];
+    reviews: OsGoalReview[];
+    stats: OsDeckStats;
+    /** task id → goal id (only tasks linked to a goal). */
+    taskGoals: Record<string, string>;
+}
+
+/** Goals, recent gate reviews, deck stats and task↔goal links in one round-trip. */
+export async function fetchDeck(includeArchived = false, timezone?: string): Promise<DeckSnapshot> {
+    const d = await aosGql<{
+        aosGoals: OsGoal[];
+        aosGoalReviews: OsGoalReview[];
+        aosDeckStats: OsDeckStats;
+        goalTasks: { id: string; goalId: string | null }[];
+    }>(
+        `query AosDeck($inc: Boolean, $tz: String) {
+            aosGoals(includeArchived: $inc) { ${GOAL} }
+            aosGoalReviews(limit: 60) { ${GOAL_REVIEW} }
+            aosDeckStats(timezone: $tz) { ${DECK_STATS} }
+            goalTasks: aosTasks(limit: 400) { id goalId }
+        }`,
+        { inc: includeArchived, tz: timezone },
+    );
+    const taskGoals: Record<string, string> = {};
+    for (const t of d.goalTasks) if (t.goalId) taskGoals[t.id] = t.goalId;
+    return { goals: d.aosGoals, reviews: d.aosGoalReviews, stats: d.aosDeckStats, taskGoals };
+}
+
+export const goalsApi = {
+    createGoal: (input: OsGoalInput) => m<"aosCreateGoal", OsGoal>("aosCreateGoal", `mutation($input: AosGoalInput!) { aosCreateGoal(input: $input) { ${GOAL} } }`, { input }),
+    updateGoal: (id: string, input: OsGoalInput) =>
+        m<"aosUpdateGoal", OsGoal>("aosUpdateGoal", `mutation($id: String!, $input: AosGoalInput!) { aosUpdateGoal(id: $id, input: $input) { ${GOAL} } }`, { id, input }),
+    archiveGoal: (id: string) => m<"aosArchiveGoal", OsGoal>("aosArchiveGoal", `mutation($id: String!) { aosArchiveGoal(id: $id) { ${GOAL} } }`, { id }),
+    restoreGoal: (id: string) => m<"aosRestoreGoal", OsGoal>("aosRestoreGoal", `mutation($id: String!) { aosRestoreGoal(id: $id) { ${GOAL} } }`, { id }),
+    reviewGoal: (input: OsGoalReviewInput) =>
+        m<"aosReviewGoal", OsGoal>("aosReviewGoal", `mutation($input: AosGoalReviewInput!) { aosReviewGoal(input: $input) { ${GOAL} } }`, { input }),
+    /** Link / unlink a task to a goal (only sends `goalId`). */
+    linkTask: (taskId: string, goalId: string | null) =>
+        m<"aosUpdateTask", { id: string; goalId: string | null }>(
+            "aosUpdateTask",
+            `mutation($id: String!, $input: AosTaskInput!) { aosUpdateTask(id: $id, input: $input) { id goalId } }`,
+            { id: taskId, input: { goalId } },
+        ),
 };

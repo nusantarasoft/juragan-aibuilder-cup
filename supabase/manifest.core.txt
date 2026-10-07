@@ -55,3 +55,4 @@ supabase/migrations/20260506999999_reload_postgrest.sql
 supabase/migrations/20261006000000_agentic_os.sql
 supabase/migrations/20261007000000_agentic_os_pulse.sql
 supabase/migrations/20261008000000_agentic_os_phase3.sql
+supabase/migrations/20261009000000_agentic_os_goals.sql
