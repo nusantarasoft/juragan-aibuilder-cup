@@ -28,7 +28,7 @@ powershell -ExecutionPolicy Bypass -File scripts/master-production/deploy.ps1
 
 - After merge/push already done: add `-SkipMerge -SkipPush`.
 - Server path: `/opt/nusantarasoft-3`.
-- Redeploy ends with Hermes kasir posture restore (`hermes-kasir-posture.py`), `docker restart nsoft3-nginx` to avoid stale upstream 502, then `prune-nsoft3-images.sh` (unused `nsoft3-*` / project-labeled images + build cache unused >7d — never global `docker system prune -a`).
+- Redeploy ends with Hermes kasir posture restore (`hermes-kasir-posture.py`), `docker restart nsoft3-nginx` to avoid stale upstream 502, then optional `prune-nsoft3-images.sh` when `NSOFT3_PRUNE_IMAGES=1` (default off; nsoft3-only + build cache unused >7d — never global `docker system prune -a`). `pull-on-server.sh` backs up and stash/restores `volumes/hermes` across hard reset.
 
 ## Verify
 

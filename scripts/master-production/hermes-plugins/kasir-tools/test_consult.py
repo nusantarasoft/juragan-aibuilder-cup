@@ -156,6 +156,41 @@ class ConsultTests(unittest.TestCase):
             self.assertEqual(out, self.mod.CONSULT_BUSY_COPY)
             urlopen.assert_not_called()
 
+    def test_coach_alias_sends_mode_and_phone(self) -> None:
+        env = {**self.env, "KASIR_CONSULT": "1"}
+        with mock.patch.dict(os.environ, env, clear=False), mock.patch.object(
+            self.mod.urllib.request,
+            "urlopen",
+            return_value=_FakeResp({"status": "hit", "text": "Ringkasan: …"}),
+        ) as urlopen:
+            out = self.mod.handle_consult(
+                {"question": "pendamping", "phone": "6281111111111"}
+            )
+            self.assertIn("Ringkasan", out)
+            body = json.loads(urlopen.call_args[0][0].data.decode("utf-8"))
+            self.assertEqual(body.get("mode"), "coach")
+            self.assertEqual(body.get("phone"), "6281111111111")
+
+    def test_tanya_unchanged_no_coach_mode(self) -> None:
+        env = {**self.env, "KASIR_CONSULT": "1"}
+        with mock.patch.dict(os.environ, env, clear=False), mock.patch.object(
+            self.mod.urllib.request,
+            "urlopen",
+            return_value=_FakeResp({"status": "hit", "text": "Modal usaha."}),
+        ) as urlopen:
+            self.mod.handle_consult({"question": "tanya modal usaha", "phone": "6281"})
+            body = json.loads(urlopen.call_args[0][0].data.decode("utf-8"))
+            self.assertNotIn("mode", body)
+
+    def test_coach_alias_without_phone_busy(self) -> None:
+        env = {**self.env, "KASIR_CONSULT": "1"}
+        with mock.patch.dict(os.environ, env, clear=False), mock.patch.object(
+            self.mod.urllib.request, "urlopen"
+        ) as urlopen:
+            out = self.mod.handle_consult({"question": "saran bisnis"})
+            self.assertEqual(out, self.mod.CONSULT_BUSY_COPY)
+            urlopen.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

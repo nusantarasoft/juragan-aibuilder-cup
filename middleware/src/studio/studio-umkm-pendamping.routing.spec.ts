@@ -65,11 +65,13 @@ describe('pendamping help + sticky', () => {
         await svc.handleMessage('jual 1 bakso', 't', '6281', DEFAULT_STUDIO_UMKM_CONTEXT, {
             conversationId: 'st-pd',
         });
+        pendamping.gateAndCoach.mockClear();
         pendamping.coach.mockClear();
         const sticky = await svc.handleMessage('pendamping', 't', '6281', DEFAULT_STUDIO_UMKM_CONTEXT, {
             conversationId: 'st-pd',
         });
         expect(sticky).toMatch(/draft penjualan|konfirmasi/i);
+        expect(pendamping.gateAndCoach).not.toHaveBeenCalled();
         expect(pendamping.coach).not.toHaveBeenCalled();
     });
 });

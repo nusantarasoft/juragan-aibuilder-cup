@@ -163,8 +163,17 @@ export function makeUmkmService(opts?: MakeUmkmServiceOpts) {
     };
     const ai = { generateText: vi.fn(async () => '') };
     const inventory = { createItem, createStockMovement };
+    const coach = vi.fn(async () => '*Pendamping*\n\nStub tips untuk tes.');
     const pendamping = {
-        coach: vi.fn(async () => '*Pendamping*\n\nStub tips untuk tes.'),
+        coach,
+        gateAndCoach: vi.fn(
+            async (input: {
+                text: string;
+                tenantId: string;
+                config?: unknown;
+                notebookId?: string;
+            }) => coach(input.text, input.tenantId, input.config, input.notebookId),
+        ),
     };
     const svc = new StudioUmkmService(supabase as any, ai as any, inventory as any, pendamping as any);
     return { svc, createItem, createStockMovement, reportSales, pendamping };
