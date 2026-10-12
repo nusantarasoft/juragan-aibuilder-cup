@@ -195,6 +195,9 @@ export function CommandDeck({ onOpen }: { onOpen: (app: AppId, params?: AppParam
                             </button>
                         ))}
                     </div>
+                    <button onClick={() => window.location.href = '/admin/virtual-office'} className="px-3 py-1 flex items-center gap-1.5 text-xs font-mono text-slate-300 hover:text-white hover:bg-slate-800 bg-slate-900 border border-slate-800 rounded">
+                        Virtual Office
+                    </button>
                     <button onClick={() => ui.patch({ focus: !ui.focus })} className="p-1.5 text-slate-400 hover:text-white bg-slate-900 border border-slate-800 rounded">
                         <Maximize2 className="w-4 h-4" />
                     </button>
