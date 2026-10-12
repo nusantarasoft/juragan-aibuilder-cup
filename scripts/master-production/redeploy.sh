@@ -8,8 +8,8 @@
 # entrypoints executable, (2) rebuilds the app images serially (admin needs a
 # lot of RAM, so never in parallel), (3) ensures the Supabase `_supabase`
 # database + schemas exist, (4) fixes auth-schema ownership, (5) brings the
-# whole stack up, (6) restores Hermes kasir posture, (7) prunes unused nsoft3
-# images.
+# whole stack up, (6) restores Hermes kasir posture, (7) optionally prunes unused
+# nsoft3 images when NSOFT3_PRUNE_IMAGES=1.
 # ═══════════════════════════════════════════════════════════════════════════
 set -euo pipefail
 
@@ -97,8 +97,12 @@ docker exec -e HERMES_HOME=/opt/data nsoft3-hermes \
   python3 /opt/data/multimodal-smoke.py off --phone "${KASIR_SMOKE_PHONE:-6287859031592}" \
   || echo "WARN multimodal OFF smoke failed (non-fatal for stack up)"
 
-echo "==> [9/9] prune unused nsoft3 Docker images (disk hygiene, nsoft3-only)"
-bash "$SCRIPTS/prune-nsoft3-images.sh"
+if [[ "${NSOFT3_PRUNE_IMAGES:-0}" == "1" ]]; then
+  echo "==> [9/9] prune unused nsoft3 Docker images (NSOFT3_PRUNE_IMAGES=1)"
+  bash "$SCRIPTS/prune-nsoft3-images.sh"
+else
+  echo "==> [9/9] skip image prune (set NSOFT3_PRUNE_IMAGES=1 to run prune-nsoft3-images.sh)"
+fi
 
 echo
 echo "==> done. current status:"

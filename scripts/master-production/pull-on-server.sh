@@ -12,6 +12,8 @@
 #   GITHUB_TOKEN     optional; builds HTTPS URL if DEPLOY_GIT_URL unset
 #   REMOTE_DIR       default /opt/nusantarasoft-3
 #   BRANCH           default master-production (do not change for go-live)
+#   HERMES_BACKUP_DIR   tar backups before pull (default $REMOTE_DIR/backups/hermes-runtime)
+#   HERMES_BACKUP_KEEP  keep newest N tar backups (default 5)
 # ============================================================================
 set -euo pipefail
 
@@ -46,6 +48,58 @@ echo "==> target dir : $REMOTE_DIR"
 echo "==> branch     : $BRANCH"
 echo "==> remote     : $SAFE_URL"
 
+HERMES_BACKUP_DIR="${HERMES_BACKUP_DIR:-$REMOTE_DIR/backups/hermes-runtime}"
+HERMES_BACKUP_KEEP="${HERMES_BACKUP_KEEP:-5}"
+
+backup_hermes_runtime() {
+  local hermes_dir="$REMOTE_DIR/volumes/hermes"
+  [[ -d "$hermes_dir" ]] || return 0
+  if [[ -z "$(ls -A "$hermes_dir" 2>/dev/null || true)" ]]; then
+    return 0
+  fi
+  mkdir -p "$HERMES_BACKUP_DIR"
+  local ts archive
+  ts="$(date +%Y%m%dT%H%M%SZ)"
+  archive="$HERMES_BACKUP_DIR/hermes-runtime-${ts}.tar.gz"
+  echo "==> Hermes runtime backup → $archive"
+  tar -czf "$archive" -C "$REMOTE_DIR/volumes" hermes
+  local count
+  count="$(find "$HERMES_BACKUP_DIR" -maxdepth 1 -type f -name 'hermes-runtime-*.tar.gz' | wc -l | tr -d ' ')"
+  if [[ "${count:-0}" -gt "$HERMES_BACKUP_KEEP" ]]; then
+    find "$HERMES_BACKUP_DIR" -maxdepth 1 -type f -name 'hermes-runtime-*.tar.gz' \
+      | sort \
+      | head -n "$(( count - HERMES_BACKUP_KEEP ))" \
+      | while read -r old; do
+          echo "    pruning old backup $(basename "$old")"
+          rm -f "$old"
+        done
+  fi
+}
+
+stash_hermes_runtime() {
+  local stash_root="$1"
+  local hermes_dir="$REMOTE_DIR/volumes/hermes"
+  [[ -d "$hermes_dir" ]] || return 0
+  if [[ -z "$(ls -A "$hermes_dir" 2>/dev/null || true)" ]]; then
+    return 0
+  fi
+  echo "    stashing volumes/hermes aside (survives git reset --hard)"
+  mkdir -p "$stash_root"
+  rm -rf "$stash_root/hermes"
+  mv "$hermes_dir" "$stash_root/hermes"
+}
+
+restore_hermes_runtime() {
+  local stash_root="$1"
+  if [[ ! -d "$stash_root/hermes" ]]; then
+    return 0
+  fi
+  echo "    restoring volumes/hermes from stash"
+  mkdir -p "$REMOTE_DIR/volumes"
+  rm -rf "$REMOTE_DIR/volumes/hermes"
+  mv "$stash_root/hermes" "$REMOTE_DIR/volumes/hermes"
+}
+
 preserve_runtime() {
   local src="$1" dst="$2"
   mkdir -p "$dst"
@@ -68,22 +122,35 @@ preserve_runtime() {
     mv "$src/volumes/storage" "$dst/volumes/storage" 2>/dev/null \
       || cp -a "$src/volumes/storage" "$dst/volumes/storage"
   fi
+  if [[ -d "$src/volumes/hermes" ]]; then
+    echo "    preserving volumes/hermes"
+    mkdir -p "$dst/volumes"
+    rm -rf "$dst/volumes/hermes"
+    mv "$src/volumes/hermes" "$dst/volumes/hermes" 2>/dev/null \
+      || cp -a "$src/volumes/hermes" "$dst/volumes/hermes"
+  fi
 }
 
 if [[ -d "$REMOTE_DIR/.git" ]]; then
   echo "==> git repo found — fetch + hard reset to origin/$BRANCH"
   cd "$REMOTE_DIR"
+  backup_hermes_runtime
+  HERMES_STASH="$(mktemp -d "${REMOTE_DIR}.hermes-stash.XXXXXX")"
+  stash_hermes_runtime "$HERMES_STASH"
   git remote set-url origin "$URL"
   git fetch --prune origin "$BRANCH"
   # Tar/hotfix deploys often leave dirty/untracked files that block checkout.
-  # Force align to origin; never wipe .env or data volumes (or Hermes session).
+  # Force align to origin; never wipe .env, DB/storage, or Hermes runtime (gitignored).
   git checkout -f -B "$BRANCH" "origin/$BRANCH"
   git reset --hard "origin/$BRANCH"
   git clean -fd \
     --exclude=.env.master-production \
     --exclude=volumes/db/data \
     --exclude=volumes/storage \
-    --exclude=volumes/hermes
+    --exclude=volumes/hermes \
+    --exclude=backups/hermes-runtime
+  restore_hermes_runtime "$HERMES_STASH"
+  rm -rf "$HERMES_STASH"
 else
   echo "==> no .git under $REMOTE_DIR — cloning $BRANCH (bootstrap)"
   TMP="${REMOTE_DIR}.pull-tmp.$$"

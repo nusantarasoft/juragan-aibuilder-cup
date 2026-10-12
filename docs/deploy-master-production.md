@@ -59,7 +59,7 @@ powershell -ExecutionPolicy Bypass -File scripts/master-production/deploy.ps1
 Script melakukan:
 
 1. Checkout `master-production`, **merge** `origin/master` ke dalamnya, **push** `origin/master-production`.
-2. Di server: `git fetch` + hard reset ke `origin/master-production` (bootstrap clone jika belum ada `.git`; `.env` + volume DB/storage di-preserve).
+2. Di server: `git fetch` + hard reset ke `origin/master-production` (bootstrap clone jika belum ada `.git`; `.env` + volume DB/storage + **`volumes/hermes` runtime** di-preserve). Sebelum reset, `pull-on-server.sh` menar `volumes/hermes` ke tar di `backups/hermes-runtime/` (rotasi 5 file) dan stash/restore agar transisi **untrack** Hermes tidak menghapus `state.db`, `config.yaml`, `channel_directory.json`, sesi WA, dll.
 3. Jalankan `scripts/master-production/redeploy.sh`:
    - build serial: middleware → landing-page → admin
    - pastikan DB `_supabase` / auth ownership
@@ -67,7 +67,7 @@ Script melakukan:
    - `docker compose ... up -d`
    - restart `nsoft3-nginx` (supaya upstream IP tidak stale → hindari 502)
    - **Hermes kasir posture** (`hermes-kasir-posture.py`) — restore `plugins.enabled` + display silence + allowlist + platform locks after hermes recreate; multimodal OFF smoke
-   - **prune image nsoft3** (`prune-nsoft3-images.sh`) — hapus image/`dangling` tidak terpakai milik stack NusantaraSoft saja (label `nsoft3-prod` + repo `nsoft3/*` + hermes-agent unused) + build cache unused >7d. Tidak menyentuh image app lain di server.
+   - **prune image nsoft3** (opt-in) — default **off** di `redeploy.sh` step 9. Set `NSOFT3_PRUNE_IMAGES=1` on server untuk menjalankan `prune-nsoft3-images.sh` (hanya image `nsoft3-prod` / `nsoft3/*` / hermes unused + build cache unused >7d; tidak `docker system prune -a` global).
 
 ### Switch berguna
 
@@ -76,6 +76,13 @@ Script melakukan:
 | `-SkipMerge` | Merge/push sudah dilakukan; hanya pull + redeploy |
 | `-SkipPush` | Merge lokal saja, jangan push (jarang; server tidak dapat commit baru) |
 | `-SkipMerge -SkipPush` | Hanya pull server + redeploy (paling aman setelah merge sudah selesai) |
+| `NSOFT3_PRUNE_IMAGES=1` (di server, sebelum `redeploy.sh`) | Jalankan step 9 prune disk; default tanpa env = skip |
+
+## Hermes runtime (`volumes/hermes`)
+
+- **Tidak** di-git: isi live (DB, config, channel map, gateway, cron, logs, skills cache) hanya di server.
+- **Source of truth** plugin + seed: `scripts/master-production/hermes-plugins/` dan `scripts/master-production/hermes-home/`; `redeploy.sh` memanggil `hermes-kasir-posture.py apply --sync-plugins`.
+- Fresh install: `mkdir -p volumes/hermes` (lihat `up-hermes.sh` / compose mount), lalu posture apply setelah container hermes up.
 
 ## Verifikasi setelah deploy
 
